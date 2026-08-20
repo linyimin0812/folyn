@@ -112,15 +112,18 @@ interface PetApiInfo {
 // ponytail: one canonical sample body — used by both the test button (fetch)
 // and the curl snippet. Showcases every field build_notify accepts so users
 // can copy a working, self-documenting example instead of `text:"hi"`.
+// The `launch` is attached to the action object — action buttons only fire
+// a jump when the action itself carries `launch`; the top-level `launch`
+// covers bubble-body clicks. Both paths shown so users see the distinction.
 const SAMPLE_NOTIFY_BODY =
-  '{"action":"notify","kind":"reminder","title":"任务待处理","source":"quill","text":"测试通知已送达","actions":[{"id":"ok","label":"知道了"}],"launch":{"type":"url","value":"https://example.com"}}';
+  '{"action":"notify","kind":"reminder","title":"任务待处理","source":"quill","text":"测试通知已送达","actions":[{"id":"ok","label":"知道了","launch":{"type":"url","value":"https://example.com"}}],"launch":{"type":"url","value":"https://example.com"}}';
 const SAMPLE_NOTIFY_FIELD_DOC = `# action: notify (show/hide reserved)
 # kind: info | reminder | message | event
 # title: optional, header text
 # source: optional, caller identity (≤128 chars)
 # text: required, body (≤4096 chars)
-# actions: optional, [{id, label}]
-# launch: optional, click-through {type:url|app, value}`;
+# actions: optional, [{id, label, launch?}] — per-action launch jumps on click
+# launch: optional, bubble-body click-through {type:url|app, value}`;
 
 function PetExternalApiBlock() {
   const { t } = useTranslation();
