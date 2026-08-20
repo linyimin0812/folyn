@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cli-adapter/frontend/component-guidelines.md", "reason": "BaseCliAdapter pattern, stream events, NDJSON parsing — qoder adapter must follow this"}
+{"file": ".trellis/spec/cli-adapter/frontend/type-safety.md", "reason": "Stream event types, status unions — translateQoderEvent output must match CliStreamEvent"}
+{"file": ".trellis/spec/cli-adapter/frontend/quality-guidelines.md", "reason": "Required patterns, cleanup checklist — implementation + tests must pass these"}
+{"file": ".trellis/tasks/08-20-cli-agent-add-qoder-cli/research/qoder-cli-shape.md", "reason": "Binary names, CLI shape, config dirs, intl/cn differences — drives buildQoderArgs + factory registration"}

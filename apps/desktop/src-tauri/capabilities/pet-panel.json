@@ -27,6 +27,16 @@
           "args": true
         },
         {
+          "name": "qoder-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
+          "name": "qoder-cli-cn",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
           "name": "pi-cli",
           "cmd": "/bin/sh",
           "args": true
@@ -48,6 +58,16 @@
         },
         {
           "name": "codex-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
+          "name": "qoder-cli",
+          "cmd": "/bin/sh",
+          "args": true
+        },
+        {
+          "name": "qoder-cli-cn",
           "cmd": "/bin/sh",
           "args": true
         },

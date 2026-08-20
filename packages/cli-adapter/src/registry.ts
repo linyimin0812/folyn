@@ -2,6 +2,7 @@ import type { CliAdapter } from './types';
 import { ClaudeAdapter } from './claudeAdapter';
 import { CodexAdapter } from './codexAdapter';
 import { PiAdapter } from './piAdapter';
+import { QoderAdapter } from './qoderAdapter';
 
 type AdapterDescriptor = {
   displayName: string;
@@ -23,6 +24,9 @@ const PI_SETTINGS_TEMPLATE = '{\n  "providers": {}\n}\n';
 // comment-only template still parses as empty and tells the user how to
 // bootstrap auth (separate from config) when they click "create settings".
 const CODEX_SETTINGS_TEMPLATE = '# Codex config (TOML). Empty is valid — Codex boots with defaults.\n# Run `codex login` to set up auth at ~/.codex/auth.json.\n';
+// ponytail: empty JSON — qodercli boots with defaults; `qodercli login` sets
+// up auth under ~/.qoder/.auth/ (separate from settings.json).
+const QODER_SETTINGS_TEMPLATE = '{}\n';
 
 const ADAPTERS: Record<string, AdapterDescriptor> = {
   claude: {
@@ -45,6 +49,35 @@ const ADAPTERS: Record<string, AdapterDescriptor> = {
     factory: () => new PiAdapter(),
     settingsFilePath: '~/.pi/agent/models.json',
     settingsFileTemplate: PI_SETTINGS_TEMPLATE,
+  },
+  // ponytail: one parameterized class backs both intl + cn — qodercli and
+  // qoderclicn share the same CLI surface (research/qoder-cli-shape.md §5);
+  // only binary name, config dir, and sidecar registration differ.
+  qoder: {
+    displayName: 'Qoder',
+    description: 'Qoder CLI（qodercli -p --output-format stream-json），一发一进程，shell + tool_use 工具',
+    factory: () => new QoderAdapter({
+      id: 'qoder',
+      displayName: 'Qoder',
+      description: 'Qoder CLI（qodercli -p --output-format stream-json），一发一进程，shell + tool_use 工具',
+      sidecarName: 'qoder-cli',
+      cliPathDefault: 'qodercli',
+    }),
+    settingsFilePath: '~/.qoder/settings.json',
+    settingsFileTemplate: QODER_SETTINGS_TEMPLATE,
+  },
+  'qoder-cn': {
+    displayName: 'Qoder (China)',
+    description: 'Qoder CLI 中国版（qoderclicn -p --output-format stream-json），与国际版同源，endpoint/配置目录差异',
+    factory: () => new QoderAdapter({
+      id: 'qoder-cn',
+      displayName: 'Qoder (China)',
+      description: 'Qoder CLI 中国版（qoderclicn -p --output-format stream-json），与国际版同源，endpoint/配置目录差异',
+      sidecarName: 'qoder-cli-cn',
+      cliPathDefault: 'qoderclicn',
+    }),
+    settingsFilePath: '~/.qodercn/settings.json',
+    settingsFileTemplate: QODER_SETTINGS_TEMPLATE,
   },
 };
 
