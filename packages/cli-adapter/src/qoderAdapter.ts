@@ -84,19 +84,24 @@ export function translateQoderEvent(event: unknown): CliStreamEvent[] {
  *
  * Two shapes, switched by `options.resumeSessionId`:
  * - First send: `qodercli -p --output-format stream-json
- *   --no-session-persistence --dangerously-skip-permissions <prompt>` — prompt
- *   as the trailing positional, stdin closed (`< /dev/null` added by the shell
- *   wrapper) so qodercli does NOT block waiting on stdin.
+ *   --dangerously-skip-permissions <prompt>` — prompt as the trailing
+ *   positional, stdin closed (`< /dev/null` added by the shell wrapper) so
+ *   qodercli does NOT block waiting on stdin.
  * - Resume: same flags + `-r <SESSION_ID> <prompt>` — per `qodercli --help`,
  *   `-r/--resume [id]` is a flag taking a positional id.
  *
  * `--dangerously-skip-permissions` mirrors codex's
  * `--dangerously-bypass-approvals-and-sandbox`: full-tool autonomy with no
  * interactive approval (the Tauri sidecar has no TTY anyway).
- * `--no-session-persistence` keeps disk clean; resume still works via the
- * server-side session_id (research/qoder-cli-shape.md §3). */
+ *
+ * ponytail: `--no-session-persistence` is intentionally NOT used. With it,
+ * turn 1 never writes the session to disk, so turn 2's `-r <session_id>`
+ * fails with "Invalid session identifier … Searched current project and
+ * same-repo worktrees". Default persistence lets resume work across
+ * processes; the user can clean up via `qodercli --list-sessions` /
+ * `--delete-session <index>`. */
 export function buildQoderArgs(prompt: string, options?: CliSendOptions): string[] {
-  const flags = ['-p', '--output-format', 'stream-json', '--no-session-persistence', '--dangerously-skip-permissions'];
+  const flags = ['-p', '--output-format', 'stream-json', '--dangerously-skip-permissions'];
   if (options?.resumeSessionId) {
     return [...flags, '-r', options.resumeSessionId, prompt];
   }

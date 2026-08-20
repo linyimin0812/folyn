@@ -167,13 +167,15 @@ describe('translateQoderEvent (qoder JSONL → CliStreamEvent)', () => {
 });
 
 describe('buildQoderArgs (qodercli arg vector)', () => {
-  it('first send: -p + stream-json + no-persistence + bypass + trailing prompt', () => {
+  it('first send: -p + stream-json + bypass + trailing prompt (no persistence flag)', () => {
     const args = buildQoderArgs('say hi');
     expect(args[0]).toBe('-p');
     expect(args).toContain('--output-format');
     expect(args).toContain('stream-json');
-    expect(args).toContain('--no-session-persistence');
     expect(args).toContain('--dangerously-skip-permissions');
+    // ponytail: --no-session-persistence NOT included — it breaks resume
+    // (turn 1 never persists the session, turn 2's -r <id> fails).
+    expect(args).not.toContain('--no-session-persistence');
     expect(args[args.length - 1]).toBe('say hi');
   });
 
@@ -183,7 +185,6 @@ describe('buildQoderArgs (qodercli arg vector)', () => {
       '-p',
       '--output-format',
       'stream-json',
-      '--no-session-persistence',
       '--dangerously-skip-permissions',
       '-r',
       'sess-abc-123',
