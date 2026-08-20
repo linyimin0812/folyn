@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Topbar 是 shell 层组件，确认窗口模式与 header 渲染约定"}
