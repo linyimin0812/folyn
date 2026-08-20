@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Info } from 'lucide-react';
 import {
   usePetStore,
   type NotificationForm,
@@ -110,26 +111,17 @@ interface PetApiInfo {
 }
 
 // ponytail: one canonical sample body — used by both the test button (fetch)
-// and the curl snippet. Showcases every field build_notify accepts so users
-// can copy a working, self-documenting example instead of `text:"hi"`.
-// The `launch` is attached to the action object — action buttons only fire
-// a jump when the action itself carries `launch`; the top-level `launch`
-// covers bubble-body clicks. Both paths shown so users see the distinction.
+// and the curl snippet, and shown verbatim in the API doc modal. Showcases
+// every field build_notify accepts so users can copy a working example.
 const SAMPLE_NOTIFY_BODY =
   '{"action":"notify","kind":"reminder","title":"任务待处理","source":"quill","text":"测试通知已送达","actions":[{"id":"ok","label":"知道了","launch":{"type":"url","value":"https://example.com"}}],"launch":{"type":"url","value":"https://example.com"}}';
-const SAMPLE_NOTIFY_FIELD_DOC = `# action: notify (show/hide reserved)
-# kind: info | reminder | message | event
-# title: optional, header text
-# source: optional, caller identity (≤128 chars)
-# text: required, body (≤4096 chars)
-# actions: optional, [{id, label, launch?}] — per-action launch jumps on click
-# launch: optional, bubble-body click-through {type:url|app, value}`;
 
 function PetExternalApiBlock() {
   const { t } = useTranslation();
   const [info, setInfo] = useState<PetApiInfo | null>(null);
   const [copied, setCopied] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [showDoc, setShowDoc] = useState(false);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -152,7 +144,7 @@ function PetExternalApiBlock() {
   const port = info?.enabled ? info.port : null;
   const curl =
     port != null
-      ? `${SAMPLE_NOTIFY_FIELD_DOC}\ncurl -XPOST 127.0.0.1:${port}/pet/action -d '${SAMPLE_NOTIFY_BODY}'`
+      ? `curl -XPOST 127.0.0.1:${port}/pet/action -d '${SAMPLE_NOTIFY_BODY}'`
       : '';
   const handleCopy = useCallback(async () => {
     if (!curl) return;
@@ -190,11 +182,20 @@ function PetExternalApiBlock() {
   return (
     <div className="tr flex items-center justify-between py-3.5 border-b border-brd mt-3.5">
       <div className="tr-info">
-        <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:pet.api.title')}</h4>
+        <div className="flex items-center gap-1.5 mb-1">
+          <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0">{t('settings:pet.api.title')}</h4>
+          <button
+            className="text-t3 hover:text-t1 transition-colors p-0.5"
+            aria-label={t('settings:pet.api.doc')}
+            onClick={() => setShowDoc(true)}
+          >
+            <Info size={13} />
+          </button>
+        </div>
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">
           {t('settings:pet.api.desc', { port: info.port })}
         </p>
-        <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 whitespace-pre-wrap break-all">{curl}</code>
+        <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 break-all">{curl}</code>
       </div>
       <div className="flex flex-col gap-1.5 items-center shrink-0">
         <button
@@ -206,6 +207,62 @@ function PetExternalApiBlock() {
           className="btn btn-g btn-sm w-full justify-center"
           onClick={() => void handleCopy()}
         >{copied ? t('settings:pet.api.copied') : t('settings:pet.api.copy')}</button>
+      </div>
+      {showDoc && <PetApiDocModal port={info.port} onClose={() => setShowDoc(false)} />}
+    </div>
+  );
+}
+
+// ponytail: doc modal mirrors ConsentModal's overlay pattern. Field table is
+// inline zh prose — this is API documentation, not UI chrome, so per-line
+// i18n would be churn. Add an en variant only if a non-zh user asks.
+const PET_API_FIELDS: Array<{ field: string; desc: string }> = [
+  { field: 'action', desc: 'notify (必填; show/hide 保留未实现)' },
+  { field: 'kind', desc: 'info | reminder | message | event (默认 info)' },
+  { field: 'title', desc: '可选, 标题' },
+  { field: 'source', desc: '可选, 来源标识 (≤128 字符)' },
+  { field: 'text', desc: '必填, 正文 (≤4096 字符)' },
+  { field: 'actions', desc: '可选, [{id, label, launch?}] — 按钮点击触发 per-action launch' },
+  { field: 'launch', desc: '可选, 气泡主体点击跳转 {type:url|app, value}' },
+];
+
+function PetApiDocModal({ port, onClose }: { port: number; onClose: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="bg-panel border border-brd rounded-lg p-4 max-w-lg w-[90vw] shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-[length:calc(var(--ui-font-size)+1px)] font-bold text-t1 mb-2">
+          {t('settings:pet.api.title')}
+        </div>
+        <code className="block text-[11px] text-t2 bg-surf2 rounded px-2 py-1.5 mb-3 break-all">
+          POST 127.0.0.1:{port}/pet/action
+        </code>
+        <div className="text-[11px] font-semibold text-t2 mb-1.5">字段</div>
+        <div className="bg-surf2 border border-brd2 rounded-md p-2 mb-3">
+          <table className="text-[11px] text-t2 w-full">
+            <tbody>
+              {PET_API_FIELDS.map((f) => (
+                <tr key={f.field}>
+                  <td className="align-top py-0.5 pr-2 font-mono text-t1 whitespace-nowrap">{f.field}</td>
+                  <td className="align-top py-0.5 leading-relaxed">{f.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="text-[11px] font-semibold text-t2 mb-1.5">示例 payload</div>
+        <pre className="text-[10.5px] text-t2 bg-surf2 border border-brd2 rounded-md p-2 mb-3 whitespace-pre-wrap break-all overflow-x-auto">{SAMPLE_NOTIFY_BODY}</pre>
+        <div className="flex justify-end">
+          <button className="btn btn-g btn-sm" onClick={onClose}>
+            {t('settings:pet.api.docClose')}
+          </button>
+        </div>
       </div>
     </div>
   );

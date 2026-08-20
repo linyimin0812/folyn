@@ -564,7 +564,9 @@
       "copy": "Copy curl",
       "copied": "Copied",
       "test": "Test",
-      "testing": "Sent"
+      "testing": "Sent",
+      "doc": "View API docs",
+      "docClose": "Close"
     },
     "templates": {
       "title": "Bubble style",

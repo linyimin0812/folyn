@@ -564,7 +564,9 @@
       "copy": "复制 curl",
       "copied": "已复制",
       "test": "测试",
-      "testing": "已发送"
+      "testing": "已发送",
+      "doc": "查看 API 文档",
+      "docClose": "关闭"
     },
     "templates": {
       "title": "弹窗样式",
