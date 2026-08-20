@@ -1,5 +1,6 @@
 import type { CliAdapter } from './types';
 import { ClaudeAdapter } from './claudeAdapter';
+import { CodexAdapter } from './codexAdapter';
 import { PiAdapter } from './piAdapter';
 
 type AdapterDescriptor = {
@@ -18,6 +19,10 @@ type AdapterDescriptor = {
 
 const CLAUDE_SETTINGS_TEMPLATE = '{}\n';
 const PI_SETTINGS_TEMPLATE = '{\n  "providers": {}\n}\n';
+// ponytail: empty TOML file is valid — Codex boots with defaults. A
+// comment-only template still parses as empty and tells the user how to
+// bootstrap auth (separate from config) when they click "create settings".
+const CODEX_SETTINGS_TEMPLATE = '# Codex config (TOML). Empty is valid — Codex boots with defaults.\n# Run `codex login` to set up auth at ~/.codex/auth.json.\n';
 
 const ADAPTERS: Record<string, AdapterDescriptor> = {
   claude: {
@@ -26,6 +31,13 @@ const ADAPTERS: Record<string, AdapterDescriptor> = {
     factory: () => new ClaudeAdapter(),
     settingsFilePath: '~/.claude/settings.json',
     settingsFileTemplate: CLAUDE_SETTINGS_TEMPLATE,
+  },
+  codex: {
+    displayName: 'Codex',
+    description: 'OpenAI Codex CLI（codex exec --json），一发一进程，exec/resume 两模式，shell + apply_patch 工具',
+    factory: () => new CodexAdapter(),
+    settingsFilePath: '~/.codex/config.toml',
+    settingsFileTemplate: CODEX_SETTINGS_TEMPLATE,
   },
   pi: {
     displayName: 'Pi',

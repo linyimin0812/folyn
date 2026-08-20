@@ -15,10 +15,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { listAdapters } from '@quill/cli-adapter';
 import claudeIcon from '@/assets/agents/claude_code.svg';
+import codexIcon from '@/assets/agents/codex.svg';
 import piIcon from '@/assets/agents/pi.svg';
 
 const ADAPTER_ICON: Record<string, string> = {
   claude: claudeIcon,
+  codex: codexIcon,
   pi: piIcon,
 };
 
