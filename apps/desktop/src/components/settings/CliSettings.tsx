@@ -14,6 +14,25 @@ import { listAdapters, buildAdapterVersionCommand, buildAdapterDetectCommand } f
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { openFile } from '@/services/editorIoService';
 import { buildShellSidecar, isWindowsPlatform } from '@/utils/shellSidecar';
+import claudeIcon from '@/assets/agents/claude_code.svg';
+import codexIcon from '@/assets/agents/codex.svg';
+import geminiIcon from '@/assets/agents/gemini.svg';
+import opencodeIcon from '@/assets/agents/opencode.svg';
+import piIcon from '@/assets/agents/pi.svg';
+import qoderIcon from '@/assets/agents/qoder.svg';
+
+// ponytail: same ADAPTER_ICON map exists in AdapterSelector.tsx and
+// AgentCliTag.tsx — third copy here. Extract to shared module when a fourth
+// caller shows up.
+const ADAPTER_ICON: Record<string, string> = {
+  claude: claudeIcon,
+  codex: codexIcon,
+  gemini: geminiIcon,
+  opencode: opencodeIcon,
+  pi: piIcon,
+  qoder: qoderIcon,
+  'qoder-cn': qoderIcon,
+};
 
 type TestStatus = { testing: boolean; result?: { success: boolean; message: string } };
 type SettingsFileState =
@@ -89,6 +108,7 @@ export function CliSettings() {
               className="rounded-lg border border-brd bg-surf px-3.5 py-3"
             >
               <div className="flex items-baseline gap-2 mb-2">
+                <img src={ADAPTER_ICON[a.id]} alt="" className="w-4 h-4 self-center" aria-hidden />
                 <div className="text-[length:calc(var(--ui-font-size))] font-bold text-t1 font-mono">{a.displayName}</div>
               </div>
               <div className="text-[10.5px] text-t3 mb-2">{t(`settings:cli.adapters.${a.id}.description`, { defaultValue: a.description })}</div>
@@ -104,7 +124,7 @@ export function CliSettings() {
                   autoCapitalize="off"
                 />
                 <button
-                  className="shrink-0 h-[30px] px-3 inline-flex items-center rounded-none border border-r-0 border-brd bg-accdim hover:bg-hov text-acc text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="shrink-0 h-[30px] px-3 inline-flex items-center rounded-r-md border border-l-0 border-brd bg-accdim hover:bg-hov text-acc text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('settings:cli.cliPath.detectTitle')}
                   disabled={detecting}
                   onClick={async () => {
@@ -132,9 +152,8 @@ export function CliSettings() {
                     setTimeout(() => setTestStatus((s) => ({ ...s, [a.id]: { ...s[a.id], result: undefined } })), 6000);
                   }}
                 >{detecting ? <Loader2 size={13} className="animate-spin" /> : t('settings:cli.cliPath.detect')}</button>
-                <div className="w-px self-stretch bg-brd" />
                 <button
-                  className="shrink-0 h-[30px] px-3 inline-flex items-center rounded-r-md border border-l-0 border-brd bg-accdim hover:bg-hov text-acc text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="shrink-0 h-[30px] px-3 ml-1.5 inline-flex items-center rounded-md border border-brd bg-accdim hover:bg-hov text-acc text-[length:calc(var(--ui-font-size)-2px)] font-ui transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={st.testing}
                   onClick={async () => {
                     setTestStatus((s) => ({ ...s, [a.id]: { testing: true } }));
