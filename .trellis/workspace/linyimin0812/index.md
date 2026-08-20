@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 182
+- **Total Sessions**: 183
 - **Last Active**: 2026-08-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~426 | Active |
+| `journal-4.md` | ~464 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 183 | 2026-08-20 | Qoder CLI Adapter (intl + cn) | `e85a7b69`, `01128f6d`, `1dfad68f`, `ada41f0a`, `734347e8` | `master` |
 | 182 | 2026-08-20 | Add Codex CLI adapter | `70ec7283` | `master` |
 | 181 | 2026-08-19 | Schedule module: pet notifications + UI polish | `85d5c147`, `9c8aa48c`, `333fdef9`, `ead5c31e`, `f574c398`, `7419e836` | `master` |
 | 180 | 2026-08-19 | Schedule workbench: remove event categories + UX trim | `fc6bc57c`, `14d3446e`, `3152f729`, `14e41658`, `8cba4259` | `master` |

@@ -424,3 +424,41 @@ Added CodexAdapter to @quill/cli-adapter: one-shot codex exec --json per send, p
 ### Next Steps
 
 - None - task complete
+
+
+## Session 183: Qoder CLI Adapter (intl + cn)
+
+**Date**: 2026-08-20
+**Task**: Qoder CLI Adapter (intl + cn)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added QoderAdapter to cli-adapter package: single parameterized class backs intl (qodercli) + China (qoderclicn) binaries, mirroring codex one-shot + JSONL template. Registered qoder-cli + qoder-cli-cn Tauri sidecars. Fixed two follow-up bugs: store's defaultFor=id heuristic broke qoder (id≠binary name) → resolveQoderCliPath treats id-as-path as unset; --no-session-persistence broke resume across processes → dropped. Wired qoder.svg icon in three adapter UIs (AdapterSelector, AgentCliTag, FeatureAdapterDropdown) for both qoder + qoder-cn ids. 31 unit tests added; full cli-adapter suite 156/156 green.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e85a7b69` | (see git log) |
+| `01128f6d` | (see git log) |
+| `1dfad68f` | (see git log) |
+| `ada41f0a` | (see git log) |
+| `734347e8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
