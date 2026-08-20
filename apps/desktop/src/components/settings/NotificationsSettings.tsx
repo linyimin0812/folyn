@@ -109,6 +109,19 @@ interface PetApiInfo {
   endpoints: string[];
 }
 
+// ponytail: one canonical sample body — used by both the test button (fetch)
+// and the curl snippet. Showcases every field build_notify accepts so users
+// can copy a working, self-documenting example instead of `text:"hi"`.
+const SAMPLE_NOTIFY_BODY =
+  '{"action":"notify","kind":"reminder","title":"任务待处理","source":"quill","text":"测试通知已送达","actions":[{"id":"ok","label":"知道了"}],"launch":{"type":"url","value":"https://example.com"}}';
+const SAMPLE_NOTIFY_FIELD_DOC = `# action: notify (show/hide reserved)
+# kind: info | reminder | message | event
+# title: optional, header text
+# source: optional, caller identity (≤128 chars)
+# text: required, body (≤4096 chars)
+# actions: optional, [{id, label}]
+# launch: optional, click-through {type:url|app, value}`;
+
 function PetExternalApiBlock() {
   const { t } = useTranslation();
   const [info, setInfo] = useState<PetApiInfo | null>(null);
@@ -136,7 +149,7 @@ function PetExternalApiBlock() {
   const port = info?.enabled ? info.port : null;
   const curl =
     port != null
-      ? `curl -XPOST 127.0.0.1:${port}/pet/action -d '{"action":"notify","kind":"info","text":"hi"}'`
+      ? `${SAMPLE_NOTIFY_FIELD_DOC}\ncurl -XPOST 127.0.0.1:${port}/pet/action -d '${SAMPLE_NOTIFY_BODY}'`
       : '';
   const handleCopy = useCallback(async () => {
     if (!curl) return;
@@ -159,7 +172,7 @@ function PetExternalApiBlock() {
       await fetch(`http://127.0.0.1:${port}/pet/action`, {
         method: 'POST',
         mode: 'no-cors',
-        body: `{"action":"notify","kind":"info","text":"hi"}`,
+        body: SAMPLE_NOTIFY_BODY,
       });
     } catch {
       // Network error — still surface the test-done state; the pet may or
@@ -178,7 +191,7 @@ function PetExternalApiBlock() {
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">
           {t('settings:pet.api.desc', { port: info.port })}
         </p>
-        <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 break-all">{curl}</code>
+        <code className="block mt-1.5 text-[10.5px] text-t3 bg-surf2 rounded px-1.5 py-1 whitespace-pre-wrap break-all">{curl}</code>
       </div>
       <div className="flex flex-col gap-1.5 items-center shrink-0">
         <button
