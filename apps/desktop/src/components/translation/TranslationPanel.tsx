@@ -172,10 +172,10 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
         </label>
       </div>
 
-      {/* Two panes */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: original input */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r border-brd">
+      {/* Two panes — embedded (pet panel) stacks vertically, full-page side-by-side */}
+      <div className={`flex-1 flex overflow-hidden ${embedded ? 'flex-col' : 'flex-row'}`}>
+        {/* Input pane */}
+        <div className={`flex-1 flex flex-col overflow-hidden ${embedded ? 'border-b' : 'border-r'} border-brd`}>
           <textarea
             className={`flex-1 w-full resize-none outline-none bg-transparent text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify ${embedded ? 'px-3 py-2' : 'px-6 py-3'}`}
             value={input}
@@ -190,7 +190,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
           />
         </div>
 
-        {/* Right: result */}
+        {/* Result pane */}
         <div className="group flex-1 flex flex-col overflow-hidden relative">
           <button
             type="button"
