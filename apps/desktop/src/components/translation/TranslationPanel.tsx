@@ -5,6 +5,7 @@ import { useAiConfigStore, resolvePairConfig, type ProviderModelPair } from '@/s
 import { runRigChat } from '@/services/rigChat';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 import { PairSelector, type Pair } from '@/components/ai/PairSelector';
+import { Toggle } from '@/components/settings/primitives';
 import { LanguageDropdown } from './LanguageDropdown';
 import {
   AUTO_DETECT_ID,
@@ -44,17 +45,6 @@ const COPY_SVG = (
 const CHECK_SVG = (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 8.5l3.5 3.5L13 4" />
-  </svg>
-);
-const PREVIEW_ON_SVG = (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 3h12v8H6l-3 3V3z" />
-  </svg>
-);
-const PREVIEW_OFF_SVG = (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 3h10v8H6l-3 3V3z" />
-    <path d="M3.5 1.5l9 9" />
   </svg>
 );
 
@@ -184,14 +174,10 @@ export function TranslationPanel() {
           onOpenSettings={openSettings}
           i18nPrefix="ai:pairSelector"
         />
-        <button
-          type="button"
-          className={`w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov ${preview ? 'text-acc bg-accdim' : 'hover:text-t1'}`}
-          onClick={() => setPreview((v) => !v)}
-          title={t('settings:translation.markdownPreview')}
-        >
-          {preview ? PREVIEW_ON_SVG : PREVIEW_OFF_SVG}
-        </button>
+        <label className="flex items-center gap-1.5 cursor-pointer text-t2 text-[length:calc(var(--ui-font-size)-2px)]" title={t('settings:translation.markdownPreview')}>
+          <span>{t('settings:translation.markdownPreviewLabel')}</span>
+          <Toggle value={preview} onChange={setPreview} />
+        </label>
       </div>
 
       {/* Two panes */}

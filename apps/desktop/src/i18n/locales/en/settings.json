@@ -387,6 +387,7 @@
     "sourceLang": "Source language",
     "targetLang": "Target language",
     "markdownPreview": "Toggle markdown preview",
+    "markdownPreviewLabel": "Markdown preview",
     "copy": "Copy translation",
     "inputPlaceholder": "Type or paste text to translate. ⌘/Ctrl+Enter to translate.",
     "streaming": "Translating…",
