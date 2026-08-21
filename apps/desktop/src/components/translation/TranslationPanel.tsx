@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavStore } from '@/store/navStore';
 import { useAiConfigStore, resolvePairConfig, type ProviderModelPair } from '@/store/aiConfigStore';
@@ -75,7 +75,6 @@ export function TranslationPanel() {
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(false);
   const [copied, setCopied] = useState(false);
-  const cancelRef = useRef(false);
 
   const handleTranslate = useCallback(async () => {
     if (streaming) return;
@@ -91,7 +90,6 @@ export function TranslationPanel() {
     setError('');
     setResult('');
     setStreaming(true);
-    cancelRef.current = false;
     try {
       await runRigChat({
         sessionId: 'translation',
@@ -103,7 +101,6 @@ export function TranslationPanel() {
         adapterFamily: resolved.adapterFamily ?? undefined,
         historyMode: 'none',
         onEvent: (e) => {
-          if (cancelRef.current) return;
           if (e.type === 'text') setResult((s) => s + e.content);
           else if (e.type === 'error') setError(e.content ?? 'translation error');
         },
@@ -114,11 +111,6 @@ export function TranslationPanel() {
       setStreaming(false);
     }
   }, [streaming, input, selectedPair, source, target, t]);
-
-  const handleCancel = useCallback(() => {
-    cancelRef.current = true;
-    setStreaming(false);
-  }, []);
 
   const handleCopy = useCallback(async () => {
     if (!result) return;
@@ -162,11 +154,6 @@ export function TranslationPanel() {
         >
           {streaming ? t('settings:translation.translating') : t('settings:translation.translate')}
         </button>
-        {streaming && (
-          <button type="button" className="btn btn-g btn-sm" onClick={handleCancel}>
-            {t('settings:translation.cancel')}
-          </button>
-        )}
         <div className="flex-1" />
         <PairSelector
           value={selectedPair}
