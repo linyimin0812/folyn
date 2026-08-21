@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 188
+- **Total Sessions**: 189
 - **Last Active**: 2026-08-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~645 | Active |
+| `journal-4.md` | ~679 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 189 | 2026-08-22 | DBML straight relationship lines + export markers | `487e3c07` | `master` |
 | 188 | 2026-08-22 | Render plantuml/mermaid/graphviz fences inside markmap | `4bf5b1ec` | `master` |
 | 187 | 2026-08-21 | Rename mmap file type to markmap (id + extension + dir + module + namespace) | `7c09e4c9`, `23052952` | `master` |
 | 186 | 2026-08-21 | WorkArea empty state + Storage Sharing i18n; desktop TS build fixes | `5272f4aa`, `38a1e171` | `master` |

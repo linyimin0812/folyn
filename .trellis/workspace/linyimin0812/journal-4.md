@@ -643,3 +643,37 @@ markmap-lib's markdown-it dropped raw <img>, data: URLs, and any content between
 ### Next Steps
 
 - None - task complete
+
+
+## Session 189: DBML straight relationship lines + export markers
+
+**Date**: 2026-08-22
+**Task**: DBML straight relationship lines + export markers
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed DBML ER diagram rendering: relationship lines couldn't be made perfectly straight. Root cause 1: zOrthRoute used node bbox center Y instead of port anchor Y, leaving a small diagonal kink at each end. Root cause 2: x6 ties drag snap to grid.size (20px) — LCM(20, ROW_H=28)=140 meant two related field rows could only align when row-index diff was a multiple of 5. Fixed by overriding graph.getGridSize to return 1 (decoupling drag snap from visual grid size). SVG export was skipping edges when zOrthPath returned null (straight-line case) — now draws a 2-point straight polyline. Also added SVG markers (er-one-double-start + er-many-end) to the export so edges carry the same crow's-foot cardinality cues as the x6 preview.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `487e3c07` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
