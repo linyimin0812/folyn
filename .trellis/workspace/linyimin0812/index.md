@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 184
-- **Last Active**: 2026-08-20
+- **Total Sessions**: 185
+- **Last Active**: 2026-08-21
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~499 | Active |
+| `journal-4.md` | ~540 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 185 | 2026-08-21 | Translation plugin: NSTouchBar crash fix + i18n locale gaps + pet panel locale sync | `50236a1a`, `14264f9b`, `ea0f3e1d`, `972eeb22`, `7ec3f8f1`, `45fbf007`, `f499c27f`, `47794c07` | `worktree-translation-plugin` |
 | 184 | 2026-08-20 | opencode CLI adapter | `7963667a`, `580ec369` | `master` |
 | 183 | 2026-08-20 | Qoder CLI Adapter (intl + cn) | `e85a7b69`, `01128f6d`, `1dfad68f`, `ada41f0a`, `734347e8` | `master` |
 | 182 | 2026-08-20 | Add Codex CLI adapter | `70ec7283` | `master` |

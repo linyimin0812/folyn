@@ -497,3 +497,44 @@ Added opencode CLI adapter end-to-end: opencodeAdapter.ts (fresh translator for 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 185: Translation plugin: NSTouchBar crash fix + i18n locale gaps + pet panel locale sync
+
+**Date**: 2026-08-21
+**Task**: Translation plugin: NSTouchBar crash fix + i18n locale gaps + pet panel locale sync
+**Package**: api
+**Branch**: `worktree-translation-plugin`
+
+### Summary
+
+Fixed three independent issues uncovered while shipping the translation plugin. (1) macOS app crash on pet icon click: NSRangeException from _NSTouchBarFinderObservation unable to unregister nextResponder KVO after to_panel() swaps the NSWindow class. Fix: disable_touch_bar_recalc helper calling setAutorecalculatesTouchBar:NO via objc2 msg_send! after each to_panel() in pet_panel_macos.rs::convert_windows. Took 4 iterations to compile/run-clean: objc2 0.5.2 vs 0.6.4 version mismatch (use tauri_nspanel::objc2 re-export), exception::catch to swallow Obj-C exceptions, AssertUnwindSafe to satisfy UnwindSafe bound. (2) Translation panel + language dropdown labels only had en/zh locale strings; de/es/fr/ja UIs fell back to English. Added full translation block (UI strings + languages.* + error.*) to de/es/fr/ja settings.json, and tabs.translation label to de/es/fr/ja pet.json. (3) Pet panel (separate Tauri window) only switched locale between zh and en; ja/es/de/fr were ignored because the locale://changed listener in PetApp.tsx and PetPanelApp.tsx hardcoded the type to 'zh' | 'en' and short-circuited others. Replaced with shared Locale type + dropped the guard. Pushed branch worktree-translation-plugin to origin.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50236a1a` | (see git log) |
+| `14264f9b` | (see git log) |
+| `ea0f3e1d` | (see git log) |
+| `972eeb22` | (see git log) |
+| `7ec3f8f1` | (see git log) |
+| `45fbf007` | (see git log) |
+| `f499c27f` | (see git log) |
+| `47794c07` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
