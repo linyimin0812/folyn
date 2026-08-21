@@ -1,6 +1,7 @@
 const BLOCK_TAGS = new Set([
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'blockquote', 'pre', 'ul', 'ol', 'table', 'hr', 'div',
+  'img',
 ]);
 
 export function rehypeSourceLine(options: { offset?: number } = {}) {

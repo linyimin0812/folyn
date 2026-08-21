@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "Verify writeback regex doesn't break unified pipeline / editor↔renderer contract"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist — ensure no forbidden patterns, no over-engineering"}

@@ -228,6 +228,124 @@ interface CodeBlockWrapperProps {
   [key: string]: any;
 }
 
+// ponytail: regex read/write on the source line, no AST writeback. =WxH for img
+// (GFM-ish: =Wx means width-only, height auto) and `width=W` after fence lang.
+// Ceiling: only matches when width sits right after lang/src; mid-info-string
+// widths elsewhere in the line are untouched. Upgrade to AST writeback only if
+// a real author writes `width=` somewhere other than right after the lang word.
+const IMG_SIZE_RE = /(!\[[^\]]*\]\([^)\s]+)(?:\s+=\d*x\d*)?(\))/;
+const IMG_LINE_SIZE_RE = /!\[[^\]]*\]\([^)\s]+(?:\s+=(\d*)x(\d*))?\)/;
+const FENCE_WIDTH_RE = /(```\w+)(?:\s+width=\d+)?/;
+const FENCE_LINE_WIDTH_RE = /```(\w+)(?:\s+width=(\d+))?/;
+
+function applyImageSize(content: string, sourceLine: number, w: number | null): string {
+  const lines = content.split('\n');
+  const idx = sourceLine - 1;
+  if (idx < 0 || idx >= lines.length) return content;
+  const before = lines[idx];
+  const stripped = before.replace(IMG_SIZE_RE, '$1$2');
+  const next = w != null ? stripped.replace(IMG_SIZE_RE, `$1 =${w}x$2`) : stripped;
+  if (next === before) return content;
+  lines[idx] = next;
+  return lines.join('\n');
+}
+
+function applyFenceWidth(content: string, sourceLine: number, w: number | null): string {
+  const lines = content.split('\n');
+  const idx = sourceLine - 1;
+  if (idx < 0 || idx >= lines.length) return content;
+  const before = lines[idx];
+  const stripped = before.replace(FENCE_WIDTH_RE, '$1');
+  const next = w != null ? stripped.replace(FENCE_WIDTH_RE, `$1 width=${w}`) : stripped;
+  if (next === before) return content;
+  lines[idx] = next;
+  return lines.join('\n');
+}
+
+interface ResizableMediaProps {
+  kind: 'img' | 'fence';
+  sourceLine: number | undefined;
+  contentRef: React.MutableRefObject<string>;
+  onChangeRef: React.MutableRefObject<((content: string) => void) | undefined>;
+  children: React.ReactNode;
+}
+
+/** Wrap an <img> or fence-renderer output with a right-bottom drag handle.
+ *  Width-only resize; inner media fills 100% of the wrapper via CSS.
+ *  On commit, write the new width back to the markdown source line. */
+function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }: ResizableMediaProps) {
+  const [width, setWidth] = useState<number | null>(null);
+  const widthRef = useRef<number | null>(null);
+  widthRef.current = width;
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  // ponytail: initial size read from source, not measured from DOM — survives
+  // reload / cross-machine. Re-runs only when sourceLine kind/contentRef ref
+  // identity changes (contentRef is stable across renders by construction).
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content || sourceLine == null) return;
+    const line = content.split('\n')[sourceLine - 1];
+    if (!line) return;
+    if (kind === 'img') {
+      const m = line.match(IMG_LINE_SIZE_RE);
+      if (m?.[1]) setWidth(Number(m[1]));
+    } else {
+      const m = line.match(FENCE_LINE_WIDTH_RE);
+      if (m?.[2]) setWidth(Number(m[2]));
+    }
+  }, [kind, sourceLine, contentRef]);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    const wrapper = e.currentTarget.parentElement as HTMLElement;
+    dragRef.current = { startX: e.clientX, startW: wrapper.getBoundingClientRect().width };
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    setWidth(Math.max(40, Math.round(dragRef.current.startW + dx)));
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    try { (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId); } catch { /* pointer already released */ }
+    const w = widthRef.current;
+    if (w == null) return;
+    const content = contentRef.current;
+    const onChange = onChangeRef.current;
+    if (!content || sourceLine == null || !onChange) return;
+    const next = kind === 'img' ? applyImageSize(content, sourceLine, w) : applyFenceWidth(content, sourceLine, w);
+    if (next !== content) onChange(next);
+  };
+  const onDoubleClick = () => {
+    const content = contentRef.current;
+    const onChange = onChangeRef.current;
+    setWidth(null);
+    if (!content || sourceLine == null || !onChange) return;
+    const next = kind === 'img' ? applyImageSize(content, sourceLine, null) : applyFenceWidth(content, sourceLine, null);
+    if (next !== content) onChange(next);
+  };
+
+  // ponytail: width-only resize, height auto-derived — inner img/svg keep their
+  // natural aspect ratio via CSS height:100%. Shift-unlock is a no-op here since
+  // height was never constrained; add height state if independent H ever needed.
+  return (
+    <div className="resizable-media" style={width != null ? { width: `${width}px`, height: 'auto' } : undefined}>
+      {children}
+      <div
+        className="resize-handle"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onDoubleClick={onDoubleClick}
+      />
+    </div>
+  );
+}
+
 /** Code block wrapper component — renders line numbers + copy button via React.
  *  Also renders a Run/Stop button when the fence language maps to a configured
  *  script runtime. Run output streams into a panel below the code block.
@@ -586,26 +704,37 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
     // Custom img component: resolve paths relative to the current document's directory
     map['img'] = function VaultImage(props: any) {
       const { src, alt, node, ...rest } = props;
+      const sourceLineRaw = rest['data-source-line'] ?? node?.properties?.['data-source-line'];
+      const sourceLine = sourceLineRaw != null ? Number(sourceLineRaw) : undefined;
+      let imgEl: React.ReactElement;
       if (!src || src.startsWith('http') || src.startsWith('data:')) {
-        return createElement('img', { src, alt, ...rest });
-      }
-      const rawPath = src.replace(/^\.\//, '');
-      const imagePath = decodeURIComponent(rawPath);
+        imgEl = createElement('img', { src, alt, ...rest });
+      } else {
+        const rawPath = src.replace(/^\.\//, '');
+        const imagePath = decodeURIComponent(rawPath);
 
-      if (imagePath.endsWith('.excalidraw')) {
-        const fileDir = filePath
-          ? filePath.substring(0, filePath.lastIndexOf('/'))
-          : '';
-        const vaultPath = fileDir ? `${fileDir}/${imagePath}` : imagePath;
-        return createElement(ExcalidrawPreview, { filePath: vaultPath, alt });
+        if (imagePath.endsWith('.excalidraw')) {
+          const fileDir = filePath
+            ? filePath.substring(0, filePath.lastIndexOf('/'))
+            : '';
+          const vaultPath = fileDir ? `${fileDir}/${imagePath}` : imagePath;
+          imgEl = createElement(ExcalidrawPreview, { filePath: vaultPath, alt });
+        } else if (assetBase) {
+          const absPath = `${assetBase}/${imagePath}`;
+          const imageUrl = convertFileSrc(absPath);
+          imgEl = createElement('img', { src: imageUrl, alt, loading: 'lazy', ...rest });
+        } else {
+          imgEl = createElement('img', { src, alt, loading: 'lazy', ...rest });
+        }
       }
-
-      if (assetBase) {
-        const absPath = `${assetBase}/${imagePath}`;
-        const imageUrl = convertFileSrc(absPath);
-        return createElement('img', { src: imageUrl, alt, loading: 'lazy', ...rest });
-      }
-      return createElement('img', { src, alt, loading: 'lazy', ...rest });
+      // ponytail: skip wrapping when sourceLine missing (WikiQueryView, external
+      // md) — writeback no-ops anyway, and ExcalidrawPreview isn't a media el.
+      if (sourceLine == null) return imgEl;
+      return createElement(
+        ResizableMedia,
+        { kind: 'img', sourceLine, contentRef, onChangeRef },
+        imgEl,
+      );
     };
 
     map['pre'] = function PreWithCodeRenderer(props: any) {
@@ -620,12 +749,16 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
       const renderer = lang ? getMarkdownCodeRenderer(lang) : undefined;
       if (renderer && langEl) {
         const source = extractTextContent(langEl.props.children);
-        return createElement(renderer.component, {
-          source,
-          language: lang,
-          resolvedLanguage: renderer.canonical,
-          filePath,
-        });
+        return createElement(
+          ResizableMedia,
+          { kind: 'fence', sourceLine, contentRef, onChangeRef },
+          createElement(renderer.component, {
+            source,
+            language: lang,
+            resolvedLanguage: renderer.canonical,
+            filePath,
+          }),
+        );
       }
       return createElement(
         CodeBlockWrapper,

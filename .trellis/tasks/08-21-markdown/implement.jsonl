@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "Unified pipeline + editor↔renderer code-segment contract — writeback must follow this contract"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "ResizableMedia new component — patterns for props, composition, styling"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist — avoid common slop"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict TS — type patterns for the new component + props threading"}
