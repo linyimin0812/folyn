@@ -213,18 +213,16 @@ export function TranslationPanel() {
         </div>
 
         {/* Right: result */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          <div className="h-[32px] shrink-0 flex items-center justify-end px-2 border-b border-brd2">
-            <button
-              type="button"
-              className="w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-all duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-40 disabled:cursor-not-allowed"
-              onClick={handleCopy}
-              disabled={!result}
-              title={t('settings:translation.copy')}
-            >
-              {copied ? CHECK_SVG : COPY_SVG}
-            </button>
-          </div>
+        <div className="group flex-1 flex flex-col overflow-hidden relative">
+          <button
+            type="button"
+            className={`absolute top-2 right-2 z-10 w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-opacity duration-[120ms] hover:bg-hov hover:text-t1 disabled:cursor-not-allowed ${result ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 pointer-events-none'}`}
+            onClick={handleCopy}
+            disabled={!result}
+            title={t('settings:translation.copy')}
+          >
+            {copied ? CHECK_SVG : COPY_SVG}
+          </button>
           <div className="flex-1 overflow-auto">
             {error ? (
               <div className="px-6 py-3 text-[12px] text-red-600 dark:text-red-400 break-words">{error}</div>
