@@ -537,8 +537,12 @@ mjx-container svg {
    justify-center (flex children shrink-to-fit and ignore parent width). */
 .md-preview .resizable-media { position: relative; display: block; width: fit-content; max-width: 100%; margin: 8px auto; line-height: 0; }
 .md-preview .resizable-media > *:not(.resize-handle) { display: block; width: 100%; }
+/* ponytail: !important beats plantuml.com's inline svg style="width:…;height:…"
+   — without it the SVG renders at intrinsic px size and the resize handle has
+   no visible effect. Mermaid/graphviz don't ship inline styles, so this is a
+   no-op for them. */
 .md-preview .resizable-media img,
-.md-preview .resizable-media svg { width: 100%; height: auto; display: block; margin: 0; max-width: none; }
+.md-preview .resizable-media svg { width: 100% !important; height: auto !important; display: block; margin: 0; max-width: none !important; }
 .md-preview .resize-handle {
   position: absolute; right: 0; bottom: 0;
   width: 14px; height: 14px; cursor: nwse-resize;
