@@ -164,6 +164,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
           onChange={setSelectedPair}
           onOpenSettings={openSettings}
           i18nPrefix="ai:pairSelector"
+          trigger={embedded ? 'icon' : 'full'}
         />
         <label className="flex items-center gap-1.5 cursor-pointer text-t2 text-[length:calc(var(--ui-font-size)-2px)]" title={t('settings:translation.markdownPreview')}>
           {!embedded && <span>{t('settings:translation.markdownPreviewLabel')}</span>}
