@@ -49,8 +49,9 @@ const CHECK_SVG = (
 );
 
 /** Translation page — full-page two-pane view invoked from the ActivityBar
- *  icon. Session-only state; no persistence (no history, no last pair). */
-export function TranslationPanel() {
+ *  icon. Session-only state; no persistence (no history, no last pair).
+ *  `embedded` compactifies layout for the pet panel (narrow viewport). */
+export function TranslationPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const setSettingsTab = useNavStore((s) => s.setSettingsTab);
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
@@ -133,12 +134,13 @@ export function TranslationPanel() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-panel">
       {/* Header */}
-      <div className="h-[40px] shrink-0 flex items-center gap-2 px-2.5 border-b border-brd">
+      <div className={`shrink-0 flex flex-wrap items-center gap-2 ${embedded ? 'px-2 py-1.5' : 'h-[40px] px-2.5'} border-b border-brd`}>
         <LanguageDropdown
           value={source}
           options={SOURCE_LANGUAGES}
           onChange={setSource}
           title={t('settings:translation.sourceLang')}
+          compact={embedded}
         />
         <span className="text-t3">→</span>
         <LanguageDropdown
@@ -146,6 +148,7 @@ export function TranslationPanel() {
           options={TARGET_LANGUAGES}
           onChange={setTarget}
           title={t('settings:translation.targetLang')}
+          compact={embedded}
         />
         <button
           type="button"
@@ -163,7 +166,7 @@ export function TranslationPanel() {
           i18nPrefix="ai:pairSelector"
         />
         <label className="flex items-center gap-1.5 cursor-pointer text-t2 text-[length:calc(var(--ui-font-size)-2px)]" title={t('settings:translation.markdownPreview')}>
-          <span>{t('settings:translation.markdownPreviewLabel')}</span>
+          {!embedded && <span>{t('settings:translation.markdownPreviewLabel')}</span>}
           <Toggle value={preview} onChange={setPreview} />
         </label>
       </div>
@@ -173,7 +176,7 @@ export function TranslationPanel() {
         {/* Left: original input */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-brd">
           <textarea
-            className="flex-1 w-full resize-none outline-none bg-transparent text-t1 px-6 py-3 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify"
+            className={`flex-1 w-full resize-none outline-none bg-transparent text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify ${embedded ? 'px-3 py-2' : 'px-6 py-3'}`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('settings:translation.inputPlaceholder')}
@@ -199,17 +202,17 @@ export function TranslationPanel() {
           </button>
           <div className="flex-1 overflow-auto">
             {error ? (
-              <div className="px-6 py-3 text-[12px] text-red-600 dark:text-red-400 break-words">{error}</div>
+              <div className={`px-6 py-3 text-[12px] text-red-600 dark:text-red-400 break-words ${embedded ? 'px-3 py-2' : ''}`}>{error}</div>
             ) : result ? (
               preview ? (
-                <div className="translation-result px-6 py-3" style={{ textAlign: 'justify' }}>
+                <div className={`translation-result ${embedded ? 'px-3 py-2' : 'px-6 py-3'}`} style={{ textAlign: 'justify' }}>
                   <MarkdownPreview content={result} filePath="__translation__.md" vaultRoot="" />
                 </div>
               ) : (
-                <pre className="px-6 py-3 text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap break-words [text-align:justify]">{result}</pre>
+                <pre className={`${embedded ? 'px-3 py-2' : 'px-6 py-3'} text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap break-words [text-align:justify]`}>{result}</pre>
               )
             ) : (
-              <div className="px-6 py-3 text-t3 text-[length:calc(var(--ui-font-size)+0px)]">
+              <div className={`${embedded ? 'px-3 py-2' : 'px-6 py-3'} text-t3 text-[length:calc(var(--ui-font-size)+0px)]`}>
                 {streaming
                   ? t('settings:translation.streaming')
                   : t('settings:translation.empty')}

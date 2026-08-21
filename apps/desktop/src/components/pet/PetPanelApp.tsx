@@ -730,7 +730,7 @@ export function PetPanelApp() {
         ) : tab === 'chat' ? (
           <AiPanel embedded />
         ) : tab === 'translation' ? (
-          <TranslationPanel />
+          <TranslationPanel embedded />
         ) : (
           <PetInbox />
         )}

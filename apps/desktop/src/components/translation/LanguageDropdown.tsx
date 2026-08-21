@@ -6,12 +6,15 @@ export interface LanguageDropdownProps {
   options: readonly LanguageOption[];
   onChange: (id: string) => void;
   title?: string;
+  /** Compact: trigger flexes to fill available width (min 80px) instead of
+   *  fixed 140px — used in narrow embedded layouts (pet panel). */
+  compact?: boolean;
 }
 
 /** Minimal dropdown for language selection. Reuses the click-outside pattern
  * from AdapterSelector. Ponytail: not extracted to a shared component — only
  * the translation panel uses it. */
-export function LanguageDropdown({ value, options, onChange, title }: LanguageDropdownProps) {
+export function LanguageDropdown({ value, options, onChange, title, compact = false }: LanguageDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -30,7 +33,7 @@ export function LanguageDropdown({ value, options, onChange, title }: LanguageDr
     <div className="relative" ref={ref}>
       <button
         type="button"
-        className="h-[28px] py-[3px] px-2 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui flex items-center justify-between gap-1.5 cursor-pointer w-[140px]"
+        className={`h-[28px] py-[3px] px-2 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui flex items-center justify-between gap-1.5 cursor-pointer ${compact ? 'flex-1 min-w-[80px]' : 'w-[140px]'}`}
         onClick={() => setOpen((v) => !v)}
         title={title}
       >
