@@ -35,7 +35,7 @@ import {
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
-import { getMaxMediaWidth, getResizedMediaWidth } from './mediaResize';
+import { getResizedMediaWidth } from './mediaResize';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -293,7 +293,7 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   const [width, setWidth] = useState<number | null>(() => readSourceWidth(kind, contentRef.current, sourceLine));
   const widthRef = useRef<number | null>(null);
   widthRef.current = width;
-  const dragRef = useRef<{ startX: number; startW: number; maxW: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startW: number; maxW: number; wallRight: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -301,34 +301,44 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     const wrapper = wrapperRef.current ?? e.currentTarget.parentElement as HTMLElement | null;
-    const ancestorWidths: number[] = [];
+    // ponytail: walk all ancestors, snapshot the narrowest one's width (maxW)
+    // and right edge (wallRight). The wrapper is centered (margin:auto) so its
+    // right edge moves as it grows; the wall stays put. Comparing the wrapper's
+    // CURRENT rendered right edge (which respects CSS max-width:100% capping)
+    // to wallRight tells us when to freeze — robust against float-valued maxW
+    // and state that hasn't yet reached the clamp. Narrowest ancestor handles
+    // preview-only mode where the immediate <p> parent is wider than the pane.
+    let maxW = Infinity;
+    let wallRight = Infinity;
     let ancestor = wrapper?.parentElement ?? null;
     while (ancestor) {
-      ancestorWidths.push(ancestor.getBoundingClientRect().width);
+      const r = ancestor.getBoundingClientRect();
+      if (r.width < maxW) {
+        maxW = r.width;
+        wallRight = r.right;
+      }
       ancestor = ancestor.parentElement;
     }
     dragRef.current = {
       startX: e.clientX,
       startW: wrapper?.getBoundingClientRect().width ?? 0,
-      // ponytail: constrain the width before updating state. CSS max-width
-      // alone clamps layout after state is written, which lets a centered
-      // wrapper keep accepting a larger persisted width and appear to shift.
-      // Preview-only mode can be clipped by an outer pane while its paragraph
-      // and Markdown root remain wider, so use the narrowest ancestor.
-      maxW: getMaxMediaWidth(...ancestorWidths),
+      maxW,
+      wallRight,
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
+    // ponytail: freeze on rightward drag at the wall — when the wrapper's
+    // current rendered right edge has reached the wall (snapshot from
+    // pointerdown), further rightward dx doesn't enlarge the image or move
+    // the handle. Uses getBoundingClientRect().right, which respects CSS
+    // max-width:100% capping. Leftward dx (shrink) always allowed.
+    if (dx > 0) {
+      const currentRight = wrapperRef.current?.getBoundingClientRect().right ?? -Infinity;
+      if (currentRight >= dragRef.current.wallRight - 1) return;
+    }
     const nextWidth = getResizedMediaWidth(dragRef.current.startW, dx, dragRef.current.maxW);
-    // ponytail: freeze at the wall — skip the state write once the wrapper
-    // has reached maxW so the handle truly stops moving rightward. Two
-    // cases: (a) image started at maxW (nextWidth === startW, no growth
-    // possible — preserving state=null keeps the source writeback empty
-    // on a no-op drag), and (b) wrapper reached maxW mid-drag (current
-    // width === maxW). Leftward drag (shrink) bypasses both via dx > 0.
-    if (dx > 0 && (nextWidth === dragRef.current.startW || widthRef.current === dragRef.current.maxW)) return;
     setWidth(nextWidth);
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
