@@ -33,6 +33,41 @@
 use tauri::{AppHandle, Manager};
 use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt, tauri_panel};
 
+/// ponytail: shut down TouchBar autorecalculation on a swizzled NSPanel.
+/// `to_panel()` swaps the window's class via `object_setClass` AFTER macOS's
+/// Touch Bar finder has already registered a `nextResponder` KVO observer
+/// on the original NSWindow class. When the finder later invalidates
+/// (window deinit / responder-chain change), it tries to remove the
+/// observer from the post-swap class (`QuillPetPanel`/`QuillPanelWindow`/
+/// `QuillVoiceOrbPanel`) and throws `NSRangeException` —
+/// `_NSTouchBarFinderObservation … because it is not registered as an
+/// observer`. Setting `autorecalculatesTouchBar = NO` skips the recalc
+/// path that triggers the unregister, so the stale KVO registration is
+/// never exercised. `setAutorecalculatesTouchBar:` is not in the
+/// objc2-app-kit generated bindings (only `makeTouchBar` is exposed), so
+/// we go through raw `msg_send!` — mirrors the `setLevel:` /
+/// `setCollectionBehavior:` pattern in `lib.rs:154-170`.
+fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
+    // ponytail: use tauri_nspanel's re-exported objc2 (0.5.2) — the
+    // project also depends on objc2 0.6.4 directly, and the `Message`
+    // trait is not compatible across versions.
+    use std::panic::AssertUnwindSafe;
+    use tauri_nspanel::objc2::msg_send;
+    // ponytail: wrap in `exception::catch` — `msg_send!` panics on
+    // Obj-C exceptions (e.g. `doesNotRespondTo:` on a swizzled class
+    // whose method table got rebuilt), and the Tauri setup hook this
+    // runs in has `unwind = abort` → an unwound panic aborts the whole
+    // app at startup. Swallow; the worst case is the original
+    // `NSRangeException` at deinit remains, which is no worse than
+    // pre-fix behavior. `AssertUnwindSafe` because `&NSPanel` carries
+    // `UnsafeCell` (interior mutability) and the closure must be
+    // `UnwindSafe` — we're not actually mutating across the catch
+    // boundary.
+    let _ = tauri_nspanel::objc2::exception::catch(AssertUnwindSafe(|| unsafe {
+        let _: () = msg_send![panel, setAutorecalculatesTouchBar: false];
+    }));
+}
+
 tauri_panel! {
     panel!(QuillPetPanel {
         config: {
@@ -153,6 +188,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
             // is partly delegate-driven.
             let handler = QuillPetEventHandler::new();
             panel.set_event_handler(Some(handler.as_ref()));
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -169,6 +205,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -187,6 +224,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -205,6 +243,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -225,6 +264,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -246,6 +286,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }

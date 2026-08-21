@@ -4,6 +4,7 @@ import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
 import { hydrateAllStores } from '@/store/settingsPersistence';
+import type { Locale } from '@/i18n';
 import {
   clampPanelPosition,
   computePanelPosition,
@@ -13,6 +14,7 @@ import {
 } from './petPosition';
 import { AiPanel } from '@/components/ai/AiPanel';
 import { PetInbox } from './PetInbox';
+import { TranslationPanel } from '@/components/translation/TranslationPanel';
 import {
   PetPanelSearchResults,
   type PetPanelSearchResultsHandle,
@@ -29,7 +31,7 @@ import type {
 } from '@/services/providers/providerConfigStorage';
 import type { Model } from '@/services/modelRegistry/types';
 
-type PetPanelTab = 'chat' | 'inbox';
+type PetPanelTab = 'chat' | 'translation' | 'inbox';
 
 interface PetCursorProbeResult {
   cursor_x: number;
@@ -196,6 +198,7 @@ export function PetPanelApp() {
           providerSettings?: Record<string, ProviderSettings>;
           customerProviders?: Record<string, CustomProviderDef>;
           modelsByProvider?: Record<string, Model[]>;
+          pluginPair?: { provider: string; model: string } | null;
         }>('pet://providers-updated', (event) => {
           const p = event.payload ?? {};
           if (p.providerSettings) {
@@ -212,6 +215,9 @@ export function PetPanelApp() {
             useModelRegistryStore.setState({
               modelsByProvider: p.modelsByProvider,
             });
+          }
+          if (p.pluginPair !== undefined) {
+            useAiConfigStore.setState({ pluginPair: p.pluginPair });
           }
         });
         // Request the current snapshot (the initial emit was missed).
@@ -312,11 +318,11 @@ export function PetPanelApp() {
         const { listen } = await import('@tauri-apps/api/event');
         const i18n = (await import('@/i18n')).default;
         const { useLocaleStore } = await import('@/store/localeStore');
-        unlisten = await listen<{ locale: 'zh' | 'en' }>(
+        unlisten = await listen<{ locale: Locale }>(
           'locale://changed',
           (event) => {
             const lg = event.payload?.locale;
-            if (lg !== 'zh' && lg !== 'en') return;
+            if (!lg) return;
             void i18n.changeLanguage(lg);
             useLocaleStore.setState({ locale: lg });
           },
@@ -700,6 +706,15 @@ export function PetPanelApp() {
               <button
                 type="button"
                 role="tab"
+                aria-selected={tab === 'translation'}
+                className={`pet-panel-tab${tab === 'translation' ? ' is-active' : ''}`}
+                onClick={() => setTab('translation')}
+              >
+                {t('pet:tabs.translation')}
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={tab === 'inbox'}
                 className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
                 onClick={() => setTab('inbox')}
@@ -719,6 +734,8 @@ export function PetPanelApp() {
           />
         ) : tab === 'chat' ? (
           <AiPanel embedded />
+        ) : tab === 'translation' ? (
+          <TranslationPanel embedded />
         ) : (
           <PetInbox />
         )}

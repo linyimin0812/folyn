@@ -174,10 +174,12 @@ function PluginRowCard({ row }: { row: PluginRow }) {
   const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
   const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
   const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
+  const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const setEnableWikiPanel = useAppearanceStore((s) => s.setEnableWikiPanel);
   const setEnableClipsPanel = useAppearanceStore((s) => s.setEnableClipsPanel);
   const setEnableAnalyzePanel = useAppearanceStore((s) => s.setEnableAnalyzePanel);
   const setEnableSchedulePanel = useAppearanceStore((s) => s.setEnableSchedulePanel);
+  const setEnableTranslationPanel = useAppearanceStore((s) => s.setEnableTranslationPanel);
   // Render errors captured by PanelErrorBoundary for this plugin's surfaces.
   // A plugin that threw during render is isolated (never crashes the host),
   // but surfaced here so the user can see something went wrong + clear it.
@@ -200,6 +202,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
         : entry.id === 'builtin:clips' ? enableClipsPanel
         : entry.id === 'builtin:analyze' ? enableAnalyzePanel
         : entry.id === 'builtin:schedule' ? enableSchedulePanel
+        : entry.id === 'builtin:translation' ? enableTranslationPanel
         : false)
     : state === 'active';
   const toggleBusy = isActivateBusy || isDeactivateBusy;
@@ -289,6 +292,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
                   else if (entry.id === 'builtin:clips') setEnableClipsPanel(v);
                   else if (entry.id === 'builtin:analyze') setEnableAnalyzePanel(v);
                   else if (entry.id === 'builtin:schedule') setEnableSchedulePanel(v);
+                  else if (entry.id === 'builtin:translation') setEnableTranslationPanel(v);
                   return;
                 }
                 if (v && !isActive) void activate(entry.id);

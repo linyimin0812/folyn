@@ -6,6 +6,7 @@
   },
   "nav": {
     "schedule": "日程工作台 (⌘D)",
+    "translation": "翻译",
     "settings": "设置",
     "git": "Git 操作"
   },

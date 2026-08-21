@@ -374,6 +374,38 @@
       "title": "Éditer les capacités du modèle"
     }
   },
+  "translation": {
+    "translate": "Traduire",
+    "translating": "Traduction…",
+    "cancel": "Arrêter",
+    "sourceLang": "Langue source",
+    "targetLang": "Langue cible",
+    "markdownPreview": "Basculer l'aperçu markdown",
+    "markdownPreviewLabel": "Aperçu markdown",
+    "copy": "Copier la traduction",
+    "inputPlaceholder": "Saisir ou coller du texte à traduire. ⌘/Ctrl+Entrée pour traduire.",
+    "streaming": "Traduction…",
+    "empty": "La traduction apparaîtra ici.",
+    "languages": {
+      "auto": "Détecter automatiquement",
+      "zh": "Chinois",
+      "en": "Anglais",
+      "ja": "Japonais",
+      "ko": "Coréen",
+      "es": "Espagnol",
+      "fr": "Français",
+      "de": "Allemand",
+      "ru": "Russe",
+      "pt": "Portugais",
+      "it": "Italien",
+      "ar": "Arabe",
+      "hi": "Hindi"
+    },
+    "error": {
+      "noPair": "Aucun modèle configuré. Sélectionnez un fournisseur/modèle ou configurez l'adaptateur de chat dans les Paramètres.",
+      "copy": "Échec de l'écriture dans le presse-papiers."
+    }
+  },
   "about": {
     "tagline": "v0.1.0-alpha · Éditeur Markdown local-first",
     "groups": {

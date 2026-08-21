@@ -795,12 +795,13 @@ export function startProvidersBroadcast(): () => void {
     if (stopped) return;
     try {
       const { emit } = await import('@tauri-apps/api/event');
-      const { providerSettings, customerProviders } = useAiConfigStore.getState();
+      const { providerSettings, customerProviders, pluginPair } = useAiConfigStore.getState();
       const { modelsByProvider } = useModelRegistryStore.getState();
       await emit('pet://providers-updated', {
         providerSettings,
         customerProviders,
         modelsByProvider,
+        pluginPair,
       });
     } catch {
       // Non-tauri (tests) or emit failed — non-fatal.
@@ -811,13 +812,16 @@ export function startProvidersBroadcast(): () => void {
   void emit();
   let prevSettings = useAiConfigStore.getState().providerSettings;
   let prevCustomers = useAiConfigStore.getState().customerProviders;
+  let prevPluginPair = useAiConfigStore.getState().pluginPair;
   const unsubConfig = useAiConfigStore.subscribe((state) => {
     if (
       state.providerSettings !== prevSettings ||
-      state.customerProviders !== prevCustomers
+      state.customerProviders !== prevCustomers ||
+      state.pluginPair !== prevPluginPair
     ) {
       prevSettings = state.providerSettings;
       prevCustomers = state.customerProviders;
+      prevPluginPair = state.pluginPair;
       void emit();
     }
   });

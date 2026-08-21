@@ -68,6 +68,10 @@
         "label": "Schedule panel",
         "description": "Schedule (Plan My Day) feature entry"
       },
+      "translation": {
+        "label": "Translation panel",
+        "description": "Two-pane translator (source → target) with LLM picker"
+      },
       "tray": {
         "label": "Show tray icon",
         "description": "Show the app icon in the system tray; click it for the same quick-action menu as the pet right-click menu"
@@ -374,6 +378,38 @@
     "editCapabilities": {
       "tooltip": "Edit capabilities",
       "title": "Edit Model Capabilities"
+    }
+  },
+  "translation": {
+    "translate": "Translate",
+    "translating": "Translating…",
+    "cancel": "Stop",
+    "sourceLang": "Source language",
+    "targetLang": "Target language",
+    "markdownPreview": "Toggle markdown preview",
+    "markdownPreviewLabel": "Markdown preview",
+    "copy": "Copy translation",
+    "inputPlaceholder": "Type or paste text to translate. ⌘/Ctrl+Enter to translate.",
+    "streaming": "Translating…",
+    "empty": "Translation will appear here.",
+    "languages": {
+      "auto": "Auto Detect",
+      "zh": "Chinese",
+      "en": "English",
+      "ja": "Japanese",
+      "ko": "Korean",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German",
+      "ru": "Russian",
+      "pt": "Portuguese",
+      "it": "Italian",
+      "ar": "Arabic",
+      "hi": "Hindi"
+    },
+    "error": {
+      "noPair": "No model configured. Pick a provider/model or set up the chat adapter in Settings.",
+      "copy": "Clipboard write failed."
     }
   },
   "about": {

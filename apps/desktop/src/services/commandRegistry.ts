@@ -247,6 +247,14 @@ export function registerBuiltinCommands(): void {
       keywords: ['preferences', 'config'],
       run: () => nav().setCurrentPage('settings'),
     },
+    {
+      id: 'panel.translation',
+      title: 'Go to Translation',
+      category: 'panel-mode',
+      keywords: ['translate', 'language'],
+      enabled: () => appearance().enableTranslationPanel,
+      run: () => nav().setCurrentPage('translation'),
+    },
 
     // ── Wiki ingest ──
     {

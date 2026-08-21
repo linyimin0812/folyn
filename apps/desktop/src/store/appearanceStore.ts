@@ -49,6 +49,9 @@ export const PERSIST_KEYS_APPEARANCE = [
   // wired to a sidebar panel in a future task; the CLI adapter dropdown on the
   // row works regardless.
   'enableSchedulePanel',
+  // ponytail: translation page flag. Default true so the ActivityBar icon
+  // shows on first launch; user can hide it from Plugins settings.
+  'enableTranslationPanel',
   'enabledAtWiki',
   'enabledAtClips',
   'enabledAtAnalyze',
@@ -69,6 +72,7 @@ export interface AppearanceState {
   enableClipsPanel: boolean;
   enableAnalyzePanel: boolean;
   enableSchedulePanel: boolean;
+  enableTranslationPanel: boolean;
   /** Timestamp (Date.now()) when the corresponding panel was first enabled.
    * Used by registerBuiltinPanels to sort Wiki/Clips/Analyze by enable time
    * ascending in the ActivityBar (Files always stays first via order=0).
@@ -93,6 +97,7 @@ export interface AppearanceState {
   setEnableClipsPanel: (v: boolean) => void;
   setEnableAnalyzePanel: (v: boolean) => void;
   setEnableSchedulePanel: (v: boolean) => void;
+  setEnableTranslationPanel: (v: boolean) => void;
   setExcludePatterns: (v: string) => void;
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
@@ -113,6 +118,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   enableClipsPanel: false,
   enableAnalyzePanel: false,
   enableSchedulePanel: true,
+  enableTranslationPanel: true,
   enabledAtWiki: undefined,
   enabledAtClips: undefined,
   enabledAtAnalyze: undefined,
@@ -183,6 +189,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   // flag so the row's Toggle state survives restarts, but the value has
   // no side effect. Wire up in a future task.
   setEnableSchedulePanel: (v) => { set({ enableSchedulePanel: v }); persist(); },
+  setEnableTranslationPanel: (v) => { set({ enableTranslationPanel: v }); persist(); },
   setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
@@ -200,6 +207,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.enableClipsPanel !== undefined) patch.enableClipsPanel = blob.enableClipsPanel as boolean;
     if (blob.enableAnalyzePanel !== undefined) patch.enableAnalyzePanel = blob.enableAnalyzePanel as boolean;
     if (blob.enableSchedulePanel !== undefined) patch.enableSchedulePanel = blob.enableSchedulePanel as boolean;
+    if (blob.enableTranslationPanel !== undefined) patch.enableTranslationPanel = blob.enableTranslationPanel as boolean;
     if (blob.enabledAtWiki !== undefined) patch.enabledAtWiki = blob.enabledAtWiki as number;
     if (blob.enabledAtClips !== undefined) patch.enabledAtClips = blob.enabledAtClips as number;
     if (blob.enabledAtAnalyze !== undefined) patch.enabledAtAnalyze = blob.enabledAtAnalyze as number;
