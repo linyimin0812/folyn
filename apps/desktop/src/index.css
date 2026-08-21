@@ -530,7 +530,7 @@ mjx-container svg {
 .md-preview table { border-collapse: collapse; width: 100%; margin: 12px 0; }
 .md-preview th, .md-preview td { border: 1px solid var(--brd); padding: 6px 12px; font-size: 12px; text-align: left; }
 .md-preview th { background: var(--surf); font-weight: 600; }
-.md-preview img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
+.md-preview img { max-width: 100%; border-radius: 6px; margin: 8px auto; display: block; }
 /* ponytail: inline-block shrink-to-fit + max-width:100% on inner media → wrapper
    tracks the rendered media size when state is null. On drag, inline width
    overrides shrink-to-fit. > :not(.resize-handle) neutralizes mermaid's flex
