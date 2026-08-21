@@ -1,4 +1,4 @@
-// ponytail: render a standalone markmap SVG from the .mmap source for
+// ponytail: render a standalone markmap SVG from the .markmap source for
 // export. The in-DOM MarkmapPreview also renders an SVG, but the export
 // body may be in a different container / theme state — re-render from the
 // file's on-disk content so the exported SVG is self-contained and matches
@@ -13,9 +13,9 @@ import { renderMarkmapSvg } from './markmapShared';
 export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void> {
   const { src, filePath, vaultRoot } = ctx;
   if (!src) return;
-  // ctx.src is the file-preview directive's src PATH (e.g. "./map.mmap"),
+  // ctx.src is the file-preview directive's src PATH (e.g. "./map.markmap"),
   // not the file content. Resolve it like the preview does and read the real
-  // .mmap source — transforming the path string would yield an empty markmap
+  // .markmap source — transforming the path string would yield an empty markmap
   // root (markmap only builds nodes from headings).
   const vaultRelPath = resolveVaultPath(src, filePath);
   let content: string;

@@ -3,9 +3,9 @@
  *
  * Two historical bugs are pinned here:
  *  1. The enhancer transformed `ctx.src` (the file-preview directive's src
- *     PATH, e.g. "./map.mmap") directly — markmap-lib only builds nodes from
+ *     PATH, e.g. "./map.markmap") directly — markmap-lib only builds nodes from
  *     markdown headings, so a path string yields an empty root and a blank
- *     export. It must read the real .mmap source first.
+ *     export. It must read the real .markmap source first.
  *  2. The exported SVG was serialized through HTML (innerHTML/outerHTML),
  *     which emits markmap's foreignObject HTML void elements (<img>) unclosed
  *     — breaking standalone XML parsing. The enhancer must serialize via
@@ -71,22 +71,22 @@ beforeEach(() => {
 });
 
 describe('mmap export enhancer', () => {
-  it('reads the .mmap file content and transforms it (not the src path)', async () => {
+  it('reads the .markmap file content and transforms it (not the src path)', async () => {
     mocks.readFileByRoute.mockResolvedValueOnce('# Title\n## Child');
 
     const body = document.createElement('div');
     await enhance(body, {
-      src: './map.mmap',
-      filePath: 'notes/map.mmap',
+      src: './map.markmap',
+      filePath: 'notes/map.markmap',
       vaultRoot: '/vault',
     });
 
     // The src path must be resolved relative to the directive's document and
     // read through the preview's own read path.
-    expect(mocks.readFileByRoute).toHaveBeenCalledWith('notes/map.mmap');
-    // markmap-lib receives the file content, never the "./map.mmap" path.
+    expect(mocks.readFileByRoute).toHaveBeenCalledWith('notes/map.markmap');
+    // markmap-lib receives the file content, never the "./map.markmap" path.
     expect(mocks.transform).toHaveBeenCalledWith('# Title\n## Child');
-    expect(mocks.transform).not.toHaveBeenCalledWith('./map.mmap');
+    expect(mocks.transform).not.toHaveBeenCalledWith('./map.markmap');
     expect(mocks.create).toHaveBeenCalledTimes(1);
     expect(mocks.setData).toHaveBeenCalledTimes(1);
     expect(mocks.fit).toHaveBeenCalledTimes(1);
@@ -108,8 +108,8 @@ describe('mmap export enhancer', () => {
     const body = document.createElement('div');
     body.setAttribute('data-file-preview-body', '');
     await enhance(body, {
-      src: './map.mmap',
-      filePath: 'notes/map.mmap',
+      src: './map.markmap',
+      filePath: 'notes/map.markmap',
       vaultRoot: '/vault',
     });
 
@@ -140,8 +140,8 @@ describe('mmap export enhancer', () => {
 
     const body = document.createElement('div');
     await enhance(body, {
-      src: './map.mmap',
-      filePath: 'notes/map.mmap',
+      src: './map.markmap',
+      filePath: 'notes/map.markmap',
       vaultRoot: '/vault',
     });
 
@@ -152,7 +152,7 @@ describe('mmap export enhancer', () => {
 
   it('bails out when src is empty', async () => {
     const body = document.createElement('div');
-    await enhance(body, { src: '', filePath: 'notes/map.mmap', vaultRoot: '/vault' });
+    await enhance(body, { src: '', filePath: 'notes/map.markmap', vaultRoot: '/vault' });
 
     expect(mocks.readFileByRoute).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();

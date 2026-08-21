@@ -113,7 +113,7 @@ export async function exportActiveSource(onBeforeDialog?: () => void): Promise<v
   await downloadBlob(blob, name, ext ? [ext] : undefined);
 }
 
-/** Export a canvas-backed file (dbml/excalidraw/drawio/mmap) as SVG. */
+/** Export a canvas-backed file (dbml/excalidraw/drawio/markmap) as SVG. */
 export async function exportActiveSvg(onBeforeDialog?: () => void): Promise<void> {
   const { name, path, vaultRoot } = getActiveDocument();
   const svg = await renderFilePreviewToSvg(path, vaultRoot);
@@ -124,7 +124,7 @@ export async function exportActiveSvg(onBeforeDialog?: () => void): Promise<void
   await downloadBlob(blob, `${baseName}.svg`, ['svg']);
 }
 
-/** Export a canvas-backed file (dbml/excalidraw/drawio/mmap) as PNG. */
+/** Export a canvas-backed file (dbml/excalidraw/drawio/markmap) as PNG. */
 export async function exportActivePng(onBeforeDialog?: () => void): Promise<void> {
   const { name, path, vaultRoot } = getActiveDocument();
   const svg = await renderFilePreviewToSvg(path, vaultRoot);
@@ -223,7 +223,7 @@ export async function shareActiveToCloud(): Promise<string> {
  * fileType:
  *  - markdown: render → inline/upload images → wrap in styled shell
  *  - rich-text: richTextToHtmlBlob already returns a full HTML doc
- *  - canvas types (dbml/excalidraw/drawio/mmap/plantuml/graphviz/mermaid):
+ *  - canvas types (dbml/excalidraw/drawio/markmap/plantuml/graphviz/mermaid):
  *    render preview SVG, wrap in a minimal centered-HTML shell so the
  *    shared URL serves a viewable web page.
  */
@@ -237,7 +237,7 @@ async function buildShareableHtml(
   cfg: ProviderConfig,
   provider: ReturnType<typeof getProvider>,
 ): Promise<string> {
-  const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap', 'plantuml', 'graphviz', 'mermaid']);
+  const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
 
   if (fileType === 'rich-text') {
     const blob = await richTextToHtmlBlob(content, name, vaultRoot);

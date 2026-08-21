@@ -221,7 +221,7 @@ export async function renderMarkdownToHtmlViaDom(
   // the first frame.
   root.render(createElement(MarkdownPreview, { content, filePath, vaultRoot }));
 
-  // Poll for stability: no loading markers visible AND any mmap file-preview
+  // Poll for stability: no loading markers visible AND any markmap file-preview
   // block has its markmap SVG mounted (a child <g> inside the container's
   // <svg>). markmap-view's Markmap.create is synchronous, but d3 layout
   // runs on the next frame; without this check the loop can exit before
@@ -236,16 +236,16 @@ export async function renderMarkdownToHtmlViaDom(
       const hasLoadingMarker = LOADING_MARKERS.some((m) => text.includes(m));
       const hasLoadingAttr = container.querySelector('[data-loading="true"]') !== null;
       const hasLoading = hasLoadingMarker || hasLoadingAttr;
-      const mmapBlocks = container.querySelectorAll('[data-file-preview-src]');
-      let pendingMmap = false;
-      for (const b of Array.from(mmapBlocks)) {
+      const markmapBlocks = container.querySelectorAll('[data-file-preview-src]');
+      let pendingMarkmap = false;
+      for (const b of Array.from(markmapBlocks)) {
         const name = (b.getAttribute('data-file-preview-name') || '').toLowerCase();
-        if (!name.endsWith('.mmap')) continue;
+        if (!name.endsWith('.markmap')) continue;
         const svg = b.querySelector('.markmap-container svg');
-        if (!svg || !svg.querySelector('g')) { pendingMmap = true; break; }
+        if (!svg || !svg.querySelector('g')) { pendingMarkmap = true; break; }
       }
       const elapsed = Date.now() - startedAt;
-      if (!hasLoading && !pendingMmap) {
+      if (!hasLoading && !pendingMarkmap) {
         if (stableSince === 0) stableSince = Date.now();
         if (Date.now() - stableSince >= 500 || elapsed >= TIMEOUT_MS) {
           resolve();
@@ -262,13 +262,13 @@ export async function renderMarkdownToHtmlViaDom(
 
   // Re-render ```markmap blocks into standalone SVGs (deterministic, images
   // inlined) — the in-DOM preview render still runs d3 transitions, so capture
-  // it independently via renderMarkmapSvg (duration:0) like the .mmap enhancer.
+  // it independently via renderMarkmapSvg (duration:0) like the .markmap enhancer.
   await processMarkmapCodeBlocks(container, filePath, vaultRoot);
 
   // ponytail: post-process file-preview blocks AFTER stabilization — per
   // file type, render a self-contained SVG for export (excalidraw/drawio
   // can't be captured from the in-DOM canvas/iframe; x6 ER needs viewBox
-  // scaling; mmap keeps its in-DOM render). Done before innerHTML extraction
+  // scaling; markmap keeps its in-DOM render). Done before innerHTML extraction
   // so the export captures the post-processed DOM.
   await processFilePreviews(container, filePath, vaultRoot);
 
@@ -318,7 +318,7 @@ const REGISTRY: Record<string, EnhanceFn> = {
   dbml: dbmlExporter.enhance,
   excalidraw: excalidrawExporter.enhance,
   drawio: drawioExporter.enhance,
-  mmap: mmapExporter.enhance,
+  markmap: mmapExporter.enhance,
   plantuml: plantumlExporter.enhance,
   puml: plantumlExporter.enhance,
   pu: plantumlExporter.enhance,
@@ -333,7 +333,7 @@ const REGISTRY: Record<string, EnhanceFn> = {
  * Walk each `[data-markmap-code]` block (an inline ```markmap fence) and
  * re-render it as a standalone SVG. The fence source is stashed on
  * `data-markmap-src` by MarkmapBlock; relative `![](img.png)` references
- * resolve against the markdown file's directory (same as the .mmap enhancer).
+ * resolve against the markdown file's directory (same as the .markmap enhancer).
  */
 async function processMarkmapCodeBlocks(
   container: HTMLElement,
@@ -397,7 +397,7 @@ async function processFilePreviews(
       await pluginEnhancer(body, ctx).catch(() => {});
       return;
     }
-    // .mmap and other types: keep in-DOM content if it has an SVG; else
+    // .markmap and other types: keep in-DOM content if it has an SVG; else
     // fall back to a filename card. Reset the body's fixed 420px height
     // so the card shrinks to content instead of leaving a huge empty box.
     // ponytail: iframe-based previews (html) are already self-contained via

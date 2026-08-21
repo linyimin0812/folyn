@@ -11,7 +11,7 @@ already an absolute path (`/Users/…`, `~/…`, `$HOME/…`): joining it under
 `resolvePreviewPath(filePath, vaultRoot)` is the single front door: external
 paths are resolved to their true absolute location; vault-relative paths are
 joined under the vault root as before. Handlers that read the file (image,
-office) and those that resolve embedded asset references (markdown, mmap) both
+office) and those that resolve embedded asset references (markdown, markmap) both
 route through it.
 
 `resolveAssetRef(ref, filePath, vaultRoot)` resolves a *relative* reference

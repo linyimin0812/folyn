@@ -6,7 +6,7 @@
       "dbml": { "label": "DBML", "description": "导出 .dbml 源文件" },
       "excalidraw": { "label": "Excalidraw", "description": "导出 .excalidraw 源文件" },
       "drawio": { "label": "Drawio", "description": "导出 .drawio 源文件" },
-      "mmap": { "label": "思维导图", "description": "导出 .mmap 源文件" },
+      "markmap": { "label": "思维导图", "description": "导出 .markmap 源文件" },
       "plantuml": { "label": "PlantUML", "description": "导出 .puml 源文件" },
       "graphviz": { "label": "Graphviz", "description": "导出 .gv 源文件" },
       "mermaid": { "label": "Mermaid", "description": "导出 .mermaid 源文件" },

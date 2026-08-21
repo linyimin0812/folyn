@@ -1,4 +1,4 @@
-// `.mmap` file-type preview: resolve the file's asset base (for relative
+// `.markmap` file-type preview: resolve the file's asset base (for relative
 // `![](img.png)` references in headings), then hand off to MarkmapCanvas which
 // owns the markmap instance + sizing lifecycle. The same canvas backs the
 // inline ```markmap code-fence renderer (MarkmapBlock).

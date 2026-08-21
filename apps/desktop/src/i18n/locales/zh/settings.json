@@ -624,7 +624,7 @@
     "fileTypeSupport": {
       "label": "文件类型支持",
       "description": "通过 HandlerRegistry 统一注册，Quill 可预览与编辑 15+ 种文件类型。",
-      "items": "Markdown · 代码 · CSV · JSON · HTML · 图片 · DBML (ER 图) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · 思维导图 (mmap) · Office 文档 · 剪贴板片段"
+      "items": "Markdown · 代码 · CSV · JSON · HTML · 图片 · DBML (ER 图) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · 思维导图 (markmap) · Office 文档 · 剪贴板片段"
     },
     "techStack": {
       "label": "技术栈",

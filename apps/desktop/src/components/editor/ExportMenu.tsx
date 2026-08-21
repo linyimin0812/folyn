@@ -11,7 +11,7 @@ import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
-const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'mmap', 'plantuml', 'graphviz', 'mermaid']);
+const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
 // File types with a per-type source label. Others fall back to "default".
 const KNOWN_SOURCE_TYPES = new Set(['markdown', ...CANVAS_TYPES]);
 
@@ -210,12 +210,12 @@ export function ExportMenu() {
       },
     );
     // PNG export: only for canvas types whose SVG has no foreignObject.
-    // mmap (markmap) uses foreignObject for topic text — WebKit taints the
+    // markmap uses foreignObject for topic text — WebKit taints the
     // canvas (SecurityError on toBlob) when rasterizing SVG-as-Image with
-    // foreignObject. Skip PNG for mmap; SVG covers the gap.
+    // foreignObject. Skip PNG for markmap; SVG covers the gap.
     // plantuml + graphviz ship SVG-only for now — PNG can be added later via
     // the shared svgToPngBlob helper (no foreignObject in their server SVGs).
-    if (fileType !== 'mmap' && fileType !== 'plantuml' && fileType !== 'graphviz' && fileType !== 'mermaid') {
+    if (fileType !== 'markmap' && fileType !== 'plantuml' && fileType !== 'graphviz' && fileType !== 'mermaid') {
       items.push({
         key: 'png',
         icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,

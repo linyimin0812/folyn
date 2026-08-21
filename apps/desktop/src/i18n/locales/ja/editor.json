@@ -6,7 +6,7 @@
       "dbml": { "label": "DBML", "description": ".dbmlソースファイルをエクスポート" },
       "excalidraw": { "label": "Excalidraw", "description": ".excalidrawソースファイルをエクスポート" },
       "drawio": { "label": "Drawio", "description": ".drawioソースファイルをエクスポート" },
-      "mmap": { "label": "マインドマップ", "description": ".mmapソースファイルをエクスポート" },
+      "markmap": { "label": "マインドマップ", "description": ".markmapソースファイルをエクスポート" },
       "plantuml": { "label": "PlantUML", "description": ".pumlソースファイルをエクスポート" },
       "graphviz": { "label": "Graphviz", "description": ".gvソースファイルをエクスポート" },
       "mermaid": { "label": "Mermaid", "description": ".mermaidソースファイルをエクスポート" },

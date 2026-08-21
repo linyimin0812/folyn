@@ -87,7 +87,7 @@ export async function svgToPngBlob(svg: string, scale = 2): Promise<Blob | null>
 /**
  * Walk all <image> elements (SVG namespace) inside `container` and replace
  * Tauri asset URLs (any non-data, non-http src) in both `href` and
- * `xlink:href` with base64 data URLs. Used by the mmap enhancer so the
+ * `xlink:href` with base64 data URLs. Used by the markmap enhancer so the
  * exported markmap SVG renders embedded images standalone.
  */
 export async function inlineSvgImages(container: HTMLElement): Promise<void> {
@@ -281,7 +281,7 @@ export function escapeHtml(text: string): string {
 }
 
 /**
- * Render a non-markdown file (dbml/excalidraw/drawio/mmap) to a standalone
+ * Render a non-markdown file (dbml/excalidraw/drawio/markmap) to a standalone
  * SVG string. Builds a synthetic one-block markdown with a file-preview
  * directive pointing at the file, then runs the main
  * renderMarkdownToHtmlViaDom pipeline (which mounts the preview, stabilizes
@@ -311,14 +311,14 @@ export async function renderFilePreviewToSvg(
   // parsing + outerHTML serialization rewrites U+00A0 → &nbsp; and similar,
   // breaking standalone XML parsing. Prefer the raw attribute to bypass the
   // HTML round-trip entirely. Falls through to outerHTML/img-data-URL paths
-  // for exporters that build their own SVG locally (dbml/drawio/mmap).
+  // for exporters that build their own SVG locally (dbml/drawio/markmap).
   const rawSvg = bodyEl.getAttribute('data-raw-svg');
   if (rawSvg) return rawSvg;
   // ponytail: drawio embeds its SVG as <img src="data:image/svg+xml;utf8,…">
   // for CSS isolation (inline SVG in HTML inherits host CSS into
   // foreignObject divs and breaks drawio's text layout — see
   // services/export/drawio.ts). Extract the raw SVG from the img src for
-  // standalone .svg / .png export. Other types (mmap, excalidraw, dbml)
+  // standalone .svg / .png export. Other types (markmap, excalidraw, dbml)
   // keep inline <svg>; fall through.
   let svgString = '';
   const imgEl = bodyEl.querySelector('img[src^="data:image/svg+xml"]');

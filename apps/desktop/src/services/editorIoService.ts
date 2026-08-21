@@ -457,7 +457,7 @@ export async function checkDiskChanges(): Promise<void> {
     const isActive = tab.id === activeTabId;
     // ponytail: CodeMirror editors show a diff-review banner on the active tab
     // (accept/reject), so they need the differs-check + enterDiffReview. Custom
-    // editors (excalidraw/drawio/mmap/clip) have no diff UI — just reload from
+    // editors (excalidraw/drawio/markmap/clip) have no diff UI — just reload from
     // disk unconditionally: update content + bump version → WorkArea remounts
     // the editor with fresh initialData.
     if (isActive && handler?.useCodeMirror) {

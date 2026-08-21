@@ -21,7 +21,7 @@ const KNOWN_EXT = [
   'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
   'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'bmp', 'tif', 'tiff',
   'pdf', 'txt', 'log', 'csv', 'tsv',
-  'excalidraw', 'drawio', 'mmap', 'web',
+  'excalidraw', 'drawio', 'markmap', 'web',
   'sql', 'proto', 'gradle',
   'gitignore', 'dockerfile', 'makefile', 'lock',
 ];

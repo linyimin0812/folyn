@@ -1286,7 +1286,7 @@ mjx-container svg {
    library's bundled toolbar would duplicate them. */
 .mind-elixir-toolbar.lt { display: none !important; }
 
-/* ── Mind map (mmap) rendering quality ──
+/* ── Mind map (markmap) rendering quality ──
  * The body sets -webkit-font-smoothing: antialiased which makes text appear
  * thin on macOS, especially Chinese fonts (PingFang SC). Combined with the
  * CSS transform: translate3d() on .map-canvas (GPU compositing layer), the

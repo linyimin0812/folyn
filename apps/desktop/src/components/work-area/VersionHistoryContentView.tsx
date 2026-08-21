@@ -63,7 +63,7 @@ export function VersionHistoryContentView() {
 
   // ponytail: no file-type handler in the registry declares `deserialize` today
   // (markdown / code / plantuml / graphviz / dbml / html / drawio / excalidraw /
-  // mmap / rich-text / csv / json / svg / clip all store raw text on disk). The
+  // markmap / rich-text / csv / json / svg / clip all store raw text on disk). The
   // branch below honors the contract anyway so a future handler that needs
   // deserialization (e.g. a binary format) gets it for free.
   const deserialized = handler.deserialize ? handler.deserialize(snapshotContent) : snapshotContent;

@@ -44,7 +44,7 @@ const fileTypeLabelKeys: Record<string, string> = {
 const NEW_FILE_GROUPS: string[][] = [
   ['markdown', 'rich-text', 'csv', 'json'],
   ['svg'],
-  ['mmap', 'dbml', 'drawio', 'excalidraw'],
+  ['markmap', 'dbml', 'drawio', 'excalidraw'],
 ];
 
 /** Resolve a vault-relative path to an absolute, platform-native path string

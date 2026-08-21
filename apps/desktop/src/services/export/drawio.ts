@@ -71,7 +71,7 @@ export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void
         // ponytail: img fills the file-preview body (420px tall, full width)
         // and object-fit:contain scales the SVG to fit inside preserving
         // aspect ratio — no scroll, no clipping. Matches dbml/excalidraw/
-        // mmap body sizing (420px overflow:hidden).
+        // markmap body sizing (420px overflow:hidden).
         body.innerHTML =
           `<img src="${dataUrl}" alt="" style="display:block;width:100%;height:100%;object-fit:contain;margin:0 auto;">`;
       }

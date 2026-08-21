@@ -624,7 +624,7 @@
     "fileTypeSupport": {
       "label": "ファイルタイプ対応",
       "description": "HandlerRegistry に登録され、Quill は 15 種以上のファイルタイプをプレビュー・編集できます。",
-      "items": "Markdown · コード · CSV · JSON · HTML · 画像 · DBML（ER 図） · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap（mmap） · Office ドキュメント · クリップボードのクリップ"
+      "items": "Markdown · コード · CSV · JSON · HTML · 画像 · DBML（ER 図） · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap（markmap） · Office ドキュメント · クリップボードのクリップ"
     },
     "techStack": {
       "label": "技術スタック",

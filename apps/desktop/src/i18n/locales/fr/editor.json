@@ -6,7 +6,7 @@
       "dbml": { "label": "DBML", "description": "Exporter le fichier .dbml" },
       "excalidraw": { "label": "Excalidraw", "description": "Exporter le fichier .excalidraw" },
       "drawio": { "label": "Drawio", "description": "Exporter le fichier .drawio" },
-      "mmap": { "label": "Carte mentale", "description": "Exporter le fichier .mmap" },
+      "markmap": { "label": "Carte mentale", "description": "Exporter le fichier .markmap" },
       "plantuml": { "label": "PlantUML", "description": "Exporter le fichier .puml" },
       "graphviz": { "label": "Graphviz", "description": "Exporter le fichier .gv" },
       "mermaid": { "label": "Mermaid", "description": "Exporter le fichier .mermaid" },

@@ -74,7 +74,7 @@ export class EditorFileChangeApplier implements FileChangeApplier {
       // `key={tabId-externalContentVersion}`, required for custom editors
       // whose content prop is mount-only (excalidraw's `initialData` has no
       // internal reload effect, unlike DrawIoEmbed's `xml`). Editors with
-      // their own reload mechanism (drawio, mmap) still work — the remount
+      // their own reload mechanism (drawio, markmap) still work — the remount
       // is redundant but harmless; useState(content) init handles the new
       // content on remount.
       useDiffReviewStore.getState().setContentExternal(tabId, change.newContent);

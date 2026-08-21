@@ -1,6 +1,6 @@
-// Inline ```markmap / ```mmap code-fence renderer. The fence body is markdown
+// Inline ```markmap code-fence renderer. The fence body is markdown
 // (headings become the mind-map nodes), so it feeds straight into
-// MarkmapCanvas via the same Transformer as the `.mmap` file-type preview.
+// MarkmapCanvas via the same Transformer as the `.markmap` file-type preview.
 //
 // Sizing: MarkmapCanvas defers render until its container has a real size, and
 // percentage heights don't resolve in normal document flow — so the block is

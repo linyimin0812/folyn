@@ -618,7 +618,7 @@
     "fileTypeSupport": {
       "label": "Soporte de tipos de archivo",
       "description": "Registrados a través de HandlerRegistry, Quill puede previsualizar y editar más de 15 tipos de archivo.",
-      "items": "Markdown · Código · CSV · JSON · HTML · Imagen · DBML (diagrama ER) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (mmap) · Docs Office · Clips del portapapeles"
+      "items": "Markdown · Código · CSV · JSON · HTML · Imagen · DBML (diagrama ER) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Docs Office · Clips del portapapeles"
     },
     "techStack": {
       "label": "Stack técnico",

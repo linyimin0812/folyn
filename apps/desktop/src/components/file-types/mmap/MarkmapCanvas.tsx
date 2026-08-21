@@ -1,5 +1,5 @@
 // Shared markmap render surface: one Markmap instance per mount; markdown →
-// markmap-lib Transformer → markmap-view renders SVG. Used by both the `.mmap`
+// markmap-lib Transformer → markmap-view renders SVG. Used by both the `.markmap`
 // file-type preview (MarkmapPreview) and the inline ```markmap code-fence
 // renderer (MarkmapBlock). No edit-in-canvas, no per-node style/arrows/
 // summaries (markmap's data model is markdown headings — those features don't

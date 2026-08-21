@@ -67,8 +67,7 @@ export function registerBuiltinCodeContributions(): void {
   registerEditorLanguage('builtin', 'graphviz', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
   registerEditorLanguage('builtin', 'dot', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
   registerEditorLanguage('builtin', 'gv', 'graphviz', dotLanguageFactory, ['gv', 'dot', 'graphviz']);
-  // Markmap: fence body is markdown headings; `mmap` mirrors the .mmap file
-  // extension so both spellings hit the same renderer.
+  // Markmap: fence body is markdown headings; `markmap` is the canonical fence
+  // language and matches the `.markmap` file extension.
   registerMarkdownCodeRenderer('builtin', 'markmap', 'markmap', MarkmapCodeRenderer);
-  registerMarkdownCodeRenderer('builtin', 'mmap', 'markmap', MarkmapCodeRenderer);
 }

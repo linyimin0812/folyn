@@ -6,7 +6,7 @@
       "dbml": { "label": "DBML", "description": ".dbml-Quelldatei exportieren" },
       "excalidraw": { "label": "Excalidraw", "description": ".excalidraw-Quelldatei exportieren" },
       "drawio": { "label": "Drawio", "description": ".drawio-Quelldatei exportieren" },
-      "mmap": { "label": "Mindmap", "description": ".mmap-Quelldatei exportieren" },
+      "markmap": { "label": "Mindmap", "description": ".markmap-Quelldatei exportieren" },
       "plantuml": { "label": "PlantUML", "description": ".puml-Quelldatei exportieren" },
       "graphviz": { "label": "Graphviz", "description": ".gv-Quelldatei exportieren" },
       "mermaid": { "label": "Mermaid", "description": ".mermaid-Quelldatei exportieren" },

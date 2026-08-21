@@ -1,5 +1,5 @@
 // Shared markmap → standalone SVG renderer for the export pipeline. Used by
-// the `.mmap` file-preview enhancer (mmap.ts) and the inline ```markmap
+// the `.markmap` file-preview enhancer (mmap.ts) and the inline ```markmap
 // code-block enhancer (exportService.processMarkmapCodeBlocks).
 //
 // duration: 0 — markmap applies every change through d3 transitions (node

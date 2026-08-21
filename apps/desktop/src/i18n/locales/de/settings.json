@@ -618,7 +618,7 @@
     "fileTypeSupport": {
       "label": "Dateityp-Unterstützung",
       "description": "Über HandlerRegistry registriert, kann Quill 15+ Dateitypen anzeigen und bearbeiten.",
-      "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (ER-Diagramm) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (mmap) · Office-Dokumente · Zwischenablage-Clips"
+      "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (ER-Diagramm) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Office-Dokumente · Zwischenablage-Clips"
     },
     "techStack": {
       "label": "Tech-Stack",

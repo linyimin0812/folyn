@@ -5,7 +5,7 @@
  * element behind for the export fallback to grab — so we re-render from the
  * source file (same path the preview resolved) and replace the body.
  *
- * Mirrors dbml/excalidraw/drawio/mmap exporters: read source via vault store,
+ * Mirrors dbml/excalidraw/drawio/markmap exporters: read source via vault store,
  * render to SVG, set body.innerHTML. Failures fall through silently to the
  * "不支持导出" card in exportService.ts.
  */
