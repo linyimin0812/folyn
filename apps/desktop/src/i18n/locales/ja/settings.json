@@ -380,6 +380,38 @@
       "title": "モデル能力を編集"
     }
   },
+  "translation": {
+    "translate": "翻訳",
+    "translating": "翻訳中…",
+    "cancel": "停止",
+    "sourceLang": "原文の言語",
+    "targetLang": "翻訳先の言語",
+    "markdownPreview": "マークダウンプレビューの切り替え",
+    "markdownPreviewLabel": "マークダウンプレビュー",
+    "copy": "翻訳をコピー",
+    "inputPlaceholder": "翻訳するテキストを入力または貼り付け。⌘/Ctrl+Enter で翻訳。",
+    "streaming": "翻訳中…",
+    "empty": "翻訳結果がここに表示されます。",
+    "languages": {
+      "auto": "自動検出",
+      "zh": "中国語",
+      "en": "英語",
+      "ja": "日本語",
+      "ko": "韓国語",
+      "es": "スペイン語",
+      "fr": "フランス語",
+      "de": "ドイツ語",
+      "ru": "ロシア語",
+      "pt": "ポルトガル語",
+      "it": "イタリア語",
+      "ar": "アラビア語",
+      "hi": "ヒンディー語"
+    },
+    "error": {
+      "noPair": "モデルが設定されていません。provider/model を選択するか、設定でチャットアダプターを設定してください。",
+      "copy": "クリップボードへの書き込みに失敗しました。"
+    }
+  },
   "about": {
     "tagline": "v0.1.0-alpha · ローカルファーストMarkdownエディタ",
     "groups": {
