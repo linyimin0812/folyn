@@ -230,11 +230,11 @@ export function TranslationPanel() {
               <div className="px-6 py-3 text-[12px] text-red-600 dark:text-red-400 break-words">{error}</div>
             ) : result ? (
               preview ? (
-                <div className="px-6 py-3 text-justify">
+                <div className="px-6 py-3 [&_.md-preview]:!text-justify">
                   <MarkdownPreview content={result} filePath="__translation__.md" vaultRoot="" />
                 </div>
               ) : (
-                <pre className="px-6 py-3 text-t1 text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap font-mono text-justify">{result}</pre>
+                <pre className="px-6 py-3 text-t1 text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap break-words font-mono [text-align:justify]">{result}</pre>
               )
             ) : (
               <div className="px-6 py-3 text-t3 text-[12px]">
