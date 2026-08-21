@@ -293,25 +293,38 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   const widthRef = useRef<number | null>(null);
   widthRef.current = width;
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // ponytail: walk up from the wrapper to find the first ancestor with a real
+  // inner width — skips zero-size intermediate nodes and lands on whatever is
+  // actually constraining the layout (.md-preview pane, list item, etc.).
+  const getMaxWidth = (): number => {
+    let el = wrapperRef.current?.parentElement ?? null;
+    while (el) {
+      const w = el.clientWidth;
+      if (w > 0) return w;
+      el = el.parentElement;
+    }
+    return Infinity;
+  };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    const wrapper = e.currentTarget.parentElement as HTMLElement;
-    dragRef.current = { startX: e.clientX, startW: wrapper.getBoundingClientRect().width };
+    const wrapper = wrapperRef.current ?? e.currentTarget.parentElement as HTMLElement | null;
+    dragRef.current = { startX: e.clientX, startW: wrapper?.getBoundingClientRect().width ?? 0 };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
-    // ponytail: clamp to parent content width — beyond it, max-width:100% on
-    // the wrapper caps the visual size anyway, but state would keep growing
-    // and the handle would visually drift right past the preview pane while
-    // the image stays pinned at parent width. Clamping state to parent width
-    // makes "can't enlarge further" actually stop the handle.
-    const parent = (e.currentTarget.parentElement as HTMLElement | null)?.parentElement;
-    const maxW = parent?.clientWidth ?? Infinity;
-    setWidth(Math.min(maxW, Math.max(40, Math.round(dragRef.current.startW + dx))));
+    const proposed = Math.max(40, Math.round(dragRef.current.startW + dx));
+    // ponytail: at the wall, freeze — don't update state, don't move handle.
+    // Math.min would jump state to maxW, nudging the handle rightward even
+    // when the image can't visually grow further. Early-return makes the
+    // drag truly stop at the parent edge.
+    if (proposed > getMaxWidth()) return;
+    setWidth(proposed);
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
@@ -343,6 +356,7 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   return (
     <div
       className="resizable-media"
+      ref={wrapperRef}
       style={width != null ? { width: `${width}px`, height: 'auto' } : undefined}
     >
       {children}
