@@ -62,6 +62,17 @@
 
 ## For Users
 
+### 首次运行提示
+
+应用未做代码签名,首次运行时会触发系统安全拦截,按以下步骤放行即可:
+
+- **Windows**:首次运行会看到 SmartScreen "Windows 已保护你的电脑" 警告。点击 **更多信息 → 仍要运行**。
+- **macOS**:安装完成后首次打开若提示"无法打开"或"已损坏",在 Terminal 中执行:
+  ```bash
+  xattr -cr /Applications/Quill.app
+  ```
+  然后重新从启动台打开。
+
 ### 编辑与预览
 
 - CodeMirror 6 编辑器:语法高亮、GFM、remark 指令、slash 命令
