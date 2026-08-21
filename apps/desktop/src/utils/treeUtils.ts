@@ -36,6 +36,86 @@ export function insertEntry(tree: VaultEntry[], path: string, type: 'file' | 'di
   return inserted ? result : tree;
 }
 
+/** Remove the entry at `path` from the tree. Returns a new tree if found,
+ * otherwise the input reference unchanged. No mutation. */
+export function removeEntry(tree: VaultEntry[], path: string): VaultEntry[] {
+  let removed = false;
+  const walk = (entries: VaultEntry[]): VaultEntry[] => {
+    const filtered = entries.filter((e) => {
+      if (e.path === path) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    return filtered.map((e) => {
+      if (e.children) return { ...e, children: walk(e.children) };
+      return e;
+    });
+  };
+  const result = walk(tree);
+  return removed ? result : tree;
+}
+
+/** Move an entry from oldPath to newPath, preserving type and children.
+ * For directory renames, child paths are rewritten to the new prefix.
+ * Returns a new tree if the entry was found, otherwise the input reference. */
+export function renameEntry(tree: VaultEntry[], oldPath: string, newPath: string): VaultEntry[] {
+  let found = false;
+  let carried: VaultEntry | null = null;
+
+  const pluck = (entries: VaultEntry[]): VaultEntry[] => {
+    const out: VaultEntry[] = [];
+    for (const e of entries) {
+      if (e.path === oldPath) {
+        found = true;
+        carried = e;
+        continue;
+      }
+      if (e.children) out.push({ ...e, children: pluck(e.children) });
+      else out.push(e);
+    }
+    return out;
+  };
+
+  const plucked = pluck(tree);
+  if (!found || !carried) return tree;
+
+  const newPathSegs = newPath.split('/');
+  const newName = newPathSegs[newPathSegs.length - 1];
+
+  const rebase = (entry: VaultEntry, fromPrefix: string, toPrefix: string): VaultEntry => {
+    const rebased: VaultEntry = {
+      ...entry,
+      path: entry.path === fromPrefix ? toPrefix : toPrefix + entry.path.slice(fromPrefix.length),
+      name: entry.path === fromPrefix ? newName : entry.name,
+    };
+    if (entry.children) {
+      rebased.children = entry.children.map((c) => rebase(c, fromPrefix, toPrefix));
+    }
+    return rebased;
+  };
+  const rebasedCarried = rebase(carried, oldPath, newPath);
+
+  if (newPathSegs.length === 1) {
+    return [...plucked, rebasedCarried];
+  }
+
+  const parentPath = newPathSegs.slice(0, -1).join('/');
+  let inserted = false;
+  const place = (entries: VaultEntry[]): VaultEntry[] =>
+    entries.map((e) => {
+      if (e.path === parentPath && e.type === 'dir') {
+        inserted = true;
+        return { ...e, children: [...(e.children ?? []), rebasedCarried] };
+      }
+      if (e.children) return { ...e, children: place(e.children) };
+      return e;
+    });
+  const result = place(plucked);
+  return inserted ? result : [...plucked, rebasedCarried];
+}
+
 export function flattenFileTree(entries: VaultEntry[]): { path: string; name: string }[] {
   const result: { path: string; name: string }[] = [];
   for (const entry of entries) {

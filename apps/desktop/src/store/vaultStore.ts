@@ -17,7 +17,7 @@ import { isExternalPath } from '@/utils/isExternalPath';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { cloneRepo, ensureGitignoreEntries, type BranchStrategy } from '@/services/gitService';
 import { matchesAnyPattern } from '@/utils/excludePattern';
-import { insertEntry } from '@/utils/treeUtils';
+import { insertEntry, removeEntry, renameEntry } from '@/utils/treeUtils';
 import { BUILTIN_EXCLUDE_DIRS } from './appearanceStore';
 
 async function startWatcherForVault(config: VaultConfig) {
@@ -469,7 +469,9 @@ export const useVaultStore = create<VaultState>()(
 
         deleteFile: async (filePath) => {
           await get().manager.deleteFile(filePath);
-          await get().refreshFileTree();
+          suppressWatcherFor(filePath);
+          set((state) => ({ fileTree: removeEntry(state.fileTree, filePath) }));
+          void get().refreshFileTree();
         },
 
         createDir: async (dirPath) => {
@@ -481,12 +483,17 @@ export const useVaultStore = create<VaultState>()(
 
         deleteDir: async (dirPath) => {
           await get().manager.deleteDir(dirPath);
-          await get().refreshFileTree();
+          suppressWatcherFor(dirPath);
+          set((state) => ({ fileTree: removeEntry(state.fileTree, dirPath) }));
+          void get().refreshFileTree();
         },
 
         renameFile: async (oldPath, newPath) => {
           await get().manager.rename(oldPath, newPath);
-          await get().refreshFileTree();
+          suppressWatcherFor(oldPath);
+          suppressWatcherFor(newPath);
+          set((state) => ({ fileTree: renameEntry(state.fileTree, oldPath, newPath) }));
+          void get().refreshFileTree();
         },
 
         moveFiles: async (paths, targetDir) => {

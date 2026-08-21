@@ -6,6 +6,8 @@ import {
   collectAllDirPaths,
   matchesSearch,
   insertEntry,
+  removeEntry,
+  renameEntry,
 } from './treeUtils';
 
 const tree: VaultEntry[] = [
@@ -120,6 +122,69 @@ describe('insertEntry', () => {
   it('does not mutate the input tree', () => {
     const before = JSON.parse(JSON.stringify(tree));
     insertEntry(tree, 'notes/c.md', 'file');
+    expect(tree).toEqual(before);
+  });
+});
+
+describe('removeEntry', () => {
+  it('removes a root-level file', () => {
+    const result = removeEntry(tree, 'root.md');
+    expect(flattenTree(result)).toEqual(['notes', 'notes/a.md', 'notes/sub', 'notes/sub/b.md']);
+  });
+
+  it('removes a nested file', () => {
+    const result = removeEntry(tree, 'notes/sub/b.md');
+    expect(flattenTree(result)).toEqual(['notes', 'notes/a.md', 'notes/sub', 'root.md']);
+  });
+
+  it('removes a dir and its subtree', () => {
+    const result = removeEntry(tree, 'notes/sub');
+    expect(flattenTree(result)).toEqual(['notes', 'notes/a.md', 'root.md']);
+  });
+
+  it('returns the input reference when path is not found', () => {
+    expect(removeEntry(tree, 'missing.md')).toBe(tree);
+  });
+
+  it('does not mutate the input tree', () => {
+    const before = JSON.parse(JSON.stringify(tree));
+    removeEntry(tree, 'notes/a.md');
+    expect(tree).toEqual(before);
+  });
+});
+
+describe('renameEntry', () => {
+  it('renames a root-level file', () => {
+    const result = renameEntry(tree, 'root.md', 'renamed.md');
+    expect(flattenTree(result)).toEqual(['notes', 'notes/a.md', 'notes/sub', 'notes/sub/b.md', 'renamed.md']);
+  });
+
+  it('renames a nested file in place', () => {
+    const result = renameEntry(tree, 'notes/a.md', 'notes/c.md');
+    const notes = result.find((e) => e.path === 'notes');
+    expect(notes?.children?.find((e) => e.path === 'notes/c.md')).toBeDefined();
+    expect(notes?.children?.find((e) => e.path === 'notes/a.md')).toBeUndefined();
+  });
+
+  it('renames a dir and rewrites child paths', () => {
+    const result = renameEntry(tree, 'notes/sub', 'notes/renamed-sub');
+    expect(flattenTree(result)).toEqual(['notes', 'notes/a.md', 'notes/renamed-sub', 'notes/renamed-sub/b.md', 'root.md']);
+  });
+
+  it('renames a dir to a new parent and rewrites child paths', () => {
+    const result = renameEntry(tree, 'notes/sub', 'other/sub');
+    expect(flattenTree(result)).toContain('other/sub');
+    expect(flattenTree(result)).toContain('other/sub/b.md');
+    expect(flattenTree(result)).not.toContain('notes/sub');
+  });
+
+  it('returns the input reference when oldPath is not found', () => {
+    expect(renameEntry(tree, 'missing.md', 'x.md')).toBe(tree);
+  });
+
+  it('does not mutate the input tree', () => {
+    const before = JSON.parse(JSON.stringify(tree));
+    renameEntry(tree, 'notes/sub', 'notes/renamed-sub');
     expect(tree).toEqual(before);
   });
 });
