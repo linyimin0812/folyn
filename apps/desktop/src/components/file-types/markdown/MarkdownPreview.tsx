@@ -290,7 +290,6 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   // through width=null — handle would visibly jump from natural-size position
   // back to the persisted width otherwise.
   const [width, setWidth] = useState<number | null>(() => readSourceWidth(kind, contentRef.current, sourceLine));
-  const [dragging, setDragging] = useState(false);
   const widthRef = useRef<number | null>(null);
   widthRef.current = width;
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -301,7 +300,6 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     const wrapper = e.currentTarget.parentElement as HTMLElement;
     dragRef.current = { startX: e.clientX, startW: wrapper.getBoundingClientRect().width };
-    setDragging(true);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
@@ -311,7 +309,6 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
     dragRef.current = null;
-    setDragging(false);
     try { (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId); } catch { /* pointer already released */ }
     const w = widthRef.current;
     if (w == null) return;
@@ -333,12 +330,12 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   // ponytail: width-only resize, height auto-derived — inner img/svg keep their
   // natural aspect ratio via CSS height:auto. Shift-unlock is a no-op here since
   // height was never constrained; add height state if independent H ever needed.
-  // During drag, drop centering (margin:0) so the right edge tracks the cursor
-  // 1:1 — centered wrapper grows symmetrically and the handle drifts at half
-  // cursor speed, which reads as "handle moved away from cursor".
+  // Wrapper stays centered (margin:auto) throughout drag — handle drifts at
+  // half cursor speed because the wrapper grows symmetrically; accepted tradeoff
+  // vs. the layout-jump alternative (left during drag, centered after release).
   return (
     <div
-      className={`resizable-media${dragging ? ' resizable-media--dragging' : ''}`}
+      className="resizable-media"
       style={width != null ? { width: `${width}px`, height: 'auto' } : undefined}
     >
       {children}

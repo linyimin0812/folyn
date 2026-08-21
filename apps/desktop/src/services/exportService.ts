@@ -288,6 +288,11 @@ export async function renderMarkdownToHtmlViaDom(
     await inlineContainerImages(container);
   }
 
+  // ponytail: strip interactive resize handles — they're preview-only UI,
+  // not content. Wrapper .resizable-media stays (holds the persisted width
+  // inline style); only the drag handle div is removed.
+  container.querySelectorAll('.resize-handle').forEach((el) => el.remove());
+
   const html = container.innerHTML;
   const css = collectAppCss();
   // Defer unmount out of the current render cycle so it doesn't race with
