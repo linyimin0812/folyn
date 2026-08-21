@@ -8,7 +8,7 @@ export function getResizedMediaWidth(startWidth: number, deltaX: number, maxWidt
   return Math.min(maxWidth, Math.max(MIN_MEDIA_WIDTH, Math.round(startWidth + deltaX)));
 }
 
-/** Returns the tightest width constraint from media's local and visible roots. */
-export function getMaxMediaWidth(parentWidth: number, previewWidth: number): number {
-  return Math.min(parentWidth, previewWidth);
+/** Returns the tightest width constraint from media's ancestor layout chain. */
+export function getMaxMediaWidth(...ancestorWidths: number[]): number {
+  return Math.min(...ancestorWidths);
 }

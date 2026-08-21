@@ -301,20 +301,21 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     const wrapper = wrapperRef.current ?? e.currentTarget.parentElement as HTMLElement | null;
-    const parent = wrapper?.parentElement ?? null;
-    const preview = wrapper?.closest<HTMLElement>('.md-preview') ?? null;
+    const ancestorWidths: number[] = [];
+    let ancestor = wrapper?.parentElement ?? null;
+    while (ancestor) {
+      ancestorWidths.push(ancestor.getBoundingClientRect().width);
+      ancestor = ancestor.parentElement;
+    }
     dragRef.current = {
       startX: e.clientX,
       startW: wrapper?.getBoundingClientRect().width ?? 0,
       // ponytail: constrain the width before updating state. CSS max-width
       // alone clamps layout after state is written, which lets a centered
       // wrapper keep accepting a larger persisted width and appear to shift.
-      // The paragraph can overflow the preview body's visible width in
-      // preview-only mode, so it is not a sufficient constraint by itself.
-      maxW: getMaxMediaWidth(
-        parent?.getBoundingClientRect().width ?? Infinity,
-        preview?.getBoundingClientRect().width ?? Infinity,
-      ),
+      // Preview-only mode can be clipped by an outer pane while its paragraph
+      // and Markdown root remain wider, so use the narrowest ancestor.
+      maxW: getMaxMediaWidth(...ancestorWidths),
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {

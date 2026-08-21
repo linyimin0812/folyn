@@ -19,4 +19,8 @@ describe('getMaxMediaWidth', () => {
   it('uses the visible Markdown preview width when a paragraph overflows it', () => {
     expect(getMaxMediaWidth(900, 500)).toBe(500);
   });
+
+  it('uses the narrowest ancestor when the preview is clipped by an outer pane', () => {
+    expect(getMaxMediaWidth(900, 740, 500, 1440)).toBe(500);
+  });
 });
