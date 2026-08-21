@@ -79,10 +79,11 @@ export function TranslationPanel() {
   const handleTranslate = useCallback(async () => {
     if (streaming) return;
     if (!input.trim()) return;
-    const pair: ProviderModelPair | null = selectedPair
-      ? { provider: selectedPair.provider, model: selectedPair.model }
-      : null;
-    const resolved = resolvePairConfig(pair);
+    // ponytail: selectedPair hydrates async from pluginPair (Tauri store).
+    // Falling back to pluginPair avoids a "first click sets noPair error,
+    // second click works" race on a freshly mounted panel.
+    const fallback = selectedPair ?? (pluginPair ? { provider: pluginPair.provider, model: pluginPair.model } : null);
+    const resolved = resolvePairConfig(fallback);
     if (!resolved) {
       setError(t('settings:translation.error.noPair'));
       return;
@@ -110,7 +111,7 @@ export function TranslationPanel() {
     } finally {
       setStreaming(false);
     }
-  }, [streaming, input, selectedPair, source, target, t]);
+  }, [streaming, input, selectedPair, pluginPair, source, target, t]);
 
   const handleCopy = useCallback(async () => {
     if (!result) return;
