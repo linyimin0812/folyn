@@ -497,3 +497,45 @@ Added opencode CLI adapter end-to-end: opencodeAdapter.ts (fresh translator for 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 185: markdown 预览图片交互式拖拽缩放
+
+**Date**: 2026-08-21
+**Task**: markdown 预览图片交互式拖拽缩放
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+实现 markdown 预览图片/mermaid/plantuml/graphviz 的交互式拖拽缩放,尺寸写回 md 源(图片走 =Wx GFM 风格,fence 走 info string width=W)。多个 bug 修复迭代:手柄样式、fence SVG 缩放、wrapper 居中、export 剥手柄、parent wall freeze。最后一版 bounding-rect wall check 仍未完全生效,用户反馈'完全没有变化',待继续排查。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `37d2cb9c` | (see git log) |
+| `62672689` | (see git log) |
+| `272934b2` | (see git log) |
+| `1b5ef2f7` | (see git log) |
+| `3cb0b4dc` | (see git log) |
+| `c11fcc72` | (see git log) |
+| `cf8eee59` | (see git log) |
+| `011be140` | (see git log) |
+| `e767870a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
