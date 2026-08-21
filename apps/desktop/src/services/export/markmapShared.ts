@@ -1,5 +1,5 @@
 // Shared markmap → standalone SVG renderer for the export pipeline. Used by
-// the `.markmap` file-preview enhancer (mmap.ts) and the inline ```markmap
+// the `.markmap` file-preview enhancer (markmap.ts) and the inline ```markmap
 // code-block enhancer (exportService.processMarkmapCodeBlocks).
 //
 // duration: 0 — markmap applies every change through d3 transitions (node
@@ -16,8 +16,8 @@
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import { inlineContainerImages } from './shared';
-import { resolveImagesInTree } from '@/components/file-types/mmap/resolveImages';
-import '@/components/file-types/mmap/initMath';
+import { resolveImagesInTree } from '@/components/file-types/markmap/resolveImages';
+import '@/components/file-types/markmap/initMath';
 
 const transformer = new Transformer();
 

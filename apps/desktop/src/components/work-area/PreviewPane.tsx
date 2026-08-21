@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback, forwardRef, type ComponentTyp
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
 import { extractHeadings } from '@/utils/markdownUtils';
-import { MarkmapCanvas } from '../file-types/mmap/MarkmapCanvas';
+import { MarkmapCanvas } from '../file-types/markmap/MarkmapCanvas';
 import { resolveAssetBase } from '../file-types/previewPath';
 
 interface PreviewPaneProps {

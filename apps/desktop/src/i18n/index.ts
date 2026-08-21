@@ -28,9 +28,9 @@ import zhTerminal from './locales/zh/terminal.json';
 import enTerminal from './locales/en/terminal.json';
 import zhBrowser from './locales/zh/browser.json';
 import enBrowser from './locales/en/browser.json';
-import zhMmap from './locales/zh/mmap.json';
+import zhMarkmap from './locales/zh/markmap.json';
 import zhWiki from './locales/zh/wiki.json';
-import enMmap from './locales/en/mmap.json';
+import enMarkmap from './locales/en/markmap.json';
 import enWiki from './locales/en/wiki.json';
 import jaCommon from './locales/ja/common.json';
 import jaShell from './locales/ja/shell.json';
@@ -46,7 +46,7 @@ import jaRustErrors from './locales/ja/rustErrors.json';
 import jaPet from './locales/ja/pet.json';
 import jaTerminal from './locales/ja/terminal.json';
 import jaBrowser from './locales/ja/browser.json';
-import jaMmap from './locales/ja/mmap.json';
+import jaMarkmap from './locales/ja/markmap.json';
 import jaWiki from './locales/ja/wiki.json';
 import esCommon from './locales/es/common.json';
 import esShell from './locales/es/shell.json';
@@ -62,7 +62,7 @@ import esRustErrors from './locales/es/rustErrors.json';
 import esPet from './locales/es/pet.json';
 import esTerminal from './locales/es/terminal.json';
 import esBrowser from './locales/es/browser.json';
-import esMmap from './locales/es/mmap.json';
+import esMarkmap from './locales/es/markmap.json';
 // ponytail: wiki namespace shipped for en/zh/ja only; es/de/fr reuse enWiki as
 // fallback so the query tab isn't a missing-key warning wall for those locales.
 const esWiki = enWiki;
@@ -82,7 +82,7 @@ import deRustErrors from './locales/de/rustErrors.json';
 import dePet from './locales/de/pet.json';
 import deTerminal from './locales/de/terminal.json';
 import deBrowser from './locales/de/browser.json';
-import deMmap from './locales/de/mmap.json';
+import deMarkmap from './locales/de/markmap.json';
 import frCommon from './locales/fr/common.json';
 import frShell from './locales/fr/shell.json';
 import frTopbar from './locales/fr/topbar.json';
@@ -97,7 +97,7 @@ import frRustErrors from './locales/fr/rustErrors.json';
 import frPet from './locales/fr/pet.json';
 import frTerminal from './locales/fr/terminal.json';
 import frBrowser from './locales/fr/browser.json';
-import frMmap from './locales/fr/mmap.json';
+import frMarkmap from './locales/fr/markmap.json';
 
 // ponytail: static bundle import (no lazy loading). Bundle size is bounded
 // by the namespace count; add lazy loading only when total JSON exceeds a
@@ -149,7 +149,7 @@ export const NAMESPACES = [
   'pet',
   'terminal',
   'browser',
-  'mmap',
+  'markmap',
   'wiki',
 ] as const;
 
@@ -170,7 +170,7 @@ void i18n.use(initReactI18next).init({
       pet: zhPet,
       terminal: zhTerminal,
       browser: zhBrowser,
-      mmap: zhMmap,
+      markmap: zhMarkmap,
       wiki: zhWiki,
     },
     en: {
@@ -188,7 +188,7 @@ void i18n.use(initReactI18next).init({
       pet: enPet,
       terminal: enTerminal,
       browser: enBrowser,
-      mmap: enMmap,
+      markmap: enMarkmap,
       wiki: enWiki,
     },
     ja: {
@@ -206,7 +206,7 @@ void i18n.use(initReactI18next).init({
       pet: jaPet,
       terminal: jaTerminal,
       browser: jaBrowser,
-      mmap: jaMmap,
+      markmap: jaMarkmap,
       wiki: jaWiki,
     },
     es: {
@@ -224,7 +224,7 @@ void i18n.use(initReactI18next).init({
       pet: esPet,
       terminal: esTerminal,
       browser: esBrowser,
-      mmap: esMmap,
+      markmap: esMarkmap,
       wiki: esWiki,
     },
     de: {
@@ -242,7 +242,7 @@ void i18n.use(initReactI18next).init({
       pet: dePet,
       terminal: deTerminal,
       browser: deBrowser,
-      mmap: deMmap,
+      markmap: deMarkmap,
       wiki: deWiki,
     },
     fr: {
@@ -260,7 +260,7 @@ void i18n.use(initReactI18next).init({
       pet: frPet,
       terminal: frTerminal,
       browser: frBrowser,
-      mmap: frMmap,
+      markmap: frMarkmap,
       wiki: frWiki,
     },
   },

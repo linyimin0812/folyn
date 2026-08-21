@@ -21,7 +21,7 @@ import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdow
 import * as dbmlExporter from './export/dbml';
 import * as excalidrawExporter from './export/excalidraw';
 import * as drawioExporter from './export/drawio';
-import * as mmapExporter from './export/mmap';
+import * as markmapExporter from './export/markmap';
 import * as plantumlExporter from './export/plantuml';
 import * as graphvizExporter from './export/graphviz';
 import * as mermaidExporter from './export/mermaid';
@@ -318,7 +318,7 @@ const REGISTRY: Record<string, EnhanceFn> = {
   dbml: dbmlExporter.enhance,
   excalidraw: excalidrawExporter.enhance,
   drawio: drawioExporter.enhance,
-  markmap: mmapExporter.enhance,
+  markmap: markmapExporter.enhance,
   plantuml: plantumlExporter.enhance,
   puml: plantumlExporter.enhance,
   pu: plantumlExporter.enhance,

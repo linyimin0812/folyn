@@ -1,5 +1,5 @@
 /**
- * Focused regression test for the mmap export enhancer.
+ * Focused regression test for the markmap export enhancer.
  *
  * Two historical bugs are pinned here:
  *  1. The enhancer transformed `ctx.src` (the file-preview directive's src
@@ -46,14 +46,14 @@ vi.mock('markmap-lib', () => ({
 vi.mock('markmap-view', () => ({
   Markmap: { create: mocks.create },
 }));
-vi.mock('@/components/file-types/mmap/initMath', () => ({}));
+vi.mock('@/components/file-types/markmap/initMath', () => ({}));
 vi.mock('@/services/editorIoService', () => ({
   readFileByRoute: mocks.readFileByRoute,
 }));
 vi.mock('@/components/file-types/previewPath', () => ({
   resolveAssetBase: vi.fn(async () => null),
 }));
-vi.mock('@/components/file-types/mmap/resolveImages', () => ({
+vi.mock('@/components/file-types/markmap/resolveImages', () => ({
   resolveImagesInTree: vi.fn(),
 }));
 vi.mock('./shared', async (importOriginal) => {
@@ -64,13 +64,13 @@ vi.mock('./shared', async (importOriginal) => {
   };
 });
 
-import { enhance } from './mmap';
+import { enhance } from './markmap';
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('mmap export enhancer', () => {
+describe('markmap export enhancer', () => {
   it('reads the .markmap file content and transforms it (not the src path)', async () => {
     mocks.readFileByRoute.mockResolvedValueOnce('# Title\n## Child');
 

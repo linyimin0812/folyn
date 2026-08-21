@@ -14,7 +14,7 @@ import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock, GraphvizBlock, pla
 import type { MarkdownCodeRendererProps } from '@quill/plugin-host';
 import { registerMarkdownCodeRenderer } from './plugin-host/markdownCodeRendererAdapter';
 import { registerEditorLanguage } from './plugin-host/editorLanguageAdapter';
-import { MarkmapBlock } from '@/components/file-types/mmap/MarkmapBlock';
+import { MarkmapBlock } from '@/components/file-types/markmap/MarkmapBlock';
 
 /** Adapt MermaidBlock (children-based) to the renderer-props (source-based) shape. */
 function MermaidCodeRenderer({ source }: MarkdownCodeRendererProps) {

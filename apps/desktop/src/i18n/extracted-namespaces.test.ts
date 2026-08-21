@@ -30,8 +30,8 @@ import zhRustErrors from './locales/zh/rustErrors.json';
 import enRustErrors from './locales/en/rustErrors.json';
 import zhPet from './locales/zh/pet.json';
 import enPet from './locales/en/pet.json';
-import zhMmap from './locales/zh/mmap.json';
-import enMmap from './locales/en/mmap.json';
+import zhMarkmap from './locales/zh/markmap.json';
+import enMarkmap from './locales/en/markmap.json';
 
 const zhBundles = {
   common: zhCommon,
@@ -46,7 +46,7 @@ const zhBundles = {
   schedule: zhSchedule,
   rustErrors: zhRustErrors,
   pet: zhPet,
-  mmap: zhMmap,
+  markmap: zhMarkmap,
 } as const;
 
 const enBundles = {
@@ -62,7 +62,7 @@ const enBundles = {
   schedule: enSchedule,
   rustErrors: enRustErrors,
   pet: enPet,
-  mmap: enMmap,
+  markmap: enMarkmap,
 } as const;
 
 /** Recursively collect the tree of object keys (paths joined by '.'). */

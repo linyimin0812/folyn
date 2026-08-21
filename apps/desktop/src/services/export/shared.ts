@@ -42,7 +42,7 @@ export async function svgToPngBlob(svg: string, scale = 2): Promise<Blob | null>
   const hMatch = svg.match(/\bheight="([^"]+)"/);
   let w = wMatch ? parseInt(wMatch[1], 10) || 0 : 0;
   let h = hMatch ? parseInt(hMatch[1], 10) || 0 : 0;
-  // ponytail: mmap.ts / dbml.ts / excalidraw.ts all set width/height to "100%"
+  // ponytail: markmap.ts / dbml.ts / excalidraw.ts all set width/height to "100%"
   // for fit-to-container preview. parseInt("100%")=100 — passes the !w check
   // but yields a 100×100 PNG instead of native SVG dims. Treat any % value
   // as "unresolved" and fall through to viewBox.
