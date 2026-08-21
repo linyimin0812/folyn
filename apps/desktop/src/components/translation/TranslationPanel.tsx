@@ -156,6 +156,19 @@ export function TranslationPanel() {
           onChange={setTarget}
           title={t('settings:translation.targetLang')}
         />
+        <button
+          type="button"
+          className="btn btn-p btn-sm"
+          disabled={streaming || !input.trim()}
+          onClick={handleTranslate}
+        >
+          {streaming ? t('settings:translation.translating') : t('settings:translation.translate')}
+        </button>
+        {streaming && (
+          <button type="button" className="btn btn-g btn-sm" onClick={handleCancel}>
+            {t('settings:translation.cancel')}
+          </button>
+        )}
         <div className="flex-1" />
         <PairSelector
           value={selectedPair}
@@ -171,19 +184,6 @@ export function TranslationPanel() {
         >
           {preview ? PREVIEW_ON_SVG : PREVIEW_OFF_SVG}
         </button>
-        <button
-          type="button"
-          className="btn btn-p btn-sm"
-          disabled={streaming || !input.trim()}
-          onClick={handleTranslate}
-        >
-          {streaming ? t('settings:translation.translating') : t('settings:translation.translate')}
-        </button>
-        {streaming && (
-          <button type="button" className="btn btn-g btn-sm" onClick={handleCancel}>
-            {t('settings:translation.cancel')}
-          </button>
-        )}
       </div>
 
       {/* Two panes */}
