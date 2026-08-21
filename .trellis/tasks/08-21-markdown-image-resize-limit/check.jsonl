@@ -1,0 +1,2 @@
+{"file":".trellis/spec/desktop/frontend/quality-guidelines.md","reason":"Review the resize change for safe, focused desktop frontend behavior."}
+{"file":".trellis/spec/desktop/frontend/type-safety.md","reason":"Verify the extracted resize calculation remains strictly typed."}

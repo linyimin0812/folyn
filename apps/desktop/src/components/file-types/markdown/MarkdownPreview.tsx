@@ -35,6 +35,7 @@ import {
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
+import { getResizedMediaWidth } from './mediaResize';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -292,7 +293,7 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   const [width, setWidth] = useState<number | null>(() => readSourceWidth(kind, contentRef.current, sourceLine));
   const widthRef = useRef<number | null>(null);
   widthRef.current = width;
-  const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startW: number; maxW: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -304,27 +305,18 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     dragRef.current = {
       startX: e.clientX,
       startW: wrapper?.getBoundingClientRect().width ?? 0,
-      // ponytail: snapshot the parent's right edge at pointerdown — the wrapper
-      // is centered (margin:auto) so its right edge moves as it grows; the
-      // parent's right edge stays put. Comparing the wrapper's current right
-      // edge to this snapshot tells us when we've hit the wall.
-      parentRight: parent?.getBoundingClientRect().right ?? Infinity,
+      // ponytail: constrain the width before updating state. CSS max-width
+      // alone clamps layout after state is written, which lets a centered
+      // wrapper keep accepting a larger persisted width and appear to shift.
+      maxW: parent?.getBoundingClientRect().width ?? Infinity,
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
-    // ponytail: freeze on rightward drag at the wall — when the wrapper's
-    // current right edge has reached the parent's right edge (snapshot from
-    // pointerdown), further rightward dx shouldn't enlarge the image or move
-    // the handle. Leftward dx (shrink) always allowed.
-    if (dx > 0) {
-      const wrapper = wrapperRef.current;
-      const currentRight = wrapper?.getBoundingClientRect().right ?? -Infinity;
-      if (currentRight >= dragRef.current.parentRight - 1) return;
-    }
-    const proposed = Math.max(40, Math.round(dragRef.current.startW + dx));
-    setWidth(proposed);
+    const nextWidth = getResizedMediaWidth(dragRef.current.startW, dx, dragRef.current.maxW);
+    if (dx > 0 && nextWidth === dragRef.current.startW) return;
+    setWidth(nextWidth);
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
