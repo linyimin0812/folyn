@@ -110,7 +110,6 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // every plugin file-type to either inherit markdown's 80vh bottom pad
     // (broken) or edit host source to be added to the list.
     const fullBleed = activeTab.fileType !== 'markdown';
-    const isMarkmap = activeTab.fileType === 'markdown' && markmapMode;
 
     return (
       <div
@@ -155,32 +154,48 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
           </div>
         )}
         <div className="flex-1 flex overflow-hidden">
-          <div
-            className={
-              isMarkmap
-                ? 'prev-body flex-1 h-full overflow-hidden'
-                : fullBleed
-                  ? 'prev-body flex-1 h-full overflow-auto'
-                  : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'
-            }
-            ref={setBodyRef}
-          >
-            {isMarkmap ? (
-              <MarkmapCanvas
-                content={activeTab.content}
-                assetBase={markmapAssetBase}
-                className="h-full w-full"
-              />
-            ) : (
+          {activeTab.fileType === 'markdown' ? (
+            <>
+              {/* ponytail: MarkdownPreview stays mounted across the markmap
+                  toggle so switching back doesn't re-run the unified pipeline
+                  (1-2s lag). Hidden via CSS instead of unmounted. MarkmapCanvas
+                  still mounts on demand to avoid running markmap-lib transform
+                  in the background for every markdown file. */}
+              <div
+                className={`prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh] ${markmapMode ? 'hidden' : 'block'}`}
+                ref={setBodyRef}
+              >
+                <Preview
+                  content={activeTab.content}
+                  filePath={activeTab.path}
+                  vaultRoot={vaultRoot}
+                  onChange={onChange}
+                />
+              </div>
+              {markmapMode && (
+                <div className="prev-body flex-1 h-full overflow-hidden">
+                  <MarkmapCanvas
+                    content={activeTab.content}
+                    assetBase={markmapAssetBase}
+                    className="h-full w-full"
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <div
+              className={fullBleed ? 'prev-body flex-1 h-full overflow-auto' : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'}
+              ref={setBodyRef}
+            >
               <Preview
                 content={activeTab.content}
                 filePath={activeTab.path}
                 vaultRoot={vaultRoot}
                 onChange={onChange}
               />
-            )}
-          </div>
-          {activeTab.fileType === 'markdown' && outlineVisible && !isMarkmap && (
+            </div>
+          )}
+          {activeTab.fileType === 'markdown' && outlineVisible && !markmapMode && (
             <div className="shrink-0 overflow-y-auto border-l border-brd bg-panel relative flex flex-col" style={{ width: `${outlineWidth}px` }}>
               <div
                 className="absolute -left-[3px] top-0 bottom-0 w-1.5 cursor-col-resize z-[5]"
