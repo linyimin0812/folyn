@@ -944,5 +944,85 @@
       "button": "Aplicar y recargar",
       "note": "Aplicar recarga la página — parpadea brevemente. URLs nuevas y \"Permitir todas\" solo activas tras recargar."
     }
+  },
+  "storage": {
+    "title": "Almacenamiento y uso compartido",
+    "description": "Almacenamiento de objetos en la nube: usado para hospedaje de imágenes y compartir HTML",
+    "provider": {
+      "label": "Proveedor",
+      "configured": "Listo",
+      "notConfigured": "Sin configurar",
+      "r2": {
+        "label": "Cloudflare R2"
+      },
+      "qiniu": {
+        "label": "Qiniu Kodo"
+      },
+      "oss": {
+        "label": "Aliyun OSS"
+      }
+    },
+    "r2": {
+      "accountId": "ID de cuenta",
+      "accessKeyId": "Access Key ID",
+      "secretAccessKey": "Secret Access Key",
+      "bucket": "Bucket",
+      "publicHint": "Haz el bucket de lectura pública (R2 → Settings → Public Development URL, o vincula un dominio personalizado). Los objetos subidos devuelven 403 hasta que lo hagas.\nLos dominios de hospedaje de imágenes R2 NO están en la lista base del CSP — si las previsualizaciones de imágenes no se renderizan, añade el dominio en Configuración → Política de seguridad.\nTambién necesitas una regla CORS en R2 → Settings → CORS Policy: AllowedOrigins debe incluir tauri://localhost, http://tauri.localhost y http://localhost:1420; AllowedMethods debe incluir PUT; AllowedHeaders debe incluir authorization, x-amz-content-sha256, x-amz-date y content-type. Sin ella, las subidas del navegador fallan en el preflight con 403."
+    },
+    "qiniu": {
+      "accessKey": "Access Key",
+      "secretKey": "Secret Key",
+      "bucket": "Bucket",
+      "region": "Región",
+      "regionOption": {
+        "z0": "Este de China",
+        "z1": "Norte de China",
+        "z2": "Sur de China",
+        "na0": "Norteamérica",
+        "as0": "Sudeste asiático / Oceanía"
+      },
+      "publicHint": "Vincula un dominio personalizado en la consola de Qiniu y configura el bucket como público. Los objetos subidos devuelven 403 hasta que lo hagas.\nEl dominio de prueba http://*.clouddn.com está permitido por defecto; si vinculas un dominio personalizado y las previsualizaciones no se renderizan, añádelo en Configuración → Política de seguridad."
+    },
+    "oss": {
+      "accessKeyId": "Access Key ID",
+      "accessKeySecret": "Access Key Secret",
+      "bucket": "Bucket",
+      "region": "Región",
+      "publicHint": "Configura el ACL del bucket como public-read (OSS → Bucket → Permisos → Bucket ACL = public-read), o vincula un dominio personalizado en la consola. Los objetos subidos devuelven 403 hasta que lo hagas.\nEl dominio base https://*.aliyuncs.com está en la lista de permitidos del CSP; si vinculas un dominio personalizado y las previsualizaciones no se renderizan, añádelo en Configuración → Política de seguridad.\nTambién necesitas una regla CORS en OSS → Bucket → Seguridad de datos → Configuración跨域: AllowedOrigin debe incluir tauri://localhost, http://tauri.localhost y http://localhost:1420; AllowedMethod debe incluir PUT; AllowedHeader debe incluir authorization, x-oss-date, x-oss-content-sha256 y content-type. Sin ella, las subidas del navegador fallan en el preflight con 403."
+    },
+    "publicBaseUrl": "URL base pública",
+    "imageKeyPrefix": "Prefijo de clave de imagen",
+    "htmlKeyPrefix": "Prefijo de clave HTML",
+    "save": "Guardar",
+    "clear": "Limpiar",
+    "cors": {
+      "copyButton": "Copiar configuración CORS de R2",
+      "ossCopyButton": "Copiar configuración CORS de OSS",
+      "copied": "Copiado"
+    },
+    "htmlImageMode": {
+      "label": "Manejo de imágenes en HTML",
+      "help": "Al compartir un documento markdown como HTML, qué ocurre con las imágenes locales dentro de él.",
+      "inline": "Inline",
+      "inlineDesc": "Las imágenes se convierten en data URIs; el archivo HTML queda autónomo.",
+      "upload": "Subir",
+      "uploadDesc": "Las imágenes se suben al proveedor; el src se reescribe como URL pública."
+    },
+    "toast": {
+      "uploading": "Subiendo a la nube…",
+      "imageUploaded": "Imagen subida",
+      "htmlShared": "URL de compartir copiada al portapapeles",
+      "uploadFailed": "Subida fallida",
+      "notConfigured": "Proveedor de almacenamiento no configurado — abre Configuración → Almacenamiento y uso compartido",
+      "saved": "Guardado",
+      "bucketNotPublic": "Objeto subido pero el bucket no es público — abre la consola del proveedor para habilitar acceso público"
+    },
+    "share": {
+      "menu": "Compartir a la nube",
+      "imageMenu": "Subir imagen al host",
+      "imageMenuDesc": "Sube la imagen actual directamente al host de imágenes en la nube y devuelve un enlace público",
+      "fileMenu": "Subir archivo fuente a la nube",
+      "fileMenuDesc": "Sube el archivo actual directamente a la nube y devuelve un enlace público"
+    }
   }
 }

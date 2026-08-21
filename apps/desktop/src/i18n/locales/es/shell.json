@@ -55,5 +55,14 @@
       "renamed": "Renombrado",
       "conflict": "Conflicto"
     }
+  },
+  "workArea": {
+    "empty": {
+      "clips": "Sin recortes",
+      "wiki": "Sin páginas Wiki",
+      "calendar": "Sin entradas de diario",
+      "analyze": "Sin informes de análisis",
+      "files": "Sin archivos abiertos"
+    }
   }
 }

@@ -55,5 +55,14 @@
       "renamed": "名前変更",
       "conflict": "競合"
     }
+  },
+  "workArea": {
+    "empty": {
+      "clips": "クリップなし",
+      "wiki": "Wiki ページなし",
+      "calendar": "日記なし",
+      "analyze": "分析レポートなし",
+      "files": "開いているファイルなし"
+    }
   }
 }

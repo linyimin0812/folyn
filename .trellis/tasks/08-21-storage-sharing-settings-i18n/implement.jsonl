@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18n 契约：namespace 前缀强制、zh/en key 树对齐、returnNull=false missing-key 回退行为"}
+{"file": "apps/desktop/src/i18n/extracted-namespaces.test.ts", "reason": "zh/en key 树对齐验证规则，新增 key 后必须通过"}
+{"file": "apps/desktop/src/i18n/locales/zh/settings.json", "reason": "storage namespace zh 母本，新增 qiniu.regionOption 起点"}
+{"file": "apps/desktop/src/i18n/locales/en/settings.json", "reason": "storage namespace en 母本，ja/es/de/fr 翻译蓝本"}

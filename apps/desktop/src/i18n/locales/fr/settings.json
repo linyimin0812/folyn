@@ -944,5 +944,85 @@
       "button": "Appliquer & recharger",
       "note": "Appliquer recharge la page — bref clignotement. Les URLs ajoutées et « Autoriser toutes » ne sont actives qu'après le rechargement."
     }
+  },
+  "storage": {
+    "title": "Stockage & partage",
+    "description": "Stockage d'objets cloud — utilisé pour l'hébergement d'images et le partage HTML",
+    "provider": {
+      "label": "Fournisseur",
+      "configured": "Prêt",
+      "notConfigured": "Non configuré",
+      "r2": {
+        "label": "Cloudflare R2"
+      },
+      "qiniu": {
+        "label": "Qiniu Kodo"
+      },
+      "oss": {
+        "label": "Aliyun OSS"
+      }
+    },
+    "r2": {
+      "accountId": "ID de compte",
+      "accessKeyId": "Access Key ID",
+      "secretAccessKey": "Secret Access Key",
+      "bucket": "Bucket",
+      "publicHint": "Rendez le bucket public en lecture (R2 → Settings → Public Development URL, ou liez un domaine personnalisé). Les objets téléchargés renvoient 403 tant que ce n'est pas fait.\nLes domaines d'hébergement d'images R2 ne sont PAS dans la liste CSP de base — si les aperçus d'images ne s'affichent pas, ajoutez le domaine dans Paramètres → Politique de sécurité.\nVous devez aussi ajouter une règle CORS dans R2 → Settings → CORS Policy : AllowedOrigins doit inclure tauri://localhost, http://tauri.localhost et http://localhost:1420 ; AllowedMethods doit inclure PUT ; AllowedHeaders doit inclure authorization, x-amz-content-sha256, x-amz-date et content-type. Sans cela, les téléversements du navigateur échouent au preflight avec 403."
+    },
+    "qiniu": {
+      "accessKey": "Access Key",
+      "secretKey": "Secret Key",
+      "bucket": "Bucket",
+      "region": "Région",
+      "regionOption": {
+        "z0": "Chine de l'Est",
+        "z1": "Chine du Nord",
+        "z2": "Chine du Sud",
+        "na0": "Amérique du Nord",
+        "as0": "Asie du Sud-Est / Océanie"
+      },
+      "publicHint": "Lie un domaine personnalisé dans la console Qiniu et définis le bucket en lecture publique. Les objets téléchargés renvoient 403 tant que ce n'est pas fait.\nLe domaine de test http://*.clouddn.com est autorisé par défaut ; si tu lies un domaine personnalisé et que les aperçus ne s'affichent pas, ajoute-le dans Paramètres → Politique de sécurité."
+    },
+    "oss": {
+      "accessKeyId": "Access Key ID",
+      "accessKeySecret": "Access Key Secret",
+      "bucket": "Bucket",
+      "region": "Région",
+      "publicHint": "Définis l'ACL du bucket sur public-read (OSS → Bucket → Permissions → Bucket ACL = public-read), ou lie un domaine personnalisé dans la console. Les objets téléchargés renvoient 403 tant que ce n'est pas fait.\nLe domaine de base https://*.aliyuncs.com est dans la liste d'autorisation du CSP ; si tu lies un domaine personnalisé et que les aperçus ne s'affichent pas, ajoute-le dans Paramètres → Politique de sécurité.\nTu dois aussi ajouter une règle CORS dans OSS → Bucket → Sécurité des données → Cross-Origin : AllowedOrigin doit inclure tauri://localhost, http://tauri.localhost et http://localhost:1420 ; AllowedMethod doit inclure PUT ; AllowedHeader doit inclure authorization, x-oss-date, x-oss-content-sha256 et content-type. Sans cela, les téléversements du navigateur échouent au preflight avec 403."
+    },
+    "publicBaseUrl": "URL de base publique",
+    "imageKeyPrefix": "Préfixe de clé d'image",
+    "htmlKeyPrefix": "Préfixe de clé HTML",
+    "save": "Enregistrer",
+    "clear": "Effacer",
+    "cors": {
+      "copyButton": "Copier la configuration CORS R2",
+      "ossCopyButton": "Copier la configuration CORS OSS",
+      "copied": "Copié"
+    },
+    "htmlImageMode": {
+      "label": "Traitement des images HTML",
+      "help": "Lors du partage d'un document markdown en HTML, comment traiter les images locales qu'il contient.",
+      "inline": "Inline",
+      "inlineDesc": "Les images deviennent des data URIs ; le fichier HTML est autonome.",
+      "upload": "Téléverser",
+      "uploadDesc": "Les images sont téléversées vers le fournisseur ; src est réécrit en URL publique."
+    },
+    "toast": {
+      "uploading": "Téléversement vers le cloud…",
+      "imageUploaded": "Image téléversée",
+      "htmlShared": "URL de partage copiée dans le presse-papiers",
+      "uploadFailed": "Échec du téléversement",
+      "notConfigured": "Fournisseur de stockage non configuré — ouvre Paramètres → Stockage & partage",
+      "saved": "Enregistré",
+      "bucketNotPublic": "Objet téléversé mais le bucket n'est pas public — ouvre la console du fournisseur pour activer l'accès public"
+    },
+    "share": {
+      "menu": "Partager vers le cloud",
+      "imageMenu": "Téléverser l'image vers l'hébergement",
+      "imageMenuDesc": "Téléverse l'image actuelle directement vers l'hébergement d'images cloud et renvoie un lien public direct",
+      "fileMenu": "Téléverser le fichier source vers le cloud",
+      "fileMenuDesc": "Téléverse le fichier actuel directement vers le cloud et renvoie un lien public direct"
+    }
   }
 }

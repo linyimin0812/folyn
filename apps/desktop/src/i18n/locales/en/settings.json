@@ -985,7 +985,14 @@
       "secretKey": "Secret Key",
       "bucket": "Bucket",
       "region": "Region",
-      "publicHint": "Bind a custom domain in Qiniu console and set bucket to public-read. Uploaded objects return 403 until you do.\nThe default http://*.clouddn.com test domain is baseline-allowed; if you bind a custom domain and previews don't render, add it to Settings → Security Policy."
+      "publicHint": "Bind a custom domain in Qiniu console and set bucket to public-read. Uploaded objects return 403 until you do.\nThe default http://*.clouddn.com test domain is baseline-allowed; if you bind a custom domain and previews don't render, add it to Settings → Security Policy.",
+      "regionOption": {
+        "z0": "East China",
+        "z1": "North China",
+        "z2": "South China",
+        "na0": "North America",
+        "as0": "SE Asia / Oceania"
+      }
     },
     "oss": {
       "accessKeyId": "Access Key ID",

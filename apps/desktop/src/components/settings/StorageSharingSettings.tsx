@@ -186,7 +186,7 @@ function R2Form({ cfg, onSave, onRemove, t }: {
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
       <div className="flex items-center gap-2 mb-3">
         <ThemeIcon name="cloudflare" size={16} />
-        <div className="text-[13px] font-semibold text-t1">Cloudflare R2</div>
+        <div className="text-[13px] font-semibold text-t1">{t('settings:storage.provider.r2.label')}</div>
       </div>
       <Field label={t('settings:storage.r2.accountId')} value={draft.accountId} onChange={(v) => set({ accountId: v })} placeholder="a1b2c3..." />
       <div className="grid grid-cols-2 gap-3">
@@ -286,7 +286,7 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
       <div className="flex items-center gap-2 mb-3">
         <ThemeIcon name="qiniu" size={16} />
-        <div className="text-[13px] font-semibold text-t1">七牛云 Kodo</div>
+        <div className="text-[13px] font-semibold text-t1">{t('settings:storage.provider.qiniu.label')}</div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('settings:storage.qiniu.accessKey')} value={draft.accessKey} onChange={(v) => set({ accessKey: v })} />
@@ -301,11 +301,11 @@ function QiniuForm({ cfg, onSave, onRemove, t }: {
             value={draft.region}
             onChange={(e) => set({ region: e.target.value as QiniuProviderConfig['region'] })}
           >
-            <option value="z0">z0 (East China)</option>
-            <option value="z1">z1 (North China)</option>
-            <option value="z2">z2 (South China)</option>
-            <option value="na0">na0 (North America)</option>
-            <option value="as0">as0 (SE Asia / Oceania)</option>
+            <option value="z0">{t('settings:storage.qiniu.regionOption.z0')}</option>
+            <option value="z1">{t('settings:storage.qiniu.regionOption.z1')}</option>
+            <option value="z2">{t('settings:storage.qiniu.regionOption.z2')}</option>
+            <option value="na0">{t('settings:storage.qiniu.regionOption.na0')}</option>
+            <option value="as0">{t('settings:storage.qiniu.regionOption.as0')}</option>
           </select>
         </div>
       </div>
@@ -376,7 +376,7 @@ function OssForm({ cfg, onSave, onRemove, t }: {
     <div className="p-4 border border-brd2 rounded-lg bg-surf">
       <div className="flex items-center gap-2 mb-3">
         <ThemeIcon name="aliyun" size={16} />
-        <div className="text-[13px] font-semibold text-t1">阿里云 OSS</div>
+        <div className="text-[13px] font-semibold text-t1">{t('settings:storage.provider.oss.label')}</div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('settings:storage.oss.accessKeyId')} value={draft.accessKeyId} onChange={(v) => set({ accessKeyId: v })} />

@@ -944,5 +944,85 @@
       "button": "Anwenden & neu laden",
       "note": "Anwenden lädt die Seite neu — kurzes Blinken. Neue URLs und „Alle URLs erlauben“ werden erst nach Neuladen aktiv."
     }
+  },
+  "storage": {
+    "title": "Speicher & Teilen",
+    "description": "Cloud-Objektspeicher — verwendet für Image-Hosting und HTML-Sharing",
+    "provider": {
+      "label": "Anbieter",
+      "configured": "Bereit",
+      "notConfigured": "Nicht konfiguriert",
+      "r2": {
+        "label": "Cloudflare R2"
+      },
+      "qiniu": {
+        "label": "Qiniu Kodo"
+      },
+      "oss": {
+        "label": "Aliyun OSS"
+      }
+    },
+    "r2": {
+      "accountId": "Account-ID",
+      "accessKeyId": "Access Key ID",
+      "secretAccessKey": "Secret Access Key",
+      "bucket": "Bucket",
+      "publicHint": "Setze den Bucket auf public-read (R2 → Settings → Public Development URL, oder binde eine eigene Domain ein). Hochgeladene Objekte geben sonst 403 zurück.\nR2-Image-Host-Domains sind NICHT in der CSP-Baseline — wenn Bildvorschauen nicht rendern, füge die Domain unter Einstellungen → Sicherheitsrichtlinie hinzu.\nDu brauchst außerdem eine CORS-Regel unter R2 → Settings → CORS Policy: AllowedOrigins muss tauri://localhost, http://tauri.localhost und http://localhost:1420 enthalten; AllowedMethods muss PUT enthalten; AllowedHeaders muss authorization, x-amz-content-sha256, x-amz-date und content-type enthalten. Ohne diese Regel scheitern Browser-Uploads am Preflight mit 403."
+    },
+    "qiniu": {
+      "accessKey": "Access Key",
+      "secretKey": "Secret Key",
+      "bucket": "Bucket",
+      "region": "Region",
+      "regionOption": {
+        "z0": "Ostchina",
+        "z1": "Nordchina",
+        "z2": "Südchina",
+        "na0": "Nordamerika",
+        "as0": "Südostasien / Ozeanien"
+      },
+      "publicHint": "Binde in der Qiniu-Konsole eine eigene Domain ein und setze den Bucket auf public-read. Hochgeladene Objekte geben sonst 403 zurück.\nDie Standard-Testdomain http://*.clouddn.com ist baseline-erlaubt; wenn du eine eigene Domain einbindest und Vorschauen nicht rendern, füge sie unter Einstellungen → Sicherheitsrichtlinie hinzu."
+    },
+    "oss": {
+      "accessKeyId": "Access Key ID",
+      "accessKeySecret": "Access Key Secret",
+      "bucket": "Bucket",
+      "region": "Region",
+      "publicHint": "Setze die Bucket-ACL auf public-read (OSS → Bucket → Berechtigungen → Bucket ACL = public-read), oder binde in der Konsole eine eigene Domain ein. Hochgeladene Objekte geben sonst 403 zurück.\nDie OSS-Baseline https://*.aliyuncs.com ist in der CSP-Allow-Liste; wenn du eine eigene Domain einbindest und Vorschauen nicht rendern, füge sie unter Einstellungen → Sicherheitsrichtlinie hinzu.\nDu brauchst außerdem eine CORS-Regel unter OSS → Bucket → Datensicherheit → Cross-Origin: AllowedOrigin muss tauri://localhost, http://tauri.localhost und http://localhost:1420 enthalten; AllowedMethod muss PUT enthalten; AllowedHeader muss authorization, x-oss-date, x-oss-content-sha256 und content-type enthalten. Ohne diese Regel scheitern Browser-Uploads am Preflight mit 403."
+    },
+    "publicBaseUrl": "Öffentliche Basis-URL",
+    "imageKeyPrefix": "Bild-Key-Präfix",
+    "htmlKeyPrefix": "HTML-Key-Präfix",
+    "save": "Speichern",
+    "clear": "Leeren",
+    "cors": {
+      "copyButton": "R2-CORS-Konfiguration kopieren",
+      "ossCopyButton": "OSS-CORS-Konfiguration kopieren",
+      "copied": "Kopiert"
+    },
+    "htmlImageMode": {
+      "label": "HTML-Bildbehandlung",
+      "help": "Wenn ein Markdown-Dokument als HTML geteilt wird, was mit lokalen Bildern darin passiert.",
+      "inline": "Inline",
+      "inlineDesc": "Bilder werden zu Data-URIs; die HTML-Datei ist selbstenthalten.",
+      "upload": "Hochladen",
+      "uploadDesc": "Bilder werden zum Anbieter hochgeladen; src wird als öffentliche URL umgeschrieben."
+    },
+    "toast": {
+      "uploading": "In die Cloud hochladen…",
+      "imageUploaded": "Bild hochgeladen",
+      "htmlShared": "Freigabe-URL in Zwischenablage kopiert",
+      "uploadFailed": "Upload fehlgeschlagen",
+      "notConfigured": "Speicheranbieter nicht konfiguriert — öffne Einstellungen → Speicher & Teilen",
+      "saved": "Gespeichert",
+      "bucketNotPublic": "Objekt hochgeladen, aber Bucket ist nicht öffentlich — öffne die Anbieter-Konsole, um öffentlichen Zugriff zu aktivieren"
+    },
+    "share": {
+      "menu": "In die Cloud teilen",
+      "imageMenu": "Bild zum Host hochladen",
+      "imageMenuDesc": "Lade das aktuelle Bild direkt zum Cloud-Image-Host hoch und erhalte einen öffentlichen Direktlink",
+      "fileMenu": "Quelldatei in die Cloud hochladen",
+      "fileMenuDesc": "Lade die aktuelle Datei direkt in die Cloud hoch und erhalte einen öffentlichen Direktlink"
+    }
   }
 }

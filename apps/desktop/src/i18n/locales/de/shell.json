@@ -55,5 +55,14 @@
       "renamed": "Umbenannt",
       "conflict": "Konflikt"
     }
+  },
+  "workArea": {
+    "empty": {
+      "clips": "Keine Clips",
+      "wiki": "Keine Wiki-Seiten",
+      "calendar": "Keine Tagebucheinträge",
+      "analyze": "Keine Analyseberichte",
+      "files": "Keine offenen Dateien"
+    }
   }
 }

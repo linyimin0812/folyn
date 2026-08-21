@@ -950,5 +950,85 @@
       "button": "適用して再読み込み",
       "note": "適用をクリックするとページが再読み込みされます — 一瞬点滅します。新規追加URLと「全てのURLを許可」は再読み込み後のみ有効化。"
     }
+  },
+  "storage": {
+    "title": "ストレージ & 共有",
+    "description": "クラウドオブジェクトストレージ — 画像ホストと HTML 共有に使用",
+    "provider": {
+      "label": "プロバイダー",
+      "configured": "設定済み",
+      "notConfigured": "未設定",
+      "r2": {
+        "label": "Cloudflare R2"
+      },
+      "qiniu": {
+        "label": "Qiniu Kodo"
+      },
+      "oss": {
+        "label": "Aliyun OSS"
+      }
+    },
+    "r2": {
+      "accountId": "アカウント ID",
+      "accessKeyId": "Access Key ID",
+      "secretAccessKey": "Secret Access Key",
+      "bucket": "Bucket",
+      "publicHint": "バケットを公開読み取りに設定してください（R2 → Settings → Public Development URL、またはカスタムドメインをバインド）。設定しないとアップロードは成功してもアクセスが 403 になります。\nR2 画像ホストドメインは CSP のデフォルト許可リストに含まれません — 画像プレビューが表示されない場合は、設定 → セキュリティポリシー でそのドメインをホワイトリストに追加してください。\nさらに R2 → Settings → CORS Policy でルールを追加する必要があります：AllowedOrigins に tauri://localhost、http://tauri.localhost、http://localhost:1420 を含め、AllowedMethods に PUT を含め、AllowedHeaders に authorization、x-amz-content-sha256、x-amz-date、content-type を含めてください。設定しないとブラウザのアップロードが preflight で 403 で失敗します。"
+    },
+    "qiniu": {
+      "accessKey": "Access Key",
+      "secretKey": "Secret Key",
+      "bucket": "Bucket",
+      "region": "リージョン",
+      "regionOption": {
+        "z0": "華東",
+        "z1": "華北",
+        "z2": "華南",
+        "na0": "北米",
+        "as0": "東南アジア / オセアニア"
+      },
+      "publicHint": "Qiniu コンソールでカスタムドメインをバインドし、バケットを公開読み取りに設定してください。設定しないとアップロードは成功してもアクセスが 403 になります。\nデフォルトの http://*.clouddn.com テストドメインは CSP に内蔵許可済みです。カスタムドメインをバインド後、プレビューで画像が表示されない場合は、設定 → セキュリティポリシー でそのドメインをホワイトリストに追加してください。"
+    },
+    "oss": {
+      "accessKeyId": "Access Key ID",
+      "accessKeySecret": "Access Key Secret",
+      "bucket": "Bucket",
+      "region": "リージョン",
+      "publicHint": "バケット ACL を public-read に設定するか（OSS → Bucket → 権限管理 → Bucket ACL = public-read）、コンソールでカスタムドメインをバインドしてください。設定しないとアップロードは成功してもアクセスが 403 になります。\nOSS 画像ホストドメイン *.aliyuncs.com は CSP のデフォルト許可リストに含まれます。カスタムドメインをバインド後、プレビューで画像が表示されない場合は、設定 → セキュリティポリシー でそのドメインをホワイトリストに追加してください。\nさらに OSS → Bucket → データセキュリティ → 跨域設定 で CORS ルールを追加する必要があります：AllowedOrigin に tauri://localhost、http://tauri.localhost、http://localhost:1420 を含め、AllowedMethod に PUT を含め、AllowedHeader に authorization、x-oss-date、x-oss-content-sha256、content-type を含めてください。設定しないとブラウザのアップロードが preflight で 403 で失敗します。"
+    },
+    "publicBaseUrl": "公開アクセス URL",
+    "imageKeyPrefix": "画像 key プレフィックス",
+    "htmlKeyPrefix": "HTML key プレフィックス",
+    "save": "保存",
+    "clear": "クリア",
+    "cors": {
+      "copyButton": "R2 CORS 設定をコピー",
+      "ossCopyButton": "OSS CORS 設定をコピー",
+      "copied": "コピー済み"
+    },
+    "htmlImageMode": {
+      "label": "HTML 内画像処理",
+      "help": "Markdown を HTML として共有する際、ドキュメント内のローカル画像をどう扱うか。",
+      "inline": "インライン",
+      "inlineDesc": "画像を data URI としてインライン化し、HTML ファイルを自己完結させます。",
+      "upload": "アップロード",
+      "uploadDesc": "画像をプロバイダーにアップロードし、src を公開 URL に書き換えます。"
+    },
+    "toast": {
+      "uploading": "クラウドにアップロード中…",
+      "imageUploaded": "画像をアップロードしました",
+      "htmlShared": "共有 URL をクリップボードにコピーしました",
+      "uploadFailed": "アップロード失敗",
+      "notConfigured": "ストレージプロバイダー未設定 — 設定 → ストレージ & 共有 を開く",
+      "saved": "保存済み",
+      "bucketNotPublic": "オブジェクトはアップロードされましたが、バケットが公開設定ではありません — プロバイダーのコンソールで公開アクセスを有効にしてください"
+    },
+    "share": {
+      "menu": "クラウドに共有",
+      "imageMenu": "画像をホストにアップロード",
+      "imageMenuDesc": "現在の画像をクラウド画像ホストに直接アップロードし、公開直リンクを返します",
+      "fileMenu": "ソースファイルをクラウドにアップロード",
+      "fileMenuDesc": "現在のファイルをクラウドに直接アップロードし、公開直リンクを返します"
+    }
   }
 }

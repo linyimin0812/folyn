@@ -56,5 +56,14 @@
       "renamed": "重命名",
       "conflict": "冲突"
     }
+  },
+  "workArea": {
+    "empty": {
+      "clips": "暂无剪藏",
+      "wiki": "暂无 Wiki 页面",
+      "calendar": "暂无日记",
+      "analyze": "暂无分析报告",
+      "files": "暂无打开的文件"
+    }
   }
 }

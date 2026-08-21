@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "zh/en key 树对齐 + missing-key 回退规则，check 时按此验证"}
+{"file": "apps/desktop/src/i18n/extracted-namespaces.test.ts", "reason": "新增 key 后必须仍通过，是自动校验门槛"}

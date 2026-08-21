@@ -56,5 +56,14 @@
       "renamed": "Renamed",
       "conflict": "Conflict"
     }
+  },
+  "workArea": {
+    "empty": {
+      "clips": "No clips",
+      "wiki": "No Wiki pages",
+      "calendar": "No journal entries",
+      "analyze": "No analysis reports",
+      "files": "No open files"
+    }
   }
 }
