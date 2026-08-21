@@ -382,22 +382,251 @@
   },
   "about": {
     "tagline": "v0.1.0-alpha · ローカルファーストMarkdownエディタ",
+    "groups": {
+      "capabilities": "機能",
+      "architecture": "アーキテクチャと実装",
+      "developer": "開発とコントリビュート"
+    },
+    "description": "Tauri 2 + React + CodeMirror 6 をベースに、Quill はローカルファーストの Markdown エディタです。AI チャット、デスクトップペット、プラグインシステム、ER 図、スケジュール管理、CLI ツールを統合し、データはあなたのデバイス上に標準 Markdown で保存され、ロックインはありません。",
+    "philosophy": {
+      "label": "設計理念",
+      "localFirst": "ローカルファースト —— あなたのノートはあなたのもの。すべてのドキュメントはローカルのファイルシステムにプレーン Markdown ファイルとして保存され、クラウドアカウント不要、オフラインで完全に利用可能、自由に移行できます。Vault システムは vault-provider 抽象レイヤーで着脱可能なバックエンドをサポートしますが、データの所有権は常にあなたにあります。",
+      "openFormat": "オープンフォーマット —— ロックインなし。Quill は標準 Markdown を唯一の保存形式として使い、GFM と独自ディレクティブのために remark/rehype パイプラインで処理します。どんなテキストエディタでもノートを開け、HTML や PDF にいつでもエクスポートでき、Quill をアンインストールした後もデータは完全に読めます。",
+      "extensible": "拡張可能 —— エディタコアからストレージバックエンドまでエンドツーエンドで開いています。マイクロカーネル + プラグイン SDK は 14 種のコンテナディレクティブ（callout、tabs、mermaid 等）とサードパーティプラグインをサポートし、CLI アダプター抽象は 6 種の AI ツール（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）を着脱可能にし、pnpm workspaces は container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk を独立パッケージとして進化させます。",
+      "privacy": "プライバシーファースト —— AI チャットとコード生成はローカル CLI ツール経由で行われ、あなたの API キーと会話内容は Quill のサーバーを通りません。CSP ポリシーとプラグインサンドボックス層が多層防御を提供し、trusted 層と sandbox 層は分離実行され、サードパーティプラグインは制限付き権限下で動きます。"
+    },
     "features": {
+      "label": "機能",
       "localFirst": {
         "title": "ローカルファースト",
-        "description": "データはあなたのデバイスに保存"
+        "description": "データは完全にあなたのデバイス上にあり、着脱可能なバックエンド（ローカルファイルシステム、GitHub、WebDAV、S3）をサポート"
       },
       "openFormat": {
         "title": "オープンフォーマット",
-        "description": "標準Markdown、ロックインなし"
+        "description": "プレーン Markdown ファイル、ロックインなし —— いつでも Markdown、HTML、PDF にエクスポート"
       },
       "ai": {
-        "title": "AIアシスト",
-        "description": "ローカル＋クラウドLLM"
+        "title": "AI 支援",
+        "description": "内蔵の AI サイドパネルが Claude Code などの CLI ツールと話し、執筆支援、コード生成、差分レビューを行います"
+      },
+      "plugins": {
+        "title": "プラグインエコシステム",
+        "description": "マイクロカーネル + プラグイン SDK —— コンテナディレクティブ（callout、tabs 等）とサードパーティプラグインをサポート"
+      },
+      "pet": {
+        "title": "デスクトップペット",
+        "description": "執筆中に寄り添うオプションのデスクトップ companion"
+      },
+      "builtInTools": {
+        "title": "組み込みツール",
+        "description": "ER 図（DBML）、スケジュール、CLI、ファイルテンプレート、音声入力 —— すぐ使える"
       }
     },
-    "copyVersion": "バージョン情報をコピー",
-    "checkUpdate": "更新を確認"
+    "highlights": {
+      "label": "ハイライト",
+      "items": {
+        "editor": {
+          "title": "Markdown 編集",
+          "description": "CodeMirror 6、シンタックスハイライト、GFM、remark ディレクティブ、スラッシュコマンド"
+        },
+        "preview": {
+          "title": "ライブプレビュー",
+          "description": "リアルタイム Markdown レンダリング、コードハイライト（highlight.js）、コンテナディレクティブ、同期スクロール"
+        },
+        "vault": {
+          "title": "Vault システム",
+          "description": "ローカルファーストのドキュメント管理、着脱可能なストレージバックエンド（ローカル、GitHub、WebDAV、S3）"
+        },
+        "containerPlugins": {
+          "title": "コンテナプラグイン",
+          "description": "拡張可能なディレクティブシステム（:::callout、:::tabs 等）、スラッシュメニューから挿入"
+        },
+        "export": {
+          "title": "マルチフォーマットエクスポート",
+          "description": "Markdown、HTML、PDF にエクスポート"
+        },
+        "crossPlatform": {
+          "title": "クロスプラットフォーム",
+          "description": "Tauri 2 ベース —— macOS、Windows、Linux で動作"
+        },
+        "themes": {
+          "title": "テーマと外観",
+          "description": "ライト / ダーク / システム、フォント、フォントサイズ、ステータスバー、AI パネル表示を設定可能"
+        },
+        "shortcuts": {
+          "title": "カスタムショートカット",
+          "description": "保存、太字、斜体などすべて再割り当て可能、グローバル音声ホットキー付き"
+        },
+        "i18n": {
+          "title": "国際化",
+          "description": "i18next が zh、en、ja、de、fr、es をサポート —— システム言語に追従"
+        }
+      }
+    },
+    "architecture": {
+      "label": "アーキテクチャレイヤー",
+      "description": "Quill はクリーンなレイヤードアーキテクチャを採用し、Tauri シェルから最上位の AI アダプターまで、各レイヤーは単一責任を持ち、独立に進化できます。pnpm workspaces は各コア機能を再利用とテストのためにパッケージ化します。",
+      "layers": {
+        "shell": {
+          "name": "シェル",
+          "tech": "Tauri 2 (Rust)",
+          "description": "デスクトップアプリシェル —— ウィンドウ、システムトレイ、ファイルシステムアクセス、クリップボード、ネイティブ通知"
+        },
+        "frontend": {
+          "name": "フロントエンド",
+          "tech": "React 18 + Vite 6 + TypeScript",
+          "description": "UI レンダリング —— コンポーネントベースのシェル、エディタ、AI パネル、サイドバー、設定"
+        },
+        "editor": {
+          "name": "エディタ",
+          "tech": "CodeMirror 6",
+          "description": "編集カーネル —— Markdown シンタックス、GFM、スラッシュコマンド、自動補完の拡張"
+        },
+        "markdown": {
+          "name": "Markdown パイプライン",
+          "tech": "unified / remark / rehype",
+          "description": "パースとレンダリングパイプライン —— GFM、コンテナディレクティブ、コードハイライト、同期スクロール"
+        },
+        "state": {
+          "name": "状態",
+          "tech": "Zustand 5",
+          "description": "軽量な状態 —— appearance、editorPrefs、prefs、nav、vault に別々のストア"
+        },
+        "styling": {
+          "name": "スタイリング",
+          "tech": "Tailwind CSS 3",
+          "description": "アトミック CSS —— テーマ切替とフォントサイズ制御のために CSS 変数と組み合わせ"
+        },
+        "plugins": {
+          "name": "プラグインシステム",
+          "tech": "plugin-host + plugin-sdk",
+          "description": "マイクロカーネル —— trusted と sandbox 層は分離実行、コンテナディレクティブ + サードパーティ拡張"
+        },
+        "storage": {
+          "name": "ストレージ抽象",
+          "tech": "vault-provider",
+          "description": "Vault マネージャ + Provider インターフェース —— 着脱可能なバックエンド（ローカル FS、GitHub 等）"
+        },
+        "ai": {
+          "name": "AI アダプター",
+          "tech": "cli-adapter",
+          "description": "CLI 抽象 —— Claude Code、Codex、Gemini、Opencode、Pi、Qoder への統一アクセス"
+        }
+      }
+    },
+    "projectStructure": {
+      "label": "プロジェクト構成",
+      "description": "Quill は pnpm モノレポであり、デスクトップアプリ、CLI アダプター、コンテナプラグイン、Vault Provider、Plugin Host/SDK がそれぞれ独立パッケージです。",
+      "tree": "quill/\n├── apps/\n│   └── desktop/              # Tauri デスクトップアプリ\n│       ├── src/              # React フロントエンド\n│       │   ├── components/   # UI コンポーネント（シェル、エディタ、AI、サイドバー等）\n│       │   ├── editor/       # CodeMirror 拡張\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand ストア\n│       │   └── utils/        # ユーティリティモジュール\n│       └── src-tauri/        # Rust バックエンド（Tauri コマンド）\n├── packages/\n│   ├── cli-adapter/          # AI CLI アダプター抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown コンテナディレクティブプラグイン（14）\n│   ├── vault-provider/       # Vault ストレージ Provider 抽象\n│   ├── plugin-host/         # プラグインホストランタイム\n│   ├── plugin-sdk/          # プラグイン開発 SDK\n│   └── create-quill-plugin/ # Scaffold ツール\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+    },
+    "storageBackends": {
+      "label": "ストレージバックエンド",
+      "description": "Vault システムは vault-provider 抽象レイヤーで着脱可能なバックエンドをサポートします。ローカルファイルシステムと GitHub が内蔵で、WebDAV と S3 は Provider インターフェースを実装して追加できます。",
+      "items": {
+        "localFs": {
+          "title": "ローカルファイルシステム",
+          "description": "デフォルトストレージ —— tauriProvider がローカル Markdown ファイルを直接読み書き"
+        },
+        "github": {
+          "title": "GitHub リポジトリ",
+          "description": "githubProvider が GitHub リポジトリと同期し、自動バージョニングと履歴を提供"
+        },
+        "s3": {
+          "title": "S3 互換（拡張可能）",
+          "description": "Provider インターフェースを実装して S3 / MinIO / R2 を利用、エンドツーエンド暗号化付き"
+        }
+      }
+    },
+    "aiIntegration": {
+      "label": "AI 連携",
+      "description": "cli-adapter 抽象を通じて、Quill は 6 つの CLI ベースの AI ツールを一様にサポートします。設定 → Model Services で CLI パスを設定したら、サイドパネルでチャット、テキスト生成、コード編集の適用、差分レビューを行えます。API キーと会話内容はローカル CLI ツールと対応する AI サービス間のみで流れ、Quill のサーバーは経由しません。",
+      "adapters": {
+        "label": "内蔵 CLI アダプター",
+        "items": {
+          "claudeCode": {
+            "name": "Claude Code",
+            "description": "Anthropic 公式 CLI —— チャット、コード生成、ファイル編集、差分レビュー"
+          },
+          "codex": {
+            "name": "Codex CLI",
+            "description": "OpenAI Codex CLI —— コード生成とリファクタリング"
+          },
+          "gemini": {
+            "name": "Gemini CLI",
+            "description": "Google Gemini CLI —— マルチモーダルチャットと生成"
+          },
+          "opencode": {
+            "name": "Opencode",
+            "description": "オープンソース AI コーディング CLI —— マルチバックエンド切替"
+          },
+          "pi": {
+            "name": "Pi CLI",
+            "description": "Inflection Pi CLI —— 会話型コラボレーション"
+          },
+          "qoder": {
+            "name": "Qoder",
+            "description": "Qoder CLI —— コード生成と編集"
+          }
+        }
+      }
+    },
+    "pluginSystem": {
+      "label": "プラグインシステム",
+      "description": "マイクロカーネル + プラグイン SDK アーキテクチャ。プラグインは Trusted 層（ホスト機能を直接呼ぶ）と Sandbox 層（制限付き権限下で動く）に分かれ、plugin-host ランタイムが読み込みます。サードパーティプラグインは create-quill-plugin で素早く scaffold できます。",
+      "tiers": {
+        "label": "実行階層",
+        "trusted": {
+          "name": "Trusted 層",
+          "description": "ホスト機能を直接呼ぶ —— ファイルシステム、ネットワーク、ネイティブ API が必要な内蔵または信頼できるプラグイン向け"
+        },
+        "sandbox": {
+          "name": "Sandbox 層",
+          "description": "制限付き権限下で動く —— plugin-sdk がホワイトリスト API を提供、サードパーティプラグイン向け"
+        }
+      },
+      "containerPlugins": {
+        "label": "コンテナディレクティブプラグイン（14）",
+        "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
+      }
+    },
+    "fileTypeSupport": {
+      "label": "ファイルタイプ対応",
+      "description": "HandlerRegistry に登録され、Quill は 15 種以上のファイルタイプをプレビュー・編集できます。",
+      "items": "Markdown · コード · CSV · JSON · HTML · 画像 · DBML（ER 図） · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap（mmap） · Office ドキュメント · クリップボードのクリップ"
+    },
+    "techStack": {
+      "label": "技術スタック",
+      "items": "Tauri 2 · React 18 · CodeMirror 6 · unified / remark · Zustand 5 · Tailwind 3 · pnpm workspaces"
+    },
+    "quickStart": {
+      "label": "クイックスタート",
+      "prerequisites": "前提条件：Node.js ≥ 20 · pnpm ≥ 9 · Rust latest stable · Tauri 2 システム依存（v2.tauri.app/start/prerequisites 参照）",
+      "install": "依存関係をインストール",
+      "dev": "dev を起動（フロントエンド + Tauri ウィンドウ）",
+      "build": "デスクトップアプリをビルド",
+      "buildFrontend": "フロントエンドのみビルド"
+    },
+    "configuration": {
+      "label": "設定",
+      "description": "すべての設定はアプリ内の設定ページからアクセスでき、3 つのカテゴリに分かれます：",
+      "groups": {
+        "general": {
+          "name": "一般",
+          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Plugins, CSP, Storage & sharing"
+        },
+        "ai": {
+          "name": "AI",
+          "items": "CLI tools, Model services, Voice input"
+        },
+        "about": {
+          "name": "About",
+          "items": "このページ"
+        }
+      }
+    },
+    "license": "MIT ライセンス",
+    "viewOnGithub": "GitHub で見る",
+    "reportIssue": "Issue を報告"
   },
   "plugins": {
     "title": "プラグイン",

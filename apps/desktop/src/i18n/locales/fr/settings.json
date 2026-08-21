@@ -376,22 +376,251 @@
   },
   "about": {
     "tagline": "v0.1.0-alpha · Éditeur Markdown local-first",
+    "groups": {
+      "capabilities": "Capacités",
+      "architecture": "Architecture et implémentation",
+      "developer": "Développement et contribution"
+    },
+    "description": "Construit sur Tauri 2 + React + CodeMirror 6, Quill est un éditeur Markdown local-first. Il intègre le chat IA, le pet de bureau, le système de plugins, les diagrammes ER, la gestion du calendrier et les outils CLI — vos données restent sur votre appareil en Markdown standard, sans lock-in.",
+    "philosophy": {
+      "label": "Philosophie",
+      "localFirst": "Local-first — vos notes vous appartiennent. Tous les documents sont stockés comme de simples fichiers Markdown sur votre système de fichiers local, sans compte cloud, utilisables hors ligne, libres à migrer. Le système Vault supporte des backends plug-and-play via la couche d'abstraction vault-provider, mais la propriété des données reste toujours vôtre.",
+      "openFormat": "Format ouvert — sans lock-in. Quill utilise le Markdown standard comme seul format de stockage, traité par le pipeline remark/rehype pour GFM et directives personnalisées. N'importe quel éditeur de texte peut ouvrir vos notes ; export vers HTML ou PDF à tout moment ; après désinstallation de Quill, vos données restent entièrement lisibles.",
+      "extensible": "Extensible — ouvert de bout en bout, du noyau de l'éditeur aux backends de stockage. Le micronoyau + le SDK de plugins supporte 14 directives de conteneur (callout, tabs, mermaid, etc.) et les plugins tiers ; l'abstraction de l'adaptateur CLI rend 6 outils IA (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) plug-and-play ; pnpm workspaces laisse container-plugins, vault-provider, cli-adapter, plugin-host et plugin-sdk évoluer comme des packages indépendants.",
+      "privacy": "Confidentialité d'abord — le chat IA et la génération de code passent par les outils CLI locaux ; vos clés API et le contenu des conversations ne touchent jamais les serveurs de Quill. La politique CSP et la couche sandbox des plugins offrent une défense en profondeur, avec les couches trusted et sandbox exécutées séparément ; les plugins tiers tournent sous permissions restreintes."
+    },
     "features": {
+      "label": "Fonctionnalités",
       "localFirst": {
         "title": "Local-first",
-        "description": "Données stockées sur votre appareil"
+        "description": "Les données vivent entièrement sur votre appareil, avec des backends plug-and-play : système de fichiers local, GitHub, WebDAV, S3"
       },
       "openFormat": {
         "title": "Format ouvert",
-        "description": "Markdown standard, sans verrou"
+        "description": "Fichiers Markdown simples, sans lock-in — export Markdown, HTML ou PDF à tout moment"
       },
       "ai": {
         "title": "Assisté par IA",
-        "description": "LLM local + cloud"
+        "description": "Panneau IA latéral intégré qui discute avec les outils CLI comme Claude Code pour l'aide à l'écriture, le codegen et la révision de diffs"
+      },
+      "plugins": {
+        "title": "Écosystème de plugins",
+        "description": "Micronoyau + SDK de plugins — supporte les directives de conteneur (callout, tabs, etc.) et les plugins tiers"
+      },
+      "pet": {
+        "title": "Pet de bureau",
+        "description": "Compagnon de bureau optionnel qui vous tient compagnie pendant que vous écrivez"
+      },
+      "builtInTools": {
+        "title": "Outils intégrés",
+        "description": "Diagrammes ER (DBML), calendrier, CLI, modèles de fichiers, saisie vocale — prêts à l'emploi"
       }
     },
-    "copyVersion": "Copier les infos de version",
-    "checkUpdate": "Vérifier les mises à jour"
+    "highlights": {
+      "label": "Points forts",
+      "items": {
+        "editor": {
+          "title": "Édition Markdown",
+          "description": "CodeMirror 6 avec coloration syntaxique, GFM, directives remark et commandes slash"
+        },
+        "preview": {
+          "title": "Aperçu en direct",
+          "description": "Rendu Markdown en temps réel, coloration de code (highlight.js), directives de conteneur, scroll synchronisé"
+        },
+        "vault": {
+          "title": "Système Vault",
+          "description": "Gestion de documents local-first avec backends de stockage plug-and-play (local, GitHub, WebDAV, S3)"
+        },
+        "containerPlugins": {
+          "title": "Plugins de conteneur",
+          "description": "Système de directives extensible (:::callout, :::tabs, etc.) avec insertion par menu slash"
+        },
+        "export": {
+          "title": "Export multi-format",
+          "description": "Export Markdown, HTML ou PDF"
+        },
+        "crossPlatform": {
+          "title": "Multiplateforme",
+          "description": "Basé sur Tauri 2 — tourne sur macOS, Windows et Linux"
+        },
+        "themes": {
+          "title": "Thèmes et apparence",
+          "description": "Clair / Sombre / Système, police configurable, taille de police, barre d'état, visibilité du panneau IA"
+        },
+        "shortcuts": {
+          "title": "Raccourcis personnalisés",
+          "description": "Enregistrer, Gras, Italique, etc. tous remappables, avec un hotkey vocal global"
+        },
+        "i18n": {
+          "title": "Internationalisation",
+          "description": "i18next supporte zh, en, ja, de, fr, es — suit la langue du système"
+        }
+      }
+    },
+    "architecture": {
+      "label": "Couches d'architecture",
+      "description": "Quill utilise une architecture en couches propre — du shell Tauri à l'adaptateur IA en haut, chaque couche a une seule responsabilité et peut évoluer indépendamment. pnpm workspaces package chaque capacité fondamentale pour réutilisation et tests.",
+      "layers": {
+        "shell": {
+          "name": "Shell",
+          "tech": "Tauri 2 (Rust)",
+          "description": "Shell de l'app desktop — fenêtres, barre système, accès au système de fichiers, presse-papiers, notifications natives"
+        },
+        "frontend": {
+          "name": "Frontend",
+          "tech": "React 18 + Vite 6 + TypeScript",
+          "description": "Rendu UI — shell basé composants, éditeur, panneau IA, barre latérale, réglages"
+        },
+        "editor": {
+          "name": "Éditeur",
+          "tech": "CodeMirror 6",
+          "description": "Noyau d'édition — extensions pour la syntaxe Markdown, GFM, commandes slash, autocomplétion"
+        },
+        "markdown": {
+          "name": "Pipeline Markdown",
+          "tech": "unified / remark / rehype",
+          "description": "Pipeline de parsing et rendu — GFM, directives de conteneur, coloration de code, scroll synchronisé"
+        },
+        "state": {
+          "name": "État",
+          "tech": "Zustand 5",
+          "description": "État léger — stores séparés pour appearance, editorPrefs, prefs, nav, vault"
+        },
+        "styling": {
+          "name": "Styling",
+          "tech": "Tailwind CSS 3",
+          "description": "CSS atomique — combiné aux variables CSS pour le changement de thème et le contrôle de taille de police"
+        },
+        "plugins": {
+          "name": "Système de plugins",
+          "tech": "plugin-host + plugin-sdk",
+          "description": "Micronoyau — couches trusted et sandbox exécutées séparément ; directives de conteneur + extensions tierces"
+        },
+        "storage": {
+          "name": "Abstraction de stockage",
+          "tech": "vault-provider",
+          "description": "Gestionnaire Vault + interface Provider — backends plug-and-play (FS local, GitHub, etc.)"
+        },
+        "ai": {
+          "name": "Adaptateurs IA",
+          "tech": "cli-adapter",
+          "description": "Abstraction CLI — accès unifié à Claude Code, Codex, Gemini, Opencode, Pi, Qoder"
+        }
+      }
+    },
+    "projectStructure": {
+      "label": "Structure du projet",
+      "description": "Quill est un monorepo pnpm — l'app desktop, l'adaptateur CLI, les plugins de conteneur, le Vault Provider et le Plugin Host/SDK sont chacun des packages indépendants.",
+      "tree": "quill/\n├── apps/\n│   └── desktop/              # App desktop Tauri\n│       ├── src/              # Frontend React\n│       │   ├── components/   # Composants UI (shell, éditeur, IA, sidebar, etc.)\n│       │   ├── editor/       # Extensions CodeMirror\n│       │   ├── hooks/        # Hooks React\n│       │   ├── store/        # Stores Zustand\n│       │   └── utils/        # Modules utilitaires\n│       └── src-tauri/        # Backend Rust (commandes Tauri)\n├── packages/\n│   ├── cli-adapter/          # Abstraction de l'adaptateur CLI IA (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Plugins de directives de conteneur Markdown (14)\n│   ├── vault-provider/       # Abstraction du provider de stockage Vault\n│   ├── plugin-host/         # Runtime de l'hôte de plugins\n│   ├── plugin-sdk/          # SDK de développement de plugins\n│   └── create-quill-plugin/ # Outil de scaffold\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+    },
+    "storageBackends": {
+      "label": "Backends de stockage",
+      "description": "Le système Vault supporte des backends plug-and-play via la couche d'abstraction vault-provider. Le système de fichiers local et GitHub sont intégrés ; WebDAV et S3 peuvent être ajoutés en implémentant l'interface Provider.",
+      "items": {
+        "localFs": {
+          "title": "Système de fichiers local",
+          "description": "Stockage par défaut — tauriProvider lit/écrit les fichiers Markdown locaux directement"
+        },
+        "github": {
+          "title": "Dépôt GitHub",
+          "description": "githubProvider synchronise avec un dépôt GitHub avec versioning et historique automatiques"
+        },
+        "s3": {
+          "title": "Compatible S3 (extensible)",
+          "description": "Implémentez l'interface Provider pour utiliser S3 / MinIO / R2, avec chiffrement de bout en bout"
+        }
+      }
+    },
+    "aiIntegration": {
+      "label": "Intégration IA",
+      "description": "Via l'abstraction cli-adapter, Quill supporte uniformément 6 outils IA basés sur CLI. Après avoir configuré le chemin du CLI dans Réglages → Model Services, utilisez le panneau latéral pour discuter, générer du texte, appliquer des éditions de code et réviser les diffs. Les clés API et le contenu des conversations ne circulent qu'entre l'outil CLI local et le service IA correspondant — jamais par les serveurs de Quill.",
+      "adapters": {
+        "label": "Adaptateurs CLI intégrés",
+        "items": {
+          "claudeCode": {
+            "name": "Claude Code",
+            "description": "CLI officiel d'Anthropic — chat, codegen, édition de fichiers, révision de diffs"
+          },
+          "codex": {
+            "name": "Codex CLI",
+            "description": "CLI d'OpenAI Codex — génération de code et refactoring"
+          },
+          "gemini": {
+            "name": "Gemini CLI",
+            "description": "CLI de Google Gemini — chat multimodal et génération"
+          },
+          "opencode": {
+            "name": "Opencode",
+            "description": "CLI IA open-source — basculement multi-backend"
+          },
+          "pi": {
+            "name": "Pi CLI",
+            "description": "CLI d'Inflection Pi — collaboration conversationnelle"
+          },
+          "qoder": {
+            "name": "Qoder",
+            "description": "CLI de Qoder — génération et édition de code"
+          }
+        }
+      }
+    },
+    "pluginSystem": {
+      "label": "Système de plugins",
+      "description": "Architecture micronoyau + SDK de plugins. Les plugins sont divisés en couche Trusted (appelle les capacités de l'hôte directement) et couche Sandbox (tourne sous permissions restreintes) — chargés par le runtime plugin-host. Les plugins tiers peuvent être scaffoldisés rapidement via create-quill-plugin.",
+      "tiers": {
+        "label": "Couches d'exécution",
+        "trusted": {
+          "name": "Couche Trusted",
+          "description": "Appelle les capacités de l'hôte directement — pour les plugins intégrés ou de confiance qui nécessitent système de fichiers, réseau ou APIs natives"
+        },
+        "sandbox": {
+          "name": "Couche Sandbox",
+          "description": "Tourne sous permissions restreintes — plugin-sdk expose une API à liste blanche, pour les plugins tiers"
+        }
+      },
+      "containerPlugins": {
+        "label": "Plugins de directives de conteneur (14)",
+        "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
+      }
+    },
+    "fileTypeSupport": {
+      "label": "Support de types de fichiers",
+      "description": "Enregistrés via HandlerRegistry, Quill peut prévisualiser et éditer plus de 15 types de fichiers.",
+      "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (diagramme ER) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (mmap) · Docs Office · Clips presse-papiers"
+    },
+    "techStack": {
+      "label": "Stack technique",
+      "items": "Tauri 2 · React 18 · CodeMirror 6 · unified / remark · Zustand 5 · Tailwind 3 · pnpm workspaces"
+    },
+    "quickStart": {
+      "label": "Démarrage rapide",
+      "prerequisites": "Prérequis : Node.js ≥ 20 · pnpm ≥ 9 · Rust latest stable · dépendances système Tauri 2 (voir v2.tauri.app/start/prerequisites)",
+      "install": "Installer les dépendances",
+      "dev": "Lancer dev (frontend + fenêtre Tauri)",
+      "build": "Builder l'app desktop",
+      "buildFrontend": "Builder le frontend uniquement"
+    },
+    "configuration": {
+      "label": "Configuration",
+      "description": "Tous les réglages sont accessibles depuis la page Réglages dans l'app, groupés en trois catégories :",
+      "groups": {
+        "general": {
+          "name": "Général",
+          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Plugins, CSP, Storage & sharing"
+        },
+        "ai": {
+          "name": "IA",
+          "items": "CLI tools, Model services, Voice input"
+        },
+        "about": {
+          "name": "About",
+          "items": "Cette page"
+        }
+      }
+    },
+    "license": "Licence MIT",
+    "viewOnGithub": "Voir sur GitHub",
+    "reportIssue": "Signaler un problème"
   },
   "plugins": {
     "title": "Plugins",
