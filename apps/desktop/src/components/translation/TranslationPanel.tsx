@@ -172,7 +172,7 @@ export function TranslationPanel() {
         {/* Left: original input */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-brd">
           <textarea
-            className="flex-1 w-full resize-none outline-none bg-transparent text-t1 px-6 py-3 font-mono text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify"
+            className="flex-1 w-full resize-none outline-none bg-transparent text-t1 px-6 py-3 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('settings:translation.inputPlaceholder')}
@@ -205,7 +205,7 @@ export function TranslationPanel() {
                   <MarkdownPreview content={result} filePath="__translation__.md" vaultRoot="" />
                 </div>
               ) : (
-                <pre className="px-6 py-3 text-t1 text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap break-words font-mono [text-align:justify]">{result}</pre>
+                <pre className="px-6 py-3 text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap break-words [text-align:justify]">{result}</pre>
               )
             ) : (
               <div className="px-6 py-3 text-t3 text-[12px]">
