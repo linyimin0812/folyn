@@ -574,3 +574,38 @@ i18n WorkArea empty state across 6 locales (shell:workArea.empty.*); fill missin
 ### Next Steps
 
 - None - task complete
+
+
+## Session 187: Rename mmap file type to markmap (id + extension + dir + module + namespace)
+
+**Date**: 2026-08-21
+**Task**: Rename mmap file type to markmap (id + extension + dir + module + namespace)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Renamed the markmap file type from mmap to markmap end-to-end. First commit changed the user-visible id and .mmap extension to markmap across the handler, FileIcon map, ContextMenu new-file groups, ExportMenu/useExport CANVAS_TYPES, EditorView markdown-extension regex, chat filePath KNOWN_EXT, prefsStore template key, registerBuiltinCodeContributions (dropped the mmap code-fence alias, kept canonical markmap fence), exportService REGISTRY key + .mmap path checks, export module comments, all 6 locale editor.json keys and 7 locale settings.json user-facing strings. Second commit renamed the directory file-types/mmap/ to markmap/, the export module mmap.ts/.test.ts to markmap.*, the 6 locale mmap.json files to markmap.json, the i18n namespace mmap to markmap, and all dependent variable names (mmapExporter, zhMmap, etc.) and import paths. parseDbml.ts mmap references kept — that is a DBML grammar keyword, not the file type. Old .mmap files on disk are not migrated.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7c09e4c9` | (see git log) |
+| `23052952` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
