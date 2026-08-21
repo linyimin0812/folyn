@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import { resolveImagesInTree } from './resolveImages';
+import { preprocessMarkmapContent } from './preprocessFences';
 import './initMath';
 
 const transformer = new Transformer();
@@ -70,10 +71,17 @@ export function MarkmapCanvas({ content, assetBase, className = '' }: MarkmapCan
   useEffect(() => {
     const mm = mmRef.current;
     if (!mm || !ready) return;
-    const { root } = transformer.transform(content || '');
-    resolveImagesInTree(root, assetBase);
-    mm.setData(root);
-    mm.fit();
+    let cancelled = false;
+    // ponytail: fences are preprocessed into <img>/<svg> before transform so
+    // ```plantuml/mermaid/graphviz renders as a diagram, not <pre> source.
+    preprocessMarkmapContent(content || '').then((pre) => {
+      if (cancelled) return;
+      const { root } = transformer.transform(pre);
+      resolveImagesInTree(root, assetBase);
+      mm.setData(root);
+      mm.fit();
+    });
+    return () => { cancelled = true; };
   }, [content, assetBase, ready]);
 
   // Keep the map fitted when the container is resized (e.g. dragging the split

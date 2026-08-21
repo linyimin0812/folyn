@@ -22,6 +22,10 @@ export const DEFAULT_ALLOWED_URLS: string[] = [
   'https://fonts.gstatic.com',
   'https://www.plantuml.com',
   'https://quickchart.io',
+  // ponytail: kroki renders plantuml/mermaid/graphviz fences inside markmap
+  // (one service for all three diagram types). The standalone code-fence
+  // renderers still use plantuml.com / quickchart.io directly.
+  'https://kroki.io',
   // ponytail: local pet-notify API (default port 17382, falls back to 17400).
   // Settings → 桌宠 notification test fetches this endpoint no-cors; CSP still
   // applies. `*` port covers the whole fallback range — `17382..=17400` is

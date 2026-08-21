@@ -17,6 +17,7 @@ import { Transformer } from 'markmap-lib';
 import { Markmap } from 'markmap-view';
 import { inlineContainerImages } from './shared';
 import { resolveImagesInTree } from '@/components/file-types/markmap/resolveImages';
+import { preprocessMarkmapContent } from '@/components/file-types/markmap/preprocessFences';
 import '@/components/file-types/markmap/initMath';
 
 const transformer = new Transformer();
@@ -49,7 +50,8 @@ export async function renderMarkmapSvg(
         ? '.markmap{--markmap-text-color:#e6edf3;--markmap-circle-open-bg:#1f2030;--markmap-code-bg:#1a1b26;--markmap-code-color:#ddd;background:#0b0d14}'
         : '.markmap{--markmap-text-color:#1f2328;--markmap-circle-open-bg:#fff;background:#f0f2f8}';
     const mm = Markmap.create(svg, { autoFit: true, duration: 0, style });
-    const { root } = transformer.transform(content || '');
+    const pre = await preprocessMarkmapContent(content || '');
+    const { root } = transformer.transform(pre);
     resolveImagesInTree(root, assetBase);
     await mm.setData(root);
     await mm.fit();
