@@ -609,3 +609,37 @@ Renamed the markmap file type from mmap to markmap end-to-end. First commit chan
 ### Next Steps
 
 - None - task complete
+
+
+## Session 188: Render plantuml/mermaid/graphviz fences inside markmap
+
+**Date**: 2026-08-22
+**Task**: Render plantuml/mermaid/graphviz fences inside markmap
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+markmap-lib's markdown-it dropped raw <img>, data: URLs, and any content between two headings — so ```plantuml fences inside a .markmap file rendered as <pre> source instead of diagrams. Added preprocessMarkmapContent: rewrites each fence to ![](kroki-url) (zlib+base64url, one service for plantuml/mermaid/graphviz), appended inline to the nearest preceding heading so markmap-lib keeps the image. CSP allows kroki.io. 12 tests including 3 end-to-end through the real markmap-lib Transformer.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4bf5b1ec` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

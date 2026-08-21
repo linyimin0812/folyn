@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 187
-- **Last Active**: 2026-08-21
+- **Total Sessions**: 188
+- **Last Active**: 2026-08-22
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~611 | Active |
+| `journal-4.md` | ~645 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 188 | 2026-08-22 | Render plantuml/mermaid/graphviz fences inside markmap | `4bf5b1ec` | `master` |
 | 187 | 2026-08-21 | Rename mmap file type to markmap (id + extension + dir + module + namespace) | `7c09e4c9`, `23052952` | `master` |
 | 186 | 2026-08-21 | WorkArea empty state + Storage Sharing i18n; desktop TS build fixes | `5272f4aa`, `38a1e171` | `master` |
 | 185 | 2026-08-21 | markdown 预览图片交互式拖拽缩放 | `37d2cb9c`, `62672689`, `272934b2`, `1b5ef2f7`, `3cb0b4dc`, `c11fcc72`, `cf8eee59`, `011be140`, `e767870a` | `master` |
