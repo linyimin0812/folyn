@@ -273,28 +273,27 @@ interface ResizableMediaProps {
 /** Wrap an <img> or fence-renderer output with a right-bottom drag handle.
  *  Width-only resize; inner media fills 100% of the wrapper via CSS.
  *  On commit, write the new width back to the markdown source line. */
+function readSourceWidth(kind: 'img' | 'fence', content: string | undefined, sourceLine: number | undefined): number | null {
+  if (!content || sourceLine == null) return null;
+  const line = content.split('\n')[sourceLine - 1];
+  if (!line) return null;
+  if (kind === 'img') {
+    const m = line.match(IMG_LINE_SIZE_RE);
+    return m?.[1] ? Number(m[1]) : null;
+  }
+  const m = line.match(FENCE_LINE_WIDTH_RE);
+  return m?.[2] ? Number(m[2]) : null;
+}
+
 function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }: ResizableMediaProps) {
-  const [width, setWidth] = useState<number | null>(null);
+  // ponytail: lazy init from source so re-mount after writeback doesn't flash
+  // through width=null — handle would visibly jump from natural-size position
+  // back to the persisted width otherwise.
+  const [width, setWidth] = useState<number | null>(() => readSourceWidth(kind, contentRef.current, sourceLine));
+  const [dragging, setDragging] = useState(false);
   const widthRef = useRef<number | null>(null);
   widthRef.current = width;
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
-
-  // ponytail: initial size read from source, not measured from DOM — survives
-  // reload / cross-machine. Re-runs only when sourceLine kind/contentRef ref
-  // identity changes (contentRef is stable across renders by construction).
-  useEffect(() => {
-    const content = contentRef.current;
-    if (!content || sourceLine == null) return;
-    const line = content.split('\n')[sourceLine - 1];
-    if (!line) return;
-    if (kind === 'img') {
-      const m = line.match(IMG_LINE_SIZE_RE);
-      if (m?.[1]) setWidth(Number(m[1]));
-    } else {
-      const m = line.match(FENCE_LINE_WIDTH_RE);
-      if (m?.[2]) setWidth(Number(m[2]));
-    }
-  }, [kind, sourceLine, contentRef]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -302,6 +301,7 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     const wrapper = e.currentTarget.parentElement as HTMLElement;
     dragRef.current = { startX: e.clientX, startW: wrapper.getBoundingClientRect().width };
+    setDragging(true);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
@@ -311,6 +311,7 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
     dragRef.current = null;
+    setDragging(false);
     try { (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId); } catch { /* pointer already released */ }
     const w = widthRef.current;
     if (w == null) return;
@@ -330,10 +331,16 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   };
 
   // ponytail: width-only resize, height auto-derived — inner img/svg keep their
-  // natural aspect ratio via CSS height:100%. Shift-unlock is a no-op here since
+  // natural aspect ratio via CSS height:auto. Shift-unlock is a no-op here since
   // height was never constrained; add height state if independent H ever needed.
+  // During drag, drop centering (margin:0) so the right edge tracks the cursor
+  // 1:1 — centered wrapper grows symmetrically and the handle drifts at half
+  // cursor speed, which reads as "handle moved away from cursor".
   return (
-    <div className="resizable-media" style={width != null ? { width: `${width}px`, height: 'auto' } : undefined}>
+    <div
+      className={`resizable-media${dragging ? ' resizable-media--dragging' : ''}`}
+      style={width != null ? { width: `${width}px`, height: 'auto' } : undefined}
+    >
       {children}
       <div
         className="resize-handle"

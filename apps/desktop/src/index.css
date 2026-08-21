@@ -536,6 +536,7 @@ mjx-container svg {
    overrides shrink-to-fit. > :not(.resize-handle) neutralizes mermaid's flex
    justify-center (flex children shrink-to-fit and ignore parent width). */
 .md-preview .resizable-media { position: relative; display: block; width: fit-content; max-width: 100%; margin: 8px auto; line-height: 0; }
+.md-preview .resizable-media--dragging { margin: 8px 0; }
 .md-preview .resizable-media > *:not(.resize-handle) { display: block; width: 100%; }
 .md-preview .resizable-media img,
 .md-preview .resizable-media svg { width: 100%; height: auto; display: block; margin: 0; max-width: none; }
