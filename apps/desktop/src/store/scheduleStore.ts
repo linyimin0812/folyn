@@ -654,7 +654,7 @@ const persist = registerPersistSlice({
     // pomo 持久化：只取 notify 标记，其他字段重置为 defaultPomo。
     const rawPomo = blob.pomo;
     if (rawPomo && typeof rawPomo === 'object' && typeof (rawPomo as { notify?: unknown }).notify === 'boolean') {
-      useScheduleStore.setState((s) => ({ pomo: { ...defaultPomo(), notify: (rawPomo as { notify: boolean }).notify } }));
+      useScheduleStore.setState({ pomo: { ...defaultPomo(), notify: (rawPomo as { notify: boolean }).notify } });
     }
   },
 });
