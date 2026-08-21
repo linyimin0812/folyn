@@ -392,6 +392,21 @@
     "inputPlaceholder": "Type or paste text to translate. ⌘/Ctrl+Enter to translate.",
     "streaming": "Translating…",
     "empty": "Translation will appear here.",
+    "languages": {
+      "auto": "Auto Detect",
+      "zh": "Chinese",
+      "en": "English",
+      "ja": "Japanese",
+      "ko": "Korean",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German",
+      "ru": "Russian",
+      "pt": "Portuguese",
+      "it": "Italian",
+      "ar": "Arabic",
+      "hi": "Hindi"
+    },
     "error": {
       "noPair": "No model configured. Pick a provider/model or set up the chat adapter in Settings.",
       "copy": "Clipboard write failed."

@@ -6,8 +6,8 @@
 export interface LanguageOption {
   /** Stable id sent to the LLM prompt. */
   id: string;
-  /** Display label (in the user's locale — English here for simplicity;
-   *  the dropdown is small enough that localized labels are out of scope). */
+  /** i18n key suffix under `settings:translation.languages.*`. The dropdown
+   *  and the LLM prompt both resolve via t('settings:translation.languages.' + label). */
   label: string;
 }
 
@@ -15,19 +15,19 @@ export interface LanguageOption {
 export const AUTO_DETECT_ID = 'auto';
 
 export const SOURCE_LANGUAGES: readonly LanguageOption[] = [
-  { id: AUTO_DETECT_ID, label: 'Auto Detect' },
-  { id: 'zh', label: 'Chinese' },
-  { id: 'en', label: 'English' },
-  { id: 'ja', label: 'Japanese' },
-  { id: 'ko', label: 'Korean' },
-  { id: 'es', label: 'Spanish' },
-  { id: 'fr', label: 'French' },
-  { id: 'de', label: 'German' },
-  { id: 'ru', label: 'Russian' },
-  { id: 'pt', label: 'Portuguese' },
-  { id: 'it', label: 'Italian' },
-  { id: 'ar', label: 'Arabic' },
-  { id: 'hi', label: 'Hindi' },
+  { id: AUTO_DETECT_ID, label: 'auto' },
+  { id: 'zh', label: 'zh' },
+  { id: 'en', label: 'en' },
+  { id: 'ja', label: 'ja' },
+  { id: 'ko', label: 'ko' },
+  { id: 'es', label: 'es' },
+  { id: 'fr', label: 'fr' },
+  { id: 'de', label: 'de' },
+  { id: 'ru', label: 'ru' },
+  { id: 'pt', label: 'pt' },
+  { id: 'it', label: 'it' },
+  { id: 'ar', label: 'ar' },
+  { id: 'hi', label: 'hi' },
 ] as const;
 
 export const TARGET_LANGUAGES: readonly LanguageOption[] = SOURCE_LANGUAGES.filter(

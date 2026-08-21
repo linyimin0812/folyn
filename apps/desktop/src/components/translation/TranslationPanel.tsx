@@ -13,18 +13,21 @@ import {
   TARGET_LANGUAGES,
 } from './languages';
 
-function languageLabel(id: string): string {
-  const all = SOURCE_LANGUAGES;
-  return all.find((l) => l.id === id)?.label ?? id;
+type TFunc = (key: string) => string;
+
+function languageLabel(t: TFunc, id: string): string {
+  const found = SOURCE_LANGUAGES.find((l) => l.id === id) ?? TARGET_LANGUAGES.find((l) => l.id === id);
+  return found ? t(`settings:translation.languages.${found.label}`) : id;
 }
 
-function buildPrompt(text: string, sourceId: string, targetId: string): string {
+function buildPrompt(t: TFunc, text: string, sourceId: string, targetId: string): string {
   // ponytail: pass full language names, not ISO codes — 'it' reads as the
-  // English pronoun and the LLM defaults to English. Names are unambiguous.
+  // English pronoun and the LLM defaults to English. Localized names are
+  // unambiguous (Italian / 意大利语 / etc.) and LLMs parse any locale.
   const sourceClause = sourceId === AUTO_DETECT_ID
     ? 'the source language (detect it yourself from the input)'
-    : languageLabel(sourceId);
-  const targetName = languageLabel(targetId);
+    : languageLabel(t, sourceId);
+  const targetName = languageLabel(t, targetId);
   return [
     `You are a professional translator. Translate the user's text from ${sourceClause} into ${targetName}.`,
     'Preserve markdown formatting, code blocks, and inline syntax if present.',
@@ -95,7 +98,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
     try {
       await runRigChat({
         sessionId: 'translation',
-        prompt: buildPrompt(input, source, target),
+        prompt: buildPrompt(t, input, source, target),
         provider: resolved.provider,
         model: resolved.model,
         apiKey: resolved.apiKey,

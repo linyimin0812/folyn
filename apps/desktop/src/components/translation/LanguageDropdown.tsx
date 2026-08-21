@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LanguageOption } from './languages';
 
 export interface LanguageDropdownProps {
@@ -15,6 +16,7 @@ export interface LanguageDropdownProps {
  * from AdapterSelector. Ponytail: not extracted to a shared component — only
  * the translation panel uses it. */
 export function LanguageDropdown({ value, options, onChange, title, compact = false }: LanguageDropdownProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -28,6 +30,7 @@ export function LanguageDropdown({ value, options, onChange, title, compact = fa
   }, [open]);
 
   const current = options.find((o) => o.id === value) ?? options[0];
+  const labelOf = (o: LanguageOption) => t(`settings:translation.languages.${o.label}`);
 
   return (
     <div className="relative" ref={ref}>
@@ -37,7 +40,7 @@ export function LanguageDropdown({ value, options, onChange, title, compact = fa
         onClick={() => setOpen((v) => !v)}
         title={title}
       >
-        <span className="truncate">{current?.label}</span>
+        <span className="truncate">{current ? labelOf(current) : ''}</span>
         <svg className="shrink-0 text-t3 transition-transform duration-150" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -52,7 +55,7 @@ export function LanguageDropdown({ value, options, onChange, title, compact = fa
                 className={`py-1.5 px-3 text-[12px] cursor-pointer whitespace-nowrap ${active ? 'bg-accdim text-acc font-semibold' : 'text-t2 hover:bg-hov hover:text-t1'}`}
                 onMouseDown={(e) => { e.preventDefault(); onChange(o.id); setOpen(false); }}
               >
-                {o.label}
+                {labelOf(o)}
               </div>
             );
           })}
