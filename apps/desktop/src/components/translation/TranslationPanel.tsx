@@ -208,7 +208,7 @@ export function TranslationPanel() {
                 <pre className="px-6 py-3 text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap break-words [text-align:justify]">{result}</pre>
               )
             ) : (
-              <div className="px-6 py-3 text-t3 text-[12px]">
+              <div className="px-6 py-3 text-t3 text-[length:calc(var(--ui-font-size)+0px)]">
                 {streaming
                   ? t('settings:translation.streaming')
                   : t('settings:translation.empty')}
