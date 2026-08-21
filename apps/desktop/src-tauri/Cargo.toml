@@ -193,5 +193,11 @@ base64 = "0.22"
 codegen-units = 1
 lto = true
 opt-level = "s"
-panic = "abort"
+# ponytail: panic stays on unwind. setup runs inside an NSApplication
+# notification observer (a nounwind C++/Obj-C frame); `panic = "abort"`
+# turned a benign panic in `pet_panel_macos::convert_windows` (swizzled
+# NSPanel TouchBar recalc path) into a hard SIGABRT on launch. unwind lets
+# the same panic escape the setup closure harmlessly the way dev does.
+# Re-enable `panic = "abort"` only after that path is provably panic-free
+# or wrapped in `std::panic::catch_unwind`.
 strip = true
