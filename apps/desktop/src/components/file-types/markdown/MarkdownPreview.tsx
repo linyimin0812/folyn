@@ -322,7 +322,13 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const nextWidth = getResizedMediaWidth(dragRef.current.startW, dx, dragRef.current.maxW);
-    if (dx > 0 && nextWidth === dragRef.current.startW) return;
+    // ponytail: freeze at the wall — skip the state write once the wrapper
+    // has reached maxW so the handle truly stops moving rightward. Two
+    // cases: (a) image started at maxW (nextWidth === startW, no growth
+    // possible — preserving state=null keeps the source writeback empty
+    // on a no-op drag), and (b) wrapper reached maxW mid-drag (current
+    // width === maxW). Leftward drag (shrink) bypasses both via dx > 0.
+    if (dx > 0 && (nextWidth === dragRef.current.startW || widthRef.current === dragRef.current.maxW)) return;
     setWidth(nextWidth);
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
