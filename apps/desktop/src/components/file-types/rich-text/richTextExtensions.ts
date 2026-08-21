@@ -10,10 +10,21 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Mathematics } from '@tiptap/extension-mathematics';
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
+import { createLowlight, common } from 'lowlight';
 import { RichTextIndent } from './RichTextIndent';
 import { RichTextTableCell, RichTextTableHeader } from './RichTextTableCell';
 import { RichTextImage, type ImagePasteHandler } from './RichTextImage';
 import { RichTextSlashExtension } from './RichTextSlashExtension';
+
+// ponytail: one lowlight instance shared by editor + export pipeline
+// (getRichTextExtensions is called by both, and richtext.ts imports this
+// directly to post-process exported code blocks). `common` registers ~35
+// curated highlight.js grammars; `highlightAuto` runs against that set
+// when a code block has no language attr. Upgrade path: swap `common`
+// for `all` (every hljs grammar, ~3x bundle) only if a real language
+// goes unhighlighted.
+export const richTextLowlight = createLowlight(common);
 
 export type MathEditKind = 'inline' | 'block';
 
@@ -57,7 +68,16 @@ export interface RichTextExtensionsOptions {
 export function getRichTextExtensions(options: RichTextExtensionsOptions = {}): Extensions {
   const { onMathEdit, onImagePaste } = options;
   return [
-    StarterKit.configure({ codeBlock: { enableTabIndentation: true, tabSize: 2 } }),
+    StarterKit.configure({ codeBlock: false }),
+    CodeBlockLowlight.configure({
+      lowlight: richTextLowlight,
+      // ponytail: null → highlightAuto (auto-detect against common grammars).
+      // A future language picker on the code block would set attrs.language;
+      // until then auto-detect covers the obvious cases.
+      defaultLanguage: null,
+      enableTabIndentation: true,
+      tabSize: 2,
+    }),
     TaskList,
     TaskItem.configure({ nested: true }),
     TextStyle,

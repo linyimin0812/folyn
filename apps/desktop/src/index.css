@@ -589,6 +589,43 @@ mjx-container svg {
 [data-theme="dark"] .md-preview .hljs-symbol, [data-theme="dark"] .md-preview .hljs-bullet { color: #cc7832; }
 [data-theme="dark"] .md-preview .hljs-link { color: #6897bb; }
 
+/* ── Rich-text editor code block highlighting (lowlight via tiptap) ──
+   Mirrors the .md-preview rules above so a code block in RichTextEditor
+   colors tokens the same as in markdown preview. Scoped to .ProseMirror
+   pre code so it never collides with other <pre>/<code> on the page. */
+.ProseMirror pre code .hljs-comment, .ProseMirror pre code .hljs-quote { color: #940; }
+.ProseMirror pre code .hljs-keyword, .ProseMirror pre code .hljs-selector-tag { color: #708; }
+.ProseMirror pre code .hljs-number, .ProseMirror pre code .hljs-literal { color: #164; }
+.ProseMirror pre code .hljs-string, .ProseMirror pre code .hljs-addition { color: #a11; }
+.ProseMirror pre code .hljs-regexp { color: #e40; }
+.ProseMirror pre code .hljs-tag, .ProseMirror pre code .hljs-name { color: #170; }
+.ProseMirror pre code .hljs-attr, .ProseMirror pre code .hljs-variable, .ProseMirror pre code .hljs-template-variable { color: #00c; }
+.ProseMirror pre code .hljs-attribute { color: #00c; }
+.ProseMirror pre code .hljs-type, .ProseMirror pre code .hljs-built_in, .ProseMirror pre code .hljs-builtin-name, .ProseMirror pre code .hljs-class .hljs-title { color: #085; }
+.ProseMirror pre code .hljs-meta { color: #555; }
+.ProseMirror pre code .hljs-title, .ProseMirror pre code .hljs-function .hljs-title { color: #00f; }
+.ProseMirror pre code .hljs-section { color: #00f; }
+.ProseMirror pre code .hljs-deletion { color: #a11; }
+.ProseMirror pre code .hljs-symbol, .ProseMirror pre code .hljs-bullet { color: #708; }
+.ProseMirror pre code .hljs-link { color: #219; }
+.ProseMirror pre code .hljs-emphasis { font-style: italic; }
+.ProseMirror pre code .hljs-strong { font-weight: bold; }
+[data-theme="dark"] .ProseMirror pre code .hljs-comment, [data-theme="dark"] .ProseMirror pre code .hljs-quote { color: #a9b7c6; }
+[data-theme="dark"] .ProseMirror pre code .hljs-keyword, [data-theme="dark"] .ProseMirror pre code .hljs-selector-tag { color: #cc7832; }
+[data-theme="dark"] .ProseMirror pre code .hljs-number, [data-theme="dark"] .ProseMirror pre code .hljs-literal { color: #6897bb; }
+[data-theme="dark"] .ProseMirror pre code .hljs-string, [data-theme="dark"] .ProseMirror pre code .hljs-addition { color: #6a8759; }
+[data-theme="dark"] .ProseMirror pre code .hljs-regexp { color: #e40; }
+[data-theme="dark"] .ProseMirror pre code .hljs-tag, [data-theme="dark"] .ProseMirror pre code .hljs-name { color: #e8bf6a; }
+[data-theme="dark"] .ProseMirror pre code .hljs-attr, [data-theme="dark"] .ProseMirror pre code .hljs-variable, [data-theme="dark"] .ProseMirror pre code .hljs-template-variable { color: #9876aa; }
+[data-theme="dark"] .ProseMirror pre code .hljs-attribute { color: #9876aa; }
+[data-theme="dark"] .ProseMirror pre code .hljs-type, [data-theme="dark"] .ProseMirror pre code .hljs-built_in, [data-theme="dark"] .ProseMirror pre code .hljs-builtin-name, [data-theme="dark"] .ProseMirror pre code .hljs-class .hljs-title { color: #ffc66d; }
+[data-theme="dark"] .ProseMirror pre code .hljs-meta { color: #bbb529; }
+[data-theme="dark"] .ProseMirror pre code .hljs-title, [data-theme="dark"] .ProseMirror pre code .hljs-function .hljs-title { color: #ffc66d; }
+[data-theme="dark"] .ProseMirror pre code .hljs-section { color: #ffc66d; }
+[data-theme="dark"] .ProseMirror pre code .hljs-deletion { color: #cc7832; }
+[data-theme="dark"] .ProseMirror pre code .hljs-symbol, [data-theme="dark"] .ProseMirror pre code .hljs-bullet { color: #cc7832; }
+[data-theme="dark"] .ProseMirror pre code .hljs-link { color: #6897bb; }
+
 /* ── Steps container (CSS counter) ── */
 .docmd-steps { position: relative; padding-left: 3rem; margin: 1.5rem 0; counter-reset: docmd-step; }
 .docmd-steps-line { position: absolute; left: 1.15rem; top: 1rem; bottom: 1rem; width: 2px; background-color: var(--brd, #e4e4e7); }

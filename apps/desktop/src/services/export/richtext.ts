@@ -5,7 +5,7 @@ import katex from 'katex';
 // or an extra network dependency. Font files stay external (CDN below) —
 // KaTeX falls back to system serif glyphs if fonts can't load.
 import katexCss from 'katex/dist/katex.min.css?inline';
-import { getRichTextExtensions } from '@/components/file-types/rich-text/richTextExtensions';
+import { getRichTextExtensions, richTextLowlight } from '@/components/file-types/rich-text/richTextExtensions';
 import { deserializeToContent, emptyDoc } from '@/components/file-types/rich-text/richTextContent';
 import { readImageAsDataUrl, escapeHtml } from './shared';
 import { resolveBasePath } from '@/utils/pathResolver';
@@ -53,6 +53,27 @@ figcaption { text-align: center; font-size: 0.85rem; color: #888; margin-top: 0.
    .tiptap-mathematics-render, which generateHTML never runs) */
 [data-type="inline-math"] { white-space: nowrap; }
 [data-type="block-math"] { display: block; text-align: center; margin: 0.75rem 0; }
+/* ponytail: CodeBlockLowlight decorates tokens as <span class="hljs-…">.
+   generateHTML runs the extension's renderHTML, so the export picks up the
+   same token spans as the live editor. Light-only palette mirrors the
+   md-preview light rules — the export body has no dark theme. */
+pre code .hljs-comment, pre code .hljs-quote { color: #940; }
+pre code .hljs-keyword, pre code .hljs-selector-tag { color: #708; }
+pre code .hljs-number, pre code .hljs-literal { color: #164; }
+pre code .hljs-string, pre code .hljs-addition { color: #a11; }
+pre code .hljs-regexp { color: #e40; }
+pre code .hljs-tag, pre code .hljs-name { color: #170; }
+pre code .hljs-attr, pre code .hljs-variable, pre code .hljs-template-variable { color: #00c; }
+pre code .hljs-attribute { color: #00c; }
+pre code .hljs-type, pre code .hljs-built_in, pre code .hljs-builtin-name, pre code .hljs-class .hljs-title { color: #085; }
+pre code .hljs-meta { color: #555; }
+pre code .hljs-title, pre code .hljs-function .hljs-title { color: #00f; }
+pre code .hljs-section { color: #00f; }
+pre code .hljs-deletion { color: #a11; }
+pre code .hljs-symbol, pre code .hljs-bullet { color: #708; }
+pre code .hljs-link { color: #219; }
+pre code .hljs-emphasis { font-style: italic; }
+pre code .hljs-strong { font-weight: bold; }
 `;
 
 // KaTeX's @font-face rules reference `fonts/...` relative to the CSS file.
@@ -83,6 +104,50 @@ function renderRichTextMath(html: string): string {
     // throwOnError:false mirrors the editor's katexOptions — invalid LaTeX
     // renders the raw source (KaTeX red error styling) instead of throwing.
     el.innerHTML = katex.renderToString(latex, { throwOnError: false, displayMode: isBlock });
+  }
+  return doc.body.innerHTML;
+}
+
+// ponytail: serialize lowlight's hast tree to a token-span HTML string.
+// Mirrors CodeBlockLowlight's parseNodes (decorations build path) so the
+// export HTML matches the in-editor highlighting token-for-token. ~15 lines
+// over pulling in hast-util-to-html; we only need <span class="…">text</span>
+// for text/element nodes — no properties beyond className, no comments.
+function serializeHast(node: any): string {
+  if (!node) return '';
+  if (node.type === 'text') return escapeHtml(node.value ?? '');
+  if (node.type === 'root') return (node.children ?? []).map(serializeHast).join('');
+  const cls = node.properties?.className;
+  const classAttr = Array.isArray(cls) && cls.length
+    ? ` class="${cls.map(escapeHtml).join(' ')}"`
+    : '';
+  const inner = (node.children ?? []).map(serializeHast).join('');
+  return `<span${classAttr}>${inner}</span>`;
+}
+
+/**
+ * generateHTML runs each node's static renderHTML — for CodeBlockLowlight
+ * that's the inherited CodeBlock `<pre><code class="language-…">text</code>`
+ * (the lowlight plugin that decorates tokens only runs inside a live
+ * ProseMirror view, not generateHTML). Post-process: re-run lowlight on
+ * each code block and swap its innerHTML for the token spans. Same
+ * lowlight instance as the editor → same grammar coverage + same colors.
+ */
+function renderRichTextCode(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const codeEls = Array.from(doc.querySelectorAll('pre > code'));
+  if (codeEls.length === 0) return html;
+  for (const codeEl of codeEls) {
+    const lang = (codeEl.className.match(/language-([\w-]+)/) || [])[1];
+    const text = codeEl.textContent ?? '';
+    try {
+      const tree = lang && richTextLowlight.registered(lang)
+        ? richTextLowlight.highlight(lang, text)
+        : richTextLowlight.highlightAuto(text);
+      codeEl.innerHTML = serializeHast(tree);
+    } catch {
+      // unknown language / parse error → leave raw text
+    }
   }
   return doc.body.innerHTML;
 }
@@ -129,7 +194,8 @@ export async function richTextToHtmlBlob(
   const doc = deserializeToContent(content) ?? emptyDoc();
   const bodyHtml = generateHTML(doc, getRichTextExtensions());
   const withMath = renderRichTextMath(bodyHtml);
-  const inlined = await inlineRichTextImages(withMath, vaultRoot);
+  const withCode = renderRichTextCode(withMath);
+  const inlined = await inlineRichTextImages(withCode, vaultRoot);
   const baseName = name.replace(/\.[^.]+$/, '');
   const html = `<!DOCTYPE html>
 <html lang="zh-CN">
