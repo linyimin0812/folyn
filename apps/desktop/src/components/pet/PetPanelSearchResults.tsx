@@ -1,16 +1,19 @@
 // Pet-panel unified search results — the panel search box (above the tabs)
-// searches three sources: vault files, registered commands, and installed
-// plugins. Rendered in the panel body while the query is non-empty.
+// searches three sources: vault files, registered commands, and plugins
+// (on-disk third-party + built-in panels like translation/wiki/clips).
+// Rendered in the panel body while the query is non-empty.
 //
 // Cross-window routing (the panel is a separate JS realm):
 //  - File → `pet://bubble-action { type:'navigate', target:{ kind:'file' } }`
 //    (the main window's existing jump router opens it — same as PetInbox).
 //  - Command → `pet://menu-action { action:'run-command', commandId }` — the
 //    main window's routePetMenuAction runs it via the command registry.
-//  - Plugin → `pet://menu-action { action:'open-plugin-tool', pluginId }` —
-//    the main window opens the plugin's tool window (popup) via its
-//    registered `plugin.openTool.<pluginId>.<toolId>` command; plugins
-//    without a window tool fall back to the Plugins settings tab.
+//  - Plugin (third-party) → `pet://menu-action { action:'open-plugin-tool',
+//    pluginId }` — the main window opens the plugin's tool window (popup).
+//  - Plugin (built-in panel) → host panel tries in-panel activation first
+//    (e.g. switch to the translation tab); otherwise `run-command: panel.<name>`
+//    routes to the main window. Built-ins without such a command fall back
+//    to open-plugin-tool (Plugins settings tab).
 
 import {
   forwardRef,
@@ -24,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenMarkdownFiles } from '@/services/fileCommands';
 import { getCommands } from '@/services/commandRegistry';
-import type { PluginEntry } from '@/store/pluginStore';
+import { usePluginStore } from '@/store/pluginStore';
 import { isTauri } from '@/utils/platform';
 
 /** Max results per group — bounds DOM size for large vaults. */
@@ -40,6 +43,10 @@ interface PetPanelSearchResultsProps {
   query: string;
   /** Called after a result is picked (the caller hides the panel). */
   onDone: () => void;
+  /** Try to activate a built-in panel in-panel (e.g. switch to the
+   * translation tab). Return true if handled; false → fall back to
+   * main-window routing via `run-command: panel.<name>`. */
+  onActivateBuiltin?: (id: string) => boolean;
 }
 
 /** Imperative keyboard controls driven by the panel's search input. */
@@ -56,15 +63,21 @@ export interface PetPanelSearchResultsHandle {
 type SearchItem =
   | { kind: 'file'; path: string }
   | { kind: 'command'; commandId: string }
-  | { kind: 'plugin'; pluginId: string };
+  | { kind: 'plugin'; pluginId: string; builtin: boolean };
 
 export const PetPanelSearchResults = forwardRef<
   PetPanelSearchResultsHandle,
   PetPanelSearchResultsProps
->(function PetPanelSearchResults({ query, onDone }, ref) {
+>(function PetPanelSearchResults({ query, onDone, onActivateBuiltin }, ref) {
   const { t } = useTranslation();
   const fileTree = useVaultStore((s) => s.fileTree);
-  const [plugins, setPlugins] = useState<PluginEntry[]>([]);
+  // ponytail: read plugin rows from the store (includes built-in panels
+  // like translation/wiki/clips/analyze/schedule) instead of invoking
+  // `list_plugins` directly — that command returns only on-disk third-party
+  // plugins and skips BUILTIN_PANEL_DEFS, so searches for "翻译" never hit
+  // the translation panel.
+  const rows = usePluginStore((s) => s.rows);
+  const refreshRows = usePluginStore((s) => s.refresh);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Vault files (the panel receives the tree via `pet://file-tree-updated`).
@@ -75,24 +88,12 @@ export const PetPanelSearchResults = forwardRef<
     [],
   );
 
-  // Installed plugins — refreshed once on mount (the panel window lives as
-  // long as the app, and installs happen in the main window's settings).
+  // Installed + built-in plugins — refreshed once on mount (the panel window
+  // lives as long as the app, and installs happen in the main window's
+  // settings; `plugin://installed` listeners in App.tsx call refresh too).
   useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    void import('@tauri-apps/api/core').then(({ invoke }) =>
-      invoke<PluginEntry[]>('list_plugins')
-        .then((entries) => {
-          if (!cancelled) setPlugins(entries ?? []);
-        })
-        .catch(() => {
-          if (!cancelled) setPlugins([]);
-        }),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void refreshRows();
+  }, [refreshRows]);
 
   const q = query.trim();
   const fileHits = q
@@ -106,8 +107,15 @@ export const PetPanelSearchResults = forwardRef<
         .slice(0, MAX_PER_GROUP)
     : [];
   const pluginHits = q
-    ? plugins
-        .filter((p) => matches(q, p.name, p.id))
+    ? rows
+        .filter((r) => {
+          // Built-in rows carry nameKey/descKey (i18n labels); third-party
+          // rows use entry.name + manifest description. Match both so
+          // searching "翻译" hits the translation panel via its zh label.
+          const name = r.nameKey ? t(r.nameKey) : r.entry.name;
+          const desc = r.descKey ? t(r.descKey) : (r.description ?? '');
+          return matches(q, name, r.entry.id, r.entry.name, desc);
+        })
         .slice(0, MAX_PER_GROUP)
     : [];
   const total = fileHits.length + commandHits.length + pluginHits.length;
@@ -118,7 +126,11 @@ export const PetPanelSearchResults = forwardRef<
     () => [
       ...fileHits.map((f): SearchItem => ({ kind: 'file', path: f.path })),
       ...commandHits.map((c): SearchItem => ({ kind: 'command', commandId: c.id })),
-      ...pluginHits.map((p): SearchItem => ({ kind: 'plugin', pluginId: p.id })),
+      ...pluginHits.map((p): SearchItem => ({
+        kind: 'plugin',
+        pluginId: p.entry.id,
+        builtin: !!p.builtin,
+      })),
     ],
     [fileHits, commandHits, pluginHits],
   );
@@ -143,13 +155,37 @@ export const PetPanelSearchResults = forwardRef<
   }, [activeIndex, items.length]);
 
   const activateItem = useCallback(
-    (item: SearchItem) => {
-      if (item.kind === 'file') void emitNavigateFile(item.path);
-      else if (item.kind === 'command') void emitRunCommand(item.commandId);
-      else void emitOpenPluginTool(item.pluginId);
+    async (item: SearchItem) => {
+      if (item.kind === 'file') {
+        await emitNavigateFile(item.path);
+      } else if (item.kind === 'command') {
+        await emitRunCommand(item.commandId);
+      } else if (item.kind === 'plugin') {
+        if (item.builtin) {
+          // Built-in panel hit: let the host panel try in-panel activation
+          // first (e.g. switch to the translation tab). The host clears the
+          // search query itself; we must NOT call onDone() here — onDone
+          // hides the whole pet panel, which would mask the tab switch.
+          // Otherwise route to the main window via `run-command: panel.<name>`.
+          // Built-ins without such a command (schedule) fall back to
+          // open-plugin-tool which opens the Plugins settings tab.
+          if (onActivateBuiltin?.(item.pluginId)) {
+            return;
+          }
+          const { getCommands } = await import('@/services/commandRegistry');
+          const cmdId = `panel.${item.pluginId.replace(/^builtin:/, '')}`;
+          if (getCommands().some((c) => c.id === cmdId)) {
+            await emitRunCommand(cmdId);
+          } else {
+            await emitOpenPluginTool(item.pluginId);
+          }
+        } else {
+          await emitOpenPluginTool(item.pluginId);
+        }
+      }
       onDone();
     },
-    [onDone],
+    [onActivateBuiltin, onDone],
   );
 
   useImperativeHandle(
@@ -225,20 +261,26 @@ export const PetPanelSearchResults = forwardRef<
           </div>
           {pluginHits.map((p, i) => {
             const index = fileHits.length + commandHits.length + i;
+            const title = p.nameKey ? t(p.nameKey) : p.entry.name;
+            const sub = p.builtin
+              ? p.entry.id
+              : `${p.entry.id} · v${p.entry.version}`;
             return (
             <button
-              key={p.id}
+              key={p.entry.id}
               type="button"
               data-search-index={index}
               className={`pet-panel-search-item${index === activeIndex ? ' is-active' : ''}`}
               role="option"
               aria-selected={index === activeIndex}
-              onClick={() => activateItem({ kind: 'plugin', pluginId: p.id })}
+              onClick={() => activateItem({
+                kind: 'plugin',
+                pluginId: p.entry.id,
+                builtin: !!p.builtin,
+              })}
             >
-              <span className="pet-panel-search-item-title">{p.name}</span>
-              <span className="pet-panel-search-item-sub">
-                {p.id} · v{p.version}
-              </span>
+              <span className="pet-panel-search-item-title">{title}</span>
+              <span className="pet-panel-search-item-sub">{sub}</span>
             </button>
             );
           })}

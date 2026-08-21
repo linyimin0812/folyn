@@ -6,6 +6,7 @@ import { runRigChat } from '@/services/rigChat';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 import { PairSelector, type Pair } from '@/components/ai/PairSelector';
 import { Toggle } from '@/components/settings/primitives';
+import { isTauri } from '@/utils/platform';
 import { LanguageDropdown } from './LanguageDropdown';
 import {
   AUTO_DETECT_ID,
@@ -132,9 +133,24 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
   }, [result, t]);
 
   const openSettings = useCallback(() => {
-    setSettingsTab('plugins');
+    if (embedded) {
+      // ponytail: the pet panel is a separate Tauri window = separate JS
+      // realm; its navStore instance can't touch the main window. Hop
+      // through pet://menu-action: open-ai-settings, which the main window
+      // routes to Settings → models tab + focuses itself. Same pattern as
+      // VoiceOrbApp.openAiSettingsFromOrb.
+      if (isTauri()) {
+        void import('@tauri-apps/api/event')
+          .then(({ emit }) =>
+            emit('pet://menu-action', { action: 'open-ai-settings' }),
+          )
+          .catch(() => {});
+      }
+      return;
+    }
+    setSettingsTab('models');
     setCurrentPage('settings');
-  }, [setSettingsTab, setCurrentPage]);
+  }, [embedded, setSettingsTab, setCurrentPage]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-panel">

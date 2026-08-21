@@ -219,11 +219,11 @@ pub fn app_menu_label(locale: &str, key: AppMenuLabel) -> &'static str {
 /// the level to a `LogicalSize`.
 pub(crate) fn pet_size_to_px(level: &str) -> Option<(u32, u32)> {
     match level {
-        "50" => Some((48, 48)),
-        "75" => Some((72, 72)),
-        "100" => Some((96, 96)),
-        "125" => Some((120, 120)),
-        "150" => Some((144, 144)),
+        "50" => Some((40, 40)),
+        "75" => Some((60, 60)),
+        "100" => Some((80, 80)),
+        "125" => Some((100, 100)),
+        "150" => Some((120, 120)),
         _ => None,
     }
 }

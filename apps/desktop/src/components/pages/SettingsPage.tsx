@@ -345,7 +345,7 @@ export function SettingsPage() {
                   const text = t(`settings:about.philosophy.${k}`);
                   const [head, ...rest] = text.split(' —— ');
                   return (
-                    <div key={k} className="bg-surf2/60 border-l-2 border-brd2 rounded-r-md py-2.5 px-3">
+                    <div key={k} className="bg-surf2/60 border border-brd2 rounded-lg py-2.5 px-3">
                       <p className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0" style={{ textAlign: 'justify' }}>
                         <span className="font-bold text-t1">{head} ——</span>{rest.join(' —— ')}
                       </p>
@@ -357,7 +357,7 @@ export function SettingsPage() {
 
             <div className="mb-8">
               <SectionHeader label={t('settings:about.features.label') || ''} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }} className="max-w-[640px]">
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Home size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.localFirst.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.localFirst.description')}</p></div></div>
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Unlock size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.openFormat.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.openFormat.description')}</p></div></div>
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Sparkles size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.ai.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.ai.description')}</p></div></div>
@@ -369,7 +369,7 @@ export function SettingsPage() {
 
             <div className="mb-8">
               <SectionHeader label={t('settings:about.highlights.label')} />
-              <div className="bg-surf2/40 border border-brd2 rounded-lg p-4">
+              <div className="bg-surf2/40 border border-brd2 rounded-lg p-4 max-w-[640px]">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px 32px' }}>
                   {(['editor', 'preview', 'vault', 'containerPlugins', 'export', 'crossPlatform', 'themes', 'shortcuts', 'i18n'] as const).map((k) => (
                     <div key={k} className="flex gap-2.5">

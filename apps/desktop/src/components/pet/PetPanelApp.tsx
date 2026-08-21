@@ -731,6 +731,18 @@ export function PetPanelApp() {
             ref={searchResultsRef}
             query={searchQuery}
             onDone={handleSearchDone}
+            onActivateBuiltin={(id) => {
+              // ponytail: the pet panel already embeds the translation tab,
+              // so switch to it in-panel and clear the search query (don't
+              // hide the panel — that's onDone's job, for cross-window jumps).
+              // Other built-ins fall through to run-command.
+              if (id === 'builtin:translation') {
+                setTab('translation');
+                setSearchQuery('');
+                return true;
+              }
+              return false;
+            }}
           />
         ) : tab === 'chat' ? (
           <AiPanel embedded />

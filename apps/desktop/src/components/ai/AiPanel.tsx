@@ -3,6 +3,8 @@ import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiStore } from '@/store/aiStore';
 import { useAiConfigStore, resolvePairForSession } from '@/store/aiConfigStore';
+import { useNavStore } from '@/store/navStore';
+import { isTauri } from '@/utils/platform';
 import { useVaultStore } from '@/store/vaultStore';
 import type { CliMessage, CliStreamEvent, MessageAttachment } from '@quill/cli-adapter';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
@@ -83,13 +85,42 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const isStreaming = activeSession?.isStreaming ?? false;
   const messages = activeSession?.messages ?? [];
+  // ponytail: only Chat (rig) mode needs a configured (provider, model) pair
+  // to send — Ask/Agent modes go through the CLI adapter and don't require
+  // a pair. So the input is disabled + the setup banner is shown only when
+  // the active mode is rig AND no pair is configured.
+  const inputMode = useAiStore((s) => s.inputMode);
+  const currentMode = activeSession?.mode ?? inputMode;
+  const needsPair = isRigMode(currentMode);
 
   // ponytail: the (provider, model) picker moved from the panel header into
-  // ChatInput's mode-linked slot (visible in Chat mode only). AiPanel keeps
-  // `hasPair` to disable sending when nothing is configured; the send path
-  // itself resolves the pair via `resolvePairForSession` (display-only
-  // fallback to pairs[0] lives in ChatInput).
+  // ChatInput's mode-linked slot (visible in Chat mode only). `hasPair`
+  // gates the Chat (rig) send path only — Ask/Agent go through the CLI
+  // adapter and don't need a pair. The send path itself resolves the pair
+  // via `resolvePairForSession` (display-only fallback to pairs[0] in
+  // ChatInput).
   const { hasAny: hasPair } = useEnabledPairs();
+
+  const setSettingsTab = useNavStore((s) => s.setSettingsTab);
+  const setCurrentPage = useNavStore((s) => s.setCurrentPage);
+  // ponytail: when no pair is configured, show a setup prompt + button
+  // instead of silently disabling the input. Embedded (pet panel) is a
+  // separate JS realm — route through pet://menu-action: open-ai-settings
+  // so the main window focuses itself + lands on Settings → models tab.
+  const openSettings = useCallback(() => {
+    if (embedded) {
+      if (isTauri()) {
+        void import('@tauri-apps/api/event')
+          .then(({ emit }) =>
+            emit('pet://menu-action', { action: 'open-ai-settings' }),
+          )
+          .catch(() => {});
+      }
+      return;
+    }
+    setSettingsTab('models');
+    setCurrentPage('settings');
+  }, [embedded, setSettingsTab, setCurrentPage]);
 
   const [showSessionList, setShowSessionList] = useState(false);
   const [multiSelectMode, setMultiSelectMode] = useState(false);
@@ -338,20 +369,21 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
     // switch between the click and handleSend running is reflected.
     const aiConfig = useAiConfigStore.getState();
     const targetSession = useAiStore.getState().sessions.find((s) => s.id === sessionId);
-    const resolved = resolvePairForSession(sessionId);
-    if (!resolved) {
-      // No pair available — surface empty state, abort send.
-      // ponytail: matches previous behavior where empty chatProvider/chatModel
-      // would produce a send with empty apiKey that runRigChat would reject.
+    // ponytail: only Chat (rig) mode needs a (provider, model) pair —
+    // Ask/Agent go through the CLI adapter and don't need one. The prior
+    // unconditional check aborted Ask/Agent sends on first launch before
+    // the assistant bubble existed, so the error had nowhere to land and
+    // the user saw "no response".
+    const sendMode = useAiStore.getState().sessions.find((s) => s.id === sessionId)?.mode ?? useAiStore.getState().inputMode;
+    const isRig = isRigMode(sendMode);
+    const resolved = isRig ? resolvePairForSession(sessionId) : null;
+    if (isRig && !resolved) {
       appendToLastMessage(t('ai:errors.streamError', { error: 'No provider configured' }), sessionId);
       setSessionStreaming(sessionId, false);
       return;
     }
-    const sendProvider = resolved.provider;
-    const sendModel = resolved.model;
-    // ponytail: prefer the session's persisted mode (survives restart) over
-    // the global inputMode fallback.
-    const sendMode = useAiStore.getState().sessions.find((s) => s.id === sessionId)?.mode ?? useAiStore.getState().inputMode;
+    const sendProvider = resolved?.provider;
+    const sendModel = resolved?.model;
     addMessage('user', userText || t('ai:panel.attachmentPlaceholder'), sessionId, previewAttachments.length > 0 ? previewAttachments : undefined, undefined, undefined, sendMode);
     addMessage('assistant', '', sessionId, undefined, sendProvider, sendModel, sendMode);
     setSessionStreaming(sessionId, true);
@@ -531,14 +563,16 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
         await runRigChat({
           sessionId: sid,
           prompt,
-          provider: resolved.provider,
-          model: resolved.model,
-          apiKey: resolved.apiKey,
-          baseUrl: resolved.baseUrl,
+          // ponytail: null-guarded at line 380 (isRig && !resolved → return);
+          // non-null assertion is safe inside the rig branch.
+          provider: resolved!.provider,
+          model: resolved!.model,
+          apiKey: resolved!.apiKey,
+          baseUrl: resolved!.baseUrl,
           // T07: forward reasoning budget. rig applies it via per-provider
           // additional_params; non-reasoning models silently ignore.
-          thinkingBudget: resolved.thinkingBudget,
-          adapterFamily: resolved.adapterFamily,
+          thinkingBudget: resolved!.thinkingBudget,
+          adapterFamily: resolved!.adapterFamily,
           onEvent: eventHandler,
           ...(images.length > 0 ? { images } : {}),
         });
@@ -669,11 +703,24 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
         className="p-3 gap-3"
       />
 
+      {needsPair && !hasPair && (
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-t border-brd2 bg-surf2/40 text-[12px] text-t3">
+          <span className="flex-1 min-w-0 truncate">{t('ai:pairSelector.empty')}</span>
+          <button
+            type="button"
+            className="text-acc text-[12px] hover:underline whitespace-nowrap cursor-pointer bg-transparent border-none"
+            onClick={openSettings}
+          >
+            {t('ai:pairSelector.openSettings')}
+          </button>
+        </div>
+      )}
+
       <ChatInput
         onSend={handleSend}
         onStop={handleStop}
         isStreaming={isStreaming}
-        disabled={!hasPair}
+        disabled={needsPair && !hasPair}
       />
 
       {pendingSave && (

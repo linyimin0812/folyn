@@ -15,6 +15,8 @@ const BUILTIN_EXCLUDE_DIRS = [
   '__daily__',
   '__schedule__',
   '__analyze__',
+  '__attachments__',
+  '__study__',
 ];
 
 /**
@@ -32,7 +34,7 @@ export function backfillBuiltinExcludePatterns(raw: string): string {
 }
 
 const DEFAULT_EXCLUDE_PATTERNS =
-  'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__';
+  'node_modules\n.git\n.DS_Store\ndist\n.next\n.quill-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__\n__attachments__\n__study__';
 
 export const PERSIST_KEYS_APPEARANCE = [
   'theme',
@@ -111,13 +113,13 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   theme: 'light',
   fontSize: 14,
   lineHeight: 1.7,
-  showAiPanel: true,
+  showAiPanel: false,
   showStatusBar: true,
   showHiddenFiles: true,
   enableWikiPanel: false,
   enableClipsPanel: false,
   enableAnalyzePanel: false,
-  enableSchedulePanel: true,
+  enableSchedulePanel: false,
   enableTranslationPanel: true,
   enabledAtWiki: undefined,
   enabledAtClips: undefined,

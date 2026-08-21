@@ -21,7 +21,7 @@
  */
 
 /** Pet window footprint (matches `tauri.conf.json` `pet` window size). */
-export const PET_WINDOW_SIZE = 96;
+export const PET_WINDOW_SIZE = 80;
 
 /** User-selectable pet size levels (percentage of the 96px base footprint).
  *  Synced with Rust `set_pet_size` command and `PET_CTX_MENU_SIZE_*` menu ids.
@@ -35,11 +35,11 @@ export type PetSize = '50' | '75' | '100' | '125' | '150';
  *  resized Rust-side by `set_pet_size`. MUST stay in sync with the Rust
  *  `pet_size_to_px` mapping in `commands.rs`. */
 export const PET_SIZE_TO_PX: Record<PetSize, number> = {
-  '50': 48,
-  '75': 72,
-  '100': 96,
-  '125': 120,
-  '150': 144,
+  '50': 40,
+  '75': 60,
+  '100': 80,
+  '125': 100,
+  '150': 120,
 };
 
 /** Default pet size level (used when the persisted value is missing / invalid
