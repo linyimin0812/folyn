@@ -378,22 +378,251 @@
   },
   "about": {
     "tagline": "v0.1.0-alpha · Local-first Markdown Editor",
+    "groups": {
+      "capabilities": "能力详解",
+      "architecture": "架构与实现",
+      "developer": "开发与贡献"
+    },
+    "description": "Quill 基于 Tauri 2 + React + CodeMirror 6 构建，是一款本地优先的 Markdown 编辑器。集成 AI 对话、桌宠、插件系统、ER 图、日程管理与 CLI 工具，数据完全存储在你的设备上，标准 Markdown 格式，无锁定。",
+    "philosophy": {
+      "label": "设计理念",
+      "localFirst": "本地优先 —— 你的笔记永远属于你。所有文档以标准 Markdown 文件形式保存在本地文件系统中，不依赖云端账号，离线可用，迁移自由。Vault 系统通过 vault-provider 抽象层支持可插拔存储后端，但数据所有权始终在你手中。",
+      "openFormat": "开放格式 —— 拒绝锁定。Quill 使用标准 Markdown 文件作为唯一存储格式，配合 remark/rehype 管线处理 GFM 与自定义指令。任何文本编辑器都能打开你的笔记；随时可导出为 HTML 或 PDF；卸载 Quill 后你的数据仍然完整可读。",
+      "extensible": "可扩展 —— 从编辑器内核到存储后端全链路开放。微内核 + 插件 SDK 支持容器指令（callout、tabs、mermaid 等 14 种）与第三方插件；CLI 适配器抽象让 6 种 AI 工具（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）可插拔接入；pnpm workspaces 让 container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk 作为独立 package 演进。",
+      "privacy": "隐私优先 —— AI 对话与代码生成通过本地 CLI 工具完成，你的 API Key 与对话内容不经过 Quill 服务器。CSP 策略与插件沙箱层提供深度防御，可信层与沙箱层分级执行，第三方插件在受限权限下运行。"
+    },
     "features": {
+      "label": "功能概览",
       "localFirst": {
         "title": "本地优先",
-        "description": "数据存储在你的设备上"
+        "description": "数据完全存储在你的设备上，支持本地文件系统、GitHub、WebDAV、S3 等可插拔存储后端"
       },
       "openFormat": {
         "title": "开放格式",
-        "description": "标准 Markdown，无锁定"
+        "description": "标准 Markdown 文件，无锁定，可随时导出为 Markdown、HTML 或 PDF"
       },
       "ai": {
         "title": "AI 辅助",
-        "description": "本地 + 云端 LLM"
+        "description": "内置 AI 侧边栏，通过适配器接入 Claude Code 等 CLI 工具，支持写作辅助、代码生成与 diff 审阅"
+      },
+      "plugins": {
+        "title": "插件生态",
+        "description": "微内核 + 插件 SDK 架构，支持容器指令（callout、tabs 等）与第三方插件扩展"
+      },
+      "pet": {
+        "title": "桌宠伴侣",
+        "description": "可选的桌面宠物交互，为写作过程增添陪伴感"
+      },
+      "builtInTools": {
+        "title": "内置工具",
+        "description": "ER 图（DBML）、日程管理、CLI 工具、文件模板、语音输入等开箱即用"
       }
     },
-    "copyVersion": "复制版本信息",
-    "checkUpdate": "检查更新"
+    "highlights": {
+      "label": "核心能力",
+      "items": {
+        "editor": {
+          "title": "Markdown 编辑",
+          "description": "基于 CodeMirror 6，支持语法高亮、GFM、remark 指令与斜杠命令"
+        },
+        "preview": {
+          "title": "实时预览",
+          "description": "实时 Markdown 渲染、代码高亮（highlight.js）、容器指令与同步滚动"
+        },
+        "vault": {
+          "title": "Vault 系统",
+          "description": "本地优先文档管理，存储后端可插拔（本地、GitHub、WebDAV、S3）"
+        },
+        "containerPlugins": {
+          "title": "容器插件",
+          "description": "可扩展指令系统（:::callout、:::tabs 等）与斜杠菜单插入"
+        },
+        "export": {
+          "title": "多格式导出",
+          "description": "支持导出为 Markdown、HTML、PDF"
+        },
+        "crossPlatform": {
+          "title": "跨平台",
+          "description": "基于 Tauri 2，支持 macOS、Windows、Linux"
+        },
+        "themes": {
+          "title": "主题与外观",
+          "description": "亮色 / 暗色 / 跟随系统，可配置字体、字号、状态栏、AI 面板可见性"
+        },
+        "shortcuts": {
+          "title": "可定制快捷键",
+          "description": "保存、加粗、斜体等全部可自定义，支持全局语音热键"
+        },
+        "i18n": {
+          "title": "多语言",
+          "description": "i18next 支持中、英、日、德、法、西，跟随系统语言"
+        }
+      }
+    },
+    "architecture": {
+      "label": "架构分层",
+      "description": "Quill 采用清晰的分层架构，从底层 Shell 到上层 AI 适配器，每一层职责单一、可独立演进。pnpm workspaces 让每个核心能力独立成包，便于复用与测试。",
+      "layers": {
+        "shell": {
+          "name": "Shell",
+          "tech": "Tauri 2 (Rust)",
+          "description": "桌面应用外壳，提供窗口、系统托盘、文件系统访问、剪贴板、原生通知等系统能力"
+        },
+        "frontend": {
+          "name": "前端",
+          "tech": "React 18 + Vite 6 + TypeScript",
+          "description": "UI 渲染层，组件化构建 shell、编辑器、AI 面板、侧边栏、设置等"
+        },
+        "editor": {
+          "name": "编辑器",
+          "tech": "CodeMirror 6",
+          "description": "代码编辑内核，扩展支持 Markdown 语法、GFM、斜杠命令、自动补全"
+        },
+        "markdown": {
+          "name": "Markdown 管线",
+          "tech": "unified / remark / rehype",
+          "description": "解析与渲染管线，处理 GFM、容器指令、代码高亮、同步滚动"
+        },
+        "state": {
+          "name": "状态管理",
+          "tech": "Zustand 5",
+          "description": "轻量状态库，分别管理 appearance、editorPrefs、prefs、nav、vault 等独立 store"
+        },
+        "styling": {
+          "name": "样式",
+          "tech": "Tailwind CSS 3",
+          "description": "原子化 CSS，配合 CSS 变量实现主题切换与字号控制"
+        },
+        "plugins": {
+          "name": "插件系统",
+          "tech": "plugin-host + plugin-sdk",
+          "description": "微内核架构，可信层与沙箱层分级执行，支持容器指令与第三方扩展"
+        },
+        "storage": {
+          "name": "存储抽象",
+          "tech": "vault-provider",
+          "description": "Vault 管理器与 Provider 接口，支持本地 FS、GitHub 等可插拔后端"
+        },
+        "ai": {
+          "name": "AI 适配器",
+          "tech": "cli-adapter",
+          "description": "CLI 抽象层，统一接入 Claude Code、Codex、Gemini、Opencode、Pi、Qoder 等 AI 工具"
+        }
+      }
+    },
+    "projectStructure": {
+      "label": "项目结构",
+      "description": "Quill 是一个 pnpm monorepo，桌面应用、CLI 适配器、容器插件、Vault Provider、Plugin Host/SDK 各自独立成包。",
+      "tree": "quill/\n├── apps/\n│   └── desktop/              # Tauri 桌面应用\n│       ├── src/              # React 前端\n│       │   ├── components/   # UI 组件（shell、editor、AI、sidebar 等）\n│       │   ├── editor/       # CodeMirror 扩展\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # 工具模块\n│       └── src-tauri/        # Rust 后端（Tauri commands）\n├── packages/\n│   ├── cli-adapter/          # AI CLI 适配器抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown 容器指令插件（14 种）\n│   ├── vault-provider/       # Vault 存储后端抽象\n│   ├── plugin-host/         # 插件宿主运行时\n│   ├── plugin-sdk/          # 插件开发 SDK\n│   └── create-quill-plugin/ # 脚手架工具\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+    },
+    "storageBackends": {
+      "label": "存储后端",
+      "description": "Vault 系统通过 vault-provider 抽象层支持可插拔后端。当前内置本地文件系统与 GitHub 两种；WebDAV、S3 可通过实现 Provider 接口扩展。",
+      "items": {
+        "localFs": {
+          "title": "本地文件系统",
+          "description": "默认存储，通过 tauriProvider 直接读写本地 Markdown 文件"
+        },
+        "github": {
+          "title": "GitHub 仓库",
+          "description": "通过 githubProvider 同步到 GitHub 仓库，自动版本化与历史回溯"
+        },
+        "s3": {
+          "title": "S3 兼容存储（可扩展）",
+          "description": "实现 Provider 接口即可接入 S3 / MinIO / R2，支持端到端加密"
+        }
+      }
+    },
+    "aiIntegration": {
+      "label": "AI 集成",
+      "description": "通过 cli-adapter 抽象层，Quill 统一接入 6 种基于 CLI 的 AI 工具。在「设置 → 模型服务」配置 CLI 路径后，可在侧边栏进行对话、生成文本、应用代码编辑并审阅 diff。API Key 与对话内容仅本地 CLI 工具与对应 AI 服务之间流转，不经过 Quill 服务器。",
+      "adapters": {
+        "label": "内置 CLI 适配器",
+        "items": {
+          "claudeCode": {
+            "name": "Claude Code",
+            "description": "Anthropic 官方 CLI，支持对话、代码生成、文件编辑与 diff 审阅"
+          },
+          "codex": {
+            "name": "Codex CLI",
+            "description": "OpenAI Codex CLI，代码生成与重构"
+          },
+          "gemini": {
+            "name": "Gemini CLI",
+            "description": "Google Gemini CLI，多模态对话与生成"
+          },
+          "opencode": {
+            "name": "Opencode",
+            "description": "开源 AI 编程 CLI，支持多后端切换"
+          },
+          "pi": {
+            "name": "Pi CLI",
+            "description": "Inflection Pi CLI，对话式协作"
+          },
+          "qoder": {
+            "name": "Qoder",
+            "description": "Qoder CLI，代码生成与编辑"
+          }
+        }
+      }
+    },
+    "pluginSystem": {
+      "label": "插件系统",
+      "description": "微内核 + 插件 SDK 架构。插件分为可信层（Trusted，直接调用宿主能力）与沙箱层（Sandbox，在受限权限下运行），通过 plugin-host 运行时加载。第三方插件可通过 create-quill-plugin 脚手架快速创建。",
+      "tiers": {
+        "label": "执行层级",
+        "trusted": {
+          "name": "可信层（Trusted）",
+          "description": "直接调用宿主能力，适合需要文件系统、网络、原生 API 的内置或受信插件"
+        },
+        "sandbox": {
+          "name": "沙箱层（Sandbox）",
+          "description": "在受限权限下运行，通过 plugin-sdk 暴露白名单 API，适合第三方插件"
+        }
+      },
+      "containerPlugins": {
+        "label": "容器指令插件（14 种）",
+        "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
+      }
+    },
+    "fileTypeSupport": {
+      "label": "文件类型支持",
+      "description": "通过 HandlerRegistry 统一注册，Quill 可预览与编辑 15+ 种文件类型。",
+      "items": "Markdown · 代码 · CSV · JSON · HTML · 图片 · DBML (ER 图) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · 思维导图 (mmap) · Office 文档 · 剪贴板片段"
+    },
+    "techStack": {
+      "label": "技术栈",
+      "items": "Tauri 2 · React 18 · CodeMirror 6 · unified / remark · Zustand 5 · Tailwind 3 · pnpm workspaces"
+    },
+    "quickStart": {
+      "label": "快速开始",
+      "prerequisites": "前置：Node.js ≥ 20 · pnpm ≥ 9 · Rust 最新稳定版 · Tauri 2 系统依赖（参见 v2.tauri.app/start/prerequisites）",
+      "install": "安装依赖",
+      "dev": "启动开发（前端 + Tauri 窗口）",
+      "build": "构建桌面应用",
+      "buildFrontend": "仅构建前端"
+    },
+    "configuration": {
+      "label": "配置分类",
+      "description": "所有配置均可在应用内「设置」页面访问，按用途分为三组：",
+      "groups": {
+        "general": {
+          "name": "通用",
+          "items": "外观、编辑器、快捷键、文件模板、桌宠、通知、插件、安全策略 (CSP)、存储与分享"
+        },
+        "ai": {
+          "name": "AI",
+          "items": "CLI 工具、模型服务、语音输入"
+        },
+        "about": {
+          "name": "关于",
+          "items": "本页"
+        }
+      }
+    },
+    "license": "MIT License",
+    "viewOnGithub": "在 GitHub 上查看",
+    "reportIssue": "问题反馈"
   },
   "plugins": {
     "title": "插件",

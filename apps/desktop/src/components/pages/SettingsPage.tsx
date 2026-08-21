@@ -16,8 +16,27 @@ import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
 import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSettings';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
-import { Home, Unlock, Sparkles, ClipboardCopy, RefreshCw } from 'lucide-react';
+import { Home, Unlock, Sparkles, RefreshCw, Puzzle, Cat, Wrench, Bug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-[3px] h-[13px] rounded-full bg-t2" />
+      <h3 className="text-[13px] font-bold text-t1 m-0 tracking-[-0.005em]">{label}</h3>
+    </div>
+  );
+}
+
+function GroupDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 my-8">
+      <div className="h-px bg-brd2 flex-1" />
+      <span className="text-[10.5px] font-bold text-t3 uppercase tracking-[.14em]">{label}</span>
+      <div className="h-px bg-brd2 flex-1" />
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -310,19 +329,141 @@ export function SettingsPage() {
         {/* -- 关于 -- */}
         {settingsTab === 'about' && (
           <div className="mb-[26px]">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 16 }}>
-              <img src={`${import.meta.env.BASE_URL}quill.svg`} alt="Quill" width="48" height="48" style={{ borderRadius: 5 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 18 }}>
+              <img src={`${import.meta.env.BASE_URL}quill.svg`} alt="Quill" width="52" height="52" style={{ borderRadius: 6 }} />
               <div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--t1)', letterSpacing: '-.02em' }}>Quill<span style={{ color: 'var(--acc)' }}>.</span></div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--t1)', letterSpacing: '-.02em' }}>Quill.</div>
                 <div className="font-mono" style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>{t('settings:about.tagline')}</div>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 16 }}>
-              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><Home size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">{t('settings:about.features.localFirst.title')}</h4><p className="text-[11px] text-t3 leading-normal m-0">{t('settings:about.features.localFirst.description')}</p></div></div>
-              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><Unlock size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">{t('settings:about.features.openFormat.title')}</h4><p className="text-[11px] text-t3 leading-normal m-0">{t('settings:about.features.openFormat.description')}</p></div></div>
-              <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3 px-3.5 flex gap-2.5"><Sparkles size={17} className="shrink-0 mt-px text-acc" /><div><h4 className="text-[12.5px] font-semibold text-t1 m-0 mb-0.5">{t('settings:about.features.ai.title')}</h4><p className="text-[11px] text-t3 leading-normal m-0">{t('settings:about.features.ai.description')}</p></div></div>
+            <p className="text-[length:calc(var(--ui-font-size)-1px)] text-t2 leading-relaxed m-0 mb-8 max-w-[640px]" style={{ textAlign: 'justify' }}>{t('settings:about.description')}</p>
+
+            <div className="mb-8">
+              <SectionHeader label={t('settings:about.philosophy.label')} />
+              <div className="space-y-2.5 max-w-[640px]">
+                {(['localFirst', 'openFormat', 'extensible', 'privacy'] as const).map((k) => {
+                  const text = t(`settings:about.philosophy.${k}`);
+                  const [head, ...rest] = text.split(' —— ');
+                  return (
+                    <div key={k} className="bg-surf2/60 border-l-2 border-brd2 rounded-r-md py-2.5 px-3">
+                      <p className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0" style={{ textAlign: 'justify' }}>
+                        <span className="font-bold text-t1">{head} ——</span>{rest.join(' —— ')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 6 }}><button className="btn btn-g btn-sm inline-flex items-center gap-1.5"><ClipboardCopy size={13} /> {t('settings:about.copyVersion')}</button><button className="btn btn-g btn-sm inline-flex items-center gap-1.5"><RefreshCw size={13} /> {t('settings:about.checkUpdate')}</button></div>
+
+            <div className="mb-8">
+              <SectionHeader label={t('settings:about.features.label') || ''} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Home size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.localFirst.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.localFirst.description')}</p></div></div>
+                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Unlock size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.openFormat.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.openFormat.description')}</p></div></div>
+                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Sparkles size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.ai.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.ai.description')}</p></div></div>
+                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Puzzle size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.plugins.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.plugins.description')}</p></div></div>
+                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Cat size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.pet.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.pet.description')}</p></div></div>
+                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Wrench size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.builtInTools.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.builtInTools.description')}</p></div></div>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <SectionHeader label={t('settings:about.highlights.label')} />
+              <div className="bg-surf2/40 border border-brd2 rounded-lg p-4">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px 32px' }}>
+                  {(['editor', 'preview', 'vault', 'containerPlugins', 'export', 'crossPlatform', 'themes', 'shortcuts', 'i18n'] as const).map((k) => (
+                    <div key={k} className="flex gap-2.5">
+                      <div className="w-[5px] h-[5px] rounded-full bg-t2 mt-[6px] shrink-0" />
+                      <div>
+                        <div className="text-[12.5px] font-bold text-t1 mb-0.5">{t(`settings:about.highlights.items.${k}.title`)}</div>
+                        <div className="text-[11px] text-t3 leading-relaxed">{t(`settings:about.highlights.items.${k}.description`)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <GroupDivider label={t('settings:about.groups.capabilities')} />
+
+            <div className="mb-8">
+              <SectionHeader label={t('settings:about.storageBackends.label')} />
+              <div className="bg-surf2/40 border border-brd2 rounded-lg p-4 max-w-[640px]">
+                <p className="text-justify text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0 mb-4">{t('settings:about.storageBackends.description')}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px 32px' }}>
+                  {(['localFs', 'github', 's3'] as const).map((k) => (
+                    <div key={k} className="flex gap-2.5">
+                      <div className="w-[5px] h-[5px] rounded-full bg-t2 mt-[6px] shrink-0" />
+                      <div>
+                        <div className="text-[12px] font-bold text-t1 mb-0.5">{t(`settings:about.storageBackends.items.${k}.title`)}</div>
+                        <div className="text-[11px] text-t3 leading-relaxed">{t(`settings:about.storageBackends.items.${k}.description`)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <SectionHeader label={t('settings:about.aiIntegration.label')} />
+              <div className="bg-surf2/40 border border-brd2 rounded-lg p-4 max-w-[640px]">
+                <p className="text-justify text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0 mb-4">{t('settings:about.aiIntegration.description')}</p>
+                <div className="text-[11.5px] font-bold text-t2 mb-3">{t('settings:about.aiIntegration.adapters.label')}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px 32px' }}>
+                  {(['claudeCode', 'codex', 'gemini', 'opencode', 'pi', 'qoder'] as const).map((k) => (
+                    <div key={k} className="flex gap-2.5">
+                      <div className="w-[5px] h-[5px] rounded-full bg-t2 mt-[6px] shrink-0" />
+                      <div>
+                        <div className="text-[12px] font-bold text-t1 mb-0.5">{t(`settings:about.aiIntegration.adapters.items.${k}.name`)}</div>
+                        <div className="text-[11px] text-t3 leading-relaxed">{t(`settings:about.aiIntegration.adapters.items.${k}.description`)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <SectionHeader label={t('settings:about.pluginSystem.label')} />
+              <div className="bg-surf2/40 border border-brd2 rounded-lg p-4 max-w-[640px] space-y-5">
+                <p className="text-justify text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0">{t('settings:about.pluginSystem.description')}</p>
+                <div>
+                  <div className="text-[11.5px] font-bold text-t2 mb-3">{t('settings:about.pluginSystem.tiers.label')}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px 32px' }}>
+                    {(['trusted', 'sandbox'] as const).map((k) => (
+                      <div key={k} className="flex gap-2.5">
+                        <div className="w-[5px] h-[5px] rounded-full bg-t2 mt-[6px] shrink-0" />
+                        <div>
+                          <div className="text-[12px] font-bold text-t1 mb-0.5">{t(`settings:about.pluginSystem.tiers.${k}.name`)}</div>
+                          <div className="text-[11px] text-t3 leading-relaxed">{t(`settings:about.pluginSystem.tiers.${k}.description`)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11.5px] font-bold text-t2 mb-2">{t('settings:about.pluginSystem.containerPlugins.label')}</div>
+                  <div className="font-mono text-[11px] text-t3 leading-relaxed bg-surf border border-brd2 rounded-md px-3 py-2.5">{t('settings:about.pluginSystem.containerPlugins.list')}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <SectionHeader label={t('settings:about.fileTypeSupport.label')} />
+              <div className="bg-surf2/40 border border-brd2 rounded-lg p-4 max-w-[640px]">
+                <p className="text-justify text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0 mb-3">{t('settings:about.fileTypeSupport.description')}</p>
+                <div className="font-mono text-[11px] text-t3 leading-relaxed bg-surf border border-brd2 rounded-md px-3 py-2.5">{t('settings:about.fileTypeSupport.items')}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6 }} className="mt-2 mb-4">
+              <button type="button" onClick={() => import('@tauri-apps/plugin-shell').then(({ open }) => open('https://github.com/linyimin0812/quill'))} className="btn btn-g btn-sm inline-flex items-center gap-1.5 no-underline text-inherit cursor-pointer"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.02.37-2.45-.49-2.45-.49-.33-.84-.81-1.07-.81-1.07-.66-.45.05-.44.05-.44.73.05 1.11.75 1.11.75.65 1.11 1.71.79 2.12.6.07-.47.26-.79.47-.97-1.6-.18-3.28-.8-3.28-3.56 0-.79.28-1.43.74-1.94-.07-.18-.32-.92.07-1.92 0 0 .6-.19 1.97.74a6.84 6.84 0 0 1 1.79-.24c.61 0 1.22.08 1.79.24 1.37-.93 1.97-.74 1.97-.74.39 1 .14 1.74.07 1.92.46.51.74 1.15.74 1.94 0 2.77-1.69 3.38-3.3 3.56.26.22.49.66.49 1.34 0 .97-.01 1.75-.01 1.99 0 .21.15.46.56.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> {t('settings:about.viewOnGithub')}</button>
+              <button type="button" onClick={() => import('@tauri-apps/plugin-shell').then(({ open }) => open('https://github.com/linyimin0812/quill/issues'))} className="btn btn-g btn-sm inline-flex items-center gap-1.5 no-underline text-inherit cursor-pointer"><Bug size={13} /> {t('settings:about.reportIssue')}</button>
+            </div>
+
+            <div className="border-t border-brd2 pt-3 text-[11px] text-t3">
+              <span>{t('settings:about.license')}</span>
+            </div>
           </div>
         )}
       </div>
