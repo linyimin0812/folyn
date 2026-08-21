@@ -9,7 +9,7 @@ import { useAppearanceStore } from './appearanceStore';
 import { useVaultConfigStore } from './vaultConfigStore';
 import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
-import { startVaultWatcher, stopVaultWatcher } from '@/utils/fileWatcher';
+import { startVaultWatcher, stopVaultWatcher, suppressWatcherFor } from '@/utils/fileWatcher';
 import { generateShortId as generateId } from '@/utils/idGenerator';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { seedAgentFiles } from '@/services/featureAgentService';
@@ -17,6 +17,7 @@ import { isExternalPath } from '@/utils/isExternalPath';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { cloneRepo, ensureGitignoreEntries, type BranchStrategy } from '@/services/gitService';
 import { matchesAnyPattern } from '@/utils/excludePattern';
+import { insertEntry } from '@/utils/treeUtils';
 import { BUILTIN_EXCLUDE_DIRS } from './appearanceStore';
 
 async function startWatcherForVault(config: VaultConfig) {
@@ -458,7 +459,12 @@ export const useVaultStore = create<VaultState>()(
 
         createFile: async (filePath, content = '') => {
           await get().manager.writeFile(filePath, content);
-          await get().refreshFileTree();
+          // ponytail: optimistic insert so the row appears instantly; the
+          // background refresh reconciles any drift. Replaces the blocking
+          // `await refreshFileTree()` which made Enter feel hung.
+          suppressWatcherFor(filePath);
+          set((state) => ({ fileTree: insertEntry(state.fileTree, filePath, 'file') }));
+          void get().refreshFileTree();
         },
 
         deleteFile: async (filePath) => {
@@ -468,7 +474,9 @@ export const useVaultStore = create<VaultState>()(
 
         createDir: async (dirPath) => {
           await get().manager.createDir(dirPath);
-          await get().refreshFileTree();
+          suppressWatcherFor(dirPath);
+          set((state) => ({ fileTree: insertEntry(state.fileTree, dirPath, 'dir') }));
+          void get().refreshFileTree();
         },
 
         deleteDir: async (dirPath) => {

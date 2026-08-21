@@ -11,6 +11,31 @@ export function flattenTree(entries: VaultEntry[]): string[] {
   return result;
 }
 
+/** Insert a new entry under its parent dir (or at root). Returns a new tree
+ * if the parent was found; returns the input reference unchanged if not, so
+ * the caller can skip the optimistic update and let a background refresh
+ * reconcile. No mutation. */
+export function insertEntry(tree: VaultEntry[], path: string, type: 'file' | 'dir'): VaultEntry[] {
+  const segments = path.split('/');
+  const name = segments[segments.length - 1];
+  const newEntry: VaultEntry = { path, name, type };
+  if (segments.length === 1) return [...tree, newEntry];
+
+  const parentPath = segments.slice(0, -1).join('/');
+  let inserted = false;
+  const walk = (entries: VaultEntry[]): VaultEntry[] =>
+    entries.map((e) => {
+      if (e.path === parentPath && e.type === 'dir') {
+        inserted = true;
+        return { ...e, children: [...(e.children ?? []), newEntry] };
+      }
+      if (e.children) return { ...e, children: walk(e.children) };
+      return e;
+    });
+  const result = walk(tree);
+  return inserted ? result : tree;
+}
+
 export function flattenFileTree(entries: VaultEntry[]): { path: string; name: string }[] {
   const result: { path: string; name: string }[] = [];
   for (const entry of entries) {
