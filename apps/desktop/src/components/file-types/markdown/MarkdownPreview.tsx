@@ -268,7 +268,9 @@ interface ResizableMediaProps {
   sourceLine: number | undefined;
   contentRef: React.MutableRefObject<string>;
   onChangeRef: React.MutableRefObject<((content: string) => void) | undefined>;
-  children: React.ReactNode;
+  // ponytail: optional — createElement(ResizableMedia, {...}, child) injects
+  // child as props.children at runtime; making it required trips TS2769.
+  children?: React.ReactNode;
 }
 
 /** Wrap an <img> or fence-renderer output with a right-bottom drag handle.

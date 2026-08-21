@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavStore } from '@/store/navStore';
-import { useAiConfigStore, resolvePairConfig, type ProviderModelPair } from '@/store/aiConfigStore';
+import { useAiConfigStore, resolvePairConfig } from '@/store/aiConfigStore';
 import { runRigChat } from '@/services/rigChat';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 import { PairSelector, type Pair } from '@/components/ai/PairSelector';

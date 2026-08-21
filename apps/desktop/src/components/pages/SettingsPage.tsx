@@ -16,7 +16,7 @@ import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
 import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSettings';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
-import { Home, Unlock, Sparkles, RefreshCw, Puzzle, Cat, Wrench, Bug } from 'lucide-react';
+import { Home, Unlock, Sparkles, Puzzle, Cat, Wrench, Bug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 function SectionHeader({ label }: { label: string }) {

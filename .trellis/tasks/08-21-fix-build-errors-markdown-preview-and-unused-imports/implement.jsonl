@@ -1,0 +1,3 @@
+{"file": "apps/desktop/src/components/file-types/markdown/MarkdownPreview.tsx", "reason": "ResizableMediaProps.children 必填导致 createElement 第 3 参注入失败，需改可选"}
+{"file": "apps/desktop/src/components/pages/SettingsPage.tsx", "reason": "TS6133 RefreshCw 未用"}
+{"file": "apps/desktop/src/components/translation/TranslationPanel.tsx", "reason": "TS6133 ProviderModelPair 类型未用"}
