@@ -199,7 +199,7 @@ export function TranslationPanel() {
         {/* Left: original input */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-brd">
           <textarea
-            className="flex-1 w-full resize-none outline-none bg-transparent text-t1 p-3 font-mono text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6]"
+            className="flex-1 w-full resize-none outline-none bg-transparent text-t1 p-3 font-mono text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('settings:translation.inputPlaceholder')}
