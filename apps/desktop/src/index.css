@@ -466,6 +466,9 @@ mjx-container svg {
 
 /* ── Markdown Preview (targets rendered HTML) ── */
 .md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); word-break: break-word; text-align: left; }
+.translation-result .md-preview { font-size: var(--ui-font-size); line-height: 1.6; text-align: justify; }
+.translation-result .md-preview > :first-child { margin-top: 0; }
+.translation-result .md-preview > :last-child { margin-bottom: 0; }
 .md-preview h1 { font-size: 28px; font-weight: 700; margin: 8px 0 12px; border-bottom: 1px solid var(--brd); padding-bottom: 8px; }
 .md-preview h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; }
 .md-preview h3 { font-size: 18px; font-weight: 600; margin: 16px 0 8px; }
