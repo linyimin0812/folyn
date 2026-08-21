@@ -8,6 +8,7 @@ import {
   insertEntry,
   removeEntry,
   renameEntry,
+  copyEntry,
 } from './treeUtils';
 
 const tree: VaultEntry[] = [
@@ -185,6 +186,56 @@ describe('renameEntry', () => {
   it('does not mutate the input tree', () => {
     const before = JSON.parse(JSON.stringify(tree));
     renameEntry(tree, 'notes/sub', 'notes/renamed-sub');
+    expect(tree).toEqual(before);
+  });
+});
+
+describe('copyEntry', () => {
+  it('clones a root-level file to a new root path', () => {
+    const result = copyEntry(tree, 'root.md', 'copy.md');
+    expect(flattenTree(result)).toEqual(['notes', 'notes/a.md', 'notes/sub', 'notes/sub/b.md', 'root.md', 'copy.md']);
+  });
+
+  it('clones a nested file under a target dir', () => {
+    const result = copyEntry(tree, 'notes/a.md', 'notes/a-copy.md');
+    const notes = result.find((e) => e.path === 'notes');
+    expect(notes?.children?.map((c) => c.path)).toContain('notes/a-copy.md');
+    expect(notes?.children?.map((c) => c.path)).toContain('notes/a.md');
+  });
+
+  it('clones a dir subtree and rewrites child paths', () => {
+    const result = copyEntry(tree, 'notes/sub', 'notes/sub-copy');
+    const notes = result.find((e) => e.path === 'notes');
+    const subCopy = notes?.children?.find((c) => c.path === 'notes/sub-copy');
+    expect(subCopy?.type).toBe('dir');
+    expect(subCopy?.children?.map((c) => c.path)).toEqual(['notes/sub-copy/b.md']);
+    // source untouched
+    const sub = notes?.children?.find((c) => c.path === 'notes/sub');
+    expect(sub?.children?.map((c) => c.path)).toEqual(['notes/sub/b.md']);
+  });
+
+  it('clones into a different parent dir and rewrites child paths', () => {
+    const treeWithOther: VaultEntry[] = [
+      { path: 'other', name: 'other', type: 'dir', children: [] },
+      ...tree,
+    ];
+    const result = copyEntry(treeWithOther, 'notes/sub', 'other/sub');
+    const other = result.find((e) => e.path === 'other');
+    expect(other?.children?.map((c) => c.path)).toEqual(['other/sub']);
+    const sub = other?.children?.find((c) => c.path === 'other/sub');
+    expect(sub?.children?.map((c) => c.path)).toEqual(['other/sub/b.md']);
+    // source untouched
+    expect(flattenTree(result)).toContain('notes/sub');
+    expect(flattenTree(result)).toContain('notes/sub/b.md');
+  });
+
+  it('returns the input reference when srcPath is not found', () => {
+    expect(copyEntry(tree, 'missing.md', 'x.md')).toBe(tree);
+  });
+
+  it('does not mutate the input tree', () => {
+    const before = JSON.parse(JSON.stringify(tree));
+    copyEntry(tree, 'notes/sub', 'notes/sub-copy');
     expect(tree).toEqual(before);
   });
 });

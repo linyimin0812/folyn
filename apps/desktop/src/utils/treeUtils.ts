@@ -116,6 +116,56 @@ export function renameEntry(tree: VaultEntry[], oldPath: string, newPath: string
   return inserted ? result : [...plucked, rebasedCarried];
 }
 
+/** Clone the subtree at `srcPath` into `destPath`, rebasing all child
+ * paths onto the new prefix. Returns a new tree if the source was found,
+ * otherwise the input reference. No mutation. */
+export function copyEntry(tree: VaultEntry[], srcPath: string, destPath: string): VaultEntry[] {
+  let source: VaultEntry | null = null;
+  const find = (entries: VaultEntry[]) => {
+    for (const e of entries) {
+      if (e.path === srcPath) {
+        source = e;
+        return;
+      }
+      if (e.children) find(e.children);
+    }
+  };
+  find(tree);
+  if (!source) return tree;
+
+  const destSegs = destPath.split('/');
+  const destName = destSegs[destSegs.length - 1];
+
+  const clone = (entry: VaultEntry, fromPrefix: string, toPrefix: string): VaultEntry => {
+    const rebased: VaultEntry = {
+      ...entry,
+      path: entry.path === fromPrefix ? toPrefix : toPrefix + entry.path.slice(fromPrefix.length),
+      name: entry.path === fromPrefix ? destName : entry.name,
+    };
+    if (entry.children) {
+      rebased.children = entry.children.map((c) => clone(c, fromPrefix, toPrefix));
+    }
+    return rebased;
+  };
+  const cloned = clone(source, srcPath, destPath);
+
+  if (destSegs.length === 1) return [...tree, cloned];
+
+  const parentPath = destSegs.slice(0, -1).join('/');
+  let inserted = false;
+  const walk = (entries: VaultEntry[]): VaultEntry[] =>
+    entries.map((e) => {
+      if (e.path === parentPath && e.type === 'dir') {
+        inserted = true;
+        return { ...e, children: [...(e.children ?? []), cloned] };
+      }
+      if (e.children) return { ...e, children: walk(e.children) };
+      return e;
+    });
+  const result = walk(tree);
+  return inserted ? result : [...tree, cloned];
+}
+
 export function flattenFileTree(entries: VaultEntry[]): { path: string; name: string }[] {
   const result: { path: string; name: string }[] = [];
   for (const entry of entries) {

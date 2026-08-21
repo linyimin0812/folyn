@@ -17,7 +17,7 @@ import { isExternalPath } from '@/utils/isExternalPath';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { cloneRepo, ensureGitignoreEntries, type BranchStrategy } from '@/services/gitService';
 import { matchesAnyPattern } from '@/utils/excludePattern';
-import { insertEntry, removeEntry, renameEntry } from '@/utils/treeUtils';
+import { insertEntry, removeEntry, renameEntry, copyEntry } from '@/utils/treeUtils';
 import { BUILTIN_EXCLUDE_DIRS } from './appearanceStore';
 
 async function startWatcherForVault(config: VaultConfig) {
@@ -531,9 +531,17 @@ export const useVaultStore = create<VaultState>()(
               return tab;
             });
             useEditorStore.setState({ tabs: updatedTabs });
+
+            for (const [, dest] of movedMap) suppressWatcherFor(dest);
+            set((state) => ({
+              fileTree: movedMap.reduce(
+                (t, [src, dest]) => renameEntry(t, src, dest),
+                state.fileTree,
+              ),
+            }));
           }
 
-          await get().refreshFileTree();
+          void get().refreshFileTree();
         },
 
         copyPath: async (srcPath, srcType, targetDir) => {
@@ -548,11 +556,15 @@ export const useVaultStore = create<VaultState>()(
           if (srcType === 'file') {
             const content = await manager.readFile(srcPath);
             await manager.writeFile(targetPath, content);
+            suppressWatcherFor(targetPath);
+            set((state) => ({ fileTree: insertEntry(state.fileTree, targetPath, 'file') }));
           } else {
             await copyDirRecursive(manager, srcPath, targetPath);
+            suppressWatcherFor(targetPath);
+            set((state) => ({ fileTree: copyEntry(state.fileTree, srcPath, targetPath) }));
           }
 
-          await get().refreshFileTree();
+          void get().refreshFileTree();
         },
 
         copyExternalFileToVault: async (srcExternalPath, targetDir) => {
@@ -572,7 +584,9 @@ export const useVaultStore = create<VaultState>()(
           const targetName = await resolveCopyName(manager, targetDir, baseName, false);
           const targetPath = targetDir ? `${targetDir}/${targetName}` : targetName;
           await manager.writeFileBytes(targetPath, bytes);
-          await get().refreshFileTree();
+          suppressWatcherFor(targetPath);
+          set((state) => ({ fileTree: insertEntry(state.fileTree, targetPath, 'file') }));
+          void get().refreshFileTree();
           return targetPath;
         },
       };
