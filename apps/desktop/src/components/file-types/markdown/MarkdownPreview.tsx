@@ -295,35 +295,35 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // ponytail: walk up from the wrapper to find the first ancestor with a real
-  // inner width — skips zero-size intermediate nodes and lands on whatever is
-  // actually constraining the layout (.md-preview pane, list item, etc.).
-  const getMaxWidth = (): number => {
-    let el = wrapperRef.current?.parentElement ?? null;
-    while (el) {
-      const w = el.clientWidth;
-      if (w > 0) return w;
-      el = el.parentElement;
-    }
-    return Infinity;
-  };
-
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     const wrapper = wrapperRef.current ?? e.currentTarget.parentElement as HTMLElement | null;
-    dragRef.current = { startX: e.clientX, startW: wrapper?.getBoundingClientRect().width ?? 0 };
+    const parent = wrapper?.parentElement ?? null;
+    dragRef.current = {
+      startX: e.clientX,
+      startW: wrapper?.getBoundingClientRect().width ?? 0,
+      // ponytail: snapshot the parent's right edge at pointerdown — the wrapper
+      // is centered (margin:auto) so its right edge moves as it grows; the
+      // parent's right edge stays put. Comparing the wrapper's current right
+      // edge to this snapshot tells us when we've hit the wall.
+      parentRight: parent?.getBoundingClientRect().right ?? Infinity,
+    };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
+    // ponytail: freeze on rightward drag at the wall — when the wrapper's
+    // current right edge has reached the parent's right edge (snapshot from
+    // pointerdown), further rightward dx shouldn't enlarge the image or move
+    // the handle. Leftward dx (shrink) always allowed.
+    if (dx > 0) {
+      const wrapper = wrapperRef.current;
+      const currentRight = wrapper?.getBoundingClientRect().right ?? -Infinity;
+      if (currentRight >= dragRef.current.parentRight - 1) return;
+    }
     const proposed = Math.max(40, Math.round(dragRef.current.startW + dx));
-    // ponytail: at the wall, freeze — don't update state, don't move handle.
-    // Math.min would jump state to maxW, nudging the handle rightward even
-    // when the image can't visually grow further. Early-return makes the
-    // drag truly stop at the parent edge.
-    if (proposed > getMaxWidth()) return;
     setWidth(proposed);
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
