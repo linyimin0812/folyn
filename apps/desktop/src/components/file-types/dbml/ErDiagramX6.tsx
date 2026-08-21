@@ -51,19 +51,34 @@ function setEdgeSelected(edge: Edge, selected: boolean): void {
  * move (x6 calls the router dynamically), so dragging a card keeps the route
  * orthogonal.
  *
+ * Uses `sourceAnchor`/`targetAnchor` (the actual port points x6 resolves per
+ * field row) — NOT `sourceBBox`/`targetBBox` center. The bbox center Y drifts
+ * from the field-row Y the port sits on, so routing through it left a small
+ * diagonal kink at each end ("一点折线"). The SVG export already builds
+ * zero-height boxes at field Y for the same reason (services/export/dbml.ts);
+ * we mirror that here.
+ *
  * Trade-off: doesn't avoid OTHER cards in the gap — accepted earlier.
  */
 // ponytail: edgeView typed loosely (x6's EdgeView type is awkward to import
-// here); we only read sourceBBox/targetBBox which are stable public APIs.
+// here); we only read sourceAnchor/targetAnchor which are stable public
+// Point fields (src/view/edge/index.ts:73).
 const zOrthRoute = (
   _vertices: Point[],
   _options: Record<string, unknown>,
   edgeView: {
     sourceBBox: { x: number; y: number; width: number; height: number };
     targetBBox: { x: number; y: number; width: number; height: number };
+    sourceAnchor: { x: number; y: number };
+    targetAnchor: { x: number; y: number };
   },
 ): Point[] => {
-  const path = zOrthPath(edgeView.sourceBBox, edgeView.targetBBox);
+  const sa = edgeView.sourceAnchor;
+  const ta = edgeView.targetAnchor;
+  const path = zOrthPath(
+    { x: sa.x, y: sa.y, width: 0, height: 0 },
+    { x: ta.x, y: ta.y, width: 0, height: 0 },
+  );
   return path ? [path[1], path[2]] : [];
 };
 
@@ -499,6 +514,14 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         },
         interacting: { nodeMovable: true, edgeMovable: false, magnetConnectable: false },
       });
+      // ponytail: decouple drag snap from visual grid size. x6 ties both to
+      // the same `grid.size` field — `dragNode` reads via
+      // `graph.getGridSize()` (view/node/index.ts:1169), GridManager.update
+      // reads the field directly (grid.ts:82). Override the instance method so
+      // drag snaps to 1px (Math.round) regardless of the visual grid size,
+      // letting two field rows (ROW_H=28) align exactly. Visual grid keeps
+      // using grid.size=20 for dot spacing when shown.
+      (graph as Graph & { getGridSize: () => number }).getGridSize = () => 1;
       graph.on('node:change:position', ({ node }) => {
         const data = node.getData() as { table?: { name: string }; enum?: { name: string } } | undefined;
         const id = data?.table?.name ?? data?.enum?.name;

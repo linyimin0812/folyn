@@ -126,6 +126,27 @@ function renderErLayoutToSvg(layout: ErLayout, theme: 'light' | 'dark'): string 
     `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"`,
     ` viewBox="${vbX} ${vbY} ${vbW} ${vbH}" preserveAspectRatio="xMidYMid meet">`,
   );
+  // ponytail: replicate x6's er-one-double-start + er-many-end markers so the
+  // exported SVG carries the same crow's-foot cardinality cues as the preview
+  // (ErDiagramX6.tsx). Shapes are the post-rotate forms that match SVG marker
+  // semantics: marker-start uses orient="auto-start-reverse" with the same
+  // pre-rotate path x6 registers (SVG's 180° reversal for start mirrors the
+  // bars to +2/+5 into the path interior); marker-end uses orient="auto"
+  // with the already-mirrored path (prongs at the boundary, convergence 9px
+  // into the path). markerUnits=userSpaceOnUse keeps size independent of
+  // stroke-width, matching x6's marker registration.
+  parts.push(
+    `<defs>`,
+    `<marker id="er-one-double-start" viewBox="0 0 10 10" refX="7" refY="5"`,
+    ` markerWidth="10" markerHeight="10" orient="auto-start-reverse" markerUnits="userSpaceOnUse">`,
+    `<path d="M 5 1 L 5 9 M 2 1 L 2 9" fill="none" stroke="${C.t3}" stroke-width="1.4" stroke-linecap="round" />`,
+    `</marker>`,
+    `<marker id="er-many-end" viewBox="-10 -8 10 16" refX="0" refY="0"`,
+    ` markerWidth="10" markerHeight="16" orient="auto" markerUnits="userSpaceOnUse">`,
+    `<path d="M 0 -7 L -9 0 M 0 0 L -9 0 M 0 7 L -9 0" fill="none" stroke="${C.t3}" stroke-width="1.3" stroke-linecap="round" />`,
+    `</marker>`,
+    `</defs>`,
+  );
   // Edges last so they draw on top of cards (mirrors x6's edge z-order —
   // lines crossing a card stay visible instead of being hidden by the fill).
   const tableByName = new Map(tables.map((t) => [t.name, t]));
@@ -141,11 +162,21 @@ function renderErLayoutToSvg(layout: ErLayout, theme: 'light' | 'dark'): string 
     const ty = fieldRowY(to, r.toFields[0]) ?? to.y + to.height / 2;
     const fromBox = { x: from.x, y: fy, width: from.width, height: 0 };
     const toBox = { x: to.x, y: ty, width: to.width, height: 0 };
+    // ponytail: zOrthPath returns null when scy === tcy (two field rows
+    // Y-aligned — the straight-line case the x6 router also returns [] for).
+    // x6's default connector draws a straight line there; the export must do
+    // the same instead of skipping, otherwise perfectly-aligned edges vanish
+    // from the exported SVG.
     const path = zOrthPath(fromBox, toBox);
-    if (!path) continue;
-    const pts = path.map((p) => `${p.x},${p.y}`).join(' ');
+    const sourceOnRight = (to.x + to.width / 2) >= (from.x + from.width / 2);
+    const fx = sourceOnRight ? from.x + from.width : from.x;
+    const tx = sourceOnRight ? to.x : to.x + to.width;
+    const pts = path
+      ? path.map((p) => `${p.x},${p.y}`).join(' ')
+      : `${fx},${fy} ${tx},${ty}`;
     parts.push(
-      `<polyline points="${pts}" fill="none" stroke="${C.t3}" stroke-width="1.4" stroke-dasharray="0" />`,
+      `<polyline points="${pts}" fill="none" stroke="${C.t3}" stroke-width="1.4" stroke-dasharray="0"`,
+      ` marker-start="url(#er-one-double-start)" marker-end="url(#er-many-end)" />`,
     );
   }
   parts.push('</svg>');
