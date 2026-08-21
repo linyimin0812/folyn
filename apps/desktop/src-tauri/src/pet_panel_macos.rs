@@ -51,6 +51,7 @@ fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
     // ponytail: use tauri_nspanel's re-exported objc2 (0.5.2) — the
     // project also depends on objc2 0.6.4 directly, and the `Message`
     // trait is not compatible across versions.
+    use std::panic::AssertUnwindSafe;
     use tauri_nspanel::objc2::msg_send;
     // ponytail: wrap in `exception::catch` — `msg_send!` panics on
     // Obj-C exceptions (e.g. `doesNotRespondTo:` on a swizzled class
@@ -58,10 +59,13 @@ fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
     // runs in has `unwind = abort` → an unwound panic aborts the whole
     // app at startup. Swallow; the worst case is the original
     // `NSRangeException` at deinit remains, which is no worse than
-    // pre-fix behavior.
-    let _ = tauri_nspanel::objc2::exception::catch(|| unsafe {
+    // pre-fix behavior. `AssertUnwindSafe` because `&NSPanel` carries
+    // `UnsafeCell` (interior mutability) and the closure must be
+    // `UnwindSafe` — we're not actually mutating across the catch
+    // boundary.
+    let _ = tauri_nspanel::objc2::exception::catch(AssertUnwindSafe(|| unsafe {
         let _: () = msg_send![panel, setAutorecalculatesTouchBar: false];
-    });
+    }));
 }
 
 tauri_panel! {
