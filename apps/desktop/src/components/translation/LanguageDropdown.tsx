@@ -30,11 +30,11 @@ export function LanguageDropdown({ value, options, onChange, title }: LanguageDr
     <div className="relative" ref={ref}>
       <button
         type="button"
-        className="h-[28px] py-[3px] px-2 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui flex items-center gap-1.5 cursor-pointer"
+        className="h-[28px] py-[3px] px-2 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui flex items-center justify-between gap-1.5 cursor-pointer w-[140px]"
         onClick={() => setOpen((v) => !v)}
         title={title}
       >
-        <span className="whitespace-nowrap">{current?.label}</span>
+        <span className="truncate">{current?.label}</span>
         <svg className="shrink-0 text-t3 transition-transform duration-150" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9" />
         </svg>
