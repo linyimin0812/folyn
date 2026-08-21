@@ -193,11 +193,11 @@ base64 = "0.22"
 codegen-units = 1
 lto = true
 opt-level = "s"
-# ponytail: panic stays on unwind. setup runs inside an NSApplication
-# notification observer (a nounwind C++/Obj-C frame); `panic = "abort"`
-# turned a benign panic in `pet_panel_macos::convert_windows` (swizzled
-# NSPanel TouchBar recalc path) into a hard SIGABRT on launch. unwind lets
-# the same panic escape the setup closure harmlessly the way dev does.
-# Re-enable `panic = "abort"` only after that path is provably panic-free
-# or wrapped in `std::panic::catch_unwind`.
+# ponytail: panic=abort OK — `pet_panel_macos::convert_windows` wraps every
+# per-panel block in `objc2::exception::catch`, which intercepts the benign
+# NSException from the swizzled NSPanel TouchBar recalc path at the Obj-C
+# layer (independent of Rust panic strategy). Before the wrap, the exception
+# became a Rust panic inside the NSApplicationDidFinishLaunching observer
+# and `panic = "abort"` turned it into a SIGABRT on launch.
+panic = "abort"
 strip = true

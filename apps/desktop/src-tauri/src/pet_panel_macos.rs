@@ -47,25 +47,17 @@ use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt,
 /// objc2-app-kit generated bindings (only `makeTouchBar` is exposed), so
 /// we go through raw `msg_send!` — mirrors the `setLevel:` /
 /// `setCollectionBehavior:` pattern in `lib.rs:154-170`.
+///
+/// ponytail: relies on the caller's `exception::catch`. `msg_send!` panics
+/// on Obj-C exceptions, but `convert_windows` wraps every per-panel block
+/// in `objc2::exception::catch`, which intercepts NSException at the
+/// Obj-C layer (independent of Rust panic strategy) — the same approach
+/// the previous `setAutorecalculatesTouchBar:`-only catch did, lifted to
+/// cover `to_panel()` / `set_level` / `set_style_mask` / etc. too. Re-add
+/// a local catch if this is ever called outside `convert_windows`.
 fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
-    // ponytail: use tauri_nspanel's re-exported objc2 (0.5.2) — the
-    // project also depends on objc2 0.6.4 directly, and the `Message`
-    // trait is not compatible across versions.
-    use std::panic::AssertUnwindSafe;
     use tauri_nspanel::objc2::msg_send;
-    // ponytail: wrap in `exception::catch` — `msg_send!` panics on
-    // Obj-C exceptions (e.g. `doesNotRespondTo:` on a swizzled class
-    // whose method table got rebuilt), and the Tauri setup hook this
-    // runs in has `unwind = abort` → an unwound panic aborts the whole
-    // app at startup. Swallow; the worst case is the original
-    // `NSRangeException` at deinit remains, which is no worse than
-    // pre-fix behavior. `AssertUnwindSafe` because `&NSPanel` carries
-    // `UnsafeCell` (interior mutability) and the closure must be
-    // `UnwindSafe` — we're not actually mutating across the catch
-    // boundary.
-    let _ = tauri_nspanel::objc2::exception::catch(AssertUnwindSafe(|| unsafe {
-        let _: () = msg_send![panel, setAutorecalculatesTouchBar: false];
-    }));
+    let _: () = unsafe { msg_send![panel, setAutorecalculatesTouchBar: false] };
 }
 
 tauri_panel! {
@@ -145,6 +137,12 @@ pub fn backend_is_nspanel() -> bool {
 /// at Floating level cannot rise over a fullscreen app, but an NSPanel at Dock
 /// level with `full_screen_auxiliary` can.
 pub fn convert_windows(app: &AppHandle) -> usize {
+    // ponytail: use tauri_nspanel's re-exported objc2 (0.6.4 via
+    // tauri-nspanel's `v2.1` branch) — the project also depends on
+    // objc2 directly, and the `Message` trait is not compatible across
+    // major versions.
+    use std::panic::AssertUnwindSafe;
+    use tauri_nspanel::objc2::exception::catch;
     // The nspanel plugin provides the `ManagerExt` panel store (label-based
     // lookup). Registering it is also what BongoCat does before `to_panel()`.
     let _ = app.plugin(tauri_nspanel::init());
@@ -153,99 +151,113 @@ pub fn convert_windows(app: &AppHandle) -> usize {
 
     // Pet mascot.
     if let Some(window) = app.get_webview_window("pet") {
-        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
-            panel.set_level(PanelLevel::Dock.value());
-            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
-            // ponytail: `move_to_active_space` (not `can_join_all_spaces`) —
-            // matches BongoCat `core/setup/macos.rs:41-46`. The
-            // `moveToActiveSpace` flag (1<<7=128) routes the panel through
-            // AppKit's active-space re-evaluation, which has a z-order re-
-            // evaluation side-effect on app-switch. Combo value:
-            // stationary(2) | move_to_active_space(128) | full_screen_auxiliary(256)
-            // = 386.
-            panel.set_collection_behavior(
-                CollectionBehavior::new()
-                    .stationary()
-                    .move_to_active_space()
-                    .full_screen_auxiliary()
-                    .into(),
-            );
-            // ponytail: `setHidesOnDeactivate:NO` — the nspanel Panel trait
-            // method (src/panel.rs:438). `nonactivating_panel` only controls
-            // focus stealing, NOT hide-on-deactivate: AppKit still hides a
-            // panel by default on `NSApplicationDidResignActive`, which is the
-            // source of the "click to bring pet back" delay. Disabling it
-            // keeps the pet visible across app-switches; the resign-active
-            // observer then only re-asserts level/behavior (a run-loop tick,
-            // not a window-server draw cycle).
-            panel.set_hides_on_deactivate(false);
-            // ponytail: attach the (empty-body) delegate — BongoCat
-            // `core/setup/macos.rs:91`. Without a delegate attached via
-            // `set_event_handler`, the swizzled NSPanel subclass's override
-            // methods (which make `is_floating_panel: true` +
-            // `can_become_key_window: true` actually take effect on a swizzled
-            // class) may not route correctly; the float-on-deactivate behavior
-            // is partly delegate-driven.
-            let handler = QuillPetEventHandler::new();
-            panel.set_event_handler(Some(handler.as_ref()));
-            disable_touch_bar_recalc(panel.as_panel());
-            count += 1;
-        }
+        // ponytail: wrap in `exception::catch` — `to_panel()` / `set_*` /
+        // `set_event_handler` go through objc2 bindings that panic on Obj-C
+        // exceptions (swizzled NSPanel KVO / TouchBar recalc paths). `catch`
+        // intercepts NSException at the Obj-C layer, independent of Rust
+        // panic strategy — keeps `panic = "abort"` viable for binary size.
+        // Worst case: panel stays as a plain NSWindow, no SIGABRT.
+        let _ = catch(AssertUnwindSafe(|| {
+            if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+                // ponytail: `move_to_active_space` (not `can_join_all_spaces`) —
+                // matches BongoCat `core/setup/macos.rs:41-46`. The
+                // `moveToActiveSpace` flag (1<<7=128) routes the panel through
+                // AppKit's active-space re-evaluation, which has a z-order re-
+                // evaluation side-effect on app-switch. Combo value:
+                // stationary(2) | move_to_active_space(128) | full_screen_auxiliary(256)
+                // = 386.
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .move_to_active_space()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+                // ponytail: `setHidesOnDeactivate:NO` — the nspanel Panel trait
+                // method (src/panel.rs:438). `nonactivating_panel` only controls
+                // focus stealing, NOT hide-on-deactivate: AppKit still hides a
+                // panel by default on `NSApplicationDidResignActive`, which is the
+                // source of the "click to bring pet back" delay. Disabling it
+                // keeps the pet visible across app-switches; the resign-active
+                // observer then only re-asserts level/behavior (a run-loop tick,
+                // not a window-server draw cycle).
+                panel.set_hides_on_deactivate(false);
+                // ponytail: attach the (empty-body) delegate — BongoCat
+                // `core/setup/macos.rs:91`. Without a delegate attached via
+                // `set_event_handler`, the swizzled NSPanel subclass's override
+                // methods (which make `is_floating_panel: true` +
+                // `can_become_key_window: true` actually take effect on a swizzled
+                // class) may not route correctly; the float-on-deactivate behavior
+                // is partly delegate-driven.
+                let handler = QuillPetEventHandler::new();
+                panel.set_event_handler(Some(handler.as_ref()));
+                disable_touch_bar_recalc(panel.as_panel());
+                count += 1;
+            }
+        }));
     }
 
     // Pet-panel — needs key window for Esc; set_focus() makes it key on show.
     if let Some(window) = app.get_webview_window("pet-panel") {
-        if let Ok(panel) = window.to_panel::<QuillPanelWindow>() {
-            panel.set_level(PanelLevel::Dock.value());
-            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
-            panel.set_collection_behavior(
-                CollectionBehavior::new()
-                    .stationary()
-                    .can_join_all_spaces()
-                    .full_screen_auxiliary()
-                    .into(),
-            );
-            disable_touch_bar_recalc(panel.as_panel());
-            count += 1;
-        }
+        let _ = catch(AssertUnwindSafe(|| {
+            if let Ok(panel) = window.to_panel::<QuillPanelWindow>() {
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .can_join_all_spaces()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+                disable_touch_bar_recalc(panel.as_panel());
+                count += 1;
+            }
+        }));
     }
 
     // Pet-bubble — clickable notification bubble, no keyboard needed; same
     // non-key panel as the mascot so first clicks on action buttons deliver
     // immediately.
     if let Some(window) = app.get_webview_window("pet-bubble") {
-        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
-            panel.set_level(PanelLevel::Dock.value());
-            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
-            panel.set_collection_behavior(
-                CollectionBehavior::new()
-                    .stationary()
-                    .can_join_all_spaces()
-                    .full_screen_auxiliary()
-                    .into(),
-            );
-            disable_touch_bar_recalc(panel.as_panel());
-            count += 1;
-        }
+        let _ = catch(AssertUnwindSafe(|| {
+            if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .can_join_all_spaces()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+                disable_touch_bar_recalc(panel.as_panel());
+                count += 1;
+            }
+        }));
     }
 
     // Pet-corner — passive notification toast stack at a screen corner; same
     // non-key panel as the mascot and bubble so first clicks on action
     // buttons deliver immediately.
     if let Some(window) = app.get_webview_window("pet-corner") {
-        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
-            panel.set_level(PanelLevel::Dock.value());
-            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
-            panel.set_collection_behavior(
-                CollectionBehavior::new()
-                    .stationary()
-                    .can_join_all_spaces()
-                    .full_screen_auxiliary()
-                    .into(),
-            );
-            disable_touch_bar_recalc(panel.as_panel());
-            count += 1;
-        }
+        let _ = catch(AssertUnwindSafe(|| {
+            if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .can_join_all_spaces()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+                disable_touch_bar_recalc(panel.as_panel());
+                count += 1;
+            }
+        }));
     }
 
     // Pet-menu — HTML right-click context menu (replaces native NSMenu so the
@@ -254,19 +266,21 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // calls `set_focus()` + `makeFirstResponder(wkwebview)` to make the panel
     // key on demand for the ESC keydown listener (mirrors `pet_panel_show`).
     if let Some(window) = app.get_webview_window("pet-menu") {
-        if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
-            panel.set_level(PanelLevel::Dock.value());
-            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
-            panel.set_collection_behavior(
-                CollectionBehavior::new()
-                    .stationary()
-                    .can_join_all_spaces()
-                    .full_screen_auxiliary()
-                    .into(),
-            );
-            disable_touch_bar_recalc(panel.as_panel());
-            count += 1;
-        }
+        let _ = catch(AssertUnwindSafe(|| {
+            if let Ok(panel) = window.to_panel::<QuillPetPanel>() {
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .can_join_all_spaces()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+                disable_touch_bar_recalc(panel.as_panel());
+                count += 1;
+            }
+        }));
     }
 
     // Voice orb — the SiriGL waveform window shown during voice recording. Pure
@@ -276,19 +290,21 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // post-recording CGEvent Cmd+V lands in the right field). Transparent so
     // the WebGL canvas floats over the desktop without an opaque square.
     if let Some(window) = app.get_webview_window("voice-orb") {
-        if let Ok(panel) = window.to_panel::<QuillVoiceOrbPanel>() {
-            panel.set_level(PanelLevel::Dock.value());
-            panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
-            panel.set_collection_behavior(
-                CollectionBehavior::new()
-                    .stationary()
-                    .can_join_all_spaces()
-                    .full_screen_auxiliary()
-                    .into(),
-            );
-            disable_touch_bar_recalc(panel.as_panel());
-            count += 1;
-        }
+        let _ = catch(AssertUnwindSafe(|| {
+            if let Ok(panel) = window.to_panel::<QuillVoiceOrbPanel>() {
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .can_join_all_spaces()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+                disable_touch_bar_recalc(panel.as_panel());
+                count += 1;
+            }
+        }));
     }
 
     count
