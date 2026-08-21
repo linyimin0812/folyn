@@ -40,6 +40,9 @@ default_vault/
 # Local dev scratch / reference files
 .dev/
 
+# Teach skill workspace (LLM learning sessions)
+learning/
+
 # @file-viewer/vite-plugin artifacts (regenerated on dev/build/test)
 dummy-non-existing-folder/
 apps/desktop/dummy-non-existing-folder/
