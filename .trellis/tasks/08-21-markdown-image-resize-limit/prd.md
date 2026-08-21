@@ -8,7 +8,8 @@ the media wrapper is centered, this makes the image appear to shift left.
 
 ## Requirements
 
-- Clamp each drag update to the preview container's available width.
+- Clamp each drag update to the actual visible preview width, including when
+  an intermediate Markdown paragraph overflows that area in preview-only mode.
 - Once the media is at that width, further rightward dragging must not change
   its width or position.
 - Keep leftward shrinking and width persistence unchanged.
@@ -20,3 +21,4 @@ the media wrapper is centered, this makes the image appear to shift left.
   when its resize handle is dragged right.
 - A media item below the maximum grows only up to the container width.
 - A drag left from either state still decreases the width.
+- The same limit applies in both split and preview-only modes.

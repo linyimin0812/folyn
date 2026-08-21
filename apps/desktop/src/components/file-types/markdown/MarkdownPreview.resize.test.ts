@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getResizedMediaWidth } from './mediaResize';
+import { getMaxMediaWidth, getResizedMediaWidth } from './mediaResize';
 
 describe('getResizedMediaWidth', () => {
   it('does not grow media that already fills its container', () => {
@@ -12,5 +12,11 @@ describe('getResizedMediaWidth', () => {
 
   it('allows shrinking below the container width', () => {
     expect(getResizedMediaWidth(500, -100, 500)).toBe(400);
+  });
+});
+
+describe('getMaxMediaWidth', () => {
+  it('uses the visible Markdown preview width when a paragraph overflows it', () => {
+    expect(getMaxMediaWidth(900, 500)).toBe(500);
   });
 });

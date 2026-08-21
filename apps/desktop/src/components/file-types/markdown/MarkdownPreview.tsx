@@ -35,7 +35,7 @@ import {
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
-import { getResizedMediaWidth } from './mediaResize';
+import { getMaxMediaWidth, getResizedMediaWidth } from './mediaResize';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -302,13 +302,19 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     const wrapper = wrapperRef.current ?? e.currentTarget.parentElement as HTMLElement | null;
     const parent = wrapper?.parentElement ?? null;
+    const preview = wrapper?.closest<HTMLElement>('.md-preview') ?? null;
     dragRef.current = {
       startX: e.clientX,
       startW: wrapper?.getBoundingClientRect().width ?? 0,
       // ponytail: constrain the width before updating state. CSS max-width
       // alone clamps layout after state is written, which lets a centered
       // wrapper keep accepting a larger persisted width and appear to shift.
-      maxW: parent?.getBoundingClientRect().width ?? Infinity,
+      // The paragraph can overflow the preview body's visible width in
+      // preview-only mode, so it is not a sufficient constraint by itself.
+      maxW: getMaxMediaWidth(
+        parent?.getBoundingClientRect().width ?? Infinity,
+        preview?.getBoundingClientRect().width ?? Infinity,
+      ),
     };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
