@@ -33,6 +33,26 @@
 use tauri::{AppHandle, Manager};
 use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt, tauri_panel};
 
+/// ponytail: shut down TouchBar autorecalculation on a swizzled NSPanel.
+/// `to_panel()` swaps the window's class via `object_setClass` AFTER macOS's
+/// Touch Bar finder has already registered a `nextResponder` KVO observer
+/// on the original NSWindow class. When the finder later invalidates
+/// (window deinit / responder-chain change), it tries to remove the
+/// observer from the post-swap class (`QuillPetPanel`/`QuillPanelWindow`/
+/// `QuillVoiceOrbPanel`) and throws `NSRangeException` —
+/// `_NSTouchBarFinderObservation … because it is not registered as an
+/// observer`. Setting `autorecalculatesTouchBar = NO` skips the recalc
+/// path that triggers the unregister, so the stale KVO registration is
+/// never exercised. `setAutorecalculatesTouchBar:` is not in the
+/// objc2-app-kit generated bindings (only `makeTouchBar` is exposed), so
+/// we go through raw `msg_send!` — mirrors the `setLevel:` /
+/// `setCollectionBehavior:` pattern in `lib.rs:154-170`.
+fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
+    use objc2::msg_send;
+    use objc2::runtime::Bool;
+    let _: () = unsafe { msg_send![panel, setAutorecalculatesTouchBar: Bool::new(false)] };
+}
+
 tauri_panel! {
     panel!(QuillPetPanel {
         config: {
@@ -153,6 +173,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
             // is partly delegate-driven.
             let handler = QuillPetEventHandler::new();
             panel.set_event_handler(Some(handler.as_ref()));
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -169,6 +190,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -187,6 +209,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -205,6 +228,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -225,6 +249,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
@@ -246,6 +271,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()
                     .into(),
             );
+            disable_touch_bar_recalc(panel.as_panel());
             count += 1;
         }
     }
