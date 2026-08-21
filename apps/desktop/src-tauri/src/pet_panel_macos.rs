@@ -48,8 +48,11 @@ use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt,
 /// we go through raw `msg_send!` — mirrors the `setLevel:` /
 /// `setCollectionBehavior:` pattern in `lib.rs:154-170`.
 fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
-    use objc2::msg_send;
-    use objc2::runtime::Bool;
+    // ponytail: use tauri_nspanel's re-exported objc2 (0.5.2) — the
+    // project also depends on objc2 0.6.4 directly, and the `Message`
+    // trait is not compatible across versions.
+    use tauri_nspanel::objc2::msg_send;
+    use tauri_nspanel::objc2::runtime::Bool;
     let _: () = unsafe { msg_send![panel, setAutorecalculatesTouchBar: Bool::new(false)] };
 }
 
