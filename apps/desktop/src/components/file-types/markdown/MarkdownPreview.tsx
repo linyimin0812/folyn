@@ -304,7 +304,14 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
-    setWidth(Math.max(40, Math.round(dragRef.current.startW + dx)));
+    // ponytail: clamp to parent content width — beyond it, max-width:100% on
+    // the wrapper caps the visual size anyway, but state would keep growing
+    // and the handle would visually drift right past the preview pane while
+    // the image stays pinned at parent width. Clamping state to parent width
+    // makes "can't enlarge further" actually stop the handle.
+    const parent = (e.currentTarget.parentElement as HTMLElement | null)?.parentElement;
+    const maxW = parent?.clientWidth ?? Infinity;
+    setWidth(Math.min(maxW, Math.max(40, Math.round(dragRef.current.startW + dx))));
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragRef.current) return;
