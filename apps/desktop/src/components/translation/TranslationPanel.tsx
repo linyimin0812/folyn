@@ -227,15 +227,17 @@ export function TranslationPanel() {
           </div>
           <div className="flex-1 overflow-auto">
             {error ? (
-              <div className="p-3 text-[12px] text-red-600 dark:text-red-400 break-words">{error}</div>
+              <div className="px-6 py-3 text-[12px] text-red-600 dark:text-red-400 break-words">{error}</div>
             ) : result ? (
               preview ? (
-                <MarkdownPreview content={result} filePath="__translation__.md" vaultRoot="" />
+                <div className="px-6 py-3 text-justify">
+                  <MarkdownPreview content={result} filePath="__translation__.md" vaultRoot="" />
+                </div>
               ) : (
-                <pre className="p-3 text-t1 text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap font-mono">{result}</pre>
+                <pre className="px-6 py-3 text-t1 text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] whitespace-pre-wrap font-mono text-justify">{result}</pre>
               )
             ) : (
-              <div className="p-3 text-t3 text-[12px]">
+              <div className="px-6 py-3 text-t3 text-[12px]">
                 {streaming
                   ? t('settings:translation.streaming')
                   : t('settings:translation.empty')}
