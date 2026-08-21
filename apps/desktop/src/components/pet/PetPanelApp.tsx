@@ -197,6 +197,7 @@ export function PetPanelApp() {
           providerSettings?: Record<string, ProviderSettings>;
           customerProviders?: Record<string, CustomProviderDef>;
           modelsByProvider?: Record<string, Model[]>;
+          pluginPair?: { provider: string; model: string } | null;
         }>('pet://providers-updated', (event) => {
           const p = event.payload ?? {};
           if (p.providerSettings) {
@@ -213,6 +214,9 @@ export function PetPanelApp() {
             useModelRegistryStore.setState({
               modelsByProvider: p.modelsByProvider,
             });
+          }
+          if (p.pluginPair !== undefined) {
+            useAiConfigStore.setState({ pluginPair: p.pluginPair });
           }
         });
         // Request the current snapshot (the initial emit was missed).
