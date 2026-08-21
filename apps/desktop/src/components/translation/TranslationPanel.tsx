@@ -216,7 +216,7 @@ export function TranslationPanel() {
         <div className="group flex-1 flex flex-col overflow-hidden relative">
           <button
             type="button"
-            className={`absolute top-2 right-2 z-10 w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-opacity duration-[120ms] hover:bg-hov hover:text-t1 disabled:cursor-not-allowed ${result ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`absolute top-1 right-1 z-10 w-7 h-7 flex items-center justify-center rounded-md text-t3 cursor-pointer transition-opacity duration-[120ms] hover:bg-hov hover:text-t1 disabled:cursor-not-allowed ${result ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 pointer-events-none'}`}
             onClick={handleCopy}
             disabled={!result}
             title={t('settings:translation.copy')}
@@ -228,7 +228,7 @@ export function TranslationPanel() {
               <div className="px-6 py-3 text-[12px] text-red-600 dark:text-red-400 break-words">{error}</div>
             ) : result ? (
               preview ? (
-                <div className="px-6 py-3 [&_.md-preview]:!text-justify">
+                <div className="px-6 py-3 [&_.md-preview]:!text-justify [&_.md-preview>:first-child]:mt-0 [&_.md-preview>:last-child]:mb-0">
                   <MarkdownPreview content={result} filePath="__translation__.md" vaultRoot="" />
                 </div>
               ) : (
