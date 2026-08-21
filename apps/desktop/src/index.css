@@ -531,15 +531,24 @@ mjx-container svg {
 .md-preview th, .md-preview td { border: 1px solid var(--brd); padding: 6px 12px; font-size: 12px; text-align: left; }
 .md-preview th { background: var(--surf); font-weight: 600; }
 .md-preview img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
-.md-preview .resizable-media { position: relative; display: inline-block; max-width: 100%; }
+/* ponytail: inline-block shrink-to-fit + max-width:100% on inner media → wrapper
+   tracks the rendered media size when state is null. On drag, inline width
+   overrides shrink-to-fit. > :not(.resize-handle) neutralizes mermaid's flex
+   justify-center (flex children shrink-to-fit and ignore parent width). */
+.md-preview .resizable-media { position: relative; display: inline-block; max-width: 100%; line-height: 0; vertical-align: middle; }
+.md-preview .resizable-media > *:not(.resize-handle) { display: block; width: 100%; }
 .md-preview .resizable-media img,
-.md-preview .resizable-media svg { width: 100%; height: 100%; display: block; }
+.md-preview .resizable-media svg { width: 100%; height: auto; display: block; margin: 0; max-width: none; }
 .md-preview .resize-handle {
-  position: absolute; right: 0; bottom: 0; width: 12px; height: 12px;
-  cursor: nwse-resize; background: var(--acc, #597EF7);
-  border-bottom-right-radius: 6px; opacity: 0.5;
+  position: absolute; right: 0; bottom: 0;
+  width: 14px; height: 14px; cursor: nwse-resize;
+  background: transparent; border-right: 2px solid var(--t3, #888);
+  border-bottom: 2px solid var(--t3, #888);
+  border-bottom-right-radius: 6px; opacity: 0;
+  transition: opacity 0.12s ease;
 }
-.md-preview .resizable-media:hover .resize-handle { opacity: 1; }
+.md-preview .resizable-media:hover .resize-handle { opacity: 0.6; }
+.md-preview .resize-handle:hover { opacity: 1; color: var(--acc, #597EF7); border-color: var(--acc, #597EF7); }
 .md-preview input[type="checkbox"] { margin-right: 6px; }
 
 /* ── Syntax Highlighting ── */
