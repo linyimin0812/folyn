@@ -4,6 +4,7 @@ import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
 import { hydrateAllStores } from '@/store/settingsPersistence';
+import type { Locale } from '@/i18n';
 import {
   clampPanelPosition,
   computePanelPosition,
@@ -317,11 +318,11 @@ export function PetPanelApp() {
         const { listen } = await import('@tauri-apps/api/event');
         const i18n = (await import('@/i18n')).default;
         const { useLocaleStore } = await import('@/store/localeStore');
-        unlisten = await listen<{ locale: 'zh' | 'en' }>(
+        unlisten = await listen<{ locale: Locale }>(
           'locale://changed',
           (event) => {
             const lg = event.payload?.locale;
-            if (lg !== 'zh' && lg !== 'en') return;
+            if (!lg) return;
             void i18n.changeLanguage(lg);
             useLocaleStore.setState({ locale: lg });
           },
