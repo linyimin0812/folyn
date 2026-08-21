@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronRight, RotateCcw } from 'lucide-react';
 import { useCspConfigStore } from '@/store/cspConfigStore';
 import { persistNow } from '@/store/settingsPersistence';
 import { buildCsp, isValidSource } from '@/utils/csp';
@@ -30,6 +30,7 @@ export function CspSettings() {
 
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const policy = useMemo(() => buildCsp({ mode, allowedUrls }), [mode, allowedUrls]);
 
@@ -133,7 +134,22 @@ export function CspSettings() {
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mb-2 leading-relaxed">
           {t('settings:csp.preview.description')}
         </p>
-        <pre className="m-0 p-3 rounded-lg bg-bg border border-brd text-[10.5px] leading-relaxed font-mono text-t2 whitespace-pre-wrap break-all max-w-full">{policy}</pre>
+        <div className="rounded-lg bg-bg border border-brd overflow-hidden max-w-full">
+          <button
+            type="button"
+            className="flex items-center gap-1 w-full px-3 py-1.5 bg-bg text-left cursor-pointer hover:bg-hov transition-colors"
+            onClick={() => setPreviewOpen((v) => !v)}
+            aria-expanded={previewOpen}
+          >
+            {previewOpen
+              ? <ChevronDown size={12} className="text-t3 shrink-0" />
+              : <ChevronRight size={12} className="text-t3 shrink-0" />}
+            <span className="text-[10.5px] font-mono text-t3">{previewOpen ? t('settings:csp.preview.collapse') : t('settings:csp.preview.expand')}</span>
+          </button>
+          {previewOpen && (
+            <pre className="m-0 px-3 pb-3 pt-1 text-[10.5px] leading-relaxed font-mono text-t2 whitespace-pre-wrap break-all">{policy}</pre>
+          )}
+        </div>
         <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 mt-2 leading-relaxed">{t('settings:csp.baseline.note')}</p>
       </div>
 

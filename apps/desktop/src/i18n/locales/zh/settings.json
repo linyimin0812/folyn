@@ -908,7 +908,9 @@
     },
     "preview": {
       "label": "当前生效的策略",
-      "description": "点击“应用并刷新”后，以下策略才会生效。"
+      "description": "点击“应用并刷新”后，以下策略才会生效。",
+      "expand": "展开策略",
+      "collapse": "收起策略"
     },
     "baseline": {
       "note": "Tauri IPC、quill-plugin、asset、data: 与 blob: 始终允许，不可移除。另外默认放行七牛云图床域名 http://*.clouddn.com、上传端点 https://*.qiniup.com，Cloudflare R2 上传端点 https://*.r2.cloudflarestorage.com、默认公开访问域名 https://*.r2.dev，以及阿里云 OSS 上传端点与公开访问域名 https://*.aliyuncs.com。"

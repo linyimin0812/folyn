@@ -908,7 +908,9 @@
     },
     "preview": {
       "label": "Effective policy",
-      "description": "The policy below takes effect after clicking Apply & Reload."
+      "description": "The policy below takes effect after clicking Apply & Reload.",
+      "expand": "Expand policy",
+      "collapse": "Collapse policy"
     },
     "baseline": {
       "note": "Tauri IPC, quill-plugin, asset, data: and blob: are always allowed and cannot be removed. Qiniu's http://*.clouddn.com image host and https://*.qiniup.com upload endpoint, Cloudflare R2's https://*.r2.cloudflarestorage.com upload endpoint and https://*.r2.dev default public URL, plus Aliyun OSS's https://*.aliyuncs.com upload + public URL, are also baseline-allowed."
