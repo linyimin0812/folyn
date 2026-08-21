@@ -13,21 +13,23 @@ import {
   TARGET_LANGUAGES,
 } from './languages';
 
-type TFunc = (key: string) => string;
-
-function languageLabel(t: TFunc, id: string): string {
+/** Resolve the canonical English name for the LLM prompt. UI locale must not
+ *  leak into the prompt — see LanguageOption.name. */
+function languageName(id: string): string {
   const found = SOURCE_LANGUAGES.find((l) => l.id === id) ?? TARGET_LANGUAGES.find((l) => l.id === id);
-  return found ? t(`settings:translation.languages.${found.label}`) : id;
+  return found?.name ?? id;
 }
 
-function buildPrompt(t: TFunc, text: string, sourceId: string, targetId: string): string {
+function buildPrompt(text: string, sourceId: string, targetId: string): string {
   // ponytail: pass full language names, not ISO codes — 'it' reads as the
-  // English pronoun and the LLM defaults to English. Localized names are
-  // unambiguous (Italian / 意大利语 / etc.) and LLMs parse any locale.
+  // English pronoun and the LLM defaults to English. Names are unambiguous.
+  // Use canonical English names regardless of UI locale; mixing localized
+  // names into an English prompt sentence ("Translate into 日语") can make
+  // the model default to a related language instead of the requested one.
   const sourceClause = sourceId === AUTO_DETECT_ID
     ? 'the source language (detect it yourself from the input)'
-    : languageLabel(t, sourceId);
-  const targetName = languageLabel(t, targetId);
+    : languageName(sourceId);
+  const targetName = languageName(targetId);
   return [
     `You are a professional translator. Translate the user's text from ${sourceClause} into ${targetName}.`,
     'Preserve markdown formatting, code blocks, and inline syntax if present.',
@@ -98,7 +100,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
     try {
       await runRigChat({
         sessionId: 'translation',
-        prompt: buildPrompt(t, input, source, target),
+        prompt: buildPrompt(input, source, target),
         provider: resolved.provider,
         model: resolved.model,
         apiKey: resolved.apiKey,
