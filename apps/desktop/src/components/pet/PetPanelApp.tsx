@@ -13,6 +13,7 @@ import {
 } from './petPosition';
 import { AiPanel } from '@/components/ai/AiPanel';
 import { PetInbox } from './PetInbox';
+import { TranslationPanel } from '@/components/translation/TranslationPanel';
 import {
   PetPanelSearchResults,
   type PetPanelSearchResultsHandle,
@@ -29,7 +30,7 @@ import type {
 } from '@/services/providers/providerConfigStorage';
 import type { Model } from '@/services/modelRegistry/types';
 
-type PetPanelTab = 'chat' | 'inbox';
+type PetPanelTab = 'chat' | 'translation' | 'inbox';
 
 interface PetCursorProbeResult {
   cursor_x: number;
@@ -700,6 +701,15 @@ export function PetPanelApp() {
               <button
                 type="button"
                 role="tab"
+                aria-selected={tab === 'translation'}
+                className={`pet-panel-tab${tab === 'translation' ? ' is-active' : ''}`}
+                onClick={() => setTab('translation')}
+              >
+                {t('pet:tabs.translation')}
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={tab === 'inbox'}
                 className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
                 onClick={() => setTab('inbox')}
@@ -719,6 +729,8 @@ export function PetPanelApp() {
           />
         ) : tab === 'chat' ? (
           <AiPanel embedded />
+        ) : tab === 'translation' ? (
+          <TranslationPanel />
         ) : (
           <PetInbox />
         )}
