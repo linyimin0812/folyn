@@ -52,8 +52,16 @@ fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
     // project also depends on objc2 0.6.4 directly, and the `Message`
     // trait is not compatible across versions.
     use tauri_nspanel::objc2::msg_send;
-    use tauri_nspanel::objc2::runtime::Bool;
-    let _: () = unsafe { msg_send![panel, setAutorecalculatesTouchBar: Bool::new(false)] };
+    // ponytail: wrap in `exception::catch` — `msg_send!` panics on
+    // Obj-C exceptions (e.g. `doesNotRespondTo:` on a swizzled class
+    // whose method table got rebuilt), and the Tauri setup hook this
+    // runs in has `unwind = abort` → an unwound panic aborts the whole
+    // app at startup. Swallow; the worst case is the original
+    // `NSRangeException` at deinit remains, which is no worse than
+    // pre-fix behavior.
+    let _ = tauri_nspanel::objc2::exception::catch(|| unsafe {
+        let _: () = msg_send![panel, setAutorecalculatesTouchBar: false];
+    });
 }
 
 tauri_panel! {
