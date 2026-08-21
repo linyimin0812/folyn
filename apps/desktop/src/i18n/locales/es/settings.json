@@ -374,6 +374,38 @@
       "title": "Editar capacidades del modelo"
     }
   },
+  "translation": {
+    "translate": "Traducir",
+    "translating": "Traduciendo…",
+    "cancel": "Detener",
+    "sourceLang": "Idioma de origen",
+    "targetLang": "Idioma de destino",
+    "markdownPreview": "Alternar vista previa de markdown",
+    "markdownPreviewLabel": "Vista previa de markdown",
+    "copy": "Copiar traducción",
+    "inputPlaceholder": "Escribe o pega texto para traducir. ⌘/Ctrl+Enter para traducir.",
+    "streaming": "Traduciendo…",
+    "empty": "La traducción aparecerá aquí.",
+    "languages": {
+      "auto": "Detectar automáticamente",
+      "zh": "Chino",
+      "en": "Inglés",
+      "ja": "Japonés",
+      "ko": "Coreano",
+      "es": "Español",
+      "fr": "Francés",
+      "de": "Alemán",
+      "ru": "Ruso",
+      "pt": "Portugués",
+      "it": "Italiano",
+      "ar": "Árabe",
+      "hi": "Hindi"
+    },
+    "error": {
+      "noPair": "No hay modelo configurado. Selecciona un proveedor/modelo o configura el adaptador de chat en Ajustes.",
+      "copy": "Error al escribir en el portapapeles."
+    }
+  },
   "about": {
     "tagline": "v0.1.0-alpha · Editor Markdown local-first",
     "groups": {

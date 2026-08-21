@@ -374,6 +374,38 @@
       "title": "Modellfähigkeiten bearbeiten"
     }
   },
+  "translation": {
+    "translate": "Übersetzen",
+    "translating": "Übersetzen…",
+    "cancel": "Stopp",
+    "sourceLang": "Ausgangssprache",
+    "targetLang": "Zielsprache",
+    "markdownPreview": "Markdown-Vorschau umschalten",
+    "markdownPreviewLabel": "Markdown-Vorschau",
+    "copy": "Übersetzung kopieren",
+    "inputPlaceholder": "Text zum Übersetzen eingeben oder einfügen. ⌘/Ctrl+Enter zum Übersetzen.",
+    "streaming": "Übersetzen…",
+    "empty": "Übersetzung erscheint hier.",
+    "languages": {
+      "auto": "Automatisch erkennen",
+      "zh": "Chinesisch",
+      "en": "Englisch",
+      "ja": "Japanisch",
+      "ko": "Koreanisch",
+      "es": "Spanisch",
+      "fr": "Französisch",
+      "de": "Deutsch",
+      "ru": "Russisch",
+      "pt": "Portugiesisch",
+      "it": "Italienisch",
+      "ar": "Arabisch",
+      "hi": "Hindi"
+    },
+    "error": {
+      "noPair": "Kein Modell konfiguriert. Wähle einen Anbieter/Modell oder richte den Chat-Adapter in den Einstellungen ein.",
+      "copy": "Schreiben in die Zwischenablage fehlgeschlagen."
+    }
+  },
   "about": {
     "tagline": "v0.1.0-alpha · Lokal-first Markdown-Editor",
     "groups": {
