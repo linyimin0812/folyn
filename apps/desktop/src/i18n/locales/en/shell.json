@@ -6,6 +6,7 @@
   },
   "nav": {
     "schedule": "Schedule (⌘D)",
+    "translation": "Translate",
     "settings": "Settings",
     "git": "Git"
   },

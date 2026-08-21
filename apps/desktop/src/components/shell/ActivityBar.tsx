@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { GitPanel } from '@/components/git/GitPanel';
 import githubIcon from '@/assets/icons/github.svg';
 import { ScheduleIcon } from '@/components/icons/ScheduleIcon';
+import { TranslationIcon } from '@/components/icons/TranslationIcon';
 
 /**
  * Active panel id. Widened to `string` in PR2 — plugin panels contribute
@@ -50,13 +51,15 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const currentPage = useNavStore((s) => s.currentPage);
   const currentVault = useVaultStore((s) => s.currentVault);
   const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
+  const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const [gitOpen, setGitOpen] = useState(false);
 
   // Git icon only for GitHub-type vaults (clone-backed local git repo).
   const isGithubVault = currentVault?.providerType === 'github';
 
   const onSchedule = currentPage === 'schedule';
-  const onPage = onSchedule;
+  const onTranslation = currentPage === 'translation';
+  const onPage = onSchedule || onTranslation;
 
   // Visible panels sorted by (order, registration seq). The store selector
   // returns a useShallow-stabilized array — re-renders only on real content
@@ -110,6 +113,16 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
           title={t('shell:nav.schedule')}
         >
           <ScheduleIcon size={14} active={onSchedule} />
+        </button>
+      )}
+
+      {enableTranslationPanel && (
+        <button
+          className={`activity-icon ${onTranslation ? 'active' : ''}`}
+          onClick={() => setCurrentPage('translation')}
+          title={t('shell:nav.translation')}
+        >
+          <TranslationIcon size={14} active={onTranslation} />
         </button>
       )}
 

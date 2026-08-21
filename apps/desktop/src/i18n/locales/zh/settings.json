@@ -68,6 +68,10 @@
         "label": "日程面板",
         "description": "日程（Plan My Day）相关功能入口"
       },
+      "translation": {
+        "label": "翻译面板",
+        "description": "双栏翻译（原文 → 译文），可选翻译模型"
+      },
       "tray": {
         "label": "显示托盘图标",
         "description": "在系统托盘显示应用图标，点击弹出与桌宠右键菜单相同的快捷菜单"
@@ -374,6 +378,22 @@
     "editCapabilities": {
       "tooltip": "编辑能力",
       "title": "编辑模型能力"
+    }
+  },
+  "translation": {
+    "translate": "翻译",
+    "translating": "翻译中…",
+    "cancel": "停止",
+    "sourceLang": "原文语言",
+    "targetLang": "目标语言",
+    "markdownPreview": "切换 Markdown 预览",
+    "copy": "复制译文",
+    "inputPlaceholder": "输入或粘贴要翻译的文本。⌘/Ctrl+Enter 翻译。",
+    "streaming": "翻译中…",
+    "empty": "译文将显示在这里。",
+    "error": {
+      "noPair": "未配置翻译模型。请选择 provider/model，或在设置中配置聊天适配器。",
+      "copy": "复制失败。"
     }
   },
   "about": {
