@@ -12,12 +12,20 @@ import {
   TARGET_LANGUAGES,
 } from './languages';
 
-function buildPrompt(text: string, source: string, target: string): string {
-  const sourceClause = source === AUTO_DETECT_ID
+function languageLabel(id: string): string {
+  const all = SOURCE_LANGUAGES;
+  return all.find((l) => l.id === id)?.label ?? id;
+}
+
+function buildPrompt(text: string, sourceId: string, targetId: string): string {
+  // ponytail: pass full language names, not ISO codes — 'it' reads as the
+  // English pronoun and the LLM defaults to English. Names are unambiguous.
+  const sourceClause = sourceId === AUTO_DETECT_ID
     ? 'the source language (detect it yourself from the input)'
-    : source;
+    : languageLabel(sourceId);
+  const targetName = languageLabel(targetId);
   return [
-    `You are a professional translator. Translate the user's text from ${sourceClause} to ${target}.`,
+    `You are a professional translator. Translate the user's text from ${sourceClause} into ${targetName}.`,
     'Preserve markdown formatting, code blocks, and inline syntax if present.',
     'Output ONLY the translation — no preamble, no notes, no explanation.',
     'If the text is already in the target language, still output it verbatim.',
