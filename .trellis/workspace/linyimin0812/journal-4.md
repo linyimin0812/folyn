@@ -677,3 +677,40 @@ Fixed DBML ER diagram rendering: relationship lines couldn't be made perfectly s
 ### Next Steps
 
 - None - task complete
+
+
+## Session 190: Vault store optimistic tree updates (create/delete/rename/move/copy)
+
+**Date**: 2026-08-22
+**Task**: Vault store optimistic tree updates (create/delete/rename/move/copy)
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Replaced blocking await refreshFileTree() in vaultStore createFile/createDir/deleteFile/deleteDir/renameFile/moveFiles/copyPath/copyExternalFileToVault with optimistic tree updates (insertEntry/removeEntry/renameEntry/copyEntry pure helpers in treeUtils) + background non-blocking refresh. Eliminates Enter-key lag on file creation and similar lag on delete/rename/move/copy. 17 new unit tests for the helpers.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e732d6a5` | (see git log) |
+| `2a39b076` | (see git log) |
+| `ce8c52d1` | (see git log) |
+| `c921f582` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
