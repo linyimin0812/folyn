@@ -266,6 +266,14 @@ export const useVaultStore = create<VaultState>()(
           // Connect first — only add to list if successful
           set({ isLoading: true, error: null });
           try {
+            // Save outgoing vault's open tabs before activeVaultId flips to the
+            // new vault; same pattern as switchVault so tabs restore on return.
+            const { useEditorStore } = await import('./editorStore');
+            const editorIo = await import('@/services/editorIoService');
+            if (useEditorStore.getState().tabs.length > 0) {
+              editorIo.saveOpenTabs();
+            }
+
             if (config.providerType === 'github') {
               await prepareGithubVault(config);
             }
@@ -283,6 +291,11 @@ export const useVaultStore = create<VaultState>()(
               activeVaultId: config.id,
               pinnedPaths: [],
             });
+            // Drop outgoing vault's relative-path tabs (preserve external tabs)
+            useEditorStore.setState((state) => ({
+              tabs: state.tabs.filter((t) => isExternalPath(t.path)),
+              activeTabId: null,
+            }));
             syncToSettings(config);
             await persistVaultConfigs(newVaults, config.id);
             await startWatcherForVault(config);
