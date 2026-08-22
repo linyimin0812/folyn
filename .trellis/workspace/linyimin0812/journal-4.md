@@ -748,3 +748,37 @@ Cap about page outer container to max-w-[640px] so GroupDivider and license bord
 ### Next Steps
 
 - None - task complete
+
+
+## Session 192: Surface real Tauri fs error on vault switch
+
+**Date**: 2026-08-22
+**Task**: Surface real Tauri fs error on vault switch
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+switchVault/addVault/refreshFileTree 的 catch 块在 err 非 Error 实例时丢弃真实内容只显示兜底文案。Tauri plugin-fs 在 Windows 下（scope 拒绝、重装后路径问题）常以字符串或裸对象 reject，导致用户只看到 'Failed to switch vault'。改用 String(err) surface 实际原因。同时顺带归档已完成的 08-14-plugin-system 任务。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bbb3d2e0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
