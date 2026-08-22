@@ -785,7 +785,13 @@ pub fn run() {
                         .get_webview_window("pet")
                         .and_then(|p| p.is_visible().ok())
                         .unwrap_or(false);
-                    if pet_on {
+                    // ponytail: also keep the app alive when the tray icon is
+                    // enabled but pet is off — close button hides instead of
+                    // quitting so the tray icon stays. Without this, Windows
+                    // X-button kills the tray icon and the only way back is
+                    // launching the app again.
+                    let tray_on = app.tray_by_id(commands::TRAY_ID).is_some();
+                    if pet_on || tray_on {
                         api.prevent_close();
                         let fullscreen = window.is_fullscreen().unwrap_or(false);
                         // Remember whether to restore fullscreen on the next
