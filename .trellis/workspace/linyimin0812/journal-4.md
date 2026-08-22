@@ -816,3 +816,37 @@ Moved single-instance callback's main.show()+set_focus() ahead of the empty-path
 ### Next Steps
 
 - None - task complete
+
+
+## Session 194: Use pet.gif as default desktop pet mascot
+
+**Date**: 2026-08-22
+**Task**: Use pet.gif as default desktop pet mascot
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Replaced the inline quill SVG builtin mascot with a bundled pet.gif rendered via <img>. Updated PetMascot test to assert img root; PetSettings preview now shows the same gif. Custom-icon fallback path unchanged.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `60b4e84c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
