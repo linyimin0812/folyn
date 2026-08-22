@@ -223,6 +223,12 @@ the secondary window is visible.
 or a frontend-driven hide/show can desync the close decision. Quitting via the app menu bypasses
 `CloseRequested`, so there is no stuck-window path.
 
+**Gotcha (Windows reopen)**: with close-to-tray hiding the main window, the
+`tauri-plugin-single-instance` callback must call `main.show()` + `set_focus()` **before**
+checking `filter_argv_paths(&argv)` — a bare double-click of the icon passes no file path, and
+an early-return on empty paths leaves the hidden window stuck. File-arg plumbing stays gated on
+non-empty paths; only the window-surfacing is unconditional.
+
 **Fullscreen-aware teardown** (macOS, `macOSPrivateApi`): hiding/destroying a window that is in
 NATIVE fullscreen leaves a black fullscreen Space behind — the Space belongs to the window and
 macOS does not tear it down when the window vanishes mid-transition. The exit-fullscreen step

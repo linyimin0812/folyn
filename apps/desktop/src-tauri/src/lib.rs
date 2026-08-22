@@ -1152,6 +1152,14 @@ pub fn run() {
     let builder = builder.plugin({
         startup_log("[plugin] single_instance");
         tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            // Surface the main window first — a bare double-click on Windows
+            // passes no file path; the hidden (close-to-tray) window still
+            // needs to come back up. File-arg plumbing below stays gated on
+            // non-empty paths so we don't emit spurious open-external events.
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.show();
+                let _ = main.set_focus();
+            }
             let paths = commands::filter_argv_paths(&argv);
             if paths.is_empty() {
                 return;
@@ -1162,10 +1170,6 @@ pub fn run() {
             ));
             if let Some(pending) = app.try_state::<commands::PendingOpenFiles>() {
                 pending.push(paths.clone());
-            }
-            if let Some(main) = app.get_webview_window("main") {
-                let _ = main.show();
-                let _ = main.set_focus();
             }
             let _ = app.emit("app://open-external-file", paths);
         })
