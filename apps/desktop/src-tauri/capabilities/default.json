@@ -25,13 +25,13 @@
       "identifier": "opener:allow-open-path",
       "allow": [
         {
-          "path": "$HOME/**"
+          "path": "**"
         },
         {
-          "path": "$HOME/**/.*"
+          "path": "**/.*"
         },
         {
-          "path": "$HOME/**/.*/**"
+          "path": "**/.*/**"
         }
       ]
     },
