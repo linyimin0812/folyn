@@ -300,7 +300,7 @@ export const useVaultStore = create<VaultState>()(
             await persistVaultConfigs(newVaults, config.id);
             await startWatcherForVault(config);
           } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to connect vault';
+            const message = err instanceof Error ? err.message : String(err);
             set({ error: message });
             console.error('[VaultStore] addVault failed:', err);
             throw err; // Re-throw so CreateVaultDialog can show the error
@@ -380,7 +380,11 @@ export const useVaultStore = create<VaultState>()(
 
             await startWatcherForVault(config);
           } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to switch vault';
+            // ponytail: Tauri plugin-fs rejections (scope denial, path issues on
+            // Windows reinstall) are often strings or plain objects, not Error.
+            // Surface the real value instead of the generic fallback so the user
+            // sees the actual cause (e.g. 'path not allowed by scope').
+            const message = err instanceof Error ? err.message : String(err);
             set({ error: message });
             console.error('[VaultStore] switchVault failed:', err);
           } finally {
@@ -424,7 +428,7 @@ export const useVaultStore = create<VaultState>()(
 
             set({ fileTree: filterEntries(entries), error: null });
           } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to load file tree';
+            const message = err instanceof Error ? err.message : String(err);
             set({ error: message });
             console.error('[VaultStore] refreshFileTree failed:', err);
           }
