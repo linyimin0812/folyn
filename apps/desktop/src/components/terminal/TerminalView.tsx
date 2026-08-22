@@ -207,7 +207,13 @@ export function TerminalView({ id, active }: TerminalViewProps) {
       // iTerm): accumulate the current line and, on the first Enter, replace
       // the shell-name title with the command.
       if (!firstCommandSetRef.current) {
-        for (const ch of data) {
+        // Strip terminal escape sequences (e.g. the cursor-position report
+        // \x1b[<row>;<col>R that xterm sends back when a shell emits the DSR
+        // query \x1b[6n) so their payloads don't leak into the title as
+        // "1;1R". Only this title-buffer copy is cleaned; the raw `data`
+        // still flows to the pty below unchanged.
+        const cleaned = data.replace(/\x1b\[[0-9;?]*[@-~]|\x1b[NO][ -~]|\x1b./g, '');
+        for (const ch of cleaned) {
           if (ch === '\r' || ch === '\n') {
             const cmd = lineBufferRef.current.trim();
             if (cmd) {
