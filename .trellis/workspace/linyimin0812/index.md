@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 192
+- **Total Sessions**: 193
 - **Last Active**: 2026-08-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~784 | Active |
+| `journal-4.md` | ~818 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 193 | 2026-08-22 | Fix Windows tray-reopen stuck window | `8c3e6008` | `master` |
 | 192 | 2026-08-22 | Surface real Tauri fs error on vault switch | `bbb3d2e0` | `master` |
 | 191 | 2026-08-22 | Settings about page width alignment | `71427f44` | `master` |
 | 190 | 2026-08-22 | Vault store optimistic tree updates (create/delete/rename/move/copy) | `e732d6a5`, `2a39b076`, `ce8c52d1`, `c921f582` | `master` |

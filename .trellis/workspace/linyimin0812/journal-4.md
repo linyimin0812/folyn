@@ -782,3 +782,37 @@ switchVault/addVault/refreshFileTree 的 catch 块在 err 非 Error 实例时丢
 ### Next Steps
 
 - None - task complete
+
+
+## Session 193: Fix Windows tray-reopen stuck window
+
+**Date**: 2026-08-22
+**Task**: Fix Windows tray-reopen stuck window
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Moved single-instance callback's main.show()+set_focus() ahead of the empty-paths early-return so a bare double-click of the Quill icon surfaces the hidden close-to-tray main window. File-arg plumbing stays gated on non-empty paths. Added a gotcha note to tauri-window-patterns.md.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8c3e6008` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
