@@ -230,8 +230,23 @@ export const QuillEditor = forwardRef<QuillEditorHandle, QuillEditorProps>(
         if (!view) return;
         const currentContent = view.state.doc.toString();
         if (currentContent === content) return;
+        // ponytail: surgical diff instead of full-doc replace. A full-doc
+        // replace (from:0, to:len) invalidates CodeMirror's viewport
+        // measurements and resets scroll to top on drag-resize writeback
+        // (which goes through setContentExternal → externalContentVersion
+        // bump → this method). Computing the common prefix/suffix and
+        // dispatching only the changed middle range preserves scroll,
+        // cursor, and viewport state for free.
+        const oldLen = currentContent.length;
+        const newLen = content.length;
+        let prefix = 0;
+        const maxPrefix = Math.min(oldLen, newLen);
+        while (prefix < maxPrefix && currentContent[prefix] === content[prefix]) prefix++;
+        let suffix = 0;
+        const maxSuffix = Math.min(oldLen - prefix, newLen - prefix);
+        while (suffix < maxSuffix && currentContent[oldLen - 1 - suffix] === content[newLen - 1 - suffix]) suffix++;
         view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: content },
+          changes: { from: prefix, to: oldLen - suffix, insert: content.slice(prefix, newLen - suffix) },
         });
       },
     }));
