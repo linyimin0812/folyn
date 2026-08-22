@@ -119,7 +119,9 @@ describe('rewriteTabPrefixes', () => {
 
     const tabs = useEditorStore.getState().tabs;
     expect(tabs[0].path).toBe('__clips__/tech/foo.md');
+    expect(tabs[0].name).toBe('foo.md');
     expect(tabs[1].path).toBe('__reports__/2026-01-01.md');
+    expect(tabs[1].name).toBe('2026-01-01.md');
     expect(tabs[2].path).toBe('notes/note.md');
     expect(tabs[3].path).toBe('wiki://entities/react.md');
   });
@@ -134,6 +136,20 @@ describe('rewriteTabPrefixes', () => {
 
     useEditorStore.getState().rewriteTabPrefixes([{ from: 'clips', to: '__clips__' }]);
     expect(useEditorStore.getState().tabs[0].path).toBe('__clips__');
+  });
+
+  it('updates the tab name when a file is renamed', () => {
+    useEditorStore.setState({
+      tabs: [
+        { id: 't1', name: 'a.md', path: 'notes/a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+      ],
+      activeTabId: 't1',
+    });
+
+    useEditorStore.getState().rewriteTabPrefixes([{ from: 'notes/a.md', to: 'notes/c.md' }]);
+    const tab = useEditorStore.getState().tabs[0];
+    expect(tab.path).toBe('notes/c.md');
+    expect(tab.name).toBe('c.md');
   });
 
   it('is a no-op when mapping is empty', () => {
