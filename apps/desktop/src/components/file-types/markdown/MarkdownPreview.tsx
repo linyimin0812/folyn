@@ -679,7 +679,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
     const ext = path.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
     const handler = ext ? getHandlerByExtension(ext) : undefined;
     // ponytail: only fall back to code viewer when no handler matched (unknown
-    // ext). A matched handler with no Preview (e.g. rich-text .rt) returns null
+    // ext). A matched handler with no Preview (e.g. rich-text .richtext) returns null
     // so FilePreviewPlugin shows its "暂无预览" UI instead of dumping the raw
     // disk JSON as code.
     const Preview = handler?.Preview ?? (handler ? null : getHandlerById('code')?.Preview);

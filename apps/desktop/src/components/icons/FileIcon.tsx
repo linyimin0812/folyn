@@ -93,7 +93,7 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   graphviz: 'graphviz',
   mmd: 'mermaid',
   mermaid: 'mermaid',
-  rt: 'richtext',
+  richtext: 'richtext',
 };
 
 const HANDLER_TO_THEME_ICON: Record<string, string> = {

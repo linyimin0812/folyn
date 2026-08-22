@@ -198,7 +198,7 @@ ${inlinedBody}
   await downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
 }
 
-/** Export a rich-text (.rt) doc as a standalone HTML file. */
+/** Export a rich-text (.richtext) doc as a standalone HTML file. */
 export async function exportActiveRichTextHtml(onBeforeDialog?: () => void): Promise<void> {
   const { name, content, vaultRoot } = getActiveDocument();
   if (!content) return;

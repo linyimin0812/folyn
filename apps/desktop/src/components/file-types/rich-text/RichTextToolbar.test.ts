@@ -8,7 +8,7 @@ import { selectionTextAlign } from './RichTextToolbar';
 // ponytail: jsdom can't host a prosemirror view, but EditorState + a schema
 // built from the real extension stack need no view — so the alignment
 // resolver is unit-testable. Component-level highlight rendering is verified
-// by opening a .rt file in the running app (same ceiling as RichTextImage).
+// by opening a .richtext file in the running app (same ceiling as RichTextImage).
 function makeState(docJson: JSONContent, from?: number, to?: number): EditorState {
   const schema = getSchema(getRichTextExtensions());
   const doc = schema.nodeFromJSON(docJson);
