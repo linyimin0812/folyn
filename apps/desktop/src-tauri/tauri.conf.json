@@ -167,7 +167,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": {
-          "allow": ["$HOME/**", "$HOME/**/.*", "$HOME/**/.*/**", "$APPDATA/**"],
+          "allow": ["**"],
           "deny": []
         }
       }
