@@ -35,7 +35,7 @@ import {
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
-import { getResizedMediaWidth, stripImageSize } from './mediaResize';
+import { getResizedMediaWidth } from './mediaResize';
 /**
  * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -851,7 +851,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
           passNode: true,
           components: componentMap,
         } as any)
-        .processSync(stripImageSize(unwrapInlineMath(transformMathBrackets(body))));
+        .processSync(unwrapInlineMath(transformMathBrackets(body)));
 
       return result.result as React.ReactElement;
     } catch (error) {

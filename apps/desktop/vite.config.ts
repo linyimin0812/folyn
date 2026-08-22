@@ -99,7 +99,11 @@ export default defineConfig(() => {
         : undefined,
       proxy: {},
       watch: {
-        ignored: ['**/src-tauri/**'],
+        // ponytail: public/vendor and public/wasm hold immutable third-party binary
+        // assets (pdf.js .bcmap cmaps, fonts, .wasm, workers). On Windows, fs.watch
+        // hits EBUSY on these locked files and crashes the chokidar watcher, taking
+        // down the dev server. They never change during dev, so exclude them.
+        ignored: ['**/src-tauri/**', '**/public/vendor/**', '**/public/wasm/**'],
       },
     },
   } satisfies UserConfig;
