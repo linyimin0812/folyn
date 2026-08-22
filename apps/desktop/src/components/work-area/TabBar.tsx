@@ -74,7 +74,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
           return (
             <div
               key={tab.id}
-              className={`group flex items-center gap-[5px] px-[11px] font-mono text-[calc(var(--ui-font-size)-3px)] text-t3 cursor-pointer border-b-2 border-b-transparent whitespace-nowrap shrink-0 transition-all duration-[220ms] select-none hover:text-t2 hover:bg-hov ${activeTabId === tab.id ? 'text-t1 !border-b-acc bg-surf' : ''}`}
+              className={`group flex items-center gap-[5px] px-[11px] text-[calc(var(--ui-font-size)-3px)] text-t3 cursor-pointer border-b-2 border-b-transparent whitespace-nowrap shrink-0 transition-all duration-[220ms] select-none hover:text-t2 hover:bg-hov ${activeTabId === tab.id ? 'text-t1 !border-b-acc bg-surf' : ''}`}
               onClick={() => onSelectTab(tab.id)}
             >
               <span className="shrink-0 flex items-center"><FileIcon filename={tab.name} fileType={tab.fileType} /></span>

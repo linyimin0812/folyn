@@ -272,7 +272,9 @@ export const useEditorStore = create<EditorState>()(
             for (const { from, to } of mapping) {
               if (tab.path === from || tab.path.startsWith(`${from}/`)) {
                 const suffix = tab.path === from ? '' : tab.path.slice(from.length);
-                return { ...tab, path: `${to}${suffix}` };
+                const newPath = `${to}${suffix}`;
+                const newName = newPath.includes('/') ? newPath.substring(newPath.lastIndexOf('/') + 1) : newPath;
+                return { ...tab, path: newPath, name: newName };
               }
             }
             return tab;

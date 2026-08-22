@@ -222,6 +222,41 @@ describe('useVaultStore file CRUD (via injected manager)', () => {
     expect(manager.rename).toHaveBeenCalledWith('old.md', 'new.md');
   });
 
+  it('renameFile rewrites the path and name of an open tab', async () => {
+    const { useEditorStore } = await import('./editorStore');
+    useEditorStore.setState({
+      tabs: [
+        { id: 'v1:old.md', name: 'old.md', path: 'old.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+      ],
+      activeTabId: 'v1:old.md',
+    });
+
+    await useVaultStore.getState().renameFile('old.md', 'renamed.md');
+
+    const tab = useEditorStore.getState().tabs[0];
+    expect(tab.path).toBe('renamed.md');
+    expect(tab.name).toBe('renamed.md');
+    useEditorStore.setState({ tabs: [], activeTabId: null });
+  });
+
+  it('renameFile rewrites child tab paths when a directory is renamed', async () => {
+    const { useEditorStore } = await import('./editorStore');
+    useEditorStore.setState({
+      tabs: [
+        { id: 'v1:notes/a.md', name: 'a.md', path: 'notes/a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+      ],
+      activeTabId: 'v1:notes/a.md',
+    });
+
+    await useVaultStore.getState().renameFile('notes', 'journal');
+
+    const tab = useEditorStore.getState().tabs[0];
+    expect(tab.path).toBe('journal/a.md');
+    // Basename is unchanged for a directory rename.
+    expect(tab.name).toBe('a.md');
+    useEditorStore.setState({ tabs: [], activeTabId: null });
+  });
+
   it('moveFiles renames each source into the target dir', async () => {
     await useVaultStore.getState().moveFiles(['a/1.md', 'b/2.md'], 'dest');
     expect(manager.rename).toHaveBeenCalledWith('a/1.md', 'dest/1.md');

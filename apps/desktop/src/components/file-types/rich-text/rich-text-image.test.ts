@@ -115,7 +115,7 @@ describe('isLoadableUrlScheme', () => {
 // ponytail: the resize-delta → width math is the only non-trivial logic in the
 // Phase 1 drag-to-resize NodeView; it's split out as a pure function so it's
 // unit-testable without a prosemirror view (jsdom ceiling — the actual
-// pointer-drag is verified by opening a .rt file in the running app).
+// pointer-drag is verified by opening a .richtext file in the running app).
 describe('nextResizeWidth', () => {
   it('right handle: widens on positive delta, narrows on negative', () => {
     expect(nextResizeWidth('right', 400, 100, 1000)).toBe(500);

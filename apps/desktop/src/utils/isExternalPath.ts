@@ -34,10 +34,12 @@ export function isExternalPath(p: string): boolean {
 }
 
 /**
- * External files are constrained to the user's `$HOME` for now (decision: ship
- * home-only first; the fs scope already grants `$HOME/**`, so no Tauri scope
- * change is needed). Paths outside home are rejected with a clear error rather
- * than silently failing on a scope-denied read.
+ * External files are constrained to the user's `$HOME` by app-level choice (a
+ * safety boundary), enforced here with a clear error rather than relying on
+ * the Tauri fs scope. The Tauri fs scope itself is broadened to `**` so that
+ * vaults can live at arbitrary locations (e.g. `D:\quill`); this guard keeps
+ * files opened *outside* the vault — via the OS file dialog, drag-drop, or the
+ * "Open With" flow — confined to home.
  */
 export async function isWithinHome(absPath: string): Promise<boolean> {
   const { homeDir } = await import('@tauri-apps/api/path');

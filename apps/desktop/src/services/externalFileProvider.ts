@@ -8,10 +8,11 @@ files (picked via the OS file dialog, dropped onto the window, or handed over
 by the OS "Open With" flow) are real absolute paths, so they are routed here
 instead of through `vaultStore.readFile`.
 
-Scope: `$HOME` only for now (see `isWithinHome`). The Tauri fs scope already
-grants `$HOME/**` for both read and write, so opening/editing any file under
-the user's home needs no capability change. Files outside home are rejected
-with a clear error (scope-denied otherwise).
+Scope: `$HOME` only by app-level choice (see `isWithinHome`). The Tauri fs scope
+is broadened to `**` so vaults can live at arbitrary locations, but files opened
+*outside* the vault (OS file dialog, drag-drop, "Open With") are kept confined
+to home as a safety boundary, rejected here with a clear error instead of
+failing on a scope-denied read.
 */
 
 import { isWithinHome } from '@/utils/isExternalPath';

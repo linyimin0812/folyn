@@ -146,7 +146,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
       // document's directory (markdown's VaultImage uses assetBase=docDir
       // to load it). Rich-text's Image NodeView resolves src against the
       // VAULT root, not the doc dir — so a doc-dir-relative `./<path>`
-      // mis-resolves when the .rt file lives in a vault subdirectory (the
+      // mis-resolves when the .richtext file lives in a vault subdirectory (the
       // file is written at <vault>/notes/assets/x.png but NodeView loads
       // <vault>/assets/x.png → broken-image icon). Compute the vault-
       // relative src directly from the dialog config so NodeView's

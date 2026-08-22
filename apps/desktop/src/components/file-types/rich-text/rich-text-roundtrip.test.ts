@@ -12,7 +12,7 @@ import { getRichTextExtensions } from './richTextExtensions';
 // createSVGMatrix / selection API gaps — see file-type-editors.md dbml
 // ceiling). The pure serialize/deserialize/anti-loop logic is split out
 // into richTextContent.ts so it's unit-testable without mounting a tiptap
-// editor. Component-level behavior is verified by opening a .rt file in
+// editor. Component-level behavior is verified by opening a .richtext file in
 // the running app, mirroring the ErDiagramX6 approach.
 
 describe('rich-text content pipeline', () => {

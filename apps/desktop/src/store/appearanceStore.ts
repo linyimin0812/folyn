@@ -38,6 +38,7 @@ const DEFAULT_EXCLUDE_PATTERNS =
 
 export const PERSIST_KEYS_APPEARANCE = [
   'theme',
+  'fontFamily',
   'fontSize',
   'lineHeight',
   'showAiPanel',
@@ -65,6 +66,7 @@ export const PERSIST_KEYS_APPEARANCE = [
 
 export interface AppearanceState {
   theme: Theme;
+  fontFamily: string;
   fontSize: number;
   lineHeight: number;
   showAiPanel: boolean;
@@ -90,6 +92,7 @@ export interface AppearanceState {
 
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
+  setFontFamily: (family: string) => void;
   setFontSize: (size: number) => void;
   setLineHeight: (height: number) => void;
   setShowAiPanel: (v: boolean) => void;
@@ -111,6 +114,7 @@ export interface AppearanceState {
 
 export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   theme: 'light',
+  fontFamily: 'Sora',
   fontSize: 14,
   lineHeight: 1.7,
   showAiPanel: false,
@@ -144,6 +148,12 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
       document.documentElement.dataset.theme = newTheme;
       return { theme: newTheme };
     });
+    persist();
+  },
+
+  setFontFamily: (family) => {
+    document.documentElement.style.setProperty('--font-ui', `'${family}', sans-serif`);
+    set({ fontFamily: family });
     persist();
   },
 
@@ -200,6 +210,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   hydrate: (blob) => {
     const patch: Partial<AppearanceState> = {};
     if (blob.theme !== undefined) patch.theme = blob.theme as Theme;
+    if (blob.fontFamily !== undefined) patch.fontFamily = blob.fontFamily as string;
     if (blob.fontSize !== undefined) patch.fontSize = blob.fontSize as number;
     if (blob.lineHeight !== undefined) patch.lineHeight = blob.lineHeight as number;
     if (blob.showAiPanel !== undefined) patch.showAiPanel = blob.showAiPanel as boolean;
@@ -224,12 +235,14 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     }
     if (Object.keys(patch).length > 0) {
       set(patch);
-      // Apply theme + font-size side-effects to match the legacy hydrate path.
+      // Apply theme + font side-effects to match the legacy hydrate path.
       const theme = patch.theme ?? get().theme;
       const actual = theme === 'system'
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : theme;
       document.documentElement.dataset.theme = actual;
+      const fontFamily = patch.fontFamily ?? get().fontFamily;
+      document.documentElement.style.setProperty('--font-ui', `'${fontFamily}', sans-serif`);
       const fontSize = patch.fontSize ?? get().fontSize;
       document.documentElement.style.setProperty('--ui-font-size', `${fontSize}px`);
     }

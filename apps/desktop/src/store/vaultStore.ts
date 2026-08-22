@@ -509,6 +509,10 @@ export const useVaultStore = create<VaultState>()(
           await get().manager.rename(oldPath, newPath);
           suppressWatcherFor(oldPath);
           suppressWatcherFor(newPath);
+          // Rewrite any open tab whose path was the renamed file or lived under
+          // a renamed directory, so the tab stays bound to the new path/name.
+          const { useEditorStore } = await import('./editorStore');
+          useEditorStore.getState().rewriteTabPrefixes([{ from: oldPath, to: newPath }]);
           set((state) => ({ fileTree: renameEntry(state.fileTree, oldPath, newPath) }));
           void get().refreshFileTree();
         },

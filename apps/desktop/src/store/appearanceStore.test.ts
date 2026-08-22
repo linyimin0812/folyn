@@ -16,6 +16,7 @@ afterEach(() => {
 function resetAppearanceDefaults() {
   useAppearanceStore.setState({
     theme: 'light',
+    fontFamily: 'Sora',
     fontSize: 14,
     lineHeight: 1.7,
     showAiPanel: true,
@@ -70,6 +71,12 @@ describe('useAppearanceStore setters', () => {
     expect(document.documentElement.style.getPropertyValue('--ui-font-size')).toBe('20px');
   });
 
+  it('setFontFamily updates state + CSS variable', () => {
+    useAppearanceStore.getState().setFontFamily('Inter');
+    expect(useAppearanceStore.getState().fontFamily).toBe('Inter');
+    expect(document.documentElement.style.getPropertyValue('--font-ui')).toBe("'Inter', sans-serif");
+  });
+
   it('setVaultName updates state', () => {
     useAppearanceStore.getState().setVaultName('custom');
     expect(useAppearanceStore.getState().vaultName).toBe('custom');
@@ -109,6 +116,7 @@ describe('useAppearanceStore.hydrate', () => {
   it('applies scalar fields from the blob', () => {
     useAppearanceStore.getState().hydrate({
       theme: 'dark',
+      fontFamily: 'Inter',
       fontSize: 18,
       vaultName: 'hydrated',
       linkOpenMode: 'internal',
@@ -116,6 +124,7 @@ describe('useAppearanceStore.hydrate', () => {
     });
     const s = useAppearanceStore.getState();
     expect(s.theme).toBe('dark');
+    expect(s.fontFamily).toBe('Inter');
     expect(s.fontSize).toBe(18);
     expect(s.vaultName).toBe('hydrated');
     expect(s.linkOpenMode).toBe('internal');
@@ -131,9 +140,10 @@ describe('useAppearanceStore.hydrate', () => {
     expect(lines).toContain('__analyze__');
   });
 
-  it('applies theme + font-size side effects', () => {
-    useAppearanceStore.getState().hydrate({ theme: 'dark', fontSize: 22 });
+  it('applies theme + font side effects', () => {
+    useAppearanceStore.getState().hydrate({ theme: 'dark', fontFamily: 'Inter', fontSize: 22 });
     expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(document.documentElement.style.getPropertyValue('--font-ui')).toBe("'Inter', sans-serif");
     expect(document.documentElement.style.getPropertyValue('--ui-font-size')).toBe('22px');
   });
 

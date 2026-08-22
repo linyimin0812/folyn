@@ -32,7 +32,7 @@ const TABLE_DOC = JSON.stringify({
 
 describe('rich-text HTML export', () => {
   it('embeds the empty-cell row-height CSS rule for standalone HTML', async () => {
-    const blob = await richTextToHtmlBlob(TABLE_DOC, 'x.rt', '');
+    const blob = await richTextToHtmlBlob(TABLE_DOC, 'x.richtext', '');
     const text = await blobToText(blob);
     // Contract: tiptap serializes an empty cell as <td><p></p></td>; the
     // export CSS must keep it tall via :empty::after nbsp injection.
