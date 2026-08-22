@@ -714,3 +714,37 @@ Replaced blocking await refreshFileTree() in vaultStore createFile/createDir/del
 ### Next Steps
 
 - None - task complete
+
+
+## Session 191: Settings about page width alignment
+
+**Date**: 2026-08-22
+**Task**: Settings about page width alignment
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Cap about page outer container to max-w-[640px] so GroupDivider and license border-t align with content blocks.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `71427f44` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
