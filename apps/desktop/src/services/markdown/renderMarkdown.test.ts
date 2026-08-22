@@ -5,6 +5,7 @@ import {
   findMathSegments,
   renderMarkdownToHtml,
   unwrapInlineMath,
+  stripImageSizeSuffix,
   MATHJAX_CONTAINER_CSS,
 } from './renderMarkdown';
 
@@ -318,5 +319,33 @@ describe('MathJax SVG ex-unit sensitivity (export blur root cause)', () => {
     expect(MATHJAX_CONTAINER_CSS).toMatch(/mjx-container\s*\{[^}]*display:\s*inline-block/s);
     expect(MATHJAX_CONTAINER_CSS).toMatch(/mjx-container\s*\{[^}]*line-height:\s*0/s);
     expect(MATHJAX_CONTAINER_CSS).toMatch(/mjx-container\s+svg\s*\{[^}]*display:\s*inline/s);
+  });
+});
+
+describe('stripImageSizeSuffix', () => {
+  it('strips ` =Wx` (width-only) from image URLs', () => {
+    expect(stripImageSizeSuffix('![a](./x.png =525x)')).toBe('![a](./x.png)');
+  });
+
+  it('strips ` =WxH` (width + height) from image URLs', () => {
+    expect(stripImageSizeSuffix('![a](./x.png =525x300)')).toBe('![a](./x.png)');
+  });
+
+  it('leaves images without the suffix untouched', () => {
+    expect(stripImageSizeSuffix('![a](./x.png)')).toBe('![a](./x.png)');
+  });
+
+  it('does not touch ` =525x` appearing elsewhere (e.g. plain text)', () => {
+    expect(stripImageSizeSuffix('see =525x here')).toBe('see =525x here');
+  });
+
+  it('handles multiple images on one line', () => {
+    expect(stripImageSizeSuffix('![a](./a.png =100x) ![b](./b.png =200x150)'))
+      .toBe('![a](./a.png) ![b](./b.png)');
+  });
+
+  it('leaves image URLs with embedded whitespace-invalid forms alone (no false strip)', () => {
+    // URL with no `=WxH` suffix → no change
+    expect(stripImageSizeSuffix('![a](./path with space.png)')).toBe('![a](./path with space.png)');
   });
 });

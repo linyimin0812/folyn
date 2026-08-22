@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "Preprocessor pattern + pipeline call sites to verify both renderers fixed."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist — named exports, no forbidden patterns, self-check presence."}

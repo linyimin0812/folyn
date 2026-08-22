@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "Unified pipeline + preprocessor contract (transformMathBrackets/unwrapInlineMath). New stripImageSizeSuffix must follow same pattern."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Named exports, forbidden patterns, review checklist for desktop frontend."}

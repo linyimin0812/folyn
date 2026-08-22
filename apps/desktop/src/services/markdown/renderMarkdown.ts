@@ -168,6 +168,26 @@ export function unwrapInlineMath(md: string): string {
   return out;
 }
 
+// ── Image resize-suffix stripper (legacy compat) ────────────────────────────
+
+// ponytail: regex strip on the source line before remark-parse. CommonMark
+// image destinations cannot contain unquoted whitespace, so legacy notes
+// with `![alt](url =525x)` fail to parse as an image and remark emits the
+// raw text. The current writeback uses an HTML comment `<!-- width=N -->`
+// placed after `![alt](url)` (valid CommonMark, portable across compilers),
+// so new notes never hit this path. This preprocessor only exists so legacy
+// `=WxH` notes still render. Width for legacy notes is still read from the
+// raw URL via `IMG_LEGACY_URL_WIDTH_RE` in MarkdownPreview.
+// Ceiling: only matches single-line image syntax with the suffix adjacent to
+// the closing paren; multi-line image URLs (rare) are untouched.
+const IMG_STRIP_SIZE_RE = /(!\[[^\]]*\]\([^)\s]+)\s+=\d*x\d*(\))/g;
+
+/** Strip ` =WxH` / ` =Wx` resize suffix from image URLs before remark-parse.
+ *  Legacy compat only — new writeback uses `<!-- width=N -->` after the image. */
+export function stripImageSizeSuffix(md: string): string {
+  return md.replace(IMG_STRIP_SIZE_RE, '$1$2');
+}
+
 // ── Math segment finder (editor + tests) ───────────────────────────────────
 
 export type MathKind = 'display' | 'inline';
@@ -244,7 +264,7 @@ export function renderMarkdownToReact(md: string, opts: MathRenderOptions = {}):
     components: opts.components,
     passNode: true,
   } as any);
-  return p.processSync(unwrapInlineMath(transformMathBrackets(md))).result as ReactNode;
+  return p.processSync(stripImageSizeSuffix(unwrapInlineMath(transformMathBrackets(md)))).result as ReactNode;
 }
 
 /** Render markdown to an HTML string (React SSR via renderToStaticMarkup).

@@ -30,6 +30,7 @@ function renderMarkdownToReact(md: string, opts?: MathRenderOptions): ReactNode;
 function renderMarkdownToHtml(md: string, opts?: MathRenderOptions): string;
 function transformMathBrackets(md: string): string;     // \[..\] / \(..\) → $$..$$ / $..$
 function unwrapInlineMath(md: string): string;          // collapse \n adjacent to inline math → space
+function stripImageSizeSuffix(md: string): string;      // legacy compat: strip ` =WxH` from image URLs before remark-parse
 function findMathSegments(md: string): MathSegment[];    // shared code-segment scanner
 const MATHJAX_CONTAINER_CSS: string;                    // pinned font for SVG ex-unit
 ```
@@ -44,6 +45,7 @@ const MATHJAX_CONTAINER_CSS: string;                    // pinned font for SVG e
 md source
   → transformMathBrackets (string preprocessor)
   → unwrapInlineMath (collapse single \n adjacent to inline math → space)
+  → stripImageSizeSuffix (legacy compat: strip ` =WxH` from image URLs)
   → unified()
       .use(remarkParse)
       .use(remarkMath)              // $..$ / $$..$$ → math nodes
@@ -53,6 +55,10 @@ md source
       .use(rehypeStringify | rehypeReact)
   → ReactNode | HTML string
 ```
+
+### Image resize writeback (MarkdownPreview-only)
+
+Image resize via the drag handle writes width back to the source line as an HTML comment placed immediately after the image: `![alt](url)<!-- width=N -->`. The comment is valid CommonMark raw HTML, so other markdown compilers (GitHub, VSCode preview, …) ignore the comment and still render the image at natural size. `readSourceWidth` reads the comment first; for legacy notes that used the non-portable `![alt](url =WxH)` URL-suffix form, it falls back to that regex so old notes still apply their width until the user re-resizes (which migrates them to the comment form). `stripImageSizeSuffix` (above) strips ` =WxH` from the URL before remark-parse so legacy notes still render at all.
 
 `processSync` is used. MathJax SVG output is generated at parse time, not via async `typesetPromise`.
 

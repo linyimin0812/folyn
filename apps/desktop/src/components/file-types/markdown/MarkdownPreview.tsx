@@ -13,7 +13,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
+import { transformMathBrackets, unwrapInlineMath, stripImageSizeSuffix } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
@@ -229,13 +229,18 @@ interface CodeBlockWrapperProps {
   [key: string]: any;
 }
 
-// ponytail: regex read/write on the source line, no AST writeback. =WxH for img
-// (GFM-ish: =Wx means width-only, height auto) and `width=W` after fence lang.
-// Ceiling: only matches when width sits right after lang/src; mid-info-string
-// widths elsewhere in the line are untouched. Upgrade to AST writeback only if
-// a real author writes `width=` somewhere other than right after the lang word.
-const IMG_SIZE_RE = /(!\[[^\]]*\]\([^)\s]+)(?:\s+=\d*x\d*)?(\))/;
-const IMG_LINE_SIZE_RE = /!\[[^\]]*\]\([^)\s]+(?:\s+=(\d*)x(\d*))?\)/;
+// ponytail: regex read/write on the source line, no AST writeback. Image
+// resize uses an HTML comment `<!-- width=N -->` placed right after `![alt](url)`
+// so the source remains valid CommonMark — other markdown compilers ignore
+// the comment and still render the image. Code fences keep `width=N` after
+// the lang word (fence info-string allows arbitrary text).
+// Ceiling: only matches when the comment sits immediately after `)` (img)
+// or the width sits right after the lang word (fence). Upgrade to AST
+// writeback only if a real author puts the marker elsewhere.
+const IMG_URL_SIZE_RE = /(!\[[^\]]*\]\([^)\s]+)(?:\s+=\d*x\d*)?(\))/;  // legacy =WxH in URL
+const IMG_COMMENT_WIDTH_RE = /(!\[[^\]]*\]\([^)\s]+\))(?:<!--\s*width=(\d+)\s*-->)?/;
+const IMG_LEGACY_URL_WIDTH_RE = /!\[[^\]]*\]\([^)\s]+(?:\s+=(\d*)x(\d*))?\)/;
+const IMG_COMMENT_STRIP_RE = /<!--\s*width=\d+\s*-->/g;
 const FENCE_WIDTH_RE = /(```\w+)(?:\s+width=\d+)?/;
 const FENCE_LINE_WIDTH_RE = /```(\w+)(?:\s+width=(\d+))?/;
 
@@ -244,8 +249,12 @@ function applyImageSize(content: string, sourceLine: number, w: number | null): 
   const idx = sourceLine - 1;
   if (idx < 0 || idx >= lines.length) return content;
   const before = lines[idx];
-  const stripped = before.replace(IMG_SIZE_RE, '$1$2');
-  const next = w != null ? stripped.replace(IMG_SIZE_RE, `$1 =${w}x$2`) : stripped;
+  // Strip both legacy =WxH URL suffix AND any existing width comment so the
+  // new value (or none) is written cleanly.
+  const stripped = before
+    .replace(IMG_URL_SIZE_RE, '$1$2')
+    .replace(IMG_COMMENT_STRIP_RE, '');
+  const next = w != null ? stripped.replace(IMG_COMMENT_WIDTH_RE, `$1<!-- width=${w} -->`) : stripped;
   if (next === before) return content;
   lines[idx] = next;
   return lines.join('\n');
@@ -281,8 +290,13 @@ function readSourceWidth(kind: 'img' | 'fence', content: string | undefined, sou
   const line = content.split('\n')[sourceLine - 1];
   if (!line) return null;
   if (kind === 'img') {
-    const m = line.match(IMG_LINE_SIZE_RE);
-    return m?.[1] ? Number(m[1]) : null;
+    // New syntax: `<!-- width=N -->` after image.
+    const cm = line.match(IMG_COMMENT_WIDTH_RE);
+    if (cm?.[2]) return Number(cm[2]);
+    // Legacy fallback: `=WxH` in URL (pre-migration notes still rendered via
+    // stripImageSizeSuffix, but width still applies here until re-resize migrates).
+    const um = line.match(IMG_LEGACY_URL_WIDTH_RE);
+    return um?.[1] ? Number(um[1]) : null;
   }
   const m = line.match(FENCE_LINE_WIDTH_RE);
   return m?.[2] ? Number(m[2]) : null;
@@ -851,7 +865,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
           passNode: true,
           components: componentMap,
         } as any)
-        .processSync(unwrapInlineMath(transformMathBrackets(body)));
+        .processSync(stripImageSizeSuffix(unwrapInlineMath(transformMathBrackets(body))));
 
       return result.result as React.ReactElement;
     } catch (error) {
