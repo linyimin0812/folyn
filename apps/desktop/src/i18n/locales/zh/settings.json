@@ -428,7 +428,7 @@
     "philosophy": {
       "label": "设计理念",
       "localFirst": "本地优先 —— 你的笔记永远属于你。所有文档以标准 Markdown 文件形式保存在本地文件系统中，不依赖云端账号，离线可用，迁移自由。Vault 系统通过 vault-provider 抽象层支持可插拔存储后端，但数据所有权始终在你手中。",
-      "openFormat": "开放格式 —— 拒绝锁定。Quill 使用标准 Markdown 文件作为唯一存储格式，配合 remark/rehype 管线处理 GFM 与自定义指令。任何文本编辑器都能打开你的笔记；随时可导出为 HTML 或 PDF；卸载 Quill 后你的数据仍然完整可读。",
+      "openFormat": "开放格式 —— 拒绝锁定。Quill 使用标准 Markdown 文件作为唯一存储格式，配合 remark/rehype 管线处理 GFM 与自定义指令。任何文本编辑器都能打开你的笔记；随时可导出为 HTML 到本地或者托管到远程存储；卸载 Quill 后你的数据仍然完整可读。",
       "extensible": "可扩展 —— 从编辑器内核到存储后端全链路开放。微内核 + 插件 SDK 支持容器指令（callout、tabs、mermaid 等 14 种）与第三方插件；CLI 适配器抽象让 6 种 AI 工具（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）可插拔接入；pnpm workspaces 让 container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk 作为独立 package 演进。",
       "privacy": "隐私优先 —— AI 对话与代码生成通过本地 CLI 工具完成，你的 API Key 与对话内容不经过 Quill 服务器。CSP 策略与插件沙箱层提供深度防御，可信层与沙箱层分级执行，第三方插件在受限权限下运行。"
     },
@@ -436,11 +436,11 @@
       "label": "功能概览",
       "localFirst": {
         "title": "本地优先",
-        "description": "数据完全存储在你的设备上，支持本地文件系统、GitHub、WebDAV、S3 等可插拔存储后端"
+        "description": "数据完全存储在你的设备上，支持本地文件系统、GitHub 等可插拔存储后端"
       },
       "openFormat": {
         "title": "开放格式",
-        "description": "标准 Markdown 文件，无锁定，可随时导出为 Markdown、HTML 或 PDF"
+        "description": "标准 Markdown 文件，无锁定，可随时导出为 Markdown、HTML"
       },
       "ai": {
         "title": "AI 辅助",
@@ -480,7 +480,7 @@
         },
         "export": {
           "title": "多格式导出",
-          "description": "支持导出为 Markdown、HTML、PDF"
+          "description": "支持导出为 Markdown、HTML"
         },
         "crossPlatform": {
           "title": "跨平台",

@@ -422,7 +422,7 @@
     "philosophy": {
       "label": "Philosophie",
       "localFirst": "Local-first — vos notes vous appartiennent. Tous les documents sont stockés comme de simples fichiers Markdown sur votre système de fichiers local, sans compte cloud, utilisables hors ligne, libres à migrer. Le système Vault supporte des backends plug-and-play via la couche d'abstraction vault-provider, mais la propriété des données reste toujours vôtre.",
-      "openFormat": "Format ouvert — sans lock-in. Quill utilise le Markdown standard comme seul format de stockage, traité par le pipeline remark/rehype pour GFM et directives personnalisées. N'importe quel éditeur de texte peut ouvrir vos notes ; export vers HTML ou PDF à tout moment ; après désinstallation de Quill, vos données restent entièrement lisibles.",
+      "openFormat": "Format ouvert — sans lock-in. Quill utilise le Markdown standard comme seul format de stockage, traité par le pipeline remark/rehype pour GFM et directives personnalisées. N'importe quel éditeur de texte peut ouvrir vos notes ; export HTML en local ou hébergé sur stockage distant à tout moment ; après désinstallation de Quill, vos données restent entièrement lisibles.",
       "extensible": "Extensible — ouvert de bout en bout, du noyau de l'éditeur aux backends de stockage. Le micronoyau + le SDK de plugins supporte 14 directives de conteneur (callout, tabs, mermaid, etc.) et les plugins tiers ; l'abstraction de l'adaptateur CLI rend 6 outils IA (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) plug-and-play ; pnpm workspaces laisse container-plugins, vault-provider, cli-adapter, plugin-host et plugin-sdk évoluer comme des packages indépendants.",
       "privacy": "Confidentialité d'abord — le chat IA et la génération de code passent par les outils CLI locaux ; vos clés API et le contenu des conversations ne touchent jamais les serveurs de Quill. La politique CSP et la couche sandbox des plugins offrent une défense en profondeur, avec les couches trusted et sandbox exécutées séparément ; les plugins tiers tournent sous permissions restreintes."
     },
@@ -430,11 +430,11 @@
       "label": "Fonctionnalités",
       "localFirst": {
         "title": "Local-first",
-        "description": "Les données vivent entièrement sur votre appareil, avec des backends plug-and-play : système de fichiers local, GitHub, WebDAV, S3"
+        "description": "Les données vivent entièrement sur votre appareil, avec des backends plug-and-play : système de fichiers local, GitHub"
       },
       "openFormat": {
         "title": "Format ouvert",
-        "description": "Fichiers Markdown simples, sans lock-in — export Markdown, HTML ou PDF à tout moment"
+        "description": "Fichiers Markdown simples, sans lock-in — export Markdown ou HTML à tout moment"
       },
       "ai": {
         "title": "Assisté par IA",
@@ -474,7 +474,7 @@
         },
         "export": {
           "title": "Export multi-format",
-          "description": "Export Markdown, HTML ou PDF"
+          "description": "Export Markdown ou HTML"
         },
         "crossPlatform": {
           "title": "Multiplateforme",

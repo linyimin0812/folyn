@@ -428,7 +428,7 @@
     "philosophy": {
       "label": "Philosophy",
       "localFirst": "Local-first — your notes belong to you. All documents are stored as plain Markdown files on your local filesystem, no cloud account required, fully usable offline, free to migrate. The Vault system supports pluggable backends via the vault-provider abstraction layer, but data ownership always stays with you.",
-      "openFormat": "Open format — no lock-in. Quill uses standard Markdown as its only storage format, processed by the remark/rehype pipeline for GFM and custom directives. Any text editor can open your notes; export to HTML or PDF anytime; after uninstalling Quill, your data remains fully readable.",
+      "openFormat": "Open format — no lock-in. Quill uses standard Markdown as its only storage format, processed by the remark/rehype pipeline for GFM and custom directives. Any text editor can open your notes; export to HTML locally or hosted to remote storage anytime; after uninstalling Quill, your data remains fully readable.",
       "extensible": "Extensible — open end-to-end, from editor core to storage backends. The microkernel + plugin SDK supports 14 container directives (callout, tabs, mermaid, etc.) and third-party plugins; the CLI adapter abstraction makes 6 AI tools (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) pluggable; pnpm workspaces lets container-plugins, vault-provider, cli-adapter, plugin-host, and plugin-sdk evolve as independent packages.",
       "privacy": "Privacy-first — AI chat and code generation flow through local CLI tools; your API keys and conversation content never touch Quill's servers. CSP policy and the plugin sandbox tier provide defense-in-depth, with trusted and sandbox tiers executing separately; third-party plugins run under restricted permissions."
     },
@@ -436,11 +436,11 @@
       "label": "Features",
       "localFirst": {
         "title": "Local-first",
-        "description": "Data lives entirely on your device, with pluggable backends: local filesystem, GitHub, WebDAV, S3"
+        "description": "Data lives entirely on your device, with pluggable backends: local filesystem, GitHub"
       },
       "openFormat": {
         "title": "Open format",
-        "description": "Plain Markdown files, no lock-in — export to Markdown, HTML, or PDF anytime"
+        "description": "Plain Markdown files, no lock-in — export to Markdown, HTML anytime"
       },
       "ai": {
         "title": "AI-assisted",
@@ -480,7 +480,7 @@
         },
         "export": {
           "title": "Multi-format export",
-          "description": "Export to Markdown, HTML, or PDF"
+          "description": "Export to Markdown, HTML"
         },
         "crossPlatform": {
           "title": "Cross-platform",

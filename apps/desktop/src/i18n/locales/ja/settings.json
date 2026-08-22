@@ -428,7 +428,7 @@
     "philosophy": {
       "label": "設計理念",
       "localFirst": "ローカルファースト —— あなたのノートはあなたのもの。すべてのドキュメントはローカルのファイルシステムにプレーン Markdown ファイルとして保存され、クラウドアカウント不要、オフラインで完全に利用可能、自由に移行できます。Vault システムは vault-provider 抽象レイヤーで着脱可能なバックエンドをサポートしますが、データの所有権は常にあなたにあります。",
-      "openFormat": "オープンフォーマット —— ロックインなし。Quill は標準 Markdown を唯一の保存形式として使い、GFM と独自ディレクティブのために remark/rehype パイプラインで処理します。どんなテキストエディタでもノートを開け、HTML や PDF にいつでもエクスポートでき、Quill をアンインストールした後もデータは完全に読めます。",
+      "openFormat": "オープンフォーマット —— ロックインなし。Quill は標準 Markdown を唯一の保存形式として使い、GFM と独自ディレクティブのために remark/rehype パイプラインで処理します。どんなテキストエディタでもノートを開け、HTML をローカルへ、またはリモートストレージへいつでもエクスポートでき、Quill をアンインストールした後もデータは完全に読めます。",
       "extensible": "拡張可能 —— エディタコアからストレージバックエンドまでエンドツーエンドで開いています。マイクロカーネル + プラグイン SDK は 14 種のコンテナディレクティブ（callout、tabs、mermaid 等）とサードパーティプラグインをサポートし、CLI アダプター抽象は 6 種の AI ツール（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）を着脱可能にし、pnpm workspaces は container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk を独立パッケージとして進化させます。",
       "privacy": "プライバシーファースト —— AI チャットとコード生成はローカル CLI ツール経由で行われ、あなたの API キーと会話内容は Quill のサーバーを通りません。CSP ポリシーとプラグインサンドボックス層が多層防御を提供し、trusted 層と sandbox 層は分離実行され、サードパーティプラグインは制限付き権限下で動きます。"
     },
@@ -436,11 +436,11 @@
       "label": "機能",
       "localFirst": {
         "title": "ローカルファースト",
-        "description": "データは完全にあなたのデバイス上にあり、着脱可能なバックエンド（ローカルファイルシステム、GitHub、WebDAV、S3）をサポート"
+        "description": "データは完全にあなたのデバイス上にあり、着脱可能なバックエンド（ローカルファイルシステム、GitHub）をサポート"
       },
       "openFormat": {
         "title": "オープンフォーマット",
-        "description": "プレーン Markdown ファイル、ロックインなし —— いつでも Markdown、HTML、PDF にエクスポート"
+        "description": "プレーン Markdown ファイル、ロックインなし —— いつでも Markdown、HTML にエクスポート"
       },
       "ai": {
         "title": "AI 支援",
@@ -480,7 +480,7 @@
         },
         "export": {
           "title": "マルチフォーマットエクスポート",
-          "description": "Markdown、HTML、PDF にエクスポート"
+          "description": "Markdown、HTML にエクスポート"
         },
         "crossPlatform": {
           "title": "クロスプラットフォーム",
