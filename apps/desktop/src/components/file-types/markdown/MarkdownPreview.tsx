@@ -13,7 +13,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import { transformMathBrackets, unwrapInlineMath, stripImageSizeSuffix } from '@/services/markdown/renderMarkdown';
+import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@quill/container-plugins';
 import type { ContainerProps } from '@quill/container-plugins';
@@ -237,9 +237,7 @@ interface CodeBlockWrapperProps {
 // Ceiling: only matches when the comment sits immediately after `)` (img)
 // or the width sits right after the lang word (fence). Upgrade to AST
 // writeback only if a real author puts the marker elsewhere.
-const IMG_URL_SIZE_RE = /(!\[[^\]]*\]\([^)\s]+)(?:\s+=\d*x\d*)?(\))/;  // legacy =WxH in URL
 const IMG_COMMENT_WIDTH_RE = /(!\[[^\]]*\]\([^)\s]+\))(?:<!--\s*width=(\d+)\s*-->)?/;
-const IMG_LEGACY_URL_WIDTH_RE = /!\[[^\]]*\]\([^)\s]+(?:\s+=(\d*)x(\d*))?\)/;
 const IMG_COMMENT_STRIP_RE = /<!--\s*width=\d+\s*-->/g;
 const FENCE_WIDTH_RE = /(```\w+)(?:\s+width=\d+)?/;
 const FENCE_LINE_WIDTH_RE = /```(\w+)(?:\s+width=(\d+))?/;
@@ -249,11 +247,7 @@ function applyImageSize(content: string, sourceLine: number, w: number | null): 
   const idx = sourceLine - 1;
   if (idx < 0 || idx >= lines.length) return content;
   const before = lines[idx];
-  // Strip both legacy =WxH URL suffix AND any existing width comment so the
-  // new value (or none) is written cleanly.
-  const stripped = before
-    .replace(IMG_URL_SIZE_RE, '$1$2')
-    .replace(IMG_COMMENT_STRIP_RE, '');
+  const stripped = before.replace(IMG_COMMENT_STRIP_RE, '');
   const next = w != null ? stripped.replace(IMG_COMMENT_WIDTH_RE, `$1<!-- width=${w} -->`) : stripped;
   if (next === before) return content;
   lines[idx] = next;
@@ -290,13 +284,8 @@ function readSourceWidth(kind: 'img' | 'fence', content: string | undefined, sou
   const line = content.split('\n')[sourceLine - 1];
   if (!line) return null;
   if (kind === 'img') {
-    // New syntax: `<!-- width=N -->` after image.
-    const cm = line.match(IMG_COMMENT_WIDTH_RE);
-    if (cm?.[2]) return Number(cm[2]);
-    // Legacy fallback: `=WxH` in URL (pre-migration notes still rendered via
-    // stripImageSizeSuffix, but width still applies here until re-resize migrates).
-    const um = line.match(IMG_LEGACY_URL_WIDTH_RE);
-    return um?.[1] ? Number(um[1]) : null;
+    const m = line.match(IMG_COMMENT_WIDTH_RE);
+    return m?.[2] ? Number(m[2]) : null;
   }
   const m = line.match(FENCE_LINE_WIDTH_RE);
   return m?.[2] ? Number(m[2]) : null;
@@ -865,7 +854,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
           passNode: true,
           components: componentMap,
         } as any)
-        .processSync(stripImageSizeSuffix(unwrapInlineMath(transformMathBrackets(body))));
+        .processSync(unwrapInlineMath(transformMathBrackets(body)));
 
       return result.result as React.ReactElement;
     } catch (error) {
