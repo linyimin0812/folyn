@@ -29,10 +29,94 @@
         "mimeType": "text/markdown"
       },
       {
-        "ext": ["txt", "text", "log", "csv", "tsv", "json", "json5", "yaml", "yml", "xml", "html", "htm", "css", "js", "ts", "toml", "ini", "rst", "tex"],
+        "ext": ["richtext"],
+        "name": "Quill Rich Text",
+        "role": "Editor",
+        "mimeType": "text/plain"
+      },
+      {
+        "ext": ["markmap"],
+        "name": "Quill Markmap",
+        "role": "Editor",
+        "mimeType": "application/json"
+      },
+      {
+        "ext": ["mermaid", "mmd"],
+        "name": "Quill Mermaid",
+        "role": "Editor",
+        "mimeType": "text/plain"
+      },
+      {
+        "ext": ["puml", "pu", "plantuml"],
+        "name": "Quill PlantUML",
+        "role": "Editor",
+        "mimeType": "text/plain"
+      },
+      {
+        "ext": ["gv", "dot", "graphviz"],
+        "name": "Quill Graphviz",
+        "role": "Editor",
+        "mimeType": "text/plain"
+      },
+      {
+        "ext": ["drawio", "dio"],
+        "name": "Quill Drawio",
+        "role": "Editor",
+        "mimeType": "application/xml"
+      },
+      {
+        "ext": ["excalidraw"],
+        "name": "Quill Excalidraw",
+        "role": "Editor",
+        "mimeType": "application/json"
+      },
+      {
+        "ext": ["dbml"],
+        "name": "Quill DBML",
+        "role": "Editor",
+        "mimeType": "text/plain"
+      },
+      {
+        "ext": ["svg"],
+        "name": "Quill SVG",
+        "role": "Editor",
+        "mimeType": "image/svg+xml"
+      },
+      {
+        "ext": ["html", "htm"],
+        "name": "Quill HTML",
+        "role": "Editor",
+        "mimeType": "text/html"
+      },
+      {
+        "ext": ["json"],
+        "name": "Quill JSON",
+        "role": "Editor",
+        "mimeType": "application/json"
+      },
+      {
+        "ext": ["csv", "tsv"],
+        "name": "Quill CSV",
+        "role": "Editor",
+        "mimeType": "text/csv"
+      },
+      {
+        "ext": ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "tiff", "tif", "avif", "heic", "heif", "jxl"],
+        "name": "Quill Image",
+        "role": "Viewer",
+        "mimeType": "image/*"
+      },
+      {
+        "ext": ["txt", "text", "log", "json5", "yaml", "yml", "xml", "css", "js", "ts", "toml", "ini", "rst", "tex"],
         "name": "Quill Text",
         "role": "Viewer",
         "mimeType": "text/plain"
+      },
+      {
+        "ext": ["pdf", "ofd", "docx", "doc", "dot", "docm", "dotx", "dotm", "rtf", "odt", "xlsx", "xls", "xlsm", "xlsb", "xltx", "xlt", "xltm", "ods", "fods", "numbers", "pptx", "pptm", "potx", "potm", "ppsx", "ppsm", "odp", "zip", "zipx", "7z", "rar", "tar", "gz", "gzip", "tgz", "bz2", "bzip2", "tbz", "tbz2", "xz", "txz", "lzma", "zst", "cab", "ar", "cpio", "iso", "xar", "lha", "lzh", "jar", "war", "ear", "apk", "cbz", "cbr", "eml", "msg", "mbox", "olb", "dra", "gds", "oas", "oasis", "dwg", "dxf", "dwf", "dwfx", "xps", "geojson", "kml", "gpx", "shp", "glb", "gltf", "obj", "stl", "ply", "fbx", "dae", "3ds", "3mf", "amf", "usd", "usda", "usdc", "usdz", "kmz", "pcd", "wrl", "vrml", "xyz", "vtk", "vtp", "step", "stp", "iges", "igs", "ifc", "3dm", "xmind", "epub", "umd", "mp3", "mpeg", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "midi", "mid", "mp4", "webm", "m3u8", "ttf", "otf", "woff", "woff2", "psd", "ai", "eps", "sqlite", "wasm", "parquet", "avro", "webarchive"],
+        "name": "Quill Document",
+        "role": "Viewer",
+        "mimeType": "application/octet-stream"
       }
     ],
     "macOS": {
