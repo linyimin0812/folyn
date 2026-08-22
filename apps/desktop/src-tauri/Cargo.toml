@@ -193,11 +193,13 @@ base64 = "0.22"
 codegen-units = 1
 lto = true
 opt-level = "s"
-# ponytail: panic=abort OK — `pet_panel_macos::convert_windows` wraps every
-# per-panel block in `objc2::exception::catch`, which intercepts the benign
-# NSException from the swizzled NSPanel TouchBar recalc path at the Obj-C
-# layer (independent of Rust panic strategy). Before the wrap, the exception
-# became a Rust panic inside the NSApplicationDidFinishLaunching observer
-# and `panic = "abort"` turned it into a SIGABRT on launch.
-panic = "abort"
+# ponytail: panic=unwind required — `pet_panel_macos::convert_windows` uses
+# `objc2::exception::catch(AssertUnwindSafe(...))` to intercept the benign
+# NSException from the swizzled NSPanel TouchBar recalc path. `catch` is
+# built on `std::panic::catch_unwind`; under `panic = "abort"` the inner
+# closure's panic (raised when msg_send! converts the NSException) can't
+# unwind → "panic in a function that cannot unwind" → SIGABRT on launch in
+# release only (dev's default unwind masks it). Cost: a few MB on a binary
+# already tens of MB. Re-enabling abort requires replacing `catch` with
+# hand-rolled setjmp/longjmp + ObjC @try (see research notes before doing it).
 strip = true
