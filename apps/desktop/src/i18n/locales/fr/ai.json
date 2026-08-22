@@ -74,10 +74,13 @@
     "sectionTitle": "Modèle IA",
     "sectionDesc": "Choisissez le couple (fournisseur, modèle) utilisé par cette fonction ; activez d'abord un fournisseur et sélectionnez des modèles dans Services de modèles"
   },
+  "cliPath": {
+    "bannerText": "Chemin CLI non configuré",
+    "openSettings": "Ouvrir les paramètres CLI"
+  },
   "errors": {
     "attachmentSaveFailed": "[erreur] Échec de l'enregistrement des pièces jointes : {{error}}",
-    "streamError": "[erreur] {{error}}",
-    "cliPathNotConfigured": "Chemin CLI non configuré. Définissez-le dans Paramètres → CLI."
+    "streamError": "[erreur] {{error}}"
   },
   "slash": {
     "skillsLabel": "Compétences",

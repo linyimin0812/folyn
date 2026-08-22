@@ -76,6 +76,7 @@ export type PetMenuAction =
   | 'command-palette'
   | 'toggle-theme'
   | 'open-ai-settings'
+  | 'open-cli-settings'
   | 'run-command'
   | 'open-plugins-settings'
   | 'open-plugin-tool';

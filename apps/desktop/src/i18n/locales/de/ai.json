@@ -74,10 +74,13 @@
     "sectionTitle": "KI-Modell",
     "sectionDesc": "Wähle das (Anbieter, Modell)-Paar, das diese Funktion verwendet; aktiviere zuerst einen Anbieter und wähle Modelle in den Modelldiensten"
   },
+  "cliPath": {
+    "bannerText": "CLI-Pfad nicht konfiguriert",
+    "openSettings": "CLI-Einstellungen öffnen"
+  },
   "errors": {
     "attachmentSaveFailed": "[Fehler] Speichern von Anhängen fehlgeschlagen: {{error}}",
-    "streamError": "[Fehler] {{error}}",
-    "cliPathNotConfigured": "CLI-Pfad nicht konfiguriert. Unter Einstellungen → CLI festlegen."
+    "streamError": "[Fehler] {{error}}"
   },
   "slash": {
     "skillsLabel": "Fähigkeiten",

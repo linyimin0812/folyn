@@ -74,10 +74,13 @@
     "sectionTitle": "Modelo IA",
     "sectionDesc": "Elige el par (proveedor, modelo) que usará esta función; habilita un proveedor y selecciona modelos en Servicios de modelos primero"
   },
+  "cliPath": {
+    "bannerText": "Ruta de CLI no configurada",
+    "openSettings": "Abrir ajustes de CLI"
+  },
   "errors": {
     "attachmentSaveFailed": "[error] Error al guardar adjuntos: {{error}}",
-    "streamError": "[error] {{error}}",
-    "cliPathNotConfigured": "Ruta de CLI no configurada. Configúrala en Ajustes → CLI."
+    "streamError": "[error] {{error}}"
   },
   "slash": {
     "skillsLabel": "Habilidades",

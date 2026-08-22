@@ -101,6 +101,16 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
   // ChatInput).
   const { hasAny: hasPair } = useEnabledPairs();
 
+  // ponytail: Ask/Agent modes go through the CLI adapter and need a configured
+  // cliPath. Treat `!cliPath || cliPath === cliAdapter` as "unconfigured" —
+  // matches the unset sentinel used by every adapter's resolveCliPath. The
+  // banner below mirrors the rig chat pair-config prompt so the user gets a
+  // one-click jump to Settings → CLI instead of a cryptic spawn ENOENT.
+  const cliAdapter = useAiConfigStore((s) => s.cliAdapter);
+  const cliPath = useAiConfigStore((s) => s.cliPath);
+  const cliUnconfigured = !cliPath || cliPath === cliAdapter;
+  const needsCli = !isRigMode(currentMode);
+
   const setSettingsTab = useNavStore((s) => s.setSettingsTab);
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   // ponytail: when no pair is configured, show a setup prompt + button
@@ -119,6 +129,24 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
       return;
     }
     setSettingsTab('models');
+    setCurrentPage('settings');
+  }, [embedded, setSettingsTab, setCurrentPage]);
+
+  // ponytail: same shape as `openSettings`, lands on Settings → cli tab. Used
+  // by the "CLI path not configured" banner so Ask/Agent users get a one-click
+  // jump to the right settings page, mirroring the rig chat pair-config banner.
+  const openCliSettings = useCallback(() => {
+    if (embedded) {
+      if (isTauri()) {
+        void import('@tauri-apps/api/event')
+          .then(({ emit }) =>
+            emit('pet://menu-action', { action: 'open-cli-settings' }),
+          )
+          .catch(() => {});
+      }
+      return;
+    }
+    setSettingsTab('cli');
     setCurrentPage('settings');
   }, [embedded, setSettingsTab, setCurrentPage]);
 
@@ -577,16 +605,7 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
           ...(images.length > 0 ? { images } : {}),
         });
       } else {
-        // ponytail: if the user never set a CLI path, surface a clear
-        // hint instead of letting spawn fail with a cryptic ENOENT.
-        // Treat `!cliPath || cliPath === adapter.id` as "unconfigured" —
-        // matches the unset sentinel used by every adapter's resolveCliPath.
-        // No auto-detect: the user opens Settings → CLI to configure.
-        const cliPath = aiConfig.cliPath;
-        if (!cliPath || cliPath === adapter.id) {
-          throw new Error(t('ai:errors.cliPathNotConfigured'));
-        }
-        await adapter.start({ cliPath, workingDir });
+        await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
         // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
         const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
         await adapter.send(prompt, sendOptions);
@@ -725,11 +744,24 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
         </div>
       )}
 
+      {needsCli && cliUnconfigured && (
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-t border-brd2 bg-surf2/40 text-[12px] text-t3">
+          <span className="flex-1 min-w-0 truncate">{t('ai:cliPath.bannerText')}</span>
+          <button
+            type="button"
+            className="text-acc text-[12px] hover:underline whitespace-nowrap cursor-pointer bg-transparent border-none"
+            onClick={openCliSettings}
+          >
+            {t('ai:cliPath.openSettings')}
+          </button>
+        </div>
+      )}
+
       <ChatInput
         onSend={handleSend}
         onStop={handleStop}
         isStreaming={isStreaming}
-        disabled={needsPair && !hasPair}
+        disabled={(needsPair && !hasPair) || (needsCli && cliUnconfigured)}
       />
 
       {pendingSave && (

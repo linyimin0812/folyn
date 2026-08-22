@@ -74,10 +74,13 @@
     "sectionTitle": "AI model",
     "sectionDesc": "Pick the (provider, model) pair this feature uses; enable a provider and select models in Model Services first"
   },
+  "cliPath": {
+    "bannerText": "CLI path not configured",
+    "openSettings": "Open CLI settings"
+  },
   "errors": {
     "attachmentSaveFailed": "[error] Failed to save attachments: {{error}}",
-    "streamError": "[error] {{error}}",
-    "cliPathNotConfigured": "CLI path not configured. Open Settings → CLI to set it."
+    "streamError": "[error] {{error}}"
   },
   "slash": {
     "skillsLabel": "Skills",

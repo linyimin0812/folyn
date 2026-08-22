@@ -74,10 +74,13 @@
     "sectionTitle": "AIモデル",
     "sectionDesc": "この機能が使用する（プロバイダ、モデル）ペアを選択。まずモデルサービスでプロバイダを有効化してモデルを選択してください"
   },
+  "cliPath": {
+    "bannerText": "CLI パス未設定",
+    "openSettings": "CLI 設定を開く"
+  },
   "errors": {
     "attachmentSaveFailed": "[エラー] 添付の保存に失敗しました: {{error}}",
-    "streamError": "[エラー] {{error}}",
-    "cliPathNotConfigured": "CLI パス未設定です。設定 → CLI で設定してください。"
+    "streamError": "[エラー] {{error}}"
   },
   "slash": {
     "skillsLabel": "スキル",

@@ -168,6 +168,14 @@ export async function routePetMenuAction(
       useNavStore.getState().setSettingsTab('models');
       await focusMain();
       break;
+    case 'open-cli-settings':
+      // pet-panel AiPanel banner emits this when Ask/Agent mode has no CLI
+      // path configured. Same shape as open-ai-settings but lands on the
+      // CLI tab so the user can set the adapter binary path.
+      useNavStore.getState().setCurrentPage('settings');
+      useNavStore.getState().setSettingsTab('cli');
+      await focusMain();
+      break;
     case 'run-command':
       // Pet-panel search → run a registered command in the main window
       // (the panel is a separate realm whose store instances cannot execute

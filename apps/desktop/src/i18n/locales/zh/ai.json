@@ -74,10 +74,13 @@
     "sectionTitle": "AI 模型",
     "sectionDesc": "选择此功能使用的 (provider, model) 组合；先在模型服务中启用 provider 并选择模型"
   },
+  "cliPath": {
+    "bannerText": "未配置 CLI 路径",
+    "openSettings": "前往 CLI 设置"
+  },
   "errors": {
     "attachmentSaveFailed": "[错误] 附件保存失败: {{error}}",
-    "streamError": "[错误] {{error}}",
-    "cliPathNotConfigured": "未配置 CLI 路径，请到 设置 → CLI 配置。"
+    "streamError": "[错误] {{error}}"
   },
   "slash": {
     "skillsLabel": "技能",
