@@ -328,7 +328,7 @@ export function SettingsPage() {
 
         {/* -- 关于 -- */}
         {settingsTab === 'about' && (
-          <div className="mb-[26px]">
+          <div className="mb-[26px] max-w-[640px]">
             <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 18 }}>
               <img src={`${import.meta.env.BASE_URL}quill.svg`} alt="Quill" width="52" height="52" style={{ borderRadius: 6 }} />
               <div>
