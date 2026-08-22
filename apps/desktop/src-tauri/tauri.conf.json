@@ -167,7 +167,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": {
-          "allow": ["**"],
+          "allow": ["**", "**/.*", "**/.*/**"],
           "deny": []
         }
       }
