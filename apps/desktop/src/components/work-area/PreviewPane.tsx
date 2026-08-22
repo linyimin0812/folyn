@@ -137,20 +137,18 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 <line x1="9" y1="9" x2="12.8" y2="12.2" />
               </svg>
             </button>
-            {!markmapMode && (
-              <button
-                className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${outlineVisible ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
-                onClick={() => setOutlineVisible((v) => !v)}
-                title="大纲"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
-                  <line x1="2" y1="3.5" x2="14" y2="3.5" />
-                  <line x1="4" y1="6.5" x2="14" y2="6.5" />
-                  <line x1="4" y1="9.5" x2="14" y2="9.5" />
-                  <line x1="2" y1="12.5" x2="14" y2="12.5" />
-                </svg>
-              </button>
-            )}
+            <button
+              className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${outlineVisible ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
+              onClick={() => setOutlineVisible((v) => !v)}
+              title="大纲"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+                <line x1="2" y1="3.5" x2="14" y2="3.5" />
+                <line x1="4" y1="6.5" x2="14" y2="6.5" />
+                <line x1="4" y1="9.5" x2="14" y2="9.5" />
+                <line x1="2" y1="12.5" x2="14" y2="12.5" />
+              </svg>
+            </button>
           </div>
         )}
         <div className="flex-1 flex overflow-hidden">
@@ -195,7 +193,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
               />
             </div>
           )}
-          {activeTab.fileType === 'markdown' && outlineVisible && !markmapMode && (
+          {activeTab.fileType === 'markdown' && outlineVisible && (
             <div className="shrink-0 overflow-y-auto border-l border-brd bg-panel relative flex flex-col" style={{ width: `${outlineWidth}px` }}>
               <div
                 className="absolute -left-[3px] top-0 bottom-0 w-1.5 cursor-col-resize z-[5]"
