@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 194
+- **Total Sessions**: 195
 - **Last Active**: 2026-08-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~852 | Active |
+| `journal-4.md` | ~886 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 195 | 2026-08-22 | Drop universal macOS CI build | `121806e9` | `master` |
 | 194 | 2026-08-22 | Use pet.gif as default desktop pet mascot | `60b4e84c` | `master` |
 | 193 | 2026-08-22 | Fix Windows tray-reopen stuck window | `8c3e6008` | `master` |
 | 192 | 2026-08-22 | Surface real Tauri fs error on vault switch | `bbb3d2e0` | `master` |

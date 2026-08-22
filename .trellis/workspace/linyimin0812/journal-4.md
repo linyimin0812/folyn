@@ -850,3 +850,37 @@ Replaced the inline quill SVG builtin mascot with a bundled pet.gif rendered via
 ### Next Steps
 
 - None - task complete
+
+
+## Session 195: Drop universal macOS CI build
+
+**Date**: 2026-08-22
+**Task**: Drop universal macOS CI build
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Remove build-macos-universal job from release.yml; keep only aarch64/x86_64 macOS + Windows in the build matrix.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `121806e9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
