@@ -462,7 +462,7 @@
         },
         "preview": {
           "title": "Aperçu en direct",
-          "description": "Rendu Markdown en temps réel, coloration de code (highlight.js), directives de conteneur, scroll synchronisé"
+          "description": "Rendu Markdown en temps réel, coloration de code (highlight.js), directives de conteneur"
         },
         "vault": {
           "title": "Système Vault",

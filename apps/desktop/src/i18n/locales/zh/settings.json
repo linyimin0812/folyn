@@ -468,7 +468,7 @@
         },
         "preview": {
           "title": "实时预览",
-          "description": "实时 Markdown 渲染、代码高亮（highlight.js）、容器指令与同步滚动"
+          "description": "实时 Markdown 渲染、代码高亮（highlight.js）、容器指令"
         },
         "vault": {
           "title": "Vault 系统",

@@ -468,7 +468,7 @@
         },
         "preview": {
           "title": "Live preview",
-          "description": "Real-time Markdown rendering, code highlighting (highlight.js), container directives, synced scroll"
+          "description": "Real-time Markdown rendering, code highlighting (highlight.js), container directives"
         },
         "vault": {
           "title": "Vault system",

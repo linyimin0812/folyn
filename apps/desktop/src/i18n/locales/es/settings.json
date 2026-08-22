@@ -462,7 +462,7 @@
         },
         "preview": {
           "title": "Vista previa en vivo",
-          "description": "Renderizado Markdown en tiempo real, resaltado de código (highlight.js), directivas de contenedor, scroll sincronizado"
+          "description": "Renderizado Markdown en tiempo real, resaltado de código (highlight.js), directivas de contenedor"
         },
         "vault": {
           "title": "Sistema Vault",

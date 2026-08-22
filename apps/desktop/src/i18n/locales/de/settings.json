@@ -462,7 +462,7 @@
         },
         "preview": {
           "title": "Live-Vorschau",
-          "description": "Echtzeit-Markdown-Rendering, Code-Highlighting (highlight.js), Container-Direktiven, synchronisierter Scroll"
+          "description": "Echtzeit-Markdown-Rendering, Code-Highlighting (highlight.js), Container-Direktiven"
         },
         "vault": {
           "title": "Vault-System",

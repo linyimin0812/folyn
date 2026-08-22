@@ -468,7 +468,7 @@
         },
         "preview": {
           "title": "ライブプレビュー",
-          "description": "リアルタイム Markdown レンダリング、コードハイライト（highlight.js）、コンテナディレクティブ、同期スクロール"
+          "description": "リアルタイム Markdown レンダリング、コードハイライト（highlight.js）、コンテナディレクティブ"
         },
         "vault": {
           "title": "Vault システム",
