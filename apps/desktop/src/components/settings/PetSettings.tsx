@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { usePetStore, type PetOpacity } from '@/store/petStore';
 import { isTauri } from '@/utils/platform';
 import { Toggle } from '@/components/settings/primitives';
+import builtinPetGif from '@/assets/pet.gif';
 
 /**
  * Pet settings tab (PRD: settings-pet-tab-and-custom-icon). Surfaces:
@@ -281,12 +282,12 @@ export function PetSettings() {
     }
   }, [setPetClickThrough]);
 
-  // Preview thumbnail: builtin quill.svg (served from the app's public dir)
-  // or the custom image via `convertFileSrc` (resolved in `CustomIconPreview`
-  // so the Tauri-only module is only imported when actually rendering a
-  // custom preview). The asset protocol scope in tauri.conf.json allows
-  // `$HOME/**` so ~/.quill/pet-icon/ paths resolve.
-  const builtinPreviewSrc = `${import.meta.env.BASE_URL}quill.svg`;
+  // Preview thumbnail: builtin pet.gif (bundled asset) or the custom image
+  // via `convertFileSrc` (resolved in `CustomIconPreview` so the Tauri-only
+  // module is only imported when actually rendering a custom preview). The
+  // asset protocol scope in tauri.conf.json allows `$HOME/**` so
+  // ~/.quill/pet-icon/ paths resolve.
+  const builtinPreviewSrc = builtinPetGif;
 
   return (
     <div className="mb-8">

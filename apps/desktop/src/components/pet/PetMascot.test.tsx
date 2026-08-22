@@ -9,23 +9,22 @@ afterEach(() => {
 describe('PetMascot', () => {
   const STATES = ['idle', 'hover', 'drag', 'click'] as const;
 
-  it('renders an SVG mascot rooted at .pet-mascot', () => {
+  it('renders an img mascot rooted at .pet-mascot', () => {
     const { container } = render(<PetMascot state="idle" />);
-    const svg = container.querySelector('.pet-mascot');
-    expect(svg).toBeTruthy();
-    expect(svg?.tagName.toLowerCase()).toBe('svg');
+    const img = container.querySelector('.pet-mascot');
+    expect(img).toBeTruthy();
+    expect(img?.tagName.toLowerCase()).toBe('img');
   });
 
   it.each(STATES)('applies the is-%s state class to the mascot root', (state) => {
     const { container } = render(<PetMascot state={state} />);
-    const svg = container.querySelector('.pet-mascot');
-    // SVG className is an SVGAnimatedString in the DOM; read via attribute.
-    expect(svg?.getAttribute('class')).toContain(`is-${state}`);
+    const img = container.querySelector('.pet-mascot');
+    expect(img?.getAttribute('class')).toContain(`is-${state}`);
   });
 
-  it('renders the ink-drop body and quill tip paths', () => {
+  it('renders the builtin pet.gif src by default', () => {
     const { container } = render(<PetMascot state="idle" />);
-    const paths = container.querySelectorAll('path');
-    expect(paths.length).toBeGreaterThanOrEqual(2);
+    const img = container.querySelector('.pet-mascot') as HTMLImageElement | null;
+    expect(img?.getAttribute('src')).toBeTruthy();
   });
 });
