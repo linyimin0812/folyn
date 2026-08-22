@@ -23,7 +23,6 @@ import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions, buildRigPrompt, blobToRigImage } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 import { runRigChat, type RigChatImage } from '@/services/rigChat';
-import { detectAdapterCliPath } from '@/services/cliPathDetect';
 import { Trash2 } from 'lucide-react';
 
 function defaultSaveName(msg: CliMessage): string {
@@ -578,38 +577,19 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
           ...(images.length > 0 ? { images } : {}),
         });
       } else {
-        // ponytail: if the user never set a CLI path, detect it now and
-        // persist so subsequent sends skip detection. Treat `!cliPath ||
-        // cliPath === adapter.id` as "unconfigured" — matches the unset
-        // sentinel used by every adapter's resolveCliPath. A user-set path
-        // is respected on the fast path; if spawn fails, the inner catch
-        // below re-detects and retries once before surfacing the error.
-        let cliPath = aiConfig.cliPath;
+        // ponytail: if the user never set a CLI path, surface a clear
+        // hint instead of letting spawn fail with a cryptic ENOENT.
+        // Treat `!cliPath || cliPath === adapter.id` as "unconfigured" —
+        // matches the unset sentinel used by every adapter's resolveCliPath.
+        // No auto-detect: the user opens Settings → CLI to configure.
+        const cliPath = aiConfig.cliPath;
         if (!cliPath || cliPath === adapter.id) {
-          const detected = await detectAdapterCliPath(adapter.id);
-          if (!detected) {
-            throw new Error(t('ai:errors.cliPathNotConfigured'));
-          }
-          cliPath = detected;
-          useAiConfigStore.getState().setCliPath(detected);
+          throw new Error(t('ai:errors.cliPathNotConfigured'));
         }
-        try {
-          await adapter.start({ cliPath, workingDir });
-          const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
-          await adapter.send(prompt, sendOptions);
-        } catch (spawnErr) {
-          // ponytail: spawn failure (ENOENT — persisted path gone, PATH
-          // changed, binary uninstalled). Re-detect; if a different path
-          // comes back, persist it and retry once. Same/empty result
-          // means the error isn't path-related — surface the original.
-          const detected = await detectAdapterCliPath(adapter.id);
-          if (!detected || detected === cliPath) throw spawnErr;
-          useAiConfigStore.getState().setCliPath(detected);
-          errorAlreadyShown = false;
-          await adapter.start({ cliPath: detected, workingDir });
-          const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
-          await adapter.send(prompt, sendOptions);
-        }
+        await adapter.start({ cliPath, workingDir });
+        // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
+        const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
+        await adapter.send(prompt, sendOptions);
       }
     } catch (err) {
       if (!errorAlreadyShown) {

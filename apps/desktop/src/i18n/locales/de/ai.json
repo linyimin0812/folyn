@@ -77,7 +77,7 @@
   "errors": {
     "attachmentSaveFailed": "[Fehler] Speichern von Anhängen fehlgeschlagen: {{error}}",
     "streamError": "[Fehler] {{error}}",
-    "cliPathNotConfigured": "CLI-Pfad nicht konfiguriert und automatische Erkennung erfolglos. Unter Einstellungen → CLI manuell festlegen."
+    "cliPathNotConfigured": "CLI-Pfad nicht konfiguriert. Unter Einstellungen → CLI festlegen."
   },
   "slash": {
     "skillsLabel": "Fähigkeiten",

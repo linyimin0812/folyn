@@ -77,7 +77,7 @@
   "errors": {
     "attachmentSaveFailed": "[エラー] 添付の保存に失敗しました: {{error}}",
     "streamError": "[エラー] {{error}}",
-    "cliPathNotConfigured": "CLI パス未設定かつ自動検出でも見つかりませんでした。設定 → CLI で手動設定してください。"
+    "cliPathNotConfigured": "CLI パス未設定です。設定 → CLI で設定してください。"
   },
   "slash": {
     "skillsLabel": "スキル",

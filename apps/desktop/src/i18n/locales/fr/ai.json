@@ -77,7 +77,7 @@
   "errors": {
     "attachmentSaveFailed": "[erreur] Échec de l'enregistrement des pièces jointes : {{error}}",
     "streamError": "[erreur] {{error}}",
-    "cliPathNotConfigured": "Chemin CLI non configuré et détection automatique sans résultat. Définissez-le dans Paramètres → CLI."
+    "cliPathNotConfigured": "Chemin CLI non configuré. Définissez-le dans Paramètres → CLI."
   },
   "slash": {
     "skillsLabel": "Compétences",
