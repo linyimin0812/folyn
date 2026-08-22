@@ -582,8 +582,8 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
         // persist so subsequent sends skip detection. Treat `!cliPath ||
         // cliPath === adapter.id` as "unconfigured" — matches the unset
         // sentinel used by every adapter's resolveCliPath. A user-set path
-        // (even a broken one) is respected: spawn failure surfaces through
-        // the catch below rather than being silently overwritten.
+        // is respected on the fast path; if spawn fails, the inner catch
+        // below re-detects and retries once before surfacing the error.
         let cliPath = aiConfig.cliPath;
         if (!cliPath || cliPath === adapter.id) {
           const detected = await detectAdapterCliPath(adapter.id);
@@ -593,10 +593,23 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
           cliPath = detected;
           useAiConfigStore.getState().setCliPath(detected);
         }
-        await adapter.start({ cliPath, workingDir });
-        // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
-        const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
-        await adapter.send(prompt, sendOptions);
+        try {
+          await adapter.start({ cliPath, workingDir });
+          const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
+          await adapter.send(prompt, sendOptions);
+        } catch (spawnErr) {
+          // ponytail: spawn failure (ENOENT — persisted path gone, PATH
+          // changed, binary uninstalled). Re-detect; if a different path
+          // comes back, persist it and retry once. Same/empty result
+          // means the error isn't path-related — surface the original.
+          const detected = await detectAdapterCliPath(adapter.id);
+          if (!detected || detected === cliPath) throw spawnErr;
+          useAiConfigStore.getState().setCliPath(detected);
+          errorAlreadyShown = false;
+          await adapter.start({ cliPath: detected, workingDir });
+          const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
+          await adapter.send(prompt, sendOptions);
+        }
       }
     } catch (err) {
       if (!errorAlreadyShown) {

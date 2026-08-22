@@ -43,10 +43,21 @@ overwriting a user-set path is worse than showing the error.
   message via the existing stream-error path (`appendToLastMessage` +
   `t('settings:cli.cliPath.notInstalled')` or a new `ai:errors.cliPathNotConfigured`
   i18n key that tells the user to open Settings → CLI to configure manually).
-- Extract a shared `detectAdapterCliPath(adapterId)` helper from
+- **ENOENT recovery**: wrap `adapter.start` + `adapter.send` in an inner
+  try/catch. On spawn failure, re-run detect; if the detected path differs
+  from the current one, persist the new path and retry `start`+`send` once.
+  If detect is empty or matches the current path, re-throw the original
+  error so the outer catch surfaces it. This handles the case where a
+  previously-persisted path no longer exists (binary uninstalled, PATH
+  changed, etc.) without silently overwriting a user-set path that's just
+  temporarily broken.
+- **Binary name override for qoder**: `detectAdapterCliPath` must look up
+  the real binary name, not the adapter id. For `qoder` the binary is
+  `qodercli`; for `qoder-cn` it's `qoderclicn`. Other adapters use their
+  id as the binary name.
+- Extract the shared `detectAdapterCliPath(adapterId)` helper from
   `CliSettings.tsx` so both the settings button and the send path use the
-  same flow. New home: `apps/desktop/src/services/cliPathDetect.ts` (sibling
-  of existing services).
+  same flow. New home: `apps/desktop/src/services/cliPathDetect.ts`.
 
 ## Acceptance Criteria
 
@@ -98,9 +109,6 @@ open Settings rather than a raw ENOENT.
 
 ## Out of Scope
 
-- ENOENT recovery when a user-set path no longer exists (separate concern;
-  the user can fix it in Settings).
-- Re-detecting on every send (cached persisted path is fine).
 - Rig chat mode (no CLI path).
 - Feature-adapter callers (`wikiLintService`, `githubAnalysisService`) —
   these already go through `getFeatureCliPath` which falls back to the
