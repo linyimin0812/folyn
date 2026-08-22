@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        ui: ['Sora', 'sans-serif'],
+        ui: ['var(--font-ui)', 'sans-serif'],
         mono: ['DM Mono', 'monospace'],
       },
       colors: {

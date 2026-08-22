@@ -39,6 +39,11 @@
       "default": "14px (Standard)",
       "comfortable": "16px (komfortabel)"
     },
+    "fontFamily": {
+      "label": "UI-Schriftart",
+      "description": "Schriftart der Benutzeroberfläche. Chinesische Zeichen nutzen den Systemfont als Fallback.",
+      "system": "Systemstandard"
+    },
     "panels": {
       "ai": {
         "label": "KI-Panel standardmäßig anzeigen",

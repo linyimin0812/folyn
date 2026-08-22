@@ -39,6 +39,11 @@
       "default": "14px (default)",
       "comfortable": "16px (comfortable)"
     },
+    "fontFamily": {
+      "label": "UI font",
+      "description": "Font used for the interface. Chinese characters fall back to the system font.",
+      "system": "System default"
+    },
     "panels": {
       "ai": {
         "label": "Show AI panel by default",

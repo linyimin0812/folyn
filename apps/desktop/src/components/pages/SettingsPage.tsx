@@ -46,6 +46,8 @@ export function SettingsPage() {
 
   const theme = useAppearanceStore((s) => s.theme);
   const setTheme = useAppearanceStore((s) => s.setTheme);
+  const fontFamily = useAppearanceStore((s) => s.fontFamily);
+  const setFontFamily = useAppearanceStore((s) => s.setFontFamily);
   const fontSize = useAppearanceStore((s) => s.fontSize);
   const showAiPanel = useAppearanceStore((s) => s.showAiPanel);
   const showStatusBar = useAppearanceStore((s) => s.showStatusBar);
@@ -147,6 +149,21 @@ export function SettingsPage() {
                 <option value="12px">{t('settings:appearance.fontSize.compact')}</option>
                 <option value="14px">{t('settings:appearance.fontSize.default')}</option>
                 <option value="16px">{t('settings:appearance.fontSize.comfortable')}</option>
+              </select>
+            </div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+              <div className="tr-info">
+                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.fontFamily.label')}</h4>
+                <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.fontFamily.description')}</p>
+              </div>
+              <select className="settings-select" style={{ maxWidth: 180 }} value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}>
+                <option value="Sora">Sora</option>
+                <option value="Inter">Inter</option>
+                <option value="Roboto">Roboto</option>
+                <option value="Poppins">Poppins</option>
+                <option value="Noto Sans SC">Noto Sans SC（思源黑体）</option>
+                <option value="LXGW WenKai">霞鹜文楷（LXGW WenKai）</option>
+                <option value="system-ui">{t('settings:appearance.fontFamily.system')}</option>
               </select>
             </div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.panels.ai.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.panels.ai.description')}</p></div><Toggle value={showAiPanel} onChange={(v) => setShowAiPanel(v)} /></div>

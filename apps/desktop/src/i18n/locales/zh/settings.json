@@ -39,6 +39,11 @@
       "default": "14px（默认）",
       "comfortable": "16px（舒适）"
     },
+    "fontFamily": {
+      "label": "界面字体",
+      "description": "界面使用的字体，中文字符将回退到系统字体显示。",
+      "system": "系统默认"
+    },
     "panels": {
       "ai": {
         "label": "默认显示 AI 面板",

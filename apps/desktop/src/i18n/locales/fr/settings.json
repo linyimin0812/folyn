@@ -39,6 +39,11 @@
       "default": "14px (par défaut)",
       "comfortable": "16px (confortable)"
     },
+    "fontFamily": {
+      "label": "Police d'interface",
+      "description": "Police utilisée pour l'interface. Les caractères chinois utilisent la police système en repli.",
+      "system": "Système par défaut"
+    },
     "panels": {
       "ai": {
         "label": "Afficher le panneau IA par défaut",

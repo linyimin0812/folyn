@@ -30,7 +30,7 @@ afterEach(() => {
 /** Reset every new store to its module defaults so a test starts clean. */
 function resetAllDefaults() {
   useAppearanceStore.setState({
-    theme: 'light', fontSize: 14, lineHeight: 1.7, showAiPanel: true,
+    theme: 'light', fontFamily: 'Sora', fontSize: 14, lineHeight: 1.7, showAiPanel: true,
     showStatusBar: true, showHiddenFiles: true, enableWikiPanel: true,
     enableClipsPanel: true, enableAnalyzePanel: true,
     excludePatterns:

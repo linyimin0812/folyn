@@ -42,6 +42,24 @@ export interface ActiveDocument {
 }
 
 /**
+ * Build a `:root` override block carrying the user's live UI font + size CSS
+ * variables, so exported HTML renders with the same interface font the user
+ * picked in Appearance settings (instead of the hardcoded 'Sora' fallback
+ * baked into LIGHT/DARK_THEME_VARS). Reads the runtime style set by
+ * appearanceStore.setFontFamily / setFontSize; empty values (defaults, or a
+ * non-browser caller) fall back to the theme-vars default by emitting nothing.
+ */
+function runtimeFontVars(): string {
+  const root = document.documentElement.style;
+  const fontFamily = root.getPropertyValue('--font-ui').trim();
+  const fontSize = root.getPropertyValue('--ui-font-size').trim();
+  const rules: string[] = [];
+  if (fontFamily) rules.push(`--font-ui: ${fontFamily};`);
+  if (fontSize) rules.push(`--ui-font-size: ${fontSize};`);
+  return rules.length ? `:root { ${rules.join(' ')} }` : '';
+}
+
+/**
  * Read the active document from stores. Extracted so non-React callers (e.g.
  * the command palette's export commands) can access the same source of truth
  * without a hook.
@@ -168,7 +186,7 @@ export async function exportActiveHtml(onBeforeDialog?: () => void): Promise<voi
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${themeVars}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered against the theme's viewport bg. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
+  <style>${HTML_STYLES}\n${themeVars}\n${runtimeFontVars()}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered against the theme's viewport bg. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
   <script>${CONTAINER_INTERACT_SCRIPT}</script>
 </head>
 <body>
@@ -289,7 +307,7 @@ ${svg}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${themeVars}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
+  <style>${HTML_STYLES}\n${themeVars}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
   <script>${CONTAINER_INTERACT_SCRIPT}</script>
 </head>
 <body>

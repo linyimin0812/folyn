@@ -39,6 +39,11 @@
       "default": "14px（デフォルト）",
       "comfortable": "16px（快適）"
     },
+    "fontFamily": {
+      "label": "UIフォント",
+      "description": "インターフェースに使用するフォント。中国語文字はシステムフォントにフォールバックします。",
+      "system": "システム標準"
+    },
     "panels": {
       "ai": {
         "label": "AIパネルをデフォルト表示",

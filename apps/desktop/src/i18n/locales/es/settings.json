@@ -39,6 +39,11 @@
       "default": "14px (por defecto)",
       "comfortable": "16px (cómodo)"
     },
+    "fontFamily": {
+      "label": "Fuente de UI",
+      "description": "Fuente usada en la interfaz. Los caracteres chinos usan la fuente del sistema como respaldo.",
+      "system": "Predeterminado del sistema"
+    },
     "panels": {
       "ai": {
         "label": "Mostrar panel de IA por defecto",
