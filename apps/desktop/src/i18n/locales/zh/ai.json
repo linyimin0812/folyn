@@ -76,7 +76,8 @@
   },
   "errors": {
     "attachmentSaveFailed": "[错误] 附件保存失败: {{error}}",
-    "streamError": "[错误] {{error}}"
+    "streamError": "[错误] {{error}}",
+    "cliPathNotConfigured": "未配置 CLI 路径且自动检测未找到，请到 设置 → CLI 手动填写。"
   },
   "slash": {
     "skillsLabel": "技能",

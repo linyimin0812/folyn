@@ -76,7 +76,8 @@
   },
   "errors": {
     "attachmentSaveFailed": "[error] Error al guardar adjuntos: {{error}}",
-    "streamError": "[error] {{error}}"
+    "streamError": "[error] {{error}}",
+    "cliPathNotConfigured": "Ruta de CLI no configurada y la detección automática no la encontró. Configúrala manualmente en Ajustes → CLI."
   },
   "slash": {
     "skillsLabel": "Habilidades",

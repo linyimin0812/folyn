@@ -10,10 +10,11 @@ import { useTranslation } from 'react-i18next';
 import { Lightbulb, Loader2 } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useNavStore } from '@/store/navStore';
-import { listAdapters, buildAdapterVersionCommand, buildAdapterDetectCommand } from '@quill/cli-adapter';
+import { listAdapters, buildAdapterVersionCommand } from '@quill/cli-adapter';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { openFile } from '@/services/editorIoService';
 import { buildShellSidecar, isWindowsPlatform } from '@/utils/shellSidecar';
+import { detectAdapterCliPath } from '@/services/cliPathDetect';
 import claudeIcon from '@/assets/agents/claude_code.svg';
 import codexIcon from '@/assets/agents/codex.svg';
 import geminiIcon from '@/assets/agents/gemini.svg';
@@ -130,15 +131,8 @@ export function CliSettings() {
                   onClick={async () => {
                     setDetectingState((s) => ({ ...s, [a.id]: true }));
                     try {
-                      const { Command } = await import('@tauri-apps/plugin-shell');
-                      const adapterCmd = a.id === 'claude' ? 'claude' : a.id;
-                      const platform = isWindowsPlatform() ? 'win32' : /Mac/i.test(navigator.platform) ? 'darwin' : 'linux';
-                      const detectCmd = buildAdapterDetectCommand(adapterCmd, platform);
-                      const [sidecarName, sidecarArgs] = buildShellSidecar(detectCmd);
-                      const cmd = Command.create(sidecarName, sidecarArgs, isWindowsPlatform() ? { encoding: 'gbk' } : undefined);
-                      const output = await cmd.execute();
-                      const detected = output.stdout.trim().split('\n')[0];
-                      if (output.code === 0 && detected) {
+                      const detected = await detectAdapterCliPath(a.id);
+                      if (detected) {
                         setCliPathFor(a.id, detected);
                         setTestStatus((s) => ({ ...s, [a.id]: { testing: false, result: { success: true, message: t('settings:cli.cliPath.detected', { path: detected }) } } }));
                       } else {

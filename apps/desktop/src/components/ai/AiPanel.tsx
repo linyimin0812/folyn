@@ -23,6 +23,7 @@ import { resolveSendOptions, isRigMode } from './inputModes';
 import { saveBlobs, buildReadInstructions, buildRigPrompt, blobToRigImage } from '@/components/chat';
 import type { SavedAttachment } from '@/components/chat';
 import { runRigChat, type RigChatImage } from '@/services/rigChat';
+import { detectAdapterCliPath } from '@/services/cliPathDetect';
 import { Trash2 } from 'lucide-react';
 
 function defaultSaveName(msg: CliMessage): string {
@@ -577,7 +578,22 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
           ...(images.length > 0 ? { images } : {}),
         });
       } else {
-        await adapter.start({ cliPath: aiConfig.cliPath, workingDir });
+        // ponytail: if the user never set a CLI path, detect it now and
+        // persist so subsequent sends skip detection. Treat `!cliPath ||
+        // cliPath === adapter.id` as "unconfigured" — matches the unset
+        // sentinel used by every adapter's resolveCliPath. A user-set path
+        // (even a broken one) is respected: spawn failure surfaces through
+        // the catch below rather than being silently overwritten.
+        let cliPath = aiConfig.cliPath;
+        if (!cliPath || cliPath === adapter.id) {
+          const detected = await detectAdapterCliPath(adapter.id);
+          if (!detected) {
+            throw new Error(t('ai:errors.cliPathNotConfigured'));
+          }
+          cliPath = detected;
+          useAiConfigStore.getState().setCliPath(detected);
+        }
+        await adapter.start({ cliPath, workingDir });
         // 合并当前输入模式（ask/agent/…）的 permissionMode/systemPrompt 等到 send options。
         const sendOptions = resolveSendOptions(inputMode, { resumeSessionId });
         await adapter.send(prompt, sendOptions);

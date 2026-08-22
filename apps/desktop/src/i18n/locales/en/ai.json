@@ -76,7 +76,8 @@
   },
   "errors": {
     "attachmentSaveFailed": "[error] Failed to save attachments: {{error}}",
-    "streamError": "[error] {{error}}"
+    "streamError": "[error] {{error}}",
+    "cliPathNotConfigured": "CLI path not configured and auto-detect found nothing. Open Settings → CLI to set it manually."
   },
   "slash": {
     "skillsLabel": "Skills",
