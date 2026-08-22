@@ -81,7 +81,10 @@ export const PET_MASCOT_SIZE = 72;
  *  Used by `computePanelPosition` (icon-bounds attachment) and `PetMascot`
  *  (inline SVG/img size). */
 export function mascotSizeForPetSize(size: PetSize | string | undefined): number {
-  return Math.round(petSizeToPx(size) * 0.75);
+  // ponytail: 0.9 (was 0.75) — icon fills more of the 80px window at 100%
+  // level. Breathing (1.04) + click (1.08) scales still fit because the
+  // inscribed circle (r=244/512 ≈ 0.95) leaves viewBox margin.
+  return Math.round(petSizeToPx(size) * 0.9);
 }
 
 /**
