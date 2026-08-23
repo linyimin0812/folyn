@@ -17232,10 +17232,33 @@ pre {
   var img = document.getElementById('shot-img');
   var empty = document.getElementById('shot-empty');
   var shotName = document.querySelector('[data-shot-name]');
+  var placeholderHTML = empty ? empty.innerHTML : '';
+  function showLoading(){
+    if(!empty) return;
+    empty.style.display = 'flex';
+    empty.innerHTML = '<div class="shot-spin"></div><span>加载中…</span>';
+  }
+  function showPlaceholder(name){
+    if(!empty) return;
+    empty.style.display = 'flex';
+    empty.innerHTML = placeholderHTML;
+    var slot = empty.querySelector('[data-shot-name]');
+    if(slot && name) slot.textContent = name;
+  }
   function setActive(row){
     bar.querySelectorAll('.ft-item').forEach(function(x){ x.classList.remove('bg-accdim','text-acc'); x.classList.add('text-t2'); });
     row.classList.add('bg-accdim','text-acc');
     row.classList.remove('text-t2');
+  }
+  if(img){
+    img.addEventListener('load', function(){
+      img.style.display = '';
+      if(empty) empty.style.display = 'none';
+    });
+    img.addEventListener('error', function(){
+      img.style.display = 'none';
+      showPlaceholder(img.dataset.shot || '');
+    });
   }
   bar.addEventListener('click', function(e){
     var row = e.target.closest('.ft-item');
@@ -17245,13 +17268,14 @@ pre {
     var shot = row.getAttribute('data-shot');
     if(!img) return;
     if(shot){
-      img.src = 'assets/screenshots/' + shot + '.png';
-      img.style.display = '';
-      if(empty) empty.style.display = 'none';
+      img.dataset.shot = shot;
       if(shotName) shotName.textContent = shot;
+      img.style.display = 'none';
+      showLoading();
+      img.src = 'assets/screenshots/' + shot + '.png';
     } else {
       img.style.display = 'none';
-      if(empty) empty.style.display = 'flex';
+      showPlaceholder('');
     }
   });
 })();

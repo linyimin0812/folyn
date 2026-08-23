@@ -276,6 +276,15 @@ a { color: inherit; }
   padding: 1px 6px;
   color: var(--accent);
 }
+.shot-spin {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: shot-spin .7s linear infinite;
+}
+@keyframes shot-spin { to { transform: rotate(360deg); } }
 .pane-shot:has(.shot-img[style*="display:none"]) .shot-empty,
 .pane-shot:has(.shot-img:not([src])) .shot-empty { z-index: 2; }
 
