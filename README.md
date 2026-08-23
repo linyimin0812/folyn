@@ -8,9 +8,8 @@
 <p align="center">
   <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue" />
   <img alt="stack" src="https://img.shields.io/badge/Tauri-2-orange" />
-  <img alt="frontend" src="https://img.shields.io/badge/React-18-61dafb" />
-  <img alt="editor" src="https://img.shields.io/badge/CodeMirror-6-red" />
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green" />
+  <img alt="downloads" src="https://img.shields.io/github/downloads/linyimin0812/quill/total?label=downloads" />
 </p>
 
 ---
