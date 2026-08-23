@@ -1,3 +1,5 @@
+[简体中文](pet-notify-api.zh.md) | [English](pet-notify-api.en.md) | [日本語](pet-notify-api.ja.md) | [Français](pet-notify-api.fr.md) | [Deutsch](pet-notify-api.de.md) | [Español](pet-notify-api.es.md)
+
 # Pet External Notify API
 
 Quill 桌宠在运行时会在本机起一个 **仅 127.0.0.1** 的 HTTP 服务，外部应用
