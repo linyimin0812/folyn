@@ -6,7 +6,7 @@
 <title>语音输入 — Quill</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-i18n-title="page.voice.title">
 
 <nav class="nav">
   <div class="wrap">
@@ -15,9 +15,19 @@
       Quill
     </a>
     <div class="nav-links">
+      <label class="lang-switch">
+        <select data-i18n-switcher aria-label="Language">
+          <option value="zh">中文</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+        </select>
+      </label>
       <a href="https://github.com/linyimin0812/quill" class="nav-gh" target="_blank" rel="noopener" aria-label="GitHub">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        GitHub
+        <span data-i18n="nav.github">GitHub</span>
       </a>
     </div>
   </div>
@@ -25,10 +35,10 @@
 
 <header class="detail-hero">
   <div class="wrap">
-    <div class="breadcrumb"><a href="index.html">首页</a> / <a href="index.html#capabilities">能力</a> / 语音输入</div>
-    <h1>说出来，比打字更快</h1>
-    <p class="lede">语音输入把说话直接变成整理好的文字，省去打字的过程，适合快速记录灵感和口述内容。</p>
-    <div class="tags"><span>macOS 专属</span><span>语音转写</span><span>自动润色</span></div>
+    <div class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb_home">首页</a> / <a href="index.html#capabilities" data-i18n="common.breadcrumb_section">能力</a> / <span data-i18n="voice.breadcrumb_page">语音输入</span></div>
+    <h1 data-i18n="voice.h1">说出来，比打字更快</h1>
+    <p class="lede" data-i18n="voice.lede">语音输入把说话直接变成整理好的文字，省去打字的过程，适合快速记录灵感和口述内容。</p>
+    <div class="tags"><span>macOS 专属</span><span data-i18n="card.voice.tags.stt">语音转写</span><span data-i18n="voice.feature.polish.k">自动润色</span></div>
   </div>
 </header>
 
@@ -36,40 +46,41 @@
   <div class="wrap">
     <div class="feature-list">
       <div class="feature-row">
-        <div class="k">语音转文字</div>
-        <div class="v">说话内容会被实时转写成文字，并自动粘贴到当前光标所在位置，无需手动复制粘贴。</div>
+        <div class="k" data-i18n="voice.feature.stt.k">语音转文字</div>
+        <div class="v" data-i18n="voice.feature.stt.v">说话内容会被实时转写成文字，并自动粘贴到当前光标所在位置，无需手动复制粘贴。</div>
       </div>
       <div class="feature-row">
-        <div class="k">文字润色</div>
-        <div class="v">转写后的内容会经过润色处理，去除口语化的重复和停顿，让文字更贴近书面表达。</div>
+        <div class="k" data-i18n="voice.feature.polish.k">文字润色</div>
+        <div class="v" data-i18n="voice.feature.polish.v">转写后的内容会经过润色处理，去除口语化的重复和停顿，让文字更贴近书面表达。</div>
       </div>
       <div class="feature-row">
-        <div class="k">平台支持</div>
-        <div class="v">目前仅支持 macOS，Windows 暂不支持。</div>
+        <div class="k" data-i18n="voice.feature.platform.k">平台支持</div>
+        <div class="v" data-i18n="voice.feature.platform.v">目前仅支持 macOS，Windows 暂不支持。</div>
       </div>
     </div>
 
     <div class="section-head" style="margin-top:64px">
-      <span class="eyebrow mono">screenshots</span>
-      <h2>效果截图</h2>
+      <span class="eyebrow mono" data-i18n="common.shots_eyebrow">screenshots</span>
+      <h2 data-i18n="common.shots_h2">效果截图</h2>
     </div>
     <div class="shot-gallery">
-      <div class="shot"><img src="assets/screenshots/voice-1.png" alt="语音输入实时转写"/><div class="cap">语音输入实时转写</div></div>
+      <div class="shot"><img src="assets/screenshots/voice-1.png" alt="语音输入实时转写"/><div class="cap" data-i18n="voice.shots.cap1">语音输入实时转写</div></div>
     </div>
 
     <div class="next-links">
-      <a href="plugins.html">< 插件系统</a>
-      <a href="terminal.html">下一项：应用内终端 ></a>
+      <a href="plugins.html" data-i18n="voice.next.prev">< 插件系统</a>
+      <a href="terminal.html" data-i18n="voice.next.next">下一项：应用内终端 ></a>
     </div>
   </div>
 </main>
 
 <footer class="footer">
   <div class="wrap" style="justify-content:center">
-    <span>Copyright © 2026 - 至今 <a href="https://github.com/linyimin0812" target="_blank" rel="noopener">linyimin0812</a>. All Rights Reserved</span>
+    <span data-i18n-html="footer.copyright">Copyright © 2026 - 至今 <a href="https://github.com/linyimin0812" target="_blank" rel="noopener">linyimin0812</a>. All Rights Reserved</span>
   </div>
 </footer>
 <script src="script.js"></script>
+<script src="i18n.js"></script>
 
 </body>
 </html>

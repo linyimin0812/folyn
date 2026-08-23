@@ -1,0 +1,264 @@
+{
+  "nav": {
+    "github": "GitHub"
+  },
+  "footer": {
+    "copyright": "Copyright © 2026 - presente <a href=\"https://github.com/linyimin0812\" target=\"_blank\" rel=\"noopener\">linyimin0812</a>. Todos los derechos reservados"
+  },
+  "common": {
+    "shots_eyebrow": "screenshots",
+    "shots_h2": "Capturas",
+    "breadcrumb_home": "Inicio",
+    "breadcrumb_section": "Capacidades"
+  },
+  "page": {
+    "index": {
+      "title": "Quill — Almacén de conocimiento local-first",
+      "description": "Quill es una aplicación de escritorio local-first para gestión de conocimiento: aislamiento por vault, edición y vista multi-formato, integración profunda de IA, sistema de plugins y entrada por voz."
+    },
+    "vault": {"title": "Aislamiento multi-vault — Quill"},
+    "editing": {"title": "Edición multi-formato — Quill"},
+    "viewing": {"title": "Vista universal de formatos — Quill"},
+    "ai": {"title": "Integración profunda de IA — Quill"},
+    "pet": {"title": "Asistente de mascota de escritorio — Quill"},
+    "plugins": {"title": "Sistema de plugins — Quill"},
+    "terminal": {"title": "Terminal integrada — Quill"},
+    "voice": {"title": "Entrada por voz — Quill"}
+  },
+  "hero": {
+    "eyebrow": "local-first · vault-based · ai-native",
+    "h1": "Una app, todo tu contexto",
+    "lede": "Quill es una aplicación de escritorio local-first para gestión de conocimiento. Aísla cada conjunto de datos en un Vault, reúne markdown, pizarras, diagramas ER y mapas mentales en un solo editor y conecta agentes de IA directamente a tu flujo — todo permanece en tus dispositivos.",
+    "cta": {
+      "download": "Descargar Quill",
+      "capabilities": "Ver todas las capacidades"
+    },
+    "shot": {
+      "empty": "(Captura de la interfaz principal de Quill)",
+      "loading": "Cargando…"
+    },
+    "status": {
+      "split": "Vista dividida",
+      "words": "0 palabras"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "capabilities",
+    "h2": "Ocho capacidades, un flujo de trabajo",
+    "lede": "Desde la gestión de vaults hasta agentes de IA, de pizarras dibujadas a mano a entrada por voz — abre cualquier tarjeta para ver detalles."
+  },
+  "card": {
+    "go": "Más información →",
+    "vault": {
+      "title": "Aislamiento multi-vault",
+      "desc": "Abre un vault aislado para cada proyecto o conjunto de notas — los datos no se mezclan y puedes cambiar en cualquier momento.",
+      "tags": {"local": "almacenamiento local"}
+    },
+    "editing": {
+      "title": "Edición multi-formato",
+      "desc": "Markdown, texto enriquecido, CSV, JSON, mapas mentales, diagramas ER, pizarras dibujadas a mano, diagramas de flujo — un editor para todo."
+    },
+    "viewing": {
+      "title": "Vista universal de formatos",
+      "desc": "Office, audio/vídeo, archivos comprimidos, libros electrónicos, planos — verlos sin salir de Quill."
+    },
+    "ai": {
+      "title": "Integración profunda de IA",
+      "desc": "Conecta Claude Code, Codex CLI, Gemini CLI y otros agentes CLI; cambia libremente entre proveedores de modelos."
+    },
+    "pet": {
+      "title": "Asistente de mascota de escritorio",
+      "desc": "Un pequeño compañero en tu escritorio que empuja notificaciones y abre un chat con el modelo con un clic.",
+      "tags": {"notify": "notificaciones", "chat": "chat rápido"}
+    },
+    "plugins": {
+      "title": "Sistema de plugins",
+      "desc": "Arquitectura micronúcleo + SDK de plugins. Traducción, agenda, Wiki, clips y análisis de proyectos vienen como plugins; extensiones de terceros soportadas.",
+      "tags": {"ext": "extensiones de terceros"}
+    },
+    "voice": {
+      "title": "Entrada por voz",
+      "desc": "Conversión de voz a texto con pulido automático, pegado directamente en el cursor (solo macOS por ahora).",
+      "tags": {"stt": "voz a texto"}
+    },
+    "terminal": {
+      "title": "Terminal integrada",
+      "desc": "Abre una terminal dentro de Quill y deja que Claude Code, Codex y otros agentes editen el documento actual — sin cambiar de ventana.",
+      "tags": {"shell": "shell integrada"}
+    }
+  },
+  "vault": {
+    "breadcrumb_page": "Vault",
+    "h1": "Un vault, una frontera",
+    "lede": "Un Vault es la unidad mínima de aislamiento de datos en Quill. Proyectos y dominios de conocimiento distintos viven en sus propios vaults — no interfieren ni se comparten. Tú decides qué va junto y qué separar.",
+    "feature": {
+      "isolation": {
+        "k": "Gestión aislada",
+        "v": "Cada Vault es un espacio de datos independiente — notas, adjuntos y configuración de plugins se guardan por separado. Cambiar de vault es como cambiar de espacio de trabajo completo."
+      },
+      "multi": {
+        "k": "Múltiples vaults",
+        "v": "Proyectos de trabajo, personal y de equipo se pueden dividir en múltiples vaults que coexisten; cambia rápidamente entre barras laterales sin mezclar contenido."
+      },
+      "local": {
+        "k": "Local-first",
+        "v": "Los datos del vault se almacenan en tu dispositivo local — sin necesidad de cuenta en la nube. Mantienes el control total de tus datos."
+      }
+    },
+    "shots": {
+      "cap1": "Interfaz de cambio de vault",
+      "cap2": "Flujo de crear nuevo Vault"
+    },
+    "next": {
+      "prev": "< Volver a todas las capacidades",
+      "next": "Siguiente: edición multi-formato >"
+    }
+  },
+  "editing": {
+    "breadcrumb_page": "Edición multi-formato",
+    "h1": "Un editor para cada forma de idea",
+    "lede": "Desde texto plano hasta datos estructurados, de diagramas de flujo a pizarras dibujadas a mano, Quill reúne los escenarios de edición más comunes en una sola app — sin saltar entre herramientas.",
+    "feature": {
+      "markdown": {
+        "k": "Markdown",
+        "v": "Sintaxis markdown estándar más una familia de plugins contenedores integrados, que permiten incrustar estructuras más ricas en los documentos: <ul><li>Button / Callout / Card / Collapsible</li><li>FilePreview / Grid / StatusTag / Steps / Tabs / Timeline</li><li>Contenedores de diagramas Graphviz / Mermaid / PlantUml</li></ul>"
+      },
+      "richtext": {
+        "k": "Texto enriquecido",
+        "v": "Edición WYSIWYG de texto enriquecido, para casos donde no necesitas sintaxis markdown y solo quieres maquetar contenido."
+      },
+      "structured": {
+        "k": "Datos estructurados",
+        "v": "CSV y JSON se pueden abrir y editar dentro de Quill — sin hojas de cálculo ni herramientas de código externas."
+      },
+      "mindmap": {
+        "k": "Mapa mental",
+        "v": "markmap escribe mapas mentales en sintaxis markdown; escribe el esquema y la estructura visual se genera sola."
+      },
+      "modeling": {
+        "k": "Modelado y diagramas",
+        "v": "<ul><li>dbml — escribe diagramas ER para modelado de base de datos</li><li>drawio — diagramas de arquitectura y flujo</li><li>excalidraw — pizarra estilo dibujado a mano</li><li>graphviz — describe grafos con DOT</li><li>plantuml / mermaid — diagramas basados en texto</li></ul>"
+      }
+    },
+    "shots": {
+      "cap1": "Plugins contenedores de markdown",
+      "cap2": "Edición de diagrama ER dbml",
+      "cap3": "Pizarra dibujada a mano excalidraw"
+    },
+    "next": {
+      "prev": "< Aislamiento de vaults",
+      "next": "Siguiente: vista universal >"
+    }
+  },
+  "viewing": {
+    "breadcrumb_page": "Vista universal",
+    "h1": "Lee cualquier archivo sin cambiar de app",
+    "lede": "Un vault inevitablemente contiene muchos formatos. Quill tiene vista integrada para que puedas abrirlos sin salir de la app ni instalar software extra.",
+    "feature": {
+      "office": {"k": "Documentos Office", "v": "Ver Word, Excel, PPT y otros documentos comunes directamente en Quill — sin necesidad de suite ofimática externa."},
+      "media": {"k": "Audio y vídeo", "v": "Reproduce archivos de audio y vídeo en línea; ideal para organizar grabaciones de reuniones, clips de tutoriales y otros materiales."},
+      "archive": {"k": "Archivos comprimidos", "v": "Inspecciona la estructura y contenido de un archivo comprimido sin descomprimirlo."},
+      "ebook": {"k": "Libros electrónicos", "v": "Lee formatos de libro electrónico con vista integrada — mantén tu biblioteca y tu lectura en un solo lugar."},
+      "design": {"k": "Presentaciones y planos", "v": "Abre presentaciones y planos de diseño directamente — menos exportaciones y conversiones de ida y vuelta."}
+    },
+    "shots": {
+      "cap1": "Vista de documento Office",
+      "cap2": "Lectura de CAD"
+    },
+    "next": {
+      "prev": "< Edición multi-formato",
+      "next": "Siguiente: integración de IA >"
+    }
+  },
+  "ai": {
+    "breadcrumb_page": "Integración de IA",
+    "h1": "Conecta agentes de IA a tus notas",
+    "lede": "Quill no te ata a un proveedor de modelos. Adapta los agentes CLI principales directamente al editor — llámalos para análisis, generación o refactorización mientras escribes y organizas conocimiento.",
+    "feature": {
+      "cli": {"k": "Adaptadores CLI", "v": "Soporte integrado para los siguientes agentes CLI, ejecutables desde Quill: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
+      "vendors": {"k": "Múltiples proveedores", "v": "Soporta varios proveedores de modelos — cambia por tarea o preferencia, sin atarte a uno solo."}
+    },
+    "shots": {
+      "cap1": "Interfaz de sesión de Claude Code",
+      "cap2": "Ajustes de cambio de proveedor"
+    },
+    "next": {
+      "prev": "< Vista universal",
+      "next": "Siguiente: mascota de escritorio >"
+    }
+  },
+  "pet": {
+    "breadcrumb_page": "Mascota de escritorio",
+    "h1": "Siempre en el escritorio, lista para hablar",
+    "lede": "La mascota de escritorio es un pequeño compañero que vive en tu escritorio. Empuja recordatorios importantes a la vista y es la forma más rápida de abrir un chat con el modelo.",
+    "feature": {
+      "notify": {"k": "Notificaciones push", "v": "Recordatorios de agenda, cambios de tareas y alertas similares aparecen vía la mascota — sin abrir la app principal para revisar."},
+      "chat": {"k": "Chat rápido", "v": "Haz clic en la mascota para abrir al instante una ventana de chat con el modelo; pregunta a la IA sin romper tu flujo."}
+    },
+    "shots": {
+      "cap1": "Mascota empujando una notificación",
+      "cap2": "Clic para abrir el chat"
+    },
+    "next": {
+      "prev": "< Integración de IA",
+      "next": "Siguiente: sistema de plugins >"
+    }
+  },
+  "plugins": {
+    "breadcrumb_page": "Sistema de plugins",
+    "h1": "Haz crecer lo que necesites, sobre un micronúcleo",
+    "lede": "Quill mantiene el núcleo ligero; la mayoría de las funciones se entregan como plugins. Los plugins integrados cubren escenarios comunes y los de terceros amplían bajo demanda.",
+    "feature": {
+      "arch": {"k": "Arquitectura", "v": "Micronúcleo + SDK de plugins; el núcleo se mantiene ligero, las funciones se cargan por demanda vía plugins y desarrolladores de terceros pueden ampliar."},
+      "translate": {"k": "Traducción", "v": "Plugin de traducción integrado para procesar contenido multilingüe."},
+      "schedule": {"k": "Agenda", "v": "<ul><li>Configuración de tareas y recordatorios</li><li>Temporizador pomodoro de enfoque</li><li>Tablero de tareas</li></ul>"},
+      "wiki": {"k": "Base de conocimiento Wiki", "v": "Organiza y enlaza entradas de conocimiento al estilo wiki, construyendo una red por la que puedes navegar."},
+      "clips": {"k": "Clips", "v": "Captura contenido web y genera automáticamente una página de resumen, ideal para guardar y repasar rápido."},
+      "project": {"k": "Análisis de proyecto", "v": "Analiza proyectos de GitHub y emite un informe en formato HTML."}
+    },
+    "shots": {
+      "cap1": "Mercado / gestión de plugins",
+      "cap2": "Base de conocimiento Wiki",
+      "cap3": "Traducción multilingüe"
+    },
+    "next": {
+      "prev": "< Mascota de escritorio",
+      "next": "Siguiente: entrada por voz >"
+    }
+  },
+  "voice": {
+    "breadcrumb_page": "Entrada por voz",
+    "h1": "Háblalo — más rápido que escribir",
+    "lede": "La entrada por voz convierte la voz en texto pulido al instante, sin pasar por el teclado — ideal para captar ideas y dictar contenido rápido.",
+    "feature": {
+      "stt": {"k": "Voz a texto", "v": "La voz se transcribe en tiempo real y se pega en el cursor automáticamente — sin copiar y pegar manualmente."},
+      "polish": {"k": "Pulido de texto", "v": "El texto transcrito se pulye para quitar muletillas, repeticiones y pausas, acercándolo a la prosa escrita."},
+      "platform": {"k": "Soporte de plataforma", "v": "Actualmente solo macOS; Windows no está soportado todavía."}
+    },
+    "shots": {
+      "cap1": "Transcripción en vivo de la entrada por voz"
+    },
+    "next": {
+      "prev": "< Sistema de plugins",
+      "next": "Siguiente: terminal integrada >"
+    }
+  },
+  "terminal": {
+    "breadcrumb_page": "Terminal integrada",
+    "h1": "La terminal junto al editor — la IA lee y escribe tu texto directamente",
+    "lede": "La terminal integrada lleva agentes CLI al espacio de trabajo de Quill. Claude Code y Codex CLI pueden editar el documento actual in situ — sin copiar y pegar ni cambiar de ventana.",
+    "feature": {
+      "panel": {"k": "Panel de terminal integrada", "v": "Abre un panel de terminal dentro del espacio de trabajo de Quill, junto al editor. Las rutas de archivo se sincronizan automáticamente — sin cd al directorio de trabajo."},
+      "aitext": {"k": "La IA edita texto", "v": "Agentes como Claude Code y Codex CLI leen y escriben el documento actual desde la terminal; los cambios aparecen en el editor al instante — sin copiar y pegar manualmente."},
+      "workflow": {"k": "Integración de flujo", "v": "La terminal comparte contexto con el editor y el panel de IA. La salida de comandos se puede reinsertar en el cursor, convirtiendo editar–invocar–reinsertar en una sola tubería."}
+    },
+    "shots": {
+      "cap1": "Panel de terminal junto al editor",
+      "cap2": "Claude Code editando el documento directamente"
+    },
+    "next": {
+      "prev": "< Entrada por voz",
+      "next": "Volver a todas las capacidades >"
+    }
+  }
+}

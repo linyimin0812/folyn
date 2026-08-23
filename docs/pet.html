@@ -6,7 +6,7 @@
 <title>桌宠助手 — Quill</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-i18n-title="page.pet.title">
 
 <nav class="nav">
   <div class="wrap">
@@ -15,9 +15,19 @@
       Quill
     </a>
     <div class="nav-links">
+      <label class="lang-switch">
+        <select data-i18n-switcher aria-label="Language">
+          <option value="zh">中文</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+        </select>
+      </label>
       <a href="https://github.com/linyimin0812/quill" class="nav-gh" target="_blank" rel="noopener" aria-label="GitHub">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        GitHub
+        <span data-i18n="nav.github">GitHub</span>
       </a>
     </div>
   </div>
@@ -25,10 +35,10 @@
 
 <header class="detail-hero">
   <div class="wrap">
-    <div class="breadcrumb"><a href="index.html">首页</a> / <a href="index.html#capabilities">能力</a> / 桌宠助手</div>
-    <h1>常驻桌面，随时能聊两句</h1>
-    <p class="lede">桌宠是常驻在桌面上的小伙伴，负责把重要提醒推送到你眼前，也是打开大模型对话最快的入口。</p>
-    <div class="tags"><span>通知</span><span>快捷对话</span></div>
+    <div class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb_home">首页</a> / <a href="index.html#capabilities" data-i18n="common.breadcrumb_section">能力</a> / <span data-i18n="pet.breadcrumb_page">桌宠助手</span></div>
+    <h1 data-i18n="pet.h1">常驻桌面，随时能聊两句</h1>
+    <p class="lede" data-i18n="pet.lede">桌宠是常驻在桌面上的小伙伴，负责把重要提醒推送到你眼前，也是打开大模型对话最快的入口。</p>
+    <div class="tags"><span data-i18n="card.pet.tags.notify">通知</span><span data-i18n="card.pet.tags.chat">快捷对话</span></div>
   </div>
 </header>
 
@@ -36,37 +46,38 @@
   <div class="wrap">
     <div class="feature-list">
       <div class="feature-row">
-        <div class="k">推送通知</div>
-        <div class="v">日程提醒、任务变更等信息，通过桌宠直接推送到桌面，不需要额外打开应用查看。</div>
+        <div class="k" data-i18n="pet.feature.notify.k">推送通知</div>
+        <div class="v" data-i18n="pet.feature.notify.v">日程提醒、任务变更等信息，通过桌宠直接推送到桌面，不需要额外打开应用查看。</div>
       </div>
       <div class="feature-row">
-        <div class="k">快速对话</div>
-        <div class="v">点击桌宠即可快速唤起大模型 Chat 对话窗口，随时向 AI 提问，不打断当前的工作节奏。</div>
+        <div class="k" data-i18n="pet.feature.chat.k">快速对话</div>
+        <div class="v" data-i18n="pet.feature.chat.v">点击桌宠即可快速唤起大模型 Chat 对话窗口，随时向 AI 提问，不打断当前的工作节奏。</div>
       </div>
     </div>
 
     <div class="section-head" style="margin-top:64px">
-      <span class="eyebrow mono">screenshots</span>
-      <h2>效果截图</h2>
+      <span class="eyebrow mono" data-i18n="common.shots_eyebrow">screenshots</span>
+      <h2 data-i18n="common.shots_h2">效果截图</h2>
     </div>
     <div class="shot-gallery">
-      <div class="shot"><img src="assets/screenshots/pet-1.png" alt="桌宠推送通知"/><div class="cap">桌宠推送通知</div></div>
-      <div class="shot"><img src="assets/screenshots/pet-2.png" alt="点击唤起对话"/><div class="cap">点击唤起对话</div></div>
+      <div class="shot"><img src="assets/screenshots/pet-1.png" alt="桌宠推送通知"/><div class="cap" data-i18n="pet.shots.cap1">桌宠推送通知</div></div>
+      <div class="shot"><img src="assets/screenshots/pet-2.png" alt="点击唤起对话"/><div class="cap" data-i18n="pet.shots.cap2">点击唤起对话</div></div>
     </div>
 
     <div class="next-links">
-      <a href="ai.html">< AI 深度集成</a>
-      <a href="plugins.html">下一项：插件系统 ></a>
+      <a href="ai.html" data-i18n="pet.next.prev">< AI 深度集成</a>
+      <a href="plugins.html" data-i18n="pet.next.next">下一项：插件系统 ></a>
     </div>
   </div>
 </main>
 
 <footer class="footer">
   <div class="wrap" style="justify-content:center">
-    <span>Copyright © 2026 - 至今 <a href="https://github.com/linyimin0812" target="_blank" rel="noopener">linyimin0812</a>. All Rights Reserved</span>
+    <span data-i18n-html="footer.copyright">Copyright © 2026 - 至今 <a href="https://github.com/linyimin0812" target="_blank" rel="noopener">linyimin0812</a>. All Rights Reserved</span>
   </div>
 </footer>
 <script src="script.js"></script>
+<script src="i18n.js"></script>
 
 </body>
 </html>

@@ -1,0 +1,264 @@
+{
+  "nav": {
+    "github": "GitHub"
+  },
+  "footer": {
+    "copyright": "Copyright © 2026 - 至今 <a href=\"https://github.com/linyimin0812\" target=\"_blank\" rel=\"noopener\">linyimin0812</a>. All Rights Reserved"
+  },
+  "common": {
+    "shots_eyebrow": "screenshots",
+    "shots_h2": "效果截图",
+    "breadcrumb_home": "首页",
+    "breadcrumb_section": "能力"
+  },
+  "page": {
+    "index": {
+      "title": "Quill — 本地优先的知识仓库",
+      "description": "Quill 是一款本地优先的知识管理桌面应用：多仓库隔离、多格式编辑与预览、AI 深度集成、插件系统与语音输入。"
+    },
+    "vault": {"title": "Vault 多仓库隔离管理 — Quill"},
+    "editing": {"title": "多格式编辑 — Quill"},
+    "viewing": {"title": "全格式预览 — Quill"},
+    "ai": {"title": "AI 深度集成 — Quill"},
+    "pet": {"title": "桌宠助手 — Quill"},
+    "plugins": {"title": "插件系统 — Quill"},
+    "terminal": {"title": "应用内终端 — Quill"},
+    "voice": {"title": "语音输入 — Quill"}
+  },
+  "hero": {
+    "eyebrow": "local-first · vault-based · ai-native",
+    "h1": "一个应用，承载全部上下文",
+    "lede": "Quill 是一款本地优先的知识管理桌面应用。以 Vault 隔离每一份数据，用一套编辑器容纳 markdown、白板、ER 图、思维导图，再把 AI 代理直接接入你的工作流——所有内容始终留在你自己的设备上。",
+    "cta": {
+      "download": "下载 Quill",
+      "capabilities": "查看全部能力"
+    },
+    "shot": {
+      "empty": "（Quill 主界面截图）",
+      "loading": "加载中…"
+    },
+    "status": {
+      "split": "分屏模式",
+      "words": "0 字"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "capabilities",
+    "h2": "八种能力，一套工作流",
+    "lede": "从仓库管理到 AI 代理，从手绘白板到语音输入——点开任意一张卡片，查看详细介绍。"
+  },
+  "card": {
+    "go": "了解详情 →",
+    "vault": {
+      "title": "Vault 多仓库隔离",
+      "desc": "为每个项目、每份笔记开一个独立仓库，数据互不干扰，随时切换。",
+      "tags": {"local": "本地存储"}
+    },
+    "editing": {
+      "title": "多格式编辑",
+      "desc": "markdown、富文本、CSV、JSON、思维导图、ER 图、手绘白板、流程图，一个编辑器全部搞定。"
+    },
+    "viewing": {
+      "title": "全格式预览",
+      "desc": "Office 文档、音视频、压缩包、电子书、图纸，不用离开 Quill 就能查看。"
+    },
+    "ai": {
+      "title": "AI 深度集成",
+      "desc": "接入 Claude Code、Codex CLI、Gemini CLI 等多种 CLI 代理，跨模型厂商自由切换。"
+    },
+    "pet": {
+      "title": "桌宠助手",
+      "desc": "常驻桌面的小伙伴，负责推送通知，一点即可唤起大模型对话。",
+      "tags": {"notify": "通知", "chat": "快捷对话"}
+    },
+    "plugins": {
+      "title": "插件系统",
+      "desc": "微内核＋插件 SDK 架构，翻译、日程、Wiki、剪藏、项目分析均以插件形式提供，也支持第三方扩展。",
+      "tags": {"ext": "第三方扩展"}
+    },
+    "voice": {
+      "title": "语音输入",
+      "desc": "语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。",
+      "tags": {"stt": "语音转写"}
+    },
+    "terminal": {
+      "title": "应用内终端",
+      "desc": "在 Quill 中直接打开终端，调用 Claude Code、Codex 等 CLI 代理操作当前文档文本，无需在窗口间切换。",
+      "tags": {"shell": "内置 shell"}
+    }
+  },
+  "vault": {
+    "breadcrumb_page": "Vault",
+    "h1": "一个仓库，一套边界",
+    "lede": "Vault 是 Quill 里数据隔离的最小单位。不同的项目、不同的知识领域，各自拥有独立的仓库，互不干扰，也互不共享——你决定什么放在一起，什么分开管理。",
+    "feature": {
+      "isolation": {
+        "k": "隔离管理",
+        "v": "每个 Vault 都是一套独立的数据空间，笔记、附件、插件配置都各自存放，切换 Vault 就像切换一整套工作环境。"
+      },
+      "multi": {
+        "k": "多仓库并存",
+        "v": "工作、个人、团队项目可以拆分成多个 Vault 同时存在，在侧边栏之间快速切换，不必担心内容互相混淆。"
+      },
+      "local": {
+        "k": "本地优先",
+        "v": "Vault 中的数据保存在本地设备上，不依赖云端账号即可正常使用，你对自己的数据拥有完整的控制权。"
+      }
+    },
+    "shots": {
+      "cap1": "仓库切换界面",
+      "cap2": "新建 Vault 流程"
+    },
+    "next": {
+      "prev": "< 返回全部能力",
+      "next": "下一项：多格式编辑 >"
+    }
+  },
+  "editing": {
+    "breadcrumb_page": "多格式编辑",
+    "h1": "一个编辑器，写下所有形态的想法",
+    "lede": "从纯文本到结构化数据，从流程图到手绘白板，Quill 把常用的编辑场景收进同一个应用，不需要在多个工具之间来回切换。",
+    "feature": {
+      "markdown": {
+        "k": "Markdown",
+        "v": "支持标准 markdown 语法，并内置一套容器插件，让文档里可以直接嵌入更丰富的结构：<ul><li>Button / Callout / Card / Collapsible</li><li>FilePreview / Grid / StatusTag / Steps / Tabs / Timeline</li><li>Graphviz / Mermaid / PlantUml 图表容器</li></ul>"
+      },
+      "richtext": {
+        "k": "富文本",
+        "v": "所见即所得的富文本编辑，适合不需要 markdown 语法、只想直接排版内容的场景。"
+      },
+      "structured": {
+        "k": "结构化数据",
+        "v": "CSV、JSON 可以直接在 Quill 中打开编辑，无需借助外部表格或代码工具。"
+      },
+      "mindmap": {
+        "k": "思维导图",
+        "v": "markmap 用 markdown 语法编写思维导图，写大纲的同时自动生成可视化结构。"
+      },
+      "modeling": {
+        "k": "建模与制图",
+        "v": "<ul><li>dbml — 编写 ER 图，用于数据库建模</li><li>drawio — 绘制架构图、流程图</li><li>excalidraw — 手绘风格白板</li><li>graphviz — 用 DOT 语言描述图结构</li><li>plantuml / mermaid — 文本驱动的图表绘制</li></ul>"
+      }
+    },
+    "shots": {
+      "cap1": "markdown 容器插件效果",
+      "cap2": "dbml ER 图编辑",
+      "cap3": "excalidraw 手绘白板"
+    },
+    "next": {
+      "prev": "< Vault 多仓库隔离",
+      "next": "下一项：全格式预览 >"
+    }
+  },
+  "viewing": {
+    "breadcrumb_page": "全格式预览",
+    "h1": "不用切换应用，就能看懂每一份文件",
+    "lede": "仓库里难免混杂各种格式的资料。Quill 内置预览能力，让你不必跳出应用、不必额外安装软件，就能直接查看它们。",
+    "feature": {
+      "office": {"k": "Office 文档", "v": "直接在 Quill 内查看 Word、Excel、PPT 等常见办公文档，无需借助外部办公软件。"},
+      "media": {"k": "音视频文档", "v": "音频、视频文件可以直接播放预览，方便整理会议录音、教程素材等多媒体资料。"},
+      "archive": {"k": "压缩包", "v": "无需解压，直接查看压缩包内的文件结构与内容。"},
+      "ebook": {"k": "电子书", "v": "支持电子书格式的阅读预览，把资料库和阅读放在同一个地方。"},
+      "design": {"k": "演示与图纸", "v": "演示文稿与设计图纸类文件同样可以直接打开查看，减少来回导出转换的麻烦。"}
+    },
+    "shots": {
+      "cap1": "office 文档预览",
+      "cap2": "CAD 阅读"
+    },
+    "next": {
+      "prev": "< 多格式编辑",
+      "next": "下一项：AI 深度集成 >"
+    }
+  },
+  "ai": {
+    "breadcrumb_page": "AI 深度集成",
+    "h1": "把 AI 代理，接进你的笔记里",
+    "lede": "Quill 不绑定单一模型厂商，而是把主流 CLI 代理直接适配进编辑器，你可以在写作和整理知识的同时，直接调用它们完成分析、生成与重构。",
+    "feature": {
+      "cli": {"k": "CLI 适配器", "v": "内置对以下 CLI 代理的适配支持，可直接在 Quill 中调用：Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder。"},
+      "vendors": {"k": "多模型厂商", "v": "支持多家大模型厂商，按任务需要或个人偏好自由切换，不被单一供应商绑定。"}
+    },
+    "shots": {
+      "cap1": "Claude Code 会话界面",
+      "cap2": "模型厂商切换设置"
+    },
+    "next": {
+      "prev": "< 全格式预览",
+      "next": "下一项：桌宠助手 >"
+    }
+  },
+  "pet": {
+    "breadcrumb_page": "桌宠助手",
+    "h1": "常驻桌面，随时能聊两句",
+    "lede": "桌宠是常驻在桌面上的小伙伴，负责把重要提醒推送到你眼前，也是打开大模型对话最快的入口。",
+    "feature": {
+      "notify": {"k": "推送通知", "v": "日程提醒、任务变更等信息，通过桌宠直接推送到桌面，不需要额外打开应用查看。"},
+      "chat": {"k": "快速对话", "v": "点击桌宠即可快速唤起大模型 Chat 对话窗口，随时向 AI 提问，不打断当前的工作节奏。"}
+    },
+    "shots": {
+      "cap1": "桌宠推送通知",
+      "cap2": "点击唤起对话"
+    },
+    "next": {
+      "prev": "< AI 深度集成",
+      "next": "下一项：插件系统 >"
+    }
+  },
+  "plugins": {
+    "breadcrumb_page": "插件系统",
+    "h1": "微内核之上，长出你需要的功能",
+    "lede": "Quill 的核心保持精简，绝大多数功能都以插件形式提供。内置插件覆盖常见场景，也支持第三方插件按需扩展。",
+    "feature": {
+      "arch": {"k": "架构", "v": "微内核＋插件 SDK 架构，核心保持轻量，功能通过插件按需加载，也支持第三方开发者扩展。"},
+      "translate": {"k": "翻译", "v": "内置翻译插件，帮助处理多语言内容。"},
+      "schedule": {"k": "日程", "v": "<ul><li>日程任务设置与通知提醒</li><li>专注番茄计时</li><li>任务看板</li></ul>"},
+      "wiki": {"k": "Wiki 知识库", "v": "以 Wiki 的方式组织和链接知识条目，构建可以互相跳转的知识网络。"},
+      "clips": {"k": "Clips 剪藏", "v": "获取网页内容，并自动总结输出一份摘要页面，方便快速留存和回顾。"},
+      "project": {"k": "项目分析", "v": "分析 GitHub 项目，输出一份 HTML 格式的分析结果。"}
+    },
+    "shots": {
+      "cap1": "插件市场/管理界面",
+      "cap2": "Wiki 知识库效果",
+      "cap3": "多语言翻译"
+    },
+    "next": {
+      "prev": "< 桌宠助手",
+      "next": "下一项：语音输入 >"
+    }
+  },
+  "voice": {
+    "breadcrumb_page": "语音输入",
+    "h1": "说出来，比打字更快",
+    "lede": "语音输入把说话直接变成整理好的文字，省去打字的过程，适合快速记录灵感和口述内容。",
+    "feature": {
+      "stt": {"k": "语音转文字", "v": "说话内容会被实时转写成文字，并自动粘贴到当前光标所在位置，无需手动复制粘贴。"},
+      "polish": {"k": "文字润色", "v": "转写后的内容会经过润色处理，去除口语化的重复和停顿，让文字更贴近书面表达。"},
+      "platform": {"k": "平台支持", "v": "目前仅支持 macOS，Windows 暂不支持。"}
+    },
+    "shots": {
+      "cap1": "语音输入实时转写"
+    },
+    "next": {
+      "prev": "< 插件系统",
+      "next": "下一项：应用内终端 >"
+    }
+  },
+  "terminal": {
+    "breadcrumb_page": "应用内终端",
+    "h1": "终端就在编辑器旁边，AI 直接读写你的文本",
+    "lede": "应用内终端把 CLI 代理请进 Quill 工作区，Claude Code、Codex CLI 可以直接对当前文档发起修改，省去复制粘贴和窗口切换。",
+    "feature": {
+      "panel": {"k": "内置终端面板", "v": "在 Quill 工作区内打开终端面板，与编辑器并列展示，文件路径自动同步，无需 cd 到工作目录。"},
+      "aitext": {"k": "AI 操作文本", "v": "Claude Code、Codex CLI 等代理在终端里直接读写当前文档，AI 改完立刻在编辑器中可见，省去手动复制粘贴。"},
+      "workflow": {"k": "工作流集成", "v": "终端与编辑器、AI 面板共享上下文，命令输出可以回填到光标处，把\"编辑—调用—回填\"压成一条流水线。"}
+    },
+    "shots": {
+      "cap1": "终端面板与编辑器并列",
+      "cap2": "Claude Code 直接改文档"
+    },
+    "next": {
+      "prev": "< 语音输入",
+      "next": "返回全部能力 >"
+    }
+  }
+}

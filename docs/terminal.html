@@ -6,7 +6,7 @@
 <title>应用内终端 — Quill</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-i18n-title="page.terminal.title">
 
 <nav class="nav">
   <div class="wrap">
@@ -15,9 +15,19 @@
       Quill
     </a>
     <div class="nav-links">
+      <label class="lang-switch">
+        <select data-i18n-switcher aria-label="Language">
+          <option value="zh">中文</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+        </select>
+      </label>
       <a href="https://github.com/linyimin0812/quill" class="nav-gh" target="_blank" rel="noopener" aria-label="GitHub">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        GitHub
+        <span data-i18n="nav.github">GitHub</span>
       </a>
     </div>
   </div>
@@ -25,10 +35,10 @@
 
 <header class="detail-hero">
   <div class="wrap">
-    <div class="breadcrumb"><a href="index.html">首页</a> / <a href="index.html#capabilities">能力</a> / 应用内终端</div>
-    <h1>终端就在编辑器旁边，AI 直接读写你的文本</h1>
-    <p class="lede">应用内终端把 CLI 代理请进 Quill 工作区，Claude Code、Codex CLI 可以直接对当前文档发起修改，省去复制粘贴和窗口切换。</p>
-    <div class="tags"><span>terminal</span><span>内置 shell</span><span>CLI 代理</span></div>
+    <div class="breadcrumb"><a href="index.html" data-i18n="common.breadcrumb_home">首页</a> / <a href="index.html#capabilities" data-i18n="common.breadcrumb_section">能力</a> / <span data-i18n="terminal.breadcrumb_page">应用内终端</span></div>
+    <h1 data-i18n="terminal.h1">终端就在编辑器旁边，AI 直接读写你的文本</h1>
+    <p class="lede" data-i18n="terminal.lede">应用内终端把 CLI 代理请进 Quill 工作区，Claude Code、Codex CLI 可以直接对当前文档发起修改，省去复制粘贴和窗口切换。</p>
+    <div class="tags"><span>terminal</span><span data-i18n="card.terminal.tags.shell">内置 shell</span><span>CLI 代理</span></div>
   </div>
 </header>
 
@@ -36,41 +46,42 @@
   <div class="wrap">
     <div class="feature-list">
       <div class="feature-row">
-        <div class="k">内置终端面板</div>
-        <div class="v">在 Quill 工作区内打开终端面板，与编辑器并列展示，文件路径自动同步，无需 cd 到工作目录。</div>
+        <div class="k" data-i18n="terminal.feature.panel.k">内置终端面板</div>
+        <div class="v" data-i18n="terminal.feature.panel.v">在 Quill 工作区内打开终端面板，与编辑器并列展示，文件路径自动同步，无需 cd 到工作目录。</div>
       </div>
       <div class="feature-row">
-        <div class="k">AI 操作文本</div>
-        <div class="v">Claude Code、Codex CLI 等代理在终端里直接读写当前文档，AI 改完立刻在编辑器中可见，省去手动复制粘贴。</div>
+        <div class="k" data-i18n="terminal.feature.aitext.k">AI 操作文本</div>
+        <div class="v" data-i18n="terminal.feature.aitext.v">Claude Code、Codex CLI 等代理在终端里直接读写当前文档，AI 改完立刻在编辑器中可见，省去手动复制粘贴。</div>
       </div>
       <div class="feature-row">
-        <div class="k">工作流集成</div>
-        <div class="v">终端与编辑器、AI 面板共享上下文，命令输出可以回填到光标处，把"编辑—调用—回填"压成一条流水线。</div>
+        <div class="k" data-i18n="terminal.feature.workflow.k">工作流集成</div>
+        <div class="v" data-i18n="terminal.feature.workflow.v">终端与编辑器、AI 面板共享上下文，命令输出可以回填到光标处，把"编辑—调用—回填"压成一条流水线。</div>
       </div>
     </div>
 
     <div class="section-head" style="margin-top:64px">
-      <span class="eyebrow mono">screenshots</span>
-      <h2>效果截图</h2>
+      <span class="eyebrow mono" data-i18n="common.shots_eyebrow">screenshots</span>
+      <h2 data-i18n="common.shots_h2">效果截图</h2>
     </div>
     <div class="shot-gallery">
-      <div class="shot"><img src="assets/screenshots/terminal-1.png" alt="终端面板与编辑器并列"/><div class="cap">终端面板与编辑器并列</div></div>
-      <div class="shot"><img src="assets/screenshots/terminal-2.png" alt="Claude Code 直接改文档"/><div class="cap">Claude Code 直接改文档</div></div>
+      <div class="shot"><img src="assets/screenshots/terminal-1.png" alt="终端面板与编辑器并列"/><div class="cap" data-i18n="terminal.shots.cap1">终端面板与编辑器并列</div></div>
+      <div class="shot"><img src="assets/screenshots/terminal-2.png" alt="Claude Code 直接改文档"/><div class="cap" data-i18n="terminal.shots.cap2">Claude Code 直接改文档</div></div>
     </div>
 
     <div class="next-links">
-      <a href="voice.html">< 语音输入</a>
-      <a href="index.html#capabilities">返回全部能力 ></a>
+      <a href="voice.html" data-i18n="terminal.next.prev">< 语音输入</a>
+      <a href="index.html#capabilities" data-i18n="terminal.next.next">返回全部能力 ></a>
     </div>
   </div>
 </main>
 
 <footer class="footer">
   <div class="wrap" style="justify-content:center">
-    <span>Copyright © 2026 - 至今 <a href="https://github.com/linyimin0812" target="_blank" rel="noopener">linyimin0812</a>. All Rights Reserved</span>
+    <span data-i18n-html="footer.copyright">Copyright © 2026 - 至今 <a href="https://github.com/linyimin0812" target="_blank" rel="noopener">linyimin0812</a>. All Rights Reserved</span>
   </div>
 </footer>
 <script src="script.js"></script>
+<script src="i18n.js"></script>
 
 </body>
 </html>

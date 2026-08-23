@@ -1,0 +1,264 @@
+{
+  "nav": {
+    "github": "GitHub"
+  },
+  "footer": {
+    "copyright": "Copyright © 2026 - present <a href=\"https://github.com/linyimin0812\" target=\"_blank\" rel=\"noopener\">linyimin0812</a>. All Rights Reserved"
+  },
+  "common": {
+    "shots_eyebrow": "screenshots",
+    "shots_h2": "Screenshots",
+    "breadcrumb_home": "Home",
+    "breadcrumb_section": "Capabilities"
+  },
+  "page": {
+    "index": {
+      "title": "Quill — A local-first knowledge vault",
+      "description": "Quill is a local-first desktop app for knowledge management: multi-vault isolation, multi-format editing and preview, deep AI integration, a plugin system, and voice input."
+    },
+    "vault": {"title": "Vault multi-vault isolation — Quill"},
+    "editing": {"title": "Multi-format editing — Quill"},
+    "viewing": {"title": "Universal format preview — Quill"},
+    "ai": {"title": "Deep AI integration — Quill"},
+    "pet": {"title": "Desktop pet assistant — Quill"},
+    "plugins": {"title": "Plugin system — Quill"},
+    "terminal": {"title": "In-app terminal — Quill"},
+    "voice": {"title": "Voice input — Quill"}
+  },
+  "hero": {
+    "eyebrow": "local-first · vault-based · ai-native",
+    "h1": "One app, all your context",
+    "lede": "Quill is a local-first desktop app for knowledge management. It isolates each set of data in a Vault, fits markdown, whiteboards, ER diagrams, and mind maps into one editor, and wires AI agents straight into your workflow — everything stays on your own devices.",
+    "cta": {
+      "download": "Download Quill",
+      "capabilities": "See all capabilities"
+    },
+    "shot": {
+      "empty": "(Quill main interface screenshot)",
+      "loading": "Loading…"
+    },
+    "status": {
+      "split": "Split view",
+      "words": "0 words"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "capabilities",
+    "h2": "Eight capabilities, one workflow",
+    "lede": "From vault management to AI agents, from hand-drawn whiteboards to voice input — click any card for details."
+  },
+  "card": {
+    "go": "Learn more →",
+    "vault": {
+      "title": "Vault multi-vault isolation",
+      "desc": "Open an isolated vault for each project or set of notes — data stays separate, switch anytime.",
+      "tags": {"local": "local storage"}
+    },
+    "editing": {
+      "title": "Multi-format editing",
+      "desc": "Markdown, rich text, CSV, JSON, mind maps, ER diagrams, hand-drawn whiteboards, flowcharts — one editor handles them all."
+    },
+    "viewing": {
+      "title": "Universal format preview",
+      "desc": "Office docs, audio/video, archives, e-books, drawings — view them without leaving Quill."
+    },
+    "ai": {
+      "title": "Deep AI integration",
+      "desc": "Connect Claude Code, Codex CLI, Gemini CLI and other CLI agents; switch freely across model vendors."
+    },
+    "pet": {
+      "title": "Desktop pet assistant",
+      "desc": "A small companion on your desktop that pushes notifications and opens a model chat in one click.",
+      "tags": {"notify": "notifications", "chat": "quick chat"}
+    },
+    "plugins": {
+      "title": "Plugin system",
+      "desc": "Microkernel + plugin SDK architecture. Translation, schedule, Wiki, clips, project analysis ship as plugins; third-party extensions supported.",
+      "tags": {"ext": "third-party extensions"}
+    },
+    "voice": {
+      "title": "Voice input",
+      "desc": "Speech-to-text with automatic polishing, pasted straight at the cursor (macOS only for now).",
+      "tags": {"stt": "speech-to-text"}
+    },
+    "terminal": {
+      "title": "In-app terminal",
+      "desc": "Open a terminal inside Quill and let Claude Code, Codex and other CLI agents edit the current document — no window switching.",
+      "tags": {"shell": "built-in shell"}
+    }
+  },
+  "vault": {
+    "breadcrumb_page": "Vault",
+    "h1": "One vault, one boundary",
+    "lede": "A Vault is the smallest unit of data isolation in Quill. Different projects and knowledge domains live in their own vaults — they don't interfere, they don't share. You decide what stays together and what stays apart.",
+    "feature": {
+      "isolation": {
+        "k": "Isolated management",
+        "v": "Each Vault is an independent data space — notes, attachments, and plugin configs all live separately. Switching vaults is like switching an entire workspace."
+      },
+      "multi": {
+        "k": "Multiple vaults",
+        "v": "Work, personal, and team projects can split into multiple vaults that coexist; switch quickly between sidebars without mixing content."
+      },
+      "local": {
+        "k": "Local-first",
+        "v": "Vault data is stored on your local device — no cloud account required. You keep full control of your data."
+      }
+    },
+    "shots": {
+      "cap1": "Vault switching UI",
+      "cap2": "Create new Vault flow"
+    },
+    "next": {
+      "prev": "< Back to all capabilities",
+      "next": "Next: multi-format editing >"
+    }
+  },
+  "editing": {
+    "breadcrumb_page": "Multi-format editing",
+    "h1": "One editor for every shape of thought",
+    "lede": "From plain text to structured data, from flowcharts to hand-drawn whiteboards, Quill gathers the common editing scenarios into one app — no more bouncing between tools.",
+    "feature": {
+      "markdown": {
+        "k": "Markdown",
+        "v": "Standard markdown syntax plus a built-in container plugin family, letting documents embed richer structures directly: <ul><li>Button / Callout / Card / Collapsible</li><li>FilePreview / Grid / StatusTag / Steps / Tabs / Timeline</li><li>Graphviz / Mermaid / PlantUml diagram containers</li></ul>"
+      },
+      "richtext": {
+        "k": "Rich text",
+        "v": "WYSIWYG rich text editing, for cases where markdown syntax isn't needed and you just want to lay content out."
+      },
+      "structured": {
+        "k": "Structured data",
+        "v": "CSV and JSON can be opened and edited inside Quill — no external spreadsheet or code tool required."
+      },
+      "mindmap": {
+        "k": "Mind map",
+        "v": "markmap writes mind maps in markdown syntax; write the outline and the visual structure generates itself."
+      },
+      "modeling": {
+        "k": "Modeling and diagrams",
+        "v": "<ul><li>dbml — write ER diagrams for database modeling</li><li>drawio — architecture and flowchart drawing</li><li>excalidraw — hand-drawn-style whiteboard</li><li>graphviz — describe graphs with DOT</li><li>plantuml / mermaid — text-driven diagram drawing</li></ul>"
+      }
+    },
+    "shots": {
+      "cap1": "Markdown container plugins",
+      "cap2": "dbml ER diagram editing",
+      "cap3": "excalidraw hand-drawn whiteboard"
+    },
+    "next": {
+      "prev": "< Vault isolation",
+      "next": "Next: universal preview >"
+    }
+  },
+  "viewing": {
+    "breadcrumb_page": "Universal preview",
+    "h1": "Read every file without switching apps",
+    "lede": "A vault inevitably holds many formats. Quill has built-in preview so you can open them without jumping out of the app or installing extra software.",
+    "feature": {
+      "office": {"k": "Office documents", "v": "View Word, Excel, PPT and other common office documents directly in Quill — no external office suite needed."},
+      "media": {"k": "Audio and video", "v": "Play audio and video files inline; ideal for organizing meeting recordings, tutorial clips, and other multimedia."},
+      "archive": {"k": "Archives", "v": "Inspect the file structure and contents of an archive without unpacking it."},
+      "ebook": {"k": "E-books", "v": "Read e-book formats with built-in preview — keep your library and your reading in one place."},
+      "design": {"k": "Decks and drawings", "v": "Open presentation decks and design drawings directly — fewer round-trip exports and conversions."}
+    },
+    "shots": {
+      "cap1": "Office document preview",
+      "cap2": "CAD reading"
+    },
+    "next": {
+      "prev": "< Multi-format editing",
+      "next": "Next: AI integration >"
+    }
+  },
+  "ai": {
+    "breadcrumb_page": "AI integration",
+    "h1": "Wire AI agents into your notes",
+    "lede": "Quill doesn't lock you to one model vendor. It adapts mainstream CLI agents straight into the editor — call them for analysis, generation, or refactoring while you write and organize knowledge.",
+    "feature": {
+      "cli": {"k": "CLI adapters", "v": "Built-in adapter support for the following CLI agents, callable directly from Quill: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
+      "vendors": {"k": "Multiple vendors", "v": "Supports several model vendors — switch by task or personal preference, no vendor lock-in."}
+    },
+    "shots": {
+      "cap1": "Claude Code session UI",
+      "cap2": "Model vendor switch settings"
+    },
+    "next": {
+      "prev": "< Universal preview",
+      "next": "Next: desktop pet >"
+    }
+  },
+  "pet": {
+    "breadcrumb_page": "Desktop pet",
+    "h1": "Always on desktop, ready to chat",
+    "lede": "The desktop pet is a small companion that lives on your desktop. It pushes important reminders into view and is the fastest way into a model chat.",
+    "feature": {
+      "notify": {"k": "Push notifications", "v": "Schedule reminders, task changes and similar alerts pop up via the pet — no need to open the main app to check."},
+      "chat": {"k": "Quick chat", "v": "Click the pet to open a model chat window instantly; ask the AI anything without breaking your workflow."}
+    },
+    "shots": {
+      "cap1": "Pet pushing a notification",
+      "cap2": "Click to open chat"
+    },
+    "next": {
+      "prev": "< AI integration",
+      "next": "Next: plugin system >"
+    }
+  },
+  "plugins": {
+    "breadcrumb_page": "Plugin system",
+    "h1": "Grow the features you need, on a microkernel",
+    "lede": "Quill keeps its core lean; most functionality ships as plugins. Built-in plugins cover common scenarios, and third-party plugins extend on demand.",
+    "feature": {
+      "arch": {"k": "Architecture", "v": "Microkernel + plugin SDK; the core stays lightweight, features load on demand via plugins, and third-party developers can extend."},
+      "translate": {"k": "Translation", "v": "Built-in translation plugin helps process multilingual content."},
+      "schedule": {"k": "Schedule", "v": "<ul><li>Schedule and task setup with reminders</li><li>Focus pomodoro timer</li><li>Task board</li></ul>"},
+      "wiki": {"k": "Wiki knowledge base", "v": "Organize and link knowledge entries wiki-style, building a network you can jump between."},
+      "clips": {"k": "Clips", "v": "Capture web content and auto-summarize it into a digest page for quick save and review."},
+      "project": {"k": "Project analysis", "v": "Analyze GitHub projects and emit an HTML analysis report."}
+    },
+    "shots": {
+      "cap1": "Plugin marketplace / management",
+      "cap2": "Wiki knowledge base",
+      "cap3": "Multilingual translation"
+    },
+    "next": {
+      "prev": "< Desktop pet",
+      "next": "Next: voice input >"
+    }
+  },
+  "voice": {
+    "breadcrumb_page": "Voice input",
+    "h1": "Speak it — faster than typing",
+    "lede": "Voice input turns speech into cleaned-up text on the spot, skipping the typing step — ideal for capturing ideas and dictating content quickly.",
+    "feature": {
+      "stt": {"k": "Speech to text", "v": "Speech is transcribed in real time and pasted at the cursor automatically — no manual copy/paste."},
+      "polish": {"k": "Text polishing", "v": "Transcribed text is polished to remove spoken filler, repetition, and pauses, getting closer to written prose."},
+      "platform": {"k": "Platform support", "v": "Currently macOS only; Windows is not yet supported."}
+    },
+    "shots": {
+      "cap1": "Voice input live transcription"
+    },
+    "next": {
+      "prev": "< Plugin system",
+      "next": "Next: in-app terminal >"
+    }
+  },
+  "terminal": {
+    "breadcrumb_page": "In-app terminal",
+    "h1": "The terminal sits next to the editor — AI reads and writes your text directly",
+    "lede": "The in-app terminal brings CLI agents into the Quill workspace. Claude Code and Codex CLI can edit the current document in place — no copy/paste, no window switching.",
+    "feature": {
+      "panel": {"k": "Built-in terminal panel", "v": "Open a terminal panel inside the Quill workspace, side by side with the editor. File paths sync automatically — no need to cd into the working directory."},
+      "aitext": {"k": "AI edits text", "v": "Agents like Claude Code and Codex CLI read and write the current document from the terminal; AI edits appear in the editor instantly — no manual copy/paste."},
+      "workflow": {"k": "Workflow integration", "v": "The terminal shares context with the editor and AI panel. Command output can be pasted back at the cursor, turning edit–invoke–paste into a single pipeline."}
+    },
+    "shots": {
+      "cap1": "Terminal panel beside the editor",
+      "cap2": "Claude Code editing the document directly"
+    },
+    "next": {
+      "prev": "< Voice input",
+      "next": "Back to all capabilities >"
+    }
+  }
+}
