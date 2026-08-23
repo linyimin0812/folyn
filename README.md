@@ -1,9 +1,9 @@
-[简体中文](README.md) | [English](README.en.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
+[English](README.md) | [简体中文](README.zh.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-<h1 align="center">Quill编辑器</h1>
+<h1 align="center">Quill Editor</h1>
 
 <p align="center">
-  本地优先 · 仓库隔离 · AI 原生<br/>
+  Local-first · Vault-isolated · AI-native<br/>
   Local-first, vault-based, AI-native knowledge workspace.
 </p>
 
@@ -16,63 +16,63 @@
 
 ---
 
-> 一个应用，承载全部上下文。以 Vault 隔离每一份数据，用一套编辑器容纳 markdown、白板、ER 图、思维导图，再把 AI 代理直接接入工作流——所有内容始终留在你自己的设备上。
+> One app, all your context. Isolate each set of data in a Vault, fit markdown, whiteboards, ER diagrams, and mind maps into one editor, and wire AI agents straight into your workflow — everything stays on your own devices.
 
 ## Why Quill
 
-- **Vault 多仓库隔离** — 为每个项目、每份笔记开一个独立仓库，数据互不干扰，随时切换。本地是唯一真源。
-- **多格式编辑** — Markdown（含容器插件：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible，以及 Graphviz / Mermaid / PlantUML 图表容器）、富文本、CSV、JSON、markmap 思维导图、dbml ER 图、drawio 架构图、excalidraw 手绘白板、graphviz DOT 图——一个编辑器全部搞定。
-- **全格式预览** — Office 文档、音视频、压缩包、电子书、演示与图纸，不离开 Quill 就能查看。
-- **AI 深度集成** — 内置适配 Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder 六种 CLI 代理，跨模型厂商自由切换，不绑定单一供应商。
-- **桌宠助手** — 常驻桌面的小伙伴，负责推送日程提醒、任务变更通知，一点即可唤起大模型对话。
-- **应用内终端** — 在 Quill 中直接打开终端，调用 Claude Code / Codex 等 CLI 代理读写当前文档，无需窗口切换。
-- **插件系统** — 微内核 + 插件 SDK 架构，翻译、日程、Wiki、Clips 剪藏、项目分析均以插件形式提供，支持第三方扩展。
-- **语音输入** — 语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。
+- **Vault multi-vault isolation** — Open a separate vault for each project or note set. Data stays independent, switch anytime. Your local device is the single source of truth.
+- **Multi-format editing** — Markdown (with container plugins: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, plus Graphviz / Mermaid / PlantUML diagram containers), rich text, CSV, JSON, markmap mind maps, dbml ER diagrams, drawio architecture diagrams, excalidraw hand-drawn whiteboards, graphviz DOT — one editor handles them all.
+- **Universal preview** — Office documents, audio/video, archives, e-books, presentations and drawings — view them without leaving Quill.
+- **Deep AI integration** — Built-in adapters for six CLI agents: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Switch freely across model vendors, no vendor lock-in.
+- **Desktop pet assistant** — A resident desktop companion that pushes schedule reminders and task-change notifications; click to bring up a chat with the LLM.
+- **In-app terminal** — Open a terminal inside Quill and let Claude Code / Codex / other CLI agents read and write the current document — no window switching.
+- **Plugin system** — Microkernel + plugin SDK architecture. Translation, schedule, Wiki, Clips, and project analysis ship as plugins; third-party extensions supported.
+- **Voice input** — Speech-to-text with automatic polish, pasted straight to the cursor (currently macOS only).
 
 ## For Users
 
-### 首次运行提示
+### First-run notes
 
-应用未做代码签名,首次运行时会触发系统安全拦截,按以下步骤放行即可:
+The app is not code-signed; the OS will block it on first launch. Dismiss as follows:
 
-- **Windows**:首次运行会看到 SmartScreen "Windows 已保护你的电脑" 警告。点击 **更多信息 → 仍要运行**。
-- **macOS**:安装完成后首次打开若提示"无法打开"或"已损坏",在 Terminal 中执行:
+- **Windows**: You'll see a SmartScreen "Windows protected your PC" warning on first run. Click **More info → Run anyway**.
+- **macOS**: If "can't be opened" or "damaged" appears after install, run in Terminal:
   ```bash
   xattr -cr /Applications/Quill.app
   ```
-  然后重新从启动台打开。
+  Then reopen from Launchpad.
 
-### Vault 多仓库隔离
+### Vault multi-vault isolation
 
-为每个项目、每份笔记开一个独立仓库。每个 Vault 都是一套独立的数据空间——笔记、附件、插件配置都各自存放,切换 Vault 就像切换一整套工作环境。数据保存在本地设备,不依赖云端账号。
+Open a separate vault for each project or note set. Each vault is its own data space — notes, attachments, and plugin configs are stored independently; switching vaults is like switching a whole workspace. Data stays on the local device; no cloud account required.
 
 <p align="center">
   <img src="docs/assets/screenshots/vault-1.png" alt="Vault switching" width="860" />
 </p>
 
-### 多格式编辑
+### Multi-format editing
 
-- **Markdown** — 标准语法 + 一套容器插件:Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline,以及 Graphviz / Mermaid / PlantUml 图表容器
-- **富文本** — 所见即所得,适合不需要 markdown 语法的排版场景
-- **结构化数据** — CSV、JSON 直接编辑
-- **思维导图** — markmap,markdown 大纲自动生成可视化结构
-- **建模与制图** — dbml (ER 图) / drawio (架构图、流程图) / excalidraw (手绘白板) / graphviz (DOT) / plantuml / mermaid
+- **Markdown** — Standard syntax + a set of container plugins: Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline, plus Graphviz / Mermaid / PlantUml diagram containers
+- **Rich text** — WYSIWYG, for layouts that don't need markdown syntax
+- **Structured data** — CSV, JSON, edited directly
+- **Mind maps** — markmap, markdown outlines auto-rendered as visual structure
+- **Modeling & diagrams** — dbml (ER) / drawio (architecture, flow) / excalidraw (hand-drawn whiteboard) / graphviz (DOT) / plantuml / mermaid
 
 <p align="center">
   <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container plugins" width="860" />
 </p>
 
-### 全格式预览
+### Universal preview
 
-不离开 Quill 查看 Office 文档、音视频、压缩包、电子书、演示与图纸——不必额外安装软件。
+View Office documents, audio/video, archives, e-books, presentations and drawings without leaving Quill — no extra software required.
 
 <p align="center">
   <img src="docs/assets/screenshots/viewing-1.png" alt="Full-format preview" width="860" />
 </p>
 
-### AI 深度集成
+### Deep AI integration
 
-不绑定单一模型厂商,把主流 CLI 代理直接适配进编辑器:
+No vendor lock-in — mainstream CLI agents adapted straight into the editor:
 
 - **Claude Code**
 - **Codex CLI**
@@ -81,49 +81,49 @@
 - **Pi Code Agent**
 - **Qoder**
 
-在 Settings → AI 里配置 CLI 路径即可。跨模型厂商按任务需要或个人偏好自由切换。
+Configure CLI paths in Settings → AI. Switch freely across model vendors by task or preference.
 
 <p align="center">
   <img src="docs/assets/screenshots/ai-1.png" alt="AI integration" width="860" />
 </p>
 
-### 桌宠助手
+### Desktop pet assistant
 
-常驻桌面,负责把日程提醒、任务变更推送到眼前;点击即可唤起大模型 Chat 对话窗口,随时提问,不打断当前工作节奏。
+Resident on desktop, pushes schedule reminders and task changes to the foreground; click to bring up the LLM chat window and ask anytime without breaking your flow.
 
-外部应用（脚本、cron、CI）可通过本机 HTTP API 触发桌宠通知——默认 `127.0.0.1:17382`，`POST /pet/action` 即可推送气泡，支持 `target` 跳转、`launch` 外部启动 URL / 应用、`actions` 气泡按钮。详见 [`docs/pet-notify-api.zh.md`](docs/pet-notify-api.zh.md)。
+External apps (scripts, cron, CI) can trigger pet notifications via a local HTTP API — default `127.0.0.1:17382`, `POST /pet/action` pushes a bubble, supporting `target` navigation, `launch` to open a URL/app, and `actions` for bubble buttons. See [`docs/pet-notify-api.en.md`](docs/pet-notify-api.en.md).
 
 <p align="center">
   <img src="docs/assets/screenshots/pet-1.png" alt="Desktop pet" width="860" />
 </p>
 
-### 应用内终端
+### In-app terminal
 
-在 Quill 工作区内打开终端面板,与编辑器并列展示,文件路径自动同步。Claude Code / Codex CLI 等代理可直接对当前文档发起修改,AI 改完立刻在编辑器中可见。命令输出可回填到光标处,"编辑—调用—回填"压成一条流水线。
+Open a terminal panel inside the Quill workspace, side-by-side with the editor, file paths auto-synced. Claude Code / Codex CLI / other agents can modify the current document directly; AI edits appear in the editor immediately. Command output can be pasted back at the cursor — "edit → invoke → paste back" collapses into one pipeline.
 
 <p align="center">
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
-### 插件系统
+### Plugin system
 
-微内核 + 插件 SDK 架构,核心保持轻量,功能按需加载:
+Microkernel + plugin SDK architecture; the core stays lean and features load on demand:
 
-- **翻译** — 多语言内容处理
-- **日程** — 任务设置 / 通知提醒 / 专注番茄 / 任务看板
-- **Wiki 知识库** — 以 Wiki 方式组织和链接知识条目,构建可互相跳转的知识网络
-- **Clips 剪藏** — 获取网页内容并自动总结摘要页面
-- **项目分析** — 分析 GitHub 项目,输出 HTML 格式分析结果
+- **Translation** — Multilingual content processing
+- **Schedule** — Task settings / notifications / focus pomodoro / task board
+- **Wiki knowledge base** — Organize and link knowledge entries as a Wiki, building a navigable knowledge network
+- **Clips** — Capture web content and auto-summarize pages
+- **Project analysis** — Analyze GitHub projects, output HTML analysis reports
 
-支持第三方插件扩展,详见 `docs/plugins.html`。
+Third-party plugin extensions supported; see `docs/plugins.html`.
 
 <p align="center">
   <img src="docs/assets/screenshots/plugins-1.png" alt="Plugins" width="860" />
 </p>
 
-### 语音输入
+### Voice input
 
-说话内容实时转写成文字并自动润色,去除口语化重复和停顿,直接粘贴到当前光标位置。目前仅支持 macOS,Windows 暂不支持。
+Speech is transcribed to text in real time and auto-polished — removing filler and pauses — then pasted at the cursor. Currently macOS only; Windows not yet supported.
 
 <p align="center">
   <img src="docs/assets/screenshots/voice-1.png" alt="Voice input" width="860" />
@@ -170,14 +170,14 @@ quill/
 
 ### Extension Points
 
-- **`cli-adapter` 包** — 实现 adapter 接口即可接入新的 CLI Agent
-- **`container-plugins` 包** — 自定义 `:::directive` 容器插件,注册到 slash 菜单
-- **`vault-provider` 包** — 自定义存储后端(local / GitHub / WebDAV / S3 之外)
-- **`plugin-host` + `plugin-sdk`** — 第三方插件按 SDK 协议注册能力,微内核按需加载
-- **`create-quill-plugin`** — 脚手架快速起一个新插件
-- **文件类型** — 在 `apps/desktop/src/components/file-types/` 下注册新 Handler 即可扩展文件类型
+- **`cli-adapter` package** — Implement the adapter interface to plug in a new CLI Agent
+- **`container-plugins` package** — Custom `:::directive` container plugins, registered to the slash menu
+- **`vault-provider` package** — Custom storage backends (beyond local / GitHub / WebDAV / S3)
+- **`plugin-host` + `plugin-sdk`** — Third-party plugins register capabilities via the SDK; the microkernel loads them on demand
+- **`create-quill-plugin`** — Scaffolding CLI to quickly start a new plugin
+- **File types** — Register a new Handler under `apps/desktop/src/components/file-types/` to extend file types
 
-详见 `docs/plugins.html`。
+See `docs/plugins.html` for details.
 
 ## Getting Started
 
@@ -186,7 +186,7 @@ quill/
 - [Node.js](https://nodejs.org/) >= 20
 - [pnpm](https://pnpm.io/) >= 9
 - [Rust](https://www.rust-lang.org/tools/install) (latest stable)
-- Tauri 2 系统依赖 — 见 [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/)
+- Tauri 2 system deps — see [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/)
 
 ### Install & Run
 
