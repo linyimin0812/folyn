@@ -9,3 +9,26 @@
     b.classList.add('active');
   });
 })();
+
+// lightbox: click .shot img to enlarge; click overlay or Esc to close
+(function () {
+  function open(src) {
+    var lb = document.createElement('div');
+    lb.className = 'lightbox';
+    var big = document.createElement('img');
+    big.src = src;
+    lb.appendChild(big);
+    lb.addEventListener('click', function () { lb.remove(); });
+    document.body.appendChild(lb);
+  }
+  document.addEventListener('click', function (e) {
+    var img = e.target.closest('.shot img');
+    if (!img) return;
+    open(img.src);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var lb = document.querySelector('.lightbox');
+    if (lb) lb.remove();
+  });
+})();

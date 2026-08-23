@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>桌宠助手 — Quill</title>
+<title>应用内终端 — Quill</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,10 +25,10 @@
 
 <header class="detail-hero">
   <div class="wrap">
-    <div class="breadcrumb"><a href="index.html">首页</a> / <a href="index.html#capabilities">能力</a> / 桌宠助手</div>
-    <h1>常驻桌面，随时能聊两句</h1>
-    <p class="lede">桌宠是常驻在桌面上的小伙伴，负责把重要提醒推送到你眼前，也是打开大模型对话最快的入口。</p>
-    <div class="tags"><span>通知</span><span>快捷对话</span></div>
+    <div class="breadcrumb"><a href="index.html">首页</a> / <a href="index.html#capabilities">能力</a> / 应用内终端</div>
+    <h1>终端就在编辑器旁边，AI 直接读写你的文本</h1>
+    <p class="lede">应用内终端把 CLI 代理请进 Quill 工作区，Claude Code、Codex CLI 可以直接对当前文档发起修改，省去复制粘贴和窗口切换。</p>
+    <div class="tags"><span>terminal</span><span>内置 shell</span><span>CLI 代理</span></div>
   </div>
 </header>
 
@@ -36,12 +36,16 @@
   <div class="wrap">
     <div class="feature-list">
       <div class="feature-row">
-        <div class="k">推送通知</div>
-        <div class="v">日程提醒、任务变更等信息，通过桌宠直接推送到桌面，不需要额外打开应用查看。</div>
+        <div class="k">内置终端面板</div>
+        <div class="v">在 Quill 工作区内打开终端面板，与编辑器并列展示，文件路径自动同步，无需 cd 到工作目录。</div>
       </div>
       <div class="feature-row">
-        <div class="k">快速对话</div>
-        <div class="v">点击桌宠即可快速唤起大模型 Chat 对话窗口，随时向 AI 提问，不打断当前的工作节奏。</div>
+        <div class="k">AI 操作文本</div>
+        <div class="v">Claude Code、Codex CLI 等代理在终端里直接读写当前文档，AI 改完立刻在编辑器中可见，省去手动复制粘贴。</div>
+      </div>
+      <div class="feature-row">
+        <div class="k">工作流集成</div>
+        <div class="v">终端与编辑器、AI 面板共享上下文，命令输出可以回填到光标处，把"编辑—调用—回填"压成一条流水线。</div>
       </div>
     </div>
 
@@ -50,13 +54,13 @@
       <h2>效果截图</h2>
     </div>
     <div class="shot-gallery">
-      <div class="shot"><img src="assets/screenshots/pet-1.png" alt="桌宠推送通知"/><div class="cap">桌宠推送通知</div></div>
-      <div class="shot"><img src="assets/screenshots/pet-2.png" alt="点击唤起对话"/><div class="cap">点击唤起对话</div></div>
+      <div class="shot"><img src="assets/screenshots/terminal-1.png" alt="终端面板与编辑器并列"/><div class="cap">终端面板与编辑器并列</div></div>
+      <div class="shot"><img src="assets/screenshots/terminal-2.png" alt="Claude Code 直接改文档"/><div class="cap">Claude Code 直接改文档</div></div>
     </div>
 
     <div class="next-links">
-      <a href="ai.html">< AI 深度集成</a>
-      <a href="plugins.html">下一项：插件系统 ></a>
+      <a href="voice.html">< 语音输入</a>
+      <a href="index.html#capabilities">返回全部能力 ></a>
     </div>
   </div>
 </main>

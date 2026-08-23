@@ -127,14 +127,14 @@ a { color: inherit; }
 .nav-gh:hover svg { color: var(--accent); }
 
 /* ---------- hero ---------- */
-.hero { padding: 32px 0 32px; overflow: hidden; position: relative; }
+.hero { padding: 0; overflow: hidden; position: relative; }
 .hero .wrap { display: flex; flex-direction: column; gap: 40px; align-items: stretch; position: relative; z-index: 1; }
 .hero-text { width: 100%; max-width: none; }
 .quill-shell { width: 100%; }
 .hero-eyebrow {
   font-size: 12.5px;
   color: var(--accent);
-  margin-bottom: 18px;
+  margin: 32px 0 18px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -296,8 +296,9 @@ a { color: inherit; }
 
 /* ---------- sections ---------- */
 .section { padding: 32px 0; position: relative; }
+#capabilities { padding-top: 0; }
 .section-head { max-width: 640px; margin-bottom: 48px; }
-.section-head .eyebrow { font-size: 12.5px; color: var(--accent); margin-bottom: 12px; display: block; }
+.section-head .eyebrow { font-size: 12.5px; color: var(--accent); margin-bottom: 4px; display: block; }
 .section-head h2 { font-size: clamp(26px, 3vw, 36px); }
 .section-head p { color: var(--text-2); font-size: 15.5px; }
 
@@ -326,12 +327,15 @@ a { color: inherit; }
 .card .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .card .tags span {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10.5px;
-  color: var(--text-2);
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  padding: 2px 6px;
+  font-size: 11.5px;
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 7px;
   background: var(--bg-2);
+  transition: background .15s ease;
+}
+.card:hover .tags span {
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-2));
 }
 .card .go { font-size: 13px; color: var(--accent); margin-left: auto; align-self: flex-end; }
 .card:after {
@@ -353,7 +357,7 @@ a { color: inherit; }
 .footer a:hover { color: var(--accent); }
 
 /* ---------- detail page ---------- */
-.detail-hero { padding: 64px 0 72px; }
+.detail-hero { padding: 32px 0 0; }
 .breadcrumb { font-size: 13px; color: var(--text-3); margin-bottom: 16px; }
 .breadcrumb a { text-decoration: none; color: var(--text-3); }
 .breadcrumb a:hover { color: var(--accent); }
@@ -382,8 +386,15 @@ a { color: inherit; }
 .shot-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 8px; }
 .shot { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--bg-1); transition: border-color .2s, transform .2s, box-shadow .2s; box-shadow: var(--shadow-sm); }
 .shot:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.shot img { display: block; width: 100%; height: auto; }
-.shot .cap { padding: 12px 16px; font-size: 13px; color: var(--text-2); border-top: 1px solid var(--line-soft); }
+.shot img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+.shot .cap { padding: 12px 16px; font-size: 13px; color: var(--text-2); border-top: 1px solid var(--line-soft); text-align: center; }
+.lightbox {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-out; padding: 24px;
+}
+.lightbox img { max-width: 95vw; max-height: 95vh; box-shadow: 0 8px 40px rgba(0,0,0,.4); }
 .shot.empty {
   aspect-ratio: 16/10;
   display: flex;
@@ -398,9 +409,9 @@ a { color: inherit; }
     repeating-linear-gradient(45deg, var(--bg-2), var(--bg-2) 10px, var(--bg-1) 10px, var(--bg-1) 20px);
 }
 
-.next-links { display: flex; justify-content: space-between; padding: 32px 0 0; font-size: 14px; border-top: 1px solid var(--line-soft); margin-top: 20px; }
-.next-links a { text-decoration: none; color: var(--accent); }
-.next-links a:hover { text-decoration: underline; }
+.next-links { display: flex; justify-content: space-between; padding: 24px 0 0; font-size: 13px; margin-top: 20px; }
+.next-links a { text-decoration: none; color: var(--accent); transition: opacity .15s ease; }
+.next-links a:hover { opacity: .75; }
 
 @media (prefers-reduced-motion: reduce) {
   .stage, .btn, .shot, .card:after, .wave span, .caret, .hero-eyebrow:before { transition: none; animation: none; }
