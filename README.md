@@ -1,4 +1,4 @@
-<h1 align="center">Quill</h1>
+<h1 align="center">Quill编辑器</h1>
 
 <p align="center">
   本地优先 · 仓库隔离 · AI 原生<br/>
