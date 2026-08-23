@@ -884,3 +884,37 @@ Remove build-macos-universal job from release.yml; keep only aarch64/x86_64 macO
 ### Next Steps
 
 - None - task complete
+
+
+## Session 196: Persist translation panel state to config file
+
+**Date**: 2026-08-23
+**Task**: Persist translation panel state to config file
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added translationStore (zustand slice via registerPersistSlice) so pair/source/target/input/result/preview persist to ~/.quill/storage/translation.json and survive app restart. Removed prior module-level + localStorage caches. Pet panel hydrates via existing pet://settings-updated broadcast.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9e0a91ce` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
