@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavStore } from '@/store/navStore';
 import { useAiConfigStore, resolvePairConfig } from '@/store/aiConfigStore';
+import { useTranslationStore } from '@/store/translationStore';
 import { runRigChat } from '@/services/rigChat';
 import { MarkdownPreview } from '@/components/file-types/markdown/MarkdownPreview';
 import { PairSelector, type Pair } from '@/components/ai/PairSelector';
@@ -55,32 +56,34 @@ const CHECK_SVG = (
 );
 
 /** Translation page — full-page two-pane view invoked from the ActivityBar
- *  icon. Session-only state; no persistence (no history, no last pair).
- *  `embedded` compactifies layout for the pet panel (narrow viewport). */
+ *  icon. `embedded` compactifies layout for the pet panel (narrow viewport).
+ *  All content + prefs live in translationStore, persisted to
+ *  ~/.quill/storage/translation.json — survives page switch AND app restart. */
 export function TranslationPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const setSettingsTab = useNavStore((s) => s.setSettingsTab);
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
 
-  // Session-only pair override; defaults to global pluginPair.
+  // pair = user's explicit override (persisted); null → fall back to global
+  // pluginPair. Derived each render so async pluginPair hydration flows in.
   const pluginPair = useAiConfigStore((s) => s.pluginPair);
-  const [selectedPair, setSelectedPair] = useState<Pair | null>(
-    pluginPair ? { provider: pluginPair.provider, model: pluginPair.model } : null,
-  );
-  // Re-sync to pluginPair on first appearance (Tauri env hydrates async).
-  useEffect(() => {
-    if (!selectedPair && pluginPair) {
-      setSelectedPair({ provider: pluginPair.provider, model: pluginPair.model });
-    }
-  }, [selectedPair, pluginPair]);
+  const pair = useTranslationStore((s) => s.pair);
+  const setPair = useTranslationStore((s) => s.setPair);
+  const selectedPair: Pair | null = pair ?? (pluginPair ? { provider: pluginPair.provider, model: pluginPair.model } : null);
 
-  const [source, setSource] = useState<string>(AUTO_DETECT_ID);
-  const [target, setTarget] = useState<string>('en');
-  const [input, setInput] = useState('');
-  const [result, setResult] = useState('');
+  const source = useTranslationStore((s) => s.source);
+  const target = useTranslationStore((s) => s.target);
+  const input = useTranslationStore((s) => s.input);
+  const result = useTranslationStore((s) => s.result);
+  const preview = useTranslationStore((s) => s.preview);
+  const setSource = useTranslationStore((s) => s.setSource);
+  const setTarget = useTranslationStore((s) => s.setTarget);
+  const setInput = useTranslationStore((s) => s.setInput);
+  const setResult = useTranslationStore((s) => s.setResult);
+  const setPreview = useTranslationStore((s) => s.setPreview);
+
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState('');
-  const [preview, setPreview] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleTranslate = useCallback(async () => {
@@ -118,7 +121,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
     } finally {
       setStreaming(false);
     }
-  }, [streaming, input, selectedPair, pluginPair, source, target, t]);
+  }, [streaming, input, selectedPair, pluginPair, source, target, t, setResult]);
 
   const handleCopy = useCallback(async () => {
     if (!result) return;
@@ -182,7 +185,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
         <div className="flex-1" />
         <PairSelector
           value={selectedPair}
-          onChange={setSelectedPair}
+          onChange={setPair}
           onOpenSettings={openSettings}
           i18nPrefix="ai:pairSelector"
           trigger={embedded ? 'icon' : 'full'}
