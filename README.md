@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="docs/assets/hero.png" alt="Quill hero" width="860" />
+  <img src="docs/assets/screenshots/editing-1.png" alt="Quill hero" width="860" />
 </p>
 
 <h1 align="center">Quill</h1>
 
 <p align="center">
-  本地优先 · AI 驱动 · 多功能 Markdown 工作台<br/>
-  Local-first, AI-enhanced Markdown workspace built with Tauri 2 + React + CodeMirror 6.
+  本地优先 · 仓库隔离 · AI 原生<br/>
+  Local-first, vault-based, AI-native knowledge workspace built with Tauri 2 + React + CodeMirror 6.
 </p>
 
 <p align="center">
-  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" />
+  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows" />
   <img alt="stack" src="https://img.shields.io/badge/Tauri-2-orange" />
   <img alt="frontend" src="https://img.shields.io/badge/React-18-61dafb" />
   <img alt="editor" src="https://img.shields.io/badge/CodeMirror-6-red" />
@@ -19,46 +19,47 @@
 
 ---
 
-> 一个桌面应用,把 Markdown 编辑、本地多 Vault 文档管理、可视化文件查看器、AI 桌宠 Cloudia、以及五大 Feature Agent(study / analyze / clips / schedule / wiki)装进同一个壳里。数据本地存,可端到端加密同步到 S3 / WebDAV。
+> 一个应用，承载全部上下文。以 Vault 隔离每一份数据，用一套编辑器容纳 markdown、白板、ER 图、思维导图，再把 AI 代理直接接入工作流——所有内容始终留在你自己的设备上。
 
 ## Why Quill
 
-- **不止是 Markdown 编辑器** — 内置 15+ 种文件类型编辑器:Markdown、代码、HTML、CSV、JSON、SVG、PlantUML、Graphviz、Mermaid、DBML、Drawio、Excalidraw、Mind Map、富文本、Clip、Office、图片预览。一个 Vault 里什么都能放。
-- **AI 桌宠 Cloudia** — 角落里一只会冒泡通知的小宠物,通过 Bubble Template 模板化推送提醒,可点击展开交互面板。不是装饰,是真正的通知入口。
-- **五大 Feature Agent** — 每个能力域都有专属 Agent:study(学习)、analyze(分析)、clips(剪藏)、schedule(日程)、wiki(知识库)。Vault 级别的 Agent 循环,带文件系统和工具。
-- **本地优先 + 端到端加密同步** — 文档全部存本地;可选 S3 / WebDAV 同步,支持 E2E 加密。数据是你的。
-- **内容寻址版本历史** — 每次保存自动快照,SHA-256 去重存储,任意时刻可回滚。
-- **插件化 AI 适配器** — 开箱支持 Claude Code CLI;adapter 抽象可扩展其它 CLI Agent。
-- **跨平台** — macOS / Windows / Linux 桌面端,Tauri 2 打包。
+- **Vault 多仓库隔离** — 为每个项目、每份笔记开一个独立仓库，数据互不干扰，随时切换。本地是唯一真源。
+- **多格式编辑** — Markdown（含容器插件：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible，以及 Graphviz / Mermaid / PlantUML 图表容器）、富文本、CSV、JSON、markmap 思维导图、dbml ER 图、drawio 架构图、excalidraw 手绘白板、graphviz DOT 图——一个编辑器全部搞定。
+- **全格式预览** — Office 文档、音视频、压缩包、电子书、演示与图纸，不离开 Quill 就能查看。
+- **AI 深度集成** — 内置适配 Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder 六种 CLI 代理，跨模型厂商自由切换，不绑定单一供应商。
+- **桌宠助手** — 常驻桌面的小伙伴，负责推送日程提醒、任务变更通知，一点即可唤起大模型对话。
+- **应用内终端** — 在 Quill 中直接打开终端，调用 Claude Code / Codex 等 CLI 代理读写当前文档，无需窗口切换。
+- **插件系统** — 微内核 + 插件 SDK 架构，翻译、日程、Wiki、Clips 剪藏、项目分析均以插件形式提供，支持第三方扩展。
+- **语音输入** — 语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/assets/editor-markdown.png" alt="Markdown editor" width="860" />
-  <sub>CodeMirror 6 驱动的 Markdown 编辑器 + 实时预览 + 容器指令(:::callout / :::tabs)</sub>
+  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container plugins" width="860" />
+  <sub>Markdown 编辑器 + 容器插件 + 实时预览</sub>
 </p>
 
 <p align="center">
-  <img src="docs/assets/cloudia-pet.png" alt="Cloudia pet" width="860" />
-  <sub>AI 桌宠 Cloudia — 气泡通知 + 角落 toast + 可展开交互面板</sub>
+  <img src="docs/assets/screenshots/pet-1.png" alt="Desktop pet" width="860" />
+  <sub>桌宠助手 — 推送通知 + 一键唤起对话</sub>
 </p>
 
 <p align="center">
-  <img src="docs/assets/file-viewers.png" alt="File viewers" width="860" />
-  <sub>PlantUML / Graphviz / Mermaid / DBML / Drawio / Excalidraw / Mind Map / CSV / JSON 等开箱即用</sub>
+  <img src="docs/assets/screenshots/viewing-1.png" alt="Full-format preview" width="860" />
+  <sub>PlantUML / Graphviz / Mermaid / DBML / Drawio / Excalidraw / Markmap / CSV / JSON 等开箱即用</sub>
 </p>
 
 <p align="center">
-  <img src="docs/assets/feature-agents.png" alt="Feature agents" width="860" />
-  <sub>study / analyze / clips / schedule / wiki — 五大 Vault 级 Agent</sub>
+  <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
+  <sub>应用内终端 — Claude Code / Codex CLI 直接读写当前文档</sub>
 </p>
 
 <p align="center">
-  <img src="docs/assets/version-history.png" alt="Version history" width="860" />
-  <sub>内容寻址版本快照,SHA-256 去重,任意时刻回滚</sub>
+  <img src="docs/assets/screenshots/plugins-1.png" alt="Plugins" width="860" />
+  <sub>微内核 + 插件 SDK — 翻译 / 日程 / Wiki / Clips / 项目分析</sub>
 </p>
 
-> 截图占位,后续补图到 `docs/assets/`。建议尺寸 1600×900 PNG 或 MP4/GIF 动图。
+更多截图见 `docs/assets/screenshots/` 与 `docs/index.html`。
 
 ## For Users
 
@@ -73,32 +74,60 @@
   ```
   然后重新从启动台打开。
 
-### 编辑与预览
+### Vault 多仓库隔离
 
-- CodeMirror 6 编辑器:语法高亮、GFM、remark 指令、slash 命令
-- 实时预览:highlight.js 代码高亮、容器指令、同步滚动
-- 导出:Markdown / HTML / PDF
-- 主题:Light / Dark / System
-- 可定制:字体、字号、tab 宽、行号、自动保存、快捷键
+为每个项目、每份笔记开一个独立仓库。每个 Vault 都是一套独立的数据空间——笔记、附件、插件配置都各自存放,切换 Vault 就像切换一整套工作环境。数据保存在本地设备,不依赖云端账号。
 
-### 多文件类型支持
+### 多格式编辑
 
-一个 Vault 里可同时打开:Markdown · 代码 · HTML · CSV · JSON · SVG · PlantUML · Graphviz · Mermaid · DBML · Drawio · Excalidraw · Mind Map · 富文本 · Clip · Office · 图片预览。每种类型都有专属编辑器或查看器。
+- **Markdown** — 标准语法 + 一套容器插件:Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline,以及 Graphviz / Mermaid / PlantUml 图表容器
+- **富文本** — 所见即所得,适合不需要 markdown 语法的排版场景
+- **结构化数据** — CSV、JSON 直接编辑
+- **思维导图** — markmap,markdown 大纲自动生成可视化结构
+- **建模与制图** — dbml (ER 图) / drawio (架构图、流程图) / excalidraw (手绘白板) / graphviz (DOT) / plantuml / mermaid
 
-### 多 Vault 管理
+### 全格式预览
 
-本地优先文档管理,可插拔存储后端:本地文件系统 / GitHub / WebDAV / S3。每个 Vault 独立配置同步策略与加密选项。
+不离开 Quill 查看 Office 文档、音视频、压缩包、电子书、演示与图纸——不必额外安装软件。
 
-### AI 能力
+### AI 深度集成
 
-- **Cloudia 桌宠**:模板化气泡通知 + 交互面板
-- **Feature Agent**:study / analyze / clips / schedule / wiki,每个 Agent 都是 Vault 级别的 Agent 循环
-- **Bubble Template AI**:多轮对话澄清意图,生成通知模板
-- **CLI 适配器**:开箱支持 Claude Code,Settings → AI 里配置 CLI 路径即可
+不绑定单一模型厂商,把主流 CLI 代理直接适配进编辑器:
 
-### 同步与加密
+- **Claude Code**
+- **Codex CLI**
+- **Gemini CLI**
+- **Opencode**
+- **Pi Code Agent**
+- **Qoder**
 
-S3 / WebDAV 同步,支持端到端加密。本地是唯一真源,云只是镜像。
+在 Settings → AI 里配置 CLI 路径即可。跨模型厂商按任务需要或个人偏好自由切换。
+
+### 桌宠助手
+
+常驻桌面,负责把日程提醒、任务变更推送到眼前;点击即可唤起大模型 Chat 对话窗口,随时提问,不打断当前工作节奏。
+
+外部应用（脚本、cron、CI）可通过本机 HTTP API 触发桌宠通知——默认 `127.0.0.1:17382`，`POST /pet/action` 即可推送气泡，支持 `target` 跳转、`launch` 外部启动 URL / 应用、`actions` 气泡按钮。详见 [`docs/pet-notify-api.zh.md`](docs/pet-notify-api.zh.md)。
+
+### 应用内终端
+
+在 Quill 工作区内打开终端面板,与编辑器并列展示,文件路径自动同步。Claude Code / Codex CLI 等代理可直接对当前文档发起修改,AI 改完立刻在编辑器中可见。命令输出可回填到光标处,"编辑—调用—回填"压成一条流水线。
+
+### 插件系统
+
+微内核 + 插件 SDK 架构,核心保持轻量,功能按需加载:
+
+- **翻译** — 多语言内容处理
+- **日程** — 任务设置 / 通知提醒 / 专注番茄 / 任务看板
+- **Wiki 知识库** — 以 Wiki 方式组织和链接知识条目,构建可互相跳转的知识网络
+- **Clips 剪藏** — 获取网页内容并自动总结摘要页面
+- **项目分析** — 分析 GitHub 项目,输出 HTML 格式分析结果
+
+支持第三方插件扩展,详见 `docs/plugins.html`。
+
+### 语音输入
+
+说话内容实时转写成文字并自动润色,去除口语化重复和停顿,直接粘贴到当前光标位置。目前仅支持 macOS,Windows 暂不支持。
 
 ## For Developers
 
@@ -128,8 +157,11 @@ quill/
 │       │   └── utils/        # Utility modules
 │       └── src-tauri/        # Rust backend (Tauri commands)
 ├── packages/
-│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude, etc.)
+│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude / Codex / Gemini / Opencode / Pi / Qoder)
 │   ├── container-plugins/    # Markdown container directive plugins
+│   ├── plugin-host/          # Plugin host runtime
+│   ├── plugin-sdk/           # Plugin SDK for third-party authors
+│   ├── create-quill-plugin/  # Plugin scaffolding CLI
 │   └── vault-provider/       # Vault storage provider abstraction
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -141,10 +173,11 @@ quill/
 - **`cli-adapter` 包** — 实现 adapter 接口即可接入新的 CLI Agent
 - **`container-plugins` 包** — 自定义 `:::directive` 容器插件,注册到 slash 菜单
 - **`vault-provider` 包** — 自定义存储后端(local / GitHub / WebDAV / S3 之外)
+- **`plugin-host` + `plugin-sdk`** — 第三方插件按 SDK 协议注册能力,微内核按需加载
+- **`create-quill-plugin`** — 脚手架快速起一个新插件
 - **文件类型** — 在 `apps/desktop/src/components/file-types/` 下注册新 Handler 即可扩展文件类型
-- **Feature Agent** — 在 Vault 内通过 `agents/<feature>.md` 系统提示词定义新能力域
 
-详见 `docs/plugin-development.md` 与 `docs/plugin-sdk-reference.md`。
+详见 `docs/plugins.html`。
 
 ## Getting Started
 
@@ -170,23 +203,6 @@ pnpm build
 # Build the desktop app (platform-specific installer)
 pnpm build:app
 ```
-
-## Configuration
-
-所有设置在应用内 **Settings** 页面:
-
-| Category | Options |
-|----------|---------|
-| Appearance | Theme, font size, line height, status bar, AI panel visibility |
-| Editor | Font, font size, tab size, wrap column, line numbers, syntax highlighting, auto-save, spell check |
-| Shortcuts | Customizable keyboard shortcuts (Save, Bold, Italic, etc.) |
-| AI | CLI adapter selection, CLI path |
-| Vault | Vault path, image path, document extension, file watching, trash on delete |
-| Sync | Sync method (S3 / WebDAV), endpoint, credentials, E2E encryption |
-
-## Internationalization (i18n)
-
-UI 字符串通过 `i18next` + `react-i18next` 本地化,支持 zh / en。默认跟随 `navigator.language`,持久化到 `localStorage`。在 Topbar 的地球图标或 Settings → Appearance 的语言行切换。
 
 ## License
 
