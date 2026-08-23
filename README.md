@@ -1,12 +1,8 @@
-<p align="center">
-  <img src="docs/assets/screenshots/editing-1.png" alt="Quill hero" width="860" />
-</p>
-
 <h1 align="center">Quill</h1>
 
 <p align="center">
   本地优先 · 仓库隔离 · AI 原生<br/>
-  Local-first, vault-based, AI-native knowledge workspace built with Tauri 2 + React + CodeMirror 6.
+  Local-first, vault-based, AI-native knowledge workspace.
 </p>
 
 <p align="center">
@@ -32,35 +28,6 @@
 - **插件系统** — 微内核 + 插件 SDK 架构，翻译、日程、Wiki、Clips 剪藏、项目分析均以插件形式提供，支持第三方扩展。
 - **语音输入** — 语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。
 
-## Screenshots
-
-<p align="center">
-  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container plugins" width="860" />
-  <sub>Markdown 编辑器 + 容器插件 + 实时预览</sub>
-</p>
-
-<p align="center">
-  <img src="docs/assets/screenshots/pet-1.png" alt="Desktop pet" width="860" />
-  <sub>桌宠助手 — 推送通知 + 一键唤起对话</sub>
-</p>
-
-<p align="center">
-  <img src="docs/assets/screenshots/viewing-1.png" alt="Full-format preview" width="860" />
-  <sub>PlantUML / Graphviz / Mermaid / DBML / Drawio / Excalidraw / Markmap / CSV / JSON 等开箱即用</sub>
-</p>
-
-<p align="center">
-  <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
-  <sub>应用内终端 — Claude Code / Codex CLI 直接读写当前文档</sub>
-</p>
-
-<p align="center">
-  <img src="docs/assets/screenshots/plugins-1.png" alt="Plugins" width="860" />
-  <sub>微内核 + 插件 SDK — 翻译 / 日程 / Wiki / Clips / 项目分析</sub>
-</p>
-
-更多截图见 `docs/assets/screenshots/` 与 `docs/index.html`。
-
 ## For Users
 
 ### 首次运行提示
@@ -78,6 +45,10 @@
 
 为每个项目、每份笔记开一个独立仓库。每个 Vault 都是一套独立的数据空间——笔记、附件、插件配置都各自存放,切换 Vault 就像切换一整套工作环境。数据保存在本地设备,不依赖云端账号。
 
+<p align="center">
+  <img src="docs/assets/screenshots/vault-1.png" alt="Vault switching" width="860" />
+</p>
+
 ### 多格式编辑
 
 - **Markdown** — 标准语法 + 一套容器插件:Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline,以及 Graphviz / Mermaid / PlantUml 图表容器
@@ -86,9 +57,17 @@
 - **思维导图** — markmap,markdown 大纲自动生成可视化结构
 - **建模与制图** — dbml (ER 图) / drawio (架构图、流程图) / excalidraw (手绘白板) / graphviz (DOT) / plantuml / mermaid
 
+<p align="center">
+  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container plugins" width="860" />
+</p>
+
 ### 全格式预览
 
 不离开 Quill 查看 Office 文档、音视频、压缩包、电子书、演示与图纸——不必额外安装软件。
+
+<p align="center">
+  <img src="docs/assets/screenshots/viewing-1.png" alt="Full-format preview" width="860" />
+</p>
 
 ### AI 深度集成
 
@@ -103,15 +82,27 @@
 
 在 Settings → AI 里配置 CLI 路径即可。跨模型厂商按任务需要或个人偏好自由切换。
 
+<p align="center">
+  <img src="docs/assets/screenshots/ai-1.png" alt="AI integration" width="860" />
+</p>
+
 ### 桌宠助手
 
 常驻桌面,负责把日程提醒、任务变更推送到眼前;点击即可唤起大模型 Chat 对话窗口,随时提问,不打断当前工作节奏。
 
 外部应用（脚本、cron、CI）可通过本机 HTTP API 触发桌宠通知——默认 `127.0.0.1:17382`，`POST /pet/action` 即可推送气泡，支持 `target` 跳转、`launch` 外部启动 URL / 应用、`actions` 气泡按钮。详见 [`docs/pet-notify-api.zh.md`](docs/pet-notify-api.zh.md)。
 
+<p align="center">
+  <img src="docs/assets/screenshots/pet-1.png" alt="Desktop pet" width="860" />
+</p>
+
 ### 应用内终端
 
 在 Quill 工作区内打开终端面板,与编辑器并列展示,文件路径自动同步。Claude Code / Codex CLI 等代理可直接对当前文档发起修改,AI 改完立刻在编辑器中可见。命令输出可回填到光标处,"编辑—调用—回填"压成一条流水线。
+
+<p align="center">
+  <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
+</p>
 
 ### 插件系统
 
@@ -125,9 +116,17 @@
 
 支持第三方插件扩展,详见 `docs/plugins.html`。
 
+<p align="center">
+  <img src="docs/assets/screenshots/plugins-1.png" alt="Plugins" width="860" />
+</p>
+
 ### 语音输入
 
 说话内容实时转写成文字并自动润色,去除口语化重复和停顿,直接粘贴到当前光标位置。目前仅支持 macOS,Windows 暂不支持。
+
+<p align="center">
+  <img src="docs/assets/screenshots/voice-1.png" alt="Voice input" width="860" />
+</p>
 
 ## For Developers
 
