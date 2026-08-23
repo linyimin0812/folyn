@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows" />
+  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue" />
   <img alt="stack" src="https://img.shields.io/badge/Tauri-2-orange" />
   <img alt="frontend" src="https://img.shields.io/badge/React-18-61dafb" />
   <img alt="editor" src="https://img.shields.io/badge/CodeMirror-6-red" />
