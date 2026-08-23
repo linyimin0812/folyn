@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f1420"/>
+      <stop offset="100%" stop-color="#181e30"/>
+    </linearGradient>
+    <linearGradient id="quillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0ece0"/>
+      <stop offset="100%" stop-color="#d4c9a8"/>
+    </linearGradient>
+    <linearGradient id="inkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6b9fff"/>
+      <stop offset="100%" stop-color="#3a6ef0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Feather quill, tilted 38deg, centered -->
+  <g transform="translate(240,252) rotate(-38)">
+    <!-- Left barbs -->
+    <path d="M 0,-140 C -44,-90 -64,-38 -58,18 C -52,62 -30,96 0,116 Z"
+          fill="url(#quillGrad)" opacity="0.95"/>
+    <!-- Right barbs -->
+    <path d="M 0,-140 C 44,-90 64,-38 58,18 C 52,62 30,96 0,116 Z"
+          fill="url(#quillGrad)" opacity="0.78"/>
+    <!-- Spine -->
+    <line x1="0" y1="-140" x2="0" y2="144"
+          stroke="#b0985a" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Nib -->
+    <path d="M -9,116 Q 0,144 9,116 Z" fill="url(#inkGrad)"/>
+    <!-- Nib split -->
+    <line x1="0" y1="120" x2="0" y2="144"
+          stroke="#2448b8" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+  </g>
+
+  <!-- Ink drop - offset bottom right of quill tip -->
+  <circle cx="318" cy="360" r="20" fill="url(#inkGrad)"/>
+  <!-- Highlight on ink drop -->
+  <ellipse cx="311" cy="352" rx="6" ry="7" fill="white" opacity="0.3" transform="rotate(-20,311,352)"/>
+</svg>
