@@ -3,26 +3,49 @@ import type { Editor } from '@tiptap/react';
 
 // ponytail: Tiptap v3 has no @tiptap/extension-indent on npm (404).
 // This is a minimal in-house extension: adds an `indent` attr (0..5)
-// to paragraph + heading, increments/decrements on Tab/Shift-Tab, maps
-// to `text-indent` (first-line indent, CJK convention — 2em per level).
-// NOT margin-left — user wants first-line indent, not whole-paragraph
-// shift.
+// to paragraph + heading + listItem, increments/decrements on
+// Tab/Shift-Tab. Paragraph/heading map to `text-indent` (first-line
+// indent, CJK convention — 2em per level). ListItem maps to
+// `margin-left` so the list marker shifts with the item — padding-left
+// would widen the gap between marker and text (marker sits in the
+// padding area), and text-indent on the inner paragraph shifts only
+// the first text line while leaving the marker in place.
 //
-// Order matters: registered AFTER StarterKit so StarterKit's CodeBlock
-// and ListItem Tab handlers get first dibs. They return false when the
-// cursor isn't in a code block / list, so this handler only fires for
-// paragraph/heading.
+// Tab inside a list always applies visual indent (margin-left on the
+// li). We deliberately do NOT defer to StarterKit's sinkListItem —
+// structural nesting renumbers the item to 1 and visually re-parents
+// it under the previous item, which doesn't match the user's mental
+// model of "Tab = shift this line right, keep its number".
+// CodeBlock's Tab is handled by CodeBlockLowlight's own keymap
+// (enableTabIndentation) and runs first — no guard needed here.
 
 const MAX_INDENT = 5;
 const INDENT_EM = 2;
 
+function listItemAncestor(editor: Editor): { depth: number } | null {
+  const { $from } = editor.state.selection;
+  for (let d = $from.depth; d > 0; d--) {
+    if ($from.node(d).type.name === 'listItem') return { depth: d };
+  }
+  return null;
+}
+
 function changeIndent(editor: Editor, delta: number): boolean {
   const { state, view } = editor;
   const { from, to } = state.selection;
+  // When the cursor sits inside a listItem, target the listItem (not
+  // the inner paragraph) so margin-left shifts the marker too.
+  // Otherwise target paragraph/heading (top-level first-line indent).
+  const inList = listItemAncestor(editor) !== null;
+  const targetName = inList ? 'listItem' : null;
   let tr = state.tr;
   let changed = false;
   state.doc.nodesBetween(from, to, (node: any, pos: number) => {
-    if (node.type.name !== 'paragraph' && node.type.name !== 'heading') return;
+    if (targetName) {
+      if (node.type.name !== targetName) return;
+    } else if (node.type.name !== 'paragraph' && node.type.name !== 'heading') {
+      return;
+    }
     const cur = (node.attrs.indent as number | undefined) ?? 0;
     const next = Math.max(0, Math.min(MAX_INDENT, cur + delta));
     if (next !== cur) {
@@ -62,6 +85,25 @@ export const RichTextIndent = Extension.create({
           },
         },
       },
+      {
+        types: ['listItem'],
+        attributes: {
+          indent: {
+            default: 0,
+            parseHTML: (el: HTMLElement) => {
+              const ml = (el.style.marginLeft || '').trim();
+              const m = /^([\d.]+)em$/.exec(ml);
+              if (!m) return 0;
+              return Math.min(MAX_INDENT, Math.round(parseFloat(m[1]) / INDENT_EM));
+            },
+            renderHTML: (attrs: Record<string, unknown>) => {
+              const v = (attrs.indent as number | undefined) ?? 0;
+              return v ? { style: `margin-left: ${v * INDENT_EM}em` } : {};
+            },
+            keepOnSplit: false,
+          },
+        },
+      },
     ];
   },
   addKeyboardShortcuts() {
@@ -89,4 +131,3 @@ export const RichTextIndent = Extension.create({
     };
   },
 });
-
