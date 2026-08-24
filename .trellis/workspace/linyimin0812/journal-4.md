@@ -918,3 +918,40 @@ Added translationStore (zustand slice via registerPersistSlice) so pair/source/t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 197: Rename project: Quill → Mochi → Folyn
+
+**Date**: 2026-08-24
+**Task**: Rename project: Quill → Mochi → Folyn
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Two-stage full project rename to free up the 'quill' name (collided with Quill.js). Stage 1: quill→mochi across 410 files (package metadata, Rust crate, Tauri identifier, clipboard MIME, event channel, localStorage, home dir paths, 6 i18n locales, 6 README, docs site, file/dir renames). Stage 2: mochi→folyn after user changed their mind, same scope. Plus a straggler fix for the HTML <em> tag letter-split trick in Topbar header that the perl bulk replace missed (Qu<em>ill</em> → Fo<em>lyn</em>). Final pass extended scope to .trellis/ archive task PRDs + journals (originally Out of Scope but user overrode). Sub-agent dispatch for both renames + trellis-check verification. User followups: pnpm install (regen lockfile with @folyn/* names), cargo build (verify folyn_lib crate), root folder mv /Users/yiminlin/project/quill → /project/folyn.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bdc35c32` | (see git log) |
+| `ec9f96b3` | (see git log) |
+| `cb2333be` | (see git log) |
+| `ac86ece3` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 196
-- **Last Active**: 2026-08-23
+- **Total Sessions**: 197
+- **Last Active**: 2026-08-24
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~920 | Active |
+| `journal-4.md` | ~957 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 197 | 2026-08-24 | Rename project: Quill → Mochi → Folyn | `bdc35c32`, `ec9f96b3`, `cb2333be`, `ac86ece3` | `master` |
 | 196 | 2026-08-23 | Persist translation panel state to config file | `9e0a91ce` | `master` |
 | 195 | 2026-08-22 | Drop universal macOS CI build | `121806e9` | `master` |
 | 194 | 2026-08-22 | Use pet.gif as default desktop pet mascot | `60b4e84c` | `master` |
