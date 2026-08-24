@@ -13,9 +13,10 @@ import { isWindowsPlatform } from '@/utils/shellSidecar';
  * the right end of the Topbar. On macOS / Linux the native titlebar stays
  * and this renders nothing.
  *
- * The Topbar header already carries `data-tauri-drag-region`, so tauri-core
- * turns the header into a drag handle and makes double-click toggle maximize
- * on Windows — this component only supplies the three buttons.
+ * The Topbar header already carries `data-tauri-drag-region="deep"`, so
+ * tauri-core turns the header into a drag handle (including clicks on its
+ * non-interactive children) and makes double-click toggle maximize on
+ * Windows — this component only supplies the three buttons.
  */
 export function WindowControls() {
   const { t } = useTranslation();

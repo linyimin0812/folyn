@@ -1018,10 +1018,13 @@ pub fn run() {
             // is declared `visible: false` in tauri.conf.json so the
             // decorations are removed BEFORE the first paint — no
             // decorated→borderless flash at startup. The Topbar header's
-            // `data-tauri-drag-region` becomes the drag handle (tauri-core
-            // also makes double-click toggle maximize on Windows), and tao's
-            // undecorated-window hit-testing keeps edge resizing + aero-snap
-            // working. macOS/Linux keep the native titlebar untouched.
+            // The Topbar header's `data-tauri-drag-region="deep"`
+            // becomes the drag handle (deep covers clicks on its
+            // non-interactive children; buttons/links inside stay clickable)
+            // and tauri-core also makes double-click toggle maximize on
+            // Windows. Tao's undecorated-window hit-testing keeps edge
+            // resizing + aero-snap working. macOS/Linux keep the native
+            // titlebar untouched.
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {
                 startup_log("[setup] main window decorations off (windows)");

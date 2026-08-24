@@ -286,9 +286,13 @@ strip macOS too.
 3. **In-app window controls**: `WindowControls.tsx` (components/shell) renders
    minimize / maximize-restore / close at the right end of the Topbar, but only when
    `isWindowsPlatform()` (`utils/shellSidecar.ts`) — macOS/Linux render nothing.
-4. **Drag + double-click-maximize come free**: the Topbar header already has
-   `data-tauri-drag-region`; tauri-core's injected drag script handles mousedown-drag AND
+4. **Drag + double-click-maximize come free**: the Topbar header has
+   `data-tauri-drag-region="deep"`; tauri-core's injected drag script handles mousedown-drag AND
    double-click→`internal_toggle_maximize` on Windows (macOS maximizes on mouseup instead).
+   Use the `"deep"` value — the bare attribute only recognizes mousedowns whose target IS the
+   header element, which excludes the flex children that cover the bar. `"deep"` instead treats
+   any non-interactive descendant as a drag handle; buttons/links remain clickable (and marks
+   them `data-tauri-drag-region={false}` only where they sit deep inside a dedicated drag strip).
    Edge resizing + aero-snap still work: tao hit-tests undecorated resizable windows itself
    (WM_NCHITTEST), and the window keeps its shadow (`"shadow"` defaults to true).
 

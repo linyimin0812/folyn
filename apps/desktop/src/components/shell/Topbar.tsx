@@ -116,7 +116,10 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const terminalOpen = terminalPanelVisible || terminalInRightDock;
 
   return (
-    <header data-tauri-drag-region className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50">
+    <header
+      data-tauri-drag-region="deep"
+      className="topbar h-[36px] shrink-0 bg-panel border-b border-brd flex items-center justify-between pl-0 pr-2.5 gap-[3px] z-50"
+    >
       {/* Left: Logo + mobile menu */}
       <div className="tb-left flex items-center h-full flex-1 overflow-hidden">
         {isMobile && (
