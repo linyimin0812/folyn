@@ -1,12 +1,12 @@
 # Frontend Development Guidelines
 
-> Guidelines for the @mochi/cli-adapter package.
+> Guidelines for the @folyn/cli-adapter package.
 
 ---
 
 ## Overview
 
-`@mochi/cli-adapter` is a non-UI library that abstracts CLI-based AI tool integrations (Claude Code, etc.) behind a common adapter interface. It is consumed by the desktop app's AI panel.
+`@folyn/cli-adapter` is a non-UI library that abstracts CLI-based AI tool integrations (Claude Code, etc.) behind a common adapter interface. It is consumed by the desktop app's AI panel.
 
 ---
 

@@ -1,5 +1,5 @@
 import { useState, Component, type ReactNode } from 'react';
-import type { ToolCallInfo } from '@mochi/cli-adapter';
+import type { ToolCallInfo } from '@folyn/cli-adapter';
 
 class ToolCallErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };

@@ -27,7 +27,7 @@ import type { PetBubbleActionEvent, PetBubblePayload } from '@/components/pet/Pe
 export function usePetHostBridge(): void {
   // ── Pet icon library reconcile (PRD: settings-pet-tab-and-custom-icon) ──
   // On startup, reconcile the persisted `petIcons` library + active
-  // `petIconPath` with the actual files under ~/.mochi/pet-icon/. Lives in
+  // `petIconPath` with the actual files under ~/.folyn/pet-icon/. Lives in
   // the MAIN window (not PetApp) because the fs plugin calls require ACL
   // permissions the main window has but the pet window does not. Wrapped
   // in isTauri + try/catch so non-Tauri / test envs skip it.
@@ -50,7 +50,7 @@ export function usePetHostBridge(): void {
         const { exists, mkdir } = await import('@tauri-apps/plugin-fs');
         const { homeDir, join } = await import('@tauri-apps/api/path');
         const home = await homeDir();
-        const iconDir = await join(home, '.mochi', 'pet-icon');
+        const iconDir = await join(home, '.folyn', 'pet-icon');
         await mkdir(iconDir, { recursive: true }).catch(() => {});
         const { petIconSource, petIconPath, petIcons } = usePetStore.getState();
 

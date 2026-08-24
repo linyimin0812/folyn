@@ -108,10 +108,10 @@ No Zod, Yup, or io-ts. Input validation uses:
 
 ```ts
 import { useEditorStore } from '@/store/editorStore';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 ```
 
-Package imports use workspace protocol: `@mochi/cli-adapter`, `@mochi/container-plugins`, `@mochi/vault-provider`.
+Package imports use workspace protocol: `@folyn/cli-adapter`, `@folyn/container-plugins`, `@folyn/vault-provider`.
 
 ---
 

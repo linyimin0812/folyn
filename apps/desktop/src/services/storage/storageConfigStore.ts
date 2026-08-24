@@ -1,7 +1,7 @@
 /**
  * Zustand store for storage provider config. Holds the active provider
  * id + the html-image-mode toggle. Credentials live in
- * `~/.mochi/image-hosts/<provider>.json` via storageConfigStorage; the
+ * `~/.folyn/image-hosts/<provider>.json` via storageConfigStorage; the
  * store caches them in memory after `loadFromDisk()` and persists
  * debounced on every setter.
  *

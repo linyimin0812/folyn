@@ -28,7 +28,7 @@ export function getWebviewLabels(): string[] {
 
 /** Hide every native webview so an HTML overlay (e.g. the open-files tab
  *  dropdown) can render above the work area. Callers must dispatch
- *  `mochi:overlay-closed` afterwards so the active webview re-syncs. */
+ *  `folyn:overlay-closed` afterwards so the active webview re-syncs. */
 export function hideWebviewsForOverlay(): void {
   if (!isTauri()) return;
   const labels = getWebviewLabels();
@@ -101,7 +101,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     if (anyOverlayOpen) {
       hideWebviewsForOverlay();
     } else {
-      window.dispatchEvent(new CustomEvent('mochi:overlay-closed'));
+      window.dispatchEvent(new CustomEvent('folyn:overlay-closed'));
     }
   }, [anyOverlayOpen]);
 
@@ -489,8 +489,8 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         syncPosition();
       }
     };
-    window.addEventListener('mochi:overlay-closed', onOverlayClosed);
-    return () => window.removeEventListener('mochi:overlay-closed', onOverlayClosed);
+    window.addEventListener('folyn:overlay-closed', onOverlayClosed);
+    return () => window.removeEventListener('folyn:overlay-closed', onOverlayClosed);
   }, [isActive, status, syncPosition]);
 
   const navigate = (action: 'back' | 'forward' | 'reload') => {

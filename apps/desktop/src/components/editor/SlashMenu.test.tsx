@@ -15,8 +15,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { SlashMenu } from './SlashMenu';
-import { ContainerRegistry } from '@mochi/container-plugins';
-import type { ContainerPlugin } from '@mochi/container-plugins';
+import { ContainerRegistry } from '@folyn/container-plugins';
+import type { ContainerPlugin } from '@folyn/container-plugins';
 
 // jsdom doesn't implement Element.scrollIntoView; SlashMenu's active-item
 // scroll effect calls it. Ponyfill on the prototype for the duration of these

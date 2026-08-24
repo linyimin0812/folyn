@@ -1,4 +1,4 @@
-import { createAdapter, type CliAdapter } from '@mochi/cli-adapter';
+import { createAdapter, type CliAdapter } from '@folyn/cli-adapter';
 import { useAiConfigStore, getFeatureAdapter } from '@/store/aiConfigStore';
 
 export const sessionAdapters = new Map<string, CliAdapter>();

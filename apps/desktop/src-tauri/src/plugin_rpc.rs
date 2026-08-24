@@ -1,8 +1,8 @@
 //! Fetch-RPC bridge for plugin tool windows.
 //!
 //! When a sandbox tool window (Tauri WebviewWindow loaded from
-//! `mochi-plugin://localhost/<id>/<entry>`) POSTs to
-//! `mochi-plugin://localhost/<id>/rpc`, the URI scheme handler in `lib.rs`
+//! `folyn-plugin://localhost/<id>/<entry>`) POSTs to
+//! `folyn-plugin://localhost/<id>/rpc`, the URI scheme handler in `lib.rs`
 //! hands the request here. We emit a `plugin-rpc-request` event that the
 //! main webview's `toolWindowRpcListener` picks up; it dispatches via the
 //! shared `dispatchPluginRpc` (same permission checks as the iframe bridge)

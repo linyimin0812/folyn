@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RpcBridge, isPathInScope, isOriginAllowed, hasPermission, dispatchPluginRpc } from './rpcBridge';
-import type { PluginManifest, PluginAiStreamEvent } from '@mochi/plugin-host';
+import type { PluginManifest, PluginAiStreamEvent } from '@folyn/plugin-host';
 import { __internals as fsInternals } from '@tauri-apps/plugin-fs';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
@@ -263,7 +263,7 @@ describe('RpcBridge / fs scope enforcement', () => {
     const { target, sent } = fakeTarget();
     // Pre-seed the fs mock with a file at the resolved path
     await fsInternals.root.children.clear() || true;
-    // The bridge resolves via homeDir mock → /mock/home/.mochi/plugins/demo-plugin/data/test.txt
+    // The bridge resolves via homeDir mock → /mock/home/.folyn/plugins/demo-plugin/data/test.txt
     // We can't easily seed without a real path, so use a custom resolver
     const bridge = new RpcBridge({
       pluginId: manifest.id,

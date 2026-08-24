@@ -1,9 +1,9 @@
 /**
- * Storage provider config persistence — `~/.mochi/image-hosts/<provider>.json`
+ * Storage provider config persistence — `~/.folyn/image-hosts/<provider>.json`
  *
  * Mirrors the aiConfigStore secret-storage pattern: per-provider file,
  * atomic write (temp + rename), debounced flush, eager-load cache.
- * Secrets stay out of `~/.mochi/storage/*.json` (the plain-settings dir).
+ * Secrets stay out of `~/.folyn/storage/*.json` (the plain-settings dir).
  */
 import { homeDir, join } from '@tauri-apps/api/path';
 import { exists, mkdir, readTextFile, writeTextFile, rename } from '@tauri-apps/plugin-fs';
@@ -18,7 +18,7 @@ let loaded = false;
 
 async function getBaseDir(): Promise<string> {
   if (cachedBase) return cachedBase;
-  cachedBase = await join(await homeDir(), '.mochi', 'image-hosts');
+  cachedBase = await join(await homeDir(), '.folyn', 'image-hosts');
   return cachedBase;
 }
 

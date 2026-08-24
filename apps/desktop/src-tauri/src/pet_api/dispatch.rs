@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     fn passthrough_data_source_template_fields() {
-        let body = r#"{"action":"notify","text":"x","source":"github","template":"glass","data":{"repo":"mochi","runId":42}}"#;
+        let body = r#"{"action":"notify","text":"x","source":"github","template":"glass","data":{"repo":"folyn","runId":42}}"#;
         let p = match route_action(body) {
             DispatchOutcome::Notify(p) => p,
             _ => panic!("expected Notify"),
@@ -369,7 +369,7 @@ mod tests {
         assert_eq!(p.source.as_deref(), Some("github"));
         assert_eq!(p.template.as_deref(), Some("glass"));
         let data = p.data.expect("data passthrough");
-        assert_eq!(data["repo"], "mochi");
+        assert_eq!(data["repo"], "folyn");
         assert_eq!(data["runId"], 42);
     }
 

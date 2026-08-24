@@ -89,7 +89,7 @@ impl Recorder {
         let stop_for_thread = Arc::clone(&stop_flag);
 
         let join_handle = thread::Builder::new()
-            .name("mochi-voice-recorder".into())
+            .name("folyn-voice-recorder".into())
             .spawn(move || {
                 run_audio_thread(consumer, level_handler, stop_for_thread, startup_tx, runtime_error_tx);
             })

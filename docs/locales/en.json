@@ -13,28 +13,28 @@
   },
   "page": {
     "index": {
-      "title": "Mochi — A local-first knowledge vault",
-      "description": "Mochi is a local-first desktop app for knowledge management: multi-vault isolation, multi-format editing and preview, deep AI integration, a plugin system, and voice input."
+      "title": "Folyn — A local-first knowledge vault",
+      "description": "Folyn is a local-first desktop app for knowledge management: multi-vault isolation, multi-format editing and preview, deep AI integration, a plugin system, and voice input."
     },
-    "vault": {"title": "Vault multi-vault isolation — Mochi"},
-    "editing": {"title": "Multi-format editing — Mochi"},
-    "viewing": {"title": "Universal format preview — Mochi"},
-    "ai": {"title": "Deep AI integration — Mochi"},
-    "pet": {"title": "Desktop pet assistant — Mochi"},
-    "plugins": {"title": "Plugin system — Mochi"},
-    "terminal": {"title": "In-app terminal — Mochi"},
-    "voice": {"title": "Voice input — Mochi"}
+    "vault": {"title": "Vault multi-vault isolation — Folyn"},
+    "editing": {"title": "Multi-format editing — Folyn"},
+    "viewing": {"title": "Universal format preview — Folyn"},
+    "ai": {"title": "Deep AI integration — Folyn"},
+    "pet": {"title": "Desktop pet assistant — Folyn"},
+    "plugins": {"title": "Plugin system — Folyn"},
+    "terminal": {"title": "In-app terminal — Folyn"},
+    "voice": {"title": "Voice input — Folyn"}
   },
   "hero": {
     "eyebrow": "local-first · vault-based · ai-native",
     "h1": "One app, all your context",
-    "lede": "Mochi is a local-first desktop app for knowledge management. It isolates each set of data in a Vault, fits markdown, whiteboards, ER diagrams, and mind maps into one editor, and wires AI agents straight into your workflow — everything stays on your own devices.",
+    "lede": "Folyn is a local-first desktop app for knowledge management. It isolates each set of data in a Vault, fits markdown, whiteboards, ER diagrams, and mind maps into one editor, and wires AI agents straight into your workflow — everything stays on your own devices.",
     "cta": {
-      "download": "Download Mochi",
+      "download": "Download Folyn",
       "capabilities": "See all capabilities"
     },
     "shot": {
-      "empty": "(Mochi main interface screenshot)",
+      "empty": "(Folyn main interface screenshot)",
       "loading": "Loading…"
     },
     "status": {
@@ -60,7 +60,7 @@
     },
     "viewing": {
       "title": "Universal format preview",
-      "desc": "Office docs, audio/video, archives, e-books, drawings — view them without leaving Mochi."
+      "desc": "Office docs, audio/video, archives, e-books, drawings — view them without leaving Folyn."
     },
     "ai": {
       "title": "Deep AI integration",
@@ -83,14 +83,14 @@
     },
     "terminal": {
       "title": "In-app terminal",
-      "desc": "Open a terminal inside Mochi and let Claude Code, Codex and other CLI agents edit the current document — no window switching.",
+      "desc": "Open a terminal inside Folyn and let Claude Code, Codex and other CLI agents edit the current document — no window switching.",
       "tags": {"shell": "built-in shell"}
     }
   },
   "vault": {
     "breadcrumb_page": "Vault",
     "h1": "One vault, one boundary",
-    "lede": "A Vault is the smallest unit of data isolation in Mochi. Different projects and knowledge domains live in their own vaults — they don't interfere, they don't share. You decide what stays together and what stays apart.",
+    "lede": "A Vault is the smallest unit of data isolation in Folyn. Different projects and knowledge domains live in their own vaults — they don't interfere, they don't share. You decide what stays together and what stays apart.",
     "feature": {
       "isolation": {
         "k": "Isolated management",
@@ -117,7 +117,7 @@
   "editing": {
     "breadcrumb_page": "Multi-format editing",
     "h1": "One editor for every shape of thought",
-    "lede": "From plain text to structured data, from flowcharts to hand-drawn whiteboards, Mochi gathers the common editing scenarios into one app — no more bouncing between tools.",
+    "lede": "From plain text to structured data, from flowcharts to hand-drawn whiteboards, Folyn gathers the common editing scenarios into one app — no more bouncing between tools.",
     "feature": {
       "markdown": {
         "k": "Markdown",
@@ -129,7 +129,7 @@
       },
       "structured": {
         "k": "Structured data",
-        "v": "CSV and JSON can be opened and edited inside Mochi — no external spreadsheet or code tool required."
+        "v": "CSV and JSON can be opened and edited inside Folyn — no external spreadsheet or code tool required."
       },
       "mindmap": {
         "k": "Mind map",
@@ -153,9 +153,9 @@
   "viewing": {
     "breadcrumb_page": "Universal preview",
     "h1": "Read every file without switching apps",
-    "lede": "A vault inevitably holds many formats. Mochi has built-in preview so you can open them without jumping out of the app or installing extra software.",
+    "lede": "A vault inevitably holds many formats. Folyn has built-in preview so you can open them without jumping out of the app or installing extra software.",
     "feature": {
-      "office": {"k": "Office documents", "v": "View Word, Excel, PPT and other common office documents directly in Mochi — no external office suite needed."},
+      "office": {"k": "Office documents", "v": "View Word, Excel, PPT and other common office documents directly in Folyn — no external office suite needed."},
       "media": {"k": "Audio and video", "v": "Play audio and video files inline; ideal for organizing meeting recordings, tutorial clips, and other multimedia."},
       "archive": {"k": "Archives", "v": "Inspect the file structure and contents of an archive without unpacking it."},
       "ebook": {"k": "E-books", "v": "Read e-book formats with built-in preview — keep your library and your reading in one place."},
@@ -173,9 +173,9 @@
   "ai": {
     "breadcrumb_page": "AI integration",
     "h1": "Wire AI agents into your notes",
-    "lede": "Mochi doesn't lock you to one model vendor. It adapts mainstream CLI agents straight into the editor — call them for analysis, generation, or refactoring while you write and organize knowledge.",
+    "lede": "Folyn doesn't lock you to one model vendor. It adapts mainstream CLI agents straight into the editor — call them for analysis, generation, or refactoring while you write and organize knowledge.",
     "feature": {
-      "cli": {"k": "CLI adapters", "v": "Built-in adapter support for the following CLI agents, callable directly from Mochi: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
+      "cli": {"k": "CLI adapters", "v": "Built-in adapter support for the following CLI agents, callable directly from Folyn: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
       "vendors": {"k": "Multiple vendors", "v": "Supports several model vendors — switch by task or personal preference, no vendor lock-in."}
     },
     "shots": {
@@ -207,7 +207,7 @@
   "plugins": {
     "breadcrumb_page": "Plugin system",
     "h1": "Grow the features you need, on a microkernel",
-    "lede": "Mochi keeps its core lean; most functionality ships as plugins. Built-in plugins cover common scenarios, and third-party plugins extend on demand.",
+    "lede": "Folyn keeps its core lean; most functionality ships as plugins. Built-in plugins cover common scenarios, and third-party plugins extend on demand.",
     "feature": {
       "arch": {"k": "Architecture", "v": "Microkernel + plugin SDK; the core stays lightweight, features load on demand via plugins, and third-party developers can extend."},
       "translate": {"k": "Translation", "v": "Built-in translation plugin helps process multilingual content."},
@@ -246,9 +246,9 @@
   "terminal": {
     "breadcrumb_page": "In-app terminal",
     "h1": "The terminal sits next to the editor — AI reads and writes your text directly",
-    "lede": "The in-app terminal brings CLI agents into the Mochi workspace. Claude Code and Codex CLI can edit the current document in place — no copy/paste, no window switching.",
+    "lede": "The in-app terminal brings CLI agents into the Folyn workspace. Claude Code and Codex CLI can edit the current document in place — no copy/paste, no window switching.",
     "feature": {
-      "panel": {"k": "Built-in terminal panel", "v": "Open a terminal panel inside the Mochi workspace, side by side with the editor. File paths sync automatically — no need to cd into the working directory."},
+      "panel": {"k": "Built-in terminal panel", "v": "Open a terminal panel inside the Folyn workspace, side by side with the editor. File paths sync automatically — no need to cd into the working directory."},
       "aitext": {"k": "AI edits text", "v": "Agents like Claude Code and Codex CLI read and write the current document from the terminal; AI edits appear in the editor instantly — no manual copy/paste."},
       "workflow": {"k": "Workflow integration", "v": "The terminal shares context with the editor and AI panel. Command output can be pasted back at the cursor, turning edit–invoke–paste into a single pipeline."}
     },

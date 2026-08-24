@@ -2,11 +2,11 @@
 
 ## Goal
 
-The Mochi logo in the Topbar (top-left) should visually align with the 36px-wide ActivityBar column directly below it, so the top-left corner reads as one vertical strip instead of a header that's wider than the activity bar.
+The Folyn logo in the Topbar (top-left) should visually align with the 36px-wide ActivityBar column directly below it, so the top-left corner reads as one vertical strip instead of a header that's wider than the activity bar.
 
 ## What I already know
 
-- `Topbar.tsx`: `<header className="topbar ... px-2.5 ...">` → left padding 10px. Inside, `.tb-left` wraps `.logo` which has `px-2` (8px) + `gap-[7px]` + 24px `mochi.svg` image.
+- `Topbar.tsx`: `<header className="topbar ... px-2.5 ...">` → left padding 10px. Inside, `.tb-left` wraps `.logo` which has `px-2` (8px) + `gap-[7px]` + 24px `folyn.svg` image.
 - Net: logo image left edge currently sits at ~18px from window left.
 - `index.css` `.activity-bar`: `width: 36px; padding: 8px 0; align-items: center`. Icons are 36px wide, centered.
 - ActivityBar is rendered below Topbar in `App.tsx` for `editor`/`schedule`/`study` pages (non-mobile only).
@@ -21,7 +21,7 @@ The Mochi logo in the Topbar (top-left) should visually align with the 36px-wide
 ## Decision (ADR-lite)
 
 **Context**: Logo image left edge currently ~18px; activity bar icons are centered in a 36px column starting at x=0.
-**Decision**: Center-align the logo image in the first 36px column of the Topbar (match ActivityBar's centering). Concretely: drop Topbar left padding, wrap the 24px `mochi.svg` in a 36px flex-centered slot, keep the "Mochi" text after with existing gap.
+**Decision**: Center-align the logo image in the first 36px column of the Topbar (match ActivityBar's centering). Concretely: drop Topbar left padding, wrap the 24px `folyn.svg` in a 36px flex-centered slot, keep the "Folyn" text after with existing gap.
 **Consequences**: Logo's left padding goes away — hover bg now starts at x=0. Right-side content untouched. Mobile layout untouched (hamburger branch separate).
 
 ## Requirements

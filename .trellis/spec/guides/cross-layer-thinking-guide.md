@@ -64,9 +64,9 @@ For each boundary:
 
 ### Mistake 3: Raw `~/...` Paths Crossing the FFI Boundary
 
-**Symptom**: A file the user expects at `~/.voice_input/foo.wav` (or `~/mochi/default_vault/.voice_input/foo.wav`) is silently written to `<process-CWD>/~/...` — a literal directory named `~` in whichever directory the app was launched from. The user can't find the file; `save_source_wav` returns Ok because the write succeeded.
+**Symptom**: A file the user expects at `~/.voice_input/foo.wav` (or `~/folyn/default_vault/.voice_input/foo.wav`) is silently written to `<process-CWD>/~/...` — a literal directory named `~` in whichever directory the app was launched from. The user can't find the file; `save_source_wav` returns Ok because the write succeeded.
 
-**Cause**: Frontend state often holds user-configured paths with a leading `~` (e.g. `useVaultStore.getState().currentVault?.basePath === '~/mochi/default_vault'`). Rust's `Path::new("~/mochi/default_vault").join(".voice_input")` does NOT expand `~` — it's a literal segment. Shell tilde expansion is a shell feature; neither `std::path::Path` nor `tauri::path` expand it automatically at the Rust call site.
+**Cause**: Frontend state often holds user-configured paths with a leading `~` (e.g. `useVaultStore.getState().currentVault?.basePath === '~/folyn/default_vault'`). Rust's `Path::new("~/folyn/default_vault").join(".voice_input")` does NOT expand `~` — it's a literal segment. Shell tilde expansion is a shell feature; neither `std::path::Path` nor `tauri::path` expand it automatically at the Rust call site.
 
 **Fix**: The canonical expansion helper is `apps/desktop/src/utils/pathResolver.ts::resolveBasePath()` — it awaits `homeDir()` from `@tauri-apps/api/path` and replaces a leading `~` with the real home directory. The `vaultStore` already uses it internally before `startVaultWatcher`; any NEW call site that passes `basePath` to a Rust command must use it too.
 
@@ -75,10 +75,10 @@ For each boundary:
 #### Wrong
 ```ts
 const vaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
-// vaultPath === '~/mochi/default_vault'
+// vaultPath === '~/folyn/default_vault'
 await invoke('voice_stop', { saveSource, sourceDir, vaultPath });
-// Rust: Path::new("~/mochi/default_vault").join(".voice_input")
-// → file written to <CWD>/~/mochi/default_vault/.voice_input/<ts>.wav
+// Rust: Path::new("~/folyn/default_vault").join(".voice_input")
+// → file written to <CWD>/~/folyn/default_vault/.voice_input/<ts>.wav
 ```
 
 #### Correct
@@ -86,13 +86,13 @@ await invoke('voice_stop', { saveSource, sourceDir, vaultPath });
 import { resolveBasePath } from '@/utils/pathResolver';
 const rawVaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
 const vaultPath = await resolveBasePath(rawVaultPath);
-// vaultPath === '/Users/yiminlin/mochi/default_vault'
+// vaultPath === '/Users/yiminlin/folyn/default_vault'
 await invoke('voice_stop', { saveSource, sourceDir, vaultPath });
-// Rust: Path::new("/Users/yiminlin/mochi/default_vault").join(".voice_input")
-// → file written to /Users/yiminlin/mochi/default_vault/.voice_input/<ts>.wav
+// Rust: Path::new("/Users/yiminlin/folyn/default_vault").join(".voice_input")
+// → file written to /Users/yiminlin/folyn/default_vault/.voice_input/<ts>.wav
 ```
 
-**Real-world example**: `apps/desktop/src/hooks/useVoiceInput.ts::stop()` originally passed `currentVault.basePath` straight to `voice_stop`. The source WAV silently landed in `<CWD>/~/mochi/default_vault/.voice_input/`. Round-2 fix wrapped the path in `resolveBasePath`.
+**Real-world example**: `apps/desktop/src/hooks/useVoiceInput.ts::stop()` originally passed `currentVault.basePath` straight to `voice_stop`. The source WAV silently landed in `<CWD>/~/folyn/default_vault/.voice_input/`. Round-2 fix wrapped the path in `resolveBasePath`.
 
 ### Mistake 3: Leaky Abstractions
 

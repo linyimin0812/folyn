@@ -537,7 +537,7 @@ export async function openExternalFile(): Promise<number> {
   const result = await open({
     multiple: false,
     // No explicit filters: the user owns the machine and may pick any file
-    // Mochi has a handler for. Non-handled types fall back to the `code`
+    // Folyn has a handler for. Non-handled types fall back to the `code`
     // (plain-text) editor.
   });
   if (!result) return 0;

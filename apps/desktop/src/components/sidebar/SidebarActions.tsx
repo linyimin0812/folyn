@@ -5,7 +5,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 
 /* -------------------------------------------------------------------------- */
 /*  useSidebarActions hook                                                     */

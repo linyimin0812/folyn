@@ -25,10 +25,10 @@ function repoNameFromUrl(repoUrl: string): string {
   return last.replace(/\.git$/, '');
 }
 
-/** Default local clone path `~/mochi/<repo-name>` derived from a repo URL. */
+/** Default local clone path `~/folyn/<repo-name>` derived from a repo URL. */
 function repoDefaultPath(repoUrl: string): string {
   const name = repoNameFromUrl(repoUrl);
-  return name ? `~/mochi/${name}` : '';
+  return name ? `~/folyn/${name}` : '';
 }
 
 export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
@@ -244,7 +244,7 @@ export function CreateVaultDialog({ onClose }: CreateVaultDialogProps) {
           <div className="dlg-input-group">
             <input
               className="dlg-input dlg-input-flex"
-              placeholder={isGithub ? '留空默认 ~/mochi/<仓库名>' : '如：~/mochi/my-notes'}
+              placeholder={isGithub ? '留空默认 ~/folyn/<仓库名>' : '如：~/folyn/my-notes'}
               value={basePath}
               onChange={(e) => { setBasePath(e.target.value); setBasePathTouched(true); }}
               autoCapitalize="off"

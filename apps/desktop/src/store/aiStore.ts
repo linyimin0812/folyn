@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CliMessage, FileChange, MessageAttachment } from '@mochi/cli-adapter';
+import type { CliMessage, FileChange, MessageAttachment } from '@folyn/cli-adapter';
 import type { FileChangeApplier } from '@/services/fileChangeApplier';
 import { useAiConfigStore, firstEnabledPair, type ChatProvider } from './aiConfigStore';
 import { useVaultStore } from './vaultStore';

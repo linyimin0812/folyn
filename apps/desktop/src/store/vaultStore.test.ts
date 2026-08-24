@@ -4,7 +4,7 @@ import { externalFileProvider } from '@/services/externalFileProvider';
 import { useAppearanceStore } from './appearanceStore';
 import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 
 // Stub the file watcher so addVault/switchVault never touch Tauri watch APIs.
 vi.mock('@/utils/fileWatcher', () => ({
@@ -538,14 +538,14 @@ describe('useVaultStore.migrateSpecialDirs', () => {
 
   it('renames legacy built-in dirs to __name__ form', async () => {
     manager.tree.push(
-      { path: 'mochi-wiki', name: 'mochi-wiki', type: 'dir' },
+      { path: 'folyn-wiki', name: 'folyn-wiki', type: 'dir' },
       { path: 'clips', name: 'clips', type: 'dir' },
       { path: 'reports', name: 'reports', type: 'dir' },
     );
     const renamed = await useVaultStore.getState().migrateSpecialDirs();
     const pairs = renamed.map((r) => r.from);
-    expect(pairs).toEqual(['mochi-wiki', 'clips', 'reports']);
-    expect(manager.rename).toHaveBeenCalledWith('mochi-wiki', '__wiki__');
+    expect(pairs).toEqual(['folyn-wiki', 'clips', 'reports']);
+    expect(manager.rename).toHaveBeenCalledWith('folyn-wiki', '__wiki__');
     expect(manager.rename).toHaveBeenCalledWith('clips', '__clips__');
     expect(manager.rename).toHaveBeenCalledWith('reports', '__reports__');
   });

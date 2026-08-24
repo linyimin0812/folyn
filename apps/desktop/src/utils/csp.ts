@@ -9,13 +9,13 @@ import { settingsLoadDone } from '@/store/settingsPersistence';
  * never *relax* a CSP that Tauri already injected via response header
  * (macOS/Windows) or meta tag (Linux) — multiple policies intersect, so the
  * strictest wins. To let users configure allowed URLs from the settings UI,
- * tauri.conf.json therefore sets `csp: null` and Mochi applies the policy
+ * tauri.conf.json therefore sets `csp: null` and Folyn applies the policy
  * itself here: build a policy from the persisted config and swap a single
  * `<meta http-equiv="Content-Security-Policy">` tag (removing the old one
  * first, since two CSP metas would intersect instead of replace).
  *
- * The baseline directives below are the minimum Mochi + Tauri need to work:
- * Tauri IPC (`ipc:` / `http://ipc.localhost`), the custom `mochi-plugin:`
+ * The baseline directives below are the minimum Folyn + Tauri need to work:
+ * Tauri IPC (`ipc:` / `http://ipc.localhost`), the custom `folyn-plugin:`
  * protocol, the `asset:` protocol, and `data:` / `blob:`. Users only get to
  * add *extra* hosts on top of this baseline.
  *
@@ -38,7 +38,7 @@ const BASE_DIRECTIVES: Record<string, string[]> = {
   // ponytail: grapesjs-tui-image-editor (内置插件) 在用户打开图片编辑器时
   // 从 uicdn.toast.com 运行时加载 tui-image-editor 的 JS+CSS（fabric.js 全家
   // 桶不进 Vite bundle）。插件属 app 自身依赖，列为基线源而非用户可配项。
-  "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'blob:', 'mochi-plugin:', 'https://uicdn.toast.com'],
+  "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "'wasm-unsafe-eval'", 'blob:', 'folyn-plugin:', 'https://uicdn.toast.com'],
   "style-src": ["'self'", "'unsafe-inline'", 'https://uicdn.toast.com'],
   "font-src": ["'self'", 'data:'],
   // ponytail: Qiniu default test domain (clouddn.com) is HTTP-only on the
@@ -53,9 +53,9 @@ const BASE_DIRECTIVES: Record<string, string[]> = {
   // ponytail: Qiniu + R2 + OSS upload endpoints. R2's host is per-account
   // (<accountId>.r2.cloudflarestorage.com); OSS is per-bucket+region
   // (<bucket>.<region>.aliyuncs.com) — both wildcard the suffix.
-  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'mochi-plugin:', 'https://*.qiniup.com', 'https://*.r2.cloudflarestorage.com', 'https://*.aliyuncs.com'],
+  "connect-src": ["'self'", 'ipc:', 'http://ipc.localhost', 'folyn-plugin:', 'https://*.qiniup.com', 'https://*.r2.cloudflarestorage.com', 'https://*.aliyuncs.com'],
   "worker-src": ["'self'", 'blob:'],
-  "frame-src": ["'self'", 'blob:', 'data:', 'mochi-plugin:'],
+  "frame-src": ["'self'", 'blob:', 'data:', 'folyn-plugin:'],
 };
 
 /** Directives that receive the user's custom sources (or `*` in "allow all" mode). */

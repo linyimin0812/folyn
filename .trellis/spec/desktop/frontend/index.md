@@ -1,12 +1,12 @@
 # Frontend Development Guidelines
 
-> Best practices for frontend development in the Mochi desktop app.
+> Best practices for frontend development in the Folyn desktop app.
 
 ---
 
 ## Overview
 
-This directory contains guidelines for the `@mochi/desktop` frontend — a Tauri 2 + React 18 + TypeScript + Zustand 5 + Tailwind CSS 3 + CodeMirror 6 application.
+This directory contains guidelines for the `@folyn/desktop` frontend — a Tauri 2 + React 18 + TypeScript + Zustand 5 + Tailwind CSS 3 + CodeMirror 6 application.
 
 ---
 

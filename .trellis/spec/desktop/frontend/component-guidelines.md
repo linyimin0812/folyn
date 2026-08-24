@@ -155,7 +155,7 @@ vault/editor/`aiStore` in its bundle. A top-level `import { useVaultStore } from
 '@/store/vaultStore'` in a shared component would either break the secondary window's
 build or pull main-window-only state into it.
 
-**Rule**: shared chat components may import only `react`, `@mochi/cli-adapter` types,
+**Rule**: shared chat components may import only `react`, `@folyn/cli-adapter` types,
 fellow `components/chat/*` / `components/icons/*`, and platform guards (`isTauri`).
 Anything vault/editor/main-window-coupled (file-tree for @-mention, `aiStore.inputMode`,
 attachment blob-saving) belongs in the **consumer wrapper** (`ChatInput.tsx`,

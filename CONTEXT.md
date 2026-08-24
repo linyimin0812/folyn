@@ -1,4 +1,4 @@
-# Mochi
+# Folyn
 
 A Tauri desktop app with an embedded AI pet (Cloudia) that surfaces notifications via bubble templates, corner toasts, and an interactive panel. Multi-vault, multi-feature (study / analyze / clips / schedule / wiki), plugin-host AI capability for trusted-tier plugins.
 
@@ -13,11 +13,11 @@ A vault-scoped agent loop backed by `runFeatureAgent` — spawns the `claude-cli
 _Avoid_: AI Agent (ambiguous — could mean either Bubble Template AI Agent or a Feature Agent).
 
 **Version Snapshot**:
-The content of a Versionable File at a single moment, stored as a blob file named by the SHA-256 of its UTF-8 bytes under `~/.mochi/vaults/<vaultId>/versions/blobs/`. Snapshots are taken on file save and on tab close; identical-to-last-hash writes are skipped (dedup). Restore always snapshots the current state first, then overwrites with the chosen snapshot's blob.
+The content of a Versionable File at a single moment, stored as a blob file named by the SHA-256 of its UTF-8 bytes under `~/.folyn/vaults/<vaultId>/versions/blobs/`. Snapshots are taken on file save and on tab close; identical-to-last-hash writes are skipped (dedup). Restore always snapshots the current state first, then overwrites with the chosen snapshot's blob.
 _Avoid_: backup, checkpoint, save-state.
 
 **Version Index**:
-Per-vault JSON file at `~/.mochi/vaults/<vaultId>/versions/index.json` mapping each vault-relative file path to a time-ordered array of `{hash, ts, size}` entries — the lookup table that pairs Version Snapshot blobs back to the files and moments they belong to. Single source of truth for "what versions does this file have"; rewritten atomically on each new snapshot.
+Per-vault JSON file at `~/.folyn/vaults/<vaultId>/versions/index.json` mapping each vault-relative file path to a time-ordered array of `{hash, ts, size}` entries — the lookup table that pairs Version Snapshot blobs back to the files and moments they belong to. Single source of truth for "what versions does this file have"; rewritten atomically on each new snapshot.
 _Avoid_: version log, history manifest.
 
 **Versionable File**:

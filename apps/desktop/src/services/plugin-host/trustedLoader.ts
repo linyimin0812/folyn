@@ -34,7 +34,7 @@
  *
  * The plugin's `main` must be a self-contained ESM bundle — relative imports
  * inside a blob URL do not resolve (the blob has no path). Remote imports are
- * blocked by the `mochi-plugin://` CSP. The plugin MUST bundle all deps.
+ * blocked by the `folyn-plugin://` CSP. The plugin MUST bundle all deps.
  */
 
 import type {
@@ -43,8 +43,8 @@ import type {
   PluginContext,
   PluginLoader,
   PluginManifest,
-} from '@mochi/plugin-host';
-import { disposable } from '@mochi/plugin-host';
+} from '@folyn/plugin-host';
+import { disposable } from '@folyn/plugin-host';
 import type { PluginModule } from './contributionAdapters';
 import {
   registerTrustedPluginCommands,

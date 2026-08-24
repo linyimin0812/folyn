@@ -1,4 +1,4 @@
-import type { CliMessage, FileChange } from '@mochi/cli-adapter';
+import type { CliMessage, FileChange } from '@folyn/cli-adapter';
 import { useVaultStore } from './vaultStore';
 import { storageClient } from '@/utils/storageClient';
 import { debounce } from '@/utils/debounce';
@@ -87,7 +87,7 @@ export function setSuppressPersist(value: boolean) {
 export function persistAiState() {
   if (suppressPersist) return;
   // ponytail: the pet-panel window lacks the $HOME fs ACL that sessionStorage
-  // needs (`~/.mochi/vaults/…`), so its own saveAllSessions would reject.
+  // needs (`~/.folyn/vaults/…`), so its own saveAllSessions would reject.
   // It forwards its session mutations to the MAIN window (see
   // startPetChatMirror), which persists them to a separate pet-chat namespace
   // on the panel's behalf — no local write here. Without this guard every

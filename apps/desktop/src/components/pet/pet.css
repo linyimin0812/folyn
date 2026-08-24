@@ -1,5 +1,5 @@
 /* ── Desktop Pet Mode ──
- * Mascot = ink-drop body + mochi-pen tip. The pet window is a transparent,
+ * Mascot = ink-drop body + folyn-pen tip. The pet window is a transparent,
  * always-on-top, skipTaskbar Tauri window (label `pet`) that mounts only the
  * `PetApp` component via the `#/pet` hash route (see main.tsx).
  *

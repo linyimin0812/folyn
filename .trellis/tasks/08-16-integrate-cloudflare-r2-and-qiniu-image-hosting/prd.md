@@ -2,7 +2,7 @@
 
 ## Goal
 
-在 Mochi 加一个 **存储与分享 settings tab**，配置对象存储凭据后同一份配置服务两个用途：
+在 Folyn 加一个 **存储与分享 settings tab**，配置对象存储凭据后同一份配置服务两个用途：
 
 1. **图床**：粘贴/拖拽图片时选 provider target，返回公网 URL 写入文档
 2. **HTML 托管（分享）**：把当前 markdown 文档转成 HTML 上传，得到公网分享 URL
@@ -19,8 +19,8 @@ R2/七牛本就是通用对象存储——同一份凭据 + bucket，不同 key 
 - **HTML 导出钩子**: `apps/desktop/src/hooks/useExport.ts` 已有 `exportHtml()`；`apps/desktop/src/components/editor/ExportMenu.tsx:82` 调它。分享流程在此菜单加项 "Share to Cloud"。
 - **HTML 内联图片**: `apps/desktop/src/services/export/shared.ts:137` `inlineContainerImages()` 已把容器内 `<img>` 的 Tauri asset URL 转 base64 data URI。
 - **Settings 持久化套路**:
-  - 普通 slice: `storageClient` (`~/.mochi/storage/<safe>.json`)
-  - 密钥 slice: `aiConfigStore` 走 `~/.mochi/providers/<provider>.json`（隔离）—— 存储凭据应跟这条
+  - 普通 slice: `storageClient` (`~/.folyn/storage/<safe>.json`)
+  - 密钥 slice: `aiConfigStore` 走 `~/.folyn/providers/<provider>.json`（隔离）—— 存储凭据应跟这条
 - **Settings tab 注册**: `store/navStore.ts:7` `SettingsTab` union；slice 注册到 `settingsPersistence.ts` `EXPECTED_SLICES`。
 
 ## Decisions
@@ -133,7 +133,7 @@ apps/desktop/src/services/storage/
 - [ ] `crypto.ts` SigV4 + HmacSHA1 工具 + 自检测试
 - [ ] `R2Provider` 实现（image + html）
 - [ ] `QiniuProvider` 实现（image + html）
-- [ ] 新增 `storage` settings tab + 持久化 slice（凭据存 `~/.mochi/image-hosts/<provider>.json`）
+- [ ] 新增 `storage` settings tab + 持久化 slice（凭据存 `~/.folyn/image-hosts/<provider>.json`）
 - [ ] `ImageUploadStrategy` 委托 storage 层（删除 OssStrategy/CdnStrategy stub）
 - [ ] ExportMenu "Share to Cloud" 项 + `shareToCloud()` 流程
 - [ ] HTML 图片 inline/upload 双模式 + 全局开关

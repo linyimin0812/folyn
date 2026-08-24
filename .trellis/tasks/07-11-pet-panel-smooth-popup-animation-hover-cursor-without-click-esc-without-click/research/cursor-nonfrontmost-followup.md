@@ -27,7 +27,7 @@ intercept it." **That claim is wrong.** `cursorUpdate:` is direct-dispatched
 to the TA owner; the stock-`NSView` owner does not forward it.
 
 **Recommended fix (smallest diff):** Add the `NSTrackingArea` **manually** with
-`owner = the panel` (`RawMochiPetPanel`, which already overrides
+`owner = the panel` (`RawFolynPetPanel`, which already overrides
 `cursorUpdate:` and forwards to the delegate), attached to the `contentView`
 (or the WKWebView). Drop the crate's `with: { tracking_area }` block (it
 hardcodes `owner: contentView`, panel.rs:676, which we cannot parameterize
@@ -204,7 +204,7 @@ the TA owner to the wrong object.
 Architecture recap: Tauri `WKWebView` inside a nonactivating `NSPanel`,
 `can_become_main_window: false`. Existing accessors: `with_webview` closure
 gives `webview.inner()` (= `WKWebView` pointer) and `webview.ns_window()` (=
-`NSWindow` / our `RawMochiPetPanel`); see `pet_make_transparent`
+`NSWindow` / our `RawFolynPetPanel`); see `pet_make_transparent`
 (`commands.rs:1244-1290`) and `pet_panel_show` `makeFirstResponder`
 (`commands.rs:908-915`). `pet_show_context_menu` (`commands.rs:~665`) already
 does raw objc on the pet ns_view — precedent for manual objc here.
@@ -214,12 +214,12 @@ does raw objc on the pet ns_view — precedent for manual objc here.
 | **(a) TA with `owner: WKWebView`** | Low | `WKWebView` is a system class; it has its own cursor management and is unlikely to forward `cursorUpdate:` to our delegate. We cannot add our override onto a system class without swizzling. Reject. |
 | **(b) Transparent overlay `NSView` on top of WKWebView** | Works, larger diff | Known-robust pattern (menu-bar-extra style). Custom `objc2` `NSView` subclass overriding `cursorUpdate:` → hand, owning an `ActiveAlways` TA, placed above the webview with the same frame. Needs `setHitTests:NO` so clicks fall through to the webview (pet drag, context menu). Caveat: must verify TA still fires with `hitTests=NO` (TA is owner/rect-based, so it should). This is the fallback if (d) proves insufficient at runtime. |
 | **(c) CSS `cursor: pointer`** | Fails pre-click | macOS honors webview CSS cursor only when the window is **key** (AppKit cursor rects run per key window). Pre-click (panel not key) → no effect. This is exactly the state we are fixing. Reject as the primary fix (already what `commands.rs:656-657` observed). |
-| **(d) TA with `owner: panel`, added manually** | **RECOMMENDED, smallest diff** | The panel (`RawMochiPetPanel`) ALREADY overrides `cursorUpdate:` (panel.rs:186) and forwards to the delegate. Making the TA `owner = &*panel` guarantees `cursorUpdate:` lands on the object with the override — no forwarding needed. Reuses the existing `on_cursor_update` / `on_mouse_exited` wiring unchanged. The crate's `add_tracking_area` hardcodes `owner: contentView` (panel.rs:676) and cannot be parameterized without forking, so drop the `with: { tracking_area }` block and add the TA by hand in `convert_windows`. |
+| **(d) TA with `owner: panel`, added manually** | **RECOMMENDED, smallest diff** | The panel (`RawFolynPetPanel`) ALREADY overrides `cursorUpdate:` (panel.rs:186) and forwards to the delegate. Making the TA `owner = &*panel` guarantees `cursorUpdate:` lands on the object with the override — no forwarding needed. Reuses the existing `on_cursor_update` / `on_mouse_exited` wiring unchanged. The crate's `add_tracking_area` hardcodes `owner: contentView` (panel.rs:676) and cannot be parameterized without forking, so drop the `with: { tracking_area }` block and add the TA by hand in `convert_windows`. |
 | **(e) Crate-native `with:` option targeting the webview** | None exists | The crate only has the single `with: { tracking_area }` block, hardcoded to the contentView (panel.rs:659-692). No webview-targeted option. |
 
 ### Q3c — Recommendation
 
-**Option (d): a manually-added `NSTrackingArea` with `owner = RawMochiPetPanel`
+**Option (d): a manually-added `NSTrackingArea` with `owner = RawFolynPetPanel`
 (the panel), attached to the contentView.**
 
 Why it is the right pick on the ladder:
@@ -230,7 +230,7 @@ Why it is the right pick on the ladder:
   `on_cursor_update` / `on_mouse_exited` closures already wired in
   `pet_panel_macos.rs`. No new objc class, no new delegate method.
 - Smallest diff: remove the `with: { tracking_area }` block from the
-  `panel!(MochiPetPanel { ... })` macro, and in `convert_windows` (after
+  `panel!(FolynPetPanel { ... })` macro, and in `convert_windows` (after
   `to_panel` and before/after `set_event_handler`) add ~15 lines of raw objc
   (same `objc` 0.2 crate idiom already used by `pet_make_transparent` /
   `pet_show_context_menu`) to: get `contentView`, build the `NSTrackingArea`
@@ -289,7 +289,7 @@ needed.
 | `.../src/builder.rs:265-302` | `TrackingAreaOptions`: `active_always`, `cursor_update`, `mouse_entered_and_exited`, `in_visible_rect` |
 | `.../examples/mouse_tracking/src-tauri/src/main.rs` | crate's flagship example — only `println!` in `on_cursor_update`, never sets a cursor / asserts non-key delivery, so the bug ships unobserved |
 | `apps/desktop/src-tauri/Cargo.toml` | pins `tauri-nspanel = { git = ..., branch = "v2.1" }` |
-| `apps/desktop/src-tauri/src/pet_panel_macos.rs` | the `panel!(MochiPetPanel { ... with: tracking_area ... })` config + the `on_cursor_update`/`on_mouse_exited` handler wiring in `convert_windows` |
+| `apps/desktop/src-tauri/src/pet_panel_macos.rs` | the `panel!(FolynPetPanel { ... with: tracking_area ... })` config + the `on_cursor_update`/`on_mouse_exited` handler wiring in `convert_windows` |
 | `apps/desktop/src-tauri/src/commands.rs:~644-662` | `pet_set_cursor` command + the "may not stick" comment (misconception, see Q3a) |
 | `apps/desktop/src-tauri/src/commands.rs:908-915` | `pet_panel_show` `with_webview` + `makeFirstResponder: wk` — precedent for the `webview.inner()` / `ns_window()` raw-objc accessor pattern |
 | `apps/desktop/src-tauri/src/commands.rs:1244-1290` | `pet_make_transparent` `with_webview` raw objc on the WKWebView — precedent for manual objc in this file |

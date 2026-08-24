@@ -245,7 +245,7 @@ mod tilde_tests {
     fn expands_tilde_prefix() {
         let home = std::env::var("HOME").unwrap();
         assert_eq!(expand_tilde("~"), home);
-        assert_eq!(expand_tilde("~/mochi/default_vault"), format!("{home}/mochi/default_vault"));
+        assert_eq!(expand_tilde("~/folyn/default_vault"), format!("{home}/folyn/default_vault"));
         assert_eq!(expand_tilde("/abs/path"), "/abs/path");
         assert_eq!(expand_tilde("relative/path"), "relative/path");
     }

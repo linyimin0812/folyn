@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAnalysisStore } from './analysisStore';
 import { useVaultStore } from './vaultStore';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 import type { GeneratedReport } from '@/services/githubAnalysisService';
 
 // Stub the GitHub analysis service so no real AI / network runs.

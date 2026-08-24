@@ -1,4 +1,4 @@
-import type { FileChange } from '@mochi/cli-adapter';
+import type { FileChange } from '@folyn/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore, type FileTab } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';

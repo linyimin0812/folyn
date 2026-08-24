@@ -14,8 +14,8 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import { ContainerRegistry, registerBuiltinPlugins } from '@mochi/container-plugins';
-import type { ContainerProps } from '@mochi/container-plugins';
+import { ContainerRegistry, registerBuiltinPlugins } from '@folyn/container-plugins';
+import type { ContainerProps } from '@folyn/container-plugins';
 import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdown/renderMarkdown';
 
 import * as dbmlExporter from './export/dbml';
@@ -30,14 +30,14 @@ import { renderMarkmapSvg } from './export/markmapShared';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
 import type { EnhanceCtx } from './export/dbml';
 import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
-import type { ExporterContext } from '@mochi/plugin-host';
+import type { ExporterContext } from '@folyn/plugin-host';
 
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();
 
 export type ExportFormat = 'markdown' | 'html';
 
-/** Regex that matches Mochi container directive syntax (:::) */
+/** Regex that matches Folyn container directive syntax (:::) */
 const CONTAINER_SYNTAX_REGEX = /^:{3,}\s*\w+/m;
 
 /** Check whether markdown content uses container directives */

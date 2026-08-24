@@ -2,7 +2,7 @@
 
 # Pet External Notify API
 
-Mochi デスクトップペットは実行時、**127.0.0.1 のみ**の HTTP サービスを起動します。外部アプリ
+Folyn デスクトップペットは実行時、**127.0.0.1 のみ**の HTTP サービスを起動します。外部アプリ
 （スクリプト・cron・CI・他のデスクトップアプリ）はここからペット通知をトリガーできます。
 
 - デフォルトポート：`17382`。占有されている場合、アプリは自動的に `17400` まで試行し、実際のポートは
@@ -99,7 +99,7 @@ curl -XPOST 127.0.0.1:17382/pet/action \
 
 ```bash
 curl -XPOST 127.0.0.1:17382/pet/action \
-  -d '{"action":"notify","text":"CI 失敗","source":"github","template":"glass","data":{"repo":"mochi","runId":42}}'
+  -d '{"action":"notify","text":"CI 失敗","source":"github","template":"glass","data":{"repo":"folyn","runId":42}}'
 ```
 
 外部起動あり（CI 失敗時にログをワンクリックで開く）：

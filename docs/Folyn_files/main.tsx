@@ -46,35 +46,35 @@ if (isVoiceOrbWindow) {
 initCsp();
 ReactDOM.createRoot(document.getElementById("root")).render(
   /* @__PURE__ */ jsxDEV(React.StrictMode, { children: isPetWindow ? /* @__PURE__ */ jsxDEV(PetApp, {}, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 126,
     columnNumber: 5
   }, this) : isPetPanelWindow ? /* @__PURE__ */ jsxDEV(PetPanelApp, {}, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 128,
     columnNumber: 5
   }, this) : isPetBubbleWindow ? /* @__PURE__ */ jsxDEV(PetBubbleApp, {}, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 130,
     columnNumber: 5
   }, this) : isPetCornerWindow ? /* @__PURE__ */ jsxDEV(PetCornerApp, {}, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 132,
     columnNumber: 5
   }, this) : isPetMenuWindow ? /* @__PURE__ */ jsxDEV(PetMenuApp, {}, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 134,
     columnNumber: 5
   }, this) : isVoiceOrbWindow ? /* @__PURE__ */ jsxDEV(VoiceOrbApp, {}, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 136,
     columnNumber: 5
   }, this) : /* @__PURE__ */ jsxDEV(App, {}, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 138,
     columnNumber: 5
   }, this) }, void 0, false, {
-    fileName: "/Users/yiminlin/project/mochi/apps/desktop/src/main.tsx",
+    fileName: "/Users/yiminlin/project/folyn/apps/desktop/src/main.tsx",
     lineNumber: 124,
     columnNumber: 3
   }, this)

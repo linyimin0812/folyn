@@ -34,7 +34,7 @@ export function backfillBuiltinExcludePatterns(raw: string): string {
 }
 
 const DEFAULT_EXCLUDE_PATTERNS =
-  'node_modules\n.git\n.DS_Store\ndist\n.next\n.mochi-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__\n__attachments__\n__study__';
+  'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__\n__attachments__\n__study__';
 
 export const PERSIST_KEYS_APPEARANCE = [
   'theme',

@@ -1,12 +1,12 @@
 # Feature Agents
 
-> How Mochi defines, delivers, and invokes per-feature Claude Code agents.
+> How Folyn defines, delivers, and invokes per-feature Claude Code agents.
 
 ---
 
 ## Overview
 
-Mochi ships 5 feature agents (`study`, `clips`, `wiki`, `schedule`, `analyze`). Each agent has a **canonical source** in the desktop app's `features/<feature>/.claude/` and is **seeded into the user's vault** at runtime. Agents are invoked by `ClaudeAdapter` with `cwd = <vault>/__<feature>__/` so Claude Code auto-discovers the seeded agent file.
+Folyn ships 5 feature agents (`study`, `clips`, `wiki`, `schedule`, `analyze`). Each agent has a **canonical source** in the desktop app's `features/<feature>/.claude/` and is **seeded into the user's vault** at runtime. Agents are invoked by `ClaudeAdapter` with `cwd = <vault>/__<feature>__/` so Claude Code auto-discovers the seeded agent file.
 
 This spec is mandatory when adding a new feature agent or changing the seed/invoke contract.
 
@@ -34,7 +34,7 @@ interface FeatureAgentEntry {
   addVaultDir?: boolean;       // true → inject `--add-dir <vault>` at invoke time
 }
 
-// CliSendOptions fields consumed (from @mochi/cli-adapter)
+// CliSendOptions fields consumed (from @folyn/cli-adapter)
 interface CliSendOptions {
   agent?: string;              // feature name, e.g. 'study'
   bare?: boolean;              // false → Claude CLI loads cwd's .claude/agents/*.md
@@ -148,7 +148,7 @@ await manager.writeFile(`${dir}/CLAUDE.md`, entry.claudeDoc);
 ---
 name: study
 ---
-你是 Mochi 学习工作台的 study agent。工作区是当前 vault（cwd），可读写 `__study__/*.md` 主题文档。
+你是 Folyn 学习工作台的 study agent。工作区是当前 vault（cwd），可读写 `__study__/*.md` 主题文档。
 主题文档结构：## 资料 / ## 计划 / ## 笔记 / ## 复习。
 文件命名：slug 来自标题，CJK 保留，非字母数字折叠为 `-`。
 
@@ -161,7 +161,7 @@ name: study
 #### Correct — context in CLAUDE.md, contract in agent .md
 ```markdown
 // features/study/.claude/CLAUDE.md
-# Mochi 学习工作台（study feature）
+# Folyn 学习工作台（study feature）
 Agent cwd = `<vault>/__study__/`. 主题文档 `__study__/<slug>.md` 结构：## 资料 / ## 计划 / ## 笔记 / ## 复习。
 命名规则：slug 来自标题，CJK 保留，非字母数字折叠为 `-`。
 
@@ -169,7 +169,7 @@ Agent cwd = `<vault>/__study__/`. 主题文档 `__study__/<slug>.md` 结构：##
 ---
 name: study
 ---
-你是 Mochi 学习工作台的 study agent。Feature 上下文（vault 布局、主题文档结构、文件命名规则）见同目录 `../CLAUDE.md`。
+你是 Folyn 学习工作台的 study agent。Feature 上下文（vault 布局、主题文档结构、文件命名规则）见同目录 `../CLAUDE.md`。
 
 ## research（找资料）
 ...输出契约...

@@ -5,7 +5,7 @@ import { ChatInputBox, ChatMessageList } from '@/components/chat';
 import { VoiceInputButton } from '@/components/ai/VoiceInputButton';
 import { PairSelector } from '@/components/ai/PairSelector';
 import { useNavStore } from '@/store/navStore';
-import type { CliMessage } from '@mochi/cli-adapter';
+import type { CliMessage } from '@folyn/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
 import { type ResolvedPairConfig } from '@/store/aiConfigStore';
 import { useModelRegistryStore } from '@/store/modelRegistryStore';

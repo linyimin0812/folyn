@@ -13,7 +13,7 @@ import {
 
 /**
  * Pure seam: map a parsed pi `--mode rpc` / `--mode json` JSONL event object
- * into zero or more `CliStreamEvent`s for the Mochi adapter event bus.
+ * into zero or more `CliStreamEvent`s for the Folyn adapter event bus.
  *
  * pi event shapes per `docs/rpc.md` / `docs/json.md`. The adapter class handles
  * process I/O (spawn, stdin prompt commands, `\n`-only line splitting) and

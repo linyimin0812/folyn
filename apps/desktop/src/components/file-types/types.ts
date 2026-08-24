@@ -1,4 +1,4 @@
-// ponytail: contracts moved to mochi-plugin-sdk (publishable). This file
+// ponytail: contracts moved to folyn-plugin-sdk (publishable). This file
 // re-exports them so existing app-internal `import from './types'` /
 // `import from '@/components/file-types/types'` keep working unchanged.
 export type {
@@ -6,4 +6,4 @@ export type {
   EditorProps,
   PreviewProps,
   FileTypeHandler,
-} from 'mochi-plugin-sdk';
+} from 'folyn-plugin-sdk';

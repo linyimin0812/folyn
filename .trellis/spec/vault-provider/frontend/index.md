@@ -1,12 +1,12 @@
 # Frontend Development Guidelines
 
-> Guidelines for the @mochi/vault-provider package.
+> Guidelines for the @folyn/vault-provider package.
 
 ---
 
 ## Overview
 
-`@mochi/vault-provider` provides a pluggable storage abstraction for the vault system. Providers implement file operations across different backends (local filesystem via Tauri, GitHub, WebDAV, S3). The desktop app's `vaultStore` consumes this package via `VaultManager`.
+`@folyn/vault-provider` provides a pluggable storage abstraction for the vault system. Providers implement file operations across different backends (local filesystem via Tauri, GitHub, WebDAV, S3). The desktop app's `vaultStore` consumes this package via `VaultManager`.
 
 ---
 

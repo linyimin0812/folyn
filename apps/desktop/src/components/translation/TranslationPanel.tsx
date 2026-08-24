@@ -58,7 +58,7 @@ const CHECK_SVG = (
 /** Translation page — full-page two-pane view invoked from the ActivityBar
  *  icon. `embedded` compactifies layout for the pet panel (narrow viewport).
  *  All content + prefs live in translationStore, persisted to
- *  ~/.mochi/storage/translation.json — survives page switch AND app restart. */
+ *  ~/.folyn/storage/translation.json — survives page switch AND app restart. */
 export function TranslationPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const setSettingsTab = useNavStore((s) => s.setSettingsTab);

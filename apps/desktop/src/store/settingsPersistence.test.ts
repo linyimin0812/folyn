@@ -34,7 +34,7 @@ function resetAllDefaults() {
     showStatusBar: true, showHiddenFiles: true, enableWikiPanel: true,
     enableClipsPanel: true, enableAnalyzePanel: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.mochi-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__',
     linkOpenMode: 'external', vaultName: 'my-vault',
   }, false);
   useEditorPrefsStore.setState({
@@ -42,7 +42,7 @@ function resetAllDefaults() {
     showLineNumbers: true, syntaxHighlight: true, autoSave: true, spellCheck: false,
   }, false);
   useVaultConfigStore.setState({
-    vaultPath: '~/Documents/mochi/my-notes', imagePath: 'assets/images/',
+    vaultPath: '~/Documents/folyn/my-notes', imagePath: 'assets/images/',
     docExtension: '.md', watchFileChanges: true, trashOnDelete: true,
   }, false);
   useAiConfigStore.setState({
@@ -355,7 +355,7 @@ describe('settingsPersistence pre-hydration persist gate', () => {
     // Regression: at launch the main window can receive automated events
     // (e.g. pet://visibility-changed → setPetModeEnabled) before
     // loadSettings() finishes hydrating. The store is still at DEFAULTS, so
-    // persisting would overwrite ~/.mochi/storage/pet.json (and the other
+    // persisting would overwrite ~/.folyn/storage/pet.json (and the other
     // slice files) with empty state — and loadSettings would then hydrate
     // FROM the poisoned cache, losing the user's saved settings (pet icon
     // library, appearance, …) on every restart. The gate must drop these

@@ -6,7 +6,7 @@ import {
   registerBuiltinCommands,
   type Command,
 } from '@/services/commandRegistry';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 
 // Mock editorStore so recent-files reads a spyable tabs array. openFile moved
 // to editorIoService (PR2) — mock that separately. vi.mock factories are

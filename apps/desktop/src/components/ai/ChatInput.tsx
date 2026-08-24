@@ -22,7 +22,7 @@ import {
 } from '@/components/chat';
 import { VoiceInputButton } from './VoiceInputButton';
 import { getAdapterForSession } from './adapterManager';
-import type { CommandEntry, SkillEntry } from '@mochi/cli-adapter';
+import type { CommandEntry, SkillEntry } from '@folyn/cli-adapter';
 
 // Re-export PendingAttachment so existing AiPanel imports
 // (`import type { PendingAttachment } from './ChatInput'`) keep working

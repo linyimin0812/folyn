@@ -1,7 +1,7 @@
 /**
  * External-path detection.
 
-Mochi's file model is vault-relative: `editorIoService.openFile(path)` reads
+Folyn's file model is vault-relative: `editorIoService.openFile(path)` reads
 `path` via `vaultStore.readFile` → `TauriVaultProvider.resolve()`, which does
 `join(basePath, path)`. That works for vault-internal relative paths but
 *breaks* for an absolute path (it gets joined under basePath) and for a
@@ -37,7 +37,7 @@ export function isExternalPath(p: string): boolean {
  * External files are constrained to the user's `$HOME` by app-level choice (a
  * safety boundary), enforced here with a clear error rather than relying on
  * the Tauri fs scope. The Tauri fs scope itself is broadened to `**` so that
- * vaults can live at arbitrary locations (e.g. `D:\mochi`); this guard keeps
+ * vaults can live at arbitrary locations (e.g. `D:\folyn`); this guard keeps
  * files opened *outside* the vault — via the OS file dialog, drag-drop, or the
  * "Open With" flow — confined to home.
  */

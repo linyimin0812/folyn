@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import type { AssistantImage } from '@mochi/cli-adapter';
+import type { AssistantImage } from '@folyn/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { saveImageToVault } from '@/services/chatImageService';
 import { CodeOverride, FilePathContext, type FilePathContextValue } from './FilePathCode';

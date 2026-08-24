@@ -1,4 +1,4 @@
-import { createAdapter, type CliAdapter } from '@mochi/cli-adapter';
+import { createAdapter, type CliAdapter } from '@folyn/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';

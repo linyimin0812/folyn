@@ -15,15 +15,15 @@
  *   uninstall → record removed (deactivates first if active)
  */
 
-import type { Disposable } from 'mochi-plugin-sdk';
+import type { Disposable } from 'folyn-plugin-sdk';
 import type {
   PluginContext,
   PluginLoader,
   PluginManifest,
   PluginRecord,
   PluginTier,
-} from 'mochi-plugin-sdk';
-import { validateManifest as validate } from 'mochi-plugin-sdk';
+} from 'folyn-plugin-sdk';
+import { validateManifest as validate } from 'folyn-plugin-sdk';
 
 export class PluginHost {
   private readonly records = new Map<string, PluginRecord>();

@@ -1,5 +1,5 @@
 /**
- * Lifecycle hook for the GrapesJS editor inside Mochi.
+ * Lifecycle hook for the GrapesJS editor inside Folyn.
  *
  * Responsibilities (prd §4.2):
  *   - Mount GrapesJS once into the provided container refs

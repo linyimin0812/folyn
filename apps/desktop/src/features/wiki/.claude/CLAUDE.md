@@ -1,4 +1,4 @@
-# Mochi 知识库 Wiki（wiki feature）
+# Folyn 知识库 Wiki（wiki feature）
 
 本目录是 wiki feature 的运行时上下文。Agent 调用时 cwd = `<vault>/__wiki__/`，自动发现 `.claude/agents/wiki.md`。单 agent 多 action（ingest / overview / lint / query）。
 

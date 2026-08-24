@@ -2,7 +2,7 @@
 
 # Pet External Notify API
 
-Mochi 桌宠在运行时会在本机起一个 **仅 127.0.0.1** 的 HTTP 服务，外部应用
+Folyn 桌宠在运行时会在本机起一个 **仅 127.0.0.1** 的 HTTP 服务，外部应用
 （脚本、cron、CI、其他桌面应用）可以通过它触发桌宠通知。
 
 - 默认端口：`17382`。若被占用，app 会自动尝试到 `17400`，实际端口显示在
@@ -99,7 +99,7 @@ curl -XPOST 127.0.0.1:17382/pet/action \
 
 ```bash
 curl -XPOST 127.0.0.1:17382/pet/action \
-  -d '{"action":"notify","text":"CI 失败","source":"github","template":"glass","data":{"repo":"mochi","runId":42}}'
+  -d '{"action":"notify","text":"CI 失败","source":"github","template":"glass","data":{"repo":"folyn","runId":42}}'
 ```
 
 带外部启动（CI 报错时一键打开日志）：

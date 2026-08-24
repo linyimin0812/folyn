@@ -20,7 +20,7 @@
 | 9 | `src-tauri/src/commands/project_commands.rs:50` | `find -maxdepth ...` | Rust 原生递归或 walkdir crate |
 | 10 | `src-tauri/src/commands/browser_commands.rs:58,101` | Chrome Keychain 路径 + `/usr/bin/security` | Windows: `%LOCALAPPDATA%\Google\Chrome\User Data` + DPAPI |
 | 11 | `src-tauri/src/pet_api/mod.rs:94,112` | `open`/`open -a` | `cmd.exe /c start` 或 `rundll32 url.dll,FileProtocolHandler` |
-| 12 | `src-tauri/src/voice.rs:33-34` | `~/Library/Logs/...` paste_log | `dirs::cache_dir().join("mochi/logs")` |
+| 12 | `src-tauri/src/voice.rs:33-34` | `~/Library/Logs/...` paste_log | `dirs::cache_dir().join("folyn/logs")` |
 | 13 | `src/components/terminal/TerminalView.tsx:188` | `shell.split('/')` 取名 | `split(/[/\\]/)` |
 | 14 | `src-tauri/tauri.conf.json:38-42` | 仅 `bundle.macOS` | 加 `bundle.windows`（nsis 或 wix） |
 | 15 | `apps/desktop/package.json:9` | 仅 `build:mac` | 加 `build:win` 脚本 |

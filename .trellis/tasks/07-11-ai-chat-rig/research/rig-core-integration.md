@@ -322,7 +322,7 @@ let client = openai::Client::builder()
     .with_system_instructions_as_messages(); // compat for non-OpenAI servers; harmless for real OpenAI
 let agent = client
     .agent("gpt-5.2")                        // or openai::GPT_5_2
-    .preamble("You are Mochi's writing assistant.")
+    .preamble("You are Folyn's writing assistant.")
     .temperature(0.4)
     .build();
 let mut stream = agent.stream_prompt(user_prompt).await?;

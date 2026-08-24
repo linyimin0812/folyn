@@ -1,7 +1,7 @@
 # Research: Sync Engine Patterns in Comparable Local-First Tools
 
 - **Query**: How do comparable local-first note/file tools implement bidirectional sync and conflict resolution between local FS and a remote object store, for a single user across multiple devices?
-- **Scope**: external (mixed with Mochi-internal mapping at the end)
+- **Scope**: external (mixed with Folyn-internal mapping at the end)
 - **Date**: 2026-07-05
 
 > Note: the `mcp__exa__*` web-search tools were not available in this environment. The following is synthesized from the official documentation / source repos of each tool, cited inline. Claims that are inferred (not directly quoted) are marked "(inferred)". A follow-up pass with live web search would strengthen the citations, but the architectural patterns described below are stable and well-documented.
@@ -15,7 +15,7 @@
 #### 1. Obsidian Sync (proprietary, closed-source)
 - **Sync topology**: client–server. Each device holds a full local vault (plain markdown on local FS); the Obsidian-hosted sync server is the hub. Not P2P. The local side is always the FS; the "remote" is Obsidian's server, which itself stores vault blobs (encrypted if E2EE is enabled).
 - **Sync-state DB**: yes — a local per-vault sync database (binary, in the vault's `.obsidian/` config dir) tracks last-synced state per file. The server also keeps server-side state. (inferred from observed behavior; source is closed.)
-- **Local change detection**: OS-native filesystem watching via Electron's `chokidar`/`fs.watch`. Local writes by Obsidian itself are suppressed via an internal "did-write" flag to avoid feedback loops (analogous to Mochi's existing `suppressWatcherFor` / `pauseWatcher`).
+- **Local change detection**: OS-native filesystem watching via Electron's `chokidar`/`fs.watch`. Local writes by Obsidian itself are suppressed via an internal "did-write" flag to avoid feedback loops (analogous to Folyn's existing `suppressWatcherFor` / `pauseWatcher`).
 - **Remote change detection**: server-side versioning. The client polls/long-polls the server for change notifications keyed on a per-vault cursor; the server returns the delta since the last cursor. Not a full-listing diff.
 - **Conflict strategy (default)**: **conflict copies, not three-way merge.** When both sides modified the same file since last sync, the "losing" side is written as a sibling file named `<original> (Conflicted copy <YYYY-MM-DD> HHmmss).md`; the "winning" side keeps the original name. The winner is determined by LWW (latest mtime) at file granularity. Obsidian Sync does **not** do automatic textual merge. Refs: https://help.obsidian.md/Obsidian+Sync/Obsidian+Sync+overview , https://help.obsidian.md/Obsidian+Sync/Obsidian+Sync+FAQ (conflict behavior).
 - **Deletions / renames**: deletions are propagated as **server-side tombstones** with a retention window (deleted files remain recoverable for ~30 days via "file recovery" / sync version history). Renames are not specifically detected — a rename looks like delete + create (the new file is uploaded, the old path is tombstoned). Ref: https://help.obsidian.md/Files+and+links/File+recovery .
@@ -49,7 +49,7 @@
 - **Merge/sync-state location**: local SQLite + server-side state.
 
 #### 5. rclone bisync (open source)
-- **Sync topology**: bidirectional sync between **two remotes** (one is typically `local:` FS, the other is a cloud/object remote). No central state beyond what rclone itself keeps. Closest architectural analog to Mochi's situation (local FS ↔ S3-compatible remote).
+- **Sync topology**: bidirectional sync between **two remotes** (one is typically `local:` FS, the other is a cloud/object remote). No central state beyond what rclone itself keeps. Closest architectural analog to Folyn's situation (local FS ↔ S3-compatible remote).
 - **Sync-state DB**: yes — a **central JSON state file** per sync pair (`--work-dir`, default `~/.cache/rclone/bisync/`), named `<Path1>~<Path2>.<label>.lst-new` etc. Stores the prior listing of both sides (path, size, modtime, hash) — the "baseline". Ref: https://rclone.org/bisync/ .
 - **Local change detection**: **no watcher**. On-demand: enumerates the local side via `rclone lsl`-equivalent (full listing with size/mtime/hash) on each sync run.
 - **Remote change detection**: same — full listing of the remote side, compared to the stored baseline to determine what changed since last sync.
@@ -78,18 +78,18 @@
 | Maestral | client–server (Dropbox) | fs watch + suppress | **cursor delta API** | conflict copy | server tombstone | server-detected move events | local SQLite DB |
 
 **Key takeaways:**
-1. **None of the "note-app" sync engines (Obsidian, Logseq, Dropbox/Maestral) do three-way text merge by default.** They all use conflict copies. Three-way merge is unique to git-based flows (Working Copy). This is the strongest signal for Mochi's default.
+1. **None of the "note-app" sync engines (Obsidian, Logseq, Dropbox/Maestral) do three-way text merge by default.** They all use conflict copies. Three-way merge is unique to git-based flows (Working Copy). This is the strongest signal for Folyn's default.
 2. **Every tool has a sync-state DB** (sidecar DB, SQLite, LevelDB, or JSON baseline). Pure stateless sync does not exist in this category — you must know the "last synced" state to distinguish "remote modified" from "remote unchanged".
-3. **Cursor-based remote delta** (Obsidian, Dropbox, Logseq) is far cheaper than full-listing diff (rclone bisync), but it requires the remote to support cursors. **S3/WebDAV/GitHub do not expose a cursor/delta API** in the way Dropbox does — S3 has `ListObjectsV2` with continuation tokens (a listing primitive, not a change cursor); WebDAV has `PROPFIND` (full listing); GitHub has commits (per-repo, rate-limited). So for Mochi's S3/WebDAV/GitHub providers, **remote detection must be full-listing-diff against a stored baseline** (the rclone-bisync pattern), not a cursor stream.
+3. **Cursor-based remote delta** (Obsidian, Dropbox, Logseq) is far cheaper than full-listing diff (rclone bisync), but it requires the remote to support cursors. **S3/WebDAV/GitHub do not expose a cursor/delta API** in the way Dropbox does — S3 has `ListObjectsV2` with continuation tokens (a listing primitive, not a change cursor); WebDAV has `PROPFIND` (full listing); GitHub has commits (per-repo, rate-limited). So for Folyn's S3/WebDAV/GitHub providers, **remote detection must be full-listing-diff against a stored baseline** (the rclone-bisync pattern), not a cursor stream.
 4. **Conflict copies + LWW tiebreak is the consensus default** for non-git single-user file sync. Three-way text merge is opt-in / git-only.
-5. **Rename detection** is rare and expensive. Only Syncthing (hash match) and git (content-similarity diff) bother. Everyone else treats rename as delete+create. Mochi should follow the majority: don't special-case renames in MVP.
+5. **Rename detection** is rare and expensive. Only Syncthing (hash match) and git (content-similarity diff) bother. Everyone else treats rename as delete+create. Folyn should follow the majority: don't special-case renames in MVP.
 6. **Tombstones have a retention window** (Obsidian ~30d, Syncthing per versioning config, Dropbox server-side). Pure "delete propagates immediately, no retention" is risky because a device that was offline at delete time will resurrect the file on next sync if its local copy still exists. A baseline-diff approach (rclone-bisync) sidesteps this by comparing against baseline, but still needs to remember "this path was intentionally deleted" to avoid resurrection.
 
 ---
 
-## Mapping onto Mochi's Constraints
+## Mapping onto Folyn's Constraints
 
-### What Mochi already has
+### What Folyn already has
 - `VaultProvider` interface (single-file CRUD + `listFiles` + optional `getMetadata`) — `packages/vault-provider/src/providerInterface.ts`. The sync engine sits **above** this, orchestrating a local `TauriVaultProvider` and a remote `S3VaultProvider` / `WebdavVaultProvider` / `GithubVaultProvider`.
 - `VaultMetadata { path, size, lastModified: Date, etag? }` — `packages/vault-provider/src/types.ts:30`. S3 ETag and WebDAV `getlastmodified` map directly; GitHub `sha` can fill `etag`; local mtime from Tauri fs stat. **This is exactly the metadata set rclone-bisync uses for baseline-diff.**
 - `VaultEntry` from `listFiles` already carries `size`, `lastModified`, `etag` (`types.ts:18`) — so a single `listFiles(recursive=true)` call gives the full remote snapshot needed for baseline-diff.
@@ -98,13 +98,13 @@
 - Sync config already in `settingsStore` (S3-flavored: endpoint/access/secret/bucket + `autoSync` + `e2eEncrypt`).
 - Sync engine location already planned: `apps/desktop/src/services/syncEngine.ts` (PRD `Technical Notes`).
 
-### What Mochi does NOT have (gaps the sync engine must fill)
+### What Folyn does NOT have (gaps the sync engine must fill)
 - **No cursor/delta API on remote providers.** S3 `ListObjectsV2` is a listing primitive, not a change stream. WebDAV `PROPFIND` is full listing. GitHub commits API is per-repo and rate-limited. → Remote change detection must be **full-listing-diff against a stored baseline** (rclone-bisync pattern). This is O(n) in file count per sync, but fine for a personal vault (thousands of files, not millions).
-- **No sync-state DB.** Must be introduced. Options: a single JSON file per vault in Tauri's app-data dir (simplest, fits MVP), or a small SQLite via `tauri-plugin-sql`. **Must live OUTSIDE the synced vault tree** — if it lived inside `.mochi/` in the vault, it would itself sync and conflict per-device. Use Tauri's `appDataDir` (e.g., `~/Library/Application Support/com.mochi.app/sync/<vaultId>.json`).
+- **No sync-state DB.** Must be introduced. Options: a single JSON file per vault in Tauri's app-data dir (simplest, fits MVP), or a small SQLite via `tauri-plugin-sql`. **Must live OUTSIDE the synced vault tree** — if it lived inside `.folyn/` in the vault, it would itself sync and conflict per-device. Use Tauri's `appDataDir` (e.g., `~/Library/Application Support/com.folyn.app/sync/<vaultId>.json`).
 - **No three-way merge library.** If we ever want Strategy B, we'd need to add `node-diff3` or `diff-match-patch` as a dependency. Out of scope for MVP.
 - **No rename tracking on providers.** `VaultProvider.rename?` is optional and not all providers implement it; even if they did, rename across local/remote is a sync-engine concern, not a provider concern. Follow the majority: treat rename as delete+create in MVP.
 
-### Remote-side change detection for Mochi (concrete)
+### Remote-side change detection for Folyn (concrete)
 For each sync run, call `remote.listFiles('/', true)` → array of `VaultEntry {path, size, lastModified, etag}`. Compare against the stored baseline:
 - Path in remote listing but not in baseline, and not in local tree → `NewRemote` (pull).
 - Path in both, but `etag` changed (or `size`+`lastModified` changed when etag absent) → `ModRemote` (pull, unless local also modified → conflict).
@@ -112,14 +112,14 @@ For each sync run, call `remote.listFiles('/', true)` → array of `VaultEntry {
 - Path in baseline and remote, metadata unchanged → `Unchanged` (skip).
 Same logic mirrored for local side using the watcher's accumulated event log (or a fresh `local.listFiles('/', true)` walk for correctness on sync-start).
 
-### Local-side change detection for Mochi (concrete)
+### Local-side change detection for Folyn (concrete)
 Two complementary mechanisms:
 1. **Event-driven (push to a dirty set):** `fileWatcher.ts` already emits modify/create/remove events. The sync engine should subscribe and accumulate a `dirtyPaths: Set<string>` since last successful sync — this lets `autoSync` do an incremental push without re-walking the tree.
-2. **Walk-on-sync (correctness backstop):** at the start of each sync run, do `local.listFiles('/', true)` and compare to baseline, exactly like the remote side. This catches events missed while the watcher was paused/the app was closed, and is the only mechanism available for detecting remote-side changes anyway. rclone-bisync does only this; Mochi can do both (event-driven for responsiveness, walk for correctness).
+2. **Walk-on-sync (correctness backstop):** at the start of each sync run, do `local.listFiles('/', true)` and compare to baseline, exactly like the remote side. This catches events missed while the watcher was paused/the app was closed, and is the only mechanism available for detecting remote-side changes anyway. rclone-bisync does only this; Folyn can do both (event-driven for responsiveness, walk for correctness).
 
 ---
 
-## Feasible Conflict Strategies for Mochi
+## Feasible Conflict Strategies for Folyn
 
 ### Strategy A — Baseline-listing diff + conflict copies + LWW tiebreak (RECOMMENDED DEFAULT)
 
@@ -156,7 +156,7 @@ Two complementary mechanisms:
 Location: Tauri `appDataDir/sync/<vaultId>.json` (NOT inside the vault). MVP: single JSON file. Scale: SQLite when file count > ~10k.
 
 **Pros:**
-- Maps 1:1 onto the `VaultProvider` primitives Mochi already has (`listFiles` + `getMetadata`). No new provider API needed.
+- Maps 1:1 onto the `VaultProvider` primitives Folyn already has (`listFiles` + `getMetadata`). No new provider API needed.
 - Matches the consensus behavior of Obsidian Sync / Dropbox / Maestral / Logseq — users get a familiar mental model ("conflicted copy" files they can resolve by hand).
 - Never silently loses data. Conflicts are always surfaced as physical files.
 - No third-party merge library needed. Pure orchestration over existing providers.
@@ -232,15 +232,15 @@ Location: Tauri `appDataDir/sync/<vaultId>.json` (NOT inside the vault). MVP: si
 
 ---
 
-## Recommended Default for Mochi
+## Recommended Default for Folyn
 
 **Strategy A (baseline-listing diff + conflict copies + LWW tiebreak), with tombstones and 30-day retention, sync-state in Tauri `appDataDir` (JSON file for MVP, SQLite later).**
 
 Reasoning, in priority order:
 1. **Matches PRD intent** (line 20: "冲突策略倾向安全 > 自动…冲突时产生冲突副本 + 提示用户, 不做激进自动三方合并"). Strategy A is exactly this.
-2. **Matches consensus behavior** of the comparable tools (Obsidian Sync, Dropbox/Maestral, Logseq, rclone-bisync all default to conflict copies, not auto-merge). Three-way merge is unique to git flows, which Mochi is not.
-3. **Fits Mochi's existing primitives** — `listFiles(recursive)` + `getMetadata{etag,lastModified,size}` is precisely the input the baseline-diff algorithm needs. No new provider API required.
-4. **Single-user multi-device means conflicts are rare** — they only happen when the same file is edited on two devices within one sync interval. When they do happen, surfacing a conflict copy is the right call: the user can resolve it deliberately, and the conflict copy is itself a valid markdown file they can open and edit in Mochi.
+2. **Matches consensus behavior** of the comparable tools (Obsidian Sync, Dropbox/Maestral, Logseq, rclone-bisync all default to conflict copies, not auto-merge). Three-way merge is unique to git flows, which Folyn is not.
+3. **Fits Folyn's existing primitives** — `listFiles(recursive)` + `getMetadata{etag,lastModified,size}` is precisely the input the baseline-diff algorithm needs. No new provider API required.
+4. **Single-user multi-device means conflicts are rare** — they only happen when the same file is edited on two devices within one sync interval. When they do happen, surfacing a conflict copy is the right call: the user can resolve it deliberately, and the conflict copy is itself a valid markdown file they can open and edit in Folyn.
 5. **Tombstone retention + baseline-diff** correctly handles the offline-device problem (no resurrection of deleted files) without needing a cursor API that the remote providers don't offer.
 6. **Strategy B (smart merge) is a clean future upgrade** layered on top of Strategy A — add it as an opt-in toggle once Strategy A is stable. The base-content store it needs can be introduced incrementally per path.
 

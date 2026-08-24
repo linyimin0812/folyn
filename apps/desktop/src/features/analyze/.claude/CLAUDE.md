@@ -1,4 +1,4 @@
-# Mochi 项目分析（analyze feature）
+# Folyn 项目分析（analyze feature）
 
 本目录是 analyze feature 的运行时上下文。Agent 调用时 cwd = `<vault>/__analyze__/`，自动发现 `.claude/agents/analyze.md`。
 

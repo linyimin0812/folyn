@@ -35,11 +35,11 @@
 
 - pet-panel / pet-bubble / voice-orb 的置顶行为。
 - 非 macOS 平台。
-- legacy 后端（`MOCHI_PET_PANEL_BACKEND=legacy`）。
+- legacy 后端（`FOLYN_PET_PANEL_BACKEND=legacy`）。
 
 ## Technical Notes
 
 - 关键文件：
   - `apps/desktop/src-tauri/src/commands/pet_commands.rs` — `pet_set_always_on_top`
-  - `apps/desktop/src-tauri/src/pet_panel_macos.rs` — `convert_windows` + `MochiPetPanel` 定义
+  - `apps/desktop/src-tauri/src/pet_panel_macos.rs` — `convert_windows` + `FolynPetPanel` 定义
 - BongoCat 参考：`/Users/yiminlin/project/BongoCat`，重点找 `src-tauri/src/` 下的 NSPanel 配置 / show 逻辑。

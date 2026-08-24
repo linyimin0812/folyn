@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { storageClient } from './storageClient';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 
-const STORAGE_DIR = '/mock/home/.mochi/storage';
+const STORAGE_DIR = '/mock/home/.folyn/storage';
 const path = (name: string) => `${STORAGE_DIR}/${name}`;
 
 describe('storageClient', () => {

@@ -9,7 +9,7 @@ import {
   indentOnInput,
   indentUnit,
 } from '@codemirror/language';
-import { mochiHighlighting } from '@/editor/highlightStyle';
+import { folynHighlighting } from '@/editor/highlightStyle';
 import {
   autocompletion,
   closeBrackets,
@@ -67,7 +67,7 @@ export function SourceEditCanvas({ content, onChange }: SourceEditCanvasProps) {
         foldGutter(),
         indentOnInput(),
         indentUnit.of('  '),
-        mochiHighlighting(),
+        folynHighlighting(),
         html(),
         keymap.of([
           ...closeBracketsKeymap,

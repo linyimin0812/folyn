@@ -18,7 +18,7 @@ window.React = React;
 window.ReactDOM = ReactDOMFull;
 
 // Expose the host's @codemirror/language instance so trusted-tier blob plugins
-// (e.g. mochi-plugin-plantuml) can share it via `window.codemirrorLanguage`.
+// (e.g. folyn-plugin-plantuml) can share it via `window.codemirrorLanguage`.
 // Same reason as React above: a blob URL can't resolve `import '@codemirror/language'`,
 // and bundling it into the plugin would produce a second module instance whose
 // `LanguageSupport` extension the host's `EditorState` won't reliably apply

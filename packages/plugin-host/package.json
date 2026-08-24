@@ -1,7 +1,7 @@
 {
-  "name": "@mochi/plugin-host",
+  "name": "@folyn/plugin-host",
   "version": "0.1.0",
-  "description": "Mochi microkernel — plugin host, manifest schema, lifecycle, contribution points",
+  "description": "Folyn microkernel — plugin host, manifest schema, lifecycle, contribution points",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "mochi-plugin-sdk": "workspace:*"
+    "folyn-plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

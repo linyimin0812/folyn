@@ -24,7 +24,7 @@ export async function resolveBasePath(basePath: string): Promise<string> {
     const { join } = await import('@tauri-apps/api/path');
     // ponytail: join() is separator-aware (\ on Windows, / on macOS). String
     // concat `home + resolved.slice(1)` produced mixed separators on Windows
-    // (C:\Users\x/mochi/...) which Tauri 2's fs scope glob fails to match
+    // (C:\Users\x/folyn/...) which Tauri 2's fs scope glob fails to match
     // against $HOME/** → "forbidden path:" errors.
     resolved = await join(home, resolved.slice(1));
   }

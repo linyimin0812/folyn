@@ -168,7 +168,7 @@
       "hint": "Ruta o nombre del comando del ejecutable; haz clic en \"Detectar\" para buscar"
     },
     "settingsFile": {
-      "title": "Abrir el archivo de config de este adaptador en el editor Mochi",
+      "title": "Abrir el archivo de config de este adaptador en el editor Folyn",
       "missing": "No encontrado: {{path}}",
       "missingHint": "El archivo no se ha creado aún (normalmente el CLI lo crea en la primera ejecución).",
       "create": "Crear",
@@ -418,13 +418,13 @@
       "architecture": "Arquitectura e implementación",
       "developer": "Desarrollo y contribución"
     },
-    "description": "Construido sobre Tauri 2 + React + CodeMirror 6, Mochi es un editor Markdown local-first. Integra chat de IA, mascota de escritorio, sistema de plugins, diagramas ER, gestión de calendario y herramientas CLI — tus datos quedan en tu dispositivo en Markdown estándar, sin lock-in.",
+    "description": "Construido sobre Tauri 2 + React + CodeMirror 6, Folyn es un editor Markdown local-first. Integra chat de IA, mascota de escritorio, sistema de plugins, diagramas ER, gestión de calendario y herramientas CLI — tus datos quedan en tu dispositivo en Markdown estándar, sin lock-in.",
     "philosophy": {
       "label": "Filosofía",
       "localFirst": "Local-first — tus notas te pertenecen. Todos los documentos se guardan como archivos Markdown simples en tu sistema de archivos local, sin cuenta en la nube, usables offline, libres de migrar. El sistema Vault soporta backends intercambiables vía la capa de abstracción vault-provider, pero la propiedad de los datos siempre es tuya.",
-      "openFormat": "Formato abierto — sin lock-in. Mochi usa Markdown estándar como único formato de almacenamiento, procesado por el pipeline remark/rehype para GFM y directivas propias. Cualquier editor de texto puede abrir tus notas; exporta a HTML en local o guárdalo en almacenamiento remoto en cualquier momento; tras desinstalar Mochi, tus datos siguen siendo completamente legibles.",
+      "openFormat": "Formato abierto — sin lock-in. Folyn usa Markdown estándar como único formato de almacenamiento, procesado por el pipeline remark/rehype para GFM y directivas propias. Cualquier editor de texto puede abrir tus notas; exporta a HTML en local o guárdalo en almacenamiento remoto en cualquier momento; tras desinstalar Folyn, tus datos siguen siendo completamente legibles.",
       "extensible": "Extensible — abierto de extremo a extremo, del núcleo del editor a los backends de almacenamiento. El micronúcleo + el SDK de plugins soporta 14 directivas de contenedor (callout, tabs, mermaid, etc.) y plugins de terceros; la abstracción del adaptador CLI hace intercambiables 6 herramientas de IA (Claude Code, Codex, Gemini, Opencode, Pi, Qoder); pnpm workspaces deja que container-plugins, vault-provider, cli-adapter, plugin-host y plugin-sdk evolucionen como paquetes independientes.",
-      "privacy": "Privacidad primero — el chat de IA y la generación de código fluyen por herramientas CLI locales; tus claves API y el contenido de las conversaciones nunca tocan los servidores de Mochi. La política CSP y la capa sandbox de plugins ofrecen defensa en profundidad, con las capas trusted y sandbox ejecutándose por separado; los plugins de terceros corren bajo permisos restringidos."
+      "privacy": "Privacidad primero — el chat de IA y la generación de código fluyen por herramientas CLI locales; tus claves API y el contenido de las conversaciones nunca tocan los servidores de Folyn. La política CSP y la capa sandbox de plugins ofrecen defensa en profundidad, con las capas trusted y sandbox ejecutándose por separado; los plugins de terceros corren bajo permisos restringidos."
     },
     "features": {
       "label": "Funciones",
@@ -496,7 +496,7 @@
     },
     "architecture": {
       "label": "Capas de arquitectura",
-      "description": "Mochi usa una arquitectura por capas limpia — desde la shell de Tauri hasta el adaptador de IA arriba, cada capa tiene una sola responsabilidad y puede evolucionar de forma independiente. pnpm workspaces empaqueta cada capacidad básica para reutilización y pruebas.",
+      "description": "Folyn usa una arquitectura por capas limpia — desde la shell de Tauri hasta el adaptador de IA arriba, cada capa tiene una sola responsabilidad y puede evolucionar de forma independiente. pnpm workspaces empaqueta cada capacidad básica para reutilización y pruebas.",
       "layers": {
         "shell": {
           "name": "Shell",
@@ -547,8 +547,8 @@
     },
     "projectStructure": {
       "label": "Estructura del proyecto",
-      "description": "Mochi es un monorepo pnpm — la app de escritorio, el adaptador CLI, los plugins de contenedor, el Vault Provider y el Plugin Host/SDK son cada uno paquetes independientes.",
-      "tree": "mochi/\n├── apps/\n│   └── desktop/              # App de escritorio Tauri\n│       ├── src/              # Frontend React\n│       │   ├── components/   # Componentes UI (shell, editor, IA, sidebar, etc.)\n│       │   ├── editor/       # Extensiones CodeMirror\n│       │   ├── hooks/        # Hooks de React\n│       │   ├── store/        # Stores Zustand\n│       │   └── utils/        # Módulos utilitarios\n│       └── src-tauri/        # Backend Rust (comandos Tauri)\n├── packages/\n│   ├── cli-adapter/          # Abstracción del adaptador CLI de IA (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Plugins de directivas de contenedor Markdown (14)\n│   ├── vault-provider/       # Abstracción del provider de almacenamiento Vault\n│   ├── plugin-host/         # Runtime del host de plugins\n│   ├── plugin-sdk/          # SDK de desarrollo de plugins\n│   └── create-mochi-plugin/ # Herramienta de scaffold\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Folyn es un monorepo pnpm — la app de escritorio, el adaptador CLI, los plugins de contenedor, el Vault Provider y el Plugin Host/SDK son cada uno paquetes independientes.",
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # App de escritorio Tauri\n│       ├── src/              # Frontend React\n│       │   ├── components/   # Componentes UI (shell, editor, IA, sidebar, etc.)\n│       │   ├── editor/       # Extensiones CodeMirror\n│       │   ├── hooks/        # Hooks de React\n│       │   ├── store/        # Stores Zustand\n│       │   └── utils/        # Módulos utilitarios\n│       └── src-tauri/        # Backend Rust (comandos Tauri)\n├── packages/\n│   ├── cli-adapter/          # Abstracción del adaptador CLI de IA (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Plugins de directivas de contenedor Markdown (14)\n│   ├── vault-provider/       # Abstracción del provider de almacenamiento Vault\n│   ├── plugin-host/         # Runtime del host de plugins\n│   ├── plugin-sdk/          # SDK de desarrollo de plugins\n│   └── create-folyn-plugin/ # Herramienta de scaffold\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "Backends de almacenamiento",
@@ -570,7 +570,7 @@
     },
     "aiIntegration": {
       "label": "Integración de IA",
-      "description": "Vía la abstracción cli-adapter, Mochi soporta de forma unificada 6 herramientas de IA basadas en CLI. Tras configurar la ruta del CLI en Ajustes → Model Services, usa el panel lateral para chatear, generar texto, aplicar ediciones de código y revisar diffs. Las claves API y el contenido de las conversaciones fluyen solo entre la herramienta CLI local y el servicio de IA correspondiente — nunca por los servidores de Mochi.",
+      "description": "Vía la abstracción cli-adapter, Folyn soporta de forma unificada 6 herramientas de IA basadas en CLI. Tras configurar la ruta del CLI en Ajustes → Model Services, usa el panel lateral para chatear, generar texto, aplicar ediciones de código y revisar diffs. Las claves API y el contenido de las conversaciones fluyen solo entre la herramienta CLI local y el servicio de IA correspondiente — nunca por los servidores de Folyn.",
       "adapters": {
         "label": "Adaptadores CLI integrados",
         "items": {
@@ -603,7 +603,7 @@
     },
     "pluginSystem": {
       "label": "Sistema de plugins",
-      "description": "Arquitectura micronúcleo + SDK de plugins. Los plugins se dividen en capa Trusted (llama a capacidades del host directamente) y capa Sandbox (corre bajo permisos restringidos) — cargados por el runtime plugin-host. Los plugins de terceros se pueden scaffoldizar rápido vía create-mochi-plugin.",
+      "description": "Arquitectura micronúcleo + SDK de plugins. Los plugins se dividen en capa Trusted (llama a capacidades del host directamente) y capa Sandbox (corre bajo permisos restringidos) — cargados por el runtime plugin-host. Los plugins de terceros se pueden scaffoldizar rápido vía create-folyn-plugin.",
       "tiers": {
         "label": "Capas de ejecución",
         "trusted": {
@@ -622,7 +622,7 @@
     },
     "fileTypeSupport": {
       "label": "Soporte de tipos de archivo",
-      "description": "Registrados a través de HandlerRegistry, Mochi puede previsualizar y editar más de 15 tipos de archivo.",
+      "description": "Registrados a través de HandlerRegistry, Folyn puede previsualizar y editar más de 15 tipos de archivo.",
       "items": "Markdown · Código · CSV · JSON · HTML · Imagen · DBML (diagrama ER) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Docs Office · Clips del portapapeles"
     },
     "techStack": {
@@ -727,12 +727,12 @@
     },
     "microphone": {
       "title": "Permiso de micrófono",
-      "desc": "La grabación requiere permiso de micrófono. Haz clic para lanzar el prompt; si fue denegado antes, permite Mochi en Ajustes del Sistema → Privacidad y Seguridad → Micrófono y reintenta.",
+      "desc": "La grabación requiere permiso de micrófono. Haz clic para lanzar el prompt; si fue denegado antes, permite Folyn en Ajustes del Sistema → Privacidad y Seguridad → Micrófono y reintenta.",
       "action": "Conceder micrófono"
     },
     "speech": {
       "title": "Permiso de reconocimiento de voz",
-      "desc": "La transcripción de Apple Speech requiere permiso de reconocimiento. Haz clic para lanzar el prompt; si fue denegado antes, permite Mochi en Ajustes → Privacidad y Seguridad → Reconocimiento de voz y reintenta.",
+      "desc": "La transcripción de Apple Speech requiere permiso de reconocimiento. Haz clic para lanzar el prompt; si fue denegado antes, permite Folyn en Ajustes → Privacidad y Seguridad → Reconocimiento de voz y reintenta.",
       "action": "Conceder reconocimiento"
     },
     "polishPrompt": {
@@ -790,7 +790,7 @@
     },
     "icon": {
       "title": "Icono",
-      "desc": "Usa el icono integrado de Mochi, o sube una imagen personalizada",
+      "desc": "Usa el icono integrado de Folyn, o sube una imagen personalizada",
       "builtin": "Integrado",
       "custom": "Personalizado",
       "uploading": "Subiendo…",
@@ -943,7 +943,7 @@
       "description": "La política entra en vigor tras Aplicar y recargar"
     },
     "baseline": {
-      "note": "Tauri IPC, mochi-plugin, asset, data: y blob: siempre permitidos, no se pueden quitar."
+      "note": "Tauri IPC, folyn-plugin, asset, data: y blob: siempre permitidos, no se pueden quitar."
     },
     "apply": {
       "button": "Aplicar y recargar",

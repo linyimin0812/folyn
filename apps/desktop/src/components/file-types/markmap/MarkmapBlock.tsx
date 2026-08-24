@@ -9,7 +9,7 @@
 // the block after stabilization to inline its foreignObject <img> srcs.
 
 import { useEffect, useState } from 'react';
-import { useVaultContext } from '@mochi/container-plugins';
+import { useVaultContext } from '@folyn/container-plugins';
 import { resolveAssetBase } from '../previewPath';
 import { MarkmapCanvas } from './MarkmapCanvas';
 

@@ -2,7 +2,7 @@
 
 ## Goal
 
-当前 ER 图（DBML file preview）只渲染表名 + 字段名 + 类型 + PK 钥匙图标。DBML 源里的字段 `note`、表 `Note:`、`Enum`、`indexes`、Project `Note` 全部丢失。要让 ER 图把这些注释/元数据展示出来，参考 `~/mochi/default_vault/claude code/agent-loop/ER.dbml` 这种真实文件的内容应能完整呈现。
+当前 ER 图（DBML file preview）只渲染表名 + 字段名 + 类型 + PK 钥匙图标。DBML 源里的字段 `note`、表 `Note:`、`Enum`、`indexes`、Project `Note` 全部丢失。要让 ER 图把这些注释/元数据展示出来，参考 `~/folyn/default_vault/claude code/agent-loop/ER.dbml` 这种真实文件的内容应能完整呈现。
 
 ## Requirements
 
@@ -35,7 +35,7 @@
 
 ## Acceptance Criteria
 
-* [ ] 用 `~/mochi/default_vault/claude code/agent-loop/ER.dbml` 作为预览源时，能看到：
+* [ ] 用 `~/folyn/default_vault/claude code/agent-loop/ER.dbml` 作为预览源时，能看到：
   * 顶部 Project banner
   * 每张表卡片底部有 Note 折叠区，默认 2 行截断，点击展开全文
   * 字段下方一行中文小字 note

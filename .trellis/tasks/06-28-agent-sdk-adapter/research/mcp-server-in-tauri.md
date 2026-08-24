@@ -1,7 +1,7 @@
 # Research: Running an MCP server from a Tauri 2 desktop app for the claude CLI
 
-- **Query**: How to expose Mochi's tools (vaultStore file ops, editor actions, domain features) to the user's locally-installed `claude` CLI as MCP tools, hosted from the Tauri 2 Rust backend — without adding a Node runtime or bundling the Agent SDK.
-- **Scope**: external (MCP spec + claude-code MCP docs), mapped onto internal Mochi architecture (Tauri 2 + React 18 + Zustand stores in the renderer, Rust backend owns commands/process spawning).
+- **Query**: How to expose Folyn's tools (vaultStore file ops, editor actions, domain features) to the user's locally-installed `claude` CLI as MCP tools, hosted from the Tauri 2 Rust backend — without adding a Node runtime or bundling the Agent SDK.
+- **Scope**: external (MCP spec + claude-code MCP docs), mapped onto internal Folyn architecture (Tauri 2 + React 18 + Zustand stores in the renderer, Rust backend owns commands/process spawning).
 - **Date**: 2026-06-28
 
 > **Verification caveat**: This environment has no live web-search tool. The MCP
@@ -34,8 +34,8 @@
 
 This is an **alternative architecture** to the PRD's chosen Node-driver + Agent
 SDK approach. It trades "ship a Node runtime + driver script" for "ship an
-in-process Rust HTTP server" — lighter bundle, but the claude CLI (not Mochi)
-drives the session, so Mochi no longer spawns/controls the AI loop. The two are
+in-process Rust HTTP server" — lighter bundle, but the claude CLI (not Folyn)
+drives the session, so Folyn no longer spawns/controls the AI loop. The two are
 not mutually exclusive long-term: an MCP server can be layered under either.
 
 ---
@@ -49,14 +49,14 @@ MCP defines two standard transports (spec §Transports):
   over the server's stdin/stdout (newline-delimited JSON).
 - This is the dominant transport for local-tool MCP servers (e.g. a `npx`-launched
   server the IDE spawns).
-- **Fit for Mochi: poor.** The claude CLI would need to *spawn* the MCP server.
-  But Mochi is an already-running GUI app, not a process the CLI can launch.
+- **Fit for Folyn: poor.** The claude CLI would need to *spawn* the MCP server.
+  But Folyn is an already-running GUI app, not a process the CLI can launch.
   Workarounds all hurt:
   - **Bridge binary**: ship a tiny CLI binary that the claude CLI spawns via
-    `command`, which then connects to the running Mochi (e.g. opens a localhost
+    `command`, which then connects to the running Folyn (e.g. opens a localhost
     socket / named pipe and proxies stdio↔HTTP). Extra artifact to build/ship,
-    double-hop latency, and the bridge still needs to discover Mochi's port.
-  - **`claude` spawns Mochi**: impossible — Mochi is the user's editor, already
+    double-hop latency, and the bridge still needs to discover Folyn's port.
+  - **`claude` spawns Folyn**: impossible — Folyn is the user's editor, already
     open.
 - stdio also gives no clean way to host multiple transports or survive CLI
   restarts without re-spawning.
@@ -73,7 +73,7 @@ MCP defines two standard transports (spec §Transports):
   subsequent requests. (Sessions are optional — a stateless server can ignore
   this.)
 - Client may `DELETE` the endpoint to terminate a session.
-- **Fit for Mochi: excellent.** Mochi's Rust backend is a long-running process
+- **Fit for Folyn: excellent.** Folyn's Rust backend is a long-running process
   that can bind a localhost listener; the claude CLI connects by `url`. No
   spawn/bridge needed. Survives CLI restarts (each `claude` invocation does a
   fresh `initialize`). Natural fit for a GUI app exposing tools.
@@ -117,10 +117,10 @@ claude-code reads MCP server config from several places (precedence: CLI flag > 
 ```json
 {
   "mcpServers": {
-    "mochi-stdio": {
+    "folyn-stdio": {
       "command": "node",
       "args": ["/path/to/bridge.js"],
-      "env": { "MOCHI_PORT": "31337" }
+      "env": { "FOLYN_PORT": "31337" }
     }
   }
 }
@@ -131,7 +131,7 @@ Keys: `command` (string), `args` (string[]), `env` (string→string, optional).
 ```json
 {
   "mcpServers": {
-    "mochi": {
+    "folyn": {
       "type": "http",
       "url": "http://127.0.0.1:31337/mcp"
     }
@@ -142,14 +142,14 @@ Keys: `command` (string), `args` (string[]), `env` (string→string, optional).
   `type: "http"` is the explicit form; some claude-code versions auto-detect from
   the presence of `url`. **Re-verify the exact key** (`type` vs `transport`) on
   the installed CLI via `claude mcp add --help`; `claude mcp add --transport http
-  --url http://127.0.0.1:31337/mcp mochi` is the CLI equivalent and writes the
+  --url http://127.0.0.1:31337/mcp folyn` is the CLI equivalent and writes the
   matching JSON.
 - Optional `headers` (string→string) for auth/custom headers.
 
-### Where to put it for Mochi
-Since Mochi's MCP server is **user-local** (the user's own editor on their
+### Where to put it for Folyn
+Since Folyn's MCP server is **user-local** (the user's own editor on their
 machine), the natural scope is **user settings** (`~/.claude.json` `mcpServers`),
-not a committed project `.mcp.json`. Mochi could even offer a "Copy MCP config
+not a committed project `.mcp.json`. Folyn could even offer a "Copy MCP config
 to clipboard" / "Write to ~/.claude.json" button in settings once it knows its
 own URL+port.
 
@@ -158,7 +158,7 @@ own URL+port.
 ## 3. MCP protocol shape (what the server must implement)
 
 MCP is **JSON-RPC 2.0** over the chosen transport. A server implementing *tools*
-(the only capability Mochi needs) must handle:
+(the only capability Folyn needs) must handle:
 
 ### Required methods
 
@@ -171,14 +171,14 @@ MCP is **JSON-RPC 2.0** over the chosen transport. A server implementing *tools*
 | `tools/call` | req → res | Execute a tool. Request params: `{"name": "...", "arguments": {...}, "callId"?}`. |
 
 (resources/list, resources/read, prompts/list, prompts/get are **optional** —
-skip unless Mochi wants to expose notes as MCP resources.)
+skip unless Folyn wants to expose notes as MCP resources.)
 
 ### `tools/list` — declaring a tool & its `inputSchema`
 
 ```jsonc
 {
   "name": "readFile",
-  "description": "Read a file from the Mochi vault, respecting hidden __*__ dirs and unsaved buffers.",
+  "description": "Read a file from the Folyn vault, respecting hidden __*__ dirs and unsaved buffers.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -196,7 +196,7 @@ skip unless Mochi wants to expose notes as MCP resources.)
   validate/generate the args it sends.
 - `annotations` is optional metadata (`readOnlyHint`, `destructiveHint`,
   `idempotentHint`, `openWorldHint`) that helps clients decide when to prompt
-  for user approval. Useful for Mochi: mark read tools `readOnlyHint:true`, mark
+  for user approval. Useful for Folyn: mark read tools `readOnlyHint:true`, mark
   write tools `destructiveHint:true` so the CLI surfaces a confirm.
 
 ### `tools/call` — request & response
@@ -214,7 +214,7 @@ Request:
     "isError": false } }
 ```
 `content` items can be `{type:"text",text}`, `{type:"image",data,mimeType}`, or
-`{type:"resource",resource:{uri,mimeType,text|blob}}`. For Mochi, `text` items
+`{type:"resource",resource:{uri,mimeType,text|blob}}`. For Folyn, `text` items
 suffice for almost everything; `resource` items are nice for returning a note's
 full content as a structured resource.
 
@@ -229,10 +229,10 @@ full content as a structured resource.
 
 ### SDK options
 
-| SDK | Language | Fit for Mochi |
+| SDK | Language | Fit for Folyn |
 |---|---|---|
 | **`rmcp`** (crate `rmcp`) | Rust | **Recommended for the backend.** Official Rust MCP SDK (maintained by the Rust MCP org). Provides `ServerHandler` trait, transport integration, tool/resource macros. Compile into the Tauri binary — no Node. Pairs naturally with axum. |
-| `@modelcontextprotocol/sdk` | TS/Node | Would run in the renderer — but the Tauri webview has **no Node runtime** (it's a webview, not Node), and `@modelcontextprotocol/sdk`'s stdio/server transport needs Node APIs. So the TS SDK is **not** usable in the Mochi renderer for *hosting*. (It could run inside the Node driver from the PRD's other approach, but that's a different architecture.) |
+| `@modelcontextprotocol/sdk` | TS/Node | Would run in the renderer — but the Tauri webview has **no Node runtime** (it's a webview, not Node), and `@modelcontextprotocol/sdk`'s stdio/server transport needs Node APIs. So the TS SDK is **not** usable in the Folyn renderer for *hosting*. (It could run inside the Node driver from the PRD's other approach, but that's a different architecture.) |
 | Hand-rolled JSON-RPC over axum | Rust | MCP is small enough (a handful of methods) that a ~200-line handler is viable and avoids the `rmcp` version surface. Reasonable if the team wants zero extra SDK deps beyond axum. |
 
 **Decision: `rmcp` if the team accepts the dep; otherwise hand-rolled.** The
@@ -241,9 +241,9 @@ way.
 
 ---
 
-## 4. Routing tool calls back into Mochi's state (the hard part)
+## 4. Routing tool calls back into Folyn's state (the hard part)
 
-**The problem**: the MCP server lives in the **Rust backend**, but Mochi's state
+**The problem**: the MCP server lives in the **Rust backend**, but Folyn's state
 (vaultStore, editorStore, wiki/clip features) lives in the **TS renderer's
 Zustand stores**. When claude calls `tools/call`, Rust receives it — Rust cannot
 touch Zustand. It must forward the call to the renderer, await the result, and
@@ -283,7 +283,7 @@ claude ──tools/call(id=A)──▶ Rust MCP handler
 - Tool registry on the renderer side maps tool name → handler `(args) =>
   Promise<ToolResult>`. T1/T2/T3 tools each register here:
   - T1 file tools → `vaultStore` actions (readFile/writeFile/list with
-    `excludePatterns`, createDir); write tool additionally surfaces Mochi's
+    `excludePatterns`, createDir); write tool additionally surfaces Folyn's
     diff-review as a permission step before returning.
   - T2 editor tools → `editorStore` actions (openFile, insertContentAtCursor,
     setViewMode).
@@ -296,7 +296,7 @@ claude ──tools/call(id=A)──▶ Rust MCP handler
 - **WebSocket from renderer to the Rust MCP server**: redundant — Tauri events
   already bridge Rust↔renderer; adding a second channel is needless.
 - **Move state into Rust**: would mean rebuilding Zustand stores in Rust — huge,
-  violates Mochi's existing architecture; reject.
+  violates Folyn's existing architecture; reject.
 
 **Decision: event-out + `mcp_tool_result` command-back, `oneshot`-correlated,
 with a timeout.** This is the idiomatic Tauri pattern for "Rust needs a value
@@ -321,15 +321,15 @@ from the renderer."
   user can't hardcode it. Options:
   - **(a) Fixed port with fallback**: try a chosen port (e.g. 31337); if busy,
     increment until free. Write the actual port to a well-known file
-    (`$APPDATA/mochi/mcp-port`) and have the user's `.mcp.json`/launcher read it.
+    (`$APPDATA/folyn/mcp-port`) and have the user's `.mcp.json`/launcher read it.
     Simplest UX if the user edits config once.
   - **(b) Dynamic port + port file**: bind `:0`, write the port to
-    `$APPDATA/mochi/mcp-port`, and ship/point a tiny launcher that reads the file
+    `$APPDATA/folyn/mcp-port`, and ship/point a tiny launcher that reads the file
     and proxies — heavier; reject unless fixed-port collisions become real.
   - **(c) Fixed port, fail-fast**: require the user to reserve a port; bind it
     exclusively. Cleanest config UX, risk of "port in use" startup failures.
 - **Recommendation: (a) fixed preferred port with auto-increment + write the
-  resolved URL to `$APPDATA/mochi/mcp.json`-ish file** so a settings UI can show
+  resolved URL to `$APPDATA/folyn/mcp.json`-ish file** so a settings UI can show
   "your MCP URL is X" and offer to write `~/.claude.json`.
 
 ### Stopping
@@ -341,28 +341,28 @@ from the renderer."
 - The claude CLI establishes its MCP connection **per session** (each `claude`
   invocation does `initialize` against each configured server). It does **not**
   maintain a persistent background connection to MCP servers between invocations.
-- Consequence: **Mochi must be running before the user launches `claude`**. If
-  Mochi is down when `claude` starts, that server's `initialize` fails and the
+- Consequence: **Folyn must be running before the user launches `claude`**. If
+  Folyn is down when `claude` starts, that server's `initialize` fails and the
   CLI reports the server unavailable (tools from it are absent for that session).
   There is no mid-session auto-reconnect for a server that was down at startup.
 - If the server dies *during* a `claude` session, in-flight `tools/call` requests
   error (transport-level), and subsequent tool calls fail until the CLI is
-  restarted. So Mochi should keep the server up for the app's whole lifetime.
+  restarted. So Folyn should keep the server up for the app's whole lifetime.
 - Ordering implication: this architecture puts the **user** in charge of starting
-  claude (unlike the PRD's Node-driver approach where Mochi spawns claude). The
-  MCP server is "always on" while Mochi runs; the user runs `claude` whenever
-  they want and Mochi's tools are available.
+  claude (unlike the PRD's Node-driver approach where Folyn spawns claude). The
+  MCP server is "always on" while Folyn runs; the user runs `claude` whenever
+  they want and Folyn's tools are available.
 
 ---
 
-## Mapping onto Mochi's concrete constraints
+## Mapping onto Folyn's concrete constraints
 
 | Constraint (from codebase) | Implication |
 |---|---|
 | Renderer = Tauri webview, **no Node runtime** | TS MCP SDK can't *host* here; server must be Rust. (Confirms PRD's "no Node in renderer" note.) |
 | State in Zustand stores (`vaultStore`, `editorStore`, …) in renderer | Tool execution must round-trip Rust→renderer→Rust via event+command (§4). |
 | `Cargo.toml` currently has no HTTP/tokio deps | Adds `axum` + `tokio` (and optionally `rmcp`) as new Cargo deps. |
-| `tauri-plugin-shell` already spawns `claude` CLI via `claude-cli` command | Orthogonal to MCP server; the shell-plugin path stays for *Mochi driving claude*, the MCP server is for *claude calling Mochi*. The two can coexist. |
+| `tauri-plugin-shell` already spawns `claude` CLI via `claude-cli` command | Orthogonal to MCP server; the shell-plugin path stays for *Folyn driving claude*, the MCP server is for *claude calling Folyn*. The two can coexist. |
 | `commands.rs` already has file/git/webview Tauri commands | The new `mcp_tool_result` command joins this handler list; the MCP bridge listener is a renderer-side concern. |
 | Capabilities `default.json` allows `shell:allow-spawn` for `claude-cli` | MCP HTTP server needs no new shell capability; it needs network-listen (localhost only) — no Tauri capability grant required for a Rust-side listener (capabilities gate renderer→Rust commands & plugin APIs, not raw Rust sockets). |
 
@@ -371,7 +371,7 @@ from the renderer."
 - `apps/desktop/src-tauri/Cargo.toml` — current Rust deps (no HTTP server yet).
 - `apps/desktop/src-tauri/src/lib.rs` — `setup` hook + `invoke_handler` list; where the axum spawn and `mcp_tool_result` command registration go.
 - `apps/desktop/src-tauri/src/commands.rs` — existing Tauri commands pattern to mirror.
-- `packages/cli-adapter/src/claudeAdapter.ts` / `baseAdapter.ts` — the *other* architecture (Mochi spawns claude). MCP server is its complement, not its replacement.
+- `packages/cli-adapter/src/claudeAdapter.ts` / `baseAdapter.ts` — the *other* architecture (Folyn spawns claude). MCP server is its complement, not its replacement.
 - `.trellis/tasks/06-28-agent-sdk-adapter/prd.md` — PRD chose the Node-driver/Agent-SDK direction; this research documents the MCP-server alternative the task asked to investigate.
 
 ## External references (re-verify before coding)

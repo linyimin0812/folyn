@@ -154,17 +154,17 @@ export function buildRunArgs(config: RuntimeConfig, tmpPath: string): [sidecar: 
 
 let tmpCounter = 0;
 async function makeTmpPath(fileExt: string): Promise<string> {
-  // ponytail: use ~/.mochi/scripts-tmp (fs:scope-home-recursive) instead
+  // ponytail: use ~/.folyn/scripts-tmp (fs:scope-home-recursive) instead
   // of tempDir. tempDir() returns /var/folders/... on macOS, which is
-  // outside the fs scope and rejected with "forbidden path". ~/.mochi is
+  // outside the fs scope and rejected with "forbidden path". ~/.folyn is
   // covered by ACL.
   const { homeDir, join } = await import('@tauri-apps/api/path');
   const { mkdir } = await import('@tauri-apps/plugin-fs');
   const home = await homeDir();
-  const tmpDir = await join(home, '.mochi', 'scripts-tmp');
+  const tmpDir = await join(home, '.folyn', 'scripts-tmp');
   await mkdir(tmpDir, { recursive: true }).catch(() => {});
   const rand = `${Date.now().toString(36)}-${(tmpCounter++).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  return join(tmpDir, `mochi-run-${rand}.${fileExt}`);
+  return join(tmpDir, `folyn-run-${rand}.${fileExt}`);
 }
 
 /** Write code to a temp file, spawn the runtime, return a controller. */

@@ -42,10 +42,10 @@ function createFakeFs(): VersionFs & { files: Map<string, string> } {
 
 describe('versionHistory — wrapper resolves vault root + delegates', () => {
   const VAULT_ID = 'vault-1';
-  const FILE_PATH = '/mock/home/mochi/default_vault/notes/foo.md';
-  // The wrapper computes `${home}/.mochi/vaults/${vaultId}` via the mocked
-  // join, so the expected metadata root is `/mock/home/.mochi/vaults/vault-1`.
-  const META_ROOT = '/mock/home/.mochi/vaults/vault-1';
+  const FILE_PATH = '/mock/home/folyn/default_vault/notes/foo.md';
+  // The wrapper computes `${home}/.folyn/vaults/${vaultId}` via the mocked
+  // join, so the expected metadata root is `/mock/home/.folyn/vaults/vault-1`.
+  const META_ROOT = '/mock/home/.folyn/vaults/vault-1';
 
   let fs: ReturnType<typeof createFakeFs>;
 

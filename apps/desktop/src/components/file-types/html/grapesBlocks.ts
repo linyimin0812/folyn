@@ -1,5 +1,5 @@
 /**
- * Custom GrapesJS blocks for the Mochi HTML editor.
+ * Custom GrapesJS blocks for the Folyn HTML editor.
  *
  * The `grapesjs-blocks-basic` plugin already ships the basic grid/column/text
  * blocks. The blocks registered here complement it with the higher-level
@@ -23,32 +23,32 @@ interface BlockOptions {
 const BLOCKS: BlockOptions[] = [
   // —— Text category ——
   {
-    id: 'mochi-heading',
+    id: 'folyn-heading',
     label: '标题',
     category: '文本',
     content: '<h2 style="padding:8px 0;font-size:24px;font-weight:600;">标题文本</h2>',
   },
   {
-    id: 'mochi-paragraph',
+    id: 'folyn-paragraph',
     label: '段落',
     category: '文本',
     content: '<p style="line-height:1.6;color:#333;">这是一段示例文字，可在此处编辑内容。</p>',
   },
   {
-    id: 'mochi-button',
+    id: 'folyn-button',
     label: '按钮',
     category: '文本',
     content:
       '<a href="#" style="display:inline-block;padding:8px 16px;border-radius:6px;background-color:#3a6ef0;color:#fff;text-decoration:none;">点击</a>',
   },
   {
-    id: 'mochi-list',
+    id: 'folyn-list',
     label: '列表',
     category: '文本',
     content: '<ul><li>列表项 1</li><li>列表项 2</li><li>列表项 3</li></ul>',
   },
   {
-    id: 'mochi-quote',
+    id: 'folyn-quote',
     label: '引用',
     category: '文本',
     content:
@@ -56,7 +56,7 @@ const BLOCKS: BlockOptions[] = [
   },
   // —— Layout category ——
   {
-    id: 'mochi-card',
+    id: 'folyn-card',
     label: '卡片',
     category: '布局',
     content:
@@ -67,7 +67,7 @@ const BLOCKS: BlockOptions[] = [
       '</div>',
   },
   {
-    id: 'mochi-hero',
+    id: 'folyn-hero',
     label: 'Hero 区域',
     category: '布局',
     content:
@@ -78,13 +78,13 @@ const BLOCKS: BlockOptions[] = [
       '</section>',
   },
   {
-    id: 'mochi-divider',
+    id: 'folyn-divider',
     label: '分割线',
     category: '布局',
     content: '<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;"/>',
   },
   {
-    id: 'mochi-spacer',
+    id: 'folyn-spacer',
     label: '间距',
     category: '布局',
     content: '<div style="height:24px;"></div>',
@@ -92,7 +92,7 @@ const BLOCKS: BlockOptions[] = [
 ];
 
 /**
- * Register Mochi's custom block library on a GrapesJS editor instance.
+ * Register Folyn's custom block library on a GrapesJS editor instance.
  * Idempotent — re-registration on the same editor is a no-op.
  */
 export function registerCustomBlocks(editor: Editor): void {

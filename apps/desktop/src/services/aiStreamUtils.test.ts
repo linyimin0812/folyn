@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { CliAdapter, CliStreamEvent } from '@mochi/cli-adapter';
+import type { CliAdapter, CliStreamEvent } from '@folyn/cli-adapter';
 import { collectTextFromStream } from './aiStreamUtils';
 import type { StreamEvent } from './aiStreamUtils';
 

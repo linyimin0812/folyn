@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 import { FileIcon } from '@/components/icons/FileIcon';
 
 interface SaveMessageDialogProps {

@@ -26,7 +26,7 @@
 //!     specific to a vanilla NSWindow at ScreenSaver level; on a real NSPanel
 //!     at Dock level the combo works (BongoCat ships it).
 //!
-//! Runtime switch: `MOCHI_PET_PANEL_BACKEND=legacy` falls back to the old
+//! Runtime switch: `FOLYN_PET_PANEL_BACKEND=legacy` falls back to the old
 //! NSWindow + ScreenSaver-level + behavior-770 path (`reapply_pet_topmost`).
 //! Default (unset / `nspanel`) uses this backend.
 
@@ -38,8 +38,8 @@ use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt,
 /// Touch Bar finder has already registered a `nextResponder` KVO observer
 /// on the original NSWindow class. When the finder later invalidates
 /// (window deinit / responder-chain change), it tries to remove the
-/// observer from the post-swap class (`MochiPetPanel`/`MochiPanelWindow`/
-/// `MochiVoiceOrbPanel`) and throws `NSRangeException` —
+/// observer from the post-swap class (`FolynPetPanel`/`FolynPanelWindow`/
+/// `FolynVoiceOrbPanel`) and throws `NSRangeException` —
 /// `_NSTouchBarFinderObservation … because it is not registered as an
 /// observer`. Setting `autorecalculatesTouchBar = NO` skips the recalc
 /// path that triggers the unregister, so the stale KVO registration is
@@ -61,7 +61,7 @@ fn disable_touch_bar_recalc(panel: &tauri_nspanel::NSPanel) {
 }
 
 tauri_panel! {
-    panel!(MochiPetPanel {
+    panel!(FolynPetPanel {
         config: {
             is_floating_panel: true,
             can_become_key_window: true,
@@ -78,7 +78,7 @@ tauri_panel! {
         // with `owner = the panel` (the object with the override). See
         // research/cursor-nonfrontmost-followup.md (Q1, Q3c option d).
     })
-    panel!(MochiPanelWindow {
+    panel!(FolynPanelWindow {
         config: {
             is_floating_panel: true,
             can_become_key_window: true,
@@ -87,11 +87,11 @@ tauri_panel! {
     })
     // ponytail: voice-orb is a pure-display WebGL waveform overlay (pointer
     // events pass through to the app behind). It must NEVER become key —
-    // otherwise when Mochi is the frontmost app the orb would intercept the
+    // otherwise when Folyn is the frontmost app the orb would intercept the
     // post-recording CGEvent Cmd+V (no text field in the orb → paste lost).
     // Pet/bubble panels keep `can_become_key_window: true` for cursor-on-hover;
     // the orb has no hover interaction so it loses nothing by being non-key.
-    panel!(MochiVoiceOrbPanel {
+    panel!(FolynVoiceOrbPanel {
         config: {
             is_floating_panel: true,
             can_become_key_window: false,
@@ -101,15 +101,15 @@ tauri_panel! {
     // ponytail: empty delegate body — the mouse callbacks (on_cursor_update,
     // on_mouse_exited, etc.) are built into every panel_event! handler; we
     // just need the class to exist so we can attach it via set_event_handler.
-    panel_event!(MochiPetEventHandler {
+    panel_event!(FolynPetEventHandler {
     })
 }
 
 /// Returns true when the NSPanel backend is active (default). Set
-/// `MOCHI_PET_PANEL_BACKEND=legacy` to fall back to the old NSWindow +
+/// `FOLYN_PET_PANEL_BACKEND=legacy` to fall back to the old NSWindow +
 /// ScreenSaver-level path for safe rollback.
 pub fn backend_is_nspanel() -> bool {
-    match std::env::var("MOCHI_PET_PANEL_BACKEND") {
+    match std::env::var("FOLYN_PET_PANEL_BACKEND") {
         Ok(v) => !v.eq_ignore_ascii_case("legacy"),
         Err(_) => true,
     }
@@ -122,14 +122,14 @@ pub fn backend_is_nspanel() -> bool {
 /// re-asserts the class and re-applies level/style/behavior. Returns the
 /// count of windows successfully converted.
 ///
-/// Two panel types are used: `MochiPetPanel` for the `pet` mascot,
+/// Two panel types are used: `FolynPetPanel` for the `pet` mascot,
 /// `pet-bubble`, and `pet-corner` (no keyboard interaction;
 /// `can_become_key_window: true` so the webview can become key for CSS
 /// cursor updates after a click — plain hover doesn't update the cursor
 /// without a click on macOS because the panel isn't key until clicked), and
-/// `MochiPanelWindow` for the `pet-panel`, which needs keyboard focus for
+/// `FolynPanelWindow` for the `pet-panel`, which needs keyboard focus for
 /// its Esc keydown listener (`pet_panel_show` calls Tauri's `set_focus()`,
-/// which activates the Mochi app and makes the panel key).
+/// which activates the Folyn app and makes the panel key).
 /// Both get the same level/style/collection recipe: `Dock` level +
 /// `nonactivating_panel` + `stationary | can_join_all_spaces |
 /// full_screen_auxiliary` (273). The `pet-panel` is opaque (not transparent)
@@ -158,7 +158,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
         // panic strategy — keeps `panic = "abort"` viable for binary size.
         // Worst case: panel stays as a plain NSWindow, no SIGABRT.
         let _ = catch(AssertUnwindSafe(|| {
-            if let Ok(panel) = window.to_panel::<MochiPetPanel>() {
+            if let Ok(panel) = window.to_panel::<FolynPetPanel>() {
                 panel.set_level(PanelLevel::Dock.value());
                 panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
                 // ponytail: `move_to_active_space` (not `can_join_all_spaces`) —
@@ -191,7 +191,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                 // `can_become_key_window: true` actually take effect on a swizzled
                 // class) may not route correctly; the float-on-deactivate behavior
                 // is partly delegate-driven.
-                let handler = MochiPetEventHandler::new();
+                let handler = FolynPetEventHandler::new();
                 panel.set_event_handler(Some(handler.as_ref()));
                 disable_touch_bar_recalc(panel.as_panel());
                 count += 1;
@@ -202,7 +202,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // Pet-panel — needs key window for Esc; set_focus() makes it key on show.
     if let Some(window) = app.get_webview_window("pet-panel") {
         let _ = catch(AssertUnwindSafe(|| {
-            if let Ok(panel) = window.to_panel::<MochiPanelWindow>() {
+            if let Ok(panel) = window.to_panel::<FolynPanelWindow>() {
                 panel.set_level(PanelLevel::Dock.value());
                 panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
                 panel.set_collection_behavior(
@@ -223,7 +223,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // immediately.
     if let Some(window) = app.get_webview_window("pet-bubble") {
         let _ = catch(AssertUnwindSafe(|| {
-            if let Ok(panel) = window.to_panel::<MochiPetPanel>() {
+            if let Ok(panel) = window.to_panel::<FolynPetPanel>() {
                 panel.set_level(PanelLevel::Dock.value());
                 panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
                 panel.set_collection_behavior(
@@ -244,7 +244,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // buttons deliver immediately.
     if let Some(window) = app.get_webview_window("pet-corner") {
         let _ = catch(AssertUnwindSafe(|| {
-            if let Ok(panel) = window.to_panel::<MochiPetPanel>() {
+            if let Ok(panel) = window.to_panel::<FolynPetPanel>() {
                 panel.set_level(PanelLevel::Dock.value());
                 panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
                 panel.set_collection_behavior(
@@ -267,7 +267,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // key on demand for the ESC keydown listener (mirrors `pet_panel_show`).
     if let Some(window) = app.get_webview_window("pet-menu") {
         let _ = catch(AssertUnwindSafe(|| {
-            if let Ok(panel) = window.to_panel::<MochiPetPanel>() {
+            if let Ok(panel) = window.to_panel::<FolynPetPanel>() {
                 panel.set_level(PanelLevel::Dock.value());
                 panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
                 panel.set_collection_behavior(
@@ -291,7 +291,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
     // the WebGL canvas floats over the desktop without an opaque square.
     if let Some(window) = app.get_webview_window("voice-orb") {
         let _ = catch(AssertUnwindSafe(|| {
-            if let Ok(panel) = window.to_panel::<MochiVoiceOrbPanel>() {
+            if let Ok(panel) = window.to_panel::<FolynVoiceOrbPanel>() {
                 panel.set_level(PanelLevel::Dock.value());
                 panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
                 panel.set_collection_behavior(

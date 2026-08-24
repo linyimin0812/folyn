@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import i18n, { SUPPORTED_LOCALES, type Locale, LOCALE_STORAGE_KEY, detectInitialLocale } from '@/i18n';
 import { isTauri } from '@/utils/platform';
 
-// ponytail: locale has its OWN localStorage key (`mochi:locale`) instead of
+// ponytail: locale has its OWN localStorage key (`folyn:locale`) instead of
 // riding the centralized `settings:all` blob. Reason: i18next needs the
 // locale synchronously at module init, but settings:all hydrates async via
 // loadSettings(). A dedicated key is readable at i18n.init time. Smaller

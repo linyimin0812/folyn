@@ -27,7 +27,7 @@ without click.
 
 ### Issue 2 — no hover cursor without click
 - `pet_set_cursor` ([commands.rs:662-678](../../../apps/desktop/src-tauri/src/commands.rs#L662-L678)) calls `[NSCursor pointingHandCursor] set]` from `PetApp.handleMouseEnter` ([PetApp.tsx:262-274](../../../apps/desktop/src/components/pet/PetApp.tsx#L262-L274)).
-- The pet panel is `nonactivating_panel` + `can_become_main_window: false` ([pet_panel_macos.rs:39-44](../../../apps/desktop/src-tauri/src/pet_panel_macos.rs#L39-L44)). When Mochi isn't frontmost, the frontmost app owns the cursor → `NSCursor set` doesn't stick. CSS `cursor:pointer` (PetApp.tsx:833) also doesn't apply until the panel is key (after a click).
+- The pet panel is `nonactivating_panel` + `can_become_main_window: false` ([pet_panel_macos.rs:39-44](../../../apps/desktop/src-tauri/src/pet_panel_macos.rs#L39-L44)). When Folyn isn't frontmost, the frontmost app owns the cursor → `NSCursor set` doesn't stick. CSS `cursor:pointer` (PetApp.tsx:833) also doesn't apply until the panel is key (after a click).
 - The code comment ([commands.rs:659-660](../../../apps/desktop/src-tauri/src/commands.rs#L659-L660)) already names the reliable fix: **`NSTrackingArea` with `NSTrackingActiveAlways`** on the panel's content view, `cursorUpdate` sets the hand cursor.
 
 ### Issue 3 — Esc needs a click first
@@ -38,7 +38,7 @@ without click.
 ## Assumptions (temporary)
 
 - The 3 issues are independent enough to fix separately but share the NSPanel focus theme.
-- macOS-only (the NSPanel backend is macOS; `MOCHI_PET_PANEL_BACKEND=legacy` fallback exists but is not the focus).
+- macOS-only (the NSPanel backend is macOS; `FOLYN_PET_PANEL_BACKEND=legacy` fallback exists but is not the focus).
 - No new Tauri plugin / dependency — use existing `cocoa` + `objc` crates already in the Rust deps (used by `pet_set_cursor`, `pet_show_context_menu`).
 
 ## Open Questions
@@ -50,8 +50,8 @@ without click.
 1. Panel opens with no visible frame jump / flicker during the fade-in.
    - **Decouple the fade trigger from `tauri://focus`**: `applyPanelFrame` emits a `pet://panel-fade-in` event AFTER the post-show frame re-assert; `PetPanelApp` listens and calls `setVisible(true)` then — so the fade starts from the stable final frame, not mid-re-assert.
    - **CSS softer entrance**: opacity ~180ms ease-out + subtle `scale(0.98→1)` from `transform-origin: center` (drop the `top-left` origin + the bigger `0.96` scale that amplified the mid-fade shift).
-2. Hovering the pet mascot shows the hand cursor on first hover (no click needed), even when Mochi is not the frontmost app.
-   - **Use the `tauri-nspanel` crate's native `tracking_area`** (`ActiveAlways | CursorUpdate | MouseEnteredAndExited | InVisibleRect`) on `MochiPetPanel` + a `panel_event!` `on_cursor_update`/`on_mouse_exited` handler that sets the NSCursor. `ActiveAlways` is the flag that delivers hover events when the app isn't frontmost. No raw objc.
+2. Hovering the pet mascot shows the hand cursor on first hover (no click needed), even when Folyn is not the frontmost app.
+   - **Use the `tauri-nspanel` crate's native `tracking_area`** (`ActiveAlways | CursorUpdate | MouseEnteredAndExited | InVisibleRect`) on `FolynPetPanel` + a `panel_event!` `on_cursor_update`/`on_mouse_exited` handler that sets the NSCursor. `ActiveAlways` is the flag that delivers hover events when the app isn't frontmost. No raw objc.
    - Remove the redundant frontend `invoke('pet_set_cursor')` from `PetApp` once the tracking area works (verify in-app).
 3. Esc closes the panel immediately on show (no click needed).
    - **Make the webview first responder on show**: after `set_focus()` in `pet_panel_show`, call `makeFirstResponder(webview)` (Rust, main thread) so `document` receives `keydown` → Esc works without a click.
@@ -61,7 +61,7 @@ without click.
 ## Acceptance Criteria (evolving)
 
 - [ ] Opening the panel (pet-click path AND global-shortcut path) shows no mid-open position/size jump — the fade-in starts from the final frame.
-- [ ] First hover over the pet mascot (with Mochi NOT frontmost) shows the hand cursor; moving the cursor away restores the default cursor — no click required.
+- [ ] First hover over the pet mascot (with Folyn NOT frontmost) shows the hand cursor; moving the cursor away restores the default cursor — no click required.
 - [ ] After opening the panel via pet click, pressing Esc immediately hides it (no click on the panel first).
 - [ ] On open with the Chat tab active, the chat input is focused and the user can type immediately; on the Actions tab, input is not force-focused.
 - [ ] File upload (attach button) still does NOT blank the panel (regression of the prior `isVisible()` fix).
@@ -103,7 +103,7 @@ without click.
 - **Verify** `pet_panel_show` is only called from `applyPanelFrame` (both pet-click + shortcut paths route through it) before relying on the emit; if there's another caller, have it emit too (or move the emit into `pet_panel_show` Rust-side).
 
 ### Issue 2 — hover cursor without click (Rust, crate-native)
-- Add `with: { tracking_area: { options: TrackingAreaOptions::new().active_always().cursor_update().mouse_entered_and_exited().in_visible_rect(), auto_resize: true } }` to the `MochiPetPanel` `panel!` macro in `pet_panel_macos.rs`.
+- Add `with: { tracking_area: { options: TrackingAreaOptions::new().active_always().cursor_update().mouse_entered_and_exited().in_visible_rect(), auto_resize: true } }` to the `FolynPetPanel` `panel!` macro in `pet_panel_macos.rs`.
 - Define a `panel_event!` handler; wire `on_cursor_update` → `[NSCursor pointingHandCursor] set]` and `on_mouse_exited` → `[NSCursor arrowCursor] set]` (reuse the `pet_set_cursor` NSCursor logic). Attach in `convert_windows`.
 - Once verified in-app, remove the now-redundant `invoke('pet_set_cursor')` calls from `PetApp.handleMouseEnter/Leave` (keep the command as a fallback or remove if unused).
 

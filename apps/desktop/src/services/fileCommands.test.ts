@@ -4,7 +4,7 @@ import {
   buildFileCommands,
   resetFileCommandsCache,
 } from './fileCommands';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 
 // Mock editorIoService so file command run() calls a spyable openFile (PR2:
 // openFile moved from editorStore action to editorIoService function). vi.mock

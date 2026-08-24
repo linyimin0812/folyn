@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Lightbulb, Loader2 } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useNavStore } from '@/store/navStore';
-import { listAdapters, buildAdapterVersionCommand, buildAdapterDetectCommand } from '@mochi/cli-adapter';
+import { listAdapters, buildAdapterVersionCommand, buildAdapterDetectCommand } from '@folyn/cli-adapter';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { openFile } from '@/services/editorIoService';
 import { buildShellSidecar, isWindowsPlatform } from '@/utils/shellSidecar';

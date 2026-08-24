@@ -1,6 +1,6 @@
 # i18n Guidelines
 
-> Executable contracts for internationalizing Mochi desktop UI. zh/en supported.
+> Executable contracts for internationalizing Folyn desktop UI. zh/en supported.
 
 ## Scope / Trigger
 
@@ -21,7 +21,7 @@ Pure log strings, OS-level error text, and code comments are OUT OF SCOPE (leave
 ```ts
 export const SUPPORTED_LOCALES = ['zh', 'en'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
-export const LOCALE_STORAGE_KEY = 'mochi:locale';
+export const LOCALE_STORAGE_KEY = 'folyn:locale';
 export const NAMESPACES = ['common','shell','topbar','sidebar','settings','vault','editor','search','ai','schedule','study','rustErrors','pet'] as const;
 
 export function detectInitialLocale(): Locale  // localStorage > navigator.language > 'zh'
@@ -34,7 +34,7 @@ export function detectInitialLocale(): Locale  // localStorage > navigator.langu
 
 ### localeStore
 
-`apps/desktop/src/store/localeStore.ts` — zustand store, OWN localStorage key `mochi:locale` (NOT the centralized `settings:all` blob).
+`apps/desktop/src/store/localeStore.ts` — zustand store, OWN localStorage key `folyn:locale` (NOT the centralized `settings:all` blob).
 
 **Why the deviation from `appearanceStore`'s `settings:all` slice pattern**: i18next needs the locale SYNCHRONOUSLY at module init, but `settings:all` hydrates async via `loadSettings()`. A dedicated key is readable at `i18n.init` time. Documented at `localeStore.ts:4-9` with a `ponytail:` comment naming the upgrade path.
 
@@ -204,7 +204,7 @@ registerPersistSlice({ keys: ['locale'], /* ... */ });
 ```
 
 ```ts
-// Correct: dedicated `mochi:locale` localStorage key, sync-readable.
+// Correct: dedicated `folyn:locale` localStorage key, sync-readable.
 persistLocale(lg) { window.localStorage?.setItem(LOCALE_STORAGE_KEY, lg); }
 ```
 
@@ -213,7 +213,7 @@ persistLocale(lg) { window.localStorage?.setItem(LOCALE_STORAGE_KEY, lg); }
 | Test | File | Asserts |
 |------|------|---------|
 | Locale detection (localStorage > navigator.language > zh) | `src/i18n/localeStore.test.ts` | `detectInitialLocale()` returns `'en'` when `navigator.language = 'en-US'` |
-| Locale switch live-persists | `src/i18n/localeStore.test.ts` | After `setLocale('en')`: `i18n.language === 'en'` AND `localStorage.getItem('mochi:locale') === 'en'` |
+| Locale switch live-persists | `src/i18n/localeStore.test.ts` | After `setLocale('en')`: `i18n.language === 'en'` AND `localStorage.getItem('folyn:locale') === 'en'` |
 | Missing-key fallback (no throw) | `src/i18n/localeStore.test.ts` | `i18n.t('common.__missing__')` returns the key string |
 | zh/en key-tree parity per namespace | `src/i18n/extracted-namespaces.test.ts` | For every `ns` in `NAMESPACES`: every key path in zh exists in en and vice versa |
 | Every namespace registered in `index.ts` | `src/i18n/extracted-namespaces.test.ts` | `i18n.hasResourceBundle(lng, ns)` for each `(lng, ns)` pair |

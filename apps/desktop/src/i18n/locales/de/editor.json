@@ -30,7 +30,7 @@
     },
     "containerWarning": {
       "title": "⚠️ Kompatibilitätshinweis",
-      "body": "Das aktuelle Dokument verwendet Mochi-Container-Syntax (Callouts, Tabs, einklappbare Blöcke usw.), eine Mochi-Erweiterung. **Andere Markdown-Editoren rendern es eventuell falsch.**",
+      "body": "Das aktuelle Dokument verwendet Folyn-Container-Syntax (Callouts, Tabs, einklappbare Blöcke usw.), eine Folyn-Erweiterung. **Andere Markdown-Editoren rendern es eventuell falsch.**",
       "hint": "Für die Anzeige in anderen Editoren als HTML exportieren.",
       "cancel": "Abbrechen",
       "confirm": "Trotzdem exportieren"

@@ -79,4 +79,4 @@ Reference: `packages/container-plugins/src/plugins/CalloutPlugin.tsx`
 - Using Tailwind classes in plugin components — preview pane has its own CSS context
 - Not handling missing `attributes` — always provide defaults
 - Side effects in plugin components — no API calls, no store access
-- Importing from `@mochi/desktop` — this package is a leaf dependency
+- Importing from `@folyn/desktop` — this package is a leaf dependency

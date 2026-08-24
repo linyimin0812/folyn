@@ -8,7 +8,7 @@
  * erased at build for type-only consumers).
  *
  * Tier model (see prd.md ADR-lite):
- * - `sandbox`: untrusted plugin hosted in a sandboxed iframe (`mochi-plugin://`
+ * - `sandbox`: untrusted plugin hosted in a sandboxed iframe (`folyn-plugin://`
  *   origin), talks to the host via a vetted postMessage RPC. No raw Tauri APIs.
  * - `trusted`: TOFU-pinned plugin `import()`-ed into the host realm; may
  *   contribute inline React/CodeMirror components and receive scoped Tauri
@@ -128,7 +128,7 @@ export interface PluginManifest {
   version: string;
   author?: string;
   /** Engine compat, e.g. `>=0.1.0`. */
-  mochi?: string;
+  folyn?: string;
   tier: PluginTier;
   /** Entry module path (resolved by the loader against the plugin origin). */
   main: string;

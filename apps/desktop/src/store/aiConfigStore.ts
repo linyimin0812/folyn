@@ -87,7 +87,7 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'chatProvider',
   'chatModel',
   // ponytail: providerConfigs / customProviders / enabledProviders removed —
-  // now live in ~/.mochi/providers/{customer/providers.json,settings.json}.
+  // now live in ~/.folyn/providers/{customer/providers.json,settings.json}.
   // Flat-key mirrors (chatApiKey etc.) also removed — they were backward-compat
   // for old blobs, and migration strips them in the same pass.
   // manualModels stays here — see type doc above.
@@ -290,7 +290,7 @@ export interface AiConfigState {
   configuredProviderIds: () => string[];
 
   /** Hydrate non-provider keys from the storage.json blob. Provider config
-   *  is loaded separately from `~/.mochi/providers/` via loadFromDisk(). */
+   *  is loaded separately from `~/.folyn/providers/` via loadFromDisk(). */
   hydrate: (blob: Record<string, unknown>) => void;
 
   /** Load custom provider defs + connection settings from disk. Runs
@@ -676,15 +676,15 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   loadFromDisk: async () => {
     // `settings:all` is the legacy single-blob file from before the per-slice
     // storage split (1eac971). It is no longer the source of truth — each
-    // persisted slice writes its own file under ~/.mochi/storage/, and
-    // provider config lives under ~/.mochi/providers/. The file lingered on
+    // persisted slice writes its own file under ~/.folyn/storage/, and
+    // provider config lives under ~/.folyn/providers/. The file lingered on
     // disk only because the old migration path wrote it back (stripped of
     // provider keys) instead of deleting it; its appearance/prefs keys were a
     // frozen snapshot that diverged from the per-slice files. Drop it so it
     // stops masquerading as a config source.
     await storageClient.remove('settings:all');
 
-    // Read the latest provider config from ~/.mochi/providers/*.json (the
+    // Read the latest provider config from ~/.folyn/providers/*.json (the
     // source of truth since the storage split).
     const [customer, settings] = await Promise.all([
       providerConfigStorage.getCustomerProviders(),
@@ -781,7 +781,7 @@ const persist = registerPersistSlice({
 /**
  * Broadcast provider settings + the model registry to secondary Tauri
  * windows (the pet-panel's embedded AiPanel). Secondary windows lack fs ACL
- * perms to re-read `~/.mochi/providers/`, so their `aiConfigStore` stays
+ * perms to re-read `~/.folyn/providers/`, so their `aiConfigStore` stays
  * empty and the panel's model selector shows "configure a model" even
  * though the main window has providers configured. Mirrors the
  * `pet://file-tree-updated` pattern: main-window-only caller (App.tsx),

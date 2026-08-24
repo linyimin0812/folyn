@@ -34,9 +34,9 @@ describe('renderTemplate — scalar', () => {
     };
     const payload = {
       ...basePayload,
-      data: { repo: 'mochi', runId: 42 },
+      data: { repo: 'folyn', runId: 42 },
     } as PetBubblePayload;
-    expect(renderTemplate(tpl, payload)).toBe('<div>mochi #42</div>');
+    expect(renderTemplate(tpl, payload)).toBe('<div>folyn #42</div>');
   });
 
   it('HTML-escapes scalar values', () => {

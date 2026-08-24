@@ -8,7 +8,7 @@ import {
 } from '@codemirror/autocomplete';
 import { createFilePreviewSrcCompletion, filePreviewSrcSearchBox } from './FilePreviewSrcExtension';
 import { useVaultStore } from '@/store/vaultStore';
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 
 const TREE: VaultEntry[] = [
   {

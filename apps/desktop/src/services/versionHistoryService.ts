@@ -3,7 +3,7 @@
  *
  * Pure logic + an injectable FS-port. The service knows about the on-disk layout
  * (`<vaultRoot>/versions/blobs/<hash>.<ext>` + `<vaultRoot>/versions/index.json`)
- * but does NOT know how to resolve `~/.mochi/vaults/<vaultId>` from a vault id —
+ * but does NOT know how to resolve `~/.folyn/vaults/<vaultId>` from a vault id —
  * the caller (PR2) passes `vaultRoot` already resolved. `filePath` is treated
  * opaquely: it is passed verbatim to the FS-port's `readFile` / `writeFile` AND
  * used as the index key. The real Tauri FS adapter (PR2) is responsible for

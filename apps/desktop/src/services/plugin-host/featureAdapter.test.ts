@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { ComponentType } from 'react';
-import type { PluginManifest } from '@mochi/plugin-host';
+import type { PluginManifest } from '@folyn/plugin-host';
 import type { PluginModule } from './contributionAdapters';
 import { registerPluginFeatures } from './featureAdapter';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';

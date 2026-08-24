@@ -1,4 +1,4 @@
-import "/@fs/Users/yiminlin/project/mochi/node_modules/.pnpm/vite@6.4.2_@types+node@22.19.17_jiti@1.21.7_sass@1.51.0_terser@5.46.1_yaml@2.9.0/node_modules/vite/dist/client/env.mjs";
+import "/@fs/Users/yiminlin/project/folyn/node_modules/.pnpm/vite@6.4.2_@types+node@22.19.17_jiti@1.21.7_sass@1.51.0_terser@5.46.1_yaml@2.9.0/node_modules/vite/dist/client/env.mjs";
 
 class HMRContext {
   constructor(hmrClient, ownerPath) {

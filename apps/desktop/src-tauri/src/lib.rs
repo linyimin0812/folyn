@@ -27,17 +27,17 @@ mod pet_panel_macos;
 use tauri::Manager;
 use tauri::{Emitter, WindowEvent};
 
-/// Append a startup log line to both `mochi-startup.log` in the OS temp dir
+/// Append a startup log line to both `folyn-startup.log` in the OS temp dir
 /// and stderr. Used to trace the Windows flash-quit crash that has no visible
 /// output. `startup_log` is append-mode; call `truncate_startup_log` once at
 /// the start of `run()` so each launch overwrites the previous log.
 ///
 /// Cross-platform paths:
-/// - macOS: `$TMPDIR/mochi-startup.log` (usually `/var/folders/.../T/...`)
-/// - Windows: `%TEMP%\mochi-startup.log` (usually
-///   `C:\Users\<user>\AppData\Local\Temp\mochi-startup.log`)
+/// - macOS: `$TMPDIR/folyn-startup.log` (usually `/var/folders/.../T/...`)
+/// - Windows: `%TEMP%\folyn-startup.log` (usually
+///   `C:\Users\<user>\AppData\Local\Temp\folyn-startup.log`)
 pub(crate) fn startup_log(msg: impl AsRef<str>) {
-    let path = std::env::temp_dir().join("mochi-startup.log");
+    let path = std::env::temp_dir().join("folyn-startup.log");
     let line = msg.as_ref();
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
@@ -51,7 +51,7 @@ pub(crate) fn startup_log(msg: impl AsRef<str>) {
 }
 
 fn truncate_startup_log() {
-    let path = std::env::temp_dir().join("mochi-startup.log");
+    let path = std::env::temp_dir().join("folyn-startup.log");
     let _ = std::fs::write(&path, "");
 }
 
@@ -202,7 +202,7 @@ fn reapply_pet_nspanel_level(app: &tauri::AppHandle) {
     let Some(window) = app.get_webview_window("pet") else {
         return;
     };
-    let Ok(panel) = window.to_panel::<crate::pet_panel_macos::MochiPetPanel>() else {
+    let Ok(panel) = window.to_panel::<crate::pet_panel_macos::FolynPetPanel>() else {
         return;
     };
     panel.set_hides_on_deactivate(false);
@@ -229,7 +229,7 @@ fn reapply_pet_nspanel_level(_app: &tauri::AppHandle) {}
 ///     NSWorkspace observers do NOT fire in accessory mode
 ///     (`set_dock_visibility(false)`) — only a Rust-thread poll reliably
 ///     re-asserts the level after app-switch.
-///   - Legacy (`MOCHI_PET_PANEL_BACKEND=legacy`): the old NSWindow +
+///   - Legacy (`FOLYN_PET_PANEL_BACKEND=legacy`): the old NSWindow +
 ///     ScreenSaver-level + behavior-770 re-apply (`reapply_pet_topmost`).
 ///
 /// The NSPanel path runs SYNCHRONOUSLY (`.setup()` is already on the macOS
@@ -429,11 +429,11 @@ async fn hide_fullscreen_window_directly(app: tauri::AppHandle, label: &str) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Install a panic hook BEFORE anything else so a panic anywhere in the
-    // setup chain is captured to `mochi-startup.log` before the process
+    // setup chain is captured to `folyn-startup.log` before the process
     // aborts. `std::panic::set_hook` fires BEFORE the default abort behavior,
     // so the log write completes. The hook also dumps a backtrace when
     // available. This is the single source of truth for "what crashed at
-    // startup" — the user pastes `%TEMP%\mochi-startup.log` back.
+    // startup" — the user pastes `%TEMP%\folyn-startup.log` back.
     std::panic::set_hook(Box::new(|info| {
         startup_log(format!("[PANIC] {info}"));
         let bt = std::backtrace::Backtrace::capture();
@@ -457,21 +457,21 @@ pub fn run() {
     let pending_open_files = commands::PendingOpenFiles::from_process_args();
 
     let builder = tauri::Builder::default()
-        // ── mochi-plugin:// URI scheme ──
+        // ── folyn-plugin:// URI scheme ──
         // Registered ONCE at startup (register_uri_scheme_protocol is on
         // tauri::Builder and consumes self — cannot add schemes at runtime).
-        // Dispatches by path: mochi-plugin://localhost/<id>/<file> reads from
-        // ~/.mochi/plugins/<id>/<file>. Each response carries a per-plugin CSP
+        // Dispatches by path: folyn-plugin://localhost/<id>/<file> reads from
+        // ~/.folyn/plugins/<id>/<file>. Each response carries a per-plugin CSP
         // header so sandbox plugins cannot reach the network or the host DOM
         // without going through the postMessage RPC bridge.
         //
         // POST `<id>/rpc` is the fetch-RPC endpoint for tool windows: plugin
-        // JS does `fetch('mochi-plugin://localhost/<id>/rpc', { method:
+        // JS does `fetch('folyn-plugin://localhost/<id>/rpc', { method:
         // 'POST', body })` and the handler emits a `plugin-rpc-request` event
         // that the main webview's `toolWindowRpcListener` dispatches through
         // the shared `dispatchPluginRpc`. Async responder lets us wait for the
         // round-trip without blocking the webview thread.
-        .register_asynchronous_uri_scheme_protocol("mochi-plugin", |ctx, request, responder| {
+        .register_asynchronous_uri_scheme_protocol("folyn-plugin", |ctx, request, responder| {
             use plugin_commands::{
                 content_type_for, parse_plugin_uri, plugins_dir, PLUGIN_CSP,
             };
@@ -957,8 +957,8 @@ pub fn run() {
             // Voice module beacon. `log::info!` goes nowhere at runtime (no
             // logger installed in the bare Tauri process), so mirror it to
             // `startup_log` so the beacon is actually visible.
-            startup_log("[voice] module ready; bundle id=com.mochi.editor");
-            log::info!("[voice] module ready; bundle id={}", "com.mochi.editor");
+            startup_log("[voice] module ready; bundle id=com.folyn.editor");
+            log::info!("[voice] module ready; bundle id={}", "com.folyn.editor");
 
             // External pet notify API (pet-external-notify-api). Local HTTP
             // server on 127.0.0.1; reuses the `pet://notify` dispatcher. The
@@ -967,7 +967,7 @@ pub fn run() {
             startup_log("[setup] pet_api::spawn");
             pet_api::spawn(app.handle().clone());
 
-            // ponytail: app menu bar is a macOS-only concept (Mochi / Edit /
+            // ponytail: app menu bar is a macOS-only concept (Folyn / Edit /
             // Window submenus with `services`/`hide_others`/`show_all`
             // predefined items). On Windows, `SubmenuBuilder::services()` etc.
             // fail at `build()` time and `app.set_menu(...)` rejects the
@@ -1012,7 +1012,7 @@ pub fn run() {
             spawn_legacy_reapply_thread(app_handle);
 
             // Windows: drop the native titlebar. Its left-hand app icon +
-            // "Mochi" title and right-hand window controls duplicate the
+            // "Folyn" title and right-hand window controls duplicate the
             // in-app Topbar (logo + name on the left, custom window controls
             // rendered by `WindowControls.tsx` on the right). The main window
             // is declared `visible: false` in tauri.conf.json so the
@@ -1137,7 +1137,7 @@ pub fn run() {
         ]);
 
     // Single-instance guard (Windows + macOS). On Windows, "Open With" on an
-    // associated file while Mochi is running launches a SECOND process; on
+    // associated file while Folyn is running launches a SECOND process; on
     // macOS it normally routes to the running instance via RunEvent::Opened,
     // but if the running instance isn't registered as the document handler
     // macOS also spawns a second process instead. In both cases the plugin
@@ -1180,7 +1180,7 @@ pub fn run() {
         .expect("error while building tauri application")
         // Last logging opportunity before the GUI event loop takes over. If
         // the crash happens AFTER setup returns Ok but during the first event
-        // loop tick, this is the final line in `mochi-startup.log`.
+        // loop tick, this is the final line in `folyn-startup.log`.
         .run({
             startup_log("[run] entering event loop");
             |app, event| {
@@ -1191,7 +1191,7 @@ pub fn run() {
                         commands::terminal_kill_all();
                     }
                     // OS "Open With" / file-association launch (macOS/iOS/Android).
-                    // When the user opens a file with Mochi from Finder/Explorer, the
+                    // When the user opens a file with Folyn from Finder/Explorer, the
                     // OS hands us the resource as a `file://` URL here. Convert to a
                     // filesystem path and emit it to the frontend, which opens it as
                     // an external (vault-independent) editor tab. Also surface the

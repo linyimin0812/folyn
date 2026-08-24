@@ -28,9 +28,9 @@
 
 - macOS 现有 `voice_insert_text` 走 CGEvent Cmd+V（`voice.rs` line ~522 附近 `paste_log` 注释引用了 release-build bug）
 - Windows 等价：`user32::SendInput` + `VK_CONTROL` + `VK_V` 的 keydown/keyup 序列
-- 关键问题：SendInput 注入到当前前台窗口（不是 Mochi 自己）— 需在 macOS 行为对齐（macOS 也是注入到前台应用，不是 Mochi）
+- 关键问题：SendInput 注入到当前前台窗口（不是 Folyn 自己）— 需在 macOS 行为对齐（macOS 也是注入到前台应用，不是 Folyn）
 - 剪贴板预填：macOS 用 `NSPasteboard`，Windows 用 `OpenClipboard` + `SetClipboardData` — 是否走 Tauri 2 的剪贴板插件更稳？
-- `paste_log` 路径（PRD R11）：已改为 `dirs::cache_dir().join("mochi/logs")`，验证 Windows 上 `%LOCALAPPDATA%\...\mochi\logs` 落位
+- `paste_log` 路径（PRD R11）：已改为 `dirs::cache_dir().join("folyn/logs")`，验证 Windows 上 `%LOCALAPPDATA%\...\folyn\logs` 落位
 
 ### 3. cpal 跨平台录音
 

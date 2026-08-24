@@ -60,7 +60,7 @@ dirs = "5"
 
 ### 3. `paste_log` Windows 路径（PRD R11 已完成）
 
-- [ ] 验证 `voice.rs` 的 `paste_log` 在 Windows 上落位 `%LOCALAPPDATA%\mochi\logs\mochi-voice-debug.log`（`dirs::cache_dir()` Windows 返回 `%LOCALAPPDATA%`）。如果 `dirs::cache_dir()` 返回 None 或路径不符，加 `dirs::cache_dir().or_else(|| dirs::data_dir())` fallback。
+- [ ] 验证 `voice.rs` 的 `paste_log` 在 Windows 上落位 `%LOCALAPPDATA%\folyn\logs\folyn-voice-debug.log`（`dirs::cache_dir()` Windows 返回 `%LOCALAPPDATA%`）。如果 `dirs::cache_dir()` 返回 None 或路径不符，加 `dirs::cache_dir().or_else(|| dirs::data_dir())` fallback。
 
 ### 4. 前端门控移除
 
@@ -95,7 +95,7 @@ dirs = "5"
 - macOS host 无法动态验证 Windows native API 调用 — 实现阶段以代码对齐 research 文档为主，Windows 11 验证由用户做
 - WinRT `SpeechRecognizer` 必须在 async fn 里 `.await`，不能 `spawn_blocking`（STA 线程亲和性，research summary 风险点 3）
 - 离线语言包：`RecognizeAsync` 在缺 en-US/zh-CN SR pack 时失败 — 需 `SupportedTopicLanguages` 预飞检查（research summary 风险点 4）
-- SendInput 前台窗口竞争：Mochi 必须 `window.hide()` pre-paste（镜像 macOS `insertion.rs:680-699` hide-orb 模式，research summary 风险点 5）
+- SendInput 前台窗口竞争：Folyn 必须 `window.hide()` pre-paste（镜像 macOS `insertion.rs:680-699` hide-orb 模式，research summary 风险点 5）
 - cpal Windows 错误分类：`recorder.rs:262-270` 用字符串 "denied" 判断权限拒绝 — Windows 错误字符串可能不同，改用 typed variants（research summary 风险点 7）
 
 ## Implementation Plan

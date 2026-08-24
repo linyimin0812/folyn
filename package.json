@@ -1,12 +1,12 @@
 {
-  "name": "mochi",
+  "name": "folyn",
   "private": true,
   "version": "0.1.0",
-  "description": "Mochi — AI-enhanced local-first Markdown editor",
+  "description": "Folyn — AI-enhanced local-first Markdown editor",
   "scripts": {
-    "dev": "pnpm --filter @mochi/desktop dev",
-    "dev:voice": "pnpm --filter @mochi/desktop dev:voice",
-    "build": "pnpm --filter @mochi/desktop... build",
+    "dev": "pnpm --filter @folyn/desktop dev",
+    "dev:voice": "pnpm --filter @folyn/desktop dev:voice",
+    "build": "pnpm --filter @folyn/desktop... build",
     "build:app": "cd apps/desktop && pnpm tauri build",
     "lint": "pnpm -r lint",
     "clean": "pnpm -r clean",

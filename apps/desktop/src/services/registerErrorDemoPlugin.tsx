@@ -6,8 +6,8 @@
  *
  * Registered only under `import.meta.env.DEV` to keep prod slash menu clean.
  */
-import { ContainerRegistry } from '@mochi/container-plugins';
-import type { ContainerPlugin, ContainerProps } from '@mochi/container-plugins';
+import { ContainerRegistry } from '@folyn/container-plugins';
+import type { ContainerPlugin, ContainerProps } from '@folyn/container-plugins';
 
 function ErrorDemoComponent(_: ContainerProps): React.ReactElement {
   // ponytail: throws intentionally to verify the PanelErrorBoundary in

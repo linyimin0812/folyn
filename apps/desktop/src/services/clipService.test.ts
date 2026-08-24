@@ -57,7 +57,7 @@ vi.mock('@/store/aiConfigStore', () => ({
 }));
 
 // Fake CLI adapter factory + adapter so generateClip never spawns a process.
-vi.mock('@mochi/cli-adapter', () => ({
+vi.mock('@folyn/cli-adapter', () => ({
   createAdapter: () => fakeAdapter,
 }));
 

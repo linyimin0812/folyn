@@ -44,8 +44,8 @@ describe('HtmlPreview sandbox', () => {
     const srcDoc = iframe.getAttribute('srcdoc') ?? '';
     expect(srcDoc).toContain('color-scheme:light');
     expect(srcDoc).toContain('background:#fff');
-    expect(srcDoc).toContain('data-mochi-preview="light"');
-    expect(srcDoc).toContain('data-mochi-preview="anchors"');
+    expect(srcDoc).toContain('data-folyn-preview="light"');
+    expect(srcDoc).toContain('data-folyn-preview="anchors"');
     expect(srcDoc).toContain('scrollIntoView');
     // Original user content survives.
     expect(srcDoc).toContain('href="#sec"');

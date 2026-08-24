@@ -11,7 +11,7 @@ vi.mock('@/store/aiConfigStore', () => ({
 }));
 
 // Mock the adapter factory so no real adapter is constructed.
-vi.mock('@mochi/cli-adapter', () => {
+vi.mock('@folyn/cli-adapter', () => {
   const adapters = new Map<string, { id: string }>();
   return {
     createAdapter: (id: string) => {

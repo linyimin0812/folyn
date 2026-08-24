@@ -1,6 +1,6 @@
-# mochi-plugin-sdk
+# folyn-plugin-sdk
 
-Mochi Plugin SDK — the public type surface plugin authors program against.
+Folyn Plugin SDK — the public type surface plugin authors program against.
 Publishable to npm; no runtime.
 
 ## What's in here
@@ -23,11 +23,11 @@ tarball is just `.d.ts` + a tiny ESM barrel.
 ## Install
 
 ```bash
-npm install mochi-plugin-sdk
+npm install folyn-plugin-sdk
 # or
-pnpm add mochi-plugin-sdk
+pnpm add folyn-plugin-sdk
 # or
-yarn add mochi-plugin-sdk
+yarn add folyn-plugin-sdk
 ```
 
 `react` is a peer dependency (`^18.0.0`) — install it yourself if your plugin
@@ -36,8 +36,8 @@ uses React types.
 ## Quick start
 
 ```ts
-import type { PluginManifest } from 'mochi-plugin-sdk';
-import { definePlugin, validateManifest } from 'mochi-plugin-sdk';
+import type { PluginManifest } from 'folyn-plugin-sdk';
+import { definePlugin, validateManifest } from 'folyn-plugin-sdk';
 
 const manifest: PluginManifest = {
   id: 'my-plugin',
@@ -57,7 +57,7 @@ in the source repo.
 
 ## Two execution tiers
 
-- **`sandbox`** — untrusted plugin in a sandboxed iframe (`mochi-plugin://`
+- **`sandbox`** — untrusted plugin in a sandboxed iframe (`folyn-plugin://`
   origin), talks to the host via a vetted postMessage RPC. No raw Tauri APIs.
 - **`trusted`** — TOFU-pinned plugin `import()`-ed into the host realm; may
   contribute inline React/CodeMirror components and receive scoped Tauri
@@ -68,4 +68,4 @@ plugin development guide for the trade-offs.
 
 ## License
 
-Same as the Mochi project (see the source repo).
+Same as the Folyn project (see the source repo).

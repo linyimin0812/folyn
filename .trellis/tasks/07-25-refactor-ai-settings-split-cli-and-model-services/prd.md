@@ -13,7 +13,7 @@ Follows the existing pattern of `PluginsSettings` / `VoiceSettings` / `SkillsSet
 
 - Current `ai` tab is inlined in `apps/desktop/src/components/pages/SettingsPage.tsx:393-749` (~356 lines)
 - Two logical sections already exist, separated by `border-t` at line 477:
-  - **Top: CLI adapter** — `listAdapters()` from `@mochi/cli-adapter`, `cliAdapter` radio list, `cliPath` input with detect button, `--version` test button, usage info card
+  - **Top: CLI adapter** — `listAdapters()` from `@folyn/cli-adapter`, `cliAdapter` radio list, `cliPath` input with detect button, `--version` test button, usage info card
   - **Bottom: Chat / model service** — provider `<select>`, model select/fetch, per-provider status dots, refetch-all, apiKey/baseUrl/azure/thinkingBudget inputs, test-connection button
 - Tab nav config: `apps/desktop/src/components/settings/primitives.tsx:20-38` — `NAV_GROUPS` with `ai-group` containing `ai`, `voice`, `skills`
 - `SettingsTab` union in `apps/desktop/src/store/navStore.ts:7` — `'ai'` is currently the only AI-config tab

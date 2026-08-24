@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { invoke } from '@tauri-apps/api/core';
 import { usePluginStore } from '@/store/pluginStore';
 
-vi.mock('@mochi/plugin-host', () => ({
+vi.mock('@folyn/plugin-host', () => ({
   pluginHost: { get: () => undefined },
 }));
 

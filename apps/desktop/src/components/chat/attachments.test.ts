@@ -242,7 +242,7 @@ describe('buildReadInstructions', () => {
 describe('buildRigPrompt', () => {
   it('uses the placeholder when only images are attached (no Read tool in chat mode)', () => {
     const saved: SavedAttachment[] = [
-      { name: 'pic.png', path: '/work/.mochi-tmp/pic.png', type: 'image' },
+      { name: 'pic.png', path: '/work/.folyn-tmp/pic.png', type: 'image' },
     ];
     expect(buildRigPrompt('', saved, '(附件)')).toBe('(附件)');
   });

@@ -6,7 +6,7 @@ let basePath = '';
 async function getBasePath(): Promise<string> {
   if (basePath) return basePath;
   const home = await homeDir();
-  basePath = await join(home, '.mochi', 'vaults');
+  basePath = await join(home, '.folyn', 'vaults');
   return basePath;
 }
 

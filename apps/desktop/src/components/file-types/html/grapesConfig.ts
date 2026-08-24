@@ -1,11 +1,11 @@
 /**
- * GrapesJS initialization config factory for the Mochi HTML editor.
+ * GrapesJS initialization config factory for the Folyn HTML editor.
  *
- * Mochi renders its own React UI shell (toolbar / panels / tabs) — GrapesJS
+ * Folyn renders its own React UI shell (toolbar / panels / tabs) — GrapesJS
  * built-in panels are disabled, and the Block/Style/Selector/Layer/Trait
  * managers are mounted into React-managed container refs instead.
  *
- * Persistence is handled by Mochi's Zustand store (via the `onChange`
+ * Persistence is handled by Folyn's Zustand store (via the `onChange`
  * callback in `useGrapesEditor`), so GrapesJS's own storageManager is disabled.
  */
 
@@ -280,7 +280,7 @@ export function createGrapesConfig(opts: GrapesInitOptions): Record<string, unkn
     // must take the full container width so no empty gap appears.
     width: '100%',
     fromElement: false,
-    // Mochi owns persistence via Zustand store; GrapesJS must not try to
+    // Folyn owns persistence via Zustand store; GrapesJS must not try to
     // autosave to localStorage or remote backends.
     storageManager: false,
     // Disable built-in panels — the React shell renders its own toolbar.
@@ -388,7 +388,7 @@ export function injectInlineStyles(editor: Editor, styleBlocks: string[]): void 
   const canvasDoc = editor.Canvas?.getDocument?.();
   if (!canvasDoc || !styleBlocks.length) return;
   const style = canvasDoc.createElement('style');
-  style.setAttribute('data-mochi', 'inline-styles');
+  style.setAttribute('data-folyn', 'inline-styles');
   style.textContent = styleBlocks.join('\n\n');
   canvasDoc.head.appendChild(style);
 }
@@ -403,7 +403,7 @@ export function injectCanvasScrollbarHide(editor: Editor): void {
   const canvasDoc = editor.Canvas?.getDocument?.();
   if (!canvasDoc) return;
   const style = canvasDoc.createElement('style');
-  style.setAttribute('data-mochi', 'canvas-scrollbar-hide');
+  style.setAttribute('data-folyn', 'canvas-scrollbar-hide');
   style.textContent = `
     html, body {
       width: 100% !important;

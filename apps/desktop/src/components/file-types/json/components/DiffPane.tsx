@@ -51,7 +51,7 @@ import { lintKeymap, linter } from '@codemirror/lint';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { MergeView } from '@codemirror/merge';
 import { useAppearanceStore } from '@/store/appearanceStore';
-import { mochiHighlighting } from '@/editor/highlightStyle';
+import { folynHighlighting } from '@/editor/highlightStyle';
 import { json5LintSource } from '../editor/extensions/json5Linter';
 import { errorInlineWidgetExtension } from '../editor/extensions/errorInlineWidget';
 
@@ -101,7 +101,7 @@ function buildEditorExtensions(
     EditorState.tabSize.of(2),
     indentUnit.of('  '),
     indentOnInput(),
-    mochiHighlighting(),
+    folynHighlighting(),
     bracketMatching(),
     closeBrackets(),
     rectangularSelection(),

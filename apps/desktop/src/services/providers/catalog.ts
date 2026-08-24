@@ -38,14 +38,14 @@ export type ProviderCategory =
 
 /**
  * User-defined provider entry. On-disk shape lives at
- * `~/.mochi/providers/customer/providers.json` (see providerConfigStorage).
+ * `~/.folyn/providers/customer/providers.json` (see providerConfigStorage).
  * `adapterFamily` is the routing signal: when the user invokes chat /
  * list-models, the frontend passes `adapterFamily` to the Rust side, which
  * dispatches by the bundled id (anthropic / openai-completions / ollama /
  * gemini / openai) and applies `baseUrl` + `apiKey` from `settings.json`.
  *
  * ponytail: `baseUrl` and `apiKey` no longer live on the definition — they
- * moved to `~/.mochi/providers/settings.json`. The catalog type only carries
+ * moved to `~/.folyn/providers/settings.json`. The catalog type only carries
  * what's intrinsic to the provider (id / display name / family / metadata).
  */
 export type CustomProvider = CustomProviderDef;

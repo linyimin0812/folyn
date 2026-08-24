@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-As a Mochi user, I want AI to help me generate custom bubble templates for notifications, because writing `BubbleTemplate` HTML/CSS by hand is tedious and error-prone — I have to know the mustache-like syntax, the available payload fields, the DOMPurify sanitization constraints, the `id='default'` collision rule, and the size conventions. Hand-editing JSON also invites schema mistakes. I want to describe what I want in natural language (or supply an HTML file / design image), iterate with the AI on the draft, and import the final template into the same `BubbleTemplateBlock` flow that already handles user-pasted JSON.
+As a Folyn user, I want AI to help me generate custom bubble templates for notifications, because writing `BubbleTemplate` HTML/CSS by hand is tedious and error-prone — I have to know the mustache-like syntax, the available payload fields, the DOMPurify sanitization constraints, the `id='default'` collision rule, and the size conventions. Hand-editing JSON also invites schema mistakes. I want to describe what I want in natural language (or supply an HTML file / design image), iterate with the AI on the draft, and import the final template into the same `BubbleTemplateBlock` flow that already handles user-pasted JSON.
 
 ## Solution
 
@@ -17,32 +17,32 @@ The "AI Agent" label is user-facing; the mechanism is chat, not an agent loop. S
 
 ## User Stories
 
-1. As a Mochi user, I want an "AI 生成" button below my bubble template list in settings, so that I can draft a new template without writing HTML/CSS by hand.
-2. As a Mochi user, when I click "AI 生成", I want a modal chat dialog to open, so that I can converse with the AI without leaving the settings page.
-3. As a Mochi user, I want to type a natural-language description of the template I want (e.g., "birthday reminder card with a cake icon and a primary '查看' button"), so that the AI can draft a `BubbleTemplate` matching my description.
-4. As a Mochi user, I want the AI to ask me clarifying questions when my request is vague, so that the resulting template matches what I actually want (e.g., "Should this card have an image? What actions?").
-5. As a Mochi user, I want to iterate — type, get a draft, refine, get another draft — so that I can converge on a template I'm happy with.
-6. As a Mochi user, I want the AI's final draft to appear as a `\`\`json` code block in its reply, so that the modal can detect it and offer an "导入此模板" button.
-7. As a Mochi user, I want an "导入此模板" button to appear next to the AI's JSON draft, so that I can accept the draft and add the template to my user templates list with one click.
-8. As a Mochi user, when I click "导入此模板", I want the template to be validated and added via the same flow as pasted JSON, so that id collisions and schema errors are caught the same way regardless of where the template came from.
-9. As a Mochi user, if the AI's JSON is malformed or missing required fields, I want to see the same error message that pasting bad JSON would produce, so that I can tell the AI to fix it in the next turn.
-10. As a Mochi user, when I successfully import a template, I want the modal to close and the new template to appear in my template grid, so that I can immediately activate or preview it.
-11. As a Mochi user, I want to upload a `.html`/`.htm` file via a paperclip button in the chat input, so that I can hand the AI an existing HTML design to adapt into a `BubbleTemplate` that passes DOMPurify sanitization.
-12. As a Mochi user, I want to upload an image file (PNG/JPG/WebP) via the same paperclip button, so that the AI can generate a `BubbleTemplate` that visually matches the image (image-to-code).
-13. As a Mochi user, when I upload multiple files in one turn, I want each to be attached as a chip above the chat input, so that I can review what's pending before sending.
-14. As a Mochi user, when I upload an image, I want a thumbnail preview in the attachment chip, so that I can confirm I picked the right file.
-15. As a Mochi user, when I upload an HTML file, I want a file-name chip (not a thumbnail), so that the attachment is distinguishable from images.
-16. As a Mochi user, I want the modal to remember my chat session across closes/reopens, so that I don't lose an in-progress draft when I accidentally close the modal.
-17. As a Mochi user, I want a "清空" (clear) button in the modal, so that I can start a fresh conversation when my current direction is wrong.
-18. As a Mochi user, I want streaming responses from the AI, so that I see progress instead of waiting for a long pause.
-19. As a Mochi user, I want a loading state on the send button while the AI is responding, so that I don't double-send.
-20. As a Mochi user, if the API call fails (network error, auth error, rate limit), I want to see the error message inline, so that I can fix my config and retry.
-21. As a Mochi user, if I haven't configured an AI provider/key in settings yet, I want a clear message pointing me to the AI settings, so that I'm not stuck guessing why the chat doesn't work.
-22. As a Mochi user, I want the AI to know the `BubbleTemplate` schema, the template syntax, the sanitization constraints, the available payload fields, and the `id='default'` collision rule, so that its drafts are valid on the first try.
-23. As a Mochi user, I want the AI to be shown the built-in Cloudia template as a concrete example, so that its drafts match the project's style and conventions.
-24. As a Mochi user, I want the AI to know I might upload HTML or images, so that it doesn't need me to explain what each uploaded input means.
-25. As a Mochi user, I want my AI-generated template to be sanitized by DOMPurify at render time just like every other template, so that I'm protected from any unsafe HTML the AI might emit (defense in depth).
-26. As a Mochi user, when I activate an AI-generated template and trigger a preview notification, I want the bubble to render correctly, so that I can verify the template works end-to-end.
+1. As a Folyn user, I want an "AI 生成" button below my bubble template list in settings, so that I can draft a new template without writing HTML/CSS by hand.
+2. As a Folyn user, when I click "AI 生成", I want a modal chat dialog to open, so that I can converse with the AI without leaving the settings page.
+3. As a Folyn user, I want to type a natural-language description of the template I want (e.g., "birthday reminder card with a cake icon and a primary '查看' button"), so that the AI can draft a `BubbleTemplate` matching my description.
+4. As a Folyn user, I want the AI to ask me clarifying questions when my request is vague, so that the resulting template matches what I actually want (e.g., "Should this card have an image? What actions?").
+5. As a Folyn user, I want to iterate — type, get a draft, refine, get another draft — so that I can converge on a template I'm happy with.
+6. As a Folyn user, I want the AI's final draft to appear as a `\`\`json` code block in its reply, so that the modal can detect it and offer an "导入此模板" button.
+7. As a Folyn user, I want an "导入此模板" button to appear next to the AI's JSON draft, so that I can accept the draft and add the template to my user templates list with one click.
+8. As a Folyn user, when I click "导入此模板", I want the template to be validated and added via the same flow as pasted JSON, so that id collisions and schema errors are caught the same way regardless of where the template came from.
+9. As a Folyn user, if the AI's JSON is malformed or missing required fields, I want to see the same error message that pasting bad JSON would produce, so that I can tell the AI to fix it in the next turn.
+10. As a Folyn user, when I successfully import a template, I want the modal to close and the new template to appear in my template grid, so that I can immediately activate or preview it.
+11. As a Folyn user, I want to upload a `.html`/`.htm` file via a paperclip button in the chat input, so that I can hand the AI an existing HTML design to adapt into a `BubbleTemplate` that passes DOMPurify sanitization.
+12. As a Folyn user, I want to upload an image file (PNG/JPG/WebP) via the same paperclip button, so that the AI can generate a `BubbleTemplate` that visually matches the image (image-to-code).
+13. As a Folyn user, when I upload multiple files in one turn, I want each to be attached as a chip above the chat input, so that I can review what's pending before sending.
+14. As a Folyn user, when I upload an image, I want a thumbnail preview in the attachment chip, so that I can confirm I picked the right file.
+15. As a Folyn user, when I upload an HTML file, I want a file-name chip (not a thumbnail), so that the attachment is distinguishable from images.
+16. As a Folyn user, I want the modal to remember my chat session across closes/reopens, so that I don't lose an in-progress draft when I accidentally close the modal.
+17. As a Folyn user, I want a "清空" (clear) button in the modal, so that I can start a fresh conversation when my current direction is wrong.
+18. As a Folyn user, I want streaming responses from the AI, so that I see progress instead of waiting for a long pause.
+19. As a Folyn user, I want a loading state on the send button while the AI is responding, so that I don't double-send.
+20. As a Folyn user, if the API call fails (network error, auth error, rate limit), I want to see the error message inline, so that I can fix my config and retry.
+21. As a Folyn user, if I haven't configured an AI provider/key in settings yet, I want a clear message pointing me to the AI settings, so that I'm not stuck guessing why the chat doesn't work.
+22. As a Folyn user, I want the AI to know the `BubbleTemplate` schema, the template syntax, the sanitization constraints, the available payload fields, and the `id='default'` collision rule, so that its drafts are valid on the first try.
+23. As a Folyn user, I want the AI to be shown the built-in Cloudia template as a concrete example, so that its drafts match the project's style and conventions.
+24. As a Folyn user, I want the AI to know I might upload HTML or images, so that it doesn't need me to explain what each uploaded input means.
+25. As a Folyn user, I want my AI-generated template to be sanitized by DOMPurify at render time just like every other template, so that I'm protected from any unsafe HTML the AI might emit (defense in depth).
+26. As a Folyn user, when I activate an AI-generated template and trigger a preview notification, I want the bubble to render correctly, so that I can verify the template works end-to-end.
 
 ## Implementation Decisions
 
@@ -66,7 +66,7 @@ The "AI Agent" label is user-facing; the mechanism is chat, not an agent loop. S
 - Attachment chips reuse `PendingAttachment` (from `components/chat/attachments.ts`) — image type shows thumbnail via `previewUrl`, HTML type shows file-name icon.
 - On send: text prompt + any pending HTML-as-text wrapping + any pending image content blocks are passed to `runRigChat` (which now accepts an optional `images` param).
 - On each assistant reply: scan for the last `\`\`json` fenced block. If present, show "导入此模板" button. On click: extract the JSON text, call `tryImport(text)` (the existing validator in `NotificationsSettings`), and on success close the modal. On failure (parse/schema/collision), display the same error path as paste-JSON.
-- "清空" button: clears the session — generates a fresh `sessionId` via `crypto.randomUUID()`, resets the in-memory message list. The old `~/.mochi/chat-sessions/<old-id>.json` file is left as orphan (harmless).
+- "清空" button: clears the session — generates a fresh `sessionId` via `crypto.randomUUID()`, resets the in-memory message list. The old `~/.folyn/chat-sessions/<old-id>.json` file is left as orphan (harmless).
 - sessionId persistence: stored in `localStorage` (or `petStore`'s persistence slice — TBD at implement time) so the modal rehydrates the prior chat on reopen.
 
 ### System prompt
@@ -82,8 +82,8 @@ The "AI Agent" label is user-facing; the mechanism is chat, not an agent loop. S
 
 ### Session lifecycle
 
-- `sessionId` persists across modal reopens. On first open, generate `crypto.randomUUID()`. On reopen, reuse the stored id (rig backend rehydrates history from `~/.mochi/chat-sessions/<id>.json`). "清空" generates a new id and updates persistence.
-- Orphaned session JSON files (after "清空" or after the user never reopens) are not garbage-collected — they are small (KB) and live under `~/.mochi/chat-sessions/`. Acceptable.
+- `sessionId` persists across modal reopens. On first open, generate `crypto.randomUUID()`. On reopen, reuse the stored id (rig backend rehydrates history from `~/.folyn/chat-sessions/<id>.json`). "清空" generates a new id and updates persistence.
+- Orphaned session JSON files (after "清空" or after the user never reopens) are not garbage-collected — they are small (KB) and live under `~/.folyn/chat-sessions/`. Acceptable.
 
 ### ADR-0001
 

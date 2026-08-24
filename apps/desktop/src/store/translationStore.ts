@@ -3,7 +3,7 @@ import { registerPersistSlice } from './settingsPersistence';
 import type { Pair } from '@/components/ai/PairSelector';
 
 // ponytail: translation panel state persisted to its own slice file
-// (~/.mochi/storage/translation.json) via the same registerPersistSlice
+// (~/.folyn/storage/translation.json) via the same registerPersistSlice
 // pattern every other store uses. Replaces the prior module-level cache +
 // localStorage experiment — user wants config-file parity with other prefs.
 

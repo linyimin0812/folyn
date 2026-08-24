@@ -1,6 +1,6 @@
-# Mochi Plugin Development Guide
+# Folyn Plugin Development Guide
 
-Mochi's microkernel lets you extend the editor at runtime: install a plugin
+Folyn's microkernel lets you extend the editor at runtime: install a plugin
 folder and its file types, commands, container directives, feature panels, or
 tool windows become available immediately — no recompile, no repackage.
 
@@ -28,14 +28,14 @@ development, and packaging. It references the two sample plugins in
 
 ## At a glance: what the host provides
 
-A Mochi plugin is a folder under `~/.mochi/plugins/<id>/` with a
+A Folyn plugin is a folder under `~/.folyn/plugins/<id>/` with a
 `manifest.json` + assets. The host gives you five things:
 
 ### 1. Two execution tiers
 
 | Tier      | Isolation                                                             | Capability surface                       | Trust gate                     |
 | --------- | --------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ |
-| `sandbox` | separate `WebviewWindow` or iframe, origin `mochi-plugin://localhost` | host RPC bridge only — no Tauri APIs     | none (sandbox IS the boundary) |
+| `sandbox` | separate `WebviewWindow` or iframe, origin `folyn-plugin://localhost` | host RPC bridge only — no Tauri APIs     | none (sandbox IS the boundary) |
 | `trusted` | main webview realm (in-process)                                       | full host realm + Zustand stores + Tauri | TOFU: user must **批准并授权** |
 
 ### 2. Contribution points
@@ -60,7 +60,7 @@ activate; auto-unregistered on deactivate.
 ### 3. RPC method table (sandbox tier — host-mediated)
 
 Sandbox plugins call host capabilities via `postMessage` (iframe transport) or
-`fetch('mochi-plugin://localhost/<id>/rpc', ...)` (tool-window transport). Both
+`fetch('folyn-plugin://localhost/<id>/rpc', ...)` (tool-window transport). Both
 hit the same `dispatchPluginRpc` table — same permission checks, same path
 resolution.
 
@@ -99,7 +99,7 @@ listen for `env-event` messages to update in place.
 ### 4. Manifest validation rules (the spec authors must follow)
 
 - `id`: kebab-case, `^[a-z0-9]+(-[a-z0-9]+)+$` (at least one hyphen). Folder
-  name under `~/.mochi/plugins/` MUST equal `id`.
+  name under `~/.folyn/plugins/` MUST equal `id`.
 - `version`: non-empty string (semver-ish recommended).
 - `tier`: `"sandbox"` or `"trusted"`.
 - `main`: non-empty string (relative path to entry module).
@@ -111,29 +111,29 @@ listen for `env-event` messages to update in place.
 
 ### 5. CSP for sandbox plugins (what HTML/JS can do)
 
-Every `mochi-plugin://localhost/<id>/<file>` response carries this CSP header:
+Every `folyn-plugin://localhost/<id>/<file>` response carries this CSP header:
 
 ```
 default-src 'none';
-  script-src 'unsafe-inline' mochi-plugin:;
+  script-src 'unsafe-inline' folyn-plugin:;
   style-src  'unsafe-inline';
-  connect-src mochi-plugin:;
+  connect-src folyn-plugin:;
 ```
 
 What this means for authors:
 
 - ✓ Inline `<script>` and inline `<style>` in your HTML.
 - ✓ `<script src="index.js">` (same-scheme, your plugin's own files).
-- ✓ `fetch('mochi-plugin://localhost/<id>/rpc', ...)` (the RPC bridge).
+- ✓ `fetch('folyn-plugin://localhost/<id>/rpc', ...)` (the RPC bridge).
 - ✗ No remote scripts, styles, fonts, images, or `connect-src` to any other
   origin. If you need network access, declare `http.origins` and call
   `http:fetch` — the host performs the request in Rust (no CSP).
-- ✗ No `iframe` embedding, no web workers from blob: (only `mochi-plugin:`).
+- ✗ No `iframe` embedding, no web workers from blob: (only `folyn-plugin:`).
 - ✗ No `default-src` fallback — every directive is explicit.
 
 Note: `'self'` is intentionally NOT used. Chromium does not resolve `'self'`
-to the document origin for custom schemes like `mochi-plugin://`, so the
-explicit scheme source `mochi-plugin:` is required instead.
+to the document origin for custom schemes like `folyn-plugin://`, so the
+explicit scheme source `folyn-plugin:` is required instead.
 
 ---
 
@@ -157,19 +157,19 @@ After install + activate:
 
 ### Install the SDK
 
-Type your manifest against `mochi-plugin-sdk` — the publishable type package
+Type your manifest against `folyn-plugin-sdk` — the publishable type package
 (manifest schema, contribution points, `PluginModule`, AI capability types,
 and dev helpers like `definePlugin` / `validateManifest`). It has no runtime
 dependency; React is a peer type only (erased at build for type-only
 consumers).
 
 ```bash
-npm install mochi-plugin-sdk
+npm install folyn-plugin-sdk
 ```
 
 ```ts
 // index.ts — a trusted-tier plugin's entry module
-import type { PluginModule, ExporterHandler } from "mochi-plugin-sdk";
+import type { PluginModule, ExporterHandler } from "folyn-plugin-sdk";
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
@@ -180,9 +180,9 @@ export const exporters: Record<string, ExporterHandler> = {
 export const commands = { ping: () => console.info("pong") };
 ```
 
-Internal workspace plugins depend on `@mochi/plugin-host` (which re-exports
+Internal workspace plugins depend on `@folyn/plugin-host` (which re-exports
 the full SDK surface) — `import` from either works. The runtime microkernel
-(`PluginHost`, `pluginHost` singleton) lives in `@mochi/plugin-host`; the SDK
+(`PluginHost`, `pluginHost` singleton) lives in `@folyn/plugin-host`; the SDK
 stays publishable and runtime-free.
 
 ---
@@ -195,13 +195,13 @@ contribution points are available.
 
 |                             | **sandbox**                                                                                                            | **trusted**                                                                                                                               |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Loader                      | hidden `<iframe sandbox="allow-scripts">` (no `allow-same-origin`), loaded from `mochi-plugin://localhost/<id>/<html>` | `import(/* @vite-ignore */ blobUrl)` into the **main webview realm**                                                                      |
+| Loader                      | hidden `<iframe sandbox="allow-scripts">` (no `allow-same-origin`), loaded from `folyn-plugin://localhost/<id>/<html>` | `import(/* @vite-ignore */ blobUrl)` into the **main webview realm**                                                                      |
 | Isolation                   | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage                                              | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM                                                         |
 | Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; `grant_plugin_capabilities` adds scoped Tauri caps (largely redundant — see [Design reality](#permissions-model)) |
 | Trust gate                  | none (sandbox IS the boundary)                                                                                         | TOFU: user must **批准并授权** before activation                                                                                          |
 | Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`                                    |
 | Hot unload                  | destroy iframe element                                                                                                 | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)`                                                                                     |
-| Bundle requirement          | HTML + JS loaded by the iframe via `mochi-plugin://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
+| Bundle requirement          | HTML + JS loaded by the iframe via `folyn-plugin://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
 
 **When to use which:**
 
@@ -251,7 +251,7 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
 ```jsonc
 {
   // Required. Globally-unique kebab-case id (matches ^[a-z0-9]+(-[a-z0-9]+)+$).
-  // The folder name under ~/.mochi/plugins/ MUST equal this id.
+  // The folder name under ~/.folyn/plugins/ MUST equal this id.
   "id": "my-plugin",
   // Required. Human-readable display name.
   "name": "My Plugin",
@@ -259,7 +259,7 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
   "version": "1.0.0",
   "author": "Jane Doe",
   // Engine compat, e.g. ">=0.1.0". Optional but recommended.
-  "mochi": ">=0.1.0",
+  "folyn": ">=0.1.0",
   // Required. "sandbox" or "trusted" (see above).
   "tier": "trusted",
   // Required. Entry module path (relative to the plugin folder).
@@ -481,9 +481,9 @@ adapts it into the matching app registry when the plugin activates.
 ```
 
 - `window: true` opens the tool in its own Tauri `WebviewWindow` that loads
-  the plugin's HTML entry from `mochi-plugin://localhost/<id>/<entry>`. The
-  window's origin is `mochi-plugin://localhost` (macOS/Linux) /
-  `http://mochi-plugin.localhost` (Windows) — isolated from the main app.
+  the plugin's HTML entry from `folyn-plugin://localhost/<id>/<entry>`. The
+  window's origin is `folyn-plugin://localhost` (macOS/Linux) /
+  `http://folyn-plugin.localhost` (Windows) — isolated from the main app.
   `window: false` would render inline (MVP: `window: true` only; inline
   panels are a follow-up).
 - `entry` is the HTML entry file (sandbox tier). Trusted tier uses a
@@ -492,15 +492,15 @@ adapts it into the matching app registry when the plugin activates.
   "Open: Hello Tool" creates a new window. Multi-instance: each invocation
   opens a fresh window with a unique label.
 - The plugin's HTML reaches host capabilities via **fetch-RPC** over the
-  `mochi-plugin://` scheme:
+  `folyn-plugin://` scheme:
 
   ```js
-  // POST mochi-plugin://localhost/<plugin-id>/rpc
+  // POST folyn-plugin://localhost/<plugin-id>/rpc
   // body: { "method": "<rpc-method>", "params": { ... } }
   // response: 200 with `<return-value>` (object/string/null per method) on
   //           success, or 200 with `{ "error": "<msg>" }` on RPC failure,
   //           or 504 with `{ "error": "rpc timeout" }` after 30s.
-  const res = await fetch("mochi-plugin://localhost/<plugin-id>/rpc", {
+  const res = await fetch("folyn-plugin://localhost/<plugin-id>/rpc", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -650,7 +650,7 @@ adapts it into the matching app registry when the plugin activates.
   shares the host's Reactor); bundle React yourself and you'll get the
   "Invalid hook call" two-React error. Use `window.React` via a
   `resolveReact()` helper (mirror of `resolveCodemirror()` below). See
-  `mochi-plugin-sdk/mochi-plugin-plantuml/src/index.ts` `PlantUmlMarkdownBlock` for
+  `folyn-plugin-sdk/folyn-plugin-plantuml/src/index.ts` `PlantUmlMarkdownBlock` for
   the canonical shape.
 
 ### editorLanguages (trusted only)
@@ -679,7 +679,7 @@ adapts it into the matching app registry when the plugin activates.
   `@codemirror/language` lazily via a `resolveCodemirror()` helper that
   reads `window.codemirrorLanguage` (the host sets it in `main.tsx` before
   any trusted plugin is `import()`-ed). See
-  `mochi-plugin-sdk/mochi-plugin-plantuml/src/codemirror.ts` for the canonical
+  `folyn-plugin-sdk/folyn-plugin-plantuml/src/codemirror.ts` for the canonical
   pattern — it mirrors the `resolveReact()` approach for `window.React`.
 
 ---
@@ -710,7 +710,7 @@ missing from the module's exports is skipped with a console warning
 `fileTemplates` and `keybindings` are declarative — no module map.
 
 `markdownCodeRenderers` is keyed by the manifest's `component` string;
-`editorLanguages` by `entry`. See `mochi-plugin-sdk/mochi-plugin-plantuml` for a
+`editorLanguages` by `entry`. See `folyn-plugin-sdk/folyn-plugin-plantuml` for a
 working example of all four maps (`handlers`, `exporters`,
 `markdownCodeRenderers`, `containers`, `exportEnhancers`, `editorLanguages`).
 
@@ -724,7 +724,7 @@ The trusted loader wraps your `main` in a **blob URL** and `import()`-s it.
 Blob URLs have no path, so:
 
 - **relative imports do not resolve** (`./utils.js` fails)
-- **remote imports are blocked** by the `mochi-plugin://` CSP
+- **remote imports are blocked** by the `folyn-plugin://` CSP
 - **bare specifiers** (`react`, `@/store/...`) resolve against the host
   realm's already-loaded modules ONLY if Vite leaves them as runtime
   `import()`. To be safe, **bundle your deps** (Vite/Rollup/esbuild) so the
@@ -758,7 +758,7 @@ enforces `permissions.http.origins` from the manifest.
 **Step 2 — stash `ctx.http` in `activate()`, use it everywhere:**
 
 ```ts
-import type { PluginContext, PluginHttpCapability } from 'mochi-plugin-sdk';
+import type { PluginContext, PluginHttpCapability } from 'folyn-plugin-sdk';
 
 let hostHttp: PluginHttpCapability | undefined;
 export async function activate(ctx: PluginContext) { hostHttp = ctx.http; }
@@ -782,7 +782,7 @@ const data = JSON.parse(body);
 ```
 
 **Why this design**: the manifest is the single source of truth — adding
-a new remote origin does not require editing Mochi source or the main
+a new remote origin does not require editing Folyn source or the main
 window CSP. The host enforces the allowlist twice (JS-side fast-fail +
 Rust-side re-check from the on-disk manifest).
 
@@ -889,7 +889,7 @@ hard boundary for a third-party plugin, use the **sandbox tier**.
 
 ## AI capability (`permissions.ai`)
 
-Mochi's AI surface (chat via `runRigChat` + feature agents via
+Folyn's AI surface (chat via `runRigChat` + feature agents via
 `runFeatureAgent`) is exposed to plugins as a host-mediated capability. The
 host owns provider/model/apiKey; plugins never see credentials.
 
@@ -1001,7 +1001,7 @@ identifier string (e.g. `'zh'`, `'en'`) is delivered.
 ### Trusted tier — `PluginContext.env`
 
 ```ts
-import type { PluginContext } from "mochi-plugin-sdk";
+import type { PluginContext } from "folyn-plugin-sdk";
 
 export function activate(ctx: PluginContext) {
   console.log("theme:", ctx.env?.theme, "locale:", ctx.env?.locale);
@@ -1143,13 +1143,13 @@ not yet enforced.
 
 ## Local development
 
-### Drop a folder in ~/.mochi/plugins/
+### Drop a folder in ~/.folyn/plugins/
 
 The simplest dev loop: copy your plugin folder to
-`~/.mochi/plugins/<plugin-id>/`. On next app launch, the hydrate loop in
+`~/.folyn/plugins/<plugin-id>/`. On next app launch, the hydrate loop in
 `App.tsx` reads `plugins.json` + each manifest and installs/activates. For
 sandbox plugins, changes to the HTML/JS are picked up by reloading the app
-(the iframe re-fetches from `mochi-plugin://`). For trusted plugins, bump
+(the iframe re-fetches from `folyn-plugin://`). For trusted plugins, bump
 the blob URL (the loader creates a fresh one per activation, so deactivate →
 activate picks up new code).
 
@@ -1157,16 +1157,16 @@ activate picks up new code).
 
 Use Settings → Plugins → 从文件夹安装… and pick your dev folder. The folder
 name must be the plugin's kebab-case id. This copies the folder into
-`~/.mochi/plugins/<id>/` and installs it.
+`~/.folyn/plugins/<id>/` and installs it.
 
 ### Dev server (sandbox tier)
 
-Because `html` is loaded from `mochi-plugin://localhost/<id>/<html>`, you
+Because `html` is loaded from `folyn-plugin://localhost/<id>/<html>`, you
 can't point it at `http://localhost:5173` directly (cross-origin). For hot
 reload, either:
 
 - re-install after each change (fastest for small plugins), or
-- run a dev server and proxy it through the `mochi-plugin://` scheme (future
+- run a dev server and proxy it through the `folyn-plugin://` scheme (future
   enhancement — not in MVP).
 
 ### Trusted tier + Vite
@@ -1195,13 +1195,13 @@ the host realm — see "Trusted tier bundling" above).
 
 1. **Folder install** (dev/debug): Settings → Plugins → 从文件夹安装… picks an
    unpacked folder containing `manifest.json` + assets; the install command
-   copies it verbatim into `~/.mochi/plugins/<id>/`. No source/asset
+   copies it verbatim into `~/.folyn/plugins/<id>/`. No source/asset
    filtering — useful while iterating on a plugin locally.
 
 2. **Zip install** (distribution): Settings → Plugins → 从 .zip 安装… picks a
    `.zip` archive; the install command extracts it to a staging dir, filters
    forbidden files, validates the manifest, then atomically renames into
-   `~/.mochi/plugins/<id>/`. This is the path end users use to install a
+   `~/.folyn/plugins/<id>/`. This is the path end users use to install a
    plugin someone else shipped.
 
 ### Distributing as a .zip
@@ -1211,7 +1211,7 @@ The zip MUST contain `manifest.json` at the root. Everything else must be
 not belong in the shipped package. The zip installer hard-rejects forbidden
 files and silently drops files whose extension is outside the whitelist.
 
-**Allowed file types** (copied to `~/.mochi/plugins/<id>/`):
+**Allowed file types** (copied to `~/.folyn/plugins/<id>/`):
 - `manifest.json` (required at the root)
 - Built `main` (e.g. `dist/index.js`, `dist/index.mjs`) and `html` for sandbox
 - Static assets: `html`/`htm`/`css`/`svg`/`png`/`jpg`/`jpeg`/`gif`/`ico`/
@@ -1233,7 +1233,7 @@ author can fix it once):
 | `.DS_Store`, `Thumbs.db` | OS cruft |
 
 **Soft-skipped — not copied, install continues** (the zip might still ship
-them; they just don't land in `~/.mochi/plugins/<id>/`): any file whose
+them; they just don't land in `~/.folyn/plugins/<id>/`): any file whose
 extension is not in the whitelist above and is not `manifest.json` /
 `LICENSE` / `README.md`. Common example: `.otf` fonts, `.txt` notes.
 
@@ -1252,7 +1252,7 @@ cd dist-output/
 zip -r ../my-plugin-1.0.0.zip manifest.json dist/ assets/
 ```
 
-Future: a `.mochi-plugin` archive + marketplace download will land when the
+Future: a `.folyn-plugin` archive + marketplace download will land when the
 ed25519 signature chain is enforced. The scaffolding (see "Integrity
 upgrade path" above) is already in place for that.
 

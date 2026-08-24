@@ -1,7 +1,7 @@
 {
-  "name": "@mochi/container-plugins",
+  "name": "@folyn/container-plugins",
   "version": "0.1.0",
-  "description": "Mochi container plugins — pluggable directive components",
+  "description": "Folyn container plugins — pluggable directive components",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "mochi-plugin-sdk": "workspace:*"
+    "folyn-plugin-sdk": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.0.0",

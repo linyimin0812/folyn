@@ -2,7 +2,7 @@
 
 ## Goal
 
-让 mochi 桌面端（Tauri + React/TS）的 Markdown 全链路支持数学公式：编辑器侧加语法高亮与折叠，预览/chat/导出/思维导图统一管线渲染。不上 WYSIWYG，编辑器保持纯源码。
+让 folyn 桌面端（Tauri + React/TS）的 Markdown 全链路支持数学公式：编辑器侧加语法高亮与折叠，预览/chat/导出/思维导图统一管线渲染。不上 WYSIWYG，编辑器保持纯源码。
 
 ## Decisions (user-confirmed 2026-08-13)
 

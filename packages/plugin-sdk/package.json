@@ -1,7 +1,7 @@
 {
-  "name": "mochi-plugin-sdk",
+  "name": "folyn-plugin-sdk",
   "version": "0.1.2",
-  "description": "Mochi Plugin SDK — manifest schema, contribution points, contracts, and dev helpers. Publishable to npm; no runtime.",
+  "description": "Folyn Plugin SDK — manifest schema, contribution points, contracts, and dev helpers. Publishable to npm; no runtime.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

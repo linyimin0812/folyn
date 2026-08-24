@@ -13,28 +13,28 @@
   },
   "page": {
     "index": {
-      "title": "Mochi — Almacén de conocimiento local-first",
-      "description": "Mochi es una aplicación de escritorio local-first para gestión de conocimiento: aislamiento por vault, edición y vista multi-formato, integración profunda de IA, sistema de plugins y entrada por voz."
+      "title": "Folyn — Almacén de conocimiento local-first",
+      "description": "Folyn es una aplicación de escritorio local-first para gestión de conocimiento: aislamiento por vault, edición y vista multi-formato, integración profunda de IA, sistema de plugins y entrada por voz."
     },
-    "vault": {"title": "Aislamiento multi-vault — Mochi"},
-    "editing": {"title": "Edición multi-formato — Mochi"},
-    "viewing": {"title": "Vista universal de formatos — Mochi"},
-    "ai": {"title": "Integración profunda de IA — Mochi"},
-    "pet": {"title": "Asistente de mascota de escritorio — Mochi"},
-    "plugins": {"title": "Sistema de plugins — Mochi"},
-    "terminal": {"title": "Terminal integrada — Mochi"},
-    "voice": {"title": "Entrada por voz — Mochi"}
+    "vault": {"title": "Aislamiento multi-vault — Folyn"},
+    "editing": {"title": "Edición multi-formato — Folyn"},
+    "viewing": {"title": "Vista universal de formatos — Folyn"},
+    "ai": {"title": "Integración profunda de IA — Folyn"},
+    "pet": {"title": "Asistente de mascota de escritorio — Folyn"},
+    "plugins": {"title": "Sistema de plugins — Folyn"},
+    "terminal": {"title": "Terminal integrada — Folyn"},
+    "voice": {"title": "Entrada por voz — Folyn"}
   },
   "hero": {
     "eyebrow": "local-first · vault-based · ai-native",
     "h1": "Una app, todo tu contexto",
-    "lede": "Mochi es una aplicación de escritorio local-first para gestión de conocimiento. Aísla cada conjunto de datos en un Vault, reúne markdown, pizarras, diagramas ER y mapas mentales en un solo editor y conecta agentes de IA directamente a tu flujo — todo permanece en tus dispositivos.",
+    "lede": "Folyn es una aplicación de escritorio local-first para gestión de conocimiento. Aísla cada conjunto de datos en un Vault, reúne markdown, pizarras, diagramas ER y mapas mentales en un solo editor y conecta agentes de IA directamente a tu flujo — todo permanece en tus dispositivos.",
     "cta": {
-      "download": "Descargar Mochi",
+      "download": "Descargar Folyn",
       "capabilities": "Ver todas las capacidades"
     },
     "shot": {
-      "empty": "(Captura de la interfaz principal de Mochi)",
+      "empty": "(Captura de la interfaz principal de Folyn)",
       "loading": "Cargando…"
     },
     "status": {
@@ -60,7 +60,7 @@
     },
     "viewing": {
       "title": "Vista universal de formatos",
-      "desc": "Office, audio/vídeo, archivos comprimidos, libros electrónicos, planos — verlos sin salir de Mochi."
+      "desc": "Office, audio/vídeo, archivos comprimidos, libros electrónicos, planos — verlos sin salir de Folyn."
     },
     "ai": {
       "title": "Integración profunda de IA",
@@ -83,14 +83,14 @@
     },
     "terminal": {
       "title": "Terminal integrada",
-      "desc": "Abre una terminal dentro de Mochi y deja que Claude Code, Codex y otros agentes editen el documento actual — sin cambiar de ventana.",
+      "desc": "Abre una terminal dentro de Folyn y deja que Claude Code, Codex y otros agentes editen el documento actual — sin cambiar de ventana.",
       "tags": {"shell": "shell integrada"}
     }
   },
   "vault": {
     "breadcrumb_page": "Vault",
     "h1": "Un vault, una frontera",
-    "lede": "Un Vault es la unidad mínima de aislamiento de datos en Mochi. Proyectos y dominios de conocimiento distintos viven en sus propios vaults — no interfieren ni se comparten. Tú decides qué va junto y qué separar.",
+    "lede": "Un Vault es la unidad mínima de aislamiento de datos en Folyn. Proyectos y dominios de conocimiento distintos viven en sus propios vaults — no interfieren ni se comparten. Tú decides qué va junto y qué separar.",
     "feature": {
       "isolation": {
         "k": "Gestión aislada",
@@ -117,7 +117,7 @@
   "editing": {
     "breadcrumb_page": "Edición multi-formato",
     "h1": "Un editor para cada forma de idea",
-    "lede": "Desde texto plano hasta datos estructurados, de diagramas de flujo a pizarras dibujadas a mano, Mochi reúne los escenarios de edición más comunes en una sola app — sin saltar entre herramientas.",
+    "lede": "Desde texto plano hasta datos estructurados, de diagramas de flujo a pizarras dibujadas a mano, Folyn reúne los escenarios de edición más comunes en una sola app — sin saltar entre herramientas.",
     "feature": {
       "markdown": {
         "k": "Markdown",
@@ -129,7 +129,7 @@
       },
       "structured": {
         "k": "Datos estructurados",
-        "v": "CSV y JSON se pueden abrir y editar dentro de Mochi — sin hojas de cálculo ni herramientas de código externas."
+        "v": "CSV y JSON se pueden abrir y editar dentro de Folyn — sin hojas de cálculo ni herramientas de código externas."
       },
       "mindmap": {
         "k": "Mapa mental",
@@ -153,9 +153,9 @@
   "viewing": {
     "breadcrumb_page": "Vista universal",
     "h1": "Lee cualquier archivo sin cambiar de app",
-    "lede": "Un vault inevitablemente contiene muchos formatos. Mochi tiene vista integrada para que puedas abrirlos sin salir de la app ni instalar software extra.",
+    "lede": "Un vault inevitablemente contiene muchos formatos. Folyn tiene vista integrada para que puedas abrirlos sin salir de la app ni instalar software extra.",
     "feature": {
-      "office": {"k": "Documentos Office", "v": "Ver Word, Excel, PPT y otros documentos comunes directamente en Mochi — sin necesidad de suite ofimática externa."},
+      "office": {"k": "Documentos Office", "v": "Ver Word, Excel, PPT y otros documentos comunes directamente en Folyn — sin necesidad de suite ofimática externa."},
       "media": {"k": "Audio y vídeo", "v": "Reproduce archivos de audio y vídeo en línea; ideal para organizar grabaciones de reuniones, clips de tutoriales y otros materiales."},
       "archive": {"k": "Archivos comprimidos", "v": "Inspecciona la estructura y contenido de un archivo comprimido sin descomprimirlo."},
       "ebook": {"k": "Libros electrónicos", "v": "Lee formatos de libro electrónico con vista integrada — mantén tu biblioteca y tu lectura en un solo lugar."},
@@ -173,9 +173,9 @@
   "ai": {
     "breadcrumb_page": "Integración de IA",
     "h1": "Conecta agentes de IA a tus notas",
-    "lede": "Mochi no te ata a un proveedor de modelos. Adapta los agentes CLI principales directamente al editor — llámalos para análisis, generación o refactorización mientras escribes y organizas conocimiento.",
+    "lede": "Folyn no te ata a un proveedor de modelos. Adapta los agentes CLI principales directamente al editor — llámalos para análisis, generación o refactorización mientras escribes y organizas conocimiento.",
     "feature": {
-      "cli": {"k": "Adaptadores CLI", "v": "Soporte integrado para los siguientes agentes CLI, ejecutables desde Mochi: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
+      "cli": {"k": "Adaptadores CLI", "v": "Soporte integrado para los siguientes agentes CLI, ejecutables desde Folyn: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
       "vendors": {"k": "Múltiples proveedores", "v": "Soporta varios proveedores de modelos — cambia por tarea o preferencia, sin atarte a uno solo."}
     },
     "shots": {
@@ -207,7 +207,7 @@
   "plugins": {
     "breadcrumb_page": "Sistema de plugins",
     "h1": "Haz crecer lo que necesites, sobre un micronúcleo",
-    "lede": "Mochi mantiene el núcleo ligero; la mayoría de las funciones se entregan como plugins. Los plugins integrados cubren escenarios comunes y los de terceros amplían bajo demanda.",
+    "lede": "Folyn mantiene el núcleo ligero; la mayoría de las funciones se entregan como plugins. Los plugins integrados cubren escenarios comunes y los de terceros amplían bajo demanda.",
     "feature": {
       "arch": {"k": "Arquitectura", "v": "Micronúcleo + SDK de plugins; el núcleo se mantiene ligero, las funciones se cargan por demanda vía plugins y desarrolladores de terceros pueden ampliar."},
       "translate": {"k": "Traducción", "v": "Plugin de traducción integrado para procesar contenido multilingüe."},
@@ -246,9 +246,9 @@
   "terminal": {
     "breadcrumb_page": "Terminal integrada",
     "h1": "La terminal junto al editor — la IA lee y escribe tu texto directamente",
-    "lede": "La terminal integrada lleva agentes CLI al espacio de trabajo de Mochi. Claude Code y Codex CLI pueden editar el documento actual in situ — sin copiar y pegar ni cambiar de ventana.",
+    "lede": "La terminal integrada lleva agentes CLI al espacio de trabajo de Folyn. Claude Code y Codex CLI pueden editar el documento actual in situ — sin copiar y pegar ni cambiar de ventana.",
     "feature": {
-      "panel": {"k": "Panel de terminal integrada", "v": "Abre un panel de terminal dentro del espacio de trabajo de Mochi, junto al editor. Las rutas de archivo se sincronizan automáticamente — sin cd al directorio de trabajo."},
+      "panel": {"k": "Panel de terminal integrada", "v": "Abre un panel de terminal dentro del espacio de trabajo de Folyn, junto al editor. Las rutas de archivo se sincronizan automáticamente — sin cd al directorio de trabajo."},
       "aitext": {"k": "La IA edita texto", "v": "Agentes como Claude Code y Codex CLI leen y escriben el documento actual desde la terminal; los cambios aparecen en el editor al instante — sin copiar y pegar manualmente."},
       "workflow": {"k": "Integración de flujo", "v": "La terminal comparte contexto con el editor y el panel de IA. La salida de comandos se puede reinsertar en el cursor, convirtiendo editar–invocar–reinsertar en una sola tubería."}
     },

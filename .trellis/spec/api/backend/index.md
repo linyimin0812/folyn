@@ -6,7 +6,7 @@
 
 ## Overview
 
-Mochi's "backend" is the Tauri Rust layer at `apps/desktop/src-tauri/src/`. It provides native filesystem operations, shell command execution, webview management, and native menu setup. The frontend communicates with it via `invoke()` from `@tauri-apps/api/core`.
+Folyn's "backend" is the Tauri Rust layer at `apps/desktop/src-tauri/src/`. It provides native filesystem operations, shell command execution, webview management, and native menu setup. The frontend communicates with it via `invoke()` from `@tauri-apps/api/core`.
 
 ---
 

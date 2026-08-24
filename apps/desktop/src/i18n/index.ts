@@ -106,7 +106,7 @@ import frMarkmap from './locales/fr/markmap.json';
 export const SUPPORTED_LOCALES = ['zh', 'en', 'ja', 'es', 'de', 'fr'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-export const LOCALE_STORAGE_KEY = 'mochi:locale';
+export const LOCALE_STORAGE_KEY = 'folyn:locale';
 
 export function detectInitialLocale(): Locale {
   if (typeof window === 'undefined') return 'zh';

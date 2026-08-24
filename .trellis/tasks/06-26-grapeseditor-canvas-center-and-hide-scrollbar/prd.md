@@ -74,7 +74,7 @@ Call from the existing `onReady` handler in `useGrapesEditor.ts` (already invoke
 
 - Device-mode-specific centering (Desktop / Tablet / Mobile portrait all use the same centering rules).
 - Customizable canvas max-width UI control.
-- Touching the right panel (styles / layers / traits) — already handled with `mochi-no-scrollbar`.
+- Touching the right panel (styles / layers / traits) — already handled with `folyn-no-scrollbar`.
 - Source mode or Preview mode iframes — only 可视化 mode (GrapesJS) is in scope.
 
 ## Technical Notes

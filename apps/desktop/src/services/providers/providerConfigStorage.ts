@@ -1,5 +1,5 @@
 /**
- * Provider config storage at `~/.mochi/providers/`.
+ * Provider config storage at `~/.folyn/providers/`.
  *
  * Two files:
  *   - `customer/providers.json` — user-authored provider definitions, keyed by id.
@@ -54,7 +54,7 @@ let cachedSettingsFile: { path: string; dir: string } | null = null;
 
 async function getBaseDir(): Promise<string> {
   if (cachedBase) return cachedBase;
-  cachedBase = await join(await homeDir(), '.mochi', 'providers');
+  cachedBase = await join(await homeDir(), '.folyn', 'providers');
   return cachedBase;
 }
 

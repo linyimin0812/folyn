@@ -234,7 +234,7 @@ function Masthead({ block }: { block: Extract<InfographicBlock, { type: 'hero' }
           color: C.muted,
         }}
       >
-        <strong style={{ color: C.fg, fontWeight: 600 }}>MOCHI</strong>
+        <strong style={{ color: C.fg, fontWeight: 600 }}>FOLYN</strong>
         &nbsp;·&nbsp;CLIP
       </div>
     </header>

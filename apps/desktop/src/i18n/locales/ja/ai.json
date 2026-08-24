@@ -8,10 +8,10 @@
     "messageCountSuffix": "件",
     "emptyState": {
       "greeting": {
-        "morning": "おはようございます、Mochi AIです。お手伝いしましょうか？",
-        "noon": "こんにちは、Mochi AIです。お手伝いしましょうか？",
-        "afternoon": "こんにちは、Mochi AIです。お手伝いしましょうか？",
-        "evening": "こんばんは、Mochi AIです。お手伝いしましょうか？"
+        "morning": "おはようございます、Folyn AIです。お手伝いしましょうか？",
+        "noon": "こんにちは、Folyn AIです。お手伝いしましょうか？",
+        "afternoon": "こんにちは、Folyn AIです。お手伝いしましょうか？",
+        "evening": "こんばんは、Folyn AIです。お手伝いしましょうか？"
       }
     },
     "attachmentPlaceholder": "（添付）",

@@ -1,7 +1,7 @@
 {
-  "name": "@mochi/vault-provider",
+  "name": "@folyn/vault-provider",
   "version": "0.1.0",
-  "description": "Mochi Vault Provider abstraction layer",
+  "description": "Folyn Vault Provider abstraction layer",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",

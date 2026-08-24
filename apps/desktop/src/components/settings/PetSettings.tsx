@@ -13,13 +13,13 @@ import builtinPetGif from '@/assets/pet.gif';
  *  - Icon source radio: 默认 (inline SVG) vs. 自定义 (`<img>` from
  *    `petIconPath`). 自定义 with no path yet triggers the upload picker.
  *  - "上传图标…" button: native file picker (png/jpg/jpeg/webp/svg/gif,
- *    ≤10MB) → copy file to `~/.mochi/pet-icon/pet-icon-<ts>.<ext>` → `setPetIcon('custom', path)`.
+ *    ≤10MB) → copy file to `~/.folyn/pet-icon/pet-icon-<ts>.<ext>` → `setPetIcon('custom', path)`.
  *    Files >10MB or non-image extensions are rejected with a local error
  *    message (no toast system reused — the existing settings sections use
  *    local `errorMsg` state, so we follow that pattern).
- *  - "恢复默认" button: deletes any `pet-icon*` file in `~/.mochi/pet-icon/` +
+ *  - "恢复默认" button: deletes any `pet-icon*` file in `~/.folyn/pet-icon/` +
  *    `setPetIcon('builtin')`.
- *  - Preview thumbnail of the current icon (builtin mochi.svg or the
+ *  - Preview thumbnail of the current icon (builtin folyn.svg or the
  *    custom image via `convertFileSrc`).
  *
  * ACL: the main window's capability file (`capabilities/default.json`)
@@ -119,12 +119,12 @@ export function PetSettings() {
         return;
       }
 
-      // Copy file to ~/.mochi/pet-icon/pet-icon-<timestamp>.<ext>. The
+      // Copy file to ~/.folyn/pet-icon/pet-icon-<timestamp>.<ext>. The
       // timestamp disambiguates multiple saved icons (PRD: multi-icon
       // library). The dir is created on demand; no deletion of prior files
       // — every upload is a new library entry; reset clears them all.
       const home = await homeDir();
-      const iconDir = await join(home, '.mochi', 'pet-icon');
+      const iconDir = await join(home, '.folyn', 'pet-icon');
       await mkdir(iconDir, { recursive: true }).catch(() => {});
       const destPath = await join(iconDir, `pet-icon-${Date.now()}.${ext}`);
 
@@ -174,8 +174,8 @@ export function PetSettings() {
       const { remove, readDir } = await import('@tauri-apps/plugin-fs');
       const { homeDir, join } = await import('@tauri-apps/api/path');
       const home = await homeDir();
-      const iconDir = await join(home, '.mochi', 'pet-icon');
-      // Delete any pet-icon* files in ~/.mochi/pet-icon/ (covers
+      const iconDir = await join(home, '.folyn', 'pet-icon');
+      // Delete any pet-icon* files in ~/.folyn/pet-icon/ (covers
       // `pet-icon.<ext>` from the legacy single-icon schema and
       // `pet-icon-<ts>.<ext>` from the current multi-icon schema).
       try {
@@ -198,7 +198,7 @@ export function PetSettings() {
   // Per-icon delete: confirm first (deleting a saved icon is destructive),
   // then remove the file from disk + drop from the library. The store's
   // `removePetIcon` handles the active-selection fallback; this handler
-  // also deletes the underlying file so it doesn't linger in ~/.mochi/pet-icon/.
+  // also deletes the underlying file so it doesn't linger in ~/.folyn/pet-icon/.
   // File-delete failures are non-fatal (store still updates).
   //
   // Uses `@tauri-apps/plugin-dialog`'s `confirm()` rather than
@@ -286,7 +286,7 @@ export function PetSettings() {
   // via `convertFileSrc` (resolved in `CustomIconPreview` so the Tauri-only
   // module is only imported when actually rendering a custom preview). The
   // asset protocol scope in tauri.conf.json allows `$HOME/**` so
-  // ~/.mochi/pet-icon/ paths resolve.
+  // ~/.folyn/pet-icon/ paths resolve.
   const builtinPreviewSrc = builtinPetGif;
 
   return (
@@ -335,7 +335,7 @@ export function PetSettings() {
               void emitIconChanged();
             }} />
           ) : (
-            <img src={builtinPreviewSrc} alt="Mochi" className="w-12 h-12" />
+            <img src={builtinPreviewSrc} alt="Folyn" className="w-12 h-12" />
           )}
         </div>
         <div className="flex flex-col gap-2">
@@ -433,7 +433,7 @@ export function PetSettings() {
 
 /**
  * Preview `<img>` for a custom pet icon. Resolves `convertFileSrc` lazily
- * (Tauri-only module) and falls back to the builtin mochi.svg if the
+ * (Tauri-only module) and falls back to the builtin folyn.svg if the
  * conversion or load fails. Kept as a separate component so the lazy import
  * only runs when actually rendering a custom preview (the common case —
  * builtin — never touches Tauri).

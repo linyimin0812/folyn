@@ -8,7 +8,7 @@ beforeEach(() => {
   markSettingsHydrated();
   vi.useFakeTimers();
   useVaultConfigStore.setState({
-    vaultPath: '~/Documents/mochi/my-notes',
+    vaultPath: '~/Documents/folyn/my-notes',
     imagePath: 'assets/images/',
     docExtension: '.md',
     watchFileChanges: true,
@@ -54,7 +54,7 @@ describe('useVaultConfigStore.hydrate', () => {
 
   it('missing fields keep defaults', () => {
     useVaultConfigStore.getState().hydrate({ docExtension: '.org' });
-    expect(useVaultConfigStore.getState().vaultPath).toBe('~/Documents/mochi/my-notes');
+    expect(useVaultConfigStore.getState().vaultPath).toBe('~/Documents/folyn/my-notes');
     expect(useVaultConfigStore.getState().docExtension).toBe('.org');
   });
 });

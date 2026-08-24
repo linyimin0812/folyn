@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createElement } from 'react';
-import type { PluginManifest } from '@mochi/plugin-host';
+import type { PluginManifest } from '@folyn/plugin-host';
 import {
   registerPluginMarkdownCodeRenderers,
   registerMarkdownCodeRenderer,

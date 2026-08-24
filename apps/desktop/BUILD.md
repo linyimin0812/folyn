@@ -1,4 +1,4 @@
-# Building Mochi Desktop
+# Building Folyn Desktop
 
 Cross-platform build instructions for the Tauri 2 + React/TS desktop app.
 
@@ -50,7 +50,7 @@ pnpm tauri build          # current host platform, Tauri defaults
 
 ### macOS-specific notes
 
-- `build:mac` runs `scripts/build-mac.sh` which signs, verifies, and copies to `/Applications/Mochi.app`. Requires the `codesign` / `PlistBuddy` / `xattr` tools (macOS-only).
+- `build:mac` runs `scripts/build-mac.sh` which signs, verifies, and copies to `/Applications/Folyn.app`. Requires the `codesign` / `PlistBuddy` / `xattr` tools (macOS-only).
 - Universal binary build is handled by `.github/workflows/release.yml`'s `build-macos-universal` job.
 
 ## CI

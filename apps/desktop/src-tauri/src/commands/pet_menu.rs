@@ -3,11 +3,11 @@ use tauri::Manager;
 use crate::commands::pet_common::*;
 use crate::errors::AppError;
 
-/// Build and install the macOS app menu bar (Mochi / Edit / Window submenus)
+/// Build and install the macOS app menu bar (Folyn / Edit / Window submenus)
 /// with titles localized for `locale`. Called once from `lib.rs::setup` (with
 /// `"en"` as the bootstrap default — frontend hydrates `localeStore` and
 /// calls `pet_rebuild_app_menu` to sync the user's actual locale) and again
-/// whenever the user switches locale. The `Mochi` submenu title is a brand
+/// whenever the user switches locale. The `Folyn` submenu title is a brand
 /// name and never translated; `Edit`/`Window` use `app_menu_label`.
 ///
 /// macOS-only: both call sites are cfg-gated to `target_os = "macos"`
@@ -18,7 +18,7 @@ use crate::errors::AppError;
 pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppError> {
     use tauri::menu::{MenuBuilder, SubmenuBuilder};
 
-    let app_menu = SubmenuBuilder::new(app, "Mochi")
+    let app_menu = SubmenuBuilder::new(app, "Folyn")
         .about(None)
         .separator()
         .services()
@@ -452,7 +452,7 @@ pub async fn pet_rebuild_app_menu(
 /// fires. The caller sets size + position via `pet_menu_set_size` /
 /// `pet_menu_set_position` first. Mirrors `pet_panel_show`: `set_focus()`
 /// makes the window key + makes the WKWebView first responder so `document`
-/// receives `keydown` without a click. The Mochi app is briefly activated
+/// receives `keydown` without a click. The Folyn app is briefly activated
 /// (`set_focus()` calls `activateIgnoringOtherApps:YES`) — acceptable for a
 /// transient context menu; matches the pet-panel pattern.
 #[tauri::command]

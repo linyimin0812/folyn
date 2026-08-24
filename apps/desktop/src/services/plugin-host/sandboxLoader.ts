@@ -3,7 +3,7 @@
  *
  * Implements the `PluginLoader` interface for `tier: 'sandbox'` plugins. On
  * `load()`, creates a hidden `<iframe sandbox="allow-scripts">` (NO
- * `allow-same-origin`) loading from `mochi-plugin://localhost/<id>/<html>`,
+ * `allow-same-origin`) loading from `folyn-plugin://localhost/<id>/<html>`,
  * wires a {@link RpcBridge} for host-mediated capability calls, and returns a
  * `Plugin` object whose `activate`/`deactivate` send lifecycle messages and
  * register contributed commands.
@@ -17,8 +17,8 @@
  *   - Plugins get NO raw Tauri capabilities (no `add_capability`).
  */
 
-import type { Plugin, PluginContext, PluginLoader, PluginManifest } from '@mochi/plugin-host';
-import { disposable } from '@mochi/plugin-host';
+import type { Plugin, PluginContext, PluginLoader, PluginManifest } from '@folyn/plugin-host';
+import { disposable } from '@folyn/plugin-host';
 import { RpcBridge } from './rpcBridge';
 import { registerPluginCommands } from './commandAdapter';
 import { registerPluginTools } from './toolAdapter';
@@ -79,7 +79,7 @@ export const sandboxLoader: PluginLoader = {
  */
 function createPluginIframe(manifest: PluginManifest): HTMLIFrameElement {
   const html = manifest.html ?? 'index.html';
-  const src = `mochi-plugin://localhost/${manifest.id}/${html}`;
+  const src = `folyn-plugin://localhost/${manifest.id}/${html}`;
 
   const iframe = document.createElement('iframe');
   // `allow-scripts` lets the plugin run JS; NO `allow-same-origin` gives a

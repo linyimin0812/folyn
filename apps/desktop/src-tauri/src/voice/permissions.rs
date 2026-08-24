@@ -131,12 +131,12 @@ pub fn ensure_microphone() -> Result<(), String> {
         MicStatus::NotDetermined => match request_microphone() {
             MicStatus::Granted => Ok(()),
             MicStatus::Denied => Err(
-                "麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Mochi".into(),
+                "麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Folyn".into(),
             ),
             other => Err(format!("麦克风授权未获批准（状态 {:?}）", other)),
         },
         MicStatus::Denied => Err(
-            "麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Mochi".into(),
+            "麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Folyn".into(),
         ),
         MicStatus::Restricted => Err("此设备的麦克风功能受限".into()),
     }

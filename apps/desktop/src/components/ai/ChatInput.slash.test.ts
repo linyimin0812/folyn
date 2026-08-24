@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildSlashInsertString, filterSlashEntries, splitSlashTokens } from './ChatInput';
-import type { CommandEntry, SkillEntry } from '@mochi/cli-adapter';
+import type { CommandEntry, SkillEntry } from '@folyn/cli-adapter';
 
 describe('buildSlashInsertString (per-CLI /name rules)', () => {
   it('Claude skill → /<name> (bare slash, no skill: prefix)', () => {

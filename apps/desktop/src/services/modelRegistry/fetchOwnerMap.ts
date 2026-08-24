@@ -17,7 +17,7 @@
  * Routed through the `fetch_url` Tauri command because openrouter.ai
  * doesn't return CORS headers (preflight 404).
  *
- * Disk cache: writes `~/.mochi/providers/provider-models.json` on first
+ * Disk cache: writes `~/.folyn/providers/provider-models.json` on first
  * fetch and reuses it for 24h. Cache shape matches the return shape.
  */
 
@@ -27,7 +27,7 @@ import { exists, readTextFile, writeTextFile, stat } from '@tauri-apps/plugin-fs
 import { getUserProvidersDir } from './userProvidersCatalog';
 import type { Capability } from './types';
 
-const OPENROUTER_API_KEY = 'sk-or-v1-mochi';
+const OPENROUTER_API_KEY = 'sk-or-v1-folyn';
 const ENDPOINTS = [
   'https://openrouter.ai/api/v1/models',
   'https://openrouter.ai/api/v1/embeddings/models',

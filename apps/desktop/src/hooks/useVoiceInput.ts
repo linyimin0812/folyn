@@ -216,11 +216,11 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     emitOrbPhase('transcribing', get().trigger, skipReason);
     const rawVaultPath = useVaultStore.getState().currentVault?.basePath ?? '';
 
-    // Bug #1 fix: `currentVault.basePath` 可能是 `~/mochi/default_vault`（默认
+    // Bug #1 fix: `currentVault.basePath` 可能是 `~/folyn/default_vault`（默认
     // 创建路径就是这样，见 vaultStore.ts:155）。`~` 不展开会让 Rust 的
-    // `Path::new("~/mochi/default_vault").join(".voice_input")` 把 `~` 当成
-    // CWD 下的字面目录，WAV 写到 `<process cwd>/~/mochi/default_vault/...` 而
-    // 不是 `/Users/<user>/mochi/default_vault/.voice_input/<ts>.wav`。复用
+    // `Path::new("~/folyn/default_vault").join(".voice_input")` 把 `~` 当成
+    // CWD 下的字面目录，WAV 写到 `<process cwd>/~/folyn/default_vault/...` 而
+    // 不是 `/Users/<user>/folyn/default_vault/.voice_input/<ts>.wav`。复用
     // `resolveBasePath`（vaultStore 已在打开 vault 前调用同一个 helper）保证
     // 一致行为。
     const vaultPath = isTauri() ? await resolveBasePath(rawVaultPath) : rawVaultPath;
@@ -312,7 +312,7 @@ export const useVoiceInput = create<VoiceInputState>((set, get) => ({
     emitOrbPhase('inserting', get().trigger, skipReason);
     if (autoPaste) {
       // Debug: capture frontmost app BEFORE and AFTER the insert to diagnose
-      // the "Cmd+V didn't paste anywhere" release-build bug. If isMochi=true
+      // the "Cmd+V didn't paste anywhere" release-build bug. If isFolyn=true
       // before/after, the orb (or main window) is the frontmost app and the
       // posted Cmd+V lands on a window with no text field. Errors are swallowed
       // — this is diagnostic only, must never break the paste path. Remove

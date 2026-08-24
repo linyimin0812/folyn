@@ -1,10 +1,10 @@
 {
-  "name": "create-mochi-plugin",
+  "name": "create-folyn-plugin",
   "version": "0.1.0",
-  "description": "Scaffold a Mochi plugin from a template. Run: npx create-mochi-plugin <name>",
+  "description": "Scaffold a Folyn plugin from a template. Run: npx create-folyn-plugin <name>",
   "type": "module",
   "bin": {
-    "create-mochi-plugin": "dist/index.js"
+    "create-folyn-plugin": "dist/index.js"
   },
   "files": ["dist", "template"],
   "scripts": {

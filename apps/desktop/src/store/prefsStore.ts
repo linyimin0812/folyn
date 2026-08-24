@@ -29,7 +29,7 @@ export function buildDefaultShortcuts(primaryMod: '⌘' | 'Ctrl'): ShortcutItem[
     { id: 'code', name: '行内代码', keys: [primaryMod, 'E'] },
     { id: 'link', name: '插入链接', keys: [primaryMod, 'K'] },
     // GLOBAL shortcut — registered with the OS via `pet_panel_set_shortcut` so
-    // it fires even when Mochi is not focused. The other entries above are
+    // it fires even when Folyn is not focused. The other entries above are
     // in-editor keybindings (consumed by EditorView's keymap, never registered
     // with the OS). Only this entry needs an accelerator conversion + Rust
     // re-registration on rebind (see SettingsPage.tsx ShortcutEditor +

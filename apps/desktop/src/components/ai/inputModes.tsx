@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { CliSendOptions, PermissionMode } from '@mochi/cli-adapter';
+import type { CliSendOptions, PermissionMode } from '@folyn/cli-adapter';
 import agentIcon from '@/assets/icons/agent.svg';
 import askIcon from '@/assets/icons/ask.svg';
 import chatIcon from '@/assets/icons/chat.svg';

@@ -118,7 +118,7 @@ vi.mock('@/store/aiConfigStore', () => ({
   getFeatureCliPath: () => '/mock/claude',
 }));
 
-vi.mock('@mochi/cli-adapter', () => ({
+vi.mock('@folyn/cli-adapter', () => ({
   createAdapter: () => fakeAdapter,
 }));
 

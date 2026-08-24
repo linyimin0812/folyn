@@ -1,4 +1,4 @@
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 
 export function flattenTree(entries: VaultEntry[]): string[] {
   const result: string[] = [];

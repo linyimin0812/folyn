@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePlantUmlSvg } from '@mochi/container-plugins';
+import { usePlantUmlSvg } from '@folyn/container-plugins';
 import { ZoomPanCanvas } from '../image/ZoomPanCanvas';
 import type { PreviewProps } from '../types';
 

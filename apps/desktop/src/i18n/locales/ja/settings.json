@@ -171,7 +171,7 @@
       "detected": "検出: {{path}}"
     },
     "settingsFile": {
-      "title": "このアダプタの設定ファイルをMochiエディタで開く",
+      "title": "このアダプタの設定ファイルをFolynエディタで開く",
       "missing": "見つかりません: {{path}}",
       "missingHint": "設定ファイルがまだ作成されていません（CLIは通常初回実行時に作成）。",
       "create": "作成",
@@ -424,13 +424,13 @@
       "architecture": "アーキテクチャと実装",
       "developer": "開発とコントリビュート"
     },
-    "description": "Tauri 2 + React + CodeMirror 6 をベースに、Mochi はローカルファーストの Markdown エディタです。AI チャット、デスクトップペット、プラグインシステム、ER 図、スケジュール管理、CLI ツールを統合し、データはあなたのデバイス上に標準 Markdown で保存され、ロックインはありません。",
+    "description": "Tauri 2 + React + CodeMirror 6 をベースに、Folyn はローカルファーストの Markdown エディタです。AI チャット、デスクトップペット、プラグインシステム、ER 図、スケジュール管理、CLI ツールを統合し、データはあなたのデバイス上に標準 Markdown で保存され、ロックインはありません。",
     "philosophy": {
       "label": "設計理念",
       "localFirst": "ローカルファースト —— あなたのノートはあなたのもの。すべてのドキュメントはローカルのファイルシステムにプレーン Markdown ファイルとして保存され、クラウドアカウント不要、オフラインで完全に利用可能、自由に移行できます。Vault システムは vault-provider 抽象レイヤーで着脱可能なバックエンドをサポートしますが、データの所有権は常にあなたにあります。",
-      "openFormat": "オープンフォーマット —— ロックインなし。Mochi は標準 Markdown を唯一の保存形式として使い、GFM と独自ディレクティブのために remark/rehype パイプラインで処理します。どんなテキストエディタでもノートを開け、HTML をローカルへ、またはリモートストレージへいつでもエクスポートでき、Mochi をアンインストールした後もデータは完全に読めます。",
+      "openFormat": "オープンフォーマット —— ロックインなし。Folyn は標準 Markdown を唯一の保存形式として使い、GFM と独自ディレクティブのために remark/rehype パイプラインで処理します。どんなテキストエディタでもノートを開け、HTML をローカルへ、またはリモートストレージへいつでもエクスポートでき、Folyn をアンインストールした後もデータは完全に読めます。",
       "extensible": "拡張可能 —— エディタコアからストレージバックエンドまでエンドツーエンドで開いています。マイクロカーネル + プラグイン SDK は 14 種のコンテナディレクティブ（callout、tabs、mermaid 等）とサードパーティプラグインをサポートし、CLI アダプター抽象は 6 種の AI ツール（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）を着脱可能にし、pnpm workspaces は container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk を独立パッケージとして進化させます。",
-      "privacy": "プライバシーファースト —— AI チャットとコード生成はローカル CLI ツール経由で行われ、あなたの API キーと会話内容は Mochi のサーバーを通りません。CSP ポリシーとプラグインサンドボックス層が多層防御を提供し、trusted 層と sandbox 層は分離実行され、サードパーティプラグインは制限付き権限下で動きます。"
+      "privacy": "プライバシーファースト —— AI チャットとコード生成はローカル CLI ツール経由で行われ、あなたの API キーと会話内容は Folyn のサーバーを通りません。CSP ポリシーとプラグインサンドボックス層が多層防御を提供し、trusted 層と sandbox 層は分離実行され、サードパーティプラグインは制限付き権限下で動きます。"
     },
     "features": {
       "label": "機能",
@@ -502,7 +502,7 @@
     },
     "architecture": {
       "label": "アーキテクチャレイヤー",
-      "description": "Mochi はクリーンなレイヤードアーキテクチャを採用し、Tauri シェルから最上位の AI アダプターまで、各レイヤーは単一責任を持ち、独立に進化できます。pnpm workspaces は各コア機能を再利用とテストのためにパッケージ化します。",
+      "description": "Folyn はクリーンなレイヤードアーキテクチャを採用し、Tauri シェルから最上位の AI アダプターまで、各レイヤーは単一責任を持ち、独立に進化できます。pnpm workspaces は各コア機能を再利用とテストのためにパッケージ化します。",
       "layers": {
         "shell": {
           "name": "シェル",
@@ -553,8 +553,8 @@
     },
     "projectStructure": {
       "label": "プロジェクト構成",
-      "description": "Mochi は pnpm モノレポであり、デスクトップアプリ、CLI アダプター、コンテナプラグイン、Vault Provider、Plugin Host/SDK がそれぞれ独立パッケージです。",
-      "tree": "mochi/\n├── apps/\n│   └── desktop/              # Tauri デスクトップアプリ\n│       ├── src/              # React フロントエンド\n│       │   ├── components/   # UI コンポーネント（シェル、エディタ、AI、サイドバー等）\n│       │   ├── editor/       # CodeMirror 拡張\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand ストア\n│       │   └── utils/        # ユーティリティモジュール\n│       └── src-tauri/        # Rust バックエンド（Tauri コマンド）\n├── packages/\n│   ├── cli-adapter/          # AI CLI アダプター抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown コンテナディレクティブプラグイン（14）\n│   ├── vault-provider/       # Vault ストレージ Provider 抽象\n│   ├── plugin-host/         # プラグインホストランタイム\n│   ├── plugin-sdk/          # プラグイン開発 SDK\n│   └── create-mochi-plugin/ # Scaffold ツール\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Folyn は pnpm モノレポであり、デスクトップアプリ、CLI アダプター、コンテナプラグイン、Vault Provider、Plugin Host/SDK がそれぞれ独立パッケージです。",
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri デスクトップアプリ\n│       ├── src/              # React フロントエンド\n│       │   ├── components/   # UI コンポーネント（シェル、エディタ、AI、サイドバー等）\n│       │   ├── editor/       # CodeMirror 拡張\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand ストア\n│       │   └── utils/        # ユーティリティモジュール\n│       └── src-tauri/        # Rust バックエンド（Tauri コマンド）\n├── packages/\n│   ├── cli-adapter/          # AI CLI アダプター抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown コンテナディレクティブプラグイン（14）\n│   ├── vault-provider/       # Vault ストレージ Provider 抽象\n│   ├── plugin-host/         # プラグインホストランタイム\n│   ├── plugin-sdk/          # プラグイン開発 SDK\n│   └── create-folyn-plugin/ # Scaffold ツール\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "ストレージバックエンド",
@@ -576,7 +576,7 @@
     },
     "aiIntegration": {
       "label": "AI 連携",
-      "description": "cli-adapter 抽象を通じて、Mochi は 6 つの CLI ベースの AI ツールを一様にサポートします。設定 → Model Services で CLI パスを設定したら、サイドパネルでチャット、テキスト生成、コード編集の適用、差分レビューを行えます。API キーと会話内容はローカル CLI ツールと対応する AI サービス間のみで流れ、Mochi のサーバーは経由しません。",
+      "description": "cli-adapter 抽象を通じて、Folyn は 6 つの CLI ベースの AI ツールを一様にサポートします。設定 → Model Services で CLI パスを設定したら、サイドパネルでチャット、テキスト生成、コード編集の適用、差分レビューを行えます。API キーと会話内容はローカル CLI ツールと対応する AI サービス間のみで流れ、Folyn のサーバーは経由しません。",
       "adapters": {
         "label": "内蔵 CLI アダプター",
         "items": {
@@ -609,7 +609,7 @@
     },
     "pluginSystem": {
       "label": "プラグインシステム",
-      "description": "マイクロカーネル + プラグイン SDK アーキテクチャ。プラグインは Trusted 層（ホスト機能を直接呼ぶ）と Sandbox 層（制限付き権限下で動く）に分かれ、plugin-host ランタイムが読み込みます。サードパーティプラグインは create-mochi-plugin で素早く scaffold できます。",
+      "description": "マイクロカーネル + プラグイン SDK アーキテクチャ。プラグインは Trusted 層（ホスト機能を直接呼ぶ）と Sandbox 層（制限付き権限下で動く）に分かれ、plugin-host ランタイムが読み込みます。サードパーティプラグインは create-folyn-plugin で素早く scaffold できます。",
       "tiers": {
         "label": "実行階層",
         "trusted": {
@@ -628,7 +628,7 @@
     },
     "fileTypeSupport": {
       "label": "ファイルタイプ対応",
-      "description": "HandlerRegistry に登録され、Mochi は 15 種以上のファイルタイプをプレビュー・編集できます。",
+      "description": "HandlerRegistry に登録され、Folyn は 15 種以上のファイルタイプをプレビュー・編集できます。",
       "items": "Markdown · コード · CSV · JSON · HTML · 画像 · DBML（ER 図） · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap（markmap） · Office ドキュメント · クリップボードのクリップ"
     },
     "techStack": {
@@ -733,12 +733,12 @@
     },
     "microphone": {
       "title": "マイク権限",
-      "desc": "録音にはマイク権限が必要。ボタンをクリックしてシステムプロンプトをトリガ。以前拒否した場合は、システム設定 → プライバシーとセキュリティ → マイクでMochiを許可して再試行。",
+      "desc": "録音にはマイク権限が必要。ボタンをクリックしてシステムプロンプトをトリガ。以前拒否した場合は、システム設定 → プライバシーとセキュリティ → マイクでFolynを許可して再試行。",
       "action": "マイクを許可"
     },
     "speech": {
       "title": "音声認識権限",
-      "desc": "Apple Speechの文字起こしには音声認識権限が必要。ボタンをクリックしてシステムプロンプトをトリガ。以前拒否した場合は、システム設定 → プライバシーとセキュリティ → 音声認識でMochiを許可して再試行。",
+      "desc": "Apple Speechの文字起こしには音声認識権限が必要。ボタンをクリックしてシステムプロンプトをトリガ。以前拒否した場合は、システム設定 → プライバシーとセキュリティ → 音声認識でFolynを許可して再試行。",
       "action": "音声認識を許可"
     },
     "polishPrompt": {
@@ -796,7 +796,7 @@
     },
     "icon": {
       "title": "アイコン",
-      "desc": "組み込みのMochiアイコンを使用、またはカスタム画像をアップロード",
+      "desc": "組み込みのFolynアイコンを使用、またはカスタム画像をアップロード",
       "builtin": "組み込み",
       "custom": "カスタム",
       "uploading": "アップロード中…",
@@ -949,7 +949,7 @@
       "description": "下記のポリシーは「適用して再読み込み」クリック後に有効化"
     },
     "baseline": {
-      "note": "Tauri IPC、mochi-plugin、asset、data:、blob:は常に許可され、削除不可。"
+      "note": "Tauri IPC、folyn-plugin、asset、data:、blob:は常に許可され、削除不可。"
     },
     "apply": {
       "button": "適用して再読み込み",

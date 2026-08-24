@@ -29,7 +29,7 @@ interface OpencodeStreamEvent {
 }
 
 /** Pure seam: map a parsed opencode NDJSON event into zero or more
- *  `CliStreamEvent`s for the Mochi adapter event bus.
+ *  `CliStreamEvent`s for the Folyn adapter event bus.
  *
  * opencode event taxonomy (per `research/opencode-cli-shape.md` §4):
  * - `step_start` `{sessionID}` → `session_id` (first event; persist id for

@@ -12,7 +12,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-APP="src-tauri/target/release/bundle/macos/Mochi.app"
+APP="src-tauri/target/release/bundle/macos/Folyn.app"
 INFO="$APP/Contents/Info.plist"
 DMG_DIR="src-tauri/target/release/bundle/dmg"
 INSTALL="${INSTALL:-1}"
@@ -58,16 +58,16 @@ done < <(find "$DMG_DIR" -maxdepth 1 -name '*.dmg' -print)
 
 if [ "$INSTALL" = "1" ]; then
   echo "▶ 装到 /Applications"
-  pkill -f "Mochi.app/Contents/MacOS/mochi" 2>/dev/null || true
+  pkill -f "Folyn.app/Contents/MacOS/folyn" 2>/dev/null || true
   sleep 1
   # 每次重装前重置 TCC：ad-hoc 签名 hash 每次构建都会变，旧授权立即失效，
   # 不重置就会出现"系统设置里看着已勾选实际不生效"。
-  tccutil reset Accessibility com.mochi.editor 2>/dev/null || true
-  tccutil reset Microphone com.mochi.editor 2>/dev/null || true
-  tccutil reset SpeechRecognition com.mochi.editor 2>/dev/null || true
-  rm -rf /Applications/Mochi.app
+  tccutil reset Accessibility com.folyn.editor 2>/dev/null || true
+  tccutil reset Microphone com.folyn.editor 2>/dev/null || true
+  tccutil reset SpeechRecognition com.folyn.editor 2>/dev/null || true
+  rm -rf /Applications/Folyn.app
   cp -R "$APP" /Applications/
-  xattr -dr com.apple.quarantine /Applications/Mochi.app 2>/dev/null || true
-  echo "✓ 装好了：/Applications/Mochi.app"
-  echo "  打开方式：open /Applications/Mochi.app"
+  xattr -dr com.apple.quarantine /Applications/Folyn.app 2>/dev/null || true
+  echo "✓ 装好了：/Applications/Folyn.app"
+  echo "  打开方式：open /Applications/Folyn.app"
 fi

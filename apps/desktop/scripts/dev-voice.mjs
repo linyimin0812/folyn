@@ -3,11 +3,11 @@
 //
 // WHEN TO USE:
 //   - `pnpm dev:voice` (this script): voice testing. The .app wrapper gives TCC
-//     a `Contents/Info.plist` + bundle ID (`com.mochi.editor`) to consult, so
+//     a `Contents/Info.plist` + bundle ID (`com.folyn.editor`) to consult, so
 //     `SFSpeechRecognizer.requestAuthorization` + cpal mic + CGEvent Cmd+V all
 //     work. The .app's webview loads from vite's devUrl (http://localhost:1420),
 //     so frontend HMR still works.
-//   - `pnpm tauri dev`: any non-voice dev. Tauri 2 runs `target/debug/mochi`
+//   - `pnpm tauri dev`: any non-voice dev. Tauri 2 runs `target/debug/folyn`
 //     directly (raw Mach-O, no .app wrapper). The embedded `__info_plist`
 //     section provides usage strings to TCC, but TCC for Speech Recognition
 //     specifically requires a real .app bundle structure to persistently
@@ -17,20 +17,20 @@
 // ARCHITECTURE:
 //   - Spawns `pnpm dev` (vite) in the background; waits for "Local:" on stdout.
 //   - Runs `cargo build` (debug) — blocks until success.
-//   - Builds `target/debug/Mochi.app/Contents/{Info.plist,Entitlements.plist,
-//     MacOS/mochi -> symlink to ../../mochi}`. The MacOS/mochi symlink means a
+//   - Builds `target/debug/Folyn.app/Contents/{Info.plist,Entitlements.plist,
+//     MacOS/folyn -> symlink to ../../folyn}`. The MacOS/folyn symlink means a
 //     rebuild picks up the new binary without re-wrapping; just re-launch.
-//   - `open target/debug/Mochi.app` — launches the .app; TCC sees the bundle.
+//   - `open target/debug/Folyn.app` — launches the .app; TCC sees the bundle.
 //   - Rust `log::info!` output goes to the macOS Unified Log. The dev .app's
-//     `CFBundleExecutable` is `mochi` (lowercase, see line ~149 below — the
-//     MacOS symlink is `Contents/MacOS/mochi`, NOT `Mochi`), so the Unified
-//     Log `process` field is `mochi`, NOT `Mochi` (CFBundleName is irrelevant).
+//     `CFBundleExecutable` is `folyn` (lowercase, see line ~149 below — the
+//     MacOS symlink is `Contents/MacOS/folyn`, NOT `Folyn`), so the Unified
+//     Log `process` field is `folyn`, NOT `Folyn` (CFBundleName is irrelevant).
 //     Read the log via:
-//       log stream --predicate 'process == "mochi"' --info --debug
+//       log stream --predicate 'process == "folyn"' --info --debug
 //     in a separate Terminal. If `process ==` matching is flaky on your OS
 //     version, fall back to matching the binary path:
-//       log stream --predicate 'senderImagePath CONTAINS "Mochi.app"' --info --debug
-//     In Console.app, filter by process name `mochi` (lowercase), not `Mochi`.
+//       log stream --predicate 'senderImagePath CONTAINS "Folyn.app"' --info --debug
+//     In Console.app, filter by process name `folyn` (lowercase), not `Folyn`.
 //     The sidecar `<stamp>.txt` in `.voice_input/` is the on-disk
 //     diagnostic for source-save issues — no console needed for that.
 //   - Ctrl+C: kill vite + the .app cleanly.
@@ -48,7 +48,7 @@
 //     `tauri build` codesigns the whole bundle; we have to do it manually in dev.
 //   - Copies the binary into the bundle (not a symlink) so `codesign --deep`
 //     seals the Mach-O inside the bundle. A symlink would let codesign -d
-//     resolve to the raw `target/debug/mochi`, leaving the bundle's
+//     resolve to the raw `target/debug/folyn`, leaving the bundle's
 //     Info.plist/Entitlements.plist unsealed — the previous bug.
 //   - ad-hoc signed dev binary: TCC rows are keyed on bundle ID + cdhash.
 //   - DON'T spawn the binary directly to capture stdout/stderr — bypassing
@@ -68,19 +68,19 @@ const __dirname = dirname(__filename);
 const DESKTOP_ROOT = resolve(__dirname, '..');
 const SRC_TAURI_DIR = join(DESKTOP_ROOT, 'src-tauri');
 const TARGET_DEBUG_DIR = join(SRC_TAURI_DIR, 'target', 'debug');
-const APP_BUNDLE_DIR = join(TARGET_DEBUG_DIR, 'Mochi.app');
+const APP_BUNDLE_DIR = join(TARGET_DEBUG_DIR, 'Folyn.app');
 const CONTENTS_DIR = join(APP_BUNDLE_DIR, 'Contents');
 const MACOS_DIR = join(CONTENTS_DIR, 'MacOS');
-const DEV_BINARY = join(TARGET_DEBUG_DIR, 'mochi'); // target/debug/mochi
-const MACOS_BINARY = join(MACOS_DIR, 'mochi'); // Contents/MacOS/mochi (a copy, not a symlink)
+const DEV_BINARY = join(TARGET_DEBUG_DIR, 'folyn'); // target/debug/folyn
+const MACOS_BINARY = join(MACOS_DIR, 'folyn'); // Contents/MacOS/folyn (a copy, not a symlink)
 const SOURCE_INFO_PLIST = join(SRC_TAURI_DIR, 'Info.plist');
 const SOURCE_ENTITLEMENTS = join(SRC_TAURI_DIR, 'Entitlements.plist');
 const BUNDLE_INFO_PLIST = join(CONTENTS_DIR, 'Info.plist');
 const BUNDLE_ENTITLEMENTS = join(CONTENTS_DIR, 'Entitlements.plist');
 
 const VITE_READY_SIGNAL = 'Local:'; // vite prints "Local: http://localhost:1420/" when ready
-const BUNDLE_ID = 'com.mochi.editor';
-const BUNDLE_NAME = 'Mochi';
+const BUNDLE_ID = 'com.folyn.editor';
+const BUNDLE_NAME = 'Folyn';
 const BUNDLE_VERSION = '0.1.0';
 const BUNDLE_BUILD = '1';
 // Stamp file recording the dev bundle's code-signature DR from the last run.
@@ -154,7 +154,7 @@ function cargoBuild() {
 // CFBundleIdentifier / NS*UsageDescription ONLY when the Info.plist is SEALED
 // into the bundle's code signature (`codesign -dv` must report
 // `Info.plist=` bound, not "not bound"; `Sealed Resources=` something, not
-// "none"). Signing only `target/debug/mochi` (the previous approach) left
+// "none"). Signing only `target/debug/folyn` (the previous approach) left
 // `Info.plist=not bound` + `Sealed Resources=none` — TCC fell back to
 // cdhash-only matching that broke across rebuilds, surfacing as
 // "AXIsProcessTrusted() returns false even after the user toggled Accessibility
@@ -245,12 +245,12 @@ function resetTccIfSignatureChanged() {
   }
 }
 
-// Build the Mochi.app wrapper. Idempotent: rm -rf's the existing bundle first.
+// Build the Folyn.app wrapper. Idempotent: rm -rf's the existing bundle first.
 // - Copies Info.plist + Entitlements.plist from src-tauri/.
 // - Injects CFBundleIdentifier / CFBundleExecutable / CFBundlePackageType /
 //   CFBundleName / CFBundleShortVersionString / CFBundleVersion into the
 //   bundle's Info.plist (the source Info.plist only carries usage strings).
-// - Contents/MacOS/mochi is a symlink to ../../mochi (the dev binary) so a
+// - Contents/MacOS/folyn is a symlink to ../../folyn (the dev binary) so a
 //   rebuild picks up the new binary without re-wrapping.
 function buildAppBundle() {
   if (!existsSync(DEV_BINARY)) {
@@ -269,7 +269,7 @@ function buildAppBundle() {
   const sourcePlist = readFileSync(SOURCE_INFO_PLIST, 'utf8');
   const bundleKeys = [
     `<key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>`,
-    `<key>CFBundleExecutable</key><string>mochi</string>`,
+    `<key>CFBundleExecutable</key><string>folyn</string>`,
     `<key>CFBundlePackageType</key><string>APPL</string>`,
     `<key>CFBundleName</key><string>${BUNDLE_NAME}</string>`,
     `<key>CFBundleShortVersionString</key><string>${BUNDLE_VERSION}</string>`,
@@ -288,7 +288,7 @@ function buildAppBundle() {
   copyFileSync(SOURCE_ENTITLEMENTS, BUNDLE_ENTITLEMENTS);
 
   // COPY the dev binary into the bundle (not a symlink). A symlink would let
-  // `codesign --deep` resolve to the raw `target/debug/mochi`, leaving the
+  // `codesign --deep` resolve to the raw `target/debug/folyn`, leaving the
   // bundle's Info.plist + Entitlements.plist unsealed (`Info.plist=not bound`)
   // — exactly the TCC-ignores-grant bug we fixed. Copying means codesign seals
   // the in-bundle Mach-O + Info.plist together as one signed bundle. A rebuild
@@ -312,7 +312,7 @@ function openApp() {
 }
 
 // Kill the .app. LaunchServices tracks the app again (launched via `open`), so
-// osascript can find "Mochi" by name; fall back to pkill on the bundle's
+// osascript can find "Folyn" by name; fall back to pkill on the bundle's
 // MacOS executable path (a copy of the dev binary inside the .app).
 function killApp() {
   const polite = spawnSync('osascript', ['-e', `tell application "${BUNDLE_NAME}" to quit`], { stdio: 'ignore' });

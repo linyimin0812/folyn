@@ -173,7 +173,7 @@ export function PetPanelApp() {
   // ── Provider config sync ──
   // The embedded AiPanel's model selector reads `aiConfigStore.providerSettings`
   // + `customerProviders` + `modelRegistryStore.modelsByProvider`, which live
-  // in ~/.mochi/providers/ and are loaded by the MAIN window (secondary
+  // in ~/.folyn/providers/ and are loaded by the MAIN window (secondary
   // windows lack fs ACL). The main window broadcasts them on
   // `pet://providers-updated` (startProvidersBroadcast in App.tsx); without
   // this the panel would show "configure a model" even though providers are
@@ -236,7 +236,7 @@ export function PetPanelApp() {
   // separate JS realm whose store starts empty and lacks the $HOME fs ACL to
   // read/write session files. The main window hosts the pet chat's OWN
   // sessions (stored separately from its main AI panel under
-  // ~/.mochi/pet-chat/) and broadcasts them here; this window mirrors them and
+  // ~/.folyn/pet-chat/) and broadcasts them here; this window mirrors them and
   // forwards its local mutations back so pet-chat sessions persist across
   // restart WITHOUT sharing the main AI panel's sessions. Mirrors the
   // file-tree / providers mirror pattern above.

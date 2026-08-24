@@ -1,7 +1,7 @@
 //! Plugin CRUD lifecycle commands: list / uninstall / approve (TOFU-pin) /
 //! get-record / read-file / grant-capabilities / verify-signature.
 //!
-//! All commands operate on the on-disk registry in `~/.mochi/plugins/`
+//! All commands operate on the on-disk registry in `~/.folyn/plugins/`
 //! (`plugins.json` + per-plugin dirs) maintained by `plugin_commands`.
 //! `approve_plugin` is the explicit user consent that flips the TOFU trust
 //! flag the trusted loader checks before `import()`.
@@ -81,7 +81,7 @@ pub async fn get_plugin_record(app: tauri::AppHandle, id: String) -> Result<Plug
         .map_err(AppError::from)
 }
 
-/// Read a file from `~/.mochi/plugins/<id>/<rel_path>` and return its contents
+/// Read a file from `~/.folyn/plugins/<id>/<rel_path>` and return its contents
 /// as a UTF-8 string. Used by the trusted loader to fetch the plugin's `main`
 /// JS bundle for blob-URL `import()`. Path traversal (`..`) is rejected.
 #[tauri::command]

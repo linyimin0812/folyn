@@ -50,7 +50,7 @@ export class ClaudeAdapter extends BaseCliAdapter {
    *  `~/.claude/plugins/installed_plugins.json` → `<installPath>/skills/`).
    *  Precedence: user > project > plugin (first occurrence wins). Returns []
    *  when the adapter has not been started.
-   *  ponytail: project sources use workingDir only (the vault root in Mochi);
+   *  ponytail: project sources use workingDir only (the vault root in Folyn);
    *  walking up to a `.git` repo root is not done — add if a non-vault cwd
    *  ever needs ancestor discovery. */
   async listSkills(): Promise<SkillEntry[]> {

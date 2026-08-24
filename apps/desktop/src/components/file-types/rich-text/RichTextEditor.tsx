@@ -499,16 +499,16 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
             // otherwise the editor's default (text/file drop) keeps working.
             const types = e.dataTransfer.types;
             if (
-              types.includes('application/x-mochi-table-row') ||
-              types.includes('application/x-mochi-table-col')
+              types.includes('application/x-folyn-table-row') ||
+              types.includes('application/x-folyn-table-col')
             ) {
               e.preventDefault();
             }
           }}
           onDrop={(e) => {
             const dt = e.dataTransfer;
-            const rowIdx = dt.getData('application/x-mochi-table-row');
-            const colIdx = dt.getData('application/x-mochi-table-col');
+            const rowIdx = dt.getData('application/x-folyn-table-row');
+            const colIdx = dt.getData('application/x-folyn-table-col');
             if (!editor || (rowIdx === '' && colIdx === '')) return;
             e.preventDefault();
             const target = e.target as HTMLElement | null;

@@ -1,7 +1,7 @@
 /**
  * User-data-dir cache for per-provider fetched model lists.
  *
- * Files at `~/.mochi/providers/{providerId}/models.json` are the on-disk
+ * Files at `~/.folyn/providers/{providerId}/models.json` are the on-disk
  * mirror of the last successful fetch from the "获取模型" button. The
  * fetch path (modelRegistryStore → Tauri list_models) writes here on
  * success and reads back as fallback when a fetch fails — surfacing
@@ -28,7 +28,7 @@ let cachedDir: string | null = null;
 export async function getUserProvidersDir(): Promise<string> {
   if (cachedDir) return cachedDir;
   const home = await homeDir();
-  cachedDir = await join(home, '.mochi', 'providers');
+  cachedDir = await join(home, '.folyn', 'providers');
   return cachedDir;
 }
 

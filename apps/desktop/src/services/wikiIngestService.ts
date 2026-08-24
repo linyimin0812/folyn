@@ -2,7 +2,7 @@
 
 import { useWikiStore } from '@/store/wikiStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { createAdapter } from '@mochi/cli-adapter';
+import { createAdapter } from '@folyn/cli-adapter';
 import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { wikiProvider } from './wikiProvider';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';

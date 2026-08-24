@@ -13,7 +13,7 @@
  *
  * ```ts
  * // index.js — a self-contained ESM bundle (no remote imports)
- * import type { FileTypeHandler, ContainerPlugin, ... } from '@mochi/plugin-host';
+ * import type { FileTypeHandler, ContainerPlugin, ... } from '@folyn/plugin-host';
  * import type { ComponentType } from 'react';
  *
  * // Named export maps keyed by the manifest's entry-ref strings.
@@ -32,26 +32,26 @@
  * partial plugin should still load its other contributions).
  */
 
-import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { Disposable, PluginManifest } from '@folyn/plugin-host';
 import type {
   CommandContribution,
   ContainerContribution,
-} from '@mochi/plugin-host';
+} from '@folyn/plugin-host';
 import type { FileTypeHandler } from '@/components/file-types/types';
-import type { ContainerCategory } from '@mochi/container-plugins';
+import type { ContainerCategory } from '@folyn/container-plugins';
 import { withPluginBoundary } from './pluginBoundary';
 
 /**
  * The resolved exports of a trusted plugin's ESM bundle. All maps are
  * optional — a plugin may contribute only commands, only file-types, etc.
  *
- * ponytail: interface moved to `mochi-plugin-sdk` contracts (so external
+ * ponytail: interface moved to `folyn-plugin-sdk` contracts (so external
  * plugin authors typecheck against the publishable SDK). Re-exported here so
  * existing `import type { PluginModule } from './contributionAdapters'` keeps
  * working.
  */
-export type { PluginModule } from 'mochi-plugin-sdk';
-import type { PluginModule } from 'mochi-plugin-sdk';
+export type { PluginModule } from 'folyn-plugin-sdk';
+import type { PluginModule } from 'folyn-plugin-sdk';
 
 /** Merge a list of disposables into one. */
 function mergeDisposables(disposables: Disposable[]): Disposable {
@@ -167,7 +167,7 @@ export function registerPluginFileTypes(
 
 // ── Container adapter ───────────────────────────────────────────────────────
 
-import { ContainerRegistry } from '@mochi/container-plugins';
+import { ContainerRegistry } from '@folyn/container-plugins';
 import { readPluginFile } from './trustedLoader';
 
 /**

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PluginHost } from './PluginHost';
-import type { PluginManifest } from 'mochi-plugin-sdk';
+import type { PluginManifest } from 'folyn-plugin-sdk';
 
 function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   return {

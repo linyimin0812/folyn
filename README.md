@@ -1,6 +1,6 @@
 [English](README.md) | [简体中文](README.zh.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-<h1 align="center">Mochi Editor</h1>
+<h1 align="center">Folyn Editor</h1>
 
 <p align="center">
   Local-first · Vault-isolated · AI-native<br/>
@@ -9,7 +9,7 @@
 
 <p align="center">
   <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue" />
-  <img alt="downloads" src="https://img.shields.io/github/downloads/linyimin0812/mochi/total?label=downloads" />
+  <img alt="downloads" src="https://img.shields.io/github/downloads/linyimin0812/folyn/total?label=downloads" />
   <img alt="stack" src="https://img.shields.io/badge/Tauri-2-orange" />
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
@@ -18,14 +18,14 @@
 
 > One app, all your context. Isolate each set of data in a Vault, fit markdown, whiteboards, ER diagrams, and mind maps into one editor, and wire AI agents straight into your workflow — everything stays on your own devices.
 
-## Why Mochi
+## Why Folyn
 
 - **Vault multi-vault isolation** — Open a separate vault for each project or note set. Data stays independent, switch anytime. Your local device is the single source of truth.
 - **Multi-format editing** — Markdown (with container plugins: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, plus Graphviz / Mermaid / PlantUML diagram containers), rich text, CSV, JSON, markmap mind maps, dbml ER diagrams, drawio architecture diagrams, excalidraw hand-drawn whiteboards, graphviz DOT — one editor handles them all.
-- **Universal preview** — Office documents, audio/video, archives, e-books, presentations and drawings — view them without leaving Mochi.
+- **Universal preview** — Office documents, audio/video, archives, e-books, presentations and drawings — view them without leaving Folyn.
 - **Deep AI integration** — Built-in adapters for six CLI agents: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Switch freely across model vendors, no vendor lock-in.
 - **Desktop pet assistant** — A resident desktop companion that pushes schedule reminders and task-change notifications; click to bring up a chat with the LLM.
-- **In-app terminal** — Open a terminal inside Mochi and let Claude Code / Codex / other CLI agents read and write the current document — no window switching.
+- **In-app terminal** — Open a terminal inside Folyn and let Claude Code / Codex / other CLI agents read and write the current document — no window switching.
 - **Plugin system** — Microkernel + plugin SDK architecture. Translation, schedule, Wiki, Clips, and project analysis ship as plugins; third-party extensions supported.
 - **Voice input** — Speech-to-text with automatic polish, pasted straight to the cursor (currently macOS only).
 
@@ -38,7 +38,7 @@ The app is not code-signed; the OS will block it on first launch. Dismiss as fol
 - **Windows**: You'll see a SmartScreen "Windows protected your PC" warning on first run. Click **More info → Run anyway**.
 - **macOS**: If "can't be opened" or "damaged" appears after install, run in Terminal:
   ```bash
-  xattr -cr /Applications/Mochi.app
+  xattr -cr /Applications/Folyn.app
   ```
   Then reopen from Launchpad.
 
@@ -64,7 +64,7 @@ Open a separate vault for each project or note set. Each vault is its own data s
 
 ### Universal preview
 
-View Office documents, audio/video, archives, e-books, presentations and drawings without leaving Mochi — no extra software required.
+View Office documents, audio/video, archives, e-books, presentations and drawings without leaving Folyn — no extra software required.
 
 <p align="center">
   <img src="docs/assets/screenshots/viewing-1.png" alt="Full-format preview" width="860" />
@@ -99,7 +99,7 @@ External apps (scripts, cron, CI) can trigger pet notifications via a local HTTP
 
 ### In-app terminal
 
-Open a terminal panel inside the Mochi workspace, side-by-side with the editor, file paths auto-synced. Claude Code / Codex CLI / other agents can modify the current document directly; AI edits appear in the editor immediately. Command output can be pasted back at the cursor — "edit → invoke → paste back" collapses into one pipeline.
+Open a terminal panel inside the Folyn workspace, side-by-side with the editor, file paths auto-synced. Claude Code / Codex CLI / other agents can modify the current document directly; AI edits appear in the editor immediately. Command output can be pasted back at the cursor — "edit → invoke → paste back" collapses into one pipeline.
 
 <p align="center">
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
@@ -146,7 +146,7 @@ Speech is transcribed to text in real time and auto-polished — removing filler
 ### Project Structure
 
 ```
-mochi/
+folyn/
 ├── apps/
 │   └── desktop/              # Tauri desktop app
 │       ├── src/              # React frontend
@@ -161,7 +161,7 @@ mochi/
 │   ├── container-plugins/    # Markdown container directive plugins
 │   ├── plugin-host/          # Plugin host runtime
 │   ├── plugin-sdk/           # Plugin SDK for third-party authors
-│   ├── create-mochi-plugin/  # Plugin scaffolding CLI
+│   ├── create-folyn-plugin/  # Plugin scaffolding CLI
 │   └── vault-provider/       # Vault storage provider abstraction
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -174,7 +174,7 @@ mochi/
 - **`container-plugins` package** — Custom `:::directive` container plugins, registered to the slash menu
 - **`vault-provider` package** — Custom storage backends (beyond local / GitHub / WebDAV / S3)
 - **`plugin-host` + `plugin-sdk`** — Third-party plugins register capabilities via the SDK; the microkernel loads them on demand
-- **`create-mochi-plugin`** — Scaffolding CLI to quickly start a new plugin
+- **`create-folyn-plugin`** — Scaffolding CLI to quickly start a new plugin
 - **File types** — Register a new Handler under `apps/desktop/src/components/file-types/` to extend file types
 
 See `docs/plugins.html` for details.

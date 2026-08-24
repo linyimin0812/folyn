@@ -24,8 +24,8 @@
  */
 
 import type { ComponentType, ReactNode } from 'react';
-import type { Disposable, PluginManifest } from '@mochi/plugin-host';
-import type { FeatureContribution } from '@mochi/plugin-host';
+import type { Disposable, PluginManifest } from '@folyn/plugin-host';
+import type { FeatureContribution } from '@folyn/plugin-host';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';

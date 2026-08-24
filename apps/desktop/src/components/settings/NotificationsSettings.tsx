@@ -114,7 +114,7 @@ interface PetApiInfo {
 // and the curl snippet, and shown verbatim in the API doc modal. Showcases
 // every field build_notify accepts so users can copy a working example.
 const SAMPLE_NOTIFY_BODY =
-  '{"action":"notify","kind":"reminder","title":"任务待处理","source":"mochi","text":"测试通知已送达","actions":[{"id":"ok","label":"知道了","launch":{"type":"url","value":"https://example.com"}}]}';
+  '{"action":"notify","kind":"reminder","title":"任务待处理","source":"folyn","text":"测试通知已送达","actions":[{"id":"ok","label":"知道了","launch":{"type":"url","value":"https://example.com"}}]}';
 
 function PetExternalApiBlock() {
   const { t } = useTranslation();

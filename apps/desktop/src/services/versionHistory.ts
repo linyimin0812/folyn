@@ -1,7 +1,7 @@
 /**
  * Real entrypoint for version-history operations.
  *
- * Resolves the per-vault metadata root (`~/.mochi/vaults/<vaultId>/`) and
+ * Resolves the per-vault metadata root (`~/.folyn/vaults/<vaultId>/`) and
  * delegates to the pure service from `versionHistoryService.ts` with the
  * Tauri FS adapter. The pure service remains the testable core (no Tauri
  * coupling, in-memory FS shim in its test file).
@@ -36,7 +36,7 @@ let versionsBase = '';
 async function resolveVaultRoot(vaultId: string): Promise<string> {
   if (!versionsBase) {
     const home = (await homeDir()).replace(/\/+$/, '');
-    versionsBase = await join(home, '.mochi', 'vaults');
+    versionsBase = await join(home, '.folyn', 'vaults');
   }
   return join(versionsBase, vaultId);
 }

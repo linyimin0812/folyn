@@ -179,7 +179,7 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
                     return;
                 };
                 if let Ok(panel) =
-                    window.to_panel::<crate::pet_panel_macos::MochiPetPanel>()
+                    window.to_panel::<crate::pet_panel_macos::FolynPetPanel>()
                 {
                     panel.show();
                     showed_clone.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -244,7 +244,7 @@ pub async fn show_pet_if_hidden(app: tauri::AppHandle) -> Result<bool, AppError>
                 return;
             };
             if let Ok(panel) =
-                window.to_panel::<crate::pet_panel_macos::MochiPetPanel>()
+                window.to_panel::<crate::pet_panel_macos::FolynPetPanel>()
             {
                 panel.show();
                 showed_clone.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -604,7 +604,7 @@ pub async fn pet_set_cursor(_app: tauri::AppHandle, _kind: String) -> Result<(),
 ///     `set_level(PanelLevel::Dock)` + `set_collection_behavior(stationary |
 ///     move_to_active_space | full_screen_auxiliary)` — mirrors
 ///     `pet_panel_macos::convert_windows`.
-///   - Legacy (`MOCHI_PET_PANEL_BACKEND=legacy`): raw `NSWindow.setLevel:` at
+///   - Legacy (`FOLYN_PET_PANEL_BACKEND=legacy`): raw `NSWindow.setLevel:` at
 ///     the ScreenSaver level + `setCollectionBehavior:` (moveToActiveSpace |
 ///     fullScreenAuxiliary | fullScreenAllowsTiling = 770) via the raw
 ///     NSWindow pointer.
@@ -648,7 +648,7 @@ pub async fn pet_set_topmost_level(app: tauri::AppHandle, label: String) -> Resu
             };
             let already_visible = window.is_visible().unwrap_or(false);
             if let Ok(panel) =
-                window.to_panel::<crate::pet_panel_macos::MochiPetPanel>()
+                window.to_panel::<crate::pet_panel_macos::FolynPetPanel>()
             {
                 if already_visible {
                     panel.show();

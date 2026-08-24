@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { storageClient } from '@/utils/storageClient';
 import { generateId } from '@/utils/idGenerator';
 import { debounce } from '@/utils/debounce';
-import type { CliMessage } from '@mochi/cli-adapter';
+import type { CliMessage } from '@folyn/cli-adapter';
 import {
   firstEnabledPair,
   resolvePairConfig,

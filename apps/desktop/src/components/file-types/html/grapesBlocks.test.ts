@@ -10,24 +10,24 @@ import { registerCustomBlocks } from './grapesBlocks';
  * is only partially functional, but the Block manager / model API is fully
  * available, which is all these tests need).
  *
- * Custom block ids come from grapesBlocks.ts: `mochi-heading`, `mochi-paragraph`,
- * `mochi-button`, `mochi-list`, `mochi-quote` (category 文本), `mochi-card`,
- * `mochi-hero`, `mochi-divider`, `mochi-spacer` (category 布局).
+ * Custom block ids come from grapesBlocks.ts: `folyn-heading`, `folyn-paragraph`,
+ * `folyn-button`, `folyn-list`, `folyn-quote` (category 文本), `folyn-card`,
+ * `folyn-hero`, `folyn-divider`, `folyn-spacer` (category 布局).
  *
  * `grapesjs-blocks-basic` ships: column1, column2, column3, column3-7, text,
  * link, image, video, map.
  */
 
-const MOCHI_BLOCK_IDS = [
-  'mochi-heading',
-  'mochi-paragraph',
-  'mochi-button',
-  'mochi-list',
-  'mochi-quote',
-  'mochi-card',
-  'mochi-hero',
-  'mochi-divider',
-  'mochi-spacer',
+const FOLYN_BLOCK_IDS = [
+  'folyn-heading',
+  'folyn-paragraph',
+  'folyn-button',
+  'folyn-list',
+  'folyn-quote',
+  'folyn-card',
+  'folyn-hero',
+  'folyn-divider',
+  'folyn-spacer',
 ] as const;
 
 const PLUGINS_BASIC_IDS = [
@@ -71,12 +71,12 @@ describe('registerCustomBlocks', () => {
     });
   }
 
-  it('#1 registers all 9 Mochi custom blocks', () => {
+  it('#1 registers all 9 Folyn custom blocks', () => {
     editor = bootEditor();
     registerCustomBlocks(editor);
 
     const allIds = editor.Blocks.getAll().map((b: { id: string }) => b.id);
-    for (const id of MOCHI_BLOCK_IDS) {
+    for (const id of FOLYN_BLOCK_IDS) {
       expect(allIds).toContain(id);
     }
   });
@@ -85,7 +85,7 @@ describe('registerCustomBlocks', () => {
     editor = bootEditor();
     registerCustomBlocks(editor);
 
-    for (const id of MOCHI_BLOCK_IDS) {
+    for (const id of FOLYN_BLOCK_IDS) {
       const block = editor.Blocks.get(id);
       expect(block).toBeDefined();
       const label = block.get('label') as string;
@@ -102,11 +102,11 @@ describe('registerCustomBlocks', () => {
     registerCustomBlocks(editor);
 
     const textIds = [
-      'mochi-heading',
-      'mochi-paragraph',
-      'mochi-button',
-      'mochi-list',
-      'mochi-quote',
+      'folyn-heading',
+      'folyn-paragraph',
+      'folyn-button',
+      'folyn-list',
+      'folyn-quote',
     ] as const;
     for (const id of textIds) {
       const block = editor.Blocks.get(id);
@@ -129,10 +129,10 @@ describe('registerCustomBlocks', () => {
     registerCustomBlocks(editor);
 
     const layoutIds = [
-      'mochi-card',
-      'mochi-hero',
-      'mochi-divider',
-      'mochi-spacer',
+      'folyn-card',
+      'folyn-hero',
+      'folyn-divider',
+      'folyn-spacer',
     ] as const;
     for (const id of layoutIds) {
       const block = editor.Blocks.get(id);
@@ -157,11 +157,11 @@ describe('registerCustomBlocks', () => {
     }
   });
 
-  it('#6 editor.Blocks.get("mochi-heading") returns a block whose content is an HTML string', () => {
+  it('#6 editor.Blocks.get("folyn-heading") returns a block whose content is an HTML string', () => {
     editor = bootEditor();
     registerCustomBlocks(editor);
 
-    const block = editor.Blocks.get('mochi-heading');
+    const block = editor.Blocks.get('folyn-heading');
     expect(block).toBeDefined();
     const content = block.get('content') as string;
     expect(typeof content).toBe('string');

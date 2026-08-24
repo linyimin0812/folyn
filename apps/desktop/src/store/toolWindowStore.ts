@@ -17,7 +17,7 @@
 
 import { create } from 'zustand';
 import { isTauri } from '@/utils/platform';
-import type { ToolContribution } from '@mochi/plugin-host';
+import type { ToolContribution } from '@folyn/plugin-host';
 
 export interface OpenToolWindow {
   label: string;

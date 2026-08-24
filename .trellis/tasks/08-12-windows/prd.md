@@ -2,7 +2,7 @@
 
 ## Goal
 
-让 mochi 桌面端（Tauri + React/TS）在 Windows 11 上能正常构建、启动、运行所有核心功能；盘点所有 macOS 专属依赖并修复，包括 pet/voice 模块的 Windows 原生重写与 Chrome 密码导入的 DPAPI 实现。
+让 folyn 桌面端（Tauri + React/TS）在 Windows 11 上能正常构建、启动、运行所有核心功能；盘点所有 macOS 专属依赖并修复，包括 pet/voice 模块的 Windows 原生重写与 Chrome 密码导入的 DPAPI 实现。
 
 ## Research References
 
@@ -31,7 +31,7 @@
 - [ ] R8 `src-tauri/src/commands/project_commands.rs:50`：`find` 替换为 Rust 原生递归（walkdir crate 或 std::fs 递归）
 - [ ] R9 `src-tauri/src/commands/browser_commands.rs`：Chrome 路径 `%LOCALAPPDATA%\Google\Chrome\User Data` + DPAPI 解密
 - [ ] R10 `src-tauri/src/pet_api/mod.rs:94,112`：`open`/`open -a` 平台分支（`cmd.exe /c start` / `rundll32 url.dll,FileProtocolHandler`）
-- [ ] R11 `src-tauri/src/voice.rs:33-34`：paste_log 路径改 `dirs::cache_dir().join("mochi/logs")`
+- [ ] R11 `src-tauri/src/voice.rs:33-34`：paste_log 路径改 `dirs::cache_dir().join("folyn/logs")`
 - [ ] R12 `src/components/terminal/TerminalView.tsx:188`：shell 名分割符 `split(/[/\\]/)`
 - [ ] R13 `src-tauri/tauri.conf.json`：加 `bundle.windows`（nsis）+ `apps/desktop/package.json` 加 `build:win` 脚本
 

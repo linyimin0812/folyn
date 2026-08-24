@@ -2,7 +2,7 @@
 
 # API de notificación externa del Pet
 
-La mascota de escritorio de Mochi arranca un servicio HTTP **solo en 127.0.0.1** en tiempo de ejecución. Las apps externas
+La mascota de escritorio de Folyn arranca un servicio HTTP **solo en 127.0.0.1** en tiempo de ejecución. Las apps externas
 (scripts, cron, CI, otras apps de escritorio) pueden disparar notificaciones de la mascota a través de él.
 
 - Puerto por defecto: `17382`. Si está ocupado, la app intenta automáticamente hasta `17400`; el puerto real se muestra en
@@ -99,7 +99,7 @@ Con datos pasados + plantilla + identificador del llamador:
 
 ```bash
 curl -XPOST 127.0.0.1:17382/pet/action \
-  -d '{"action":"notify","text":"CI falló","source":"github","template":"glass","data":{"repo":"mochi","runId":42}}'
+  -d '{"action":"notify","text":"CI falló","source":"github","template":"glass","data":{"repo":"folyn","runId":42}}'
 ```
 
 Con lanzamiento externo (abrir el log con un clic ante fallo de CI):

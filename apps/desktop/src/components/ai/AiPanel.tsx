@@ -6,7 +6,7 @@ import { useAiConfigStore, resolvePairForSession } from '@/store/aiConfigStore';
 import { useNavStore } from '@/store/navStore';
 import { isTauri } from '@/utils/platform';
 import { useVaultStore } from '@/store/vaultStore';
-import type { CliMessage, CliStreamEvent, MessageAttachment } from '@mochi/cli-adapter';
+import type { CliMessage, CliStreamEvent, MessageAttachment } from '@folyn/cli-adapter';
 import { pauseWatcher, resumeWatcher } from '@/utils/fileWatcher';
 import { flattenFileTree } from '@/utils/treeUtils';
 import { isExternalPath } from '@/utils/isExternalPath';
@@ -432,9 +432,9 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
     // Save blob attachments to temp directory.
     //
     // Saves blob attachments via the shared `saveBlobs` helper's fs-plugin
-    // path (`mkdir` + `writeFile` → `<vault>/.mochi-tmp`). The main window's
+    // path (`mkdir` + `writeFile` → `<vault>/.folyn-tmp`). The main window's
     // fs ACL scope includes `$HOME/**/.*/**`, which covers the dot-dir
-    // `.mochi-tmp` under any home-based vault, so no shell sidecar is
+    // `.folyn-tmp` under any home-based vault, so no shell sidecar is
     // needed. The old base64-via-`claude-cli` sidecar embedded the whole
     // payload in the command line and failed with "Argument list too long
     // (os error 7)" on sizeable images.
@@ -447,7 +447,7 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
     if (currentAttachments.length > 0) {
       try {
         saved = await saveBlobs(currentAttachments, workingDir, {
-          subdir: '.mochi-tmp',
+          subdir: '.folyn-tmp',
         });
       } catch (err) {
         attachSaveError = errorMessage(err);

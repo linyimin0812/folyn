@@ -23,7 +23,7 @@ import {
   LanguageDescription,
   LanguageSupport,
 } from '@codemirror/language';
-import { mochiHighlighting } from './highlightStyle';
+import { folynHighlighting } from './highlightStyle';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
 import { listEditorLanguages } from '@/services/plugin-host/editorLanguageAdapter';
 
@@ -171,13 +171,13 @@ function buildMarkdownKeymap(
     .map((s) => ({ key: shortcutToCmKey(s.keys), run: actionMap[s.id] }));
 }
 
-export interface MochiEditorHandle {
+export interface FolynEditorHandle {
   getView: () => EditorView | null;
   getScrollDOM: () => HTMLElement | null;
   replaceContent: (content: string) => void;
 }
 
-interface MochiEditorProps {
+interface FolynEditorProps {
   initialContent?: string;
   filePath?: string;
   /** Initial cursor line (1-based) to restore on mount */
@@ -195,8 +195,8 @@ interface MochiEditorProps {
   readOnly?: boolean;
 }
 
-export const MochiEditor = forwardRef<MochiEditorHandle, MochiEditorProps>(
-  function MochiEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly }, ref) {
+export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
+  function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [view, setView] = useState<EditorView | null>(null);
@@ -310,7 +310,7 @@ export const MochiEditor = forwardRef<MochiEditorHandle, MochiEditorProps>(
           indentUnit.of(' '.repeat(settingsTabSize)),
         ]),
         indentOnInput(),
-        mochiHighlighting(),
+        folynHighlighting(),
         bracketMatching(),
         // ponytail: closeBrackets() takes no args; the bracket list is
         // configured via the `closeBrackets` language-data slot. Adding `$`

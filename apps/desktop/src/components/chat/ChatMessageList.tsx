@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, ListTodo, Copy, X } from 'lucide-react';
-import type { CliMessage } from '@mochi/cli-adapter';
+import type { CliMessage } from '@folyn/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { MessageContent } from './MessageContent';
 import { ToolCallBlock } from './ToolCallBlock';

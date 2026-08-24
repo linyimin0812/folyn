@@ -9,7 +9,7 @@
 ```
 packages/cli-adapter/
 ├── index.ts              # Barrel exports — all public types and classes
-├── package.json          # @mochi/cli-adapter
+├── package.json          # @folyn/cli-adapter
 ├── tsconfig.json
 └── src/
     ├── types.ts          # CliAdapter interface, CliMessage, CliStreamEvent,

@@ -206,7 +206,7 @@ async function fetchRows(): Promise<PluginRow[]> {
   const { invoke } = await import('@tauri-apps/api/core');
   const entries = await invoke<PluginEntry[]>('list_plugins');
   // Lazy-import the pluginHost so this store stays decoupled at module load.
-  const { pluginHost } = await import('@mochi/plugin-host');
+  const { pluginHost } = await import('@folyn/plugin-host');
   // Lazy-import appearanceStore to read the built-in panel flags without
   // creating a hard module-cycle (appearanceStore doesn't import pluginStore).
   const { useAppearanceStore } = await import('@/store/appearanceStore');
@@ -396,7 +396,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   activate: async (id) => {
     set({ busy: { ...get().busy, [busyKey(id, 'activate')]: true } });
     try {
-      const { pluginHost } = await import('@mochi/plugin-host');
+      const { pluginHost } = await import('@folyn/plugin-host');
       await pluginHost.activate(id);
       await get().refresh();
     } catch (err) {
@@ -412,7 +412,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   deactivate: async (id) => {
     set({ busy: { ...get().busy, [busyKey(id, 'deactivate')]: true } });
     try {
-      const { pluginHost } = await import('@mochi/plugin-host');
+      const { pluginHost } = await import('@folyn/plugin-host');
       await pluginHost.deactivate(id);
       await get().refresh();
     } catch (err) {

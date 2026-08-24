@@ -12,7 +12,7 @@ import type { Locale } from '@/i18n';
 
 /**
  * PetApp — mounted only in the `pet` Tauri window (see main.tsx `#/pet` route
- * switch). Renders the ink-drop + mochi mascot and wires up:
+ * switch). Renders the ink-drop + folyn mascot and wires up:
  *
  *  - State machine (idle/hover/drag/click) — D4, R2.
  *  - Single click → open the pet-panel quick-action window
@@ -324,11 +324,11 @@ export function PetApp() {
 
   // ── State machine: mouse event handlers ──
   // ponytail: the hand cursor on hover is now set by the Rust-side
-  // NSTrackingArea (ActiveAlways + cursorUpdate) on the MochiPetPanel — see
+  // NSTrackingArea (ActiveAlways + cursorUpdate) on the FolynPetPanel — see
   // pet_panel_macos.rs. The previous `invoke('pet_set_cursor')` calls didn't
   // stick when another app owned the cursor (the nonactivating panel isn't
   // key until clicked). The tracking area delivers cursorUpdate even when
-  // Mochi isn't frontmost. The `pet_set_cursor` Rust command is kept as a
+  // Folyn isn't frontmost. The `pet_set_cursor` Rust command is kept as a
   // fallback.
   const handleMouseEnter = useCallback(() => {
     if (draggingRef.current) return;
@@ -1051,7 +1051,7 @@ export function PetApp() {
           height: spriteSize,
           cursor: 'pointer',
         }}
-        aria-label="Mochi desktop pet"
+        aria-label="Folyn desktop pet"
         role="button"
       >
         <PetMascot state={state} size={petSize} />

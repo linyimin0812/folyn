@@ -6,7 +6,7 @@
  * snapshot would drift. Instead the palette store calls {@link buildFileCommands}
  * at `open()` / `setQuery()` time against the current `vaultStore.fileTree`.
  *
- * Scope: `.md` files (the note type Mochi edits), mirroring the search panel's
+ * Scope: `.md` files (the note type Folyn edits), mirroring the search panel's
  * `flattenMarkdownFiles` helper. The vault tree already excludes `__*__`
  * special dirs via `vaultStore.excludePatterns`, so no re-filtering here.
  *
@@ -15,7 +15,7 @@
  * invalidated exactly then and reused across keystrokes in between.
  */
 
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 import * as editorIoService from '@/services/editorIoService';
 import { flattenFileTree } from '@/utils/treeUtils';
 import type { Command } from './commandRegistry';

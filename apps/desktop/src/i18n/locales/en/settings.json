@@ -171,7 +171,7 @@
       "detected": "Detected: {{path}}"
     },
     "settingsFile": {
-      "title": "Open this adapter's config file in the Mochi editor",
+      "title": "Open this adapter's config file in the Folyn editor",
       "missing": "Not found: {{path}}",
       "missingHint": "The settings file hasn't been created yet (the CLI usually creates it on first run).",
       "create": "Create",
@@ -424,13 +424,13 @@
       "architecture": "Architecture & Implementation",
       "developer": "Development & Contributing"
     },
-    "description": "Built on Tauri 2 + React + CodeMirror 6, Mochi is a local-first Markdown editor. It integrates AI chat, desktop pet, plugin system, ER diagrams, schedule management, and CLI tools — your data stays on your device in standard Markdown, no lock-in.",
+    "description": "Built on Tauri 2 + React + CodeMirror 6, Folyn is a local-first Markdown editor. It integrates AI chat, desktop pet, plugin system, ER diagrams, schedule management, and CLI tools — your data stays on your device in standard Markdown, no lock-in.",
     "philosophy": {
       "label": "Philosophy",
       "localFirst": "Local-first — your notes belong to you. All documents are stored as plain Markdown files on your local filesystem, no cloud account required, fully usable offline, free to migrate. The Vault system supports pluggable backends via the vault-provider abstraction layer, but data ownership always stays with you.",
-      "openFormat": "Open format — no lock-in. Mochi uses standard Markdown as its only storage format, processed by the remark/rehype pipeline for GFM and custom directives. Any text editor can open your notes; export to HTML locally or hosted to remote storage anytime; after uninstalling Mochi, your data remains fully readable.",
+      "openFormat": "Open format — no lock-in. Folyn uses standard Markdown as its only storage format, processed by the remark/rehype pipeline for GFM and custom directives. Any text editor can open your notes; export to HTML locally or hosted to remote storage anytime; after uninstalling Folyn, your data remains fully readable.",
       "extensible": "Extensible — open end-to-end, from editor core to storage backends. The microkernel + plugin SDK supports 14 container directives (callout, tabs, mermaid, etc.) and third-party plugins; the CLI adapter abstraction makes 6 AI tools (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) pluggable; pnpm workspaces lets container-plugins, vault-provider, cli-adapter, plugin-host, and plugin-sdk evolve as independent packages.",
-      "privacy": "Privacy-first — AI chat and code generation flow through local CLI tools; your API keys and conversation content never touch Mochi's servers. CSP policy and the plugin sandbox tier provide defense-in-depth, with trusted and sandbox tiers executing separately; third-party plugins run under restricted permissions."
+      "privacy": "Privacy-first — AI chat and code generation flow through local CLI tools; your API keys and conversation content never touch Folyn's servers. CSP policy and the plugin sandbox tier provide defense-in-depth, with trusted and sandbox tiers executing separately; third-party plugins run under restricted permissions."
     },
     "features": {
       "label": "Features",
@@ -502,7 +502,7 @@
     },
     "architecture": {
       "label": "Architecture layers",
-      "description": "Mochi uses a clean layered architecture — from the Tauri shell to the AI adapter at the top, each layer has a single responsibility and can evolve independently. pnpm workspaces packages each core capability for reuse and testing.",
+      "description": "Folyn uses a clean layered architecture — from the Tauri shell to the AI adapter at the top, each layer has a single responsibility and can evolve independently. pnpm workspaces packages each core capability for reuse and testing.",
       "layers": {
         "shell": {
           "name": "Shell",
@@ -553,8 +553,8 @@
     },
     "projectStructure": {
       "label": "Project structure",
-      "description": "Mochi is a pnpm monorepo — the desktop app, CLI adapter, container plugins, Vault Provider, and Plugin Host/SDK are each independent packages.",
-      "tree": "mochi/\n├── apps/\n│   └── desktop/              # Tauri desktop app\n│       ├── src/              # React frontend\n│       │   ├── components/   # UI components (shell, editor, AI, sidebar, etc.)\n│       │   ├── editor/       # CodeMirror extensions\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # Utility modules\n│       └── src-tauri/        # Rust backend (Tauri commands)\n├── packages/\n│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Markdown container directive plugins (14)\n│   ├── vault-provider/       # Vault storage provider abstraction\n│   ├── plugin-host/         # Plugin host runtime\n│   ├── plugin-sdk/          # Plugin development SDK\n│   └── create-mochi-plugin/ # Scaffold tool\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Folyn is a pnpm monorepo — the desktop app, CLI adapter, container plugins, Vault Provider, and Plugin Host/SDK are each independent packages.",
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri desktop app\n│       ├── src/              # React frontend\n│       │   ├── components/   # UI components (shell, editor, AI, sidebar, etc.)\n│       │   ├── editor/       # CodeMirror extensions\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # Utility modules\n│       └── src-tauri/        # Rust backend (Tauri commands)\n├── packages/\n│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Markdown container directive plugins (14)\n│   ├── vault-provider/       # Vault storage provider abstraction\n│   ├── plugin-host/         # Plugin host runtime\n│   ├── plugin-sdk/          # Plugin development SDK\n│   └── create-folyn-plugin/ # Scaffold tool\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "Storage backends",
@@ -576,7 +576,7 @@
     },
     "aiIntegration": {
       "label": "AI integration",
-      "description": "Through the cli-adapter abstraction, Mochi uniformly supports 6 CLI-based AI tools. After configuring the CLI path in Settings → Model Services, use the side panel to chat, generate text, apply code edits, and review diffs. API keys and conversation content flow only between the local CLI tool and the corresponding AI service — never through Mochi's servers.",
+      "description": "Through the cli-adapter abstraction, Folyn uniformly supports 6 CLI-based AI tools. After configuring the CLI path in Settings → Model Services, use the side panel to chat, generate text, apply code edits, and review diffs. API keys and conversation content flow only between the local CLI tool and the corresponding AI service — never through Folyn's servers.",
       "adapters": {
         "label": "Built-in CLI adapters",
         "items": {
@@ -609,7 +609,7 @@
     },
     "pluginSystem": {
       "label": "Plugin system",
-      "description": "Microkernel + plugin SDK architecture. Plugins are split into a Trusted tier (calls host capabilities directly) and a Sandbox tier (runs under restricted permissions) — loaded by the plugin-host runtime. Third-party plugins can be scaffolded quickly via create-mochi-plugin.",
+      "description": "Microkernel + plugin SDK architecture. Plugins are split into a Trusted tier (calls host capabilities directly) and a Sandbox tier (runs under restricted permissions) — loaded by the plugin-host runtime. Third-party plugins can be scaffolded quickly via create-folyn-plugin.",
       "tiers": {
         "label": "Execution tiers",
         "trusted": {
@@ -628,7 +628,7 @@
     },
     "fileTypeSupport": {
       "label": "File type support",
-      "description": "Registered through HandlerRegistry, Mochi can preview and edit 15+ file types.",
+      "description": "Registered through HandlerRegistry, Folyn can preview and edit 15+ file types.",
       "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (ER diagram) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Office docs · Clipboard clips"
     },
     "techStack": {
@@ -734,12 +734,12 @@
     },
     "microphone": {
       "title": "Microphone permission",
-      "desc": "Recording requires microphone permission. Click the button to trigger the system prompt; if previously denied, allow Mochi under System Settings → Privacy & Security → Microphone, then retry.",
+      "desc": "Recording requires microphone permission. Click the button to trigger the system prompt; if previously denied, allow Folyn under System Settings → Privacy & Security → Microphone, then retry.",
       "action": "Grant microphone"
     },
     "speech": {
       "title": "Speech recognition permission",
-      "desc": "Apple Speech transcription requires speech recognition permission. Click the button to trigger the system prompt; if previously denied, allow Mochi under System Settings → Privacy & Security → Speech Recognition, then retry.",
+      "desc": "Apple Speech transcription requires speech recognition permission. Click the button to trigger the system prompt; if previously denied, allow Folyn under System Settings → Privacy & Security → Speech Recognition, then retry.",
       "action": "Grant speech recognition"
     },
     "polishPrompt": {
@@ -797,7 +797,7 @@
     },
     "icon": {
       "title": "Icon",
-      "desc": "Use the built-in Mochi icon, or upload a custom image",
+      "desc": "Use the built-in Folyn icon, or upload a custom image",
       "builtin": "Built-in",
       "custom": "Custom",
       "uploading": "Uploading…",
@@ -954,7 +954,7 @@
       "collapse": "Collapse policy"
     },
     "baseline": {
-      "note": "Tauri IPC, mochi-plugin, asset, data: and blob: are always allowed and cannot be removed. Qiniu's http://*.clouddn.com image host and https://*.qiniup.com upload endpoint, Cloudflare R2's https://*.r2.cloudflarestorage.com upload endpoint and https://*.r2.dev default public URL, plus Aliyun OSS's https://*.aliyuncs.com upload + public URL, are also baseline-allowed."
+      "note": "Tauri IPC, folyn-plugin, asset, data: and blob: are always allowed and cannot be removed. Qiniu's http://*.clouddn.com image host and https://*.qiniup.com upload endpoint, Cloudflare R2's https://*.r2.cloudflarestorage.com upload endpoint and https://*.r2.dev default public URL, plus Aliyun OSS's https://*.aliyuncs.com upload + public URL, are also baseline-allowed."
     },
     "apply": {
       "button": "Apply & Reload",

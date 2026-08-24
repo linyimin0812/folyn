@@ -12,8 +12,8 @@
  * the relevant slice.
  */
 
-import type { PluginEnv, PluginTheme } from '@mochi/plugin-host';
-import { disposable } from '@mochi/plugin-host';
+import type { PluginEnv, PluginTheme } from '@folyn/plugin-host';
+import { disposable } from '@folyn/plugin-host';
 import { useAppearanceStore, type Theme } from '@/store/appearanceStore';
 import { useLocaleStore } from '@/store/localeStore';
 

@@ -8,10 +8,10 @@
     "messageCountSuffix": "条",
     "emptyState": {
       "greeting": {
-        "morning": "早上好，我是Mochi AI助手，有什么可以帮您",
-        "noon": "中午好，我是Mochi AI助手，有什么可以帮您",
-        "afternoon": "下午好，我是Mochi AI助手，有什么可以帮您",
-        "evening": "晚上好，我是Mochi AI助手，有什么可以帮您"
+        "morning": "早上好，我是Folyn AI助手，有什么可以帮您",
+        "noon": "中午好，我是Folyn AI助手，有什么可以帮您",
+        "afternoon": "下午好，我是Folyn AI助手，有什么可以帮您",
+        "evening": "晚上好，我是Folyn AI助手，有什么可以帮您"
       }
     },
     "attachmentPlaceholder": "(附件)",

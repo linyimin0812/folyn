@@ -21,8 +21,8 @@
  * group in `NEW_FILE_GROUPS`.
  */
 
-import type { Disposable, PluginManifest } from '@mochi/plugin-host';
-import type { FileTemplateContribution } from '@mochi/plugin-host';
+import type { Disposable, PluginManifest } from '@folyn/plugin-host';
+import type { FileTemplateContribution } from '@folyn/plugin-host';
 import { registerCommand } from '@/services/commandRegistry';
 import { useVaultStore } from '@/store/vaultStore';
 

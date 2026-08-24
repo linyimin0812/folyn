@@ -1,4 +1,4 @@
-import type { VaultEntry } from '@mochi/vault-provider';
+import type { VaultEntry } from '@folyn/vault-provider';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 

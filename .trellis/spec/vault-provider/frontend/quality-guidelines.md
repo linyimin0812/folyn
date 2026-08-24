@@ -19,7 +19,7 @@
 | Pattern | Why | Alternative |
 |---------|-----|-------------|
 | Direct filesystem access in providers | Not portable | Tauri fs plugin APIs |
-| Importing from `@mochi/desktop` | Circular dependency | This package is a leaf |
+| Importing from `@folyn/desktop` | Circular dependency | This package is a leaf |
 | Silent error swallowing | Hides failures | Throw `VaultError` |
 | Bypassing `VaultManager` | Breaks lifecycle | Use `manager.readFile()` |
 
@@ -41,5 +41,5 @@ No test suite currently exists. When adding tests:
 - [ ] Optional methods use `?` syntax in interface
 - [ ] `VaultError` thrown (not generic `Error`) for all failures
 - [ ] `disconnect()` cleans up watchers and connections
-- [ ] No imports from `@mochi/desktop`
+- [ ] No imports from `@folyn/desktop`
 - [ ] Types exported from `index.ts`

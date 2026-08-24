@@ -127,7 +127,7 @@ describe('usePetHostBridge — lifecycle', () => {
 
 // ── Pet icon startup reconcile ─────────────────────────────
 // Regression coverage for the restart data-loss bug: the startup effect used
-// to SWEEP ~/.mochi/pet-icon/ (deleting every `pet-icon*` file) whenever the
+// to SWEEP ~/.folyn/pet-icon/ (deleting every `pet-icon*` file) whenever the
 // store's library was empty — which happens on any launch where hydration
 // hasn't run or the persisted library was lost, permanently destroying the
 // user's uploaded icons (see 634123f / f33ad53). Startup must reconcile the
@@ -138,9 +138,9 @@ describe('usePetHostBridge — pet icon startup reconcile', () => {
   resolveSettingsLoadDone();
 
   it('does NOT delete pet-icon files when the library is empty', async () => {
-    // Seed an uploaded icon in the mock ~/.mochi/pet-icon/ dir; the store is
+    // Seed an uploaded icon in the mock ~/.folyn/pet-icon/ dir; the store is
     // at default builtin/empty state (un-hydrated or lost persistence).
-    await writeTextFile('/mock/home/.mochi/pet-icon/pet-icon-123.png', 'x');
+    await writeTextFile('/mock/home/.folyn/pet-icon/pet-icon-123.png', 'x');
     makeUnlistenSpies(5);
     render(<Harness />);
     // The reconcile effect's `mkdir` is its first action after hydration
@@ -148,7 +148,7 @@ describe('usePetHostBridge — pet icon startup reconcile', () => {
     // file-exists assertions are meaningful rather than "effect never ran".
     await vi.waitFor(() => expect(mkdirMock).toHaveBeenCalled());
     const iconEntries = fsInternals.root.children.get('mock')?.children
-      .get('home')?.children.get('.mochi')?.children
+      .get('home')?.children.get('.folyn')?.children
       .get('pet-icon')?.children;
     expect(iconEntries?.has('pet-icon-123.png')).toBe(true);
     expect(removeMock).not.toHaveBeenCalled();
@@ -158,8 +158,8 @@ describe('usePetHostBridge — pet icon startup reconcile', () => {
   it('drops a custom icon whose file is missing', async () => {
     usePetStore.setState({
       petIconSource: 'custom',
-      petIconPath: '/mock/home/.mochi/pet-icon/pet-icon-123.png',
-      petIcons: ['/mock/home/.mochi/pet-icon/pet-icon-123.png'],
+      petIconPath: '/mock/home/.folyn/pet-icon/pet-icon-123.png',
+      petIcons: ['/mock/home/.folyn/pet-icon/pet-icon-123.png'],
     });
     makeUnlistenSpies(5);
     render(<Harness />);
@@ -172,7 +172,7 @@ describe('usePetHostBridge — pet icon startup reconcile', () => {
   });
 
   it('keeps a custom icon whose file exists', async () => {
-    const iconPath = '/mock/home/.mochi/pet-icon/pet-icon-123.png';
+    const iconPath = '/mock/home/.folyn/pet-icon/pet-icon-123.png';
     await writeTextFile(iconPath, 'x');
     usePetStore.setState({
       petIconSource: 'custom',

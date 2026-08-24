@@ -347,9 +347,9 @@ export function SettingsPage() {
         {settingsTab === 'about' && (
           <div className="mb-[26px] max-w-[640px]">
             <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 18 }}>
-              <img src={`${import.meta.env.BASE_URL}mochi.svg`} alt="Mochi" width="52" height="52" style={{ borderRadius: 6 }} />
+              <img src={`${import.meta.env.BASE_URL}folyn.svg`} alt="Folyn" width="52" height="52" style={{ borderRadius: 6 }} />
               <div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--t1)', letterSpacing: '-.02em' }}>Mochi.</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--t1)', letterSpacing: '-.02em' }}>Folyn.</div>
                 <div className="font-mono" style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>{t('settings:about.tagline')}</div>
               </div>
             </div>
@@ -474,8 +474,8 @@ export function SettingsPage() {
             </div>
 
             <div style={{ display: 'flex', gap: 6 }} className="mt-2 mb-4">
-              <button type="button" onClick={() => import('@tauri-apps/plugin-shell').then(({ open }) => open('https://github.com/linyimin0812/mochi'))} className="btn btn-g btn-sm inline-flex items-center gap-1.5 no-underline text-inherit cursor-pointer"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.02.37-2.45-.49-2.45-.49-.33-.84-.81-1.07-.81-1.07-.66-.45.05-.44.05-.44.73.05 1.11.75 1.11.75.65 1.11 1.71.79 2.12.6.07-.47.26-.79.47-.97-1.6-.18-3.28-.8-3.28-3.56 0-.79.28-1.43.74-1.94-.07-.18-.32-.92.07-1.92 0 0 .6-.19 1.97.74a6.84 6.84 0 0 1 1.79-.24c.61 0 1.22.08 1.79.24 1.37-.93 1.97-.74 1.97-.74.39 1 .14 1.74.07 1.92.46.51.74 1.15.74 1.94 0 2.77-1.69 3.38-3.3 3.56.26.22.49.66.49 1.34 0 .97-.01 1.75-.01 1.99 0 .21.15.46.56.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> {t('settings:about.viewOnGithub')}</button>
-              <button type="button" onClick={() => import('@tauri-apps/plugin-shell').then(({ open }) => open('https://github.com/linyimin0812/mochi/issues'))} className="btn btn-g btn-sm inline-flex items-center gap-1.5 no-underline text-inherit cursor-pointer"><Bug size={13} /> {t('settings:about.reportIssue')}</button>
+              <button type="button" onClick={() => import('@tauri-apps/plugin-shell').then(({ open }) => open('https://github.com/linyimin0812/folyn'))} className="btn btn-g btn-sm inline-flex items-center gap-1.5 no-underline text-inherit cursor-pointer"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.02.37-2.45-.49-2.45-.49-.33-.84-.81-1.07-.81-1.07-.66-.45.05-.44.05-.44.73.05 1.11.75 1.11.75.65 1.11 1.71.79 2.12.6.07-.47.26-.79.47-.97-1.6-.18-3.28-.8-3.28-3.56 0-.79.28-1.43.74-1.94-.07-.18-.32-.92.07-1.92 0 0 .6-.19 1.97.74a6.84 6.84 0 0 1 1.79-.24c.61 0 1.22.08 1.79.24 1.37-.93 1.97-.74 1.97-.74.39 1 .14 1.74.07 1.92.46.51.74 1.15.74 1.94 0 2.77-1.69 3.38-3.3 3.56.26.22.49.66.49 1.34 0 .97-.01 1.75-.01 1.99 0 .21.15.46.56.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> {t('settings:about.viewOnGithub')}</button>
+              <button type="button" onClick={() => import('@tauri-apps/plugin-shell').then(({ open }) => open('https://github.com/linyimin0812/folyn/issues'))} className="btn btn-g btn-sm inline-flex items-center gap-1.5 no-underline text-inherit cursor-pointer"><Bug size={13} /> {t('settings:about.reportIssue')}</button>
             </div>
 
             <div className="border-t border-brd2 pt-3 text-[11px] text-t3">

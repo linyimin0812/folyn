@@ -74,7 +74,7 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
     expect(r.ok).toBe(true);
     // Wait for the fire-and-forget write.
     await new Promise((r) => setTimeout(r, 10));
-    const file = FS.get('/tmp/test-home/.mochi/providers/anthropic/models.json');
+    const file = FS.get('/tmp/test-home/.folyn/providers/anthropic/models.json');
     expect(file).toBeDefined();
     const parsed = JSON.parse(file!) as Array<{ id: string; owner: string }>;
     expect(parsed.map((m) => ({ id: m.id, owner: m.owner }))).toEqual([
@@ -88,7 +88,7 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
     ownerMapMock.mockResolvedValue({});
     await useModelRegistryStore.getState().fetchModelsForProvider('anthropic', 'sk-test');
     await new Promise((r) => setTimeout(r, 10));
-    const file = FS.get('/tmp/test-home/.mochi/providers/anthropic/models.json');
+    const file = FS.get('/tmp/test-home/.folyn/providers/anthropic/models.json');
     const parsed = JSON.parse(file!) as Array<{ id: string; providerId: string; owner: string }>;
     expect(parsed[0].owner).toBe('anthropic');
     expect(parsed[1].owner).toBe('openai');
@@ -145,7 +145,7 @@ describe('useModelRegistryStore.fetchModelsForProvider — file cache + fallback
   it('on fetch failure with cached file, repopulates models and appends "使用缓存数据" notice', async () => {
     // Seed cache file first.
     FS.set(
-      '/tmp/test-home/.mochi/providers/anthropic/models.json',
+      '/tmp/test-home/.folyn/providers/anthropic/models.json',
       JSON.stringify(FAKE_MODELS),
     );
     fetchModelsMock.mockRejectedValue({ detail: 'network down' });

@@ -1,4 +1,4 @@
-# Mochi 网页知识卡片（clips feature）
+# Folyn 网页知识卡片（clips feature）
 
 本目录是 clips feature 的运行时上下文。Agent 调用时 cwd = `<vault>/__clips__/`，自动发现 `.claude/agents/clips.md`。
 

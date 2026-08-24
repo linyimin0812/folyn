@@ -2,11 +2,11 @@
 
 ## Goal
 
-让桌宠窗口（`pet`）在其他 macOS 应用进入全屏（native fullscreen Space，如 VS Code / 浏览器全屏）时仍然显示在最上层，参考 `/Users/yiminlin/project/BongoCat` 的实现。当前 Mochi 的桌宠在切到全屏 App 后被遮挡或不在该 Space 显示。
+让桌宠窗口（`pet`）在其他 macOS 应用进入全屏（native fullscreen Space，如 VS Code / 浏览器全屏）时仍然显示在最上层，参考 `/Users/yiminlin/project/BongoCat` 的实现。当前 Folyn 的桌宠在切到全屏 App 后被遮挡或不在该 Space 显示。
 
 ## What I already know
 
-* Mochi 桌宠是 Tauri 2 + Rust + objc/cocoa FFI，前端 React。窗口 label `"pet"`，静态声明见 `apps/desktop/src-tauri/tauri.conf.json`。
+* Folyn 桌宠是 Tauri 2 + Rust + objc/cocoa FFI，前端 React。窗口 label `"pet"`，静态声明见 `apps/desktop/src-tauri/tauri.conf.json`。
 * 当前运行时配置（`src/lib.rs:58-107` `reapply_pet_topmost` + `src/commands.rs:793-857` `pet_set_topmost_level` + `commands.rs:900-981` `pet_make_transparent`，三处一致）：
   * level = `CGWindowLevelForKey(13)` (ScreenSaver, ~1000)
   * collectionBehavior = 770 = `moveToActiveSpace(2) | fullScreenAuxiliary(256) | fullScreenAllowsTiling(512)`
@@ -26,10 +26,10 @@
 
 ## Assumptions (validated by research — see `research/tauri-nspanel-to-panel-safety.md`)
 
-* ~~`tauri-nspanel` 的 `to_panel()` 不用 `object_setClass`~~ — **纠正**：它**也用 `object_setClass`**，但 swap 到自定义 `RawNsPanel` 子类（`objc2` 0.6.1 `define_class!`，**空 ivar** + 重写 `mouseEntered/Exited/Moved/cursorUpdate` 转发给 delegate + 重写布尔 panel-state 方法），与 Mochi `c2269ab` 的 base NSPanel + `objc` 0.2.7 + 无重写本质不同。**安全。**
-* `tauri-nspanel` **未发布 crates.io**，只能 git 依赖 `branch = "v2.1"`（v2.1.0，Tauri 2 兼容）。Mochi Cargo.toml 目前无 git 依赖——本任务将引入首个 git 依赖。
-* `macOSPrivateApi: true` 对 Developer ID 签名+公证无阻塞（仅 Mac App Store 拒收）。BongoCat/Cap/EcoPaste 均带此 flag 公证发布。Mochi 已用透明窗口，本就需要。
-* ~~`stationary | canJoinAllSpaces` 冲突~~ — **纠正为误诊**：Apple 文档未标记互斥，是文档化的浮动面板组合（Spotlight / 通知中心同款）。Mochi `267583e` 的"不在任何 Space"是 NSWindow+ScreenSaver level 上下文的产物，真 NSPanel + Dock level 下 273 组合工作。
+* ~~`tauri-nspanel` 的 `to_panel()` 不用 `object_setClass`~~ — **纠正**：它**也用 `object_setClass`**，但 swap 到自定义 `RawNsPanel` 子类（`objc2` 0.6.1 `define_class!`，**空 ivar** + 重写 `mouseEntered/Exited/Moved/cursorUpdate` 转发给 delegate + 重写布尔 panel-state 方法），与 Folyn `c2269ab` 的 base NSPanel + `objc` 0.2.7 + 无重写本质不同。**安全。**
+* `tauri-nspanel` **未发布 crates.io**，只能 git 依赖 `branch = "v2.1"`（v2.1.0，Tauri 2 兼容）。Folyn Cargo.toml 目前无 git 依赖——本任务将引入首个 git 依赖。
+* `macOSPrivateApi: true` 对 Developer ID 签名+公证无阻塞（仅 Mac App Store 拒收）。BongoCat/Cap/EcoPaste 均带此 flag 公证发布。Folyn 已用透明窗口，本就需要。
+* ~~`stationary | canJoinAllSpaces` 冲突~~ — **纠正为误诊**：Apple 文档未标记互斥，是文档化的浮动面板组合（Spotlight / 通知中心同款）。Folyn `267583e` 的"不在任何 Space"是 NSWindow+ScreenSaver level 上下文的产物，真 NSPanel + Dock level 下 273 组合工作。
 
 ## Research References
 
@@ -47,11 +47,11 @@
 
 ## Decision (ADR-lite)
 
-**Context**: Mochi 已两次翻车（`object_setClass` swap crash、`orderOut` foreign-exception abort）。需要在引入 NSPanel 方案的同时保留可回退路径，并预留点击穿透能力。
+**Context**: Folyn 已两次翻车（`object_setClass` swap crash、`orderOut` foreign-exception abort）。需要在引入 NSPanel 方案的同时保留可回退路径，并预留点击穿透能力。
 
 **Decision**:
 1. 引入 `tauri-nspanel` git 依赖，**固定到 commit `a3122e8`**（`branch = "v2.1"`，v2.1.0，Tauri 2 兼容）保证可复现。
-2. **保留旧 NSWindow + level 1000 + behavior 770 路径**，用运行时开关切换（env var `MOCHI_PET_PANEL_BACKEND=nspanel|legacy`）。默认 `nspanel`，出问题可切回 `legacy`。开关在窗口创建前读取，setup hook 据此分支。
+2. **保留旧 NSWindow + level 1000 + behavior 770 路径**，用运行时开关切换（env var `FOLYN_PET_PANEL_BACKEND=nspanel|legacy`）。默认 `nspanel`，出问题可切回 `legacy`。开关在窗口创建前读取，setup hook 据此分支。
 3. 新 NSPanel 路径：`to_panel::<NsPanel>()` → `set_level(Dock=20)` → `nonactivating_panel` styleMask → `collectionBehavior = 273`（show）/ 切 `274`（hide）→ `macOSPrivateApi: true`。
 4. **点击穿透做完整像素级方案**：透明区穿透到全屏 App、宠物本体可点可拖。**不复用**之前失败的 `setIgnoreCursorEvents` 轮询 toggle（spec 记录的 "drag-once-then-blocked" 竞态），改用 **NSView `hitTest:` 重写**——AppKit 按事件逐次评估点击点是否命中宠物像素（读 WKWebView layer alpha 或前端提供命中区），命中则接收事件、否则返回 nil 让事件穿透到下层窗口。无轮询、无 drag 竞态。具体在实现阶段验证。
 
@@ -79,7 +79,7 @@
 * [ ] 非全屏模式下，桌宠仍置顶于普通窗口之上
 * [ ] 点击桌宠透明区，事件落到全屏 App（不触发桌宠菜单/拖拽）
 * [ ] 点击桌宠本体，正常触发交互（菜单/拖拽）
-* [ ] `MOCHI_PET_PANEL_BACKEND=legacy` 时回退到旧 NSWindow+level 1000 路径，桌宠仍可用（非全屏置顶）
+* [ ] `FOLYN_PET_PANEL_BACKEND=legacy` 时回退到旧 NSWindow+level 1000 路径，桌宠仍可用（非全屏置顶）
 * [ ] `pet-panel` 在全屏 App 之上正常弹出
 
 ## Definition of Done

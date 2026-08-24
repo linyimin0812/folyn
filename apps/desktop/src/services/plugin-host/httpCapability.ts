@@ -17,7 +17,7 @@ import type {
   PluginHttpInit,
   PluginHttpResponse,
   PluginManifest,
-} from '@mochi/plugin-host';
+} from '@folyn/plugin-host';
 import { isOriginAllowed, normalizeHeaders } from './rpcBridge';
 
 function assertHttpPermission(manifest: PluginManifest, url: string): void {

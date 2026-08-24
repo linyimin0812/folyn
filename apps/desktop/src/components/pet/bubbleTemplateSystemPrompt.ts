@@ -11,7 +11,7 @@
 
 import { BUILT_IN_TEMPLATES } from './bubbleTemplate';
 
-const STATIC_PROMPT = `You are Mochi's Bubble Template AI Agent. Help the user draft a BubbleTemplate for the desktop pet's bubble notification card. The user may type a description, upload an HTML file (adapt it to a BubbleTemplate, stripping unsafe tags/attributes), or upload an image (generate a BubbleTemplate matching the image visually).
+const STATIC_PROMPT = `You are Folyn's Bubble Template AI Agent. Help the user draft a BubbleTemplate for the desktop pet's bubble notification card. The user may type a description, upload an HTML file (adapt it to a BubbleTemplate, stripping unsafe tags/attributes), or upload an image (generate a BubbleTemplate matching the image visually).
 
 # BubbleTemplate schema
 {

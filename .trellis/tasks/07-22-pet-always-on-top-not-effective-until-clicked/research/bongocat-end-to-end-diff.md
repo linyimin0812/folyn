@@ -1,12 +1,12 @@
-# Research: BongoCat vs Mochi — end-to-end diff for pet always-on-top
+# Research: BongoCat vs Folyn — end-to-end diff for pet always-on-top
 
-- **Query**: Complete end-to-end diff BongoCat vs Mochi — find what previous research missed
-- **Scope**: internal (BongoCat + Mochi source)
+- **Query**: Complete end-to-end diff BongoCat vs Folyn — find what previous research missed
+- **Scope**: internal (BongoCat + Folyn source)
 - **Date**: 2026-07-22
 
 ## Summary (TL;DR)
 
-The single most important difference: **BongoCat's `main` window IS the pet — there is no separate editor window.** It is created with `alwaysOnTop: true`, `acceptFirstMouse: true`, default `visible: true`, default `focus: true`, and is converted to an NSPanel **synchronously inside `.setup()`**. Mochi has a separate `pet` window created with `alwaysOnTop: false`, `visible: false`, `focus: false`, no `acceptFirstMouse`, and converted to an NSPanel **asynchronously via `run_on_main_thread` after `.setup()` returns**. None of the previously-applied fixes touch the tauri.conf.json `pet` window config — that config is the gap.
+The single most important difference: **BongoCat's `main` window IS the pet — there is no separate editor window.** It is created with `alwaysOnTop: true`, `acceptFirstMouse: true`, default `visible: true`, default `focus: true`, and is converted to an NSPanel **synchronously inside `.setup()`**. Folyn has a separate `pet` window created with `alwaysOnTop: false`, `visible: false`, `focus: false`, no `acceptFirstMouse`, and converted to an NSPanel **asynchronously via `run_on_main_thread` after `.setup()` returns**. None of the previously-applied fixes touch the tauri.conf.json `pet` window config — that config is the gap.
 
 Neither app uses `LSUIElement` / bundle-level Info.plist accessory config. Both call runtime `set_dock_visibility(false)` inside `.setup()`. So that is NOT the difference.
 
@@ -213,7 +213,7 @@ MacOSPanelStatus::SetAlwaysOnTop(always_on_top) => {
 }
 ```
 
-Important: BongoCat's `set_always_on_top(true)` for the pet does ONLY `panel.set_level(PanelLevel::Dock.value())`. It does NOT call `to_panel()` again (the window was already converted at startup). It does NOT call `panel.show()`. It does NOT call `set_collection_behavior()` again (it was set at startup). Compare this to Mochi's `pet_set_always_on_top` which re-calls `to_panel()`, `panel.show()`, `set_level`, AND `set_collection_behavior` every toggle.
+Important: BongoCat's `set_always_on_top(true)` for the pet does ONLY `panel.set_level(PanelLevel::Dock.value())`. It does NOT call `to_panel()` again (the window was already converted at startup). It does NOT call `panel.show()`. It does NOT call `set_collection_behavior()` again (it was set at startup). Compare this to Folyn's `pet_set_always_on_top` which re-calls `to_panel()`, `panel.show()`, `set_level`, AND `set_collection_behavior` every toggle.
 
 ### 1.6 show/hide commands for the pet
 
@@ -242,7 +242,7 @@ MacOSPanelStatus::Hide => {
 }
 ```
 
-BongoCat swaps collection behavior between `can_join_all_spaces` (visible) and `move_to_active_space` (hidden). Mochi's ON-branch `pet_set_always_on_top` always uses `move_to_active_space` (matching BongoCat's HIDE branch, not its SHOW branch).
+BongoCat swaps collection behavior between `can_join_all_spaces` (visible) and `move_to_active_space` (hidden). Folyn's ON-branch `pet_set_always_on_top` always uses `move_to_active_space` (matching BongoCat's HIDE branch, not its SHOW branch).
 
 ### 1.7 List of all AppKit / NSWindow / NSPanel touches in BongoCat src-tauri
 
@@ -290,11 +290,11 @@ Reopen shows the preference window (not the pet — pet is always visible).
 
 ---
 
-## Section 2 — Mochi's complete pet window lifecycle
+## Section 2 — Folyn's complete pet window lifecycle
 
 ### 2.1 tauri.conf.json — window config
 
-File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/tauri.conf.json:32-111`
+File: `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/tauri.conf.json:32-111`
 
 ```json
 "app": {
@@ -302,7 +302,7 @@ File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/tauri.conf.json:32-1
   "windows": [
     {
       "label": "main",
-      "title": "Mochi",
+      "title": "Folyn",
       "width": 1440, "height": 900,
       "minWidth": 800, "minHeight": 600,
       "resizable": true,
@@ -314,7 +314,7 @@ File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/tauri.conf.json:32-1
     {
       "label": "pet",
       "url": "/#/pet",
-      "title": "Mochi Pet",
+      "title": "Folyn Pet",
       "width": 96, "height": 96,
       "center": true,
       "resizable": false,
@@ -344,15 +344,15 @@ File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/tauri.conf.json:32-1
 ```
 
 Key facts:
-- Mochi has FIVE windows. The `main` editor is a regular decorated Tauri window (no `transparent`, no `decorations: false`, no `skipTaskbar`). The `pet` is a SECONDARY window with `alwaysOnTop: false`, `visible: false`, `focus: false`.
+- Folyn has FIVE windows. The `main` editor is a regular decorated Tauri window (no `transparent`, no `decorations: false`, no `skipTaskbar`). The `pet` is a SECONDARY window with `alwaysOnTop: false`, `visible: false`, `focus: false`.
 - `alwaysOnTop: false` at config level — Tauri creates the NSWindow at `NSNormalWindowLevel` (level 0). The pet is NOT staged as a floating window by Tauri.
 - `visible: false` — created hidden. The window does not enter the window server's z-order list until `show()` is called later.
 - `focus: false` — does not accept focus on creation.
-- No `acceptFirstMouse` → defaults false — first mouse-down on the pet when Mochi is inactive first activates Mochi before delivering the click.
+- No `acceptFirstMouse` → defaults false — first mouse-down on the pet when Folyn is inactive first activates Folyn before delivering the click.
 
 ### 2.2 Bundle Info.plist — also no LSUIElement
 
-File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/Info.plist`:
+File: `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/Info.plist`:
 
 ```xml
 <plist version="1.0">
@@ -365,11 +365,11 @@ File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/Info.plist`:
 </plist>
 ```
 
-Only privacy usage strings. No `LSUIElement`, no `LSBackgroundOnly`, no `NSUIElement`. So Mochi also becomes an accessory at runtime via `set_dock_visibility(false)` inside `.setup()`. Same as BongoCat. This is NOT the difference.
+Only privacy usage strings. No `LSUIElement`, no `LSBackgroundOnly`, no `NSUIElement`. So Folyn also becomes an accessory at runtime via `set_dock_visibility(false)` inside `.setup()`. Same as BongoCat. This is NOT the difference.
 
 ### 2.3 App startup ordering — `.setup()` hook
 
-File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/src/lib.rs:438-528` (relevant slice):
+File: `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/src/lib.rs:438-528` (relevant slice):
 
 ```rust
 .setup(|app| {
@@ -426,7 +426,7 @@ Sequence:
 
 ### 2.4 `convert_windows` — the actual NSPanel setup
 
-File: `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/src/pet_panel_macos.rs:219-320` (pet branch shown):
+File: `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/src/pet_panel_macos.rs:219-320` (pet branch shown):
 
 ```rust
 pub fn convert_windows(app: &AppHandle) -> usize {
@@ -434,7 +434,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
 
     // Pet mascot.
     if let Some(window) = app.get_webview_window("pet") {
-        if let Ok(panel) = window.to_panel::<MochiPetPanel>() {
+        if let Ok(panel) = window.to_panel::<FolynPetPanel>() {
             panel.set_level(PanelLevel::Dock.value());
             panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
             panel.set_collection_behavior(
@@ -444,7 +444,7 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                     .full_screen_auxiliary()       // ← matches BongoCat's HIDE combo, not SHOW
                     .into(),
             );
-            let handler = MochiPetEventHandler::new();
+            let handler = FolynPetEventHandler::new();
             panel.set_event_handler(Some(handler.as_ref()));
             count += 1;
         }
@@ -455,10 +455,10 @@ pub fn convert_windows(app: &AppHandle) -> usize {
 }
 ```
 
-Compared to BongoCat's `core/setup/macos.rs:37-91`, Mochi's `convert_windows` is essentially identical in panel flags (Dock level, nonactivating_panel, `stationary | move_to_active_space | full_screen_auxiliary`, `is_floating_panel: true`, event handler attached). The differences are elsewhere:
+Compared to BongoCat's `core/setup/macos.rs:37-91`, Folyn's `convert_windows` is essentially identical in panel flags (Dock level, nonactivating_panel, `stationary | move_to_active_space | full_screen_auxiliary`, `is_floating_panel: true`, event handler attached). The differences are elsewhere:
 
-- Mochi's pet is `visible: false` at config → `to_panel()` runs on an INVISIBLE window (not in the window server's z-order list yet).
-- Mochi schedules `convert_windows` via `run_on_main_thread` → it runs AFTER `.setup()` returns, on the next main loop iteration. BongoCat runs `to_panel()` synchronously inside `.setup()`.
+- Folyn's pet is `visible: false` at config → `to_panel()` runs on an INVISIBLE window (not in the window server's z-order list yet).
+- Folyn schedules `convert_windows` via `run_on_main_thread` → it runs AFTER `.setup()` returns, on the next main loop iteration. BongoCat runs `to_panel()` synchronously inside `.setup()`.
 
 ### 2.5 Pet show / hide path (the user's toggle)
 
@@ -480,7 +480,7 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
 }
 ```
 
-`pet.show()` is Tauri's `WebviewWindow::show()` → calls `[ns_window orderFront:nil]` (or equivalent). For an NSPanel, the proper "show without activating" call is `orderFrontRegardless` (which is what `panel.show()` from tauri-nspanel does). Mochi uses Tauri's stock `show()` on an NSPanel-converted window, NOT the panel-specific `panel.show()`.
+`pet.show()` is Tauri's `WebviewWindow::show()` → calls `[ns_window orderFront:nil]` (or equivalent). For an NSPanel, the proper "show without activating" call is `orderFrontRegardless` (which is what `panel.show()` from tauri-nspanel does). Folyn uses Tauri's stock `show()` on an NSPanel-converted window, NOT the panel-specific `panel.show()`.
 
 ### 2.6 Always-on-top runtime toggle
 
@@ -489,7 +489,7 @@ File: `apps/desktop/src-tauri/src/commands/pet_commands.rs:1088-1143` — `pet_s
 ```rust
 app.run_on_main_thread(move || {
     let window = app2.get_webview_window(PET_LABEL)?;
-    let panel = window.to_panel::<MochiPetPanel>()?;   // re-calls to_panel
+    let panel = window.to_panel::<FolynPetPanel>()?;   // re-calls to_panel
     if enabled {
         panel.show();                                    // orderFrontRegardless
         panel.set_level(PanelLevel::Dock.value());
@@ -535,28 +535,28 @@ The pet window mounts → `pet_set_topmost_level` (no-op) → `pet_set_always_on
 
 ## Section 3 — Differences that matter (ranked)
 
-| # | Difference | BongoCat | Mochi | Why it matters / Confidence |
+| # | Difference | BongoCat | Folyn | Why it matters / Confidence |
 |---|---|---|---|---|
-| **1** | **Window architecture** | `main` window IS the pet. No editor window. Single NSPanel + hidden preference window. | `main` is a normal editor; `pet` is a SECONDARY NSPanel among 5 windows. | **HIGH.** When Mochi is backgrounded, AppKit's `applicationDidResignActive:` runs against an app with a regular editor window as the frontmost/key. AppKit's floating-panel-over-fullscreen behavior is most reliable when the app has no "main document window" competing for the key/main slot. Hard to fix without restructuring (move pet into main window? or make main window also a panel?). |
+| **1** | **Window architecture** | `main` window IS the pet. No editor window. Single NSPanel + hidden preference window. | `main` is a normal editor; `pet` is a SECONDARY NSPanel among 5 windows. | **HIGH.** When Folyn is backgrounded, AppKit's `applicationDidResignActive:` runs against an app with a regular editor window as the frontmost/key. AppKit's floating-panel-over-fullscreen behavior is most reliable when the app has no "main document window" competing for the key/main slot. Hard to fix without restructuring (move pet into main window? or make main window also a panel?). |
 | **2** | **`alwaysOnTop` config flag** | `true` — Tauri creates the NSWindow already at `NSFloatingWindowLevel` (3) and routes it as a floating window in the window server. | `false` — Tauri creates the NSWindow at `NSNormalWindowLevel` (0) and stages it as a regular document window. | **HIGH.** `to_panel()` swaps the class but the window's z-order tier in the window server was already established at Normal. A later `set_level(Dock)` raises the level number, but the window-server-side "floating" classification set at creation is harder to retroactively establish. BongoCat's window enters the floating tier at creation. **Fix to try: set `alwaysOnTop: true` in the `pet` window config.** |
-| **3** | **`visible` at config** | default `true` — window is created visible, enters the window server's z-order list immediately. `to_panel()` runs on a visible window. | `false` — created hidden. `to_panel()` runs on a hidden window. Window doesn't enter z-order list until later `pet.show()`. | **MEDIUM-HIGH.** AppKit applies `setCollectionBehavior` and `setLevel:` differently when the window is on-screen vs off-screen. Some flags only fully take effect on the next `orderFront`. BongoCat's panel is configured while visible — the flags stick. Mochi's panel is configured while invisible — the first `pet.show()` (via `toggle_pet_mode`) reenters the window server and may not honor all flags without a re-assertion. **Fix to try: set `visible: true` in the `pet` config, or call `panel.show()` once inside `convert_windows` right after `to_panel()`.** |
+| **3** | **`visible` at config** | default `true` — window is created visible, enters the window server's z-order list immediately. `to_panel()` runs on a visible window. | `false` — created hidden. `to_panel()` runs on a hidden window. Window doesn't enter z-order list until later `pet.show()`. | **MEDIUM-HIGH.** AppKit applies `setCollectionBehavior` and `setLevel:` differently when the window is on-screen vs off-screen. Some flags only fully take effect on the next `orderFront`. BongoCat's panel is configured while visible — the flags stick. Folyn's panel is configured while invisible — the first `pet.show()` (via `toggle_pet_mode`) reenters the window server and may not honor all flags without a re-assertion. **Fix to try: set `visible: true` in the `pet` config, or call `panel.show()` once inside `convert_windows` right after `to_panel()`.** |
 | **4** | **Timing of `to_panel()`** | Synchronous inside `.setup()`, before the main run loop starts. The window is a panel by the time the first `applicationDidBecomeActive` / space-change event fires. | Asynchronous via `run_on_main_thread` — fires on the next main loop iteration AFTER `.setup()` returns. There is a window of time (between run-loop start and the `run_on_main_thread` block firing) where the pet is still a stock NSWindow with `alwaysOnTop: false`. | **MEDIUM.** If any AppKit event (activation, space change, Dock icon click) fires in that window, the pet is staged as a regular NSWindow. Once `to_panel()` runs later, the class swap + level change may not fully restage it. **Fix to try: call `convert_windows` SYNCHRONOUSLY inside `.setup()` instead of via `run_on_main_thread`** (since `.setup()` already runs on the main thread, this is safe). |
-| **5** | **`acceptFirstMouse` config** | `true` — clicks on the window are delivered without first activating the app. | not set → default `false` — first click on the pet when Mochi is not frontmost first activates Mochi. | **MEDIUM.** This is a strong candidate for the "doesn't work until clicked" symptom: the user's first click on the pet activates Mochi, and as part of activation AppKit re-evaluates z-order and promotes the panel. Without that click, the panel sits wherever AppKit staged it. **Fix to try: add `"acceptFirstMouse": true` to the `pet` window config.** |
+| **5** | **`acceptFirstMouse` config** | `true` — clicks on the window are delivered without first activating the app. | not set → default `false` — first click on the pet when Folyn is not frontmost first activates Folyn. | **MEDIUM.** This is a strong candidate for the "doesn't work until clicked" symptom: the user's first click on the pet activates Folyn, and as part of activation AppKit re-evaluates z-order and promotes the panel. Without that click, the panel sits wherever AppKit staged it. **Fix to try: add `"acceptFirstMouse": true` to the `pet` window config.** |
 | **6** | **`focus` config** | default `true`. | `false`. | **LOW-MEDIUM.** `focus: false` at the Tauri level maps to the window not becoming key on creation. The NSPanel config has `can_become_key_window: true`, so the panel CAN become key — but `focus: false` may set some Tauri-side flag that interferes. Probably not the root cause but worth ruling out. |
-| **7** | **Show path uses Tauri `show()`** | BongoCat's `show_window` command for the main/pet window calls `panel.show()` (tauri-nspanel's `orderFrontRegardless`), not Tauri's `window.show()`. | Mochi's `toggle_pet_mode` calls `pet.show()` — Tauri's `WebviewWindow::show()` — NOT the panel-specific `panel.show()`. | **MEDIUM-HIGH.** `orderFrontRegardless` is the correct call for a floating panel — it brings the panel to the front of its level WITHOUT activating the app. Tauri's `show()` may call `orderFront:` which respects the window-server ordering rules and may not promote the panel above other apps' frontmost windows. **Fix to try: in `toggle_pet_mode`, when showing the pet, call `panel.show()` (via `to_panel`) instead of `pet.show()`.** |
-| **8** | **`set_always_on_top` re-calls `to_panel` + `panel.show()`** | BongoCat's `set_always_on_top(true)` does ONLY `panel.set_level(Dock)`. No `to_panel` re-call, no `panel.show()`, no `set_collection_behavior` (it was set at startup). | Mochi's `pet_set_always_on_top(true)` re-calls `to_panel()`, calls `panel.show()`, `set_level`, `set_collection_behavior`. | **LOW.** Mochi's version is more defensive but should not break things. BongoCat's minimal version suggests the startup `to_panel` + level + behavior is enough — if the level is later reset, just re-setting the level suffices. Probably not the bug. |
-| **9** | **`move_to_active_space` vs `can_join_all_spaces` on the always-on-top ON branch** | BongoCat's `set_always_on_top(true)` does NOT change collection_behavior (it was set at startup to `stationary | move_to_active_space | full_screen_auxiliary`). The `Show` command separately uses `can_join_all_spaces`, the `Hide` command uses `move_to_active_space`. | Mochi's `pet_set_always_on_top(true)` sets `stationary | move_to_active_space | full_screen_auxiliary` (386). | **LOW.** Previous research already swapped this to match BongoCat. Not the remaining bug. |
+| **7** | **Show path uses Tauri `show()`** | BongoCat's `show_window` command for the main/pet window calls `panel.show()` (tauri-nspanel's `orderFrontRegardless`), not Tauri's `window.show()`. | Folyn's `toggle_pet_mode` calls `pet.show()` — Tauri's `WebviewWindow::show()` — NOT the panel-specific `panel.show()`. | **MEDIUM-HIGH.** `orderFrontRegardless` is the correct call for a floating panel — it brings the panel to the front of its level WITHOUT activating the app. Tauri's `show()` may call `orderFront:` which respects the window-server ordering rules and may not promote the panel above other apps' frontmost windows. **Fix to try: in `toggle_pet_mode`, when showing the pet, call `panel.show()` (via `to_panel`) instead of `pet.show()`.** |
+| **8** | **`set_always_on_top` re-calls `to_panel` + `panel.show()`** | BongoCat's `set_always_on_top(true)` does ONLY `panel.set_level(Dock)`. No `to_panel` re-call, no `panel.show()`, no `set_collection_behavior` (it was set at startup). | Folyn's `pet_set_always_on_top(true)` re-calls `to_panel()`, calls `panel.show()`, `set_level`, `set_collection_behavior`. | **LOW.** Folyn's version is more defensive but should not break things. BongoCat's minimal version suggests the startup `to_panel` + level + behavior is enough — if the level is later reset, just re-setting the level suffices. Probably not the bug. |
+| **9** | **`move_to_active_space` vs `can_join_all_spaces` on the always-on-top ON branch** | BongoCat's `set_always_on_top(true)` does NOT change collection_behavior (it was set at startup to `stationary | move_to_active_space | full_screen_auxiliary`). The `Show` command separately uses `can_join_all_spaces`, the `Hide` command uses `move_to_active_space`. | Folyn's `pet_set_always_on_top(true)` sets `stationary | move_to_active_space | full_screen_auxiliary` (386). | **LOW.** Previous research already swapped this to match BongoCat. Not the remaining bug. |
 | **10** | **Number of converted windows** | Only `main` is converted to NSPanel. `preference` is a regular Tauri window. | FOUR windows are converted to NSPanels: `pet`, `pet-panel`, `pet-bubble`, `voice-orb`. | **LOW-MEDIUM.** Multiple panels with `can_become_key_window: true` in the same app may compete for the key-window slot when the app activates. Not present in BongoCat. Probably not the direct cause but adds noise. |
 
 ### Long shots (lower confidence)
 
 | # | Difference | Why it is a long shot |
 |---|---|---|
-| L1 | `resizable: false` (Mochi pet) vs default `true` (BongoCat). | The StyleMask includes `.resizable()` in both, so the Tauri `resizable` flag is overridden. Unlikely to matter. |
-| L2 | `center: true` (Mochi pet) vs not set (BongoCat). | Just initial position; irrelevant to z-order. |
-| L3 | `maximizable: false` (BongoCat) vs not set (Mochi pet). | Pet is 96×96, maximization is irrelevant. |
-| L4 | Mochi has the resign-active observer; BongoCat does not. | Mochi added this as fix #4 — BongoCat does not need it because its panel is the only window and never gets demoted. The observer is necessary in Mochi's multi-window architecture. Keep it. |
-| L5 | Mochi has the legacy backend fallback (`reapply_pet_topmost` + 500ms thread). | Only active when `MOCHI_PET_PANEL_BACKEND=legacy`. Default is NSPanel backend. Irrelevant under default config. |
+| L1 | `resizable: false` (Folyn pet) vs default `true` (BongoCat). | The StyleMask includes `.resizable()` in both, so the Tauri `resizable` flag is overridden. Unlikely to matter. |
+| L2 | `center: true` (Folyn pet) vs not set (BongoCat). | Just initial position; irrelevant to z-order. |
+| L3 | `maximizable: false` (BongoCat) vs not set (Folyn pet). | Pet is 96×96, maximization is irrelevant. |
+| L4 | Folyn has the resign-active observer; BongoCat does not. | Folyn added this as fix #4 — BongoCat does not need it because its panel is the only window and never gets demoted. The observer is necessary in Folyn's multi-window architecture. Keep it. |
+| L5 | Folyn has the legacy backend fallback (`reapply_pet_topmost` + 500ms thread). | Only active when `FOLYN_PET_PANEL_BACKEND=legacy`. Default is NSPanel backend. Irrelevant under default config. |
 
 ---
 
@@ -568,16 +568,16 @@ Combined contributing factor (Section 3 #3 + #4): `visible: false` + async `conv
 
 ### Specific change to try next (in priority order)
 
-1. **In `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/tauri.conf.json`, change the `pet` window config:**
+1. **In `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/tauri.conf.json`, change the `pet` window config:**
    - `"alwaysOnTop": false` → `"alwaysOnTop": true`
    - Add `"acceptFirstMouse": true`
    - Optionally flip `"visible": false` → `"visible": true` (and have `toggle_pet_mode` hide-on-startup if the user has pet mode off).
 
    This is the single highest-leverage change and the closest analog to BongoCat's working recipe at the config layer. It is also the only one of the candidate fixes that has not been attempted yet — all four prior fixes were Rust-side (`pet_panel_macos.rs` / `lib.rs` / `pet_commands.rs`).
 
-2. **In `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/src/lib.rs` `apply_pet_backend_init`, call `convert_windows` SYNCHRONOUSLY inside `.setup()` instead of via `run_on_main_thread`** (`.setup()` already runs on the main thread, so this is safe and matches BongoCat's `core/setup/macos.rs:37` pattern). This removes the run-loop-tick gap where the pet is a stock NSWindow with `alwaysOnTop: false`.
+2. **In `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/src/lib.rs` `apply_pet_backend_init`, call `convert_windows` SYNCHRONOUSLY inside `.setup()` instead of via `run_on_main_thread`** (`.setup()` already runs on the main thread, so this is safe and matches BongoCat's `core/setup/macos.rs:37` pattern). This removes the run-loop-tick gap where the pet is a stock NSWindow with `alwaysOnTop: false`.
 
-3. **In `/Users/yiminlin/project/mochi/apps/desktop/src-tauri/src/commands/pet_commands.rs` `toggle_pet_mode`, when `next == true`, call the panel's `show()` (via `window.to_panel::<MochiPetPanel>()` + `panel.show()` = `orderFrontRegardless`) instead of Tauri's `pet.show()`.** This matches BongoCat's `plugins/window/src/commands/macos.rs:28` `MacOSPanelStatus::Show` path.
+3. **In `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/src/commands/pet_commands.rs` `toggle_pet_mode`, when `next == true`, call the panel's `show()` (via `window.to_panel::<FolynPetPanel>()` + `panel.show()` = `orderFrontRegardless`) instead of Tauri's `pet.show()`.** This matches BongoCat's `plugins/window/src/commands/macos.rs:28` `MacOSPanelStatus::Show` path.
 
 If #1 alone does not fix it, #2 + #3 together should. The previous four fixes all post-date the panel-creation moment; they cannot retroactively make a Normal-level window behave like a creation-time floating window.
 
@@ -585,7 +585,7 @@ If #1 alone does not fix it, #2 + #3 together should. The previous four fixes al
 
 ## Caveats / Not Found
 
-- I did not verify the actual tauri-nspanel crate internals for `to_panel()`'s `setFloatingPanel:YES` plumbing — that lives in the crate, not in either project's source. The `is_floating_panel: true` config field is documented (in the prior research file `bongocat-nspanel-setup.md`) to map to `setFloatingPanel:YES` inside the crate. Both Mochi and BongoCat set `is_floating_panel: true`, so this flag is set in both. The difference must be in how the window enters the window server BEFORE `to_panel()` runs.
+- I did not verify the actual tauri-nspanel crate internals for `to_panel()`'s `setFloatingPanel:YES` plumbing — that lives in the crate, not in either project's source. The `is_floating_panel: true` config field is documented (in the prior research file `bongocat-nspanel-setup.md`) to map to `setFloatingPanel:YES` inside the crate. Both Folyn and BongoCat set `is_floating_panel: true`, so this flag is set in both. The difference must be in how the window enters the window server BEFORE `to_panel()` runs.
 - I did not run the app to verify behavior — this is a static-source diff.
 - Tauri 2's exact behavior for `alwaysOnTop: true` at the config level (does it call `setLevel:` on the NSWindow at creation, or does it set a Tauri-side flag that is only applied on first show?) is not verified against Tauri's source. If Tauri only applies `alwaysOnTop` on first show, then #1 may reduce to "make the visible-default and call show early" — the test is the same.
 - The user's environment (dev build vs signed .app) may affect Dock/activation behavior; the symptom "works after click" is consistent across both per prior research.
