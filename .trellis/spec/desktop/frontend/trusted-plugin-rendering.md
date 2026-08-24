@@ -15,7 +15,7 @@ Applies whenever a `trusted`-tier plugin contributes a React component that the 
 Trusted plugins run in the host webview realm but are loaded as a **blob URL** `import()` (see `apps/desktop/src/services/plugin-host/trustedLoader.ts`). A blob URL has no path, so:
 
 - relative imports do not resolve (`./utils.js` fails)
-- remote imports are blocked by the `quill-plugin://` CSP
+- remote imports are blocked by the `mochi-plugin://` CSP
 - **bare specifiers (`react`, `react-dom`) do NOT resolve from a blob module** — there is no import map (see "Why not import maps" below)
 
 A plugin component rendered inside the host's React tree MUST use the **same React instance** as the host, or React hooks throw `Invalid hook call` (two-React-copies problem). Therefore:

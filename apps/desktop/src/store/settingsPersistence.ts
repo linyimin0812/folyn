@@ -11,7 +11,7 @@ import { debounce } from '@/utils/debounce';
 // that store's module init. navStore is never registered (runtime-only).
 
 export interface PersistSlice {
-  /** Filename stem under ~/.quill/storage/. Must be filename-safe
+  /** Filename stem under ~/.mochi/storage/. Must be filename-safe
    *  (storageClient sanitizes anyway, but slices use clean stems like
    *  'prefs', 'editorPrefs', 'pet'). */
   name: string;
@@ -112,7 +112,7 @@ function pickSliceData(slice: PersistSlice): Record<string, unknown> {
 /** Merge every registered slice's keys into a single blob. Used only to
  *  assemble the `pet://settings-updated` payload — on disk, each slice
  *  writes its own file. Secondary Tauri windows (pet-corner, pet-bubble,
- *  pet-panel) lack fs-plugin ACL perms to re-read ~/.quill/storage/ files
+ *  pet-panel) lack fs-plugin ACL perms to re-read ~/.mochi/storage/ files
  *  themselves, so they hydrate from the broadcast blob instead. */
 /** Merge every registered slice's keys into a single blob. Used to assemble
  *  the `pet://settings-updated` broadcast payload and to answer
@@ -169,7 +169,7 @@ export function hydrateAllStores(blob: Record<string, unknown>): void {
 
 /** On startup, read each slice's file and dispatch to its own `hydrate`,
  *  then assemble the merged blob for the secondary-window broadcast.
- *  Provider config lives in ~/.quill/providers/ — load from disk AFTER the
+ *  Provider config lives in ~/.mochi/providers/ — load from disk AFTER the
  *  per-slice hydrate so chatProvider is already set when we read the
  *  matching slot into the flat mirrors. Lazy import breaks the store→
  *  settingsPersistence→store cycle (aiConfigStore imports
@@ -225,7 +225,7 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
     console.warn('[settingsPersistence] Provider config load failed:', err);
   }
 
-  // ponytail: storage provider creds live in ~/.quill/image-hosts/ — load
+  // ponytail: storage provider creds live in ~/.mochi/image-hosts/ — load
   // after the regular slices hydrate so activeProvider is restored before
   // configs are read into the in-memory cache. Lazy import breaks the
   // store→settingsPersistence→store cycle.
@@ -239,7 +239,7 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
   if (!any) return null;
   // Broadcast to secondary Tauri windows (pet-bubble / pet-corner /
   // pet-panel) which hold their own store instances but lack fs-plugin ACL
-  // perms to re-read ~/.quill/storage/ files themselves. Without this, the
+  // perms to re-read ~/.mochi/storage/ files themselves. Without this, the
   // bubble window's petStore stays at defaults (petSize='100') on startup —
   // `computeBubblePosition` then sizes the gap against the wrong pet
   // footprint, and larger pets ('125' / '150') get the bubble window's top

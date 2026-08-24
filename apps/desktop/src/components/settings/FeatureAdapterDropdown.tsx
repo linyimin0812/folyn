@@ -13,7 +13,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { listAdapters } from '@quill/cli-adapter';
+import { listAdapters } from '@mochi/cli-adapter';
 import claudeIcon from '@/assets/agents/claude_code.svg';
 import codexIcon from '@/assets/agents/codex.svg';
 import geminiIcon from '@/assets/agents/gemini.svg';

@@ -1,7 +1,7 @@
 // 枚举 vault 中所有 daily note 文件 {path, date}。
 // 复用 CalendarPanel 的扫描逻辑，但返回路径而非仅日期集合。
 
-import type { VaultEntry } from '@quill/vault-provider';
+import type { VaultEntry } from '@mochi/vault-provider';
 
 const DATE_RE = /^(\d{4}-\d{2}-\d{2})\.md$/;
 

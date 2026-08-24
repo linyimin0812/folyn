@@ -1,4 +1,4 @@
-import { createAdapter } from '@quill/cli-adapter';
+import { createAdapter } from '@mochi/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import * as editorIoService from '@/services/editorIoService';
 import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
@@ -22,7 +22,7 @@ You are a senior software architect. Analyze a GitHub repository and generate a 
 
 ## Steps
 
-1. **Clone the repository**: Use Bash to run \`git clone --depth 1 <repo_url> /tmp/quill-repo-<reponame>\` to clone the repo locally
+1. **Clone the repository**: Use Bash to run \`git clone --depth 1 <repo_url> /tmp/mochi-repo-<reponame>\` to clone the repo locally
 2. **Explore the project structure**:
    - Use Bash to list the directory tree (depth 3, max 500 lines)
    - Use Read to examine package manifests (package.json, Cargo.toml, go.mod, pyproject.toml, requirements.txt, etc.)
@@ -37,7 +37,7 @@ You are a senior software architect. Analyze a GitHub repository and generate a 
    - **Code Quality & Standards**: Code style, testing coverage, documentation quality, CI/CD
    - **Pros & Cons**: Strengths and weaknesses assessment
    - **Summary & Recommendations**: Overall rating, recommendations for improvement
-4. **Clean up**: Use Bash to remove the cloned repo directory \`rm -rf /tmp/quill-repo-<reponame>\`
+4. **Clean up**: Use Bash to remove the cloned repo directory \`rm -rf /tmp/mochi-repo-<reponame>\`
 
 ## HTML Report Requirements
 - Self-contained single HTML file with inline CSS (no external dependencies)

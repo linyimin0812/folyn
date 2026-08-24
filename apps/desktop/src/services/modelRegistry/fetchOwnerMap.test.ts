@@ -86,14 +86,14 @@ describe('fetchOwnerMap — disk cache + HTTP fallback', () => {
       capabilities: [],
     });
     // Cache file written.
-    const cachePath = '/tmp/test-home/.quill/providers/provider-models.json';
+    const cachePath = '/tmp/test-home/.mochi/providers/provider-models.json';
     expect(FS.has(cachePath)).toBe(true);
     const written = JSON.parse(FS.get(cachePath)!);
     expect(written['gpt-4o'].providerId).toBe('openai');
   });
 
   it('cache fresh (< 24h): no HTTP call, returns cached entries', async () => {
-    const cachePath = '/tmp/test-home/.quill/providers/provider-models.json';
+    const cachePath = '/tmp/test-home/.mochi/providers/provider-models.json';
     const cachedMap = {
       'gpt-4o': { modelId: 'gpt-4o', providerId: 'openai', capabilities: ['vision'] },
     };
@@ -107,7 +107,7 @@ describe('fetchOwnerMap — disk cache + HTTP fallback', () => {
   });
 
   it('cache stale (> 24h): hits OpenRouter and overwrites cache', async () => {
-    const cachePath = '/tmp/test-home/.quill/providers/provider-models.json';
+    const cachePath = '/tmp/test-home/.mochi/providers/provider-models.json';
     const staleMap = {
       'old-model': { modelId: 'old-model', providerId: 'stale-provider', capabilities: [] },
     };

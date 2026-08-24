@@ -10,7 +10,7 @@ The freeze is **NOT** in `loadReports()`. The actual root cause is that
 opening the analyze panel reactivates the first open `reports/*.html` tab, and
 `WorkArea` synchronously mounts the GrapesJS visual editor
 (`HtmlVisualEditor` → `GrapesEditor` → `useGrapesEditor`) on the **26 MB**
-`reports/2026-06-14-quill.html`. Both `parseHtmlForGrapes(content)` (run
+`reports/2026-06-14-mochi.html`. Both `parseHtmlForGrapes(content)` (run
 during React render via a `useRef` initializer) and `editor.setComponents(...)`
 (run inside `useEffect`) are O(n) synchronous main-thread work over ~26 MB of
 HTML, blocking the page for many seconds. A secondary amplifier is the
@@ -28,14 +28,14 @@ below.
 ### 1. The 26 MB report on disk — the smoking gun
 
 ```
-$ ls -la /Users/yiminlin/quill/default_vault/reports/
+$ ls -la /Users/yiminlin/mochi/default_vault/reports/
 -rw-r--r--  83145 bytes  2026-06-14-drawio-skill.html
--rw-r--r-- 26887926 bytes 2026-06-14-quill.html        ← 26 MB
+-rw-r--r-- 26887926 bytes 2026-06-14-mochi.html        ← 26 MB
 -rw-r--r--  60211 bytes  2026-06-14-trellis.html
--rw-r--r--      40 bytes 2026-06-14-quill.tags.json
+-rw-r--r--      40 bytes 2026-06-14-mochi.tags.json
 ```
 
-`reports/2026-06-14-quill.html` is 26 MB of self-contained HTML (huge inline
+`reports/2026-06-14-mochi.html` is 26 MB of self-contained HTML (huge inline
 `<style>` blocks, repeated CSS, large DOM). No other report exceeds 100 KB.
 
 ### 2. How the panel switch triggers GrapesJS on that 26 MB
@@ -57,7 +57,7 @@ setActivePanel: (panel) => {
 },
 ```
 
-If `reports/2026-06-14-quill.html` was previously opened (or restored via
+If `reports/2026-06-14-mochi.html` was previously opened (or restored via
 `restoreOpenTabs` on vault switch/init, `editorStore.ts:498-581`), it becomes
 the active tab the moment the user clicks the analyze activity.
 
@@ -173,7 +173,7 @@ is not the source of the 26 MB freeze.
 file via `vault.readFile` (Tauri `readTextFile` returns the entire 26 MB as a
 JS string), stores it as `tab.content`, then WorkArea renders
 `HtmlVisualEditor` → same GrapesJS freeze as path 1. So even from a cold
-start (no pre-open tab), clicking the quill report card will freeze the app.
+start (no pre-open tab), clicking the mochi report card will freeze the app.
 
 ## Why it freezes (complexity summary)
 
@@ -229,7 +229,7 @@ first analyze tab. Let the user pick a tab explicitly (or keep the current
 editor view as-is). Combined with Option A, this means switching to the
 analyze sidebar never triggers a 26 MB GrapesJS mount.
 
-- **Pros**: Eliminates path-1 freeze (panel switch reactivating the quill
+- **Pros**: Eliminates path-1 freeze (panel switch reactivating the mochi
   tab) without touching GrapesJS. Small, surgical store change.
 - **Cons**: Behavior change — users who expected the report to auto-display
   on panel open lose that. Doesn't fix path-2 (clicking the report card).
@@ -297,12 +297,12 @@ in `HtmlVisualEditor.tsx` + a banner) + Option C (tweak
 - The task framing assumed `loadReports` was the bottleneck. Code reading
   shows it is not, for the current 3-report vault. The freeze is in the
   GrapesJS editor mount path, triggered by `setActivePanel('analyze')`
-  reactivating the 26 MB `reports/2026-06-14-quill.html` tab.
-- I did not run the app. Confirmation experiment: with the quill.html tab
+  reactivating the 26 MB `reports/2026-06-14-mochi.html` tab.
+- I did not run the app. Confirmation experiment: with the mochi.html tab
   open, click the 项目分析 activity and time the freeze; then close the
-  quill.html tab and click again — the freeze should disappear. That
+  mochi.html tab and click again — the freeze should disappear. That
   isolates path 1 from path 2.
-- I did not inspect whether `restoreOpenTabs` actually reopens quill.html on
+- I did not inspect whether `restoreOpenTabs` actually reopens mochi.html on
   this user's startup; if it does, the freeze may also occur at app start
   (whenever the active panel is `analyze`). The persisted-tab data lives in
   the Tauri storage backend; checking that requires running the app.

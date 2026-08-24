@@ -1,5 +1,5 @@
 {
-  "name": "@quill/cli-adapter",
+  "name": "@mochi/cli-adapter",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
-  "productName": "Quill",
+  "productName": "Mochi",
   "version": "0.1.0",
-  "identifier": "com.quill.editor",
+  "identifier": "com.mochi.editor",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -24,97 +24,97 @@
     "fileAssociations": [
       {
         "ext": ["md", "markdown", "mdx", "mdown", "mkd"],
-        "name": "Quill Markdown",
+        "name": "Mochi Markdown",
         "role": "Editor",
         "mimeType": "text/markdown"
       },
       {
         "ext": ["richtext"],
-        "name": "Quill Rich Text",
+        "name": "Mochi Rich Text",
         "role": "Editor",
         "mimeType": "text/plain"
       },
       {
         "ext": ["markmap"],
-        "name": "Quill Markmap",
+        "name": "Mochi Markmap",
         "role": "Editor",
         "mimeType": "application/json"
       },
       {
         "ext": ["mermaid", "mmd"],
-        "name": "Quill Mermaid",
+        "name": "Mochi Mermaid",
         "role": "Editor",
         "mimeType": "text/plain"
       },
       {
         "ext": ["puml", "pu", "plantuml"],
-        "name": "Quill PlantUML",
+        "name": "Mochi PlantUML",
         "role": "Editor",
         "mimeType": "text/plain"
       },
       {
         "ext": ["gv", "dot", "graphviz"],
-        "name": "Quill Graphviz",
+        "name": "Mochi Graphviz",
         "role": "Editor",
         "mimeType": "text/plain"
       },
       {
         "ext": ["drawio", "dio"],
-        "name": "Quill Drawio",
+        "name": "Mochi Drawio",
         "role": "Editor",
         "mimeType": "application/xml"
       },
       {
         "ext": ["excalidraw"],
-        "name": "Quill Excalidraw",
+        "name": "Mochi Excalidraw",
         "role": "Editor",
         "mimeType": "application/json"
       },
       {
         "ext": ["dbml"],
-        "name": "Quill DBML",
+        "name": "Mochi DBML",
         "role": "Editor",
         "mimeType": "text/plain"
       },
       {
         "ext": ["svg"],
-        "name": "Quill SVG",
+        "name": "Mochi SVG",
         "role": "Editor",
         "mimeType": "image/svg+xml"
       },
       {
         "ext": ["html", "htm"],
-        "name": "Quill HTML",
+        "name": "Mochi HTML",
         "role": "Editor",
         "mimeType": "text/html"
       },
       {
         "ext": ["json"],
-        "name": "Quill JSON",
+        "name": "Mochi JSON",
         "role": "Editor",
         "mimeType": "application/json"
       },
       {
         "ext": ["csv", "tsv"],
-        "name": "Quill CSV",
+        "name": "Mochi CSV",
         "role": "Editor",
         "mimeType": "text/csv"
       },
       {
         "ext": ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "tiff", "tif", "avif", "heic", "heif", "jxl"],
-        "name": "Quill Image",
+        "name": "Mochi Image",
         "role": "Viewer",
         "mimeType": "image/*"
       },
       {
         "ext": ["txt", "text", "log", "json5", "yaml", "yml", "xml", "css", "js", "ts", "toml", "ini", "rst", "tex"],
-        "name": "Quill Text",
+        "name": "Mochi Text",
         "role": "Viewer",
         "mimeType": "text/plain"
       },
       {
         "ext": ["pdf", "ofd", "docx", "doc", "dot", "docm", "dotx", "dotm", "rtf", "odt", "xlsx", "xls", "xlsm", "xlsb", "xltx", "xlt", "xltm", "ods", "fods", "numbers", "pptx", "pptm", "potx", "potm", "ppsx", "ppsm", "odp", "zip", "zipx", "7z", "rar", "tar", "gz", "gzip", "tgz", "bz2", "bzip2", "tbz", "tbz2", "xz", "txz", "lzma", "zst", "cab", "ar", "cpio", "iso", "xar", "lha", "lzh", "jar", "war", "ear", "apk", "cbz", "cbr", "eml", "msg", "mbox", "olb", "dra", "gds", "oas", "oasis", "dwg", "dxf", "dwf", "dwfx", "xps", "geojson", "kml", "gpx", "shp", "glb", "gltf", "obj", "stl", "ply", "fbx", "dae", "3ds", "3mf", "amf", "usd", "usda", "usdc", "usdz", "kmz", "pcd", "wrl", "vrml", "xyz", "vtk", "vtp", "step", "stp", "iges", "igs", "ifc", "3dm", "xmind", "epub", "umd", "mp3", "mpeg", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "midi", "mid", "mp4", "webm", "m3u8", "ttf", "otf", "woff", "woff2", "psd", "ai", "eps", "sqlite", "wasm", "parquet", "avro", "webarchive"],
-        "name": "Quill Document",
+        "name": "Mochi Document",
         "role": "Viewer",
         "mimeType": "application/octet-stream"
       }
@@ -135,7 +135,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Quill",
+        "title": "Mochi",
         "width": 1440,
         "height": 900,
         "minWidth": 800,
@@ -148,7 +148,7 @@
       {
         "label": "pet",
         "url": "/#/pet",
-        "title": "Quill Pet",
+        "title": "Mochi Pet",
         "width": 96,
         "height": 96,
         "center": true,
@@ -166,7 +166,7 @@
       {
         "label": "pet-panel",
         "url": "/#/pet-panel",
-        "title": "Quill Pet Panel",
+        "title": "Mochi Pet Panel",
         "width": 440,
         "height": 620,
         "minWidth": 280,
@@ -184,7 +184,7 @@
       {
         "label": "pet-bubble",
         "url": "/#/pet-bubble",
-        "title": "Quill Pet Bubble",
+        "title": "Mochi Pet Bubble",
         "width": 320,
         "height": 120,
         "resizable": false,
@@ -200,7 +200,7 @@
       {
         "label": "pet-corner",
         "url": "/#/pet-corner",
-        "title": "Quill Pet Corner",
+        "title": "Mochi Pet Corner",
         "width": 320,
         "height": 80,
         "resizable": false,
@@ -216,7 +216,7 @@
       {
         "label": "pet-menu",
         "url": "/#/pet-menu",
-        "title": "Quill Pet Menu",
+        "title": "Mochi Pet Menu",
         "width": 220,
         "height": 320,
         "resizable": false,
@@ -232,7 +232,7 @@
       {
         "label": "voice-orb",
         "url": "/#/voice-orb",
-        "title": "Quill Voice Orb",
+        "title": "Mochi Voice Orb",
         "width": 460,
         "height": 180,
         "resizable": false,

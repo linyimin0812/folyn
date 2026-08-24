@@ -12,8 +12,8 @@
  * contract handles this).
  */
 
-import type { Disposable } from '@quill/plugin-host';
-import type { PluginManifest } from '@quill/plugin-host';
+import type { Disposable } from '@mochi/plugin-host';
+import type { PluginManifest } from '@mochi/plugin-host';
 import { registerCommand, type CommandDisposable } from '@/services/commandRegistry';
 import type { RpcBridge } from './rpcBridge';
 

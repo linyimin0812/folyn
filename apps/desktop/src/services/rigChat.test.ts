@@ -19,7 +19,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 import { runRigChat, testChatConnection, type ChatTestResult } from './rigChat';
-import type { CliStreamEvent } from '@quill/cli-adapter';
+import type { CliStreamEvent } from '@mochi/cli-adapter';
 
 beforeEach(() => {
   invokeMock.mockReset();

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMermaidSvg } from '@quill/container-plugins';
+import { useMermaidSvg } from '@mochi/container-plugins';
 import { ZoomPanCanvas } from '../image/ZoomPanCanvas';
 import type { PreviewProps } from '../types';
 

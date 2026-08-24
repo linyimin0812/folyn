@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ContainerRegistry } from '@quill/container-plugins';
-import type { ContainerPlugin, ContainerCategory } from '@quill/container-plugins';
+import { ContainerRegistry } from '@mochi/container-plugins';
+import type { ContainerPlugin, ContainerCategory } from '@mochi/container-plugins';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
 
 const CATEGORY_KEYS: Record<ContainerCategory, string> = {

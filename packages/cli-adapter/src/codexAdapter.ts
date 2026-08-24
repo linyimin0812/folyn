@@ -24,7 +24,7 @@ interface CodexStreamEvent {
 }
 
 /** Pure seam: map a parsed Codex CLI JSONL event into zero or more
- *  `CliStreamEvent`s for the Quill adapter event bus.
+ *  `CliStreamEvent`s for the Mochi adapter event bus.
  *
  * Codex event taxonomy (per `research/codex-streaming-and-resume.md`):
  * - `thread.started` `{thread_id}` → `session_id` (first event; persist id for resume).
@@ -91,7 +91,7 @@ export function translateCodexEvent(event: unknown): CliStreamEvent[] {
  * Sandbox + approval flags mirror pi's `--approve` / claude's
  * `--permission-mode bypassPermissions`: full-tool autonomy with no
  * interactive approval prompt (the Tauri sidecar has no TTY anyway).
- * `--skip-git-repo-check` is required because Quill's working dirs (vault
+ * `--skip-git-repo-check` is required because Mochi's working dirs (vault
  * roots, temp probe dirs) are not always git repos. */
 export function buildCodexArgs(prompt: string, options?: CliSendOptions): string[] {
   const flags = ['--json', '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox'];

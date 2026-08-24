@@ -10,7 +10,7 @@ import { Transaction, type EditorState } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenFileTree } from '@/utils/treeUtils';
-import type { VaultEntry } from '@quill/vault-provider';
+import type { VaultEntry } from '@mochi/vault-provider';
 
 const SRC_ATTR_RE = /:::file-preview\b[^{]*\{[^}]*?src="([^"]*)$/;
 

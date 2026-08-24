@@ -319,7 +319,7 @@ pub async fn open_plugin_tool_window(
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
     let label = format!("plugin-tool-{}-{}-{}", plugin_id, tool_id, n);
     let tool_key = format!("plugin-tool-{}-{}", plugin_id, tool_id);
-    let url_str = format!("quill-plugin://localhost/{}/{}", plugin_id, entry);
+    let url_str = format!("mochi-plugin://localhost/{}/{}", plugin_id, entry);
     let parsed_url = url_str
         .parse::<tauri::Url>()
         .map_err(|e| format!("invalid plugin URL '{}': {}", url_str, e))?;

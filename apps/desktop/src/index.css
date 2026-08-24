@@ -773,7 +773,7 @@ mjx-container svg {
 
 /* ══════════════════════════════════════════════════════════════════
    日程工作台 Schedule Workbench (sw- 前缀，scope 到 .schedule-workbench)
-   token 别名指向 Quill 主题变量，明暗自动切换
+   token 别名指向 Mochi 主题变量，明暗自动切换
    ══════════════════════════════════════════════════════════════════ */
 .schedule-workbench {
   --surface: var(--panel);

@@ -2,7 +2,7 @@
  * Host RPC bridge for sandbox-tier plugins.
  *
  * This is the host-mediation boundary: sandboxed iframe plugins (origin
- * `quill-plugin://localhost`, `sandbox="allow-scripts"` without
+ * `mochi-plugin://localhost`, `sandbox="allow-scripts"` without
  * `allow-same-origin`) NEVER get raw Tauri APIs. Every privileged operation
  * goes through a postMessage RPC that this bridge validates against the
  * plugin's declared permissions before executing.
@@ -15,8 +15,8 @@
  *   iframe → host: { type: 'invoke-result', id, result?, error? }
  */
 
-import type { PluginAiStreamEvent, PluginManifest, PluginPermissions } from '@quill/plugin-host';
-import type { CliStreamEvent } from '@quill/cli-adapter';
+import type { PluginAiStreamEvent, PluginManifest, PluginPermissions } from '@mochi/plugin-host';
+import type { CliStreamEvent } from '@mochi/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
 
 // ── Pure capability-checking helpers (exported for unit testing) ─────────────
@@ -443,7 +443,7 @@ export class RpcBridge {
     }
     const { homeDir, join } = await import('@tauri-apps/api/path');
     const home = await homeDir();
-    return join(home, '.quill', 'plugins', this.opts.pluginId, relativePath);
+    return join(home, '.mochi', 'plugins', this.opts.pluginId, relativePath);
   }
 }
 
@@ -453,7 +453,7 @@ export class RpcBridge {
 // called from two transports:
 //   1. `RpcBridge.dispatch` — iframe sandbox path (postMessage).
 //   2. `toolWindowRpcListener` — fetch-RPC path for tool windows (POST
-//      `quill-plugin://localhost/<id>/rpc`, see plugin_commands.rs).
+//      `mochi-plugin://localhost/<id>/rpc`, see plugin_commands.rs).
 //
 // Keeping the table in one place ensures both transports enforce the same
 // permission checks and resolve paths the same way.
@@ -467,7 +467,7 @@ export class RpcBridge {
  * @param method        RPC method name (e.g. `vault:insert-content`).
  * @param params        Method params object.
  * @param resolvePath   Resolves a plugin-relative path to an absolute path.
- *                      Both transports use `~/.quill/plugins/<pluginId>/<rel>`.
+ *                      Both transports use `~/.mochi/plugins/<pluginId>/<rel>`.
  * @param stream        Streaming-event callback (sandbox iframe transport
  *                      only). Pushed once per `PluginAiStreamEvent` during a
  *                      long-running `ai:chat` call. Tool-window fetch transport

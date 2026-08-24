@@ -42,7 +42,7 @@ export function injectPreviewBootstrap(rawHtml: string): string {
   if (!rawHtml || !rawHtml.trim()) {
     // ponytail: empty input still needs a valid (sandboxed) document so the
     // iframe renders a white canvas instead of inheriting parent dark theme.
-    return `<!DOCTYPE html><html><head><style data-quill-preview="light">${BOOTSTRAP_STYLE}</style></head><body><script data-quill-preview="anchors">${BOOTSTRAP_SCRIPT}</script></body></html>`;
+    return `<!DOCTYPE html><html><head><style data-mochi-preview="light">${BOOTSTRAP_STYLE}</style></head><body><script data-mochi-preview="anchors">${BOOTSTRAP_SCRIPT}</script></body></html>`;
   }
 
   let doc: Document;
@@ -57,12 +57,12 @@ export function injectPreviewBootstrap(rawHtml: string): string {
   // identical rule we still inject; CSS de-dupes, and the !important ensures
   // the white canvas wins over any inherited dark color-scheme.
   const style = doc.createElement('style');
-  style.setAttribute('data-quill-preview', 'light');
+  style.setAttribute('data-mochi-preview', 'light');
   style.textContent = BOOTSTRAP_STYLE;
   doc.head.appendChild(style);
 
   const script = doc.createElement('script');
-  script.setAttribute('data-quill-preview', 'anchors');
+  script.setAttribute('data-mochi-preview', 'anchors');
   script.textContent = BOOTSTRAP_SCRIPT;
   doc.body.appendChild(script);
 

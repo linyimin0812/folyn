@@ -2,7 +2,7 @@
 
 # Pet External Notify API
 
-Der Quill-Desktop-Begleiter betreibt zur Laufzeit einen **nur auf 127.0.0.1** lauschenden HTTP-Dienst. Externe Apps
+Der Mochi-Desktop-Begleiter betreibt zur Laufzeit einen **nur auf 127.0.0.1** lauschenden HTTP-Dienst. Externe Apps
 (Skripte, cron, CI, andere Desktop-Apps) können darüber Begleiter-Benachrichtigungen auslösen.
 
 - Standard-Port: `17382`. Ist er belegt, versucht die App automatisch bis `17400`; der tatsächliche Port steht in
@@ -99,7 +99,7 @@ Mit durchgereichten Daten + Template + Aufruferkennung:
 
 ```bash
 curl -XPOST 127.0.0.1:17382/pet/action \
-  -d '{"action":"notify","text":"CI fehlgeschlagen","source":"github","template":"glass","data":{"repo":"quill","runId":42}}'
+  -d '{"action":"notify","text":"CI fehlgeschlagen","source":"github","template":"glass","data":{"repo":"mochi","runId":42}}'
 ```
 
 Mit externem Start (bei CI-Fehler mit einem Klick das Log öffnen):

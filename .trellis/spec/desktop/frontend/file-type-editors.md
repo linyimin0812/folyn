@@ -237,7 +237,7 @@ export function reconstructHtml(parsed: ParsedHtml, grapesHtml: string, grapesCs
 
 ### Output cleanliness
 
-GrapesJS's `getHtml()` / `getCss()` produce output free of editor-internal artifacts — no host-injected bridge scripts, no `data-quill-id` tracking attributes, no edit-mode classes. There is no host-side `stripArtifacts` step; serialization is clean by construction.
+GrapesJS's `getHtml()` / `getCss()` produce output free of editor-internal artifacts — no host-injected bridge scripts, no `data-mochi-id` tracking attributes, no edit-mode classes. There is no host-side `stripArtifacts` step; serialization is clean by construction.
 
 ### Security / script handling
 
@@ -249,7 +249,7 @@ GrapesJS loads content into its own canvas (not a raw iframe with an injected ho
 
 ### Persistence
 
-Quill owns persistence via the Zustand editor store; GrapesJS's own `storageManager` is disabled (`storageManager: false` in `createGrapesConfig`). The `onChange` callback from `useGrapesEditor` flows into `editorStore.updateTabContent()` → autosave → `vault.writeFile()`. When the file changes on disk externally, `editorStore`'s `externalContentVersion` increments and `WorkArea` remounts `HtmlVisualEditor` (via `key={tabId}-${version}`), re-initializing GrapesJS with the new content.
+Mochi owns persistence via the Zustand editor store; GrapesJS's own `storageManager` is disabled (`storageManager: false` in `createGrapesConfig`). The `onChange` callback from `useGrapesEditor` flows into `editorStore.updateTabContent()` → autosave → `vault.writeFile()`. When the file changes on disk externally, `editorStore`'s `externalContentVersion` increments and `WorkArea` remounts `HtmlVisualEditor` (via `key={tabId}-${version}`), re-initializing GrapesJS with the new content.
 
 ### Undo/Redo
 
@@ -264,7 +264,7 @@ Reference: `src/components/file-types/html/GrapesEditor.tsx`, `src/components/fi
 `createGrapesConfig(opts)` (in `grapesConfig.ts`) builds the config handed to `grapesjs.init()`:
 
 - **Panels disabled** (`panels: { defaults: [] }`): the React shell renders its own toolbar; no GrapesJS built-in top bar.
-- **Storage disabled**: Quill's store owns persistence.
+- **Storage disabled**: Mochi's store owns persistence.
 - **Managers mounted into React refs**: `styleManager.appendTo`, `selectorManager.appendTo`, `layerManager.appendTo`, `traitManager.appendTo`. (BlockManager is left at its default hidden container — the React shell no longer renders a block-library sidebar; `registerCustomBlocks` still mutates the registry.)
 - **DeviceManager**: three devices (`桌面` / `平板` 768px / `手机` 375px).
 - **Canvas styles**: external font stylesheet injected into the canvas iframe.
@@ -275,7 +275,7 @@ Reference: `src/components/file-types/html/GrapesEditor.tsx`, `src/components/fi
 Helper exports in the same file:
 
 - `injectExternalLinks(editor, headContent)` — re-injects `<link rel="stylesheet">` from the parsed head into the canvas iframe on `load`.
-- `injectCanvasScrollbarHide(editor)` — injects a `<style data-quill="canvas-scrollbar-hide">` into the iframe `<head>` to suppress scrollbars while keeping wheel/trackpad scrolling.
+- `injectCanvasScrollbarHide(editor)` — injects a `<style data-mochi="canvas-scrollbar-hide">` into the iframe `<head>` to suppress scrollbars while keeping wheel/trackpad scrolling.
 
 Reference: `src/components/file-types/html/grapesConfig.ts`, `src/components/file-types/html/grapesBlocks.ts`
 
@@ -283,7 +283,7 @@ Reference: `src/components/file-types/html/grapesConfig.ts`, `src/components/fil
 
 ## Theme Adaptation
 
-`grapesTheme.css` maps GrapesJS's CSS classes to Quill's design-system CSS variables (`--panel`, `--surf`, `--surf2`, `--brd`, `--hov`, `--acc`, `--accdim`, `--t1`/`--t2`/`--t3`, `--inp`). Because every override references `var(--xxx)`, light/dark theme switching is automatic via the `[data-theme]` attribute on the root — no JavaScript intervention is needed. The file is imported once by `useGrapesEditor.ts` alongside `grapesjs/dist/css/grapes.min.css`.
+`grapesTheme.css` maps GrapesJS's CSS classes to Mochi's design-system CSS variables (`--panel`, `--surf`, `--surf2`, `--brd`, `--hov`, `--acc`, `--accdim`, `--t1`/`--t2`/`--t3`, `--inp`). Because every override references `var(--xxx)`, light/dark theme switching is automatic via the `[data-theme]` attribute on the root — no JavaScript intervention is needed. The file is imported once by `useGrapesEditor.ts` alongside `grapesjs/dist/css/grapes.min.css`.
 
 Reference: `src/components/file-types/html/grapesTheme.css`
 
@@ -427,7 +427,7 @@ For per-edge interaction feedback (e.g. click-to-highlight with a "flowing dashe
 
 ## Tiptap Rich Text Editor (`.rt`)
 
-`.rt` files are tiptap/ProseMirror WYSIWYG documents stored as **tiptap native JSON** (`JSON.stringify(editor.getJSON())` on disk). They register a custom `Editor` handler (`useCodeMirror: false`) and are physically isolated from Markdown (CodeMirror) — a `.md` file never routes here. Persistence is owned by Quill's editor store (`onChange` → `updateTabContent` → autosave → `vault.writeFile`); tiptap's own `storageManager` is not wired.
+`.rt` files are tiptap/ProseMirror WYSIWYG documents stored as **tiptap native JSON** (`JSON.stringify(editor.getJSON())` on disk). They register a custom `Editor` handler (`useCodeMirror: false`) and are physically isolated from Markdown (CodeMirror) — a `.md` file never routes here. Persistence is owned by Mochi's editor store (`onChange` → `updateTabContent` → autosave → `vault.writeFile`); tiptap's own `storageManager` is not wired.
 
 ```typescript
 // apps/desktop/src/components/file-types/rich-text/index.ts

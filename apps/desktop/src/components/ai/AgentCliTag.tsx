@@ -12,7 +12,7 @@
  */
 
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { listAdapters } from '@quill/cli-adapter';
+import { listAdapters } from '@mochi/cli-adapter';
 import { getInputModeDef } from './inputModes';
 import claudeIcon from '@/assets/agents/claude_code.svg';
 import codexIcon from '@/assets/agents/codex.svg';

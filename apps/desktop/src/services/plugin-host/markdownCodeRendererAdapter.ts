@@ -14,8 +14,8 @@
  */
 
 import type { ComponentType } from 'react';
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { MarkdownCodeRendererContribution, MarkdownCodeRendererProps } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { MarkdownCodeRendererContribution, MarkdownCodeRendererProps } from '@mochi/plugin-host';
 import type { PluginModule } from './contributionAdapters';
 import { withPluginBoundary } from './pluginBoundary';
 

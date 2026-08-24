@@ -19,8 +19,8 @@ import type {
   PluginAiEditFileParams,
   PluginAiStreamEvent,
   PluginManifest,
-} from '@quill/plugin-host';
-import type { CliStreamEvent } from '@quill/cli-adapter';
+} from '@mochi/plugin-host';
+import type { CliStreamEvent } from '@mochi/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
 
 function assertChatPermission(manifest: PluginManifest): void {

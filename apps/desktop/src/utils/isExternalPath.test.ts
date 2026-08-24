@@ -9,7 +9,7 @@ describe('isExternalPath', () => {
   });
 
   it('treats home-relative shorthands as external', () => {
-    expect(isExternalPath('~/quill/notes/a.md')).toBe(true);
+    expect(isExternalPath('~/mochi/notes/a.md')).toBe(true);
     expect(isExternalPath('~')).toBe(true);
     expect(isExternalPath('$HOME/Documents/x.md')).toBe(true);
   });

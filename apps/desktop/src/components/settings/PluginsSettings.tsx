@@ -1,5 +1,5 @@
 /**
- * Plugins settings tab — the consent / permissions / lifecycle UI for quill's
+ * Plugins settings tab — the consent / permissions / lifecycle UI for mochi's
  * microkernel (PR4).
  *
  * Surfaces:

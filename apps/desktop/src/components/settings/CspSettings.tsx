@@ -7,9 +7,9 @@ import { buildCsp, isValidSource } from '@/utils/csp';
 
 /**
  * 安全策略 (CSP) settings tab — configure which external URLs the app may
- * load. Tauri's own CSP is compile-time only, so Quill applies the policy at
+ * load. Tauri's own CSP is compile-time only, so Mochi applies the policy at
  * runtime via a single `<meta http-equiv="Content-Security-Policy">` tag
- * (see `utils/csp.ts`). The Tauri-required baseline (`ipc:`, `quill-plugin:`,
+ * (see `utils/csp.ts`). The Tauri-required baseline (`ipc:`, `mochi-plugin:`,
  * `asset:`, `data:`, `blob:`, …) is fixed and always included; this tab only
  * controls the extra user-facing sources on top of it.
  *

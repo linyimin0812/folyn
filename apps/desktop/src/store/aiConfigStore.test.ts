@@ -370,11 +370,11 @@ describe('useAiConfigStore.addSelectedModelId', () => {
     expect(s.providerSettings.openai?.selectedModelIds).toEqual(['gpt-4o']);
   });
 
-  it('persists to ~/.quill/providers/settings.json', async () => {
+  it('persists to ~/.mochi/providers/settings.json', async () => {
     useAiConfigStore.getState().addSelectedModelId('anthropic', 'persisted-id');
     await providerConfigStorage.getProviderSettings();
     await providerConfigStorage.__flushForTesting();
-    const base = await join(await homeDir(), '.quill', 'providers');
+    const base = await join(await homeDir(), '.mochi', 'providers');
     const path = await join(base, 'settings.json');
     expect(await exists(path)).toBe(true);
     const onDisk = JSON.parse(await readTextFile(path));
@@ -421,7 +421,7 @@ describe('useAiConfigStore.removeSelectedModelId', () => {
     expect(s.providerSettings.openai?.selectedModelIds).toEqual(['shared']);
   });
 
-  it('persists removal to ~/.quill/providers/settings.json', async () => {
+  it('persists removal to ~/.mochi/providers/settings.json', async () => {
     const store = useAiConfigStore.getState();
     store.addSelectedModelId('anthropic', 'keep');
     store.addSelectedModelId('anthropic', 'drop');
@@ -429,7 +429,7 @@ describe('useAiConfigStore.removeSelectedModelId', () => {
     await providerConfigStorage.__flushForTesting();
     store.removeSelectedModelId('anthropic', 'drop');
     await providerConfigStorage.__flushForTesting();
-    const base = await join(await homeDir(), '.quill', 'providers');
+    const base = await join(await homeDir(), '.mochi', 'providers');
     const path = await join(base, 'settings.json');
     const onDisk = JSON.parse(await readTextFile(path));
     expect(onDisk.anthropic.selectedModelIds).toEqual(['keep']);
@@ -480,7 +480,7 @@ describe('useAiConfigStore custom providers', () => {
     expect(slot?.selectedModelIds).toEqual([]);
   });
 
-  it('addCustomProvider persists the def to ~/.quill/providers/customer/providers.json', async () => {
+  it('addCustomProvider persists the def to ~/.mochi/providers/customer/providers.json', async () => {
     useAiConfigStore.getState().addCustomProvider({
       id: 'disk-test',
       name: 'Disk',
@@ -490,7 +490,7 @@ describe('useAiConfigStore custom providers', () => {
     // before we flush.
     await providerConfigStorage.getCustomerProviders();
     await providerConfigStorage.__flushForTesting();
-    const base = await join(await homeDir(), '.quill', 'providers');
+    const base = await join(await homeDir(), '.mochi', 'providers');
     const path = await join(base, 'customer', 'providers.json');
     expect(await exists(path)).toBe(true);
     const onDisk = JSON.parse(await readTextFile(path));
@@ -619,7 +619,7 @@ describe('providerConfigStorage atomic write (fs mock integration)', () => {
       adapterFamily: 'openai-completions',
     });
     await providerConfigStorage.__flushForTesting();
-    const base = await join(await homeDir(), '.quill', 'providers');
+    const base = await join(await homeDir(), '.mochi', 'providers');
     const finalPath = await join(base, 'customer', 'providers.json');
     // rename was called at least once with the .tmp → final move.
     const renameCalls = renameSpy.mock.calls.map((c) => `${c[0]} -> ${c[1]}`);

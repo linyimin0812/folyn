@@ -1,6 +1,6 @@
 [English](README.md) | [简体中文](README.zh.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-<h1 align="center">Quill エディター</h1>
+<h1 align="center">Mochi エディター</h1>
 
 <p align="center">
   ローカル優先 · Vault 分離 · AI ネイティブ<br/>
@@ -9,7 +9,7 @@
 
 <p align="center">
   <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue" />
-  <img alt="downloads" src="https://img.shields.io/github/downloads/linyimin0812/quill/total?label=downloads" />
+  <img alt="downloads" src="https://img.shields.io/github/downloads/linyimin0812/mochi/total?label=downloads" />
   <img alt="stack" src="https://img.shields.io/badge/Tauri-2-orange" />
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
@@ -18,14 +18,14 @@
 
 > ひとつのアプリに、すべての文脈を。Vault で各データを隔離し、markdown・ホワイトボード・ER 図・マインドマップをひとつのエディタに収め、AI エージェントをワークフローに直接接続します——すべてのデータはあなたのデバイスに残ります。
 
-## Why Quill
+## Why Mochi
 
 - **Vault の複数倉庫隔離** — プロジェクトやメモごとに独立した Vault を作成。データは互いに干渉せず、いつでも切り替え可能。ローカルが唯一の真のソースです。
 - **多形式編集** — Markdown（コンテナプラグイン：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible、および Graphviz / Mermaid / PlantUML 図表コンテナ）、リッチテキスト、CSV、JSON、markmap マインドマップ、dbml ER 図、drawio アーキテクチャ図、excalidraw 手描きホワイトボード、graphviz DOT——ひとつのエディタですべて対応。
-- **全形式プレビュー** — Office ドキュメント、音声・動画、アーカイブ、電子書籍、プレゼンや図面を Quill から離れずに表示。
+- **全形式プレビュー** — Office ドキュメント、音声・動画、アーカイブ、電子書籍、プレゼンや図面を Mochi から離れずに表示。
 - **AI 深度統合** — 6 種の CLI エージェントを内蔵アダプターで統合：Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder。モデルベンダーを横断して自由に切り替え、単一ベンダーに縛られません。
 - **デスクトップペットアシスタント** — デスクトップ常駐の相棒がスケジュール通知やタスク変更通知をプッシュし、クリックで LLM とのチャットを起動します。
-- **アプリ内ターミナル** — Quill 内でターミナルを開き、Claude Code / Codex などの CLI エージェントが現在のドキュメントを読み書き——ウィンドウ切り替え不要。
+- **アプリ内ターミナル** — Mochi 内でターミナルを開き、Claude Code / Codex などの CLI エージェントが現在のドキュメントを読み書き——ウィンドウ切り替え不要。
 - **プラグインシステム** — マイクロカーネル + プラグイン SDK アーキテクチャ。翻訳・スケジュール・Wiki・Clips・プロジェクト分析はプラグインとして提供され、サードパーティ拡張も可能。
 - **音声入力** — 音声をテキストに書き起こし自動で補正し、カーソル位置に直接貼り付け（現在は macOS のみ対応）。
 
@@ -38,7 +38,7 @@
 - **Windows**: 初回実行時に SmartScreen の「Windows によって PC は保護されました」警告が出ます。**実行の詳細情報 → 実行**をクリック。
 - **macOS**: インストール後に「開けません」または「破損しています」と表示された場合、Terminal で以下を実行：
   ```bash
-  xattr -cr /Applications/Quill.app
+  xattr -cr /Applications/Mochi.app
   ```
   その後、Launchpad から再度開いてください。
 
@@ -64,7 +64,7 @@
 
 ### 全形式プレビュー
 
-Office ドキュメント、音声・動画、アーカイブ、電子書籍、プレゼンや図面を Quill から離れずに表示——別途ソフトをインストールする必要はありません。
+Office ドキュメント、音声・動画、アーカイブ、電子書籍、プレゼンや図面を Mochi から離れずに表示——別途ソフトをインストールする必要はありません。
 
 <p align="center">
   <img src="docs/assets/screenshots/viewing-1.png" alt="Full-format preview" width="860" />
@@ -99,7 +99,7 @@ Settings → AI で CLI パスを設定するだけ。タスクや好みに合�
 
 ### アプリ内ターミナル
 
-Quill ワークスペース内にターミナルパネルを開き、エディタと並列表示、ファイルパスは自動同期。Claude Code / Codex CLI などのエージェントが現在のドキュメントを直接変更でき、AI の編集結果は即座にエディタに反映されます。コマンド出力はカーソル位置に貼り戻せ、「編集 → 呼び出し → 貼り戻し」を一条のパイプラインに圧縮します。
+Mochi ワークスペース内にターミナルパネルを開き、エディタと並列表示、ファイルパスは自動同期。Claude Code / Codex CLI などのエージェントが現在のドキュメントを直接変更でき、AI の編集結果は即座にエディタに反映されます。コマンド出力はカーソル位置に貼り戻せ、「編集 → 呼び出し → 貼り戻し」を一条のパイプラインに圧縮します。
 
 <p align="center">
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
@@ -146,7 +146,7 @@ Quill ワークスペース内にターミナルパネルを開き、エディ�
 ### Project Structure
 
 ```
-quill/
+mochi/
 ├── apps/
 │   └── desktop/              # Tauri desktop app
 │       ├── src/              # React frontend
@@ -161,7 +161,7 @@ quill/
 │   ├── container-plugins/    # Markdown container directive plugins
 │   ├── plugin-host/          # Plugin host runtime
 │   ├── plugin-sdk/           # Plugin SDK for third-party authors
-│   ├── create-quill-plugin/  # Plugin scaffolding CLI
+│   ├── create-mochi-plugin/  # Plugin scaffolding CLI
 │   └── vault-provider/       # Vault storage provider abstraction
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -174,7 +174,7 @@ quill/
 - **`container-plugins` パッケージ** — `:::directive` コンテナプラグインをカスタマイズしスラッシュメニューに登録
 - **`vault-provider` パッケージ** — カスタムストレージバックエンド（local／GitHub／WebDAV／S3 以外）
 - **`plugin-host` + `plugin-sdk`** — サードパーティプラグインは SDK プロトコルで能力を登録、マイクロカーネルがオンデマンドで読み込み
-- **`create-quill-plugin`** — 新しいプラグインを素早く始める足場 CLI
+- **`create-mochi-plugin`** — 新しいプラグインを素早く始める足場 CLI
 - **ファイル形式** — `apps/desktop/src/components/file-types/` に Handler を登録すれば新しいファイル形式を拡張
 
 詳細は `docs/plugins.html` を参照。

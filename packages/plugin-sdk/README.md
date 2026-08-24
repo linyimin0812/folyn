@@ -1,6 +1,6 @@
-# quill-plugin-sdk
+# mochi-plugin-sdk
 
-Quill Plugin SDK — the public type surface plugin authors program against.
+Mochi Plugin SDK — the public type surface plugin authors program against.
 Publishable to npm; no runtime.
 
 ## What's in here
@@ -23,11 +23,11 @@ tarball is just `.d.ts` + a tiny ESM barrel.
 ## Install
 
 ```bash
-npm install quill-plugin-sdk
+npm install mochi-plugin-sdk
 # or
-pnpm add quill-plugin-sdk
+pnpm add mochi-plugin-sdk
 # or
-yarn add quill-plugin-sdk
+yarn add mochi-plugin-sdk
 ```
 
 `react` is a peer dependency (`^18.0.0`) — install it yourself if your plugin
@@ -36,8 +36,8 @@ uses React types.
 ## Quick start
 
 ```ts
-import type { PluginManifest } from 'quill-plugin-sdk';
-import { definePlugin, validateManifest } from 'quill-plugin-sdk';
+import type { PluginManifest } from 'mochi-plugin-sdk';
+import { definePlugin, validateManifest } from 'mochi-plugin-sdk';
 
 const manifest: PluginManifest = {
   id: 'my-plugin',
@@ -57,7 +57,7 @@ in the source repo.
 
 ## Two execution tiers
 
-- **`sandbox`** — untrusted plugin in a sandboxed iframe (`quill-plugin://`
+- **`sandbox`** — untrusted plugin in a sandboxed iframe (`mochi-plugin://`
   origin), talks to the host via a vetted postMessage RPC. No raw Tauri APIs.
 - **`trusted`** — TOFU-pinned plugin `import()`-ed into the host realm; may
   contribute inline React/CodeMirror components and receive scoped Tauri
@@ -68,4 +68,4 @@ plugin development guide for the trade-offs.
 
 ## License
 
-Same as the Quill project (see the source repo).
+Same as the Mochi project (see the source repo).

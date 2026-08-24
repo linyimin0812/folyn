@@ -46,7 +46,7 @@
 - Windows 11 上启动应用（pet mode enabled）→ mascot 窗口可见且透明背景渲染正确
 - mascot 窗口 `alwaysOnTop` 行为对齐 macOS（`SetWindowPos(HWND_TOPMOST)`）
 - 多屏（主屏负坐标）`set_pet_position` 定位正确
-- Windows 任务栏右下角（或溢出区）可见 Quill 托盘图标，左键弹菜单
+- Windows 任务栏右下角（或溢出区）可见 Mochi 托盘图标，左键弹菜单
 - `cargo check --target x86_64-pc-windows-msvc` 在 macOS host 通过
 - 无 macOS 行为回归（CI macOS matrix 绿）
 - 受影响模块 lint / typecheck 绿

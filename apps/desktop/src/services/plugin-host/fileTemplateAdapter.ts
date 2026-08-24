@@ -21,8 +21,8 @@
  * group in `NEW_FILE_GROUPS`.
  */
 
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { FileTemplateContribution } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { FileTemplateContribution } from '@mochi/plugin-host';
 import { registerCommand } from '@/services/commandRegistry';
 import { useVaultStore } from '@/store/vaultStore';
 

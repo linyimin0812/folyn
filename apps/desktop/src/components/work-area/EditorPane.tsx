@@ -1,13 +1,13 @@
 import { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
-import { QuillEditor, type QuillEditorHandle } from '@/editor/EditorView';
+import { MochiEditor, type MochiEditorHandle } from '@/editor/EditorView';
 import { SlashMenu } from '../editor/SlashMenu';
 import { CodeBlockLangMenu } from '../editor/CodeBlockLangMenu';
 import { ImagePasteDialog, type ImageSaveConfig } from '../editor/ImagePasteDialog';
 import { type SlashMenuState } from '@/editor/extensions/SlashCommandExtension';
 import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
-import type { ContainerPlugin } from '@quill/container-plugins';
+import type { ContainerPlugin } from '@mochi/container-plugins';
 import type { FileTab } from '@/store/editorStore';
 import { DiffReviewBar } from './DiffReviewBar';
 import { DbmlStyleStatusButton } from '../file-types/dbml/DbmlStyleStatusButton';
@@ -25,11 +25,11 @@ interface EditorPaneProps {
   editorFontSize: number;
   style?: React.CSSProperties;
   /** ponytail: read-only mode for the version-history snapshot view. Passes
-   *  through to QuillEditor's `EditorState.readOnly.of(true)`. */
+   *  through to MochiEditor's `EditorState.readOnly.of(true)`. */
   readOnly?: boolean;
 }
 
-export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
+export const EditorPane = forwardRef<MochiEditorHandle, EditorPaneProps>(
   function EditorPane(
     {
       activeTab,
@@ -47,9 +47,9 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
     },
     ref,
   ) {
-    const editorRef = useRef<QuillEditorHandle>(null);
+    const editorRef = useRef<MochiEditorHandle>(null);
 
-    // Expose QuillEditorHandle to parent via forwarded ref
+    // Expose MochiEditorHandle to parent via forwarded ref
     useImperativeHandle(ref, () => ({
       getView: () => editorRef.current?.getView() ?? null,
       getScrollDOM: () => editorRef.current?.getScrollDOM() ?? null,
@@ -213,7 +213,7 @@ export const EditorPane = forwardRef<QuillEditorHandle, EditorPaneProps>(
               <span className="ft-spinner" /> 加载文件中…
             </div>
           )}
-          <QuillEditor
+          <MochiEditor
             key={`${activeTab?.id}-${showLineNumbers}-${tabSize}-${wrapColumn}-${editorFont}-${editorFontSize}`}
             ref={editorRef}
             filePath={activeTab?.path ?? ''}

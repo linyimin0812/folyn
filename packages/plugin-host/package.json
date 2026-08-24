@@ -1,7 +1,7 @@
 {
-  "name": "@quill/plugin-host",
+  "name": "@mochi/plugin-host",
   "version": "0.1.0",
-  "description": "Quill microkernel — plugin host, manifest schema, lifecycle, contribution points",
+  "description": "Mochi microkernel — plugin host, manifest schema, lifecycle, contribution points",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "quill-plugin-sdk": "workspace:*"
+    "mochi-plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

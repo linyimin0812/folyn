@@ -4,20 +4,20 @@
  * Wires a plugin's `contributes.tools[]` declarations into the command
  * registry: each tool becomes an "Open: <title>" command in ⌘P. Running
  * the command opens a Tauri WebviewWindow loading the plugin's HTML entry
- * via the `quill-plugin://localhost/<pluginId>/<entry>` URL (the existing
+ * via the `mochi-plugin://localhost/<pluginId>/<entry>` URL (the existing
  * URI scheme handler serves the bytes).
  *
  * Tier-agnostic — works for both sandbox and trusted tiers. The window's
- * origin is `quill-plugin://localhost` on macOS/Linux and
- * `http://quill-plugin.localhost` on Windows; in both cases the WebviewWindow
+ * origin is `mochi-plugin://localhost` on macOS/Linux and
+ * `http://mochi-plugin.localhost` on Windows; in both cases the WebviewWindow
  * is isolated from the main app's origin.
  *
  * Dispose unregisters the commands AND closes all of this plugin's open tool
  * windows so plugin deactivate reaps both the registration and the UI.
  */
 
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { ToolContribution } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { ToolContribution } from '@mochi/plugin-host';
 import { registerCommand } from '@/services/commandRegistry';
 import { useToolWindowStore } from '@/store/toolWindowStore';
 

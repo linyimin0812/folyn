@@ -139,7 +139,7 @@ describe('buildRunArgs (Windows)', () => {
   });
 
   it('uses the win-detect sidecar with /c and a separate path arg (no embedded quotes)', () => {
-    const tmpPath = 'C:\\Users\\linyimin\\.quill\\scripts-tmp\\quill-run-abc.js';
+    const tmpPath = 'C:\\Users\\linyimin\\.mochi\\scripts-tmp\\mochi-run-abc.js';
     const [name, args] = buildRunArgs(DEFAULT_SCRIPT_RUNTIMES[1], tmpPath);
     expect(name).toBe('win-detect');
     expect(args).toEqual(['/c', 'node', tmpPath]);
@@ -154,7 +154,7 @@ describe('buildRunArgs (Windows)', () => {
     // RUNTIMES was frozen at during module load (the shell runtime's default
     // flips powershell.exe↔/bin/sh, which would couple this test to the
     // module-load platform).
-    const tmpPath = 'C:\\Users\\My Name\\.quill\\scripts-tmp\\quill-run-def.js';
+    const tmpPath = 'C:\\Users\\My Name\\.mochi\\scripts-tmp\\mochi-run-def.js';
     const [name, args] = buildRunArgs(DEFAULT_SCRIPT_RUNTIMES[1], tmpPath);
     expect(name).toBe('win-detect');
     // Three elements: /c, the binary, and the path. We pass the path raw —
@@ -181,7 +181,7 @@ describe('buildRunArgs (Windows)', () => {
       versionArgs: ['-NoLogo', '-Command', '$PSVersionTable.PSVersion'],
       encoding: 'gbk',
     };
-    const tmpPath = 'C:\\Users\\linyimin\\.quill\\scripts-tmp\\quill-run-abc.ps1';
+    const tmpPath = 'C:\\Users\\linyimin\\.mochi\\scripts-tmp\\mochi-run-abc.ps1';
     const [name, args] = buildRunArgs(winShell, tmpPath);
     expect(name).toBe('win-detect');
     expect(args).toEqual(['/c', 'powershell.exe', tmpPath]);

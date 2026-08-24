@@ -1,16 +1,16 @@
 # Research: Remote Change Detection on S3 / WebDAV / GitHub for Incremental Sync
 
 - **Query**: How to efficiently detect remote changes on S3-compatible and WebDAV object storage for incremental sync, without re-downloading file bodies
-- **Scope**: external (API semantics) + internal (mapping onto `@quill/vault-provider`)
+- **Scope**: external (API semantics) + internal (mapping onto `@mochi/vault-provider`)
 - **Date**: 2026-07-05
 - **Note on sources**: This agent had no live web-search tool in this session. The API semantics below are stable, well-documented public facts. Canonical doc URLs are cited inline. Verify any version-specific detail (rate limits, header names) against the live docs before finalizing implementation.
 
-## TL;DR for Quill
+## TL;DR for Mochi
 
 - The realistic remote-change-detection primitive is **metadata-only listing** (S3 `ListObjectsV2`, WebDAV `PROPFIND`, GitHub `git/trees`+`commits`). None of these download file bodies — they return per-path metadata (etag/size/lastModified/sha) you can diff against a persisted "last-synced manifest".
 - **S3 ETag is NOT a content hash for multipart uploads** — it's `MD5(concat(per-part MD5s))-"<partCount>"`. For non-multipart PUTs it's the MD5 of the content. Mitigation: never compare ETags alone for "content same?" across clients; compare `Size + lastModified + ETag` and additionally store your own content hash (e.g. SHA-256, or Git blob SHA) at sync time for multipart-keyed objects.
 - **Polling is the only realistic path for a desktop app.** S3 has EventBridge→webhook but needs a public endpoint. WebDAV has no push. GitHub has webhooks but needs a server. So: poll on a debounce, persist a manifest, diff.
-- Recommended manifest shape: `Record<normalizedPath, { etag?, size, lastModifiedMs, contentHash?, remoteKey }>`. Persist **locally** at `.quill/sync-state.json` (per-vault), keyed by remote backend; do NOT write per-file `.quill-meta` sidecars on the remote (extra objects, extra cost, breaks E2E-encryption invariant). ETag pitfall handled by storing `contentHash` computed at push-time.
+- Recommended manifest shape: `Record<normalizedPath, { etag?, size, lastModifiedMs, contentHash?, remoteKey }>`. Persist **locally** at `.mochi/sync-state.json` (per-vault), keyed by remote backend; do NOT write per-file `.mochi-meta` sidecars on the remote (extra objects, extra cost, breaks E2E-encryption invariant). ETag pitfall handled by storing `contentHash` computed at push-time.
 - **Cost**: S3 = 1 `ListObjectsV2` (paginated, 1000/page). WebDAV = 1 `PROPFIND Depth: infinity` if allowed, else per-dir recursive. GitHub = 1 `git/trees?recursive=1` + optional `commits` comparison.
 
 ---
@@ -62,7 +62,7 @@ e.g. `8e9d3a1c2b5f...-7`. The part size and count are **not encoded**, so two cl
 - Comparing ETags across clients/uploads is unreliable for "same content?".
 - Comparing ETag against the *same* ETag you stored last sync *for the same object key* (without re-uploading via multipart) IS reliable for "did this object change since I last saw it?" — because if the object didn't change, its ETag is stable. The pitfall bites only when you try to use ETag as a content-DUP check across independently-uploaded copies.
 
-**Mitigations for Quill sync:**
+**Mitigations for Mochi sync:**
 
 1. Compare `Size` first — if size differs, content definitely differs.
 2. If size is equal, compare `(ETag, LastModified)` against last-synced manifest entry for that exact key. Same ETag → unchanged (you uploaded it last time; if remote re-uploaded via multipart with different part size, ETag changes and you'll treat it as modified → safe-fail to "needs fetch").
@@ -110,7 +110,7 @@ RFC 4918 §15 — `https://www.rfc-editor.org/rfc/rfc4918#section-15`
 - **Apache mod_dav**: configurable `DavDepthInfinity` directive, off by default in some distros.
 - **Box, pCloud, generic servers**: frequently reject `Depth: infinity`.
 
-**Fallback strategy for Quill WebDAV provider**: try `PROPFIND Depth: infinity` first; on `403`/`501`/`400` fall back to recursive per-directory `Depth: 1` walk (cache dir list, recurse into each collection). Track visited dirs to avoid loops (WebDAV allows cycles via bindings, rare).
+**Fallback strategy for Mochi WebDAV provider**: try `PROPFIND Depth: infinity` first; on `403`/`501`/`400` fall back to recursive per-directory `Depth: 1` walk (cache dir list, recurse into each collection). Track visited dirs to avoid loops (WebDAV allows cycles via bindings, rare).
 
 #### 2.3 Listing a tree efficiently
 
@@ -238,22 +238,22 @@ A "modified" verdict triggers a `readFile` (body fetch) only for the subset that
 
 **Recommendation: local sidecar, NOT remote per-file sidecars.**
 
-- **Local**: `<vaultRoot>/.quill/sync-state.json` (one file per vault, per backend). Hidden dir already a convention in Quill (`.quill/`). Pros: no extra remote objects, no remote writes on every sync, doesn't pollute the remote tree, doesn't break E2E-encryption invariant (a remote per-file `.quill-meta` would itself need encryption/decryption and would be visible metadata).
-- **Remote per-file `.quill-meta` sidecar**: rejected — doubles object count on S3 (cost), doubles WebDAV requests, exposes metadata leakage in E2E mode, and creates a bootstrapping problem (who syncs the meta sidecars?).
+- **Local**: `<vaultRoot>/.mochi/sync-state.json` (one file per vault, per backend). Hidden dir already a convention in Mochi (`.mochi/`). Pros: no extra remote objects, no remote writes on every sync, doesn't pollute the remote tree, doesn't break E2E-encryption invariant (a remote per-file `.mochi-meta` would itself need encryption/decryption and would be visible metadata).
+- **Remote per-file `.mochi-meta` sidecar**: rejected — doubles object count on S3 (cost), doubles WebDAV requests, exposes metadata leakage in E2E mode, and creates a bootstrapping problem (who syncs the meta sidecars?).
 
 Edge case: when E2E encryption is on, the manifest still lives locally in plaintext (it's just etag/size/hash of ciphertext + hash of plaintext) — acceptable because it never leaves the device. If the user rotates devices, the new device has no manifest → first sync = full reconciliation (treat every remote object as "needs fetch + decrypt", then build manifest). That's fine.
 
-#### 5.4 The multipart-ETag pitfall, concretely for Quill
+#### 5.4 The multipart-ETag pitfall, concretely for Mochi
 
-- Quill pushes a 20 MB markdown file to R2. The S3 SDK auto-multipart-uploads it (say 5 MB parts → ETag `...-4`).
+- Mochi pushes a 20 MB markdown file to R2. The S3 SDK auto-multipart-uploads it (say 5 MB parts → ETag `...-4`).
 - Another device, or rclone, re-uploads the identical 20 MB file but with 8 MB parts → ETag `...-3`.
-- A naive ETag-equality check says "remote differs from my manifest" even though content is identical → Quill re-downloads, decrypts, finds content equal, no-op. Wasted bandwidth but **no data loss**.
+- A naive ETag-equality check says "remote differs from my manifest" even though content is identical → Mochi re-downloads, decrypts, finds content equal, no-op. Wasted bandwidth but **no data loss**.
 - Mitigation in E2E mode: `contentHash` (SHA-256 of plaintext) is in your local manifest; after re-fetch, you compute the plaintext hash and compare — if equal, skip the write and update the manifest's etag to the new value (so next poll sees no change). This is the "lazily reconcile" pattern.
-- For non-E2E mode, accept the wasted fetch or force fixed-part-size multipart uploads from Quill so its own uploads are reproducible (doesn't help with third-party uploads).
+- For non-E2E mode, accept the wasted fetch or force fixed-part-size multipart uploads from Mochi so its own uploads are reproducible (doesn't help with third-party uploads).
 
 ---
 
-## 6. Mapping onto `@quill/vault-provider` (Quill-specific)
+## 6. Mapping onto `@mochi/vault-provider` (Mochi-specific)
 
 ### 6.1 Current state of providers
 
@@ -285,7 +285,7 @@ Inspected files (all currently stubs — return `[]` / log strings, no real back
 Per PRD, the sync engine lives at `apps/desktop/src/services/syncEngine.ts` (new). It should:
 
 1. Call `remoteProvider.listFiles(vaultRoot, true)` → build `remoteManifest`.
-2. Load `lastSyncedManifest` from `<vaultRoot>/.quill/sync-state.json`.
+2. Load `lastSyncedManifest` from `<vaultRoot>/.mochi/sync-state.json`.
 3. Diff (§5.2) → `{ added, modified, deleted }` remote paths.
 4. For added/modified: `remoteProvider.readFile(path)` → write via `TauriVaultProvider.writeFile`.
 5. For deleted: `TauriVaultProvider.deleteFile(path)`.
@@ -300,6 +300,6 @@ Per PRD, the sync engine lives at `apps/desktop/src/services/syncEngine.ts` (new
 
 ## Caveats / Not Found
 
-- **No live web search was performed this session** (no web-search MCP tool was available to this agent). The API semantics above are stable public facts; canonical doc URLs are cited. Before finalizing the sync engine, re-verify: (a) GitHub current rate-limit numbers (5000/hr authenticated is the long-standing value but check), (b) the S3 SDK's current `multipartUploadThreshold` default for whichever client lib Quill adopts (`@aws-sdk/client-s3` v3 typically auto-multipart above 8 MiB — confirm against the chosen version), (c) any R2 / MinIO deviations from S3 ETag behavior (R2 claims S3-compat; MinIO is S3-compat including multipart ETag formula).
+- **No live web search was performed this session** (no web-search MCP tool was available to this agent). The API semantics above are stable public facts; canonical doc URLs are cited. Before finalizing the sync engine, re-verify: (a) GitHub current rate-limit numbers (5000/hr authenticated is the long-standing value but check), (b) the S3 SDK's current `multipartUploadThreshold` default for whichever client lib Mochi adopts (`@aws-sdk/client-s3` v3 typically auto-multipart above 8 MiB — confirm against the chosen version), (c) any R2 / MinIO deviations from S3 ETag behavior (R2 claims S3-compat; MinIO is S3-compat including multipart ETag formula).
 - **Provider stubs**: `S3VaultProvider` / `WebDAVVaultProvider` / `GitHubVaultProvider` are currently inert stubs. The interface is in place but no real backend calls exist yet — the sync engine cannot rely on any current `listFiles` behavior; it must be implemented alongside the engine.
 - **E2E-encryption interaction**: when E2E is on, all of etag/size/lastModified refer to the **ciphertext** object on the remote. That's fine for change detection (ciphertext changed ⇒ plaintext changed, since encryption is deterministic per-key only with a fresh nonce/IV — AES-GCM with random IV means identical plaintext produces different ciphertext each push, so etag changes every push even for same content; `contentHash` of plaintext becomes the only way to dedupe). This is a real gotcha the implement agent must handle: in E2E mode, the manifest's `contentHash` field is mandatory for "did the plaintext actually change?" decisions, because remote etag will change on every push regardless of content.

@@ -1,6 +1,6 @@
 # __Name__
 
-A Quill plugin.
+A Mochi plugin.
 
 ## Develop
 
@@ -25,4 +25,4 @@ package — `manifest.json` + the bundled `index.js`. Open
 - `manifest.json` — declares contributions (`fileTypes`, `exporters`, `containers`, …). The root manifest's `main: "dist/index.js"` is rewritten to `"index.js"` when copied into `dist/`.
 - `build.mjs` — esbuild config that bundles `src/index.ts` → `dist/index.js`, then assembles `dist/` as the installable directory.
 
-See `quill-plugin-plantuml` in the external `quill-plugin-sdk` repo for a working reference.
+See `mochi-plugin-plantuml` in the external `mochi-plugin-sdk` repo for a working reference.

@@ -1,0 +1,3 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18next locale file conventions — 6 langs × {settings,ai}.json 改名时遵循 namespace/key 结构"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "tauri.conf.json window/identifier/file-association 改名时的约束"}

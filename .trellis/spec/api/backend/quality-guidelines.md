@@ -30,7 +30,7 @@
 Native menu is built declaratively in `lib.rs`:
 
 ```rust
-let app_menu = SubmenuBuilder::new(app, "Quill")
+let app_menu = SubmenuBuilder::new(app, "Mochi")
     .about(None)
     .separator()
     .services()

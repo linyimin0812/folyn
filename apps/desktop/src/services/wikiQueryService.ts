@@ -3,7 +3,7 @@
 import { wikiProvider } from './wikiProvider';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
-import { createAdapter, type CliStreamEvent } from '@quill/cli-adapter';
+import { createAdapter, type CliStreamEvent } from '@mochi/cli-adapter';
 import { collectTextFromStream } from './aiStreamUtils';
 import { getFeatureAgentSendOptions } from './featureAgentService';
 import { resolveBasePath } from '@/utils/pathResolver';

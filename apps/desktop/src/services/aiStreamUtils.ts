@@ -1,4 +1,4 @@
-import type { CliAdapter, CliStreamEvent } from '@quill/cli-adapter';
+import type { CliAdapter, CliStreamEvent } from '@mochi/cli-adapter';
 
 /** Structured event for UI display during AI streaming */
 export interface StreamEvent {

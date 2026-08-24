@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@quill/plugin-host';
+import type { PluginManifest } from '@mochi/plugin-host';
 import {
   registerTrustedPluginCommands,
   registerPluginFileTypes,
@@ -18,7 +18,7 @@ import {
 import type { PluginModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 import { getHandlerByExtension, getAllHandlers } from '@/components/file-types/registry';
-import { ContainerRegistry } from '@quill/container-plugins';
+import { ContainerRegistry } from '@mochi/container-plugins';
 
 // `registerPluginContainers` resolves `.svg` file-path icons via the
 // `readPluginFile` Tauri wrapper (which dynamic-imports `@tauri-apps/api/core`

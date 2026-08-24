@@ -61,7 +61,7 @@ export default defineConfig(() => {
         'jszip/dist/jszip': 'jszip',
       },
     },
-    base: isTauri ? '/' : '/quill',
+    base: isTauri ? '/' : '/mochi',
     clearScreen: false,
     build: {
       target: 'esnext',

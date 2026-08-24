@@ -11,7 +11,7 @@ Fix three regressions in the macOS desktop-pet MVP that survived the previous fi
 ## What I already know
 
 - Pet window: 120×120 px, transparent, alwaysOnTop, skipTaskbar, `visible:false` at creation (tauri.conf.json:38-53).
-- Sprite (ink-drop + quill) occupies the center 80×80; a 20 px transparent border surrounds it (PetApp.tsx:25-28).
+- Sprite (ink-drop + mochi) occupies the center 80×80; a 20 px transparent border surrounds it (PetApp.tsx:25-28).
 - Default position math: `computeDefaultPetPosition` in `apps/desktop/src/components/pet/petPosition.ts` uses `monitor.size.width/height` (physical px) with `PET_RIGHT_MARGIN=20`, `PET_BOTTOM_MARGIN=80`, `PET_MIN_TOP=40`.
 - Initial restore (PetApp.tsx:262-291): if `petPositionX/Y >= 0` (saved), invoke `set_pet_position` with the saved value, NO clamping. Otherwise compute default and persist it.
 - Drag: `handlePointerDown` (PetApp.tsx:64-143) records pre-drag window position, sets `draggingRef=true`, calls `startDragging()` (native, blocks until mouseup), then `draggingRef=false`, proactively sets `setIgnoreCursorEvents(false)`, compares pre/post position to decide click vs drag.

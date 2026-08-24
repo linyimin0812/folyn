@@ -11,8 +11,8 @@ import type { Capability, Model } from '@/services/modelRegistry/types';
  * app restarts so the user doesn't have to refetch on every launch.
  *
  * ponytail: persistence piggybacks on `settingsPersistence` (storageClient's
- * `settings:all` blob). No separate `~/.quill/models.json` file — the PRD
- * named a separate file, but Quill's existing convention is one aggregated
+ * `settings:all` blob). No separate `~/.mochi/models.json` file — the PRD
+ * named a separate file, but Mochi's existing convention is one aggregated
  * `storage.json` keyed by slice. Reusing the pattern is cheaper than a new
  * IO path + atomic-rename logic; storageClient already debounces + flushes.
  *
@@ -181,7 +181,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
           }));
           await writeUserProviderModels(providerId, fileModels);
           // ponytail: also merge capabilities back into the owner-map cache
-          // (`~/.quill/providers/provider-models.json`) so ownerMap grows
+          // (`~/.mochi/providers/provider-models.json`) so ownerMap grows
           // more complete over time — catalog (models.dev) caps that
           // OpenRouter doesn't list become available for future providers'
           // orphan lookups. ponytail: fetch path = INCREMENTAL — no `force`,
@@ -252,7 +252,7 @@ export const useModelRegistryStore = create<ModelRegistryState>((set, get) => ({
       return { modelsByProvider: { ...s.modelsByProvider, [providerId]: next } };
     });
     persist();
-    // ponytail: also persist to ~/.quill/providers/provider-models.json so
+    // ponytail: also persist to ~/.mochi/providers/provider-models.json so
     // user-edited capabilities survive in the owner-map cache file (not
     // just the storageClient blob). force=true because this is an explicit
     // user edit, not a fetch dedup — overwrite whatever's there.

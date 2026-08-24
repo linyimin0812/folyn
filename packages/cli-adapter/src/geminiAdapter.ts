@@ -29,7 +29,7 @@ interface GeminiStreamEvent {
 }
 
 /** Pure seam: map a parsed Gemini NDJSON event into zero or more
- *  `CliStreamEvent`s for the Quill adapter event bus.
+ *  `CliStreamEvent`s for the Mochi adapter event bus.
  *
  * Gemini event taxonomy (per `research/gemini-cli-shape.md` §3):
  * - `init` `{session_id, model}` → `session_id` (first event; persist id for
@@ -128,7 +128,7 @@ export function translateGeminiEvent(event: unknown): CliStreamEvent[] {
  *   `-p` for non-interactive headless mode, `-o stream-json` for NDJSON,
  *   `-y/--yolo` to auto-approve tool calls (Tauri sidecar has no TTY),
  *   `--skip-trust` to trust the workingDir for this session only
- *   (Quill workingDirs are not pre-trusted — research §2 Trust quirk).
+ *   (Mochi workingDirs are not pre-trusted — research §2 Trust quirk).
  * - Resume: same flags + `-r <sessionId>` — per `gemini --help`, `-r/
  *   --resume <id|latest|index>` continues a specific session.
  *

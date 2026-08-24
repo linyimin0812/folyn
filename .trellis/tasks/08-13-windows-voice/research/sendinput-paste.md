@@ -6,14 +6,14 @@
 
 ## TL;DR
 
-Windows 等价 macOS `insertion.rs` CGEvent Cmd+V：**`user32::SendInput` + `VK_CONTROL` + `VK_V` keydown/keyup 序列**。剪贴板预填**复用现有 `tauri-plugin-clipboard-manager`**（已在 `Cargo.toml:21`），不引 `OpenClipboard`/`SetClipboardData` FFI。`paste_log` 路径从 `~/Library/Logs/...` 改为 `dirs::cache_dir().unwrap().join("quill/logs")` → Windows 上 `%LOCALAPPDATA%\quill\logs\quill-voice-debug.log`。Accessibility 概念在 Windows 不存在（不需要 AX 权限），SendInput 在 foreground app 注入即可。
+Windows 等价 macOS `insertion.rs` CGEvent Cmd+V：**`user32::SendInput` + `VK_CONTROL` + `VK_V` keydown/keyup 序列**。剪贴板预填**复用现有 `tauri-plugin-clipboard-manager`**（已在 `Cargo.toml:21`），不引 `OpenClipboard`/`SetClipboardData` FFI。`paste_log` 路径从 `~/Library/Logs/...` 改为 `dirs::cache_dir().unwrap().join("mochi/logs")` → Windows 上 `%LOCALAPPDATA%\mochi\logs\mochi-voice-debug.log`。Accessibility 概念在 Windows 不存在（不需要 AX 权限），SendInput 在 foreground app 注入即可。
 
 ## Files Found
 
 | File Path | Description |
 |---|---|
 | `apps/desktop/src-tauri/src/voice/insertion.rs` | macOS CGEvent Cmd+V 实现，`#![cfg(target_os = "macos")]` gate，需 Windows cfg 新文件 `voice/insertion_win.rs` 或 cfg 分支 |
-| `apps/desktop/src-tauri/src/voice.rs:28-49` | `paste_log` 函数 macOS 实现，路径硬编码 `~/Library/Logs/quill-voice-debug.log`；需 Windows 路径分支 |
+| `apps/desktop/src-tauri/src/voice.rs:28-49` | `paste_log` 函数 macOS 实现，路径硬编码 `~/Library/Logs/mochi-voice-debug.log`；需 Windows 路径分支 |
 | `apps/desktop/src-tauri/src/voice.rs:676-709` | `voice_insert_text` macOS 命令，hide-orb + `spawn_blocking(insertion::insert_text)`；Windows 需 cfg 分支，不依赖 orb hide（无 NSPanel） |
 | `apps/desktop/src-tauri/src/voice/insertion.rs:84-116` | `insert_text`：clipboard write → `post_cmd_v()` → schedule restore；Windows 等价 |
 | `apps/desktop/src-tauri/src/voice/insertion.rs:195-310` | `post_cmd_v`：CGEvent FFI；Windows 用 SendInput FFI 替换 |
@@ -35,7 +35,7 @@ extern "C" {
 // KEY_V = 9, KCG_EVENT_FLAG_MASK_COMMAND = 0x00100000, KCG_HID_EVENT_TAP = 0
 ```
 
-行为：`CGEventPost(KCG_HID_EVENT_TAP, event)` 注入到**前台 app 的 key window**（不是 Quill 自己），与 macOS `voice_insert_text` 的 "cross-app insert" 语义一致。
+行为：`CGEventPost(KCG_HID_EVENT_TAP, event)` 注入到**前台 app 的 key window**（不是 Mochi 自己），与 macOS `voice_insert_text` 的 "cross-app insert" 语义一致。
 
 ## Windows SendInput 等价
 
@@ -96,7 +96,7 @@ fn post_ctrl_v() -> Result<(), String> {
 **关键差异 vs. macOS CGEvent**：
 - macOS `CGEventPost` 把事件注入到 HID event tap（系统级），key window 谁有焦点谁收到。
 - Windows `SendInput` 注入到**当前 foreground 窗口**的 input queue。前台窗口通常是用户正在 dictation 的目标 app。
-- macOS 行为对齐点：两者都是"注入前台，不是 Quill 自己"。Quill 主窗口在录音期间不应抢焦点——macOS 用 NSPanel `orderFrontRegardless` 非激活；Windows 上 `voice-orb` 窗口（若启用）需 `SetWindowPos HWND_TOPMOST` 但不 `SetForegroundWindow`，否则 SendInput 注入到 Quill 自己的 webview。
+- macOS 行为对齐点：两者都是"注入前台，不是 Mochi 自己"。Mochi 主窗口在录音期间不应抢焦点——macOS 用 NSPanel `orderFrontRegardless` 非激活；Windows 上 `voice-orb` 窗口（若启用）需 `SetWindowPos HWND_TOPMOST` 但不 `SetForegroundWindow`，否则 SendInput 注入到 Mochi 自己的 webview。
 
 ## Clipboard 路径
 
@@ -124,26 +124,26 @@ let prev = clipboard.read_text().ok();       // snapshot 恢复用
 
 ```rust
 let path = std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
-    .join("Library/Logs/quill-voice-debug.log");
+    .join("Library/Logs/mochi-voice-debug.log");
 ```
 
-PRD R11 要求改为 `dirs::cache_dir().join("quill/logs")`：
+PRD R11 要求改为 `dirs::cache_dir().join("mochi/logs")`：
 
 ```rust
 fn paste_log(msg: &str) {
     use std::io::Write;
     let dir = dirs::cache_dir()  // Cargo.toml 加 dirs dep（或走路过的 tauri::path::cache_dir()）
         .unwrap_or_else(|| std::env::temp_dir())
-        .join("quill").join("logs");
+        .join("mochi").join("logs");
     let _ = std::fs::create_dir_all(&dir);
-    let path = dir.join("quill-voice-debug.log");
+    let path = dir.join("mochi-voice-debug.log");
     // ... OpenOptions ...
 }
 ```
 
 **Windows 落位**：`dirs::cache_dir()` 在 Windows 返回 `%LOCALAPPDATA%`（即 `C:\Users\<user>\AppData\Local`），所以最终路径：
 ```
-C:\Users\<user>\AppData\Local\quill\logs\quill-voice-debug.log
+C:\Users\<user>\AppData\Local\mochi\logs\mochi-voice-debug.log
 ```
 
 `dirs` crate 已是 tauri 的 transitive dep（`tauri` 内部用），但**未直接声明**。推荐用 `tauri::path::cache_dir(&app)`（Tauri 2 API）避免新 dep：
@@ -151,7 +151,7 @@ C:\Users\<user>\AppData\Local\quill\logs\quill-voice-debug.log
 ```rust
 let dir = app.path().cache_dir()  // tauri::AppHandle 的 path()
     .unwrap_or_else(|_| std::env::temp_dir().to_path_buf())
-    .join("quill").join("logs");
+    .join("mochi").join("logs");
 ```
 
 但 `paste_log` 在 `insertion.rs` 是被 `post_cmd_v` 调用、无 `app` handle 入参。需重构 `paste_log` 签名传 `&AppHandle`，或用 `OnceLock<PathBuf>` 在 setup 时初始化全局路径（与 macOS 当前无 `app` 形参兼容）。
@@ -163,7 +163,7 @@ let dir = app.path().cache_dir()  // tauri::AppHandle 的 path()
 | 维度 | macOS | Windows |
 |---|---|---|
 | 注入 API | `CGEventPost` (HID tap) | `SendInput` (foreground queue) |
-| 权限 | Accessibility (AXIsProcessTrusted) | 无等价权限；UIPI（User Interface Privilege Isolation）下 Quill 若非 elevated 进程不能注入到 elevated 目标，普通用户场景无影响 |
+| 权限 | Accessibility (AXIsProcessTrusted) | 无等价权限；UIPI（User Interface Privilege Isolation）下 Mochi 若非 elevated 进程不能注入到 elevated 目标，普通用户场景无影响 |
 | 剪贴板 | `tauri-plugin-clipboard-manager` | 同（plugin 跨平台） |
 | Orb hide pre-paste | NSPanel hide 防 key window 干扰 | `voice-orb` Tauri window（若启用）需 `hide()` pre-paste 同 macOS；Tauri `window.hide()` 跨平台一致 |
 | 恢复剪贴板 | 750ms 后 thread::spawn | 同（thread::spawn 跨平台） |
@@ -173,15 +173,15 @@ let dir = app.path().cache_dir()  // tauri::AppHandle 的 path()
 
 1. `voice.rs:28-49` 移除 `#[cfg(target_os = "macos")]` gate，让 `paste_log` 跨平台可用。
 2. 路径函数提取 `paste_log_path() -> PathBuf`，cfg 分支：
-   - macos: `~/Library/Logs/quill-voice-debug.log`
-   - windows: `%LOCALAPPDATA%\quill\logs\quill-voice-debug.log`
-   - linux: `~/.cache/quill/logs/quill-voice-debug.log`
+   - macos: `~/Library/Logs/mochi-voice-debug.log`
+   - windows: `%LOCALAPPDATA%\mochi\logs\mochi-voice-debug.log`
+   - linux: `~/.cache/mochi/logs/mochi-voice-debug.log`
 3. `insertion.rs` 的 `paste_log` 调用（line 85, 96, 98, 101, 104, 113, 250, 263, 277, 280, 296, 301）全部走新 `paste_log`。
 4. Windows `insertion_win.rs` 复用同一 `paste_log`，无需新建。
 
 ## 风险点
 
-1. **SendInput 被 foreground 窗口拒绝**（UIPI）：若用户正在 dictation 到管理员进程而 Quill 非管理员，SendInput 失败。普通用户场景少见。**MVP 不处理**。
+1. **SendInput 被 foreground 窗口拒绝**（UIPI）：若用户正在 dictation 到管理员进程而 Mochi 非管理员，SendInput 失败。普通用户场景少见。**MVP 不处理**。
 2. **SendInput 时序**：Ctrl down → V down → V up → Ctrl up 必须同一 `SendInput` 调用（4 个 input）或紧密连续 4 个 `SendInput(1, ...)`。同批 4 个最稳。
 3. **clipboard race**：`tauri-plugin-clipboard-manager` 在 Windows 用 OLE clipboard，`write_text` 可能阻塞 10-50ms（OLE marshal）。`insertion.rs:84-116` 已包在 `spawn_blocking`（`voice.rs:705`），Windows 同路径。
 4. **`paste_log` 创建目录权限**：`%LOCALAPPDATA%` 用户可写，无障碍。

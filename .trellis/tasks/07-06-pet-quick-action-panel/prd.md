@@ -4,7 +4,7 @@
 
 Replace the pet's left-click behavior (currently a native OS context menu
 with 4 items) with a **second Tauri window `pet-panel`** that surfaces
-Quill's core capabilities in mini form: an 8-button launcher grid **plus an
+Mochi's core capabilities in mini form: an 8-button launcher grid **plus an
 embedded AI chat** with its own persistent, vault-free session. The pet
 becomes a one-click gateway to capture / navigate / ask, without first
 opening the full main window.
@@ -24,7 +24,7 @@ opening the full main window.
 * `PetMenuAction` contract designed for extension; tests assert frontend↔Rust
   action set stays in sync.
 * **AI send/stream pipeline is NOT coupled to `aiStore`** — it's
-  `@quill/cli-adapter`'s `CliAdapter` (`packages/cli-adapter/src/types.ts:99`,
+  `@mochi/cli-adapter`'s `CliAdapter` (`packages/cli-adapter/src/types.ts:99`,
   `baseAdapter.ts:11-16`): `start({cliPath, workingDir})` →
   `send(prompt, CliSendOptions)` → `onEvent(CliStreamEvent)`. Services like
   `clipService`, `wikiIngestService`, `planMyDayService` each create their own
@@ -32,7 +32,7 @@ opening the full main window.
   and stream independently. `services/aiStreamUtils.ts` exports
   `collectTextFromStream` + `StreamEvent` for reuse. → pet-panel can self-host
   a chat with its own adapter + store, no `aiStore`, no vault.
-* Quill capabilities ranked "quick-action-able": New Note
+* Mochi capabilities ranked "quick-action-able": New Note
   (`requestNewItem('file')`), Daily Note (`editorStore.openDailyNote`),
   Global Search (`searchStore.openPanel`), Clip from URL
   (`clipService.saveClipFromUrl`), Command Palette

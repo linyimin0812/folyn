@@ -7,7 +7,7 @@ import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useVaultStore } from '@/store/vaultStore';
 import { isTauri } from '@/utils/platform';
-import type { QuillEditorHandle } from '@/editor/EditorView';
+import type { MochiEditorHandle } from '@/editor/EditorView';
 import { EditorView } from '@codemirror/view';
 import { getHandlerById } from '../file-types/registry';
 import { WikiGraphView } from '../graph/WikiGraphView';
@@ -49,7 +49,7 @@ export function WorkArea() {
   const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
 
-  const editorRef = useRef<QuillEditorHandle>(null);
+  const editorRef = useRef<MochiEditorHandle>(null);
 
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;

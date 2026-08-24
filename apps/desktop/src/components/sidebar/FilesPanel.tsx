@@ -19,7 +19,7 @@ import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
-import type { VaultEntry } from '@quill/vault-provider';
+import type { VaultEntry } from '@mochi/vault-provider';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { setNewItemStarter } from '@/services/newItemBridge';
 import { setRevealPathStarter } from '@/services/revealPathBridge';

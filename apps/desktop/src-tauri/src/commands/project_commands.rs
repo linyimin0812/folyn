@@ -15,7 +15,7 @@ pub async fn git_clone(url: String, target_dir: String) -> Result<String, AppErr
     let output = std::process::Command::new("git")
         .args([
             "-c", "http.version=HTTP/1.1",
-            "-c", "http.userAgent=Quill-Desktop/1.0",
+            "-c", "http.userAgent=Mochi-Desktop/1.0",
             "-c", "http.lowSpeedLimit=1000",
             "-c", "http.lowSpeedTime=30",
             "clone", "--depth", "1", "--single-branch",

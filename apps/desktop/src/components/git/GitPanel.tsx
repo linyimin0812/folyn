@@ -32,7 +32,7 @@ interface ParsedStatus {
 
 /**
  * ponytail: parse `git status --short` lines into a plain-language list.
- * XY is the two-char code; the X/Y chars cover the cases Quill vaults
+ * XY is the two-char code; the X/Y chars cover the cases Mochi vaults
  * actually produce (no rename source detection — `R ` paths are "renamed").
  */
 function parseGitStatus(raw: string): ParsedStatus {

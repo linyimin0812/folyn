@@ -23,7 +23,7 @@ user save generated images into the active vault under `__attachments__/`.
 * `saveToWiki` (wikiQueryService.ts:103) writes a markdown file into the vault;
   mirror its pattern for image binary writes.
 * `vaultStore` exposes file-write APIs.
-* Chat history (`~/.quill/chat-sessions/<id>.json`) stores `{role, content}`
+* Chat history (`~/.mochi/chat-sessions/<id>.json`) stores `{role, content}`
   for assistant turns; no image field.
 
 ## Requirements

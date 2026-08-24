@@ -27,12 +27,12 @@ describe('injectPreviewBootstrap', () => {
     const out = injectPreviewBootstrap(src);
 
     const doc = parse(out);
-    const style = doc.querySelector('style[data-quill-preview="light"]');
+    const style = doc.querySelector('style[data-mochi-preview="light"]');
     expect(style).not.toBeNull();
     expect(style?.textContent).toContain('color-scheme:light');
     expect(style?.textContent).toContain('background:#fff');
 
-    const script = doc.querySelector('script[data-quill-preview="anchors"]');
+    const script = doc.querySelector('script[data-mochi-preview="anchors"]');
     expect(script).not.toBeNull();
     expect(script?.textContent).toContain("ev.preventDefault()");
     expect(script?.textContent).toContain("scrollIntoView");
@@ -57,8 +57,8 @@ describe('injectPreviewBootstrap', () => {
     expect(out.startsWith('<!DOCTYPE html>')).toBe(true);
     const doc = parse(out);
     expect(doc.querySelector('p')?.textContent).toContain('just a fragment');
-    expect(doc.querySelector('style[data-quill-preview="light"]')).not.toBeNull();
-    expect(doc.querySelector('script[data-quill-preview="anchors"]')).not.toBeNull();
+    expect(doc.querySelector('style[data-mochi-preview="light"]')).not.toBeNull();
+    expect(doc.querySelector('script[data-mochi-preview="anchors"]')).not.toBeNull();
     // DOMParser guarantees head/body exist for text/html.
     expect(doc.head).not.toBeNull();
     expect(doc.body).not.toBeNull();
@@ -69,15 +69,15 @@ describe('injectPreviewBootstrap', () => {
     const out = injectPreviewBootstrap(src);
 
     const doc = parse(out);
-    const userStyle = Array.from(doc.querySelectorAll('style')).find((s) => !s.hasAttribute('data-quill-preview'));
+    const userStyle = Array.from(doc.querySelectorAll('style')).find((s) => !s.hasAttribute('data-mochi-preview'));
     expect(userStyle?.textContent).toContain('color:red');
-    const userScript = Array.from(doc.querySelectorAll('script')).find((s) => !s.hasAttribute('data-quill-preview'));
+    const userScript = Array.from(doc.querySelectorAll('script')).find((s) => !s.hasAttribute('data-mochi-preview'));
     expect(userScript?.textContent).toContain('console.log(1)');
   });
 
   it('#5 anchor script implements #hash in-document scroll and non-# dead-link (string contract)', () => {
     const out = injectPreviewBootstrap('<!DOCTYPE html><html><head></head><body></body></html>');
-    const script = parse(out).querySelector('script[data-quill-preview="anchors"]')?.textContent ?? '';
+    const script = parse(out).querySelector('script[data-mochi-preview="anchors"]')?.textContent ?? '';
     // #hash path: querySelector(href) || [name=...] → scrollIntoView
     expect(script).toContain("href.charAt(0) === '#'");
     expect(script).toContain("document.querySelector(href)");
@@ -92,8 +92,8 @@ describe('injectPreviewBootstrap', () => {
     const out = injectPreviewBootstrap('   ');
     expect(out.startsWith('<!DOCTYPE html>')).toBe(true);
     const doc = parse(out);
-    expect(doc.querySelector('style[data-quill-preview="light"]')).not.toBeNull();
-    expect(doc.querySelector('script[data-quill-preview="anchors"]')).not.toBeNull();
+    expect(doc.querySelector('style[data-mochi-preview="light"]')).not.toBeNull();
+    expect(doc.querySelector('script[data-mochi-preview="anchors"]')).not.toBeNull();
   });
 
   it('#7 output is a single valid HTML document (no duplicate <html>)', () => {

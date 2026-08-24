@@ -3,7 +3,7 @@
   "name": "__Name__",
   "version": "__version__",
   "author": "__author__",
-  "quill": "__quill__",
+  "mochi": "__mochi__",
   "tier": "trusted",
   "main": "dist/index.js",
   "html": "",

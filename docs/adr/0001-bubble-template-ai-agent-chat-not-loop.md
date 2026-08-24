@@ -14,7 +14,7 @@ The "AI Agent" button in `BubbleTemplateBlock` (settings → notifications) is b
 - **System prompt is load-bearing.** With no tools and no file access, the AI must be told the `BubbleTemplate` schema, the mustache-like template syntax, the DOMPurify sanitization constraints, the `id='default'` collision rule, and the expected `\`\`\`json` output format. See Q4 of the grilling session.
 - **Image upload requires extending the rig backend.** `chat.rs` currently accepts `prompt: String` only. Supporting image content blocks needs `ChatParams.images`, `HistoryMsg` as an enum, and provider-specific serialization (Anthropic image block vs OpenAI `image_url`). HTML upload needs no backend change — HTML is text, injected into the prompt.
 - **Handoff protocol.** The chat does not call `addTemplate` directly. AI emits a `\`\`\`json` fenced `BubbleTemplate` JSON in its final reply; the modal scans for the last fence, shows an "导入此模板" button, and on click runs the existing `tryImport` validator — same path as user-pasted JSON. Sanitization (DOMPurify + CSP) is enforced at render time regardless of where the HTML came from.
-- **Session lifecycle.** `sessionId` persists across modal reopens (Q7=c); a "清空" button resets it. Orphaned session files in `~/.quill/chat-sessions/` are harmless.
+- **Session lifecycle.** `sessionId` persists across modal reopens (Q7=c); a "清空" button resets it. Orphaned session files in `~/.mochi/chat-sessions/` are harmless.
 
 ## Status
 

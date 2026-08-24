@@ -53,7 +53,7 @@ describe('createGrapesConfig', () => {
     expect(cfg.fromElement).toBe(false);
   });
 
-  it('#5 storageManager is false (Quill Zustand store owns persistence)', () => {
+  it('#5 storageManager is false (Mochi Zustand store owns persistence)', () => {
     const cfg = createGrapesConfig(makeOpts());
     expect(cfg.storageManager).toBe(false);
   });

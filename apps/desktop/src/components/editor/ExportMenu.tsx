@@ -59,7 +59,7 @@ export function ExportMenu() {
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      if (open) window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+      if (open) window.dispatchEvent(new CustomEvent('mochi:overlay-closed'));
     };
   }, [open]);
 

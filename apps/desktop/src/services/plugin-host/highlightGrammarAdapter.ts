@@ -18,8 +18,8 @@
  * a merged Disposable that unregisters all on deactivate.
  */
 
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { HighlightGrammarContribution, HighlightGrammarFn } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { HighlightGrammarContribution, HighlightGrammarFn } from '@mochi/plugin-host';
 import hljs from 'highlight.js';
 import type { PluginModule } from './contributionAdapters';
 

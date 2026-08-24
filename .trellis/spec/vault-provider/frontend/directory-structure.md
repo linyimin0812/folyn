@@ -9,7 +9,7 @@
 ```
 packages/vault-provider/
 ├── index.ts                       # Barrel exports
-├── package.json                   # @quill/vault-provider
+├── package.json                   # @mochi/vault-provider
 ├── tsconfig.json
 └── src/
     ├── types.ts                   # ProviderType, VaultPath, VaultCapabilities,

@@ -7,8 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ComponentType } from 'react';
-import type { PluginManifest, PluginContext } from '@quill/plugin-host';
-import { PluginHost } from '@quill/plugin-host';
+import type { PluginManifest, PluginContext } from '@mochi/plugin-host';
+import { PluginHost } from '@mochi/plugin-host';
 import {
   trustedLoader,
   setModuleResolver,
@@ -20,7 +20,7 @@ import type { PluginModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 import { getAllHandlers, getHandlerByExtension } from '@/components/file-types/registry';
 import { HandlerRegistry } from '@/components/file-types/HandlerRegistry';
-import { ContainerRegistry } from '@quill/container-plugins';
+import { ContainerRegistry } from '@mochi/container-plugins';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
 

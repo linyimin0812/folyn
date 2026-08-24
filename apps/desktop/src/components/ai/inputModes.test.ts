@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { registerInputMode, getInputModeDef, listInputModes, resolveSendOptions } from './inputModes';
-import type { CliSendOptions } from '@quill/cli-adapter';
+import type { CliSendOptions } from '@mochi/cli-adapter';
 
 describe('inputModes built-ins', () => {
   it('registers chat, agent and ask in display order (Chat → Agent → Ask)', () => {

@@ -11,7 +11,7 @@
 // scheduleStore directly. (prd.md says "minutes since midnight" — that is a doc
 // error; the store is the source of truth.)
 
-import { createAdapter } from '@quill/cli-adapter';
+import { createAdapter } from '@mochi/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAiConfigStore, getFeatureAdapter, getFeatureCliPath } from '@/store/aiConfigStore';
 import { useScheduleStore } from '@/store/scheduleStore';

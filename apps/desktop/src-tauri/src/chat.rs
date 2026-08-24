@@ -3,7 +3,7 @@
 //!
 //! `chat_stream` is one Tauri command: it streams assistant text deltas to the
 //! frontend over a `tauri::ipc::Channel<ChatChunk>`, and persists multi-turn
-//! history to `~/.quill/chat-sessions/<session_id>.json` so a session survives
+//! history to `~/.mochi/chat-sessions/<session_id>.json` so a session survives
 //! app restarts. Provider/key/model/baseUrl come from the frontend settings
 //! store (resolved per call, not env) — see PR2.
 
@@ -27,7 +27,7 @@ use rig_core::streaming::StreamedAssistantContent;
 
 use crate::errors::AppError;
 
-const PREAMBLE: &str = "You are Quill's writing assistant. Reply concisely and helpfully.";
+const PREAMBLE: &str = "You are Mochi's writing assistant. Reply concisely and helpfully.";
 
 /// One chunk pushed down the frontend `Channel`. Tagged so the JS side can
 /// `switch (msg.type)`; `rename_all` renames the variant tag (e.g. `Image` →
@@ -278,11 +278,11 @@ fn build_user_message(
     Message::User { content }
 }
 
-/// `~/.quill/chat-sessions/`, created if missing. Mirrors `plugins_dir` in
+/// `~/.mochi/chat-sessions/`, created if missing. Mirrors `plugins_dir` in
 /// `plugin_commands.rs` — same data-root convention.
 fn sessions_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     let home = app.path().home_dir().map_err(|e| e.to_string())?;
-    let dir = home.join(".quill").join("chat-sessions");
+    let dir = home.join(".mochi").join("chat-sessions");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
 }

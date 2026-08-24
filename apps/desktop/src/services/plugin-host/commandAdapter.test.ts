@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { PluginManifest } from '@quill/plugin-host';
+import type { PluginManifest } from '@mochi/plugin-host';
 import { registerPluginCommands } from './commandAdapter';
 import {
   getCommands,

@@ -1,6 +1,6 @@
-# Quill 插件开发指南
+# Mochi 插件开发指南
 
-Quill 的微内核让你可以在运行时扩展编辑器：装一个插件文件夹，它的文件类型、命令、
+Mochi 的微内核让你可以在运行时扩展编辑器：装一个插件文件夹，它的文件类型、命令、
 容器指令、功能面板或工具窗口立刻可用——无需重新编译、无需重新打包。
 
 本指南覆盖：manifest schema、两种执行 tier、contribution 点位、权限模型、生命周期、
@@ -40,18 +40,18 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 
 ### 安装 SDK
 
-用 `quill-plugin-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
+用 `mochi-plugin-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
 （manifest schema、贡献点、`PluginModule`、AI 能力类型，以及 `definePlugin`/
 `validateManifest` 等 dev helper）。它无运行时依赖；React 仅作 peer 类型
 （type-only 消费者在构建时被擦除）。
 
 ```bash
-npm install quill-plugin-sdk
+npm install mochi-plugin-sdk
 ```
 
 ```ts
 // index.ts —— trusted tier 插件入口模块
-import type { PluginModule, ExporterHandler } from "quill-plugin-sdk";
+import type { PluginModule, ExporterHandler } from "mochi-plugin-sdk";
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
@@ -62,15 +62,15 @@ export const exporters: Record<string, ExporterHandler> = {
 export const commands = { ping: () => console.info("pong") };
 ```
 
-内部 workspace 插件依赖 `@quill/plugin-host`（它 re-export 了完整 SDK 面）——
+内部 workspace 插件依赖 `@mochi/plugin-host`（它 re-export 了完整 SDK 面）——
 从两边 import 都可以。运行时微内核（`PluginHost`、`pluginHost` 单例）留在
-`@quill/plugin-host`；SDK 保持可发布、无运行时。
+`@mochi/plugin-host`；SDK 保持可发布、无运行时。
 
 ---
 
 ## 一览：host 对外提供什么
 
-一个 Quill 插件是 `~/.quill/plugins/<id>/` 下的一个文件夹，包含 `manifest.json`
+一个 Mochi 插件是 `~/.mochi/plugins/<id>/` 下的一个文件夹，包含 `manifest.json`
 
 - 资源文件。host 给你五样东西：
 
@@ -78,7 +78,7 @@ export const commands = { ping: () => console.info("pong") };
 
 | Tier      | 隔离                                                                 | 能力面                                  | 信任门槛                        |
 | --------- | -------------------------------------------------------------------- | --------------------------------------- | ------------------------------- |
-| `sandbox` | 独立 `WebviewWindow` 或 iframe，origin 为 `quill-plugin://localhost` | 仅能用 host RPC 桥，无 Tauri API        | 无（sandbox 本身就是边界）      |
+| `sandbox` | 独立 `WebviewWindow` 或 iframe，origin 为 `mochi-plugin://localhost` | 仅能用 host RPC 桥，无 Tauri API        | 无（sandbox 本身就是边界）      |
 | `trusted` | 主 webview realm（进程内）                                           | 完整 host realm + Zustand store + Tauri | TOFU：用户必须点 **批准并授权** |
 
 ### 2. Contribution 点位
@@ -103,7 +103,7 @@ export const commands = { ping: () => console.info("pong") };
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
 Sandbox 插件通过 `postMessage`（iframe 传输）或
-`fetch('quill-plugin://localhost/<id>/rpc', ...)`（工具窗口传输）调用 host 能力。
+`fetch('mochi-plugin://localhost/<id>/rpc', ...)`（工具窗口传输）调用 host 能力。
 两者都走同一个 `dispatchPluginRpc` 表——同样的权限校验、同样的路径解析。
 
 | 方法                    | 参数                | 所需权限                    | 返回值                                       |
@@ -137,7 +137,7 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 ### 4. manifest 校验规则（开发者必须遵守的规范）
 
 - `id`：kebab-case，`^[a-z0-9]+(-[a-z0-9]+)+$`（至少一个连字符）。
-  `~/.quill/plugins/` 下的文件夹名必须等于 `id`。
+  `~/.mochi/plugins/` 下的文件夹名必须等于 `id`。
 - `version`：非空字符串（建议 semver）。
 - `tier`：`"sandbox"` 或 `"trusted"`。
 - `main`：非空字符串（入口模块的相对路径）。
@@ -149,28 +149,28 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 
 ### 5. sandbox 插件的 CSP（HTML/JS 能做什么）
 
-每个 `quill-plugin://localhost/<id>/<file>` 响应都带这个 CSP header：
+每个 `mochi-plugin://localhost/<id>/<file>` 响应都带这个 CSP header：
 
 ```
 default-src 'none';
-  script-src 'unsafe-inline' quill-plugin:;
+  script-src 'unsafe-inline' mochi-plugin:;
   style-src  'unsafe-inline';
-  connect-src quill-plugin:;
+  connect-src mochi-plugin:;
 ```
 
 对开发者意味着：
 
 - ✓ HTML 中可内联 `<script>` 和 `<style>`。
 - ✓ `<script src="index.js">`（同 scheme，来自插件自己的文件）。
-- ✓ `fetch('quill-plugin://localhost/<id>/rpc', ...)`（RPC 桥）。
+- ✓ `fetch('mochi-plugin://localhost/<id>/rpc', ...)`（RPC 桥）。
 - ✗ 不能加载任何远程 script、style、font、image；也不能 `connect-src` 到其他 origin。
   需要网络访问就声明 `http.origins` 并调 `http:fetch` —— host 在 Rust 中发请求
   （不受 CSP 限制）。
-- ✗ 不能嵌入 iframe、不能用 blob: 启 web worker（只允许 `quill-plugin:`）。
+- ✗ 不能嵌入 iframe、不能用 blob: 启 web worker（只允许 `mochi-plugin:`）。
 - ✗ 没有 `default-src` 兜底——每个 directive 都显式声明。
 
-注：故意不用 `'self'`。Chromium 对 `quill-plugin://` 这类 custom scheme 不会把
-`'self'` 解析为文档 origin，必须显式写 scheme source `quill-plugin:`。
+注：故意不用 `'self'`。Chromium 对 `mochi-plugin://` 这类 custom scheme 不会把
+`'self'` 解析为文档 origin，必须显式写 scheme source `mochi-plugin:`。
 
 ---
 
@@ -181,13 +181,13 @@ default-src 'none';
 
 |                   | **sandbox**                                                                                                       | **trusted**                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Loader            | 隐藏 `<iframe sandbox="allow-scripts">`（无 `allow-same-origin`），从 `quill-plugin://localhost/<id>/<html>` 加载 | `import(/* @vite-ignore */ blobUrl)` 进 **主 webview realm**                                                |
+| Loader            | 隐藏 `<iframe sandbox="allow-scripts">`（无 `allow-same-origin`），从 `mochi-plugin://localhost/<id>/<html>` 加载 | `import(/* @vite-ignore */ blobUrl)` 进 **主 webview realm**                                                |
 | 隔离              | 跨 origin opaque origin；无父 DOM、无 Tauri API、无 localStorage                                                  | 无——运行在 host realm；可读 Zustand store、调 Tauri、操作 DOM                                               |
 | 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；`grant_plugin_capabilities` 加范围化 Tauri 能力（基本冗余——见 [权限模型](#权限模型)） |
 | 信任门槛          | 无（sandbox 本身就是边界）                                                                                        | TOFU：激活前必须 **批准并授权**                                                                             |
 | 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`      |
 | 热卸载            | 销毁 iframe 元素                                                                                                  | `dispose()` adapter + `URL.revokeObjectURL(blobUrl)`                                                        |
-| 打包要求          | HTML + JS 由 iframe 通过 `quill-plugin://` 加载                                                                   | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了）                                       |
+| 打包要求          | HTML + JS 由 iframe 通过 `mochi-plugin://` 加载                                                                   | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了）                                       |
 
 **什么时候用哪个**：
 
@@ -206,7 +206,7 @@ default-src 'none';
 ```jsonc
 {
   // 必填。全局唯一的 kebab-case id（匹配 ^[a-z0-9]+(-[a-z0-9]+)+$）。
-  // ~/.quill/plugins/ 下的文件夹名必须等于此 id。
+  // ~/.mochi/plugins/ 下的文件夹名必须等于此 id。
   "id": "my-plugin",
   // 必填。人类可读的显示名。
   "name": "My Plugin",
@@ -214,7 +214,7 @@ default-src 'none';
   "version": "1.0.0",
   "author": "Jane Doe",
   // 引擎兼容性，如 ">=0.1.0"。可选但建议。
-  "quill": ">=0.1.0",
+  "mochi": ">=0.1.0",
   // 必填。"sandbox" 或 "trusted"（见上）。
   "tier": "trusted",
   // 必填。入口模块路径（相对插件文件夹）。
@@ -441,23 +441,23 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 ```
 
 - `window: true` 把工具放进独立的 Tauri `WebviewWindow`，从
-  `quill-plugin://localhost/<id>/<entry>` 加载 HTML。窗口 origin 为
-  `quill-plugin://localhost`（macOS/Linux）/ `http://quill-plugin.localhost`（Windows）
+  `mochi-plugin://localhost/<id>/<entry>` 加载 HTML。窗口 origin 为
+  `mochi-plugin://localhost`（macOS/Linux）/ `http://mochi-plugin.localhost`（Windows）
   ——与主 app 隔离。`window: false` 会内联渲染（MVP：仅支持 `window: true`；
   内联 panel 是后续工作）。
 - `entry` 是 HTML 入口文件（sandbox tier）。trusted tier 用 component entry-ref
   （推迟——本 MVP 仅出 sandbox 工具窗口）。
 - host 为每个 tool 注册一个 "Open: <title>" 命令，⌘P → "Open: Hello Tool"
   就能创建新窗口。多实例：每次调用开一个新窗口，label 唯一。
-- 插件 HTML 通过 `quill-plugin://` scheme 的 **fetch-RPC** 访问 host 能力：
+- 插件 HTML 通过 `mochi-plugin://` scheme 的 **fetch-RPC** 访问 host 能力：
 
   ```js
-  // POST quill-plugin://localhost/<plugin-id>/rpc
+  // POST mochi-plugin://localhost/<plugin-id>/rpc
   // body: { "method": "<rpc-method>", "params": { ... } }
   // 响应: 成功 → 200 + <返回值>（按方法不同，对象/string/null）；
   //       失败 → 200 + { "error": "<msg>" }；
   //       超时 30s → 504 + { "error": "rpc timeout" }。
-  const res = await fetch("quill-plugin://localhost/<plugin-id>/rpc", {
+  const res = await fetch("mochi-plugin://localhost/<plugin-id>/rpc", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -588,7 +588,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 - ponytail：renderer 是 host-realm React（trusted blob `import()` 共用 host 的
   Reactor）；自带 React bundle 会触发 "Invalid hook call" 双 React 错误。用
   `window.React` 经 `resolveReact()` helper 拿（与下方 `resolveCodemirror()` 同
-  形）。规范形态见 `quill-plugin-sdk/quill-plugin-plantuml/src/index.ts` 的
+  形）。规范形态见 `mochi-plugin-sdk/mochi-plugin-plantuml/src/index.ts` 的
   `PlantUmlMarkdownBlock`。
 
 ### editorLanguages（仅 trusted）
@@ -614,7 +614,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   mismatch——和自带 React bundle 是同一种失败）。用 `resolveCodemirror()` helper
   懒加载 host 的 `@codemirror/language`，从 `window.codemirrorLanguage` 拿
   （host 在 `main.tsx` 中于任何 trusted 插件 `import()` 前赋值）。规范形态见
-  `quill-plugin-sdk/quill-plugin-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
+  `mochi-plugin-sdk/mochi-plugin-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
   `window.React` 的处理镜像。
 
 ---
@@ -646,7 +646,7 @@ export function deactivate(ctx: PluginContext) { /* 可选 */ }
 `markdownCodeRenderers` 的 key 对应 manifest 的 `component` 字符串；
 `editorLanguages` 的 key 对应 `entry`。完整四 map 示例（`handlers`、`exporters`、
 `markdownCodeRenderers`、`containers`、`exportEnhancers`、`editorLanguages`）见
-`quill-plugin-sdk/quill-plugin-plantuml`。
+`mochi-plugin-sdk/mochi-plugin-plantuml`。
 
 也接受 default-export 工厂 `(ctx) => PluginModule`（loader 会归一两种形态）。详见
 `contributionAdapters.ts` 的具体解析规则。
@@ -657,7 +657,7 @@ Trusted loader 把你的 `main` 包成 **blob URL** 再 `import()`。Blob URL �
 所以：
 
 - **相对 import 解析不了**（`./utils.js` 会失败）
-- **远程 import 被 `quill-plugin://` CSP 拦截**
+- **远程 import 被 `mochi-plugin://` CSP 拦截**
 - **bare specifier**（`react`、`@/store/...`）只有在 Vite 让其作为运行时 `import()`
   时，才能解析到 host realm 已加载的模块。保险起见，**打包你的依赖**（Vite/Rollup/
   esbuild），让 blob-URL `import()` 完全自包含。
@@ -688,7 +688,7 @@ trusted 插件里直接 `fetch()` 或 `<img src=remote>` 在打包构建下会�
 **第 2 步 —— 在 `activate()` 缓存 `ctx.http`，到处复用：**
 
 ```ts
-import type { PluginContext, PluginHttpCapability } from "quill-plugin-sdk";
+import type { PluginContext, PluginHttpCapability } from "mochi-plugin-sdk";
 
 let hostHttp: PluginHttpCapability | undefined;
 export async function activate(ctx: PluginContext) { hostHttp = ctx.http; }
@@ -712,7 +712,7 @@ const data = JSON.parse(body);
 ```
 
 **为什么这么设计**：manifest 是单一真相源——新增远程 origin 不需要改
-Quill 源码或主窗口 CSP。Host 在两处强制校验 allowlist（JS 侧快失败 + Rust 侧
+Mochi 源码或主窗口 CSP。Host 在两处强制校验 allowlist（JS 侧快失败 + Rust 侧
 从磁盘 manifest 二次校验）。
 
 **渲染格式**：优先 `data:image/svg+xml;base64,...` URL，不要用 `blob:` URL
@@ -809,7 +809,7 @@ Trusted 插件运行在 **主 webview realm**，本身已有 `capabilities/defau
 
 ## AI 能力（`permissions.ai`）
 
-Quill 的 AI 面（chat 走 `runRigChat`、feature agent 走 `runFeatureAgent`）以
+Mochi 的 AI 面（chat 走 `runRigChat`、feature agent 走 `runFeatureAgent`）以
 host 中介的能力暴露给插件。host 持有 provider/model/apiKey；插件永远看不到凭证。
 
 ### 权限声明
@@ -883,7 +883,7 @@ i18n bundle**——host 的 `t()` 不暴露，只传 locale 字符串（如 `'zh
 ### Trusted tier —— `PluginContext.env`
 
 ```ts
-import type { PluginContext } from "quill-plugin-sdk";
+import type { PluginContext } from "mochi-plugin-sdk";
 
 export function activate(ctx: PluginContext) {
   console.log("theme:", ctx.env?.theme, "locale:", ctx.env?.locale);
@@ -1008,25 +1008,25 @@ PR4 在其上加 **ed25519 签名脚手架**：
 
 ## 本地开发
 
-### 把文件夹丢进 ~/.quill/plugins/
+### 把文件夹丢进 ~/.mochi/plugins/
 
-最简单的 dev loop：把插件文件夹复制到 `~/.quill/plugins/<plugin-id>/`。下次 app
+最简单的 dev loop：把插件文件夹复制到 `~/.mochi/plugins/<plugin-id>/`。下次 app
 启动时 `App.tsx` 的 hydrate 循环读 `plugins.json` + 各 manifest 安装/激活。Sandbox
-插件的 HTML/JS 改动通过重载 app 即可生效（iframe 重新从 `quill-plugin://` fetch）。
+插件的 HTML/JS 改动通过重载 app 即可生效（iframe 重新从 `mochi-plugin://` fetch）。
 Trusted 插件则 deactivate → activate 拿新代码（loader 每次激活创建新 blob URL）。
 
 ### 从文件夹安装的 UI
 
 用 Settings → Plugins → 从文件夹安装…，选你的 dev 文件夹。文件夹名必须是插件
-kebab-case id。会把文件夹复制进 `~/.quill/plugins/<id>/` 并安装。
+kebab-case id。会把文件夹复制进 `~/.mochi/plugins/<id>/` 并安装。
 
 ### Dev server（sandbox tier）
 
-因为 `html` 从 `quill-plugin://localhost/<id>/<html>` 加载，不能直接指向
+因为 `html` 从 `mochi-plugin://localhost/<id>/<html>` 加载，不能直接指向
 `http://localhost:5173`（跨 origin）。热重载方案：
 
 - 每次改动后重装（小插件最快），或
-- 跑 dev server 并通过 `quill-plugin://` scheme 代理（未来增强——MVP 没有）。
+- 跑 dev server 并通过 `mochi-plugin://` scheme 代理（未来增强——MVP 没有）。
 
 ### Trusted tier + Vite
 
@@ -1050,12 +1050,12 @@ export default defineConfig({
 ## 打包
 
 MVP：**未打包的文件夹**。安装命令把包含 `manifest.json` + 资源的文件夹复制进
-`~/.quill/plugins/<id>/`。目前不支持 zip / tarball / npm-pack——zip 解压明确推迟。
+`~/.mochi/plugins/<id>/`。目前不支持 zip / tarball / npm-pack——zip 解压明确推迟。
 
 今天分发插件的方式：发文件夹（自己 zip 给用户下载；用户解压到本地路径，通过文件夹
 对话框安装）。
 
-未来：`.quill-plugin` archive（文件夹的 zip）+ marketplace 下载会在签名链强制后上线。
+未来：`.mochi-plugin` archive（文件夹的 zip）+ marketplace 下载会在签名链强制后上线。
 ed25519 脚手架（见上）已为其就位。
 
 ---

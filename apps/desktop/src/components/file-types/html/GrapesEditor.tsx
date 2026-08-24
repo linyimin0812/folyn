@@ -77,7 +77,7 @@ export function GrapesEditor({ content, onChange }: GrapesEditorProps) {
       {/* Center: canvas — always present, flexes to full width when the
           right panel is hidden. */}
       <div className="flex-1 flex flex-col overflow-hidden bg-surf2">
-        <div ref={containerRef} className="flex-1 overflow-hidden quill-grapes-root" />
+        <div ref={containerRef} className="flex-1 overflow-hidden mochi-grapes-root" />
       </div>
 
       {/* Right: styles | layers | traits.
@@ -89,7 +89,7 @@ export function GrapesEditor({ content, onChange }: GrapesEditorProps) {
           the next init. The canvas column flexes to full width naturally
           because the hidden panel no longer claims layout space. */}
       <div
-        className={`w-[260px] shrink-0 border-l border-brd bg-panel overflow-hidden quill-grapes-root ${
+        className={`w-[260px] shrink-0 border-l border-brd bg-panel overflow-hidden mochi-grapes-root ${
           panelVisible ? 'flex flex-col' : 'hidden'
         }`}
       >
@@ -130,11 +130,11 @@ export function GrapesEditor({ content, onChange }: GrapesEditorProps) {
             init), shown only on the styles tab. */}
         <div
           ref={selectorsRef}
-          className={`shrink-0 border-b border-brd max-h-[120px] overflow-y-auto quill-no-scrollbar ${
+          className={`shrink-0 border-b border-brd max-h-[120px] overflow-y-auto mochi-no-scrollbar ${
             activeTab === 'styles' ? 'block' : 'hidden'
           }`}
         />
-        <div className="flex-1 overflow-y-auto quill-no-scrollbar">
+        <div className="flex-1 overflow-y-auto mochi-no-scrollbar">
           <div ref={stylesRef} className={activeTab === 'styles' ? 'block' : 'hidden'} />
           <div ref={layersRef} className={activeTab === 'layers' ? 'block' : 'hidden'} />
           <div ref={traitsRef} className={activeTab === 'traits' ? 'block' : 'hidden'} />

@@ -27,7 +27,7 @@ export interface VaultConfigState {
 }
 
 export const useVaultConfigStore = create<VaultConfigState>((set) => ({
-  vaultPath: '~/Documents/quill/my-notes',
+  vaultPath: '~/Documents/mochi/my-notes',
   imagePath: 'assets/images/',
   docExtension: '.md',
   watchFileChanges: true,

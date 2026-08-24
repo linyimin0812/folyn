@@ -2,7 +2,7 @@
 
 # API de notification externe du Pet
 
-Le pet de bureau Quill fait tourner un service HTTP **limité à 127.0.0.1** à l'exécution. Les applications externes
+Le pet de bureau Mochi fait tourner un service HTTP **limité à 127.0.0.1** à l'exécution. Les applications externes
 (scripts, cron, CI, autres apps de bureau) peuvent déclencher des notifications via celui-ci.
 
 - Port par défaut : `17382`. S'il est occupé, l'app auto-essaie jusqu'à `17400` ; le port réel est affiché dans
@@ -99,7 +99,7 @@ Avec données transmises + modèle + identifiant d'appelant :
 
 ```bash
 curl -XPOST 127.0.0.1:17382/pet/action \
-  -d '{"action":"notify","text":"CI échouée","source":"github","template":"glass","data":{"repo":"quill","runId":42}}'
+  -d '{"action":"notify","text":"CI échouée","source":"github","template":"glass","data":{"repo":"mochi","runId":42}}'
 ```
 
 Avec lancement externe (ouvrir les logs en un clic sur échec CI) :

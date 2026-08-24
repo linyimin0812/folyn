@@ -13,28 +13,28 @@
   },
   "page": {
     "index": {
-      "title": "Quill — Coffre de connaissances local-first",
-      "description": "Quill est une application bureau local-first de gestion des connaissances : isolation multi-coffres, édition et aperçu multi-formats, intégration IA avancée, système de plugins et saisie vocale."
+      "title": "Mochi — Coffre de connaissances local-first",
+      "description": "Mochi est une application bureau local-first de gestion des connaissances : isolation multi-coffres, édition et aperçu multi-formats, intégration IA avancée, système de plugins et saisie vocale."
     },
-    "vault": {"title": "Isolation multi-coffres Vault — Quill"},
-    "editing": {"title": "Édition multi-formats — Quill"},
-    "viewing": {"title": "Aperçu universel des formats — Quill"},
-    "ai": {"title": "Intégration IA avancée — Quill"},
-    "pet": {"title": "Assistant animal de bureau — Quill"},
-    "plugins": {"title": "Système de plugins — Quill"},
-    "terminal": {"title": "Terminal intégré — Quill"},
-    "voice": {"title": "Saisie vocale — Quill"}
+    "vault": {"title": "Isolation multi-coffres Vault — Mochi"},
+    "editing": {"title": "Édition multi-formats — Mochi"},
+    "viewing": {"title": "Aperçu universel des formats — Mochi"},
+    "ai": {"title": "Intégration IA avancée — Mochi"},
+    "pet": {"title": "Assistant animal de bureau — Mochi"},
+    "plugins": {"title": "Système de plugins — Mochi"},
+    "terminal": {"title": "Terminal intégré — Mochi"},
+    "voice": {"title": "Saisie vocale — Mochi"}
   },
   "hero": {
     "eyebrow": "local-first · vault-based · ai-native",
     "h1": "Une application, tout votre contexte",
-    "lede": "Quill est une application bureau local-first de gestion des connaissances. Elle isole chaque ensemble de données dans un Vault, réunit markdown, tableaux blancs, diagrammes ER et cartes mentales dans un seul éditeur et connecte les agents IA directement à votre flux — tout reste sur vos propres appareils.",
+    "lede": "Mochi est une application bureau local-first de gestion des connaissances. Elle isole chaque ensemble de données dans un Vault, réunit markdown, tableaux blancs, diagrammes ER et cartes mentales dans un seul éditeur et connecte les agents IA directement à votre flux — tout reste sur vos propres appareils.",
     "cta": {
-      "download": "Télécharger Quill",
+      "download": "Télécharger Mochi",
       "capabilities": "Voir toutes les capacités"
     },
     "shot": {
-      "empty": "(Capture de l'interface principale de Quill)",
+      "empty": "(Capture de l'interface principale de Mochi)",
       "loading": "Chargement…"
     },
     "status": {
@@ -60,7 +60,7 @@
     },
     "viewing": {
       "title": "Aperçu universel des formats",
-      "desc": "Documents Office, audio/vidéo, archives, livres électroniques, plans — visualisez-les sans quitter Quill."
+      "desc": "Documents Office, audio/vidéo, archives, livres électroniques, plans — visualisez-les sans quitter Mochi."
     },
     "ai": {
       "title": "Intégration IA avancée",
@@ -83,14 +83,14 @@
     },
     "terminal": {
       "title": "Terminal intégré",
-      "desc": "Ouvrez un terminal dans Quill et laissez Claude Code, Codex et autres agents CLI éditer le document courant — sans changer de fenêtre.",
+      "desc": "Ouvrez un terminal dans Mochi et laissez Claude Code, Codex et autres agents CLI éditer le document courant — sans changer de fenêtre.",
       "tags": {"shell": "shell intégré"}
     }
   },
   "vault": {
     "breadcrumb_page": "Vault",
     "h1": "Un coffre, une frontière",
-    "lede": "Un Vault est la plus petite unité d'isolation des données dans Quill. Différents projets et domaines de connaissance vivent dans leurs propres coffres — ils ne s'interfèrent pas et ne se partagent pas. Vous décidez ce qui va ensemble et ce qui reste séparé.",
+    "lede": "Un Vault est la plus petite unité d'isolation des données dans Mochi. Différents projets et domaines de connaissance vivent dans leurs propres coffres — ils ne s'interfèrent pas et ne se partagent pas. Vous décidez ce qui va ensemble et ce qui reste séparé.",
     "feature": {
       "isolation": {
         "k": "Gestion isolée",
@@ -117,7 +117,7 @@
   "editing": {
     "breadcrumb_page": "Édition multi-formats",
     "h1": "Un éditeur pour toutes les formes d'idées",
-    "lede": "Du texte brut aux données structurées, des organigrammes aux tableaux blancs à main levée — Quill rassemble les scénarios d'édition courants dans une seule app, sans sauter d'outil en outil.",
+    "lede": "Du texte brut aux données structurées, des organigrammes aux tableaux blancs à main levée — Mochi rassemble les scénarios d'édition courants dans une seule app, sans sauter d'outil en outil.",
     "feature": {
       "markdown": {
         "k": "Markdown",
@@ -129,7 +129,7 @@
       },
       "structured": {
         "k": "Données structurées",
-        "v": "CSV et JSON s'ouvrent et s'éditent dans Quill — pas besoin de tableur ni d'outil de code externe."
+        "v": "CSV et JSON s'ouvrent et s'éditent dans Mochi — pas besoin de tableur ni d'outil de code externe."
       },
       "mindmap": {
         "k": "Carte mentale",
@@ -153,9 +153,9 @@
   "viewing": {
     "breadcrumb_page": "Aperçu universel",
     "h1": "Lire chaque fichier sans changer d'app",
-    "lede": "Un coffre contient inévitablement de nombreux formats. Quill intègre un aperçu pour les ouvrir sans quitter l'app ni installer de logiciel supplémentaire.",
+    "lede": "Un coffre contient inévitablement de nombreux formats. Mochi intègre un aperçu pour les ouvrir sans quitter l'app ni installer de logiciel supplémentaire.",
     "feature": {
-      "office": {"k": "Documents Office", "v": "Visualisez Word, Excel, PPT et autres documents bureautiques directement dans Quill — aucune suite externe requise."},
+      "office": {"k": "Documents Office", "v": "Visualisez Word, Excel, PPT et autres documents bureautiques directement dans Mochi — aucune suite externe requise."},
       "media": {"k": "Audio et vidéo", "v": "Lecture en ligne de fichiers audio et vidéo ; idéal pour organiser enregistrements de réunions, clips de tutoriels et autres médias."},
       "archive": {"k": "Archives", "v": "Inspectez la structure et le contenu d'une archive sans la décompresser."},
       "ebook": {"k": "Livres électroniques", "v": "Lecture de formats de livres électroniques avec aperçu intégré — bibliothèque et lecture au même endroit."},
@@ -173,9 +173,9 @@
   "ai": {
     "breadcrumb_page": "Intégration IA",
     "h1": "Connectez les agents IA à vos notes",
-    "lede": "Quill ne vous lie pas à un seul fournisseur de modèles. Il adapte les principaux agents CLI directement dans l'éditeur — appelez-les pour l'analyse, la génération ou le refactoring pendant que vous écrivez et organisez la connaissance.",
+    "lede": "Mochi ne vous lie pas à un seul fournisseur de modèles. Il adapte les principaux agents CLI directement dans l'éditeur — appelez-les pour l'analyse, la génération ou le refactoring pendant que vous écrivez et organisez la connaissance.",
     "feature": {
-      "cli": {"k": "Adaptateurs CLI", "v": "Prise en charge intégrée pour les agents CLI suivants, appelables directement depuis Quill : Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
+      "cli": {"k": "Adaptateurs CLI", "v": "Prise en charge intégrée pour les agents CLI suivants, appelables directement depuis Mochi : Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder."},
       "vendors": {"k": "Plusieurs fournisseurs", "v": "Plusieurs fournisseurs de modèles pris en charge — changez selon la tâche ou la préférence, sans dépendance à un seul fournisseur."}
     },
     "shots": {
@@ -207,7 +207,7 @@
   "plugins": {
     "breadcrumb_page": "Système de plugins",
     "h1": "Faites pousser ce dont vous avez besoin, sur un micro-noyau",
-    "lede": "Quill garde le noyau léger ; la plupart des fonctionnalités sont des plugins. Les plugins intégrés couvrent les scénarios courants et les plugins tiers étendent à la demande.",
+    "lede": "Mochi garde le noyau léger ; la plupart des fonctionnalités sont des plugins. Les plugins intégrés couvrent les scénarios courants et les plugins tiers étendent à la demande.",
     "feature": {
       "arch": {"k": "Architecture", "v": "Micro-noyau + SDK plugins ; le noyau reste léger, les fonctionnalités se chargent à la demande en plugins et les développeurs tiers peuvent étendre."},
       "translate": {"k": "Traduction", "v": "Plugin de traduction intégré pour traiter le contenu multilingue."},
@@ -246,9 +246,9 @@
   "terminal": {
     "breadcrumb_page": "Terminal intégré",
     "h1": "Le terminal à côté de l'éditeur — l'IA lit et écrit votre texte directement",
-    "lede": "Le terminal intégré amène les agents CLI dans l'espace de travail Quill. Claude Code et Codex CLI peuvent éditer le document courant sur place — pas de copier-coller ni de changement de fenêtre.",
+    "lede": "Le terminal intégré amène les agents CLI dans l'espace de travail Mochi. Claude Code et Codex CLI peuvent éditer le document courant sur place — pas de copier-coller ni de changement de fenêtre.",
     "feature": {
-      "panel": {"k": "Panneau terminal intégré", "v": "Ouvrez un panneau terminal dans l'espace de travail Quill, à côté de l'éditeur. Les chemins de fichiers se synchronisent automatiquement — pas de cd vers le répertoire de travail."},
+      "panel": {"k": "Panneau terminal intégré", "v": "Ouvrez un panneau terminal dans l'espace de travail Mochi, à côté de l'éditeur. Les chemins de fichiers se synchronisent automatiquement — pas de cd vers le répertoire de travail."},
       "aitext": {"k": "L'IA édite le texte", "v": "Les agents comme Claude Code et Codex CLI lisent et écrivent le document courant depuis le terminal ; les modifications IA apparaissent instantanément dans l'éditeur — pas de copier-coller manuel."},
       "workflow": {"k": "Intégration de flux", "v": "Le terminal partage le contexte avec l'éditeur et le panneau IA. Les sorties de commandes peuvent être réinjectées au curseur, transformant éditer–appeler–réinjecter en un seul pipeline."}
     },

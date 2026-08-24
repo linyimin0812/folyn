@@ -2,7 +2,7 @@ import { readTextFile, writeTextFile, mkdir, exists, remove } from '@tauri-apps/
 import { homeDir, join } from '@tauri-apps/api/path';
 import { debounce } from './debounce';
 
-// ponytail: per-key file storage at ~/.quill/storage/<safe>.json. Replaces
+// ponytail: per-key file storage at ~/.mochi/storage/<safe>.json. Replaces
 // the legacy single storage.json blob. Keys are sanitized to filename-safe
 // segments (colon → underscore) so callers can keep using 'skills:all' /
 // 'btai:sessions' / 'settings:all' style keys without caring about the
@@ -19,7 +19,7 @@ const dirty = new Set<string>();
 async function getStorageDir(): Promise<string> {
   if (!dirPath) {
     const home = await homeDir();
-    dirPath = await join(home, '.quill', 'storage');
+    dirPath = await join(home, '.mochi', 'storage');
   }
   if (!dirEnsured) {
     if (!(await exists(dirPath))) {

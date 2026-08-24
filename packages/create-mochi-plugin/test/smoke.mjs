@@ -11,13 +11,13 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const bin = join(here, '..', 'dist', 'index.js');
 
-const dir = await mkdtemp(join(tmpdir(), 'create-quill-plugin-'));
+const dir = await mkdtemp(join(tmpdir(), 'create-mochi-plugin-'));
 try {
   execFileSync(process.execPath, [
     bin, 'demo-plugin', '--yes',
     '--author', 'Jane',
     '--version', '1.2.3',
-    '--quill', '>=0.2.0',
+    '--mochi', '>=0.2.0',
     '--display-name', 'Demo Plugin',
   ], { cwd: dir, stdio: 'pipe' });
 
@@ -26,10 +26,10 @@ try {
   assert.equal(manifest.name, 'Demo Plugin');
   assert.equal(manifest.author, 'Jane');
   assert.equal(manifest.version, '1.2.3');
-  assert.equal(manifest.quill, '>=0.2.0');
+  assert.equal(manifest.mochi, '>=0.2.0');
 
   const pkg = JSON.parse(await readFile(join(dir, 'demo-plugin', 'package.json'), 'utf8'));
-  assert.equal(pkg.name, 'quill-plugin-demo-plugin');
+  assert.equal(pkg.name, 'mochi-plugin-demo-plugin');
   assert.equal(pkg.version, '1.2.3');
 
   // ponytail: agent-context docs ship with the template (static, no

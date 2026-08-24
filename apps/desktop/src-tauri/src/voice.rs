@@ -28,14 +28,14 @@ use tauri::PhysicalPosition;
 use crate::errors::AppError;
 
 // ponytail: diagnostic for the "Cmd+V / Ctrl+V didn't paste anywhere" release-build bug.
-// Quill has no tauri-plugin-log, so release `log::info!` is a no-op. This writes
+// Mochi has no tauri-plugin-log, so release `log::info!` is a no-op. This writes
 // the voice-paste trace to a per-platform cache dir so the user can `tail` it
-// without DevTools. macOS → ~/Library/Logs/quill-voice-debug.log; Windows →
-// %LOCALAPPDATA%\quill\logs\quill-voice-debug.log. Delete once the root cause
+// without DevTools. macOS → ~/Library/Logs/mochi-voice-debug.log; Windows →
+// %LOCALAPPDATA%\mochi\logs\mochi-voice-debug.log. Delete once the root cause
 // is fixed.
 //
 // R11 originally moved this off the macOS-only `~/Library/Logs` hardcode to
-// `dirs::cache_dir().join("quill/logs")`. R15 widens the cfg gate from
+// `dirs::cache_dir().join("mochi/logs")`. R15 widens the cfg gate from
 // macOS-only to macOS+Windows so the Windows paste path has the same
 // diagnostic.
 fn paste_log(msg: &str) {
@@ -43,10 +43,10 @@ fn paste_log(msg: &str) {
     let dir = dirs::cache_dir()
         .or_else(|| dirs::data_dir())
         .unwrap_or_else(|| std::env::temp_dir())
-        .join("quill")
+        .join("mochi")
         .join("logs");
     let _ = std::fs::create_dir_all(&dir);
-    let path = dir.join("quill-voice-debug.log");
+    let path = dir.join("mochi-voice-debug.log");
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -284,7 +284,7 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     if !permissions::check_accessibility() {
         permissions::request_accessibility();
         return Err(
-            "请先在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill，然后重试语音输入".into(),
+            "请先在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Mochi，然后重试语音输入".into(),
         );
     }
     // Mic-level feed for the SiriGL waveform shader. The handler emits a
@@ -300,7 +300,7 @@ pub async fn voice_start(app: tauri::AppHandle, spoken_locale: String) -> Result
     let (recorder, runtime_rx) = match Recorder::start(consumer, level_handler) {
         Ok(pair) => pair,
         Err(RecorderError::PermissionDenied) => {
-            return Err("麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Quill".into());
+            return Err("麦克风权限被拒绝，请在 系统设置 → 隐私与安全性 → 麦克风 中允许 Mochi".into());
         }
         Err(RecorderError::EngineFailed(msg)) => {
             return Err(format!("麦克风启动失败: {msg}").into());
@@ -398,7 +398,7 @@ fn show_voice_orb(app: &tauri::AppHandle) {
         // ponytail: do NOT use `window.show()` — on an NSPanel-converted window
         // it routes through wry/tao's default show path which calls
         // `makeKeyAndOrderFront:`, making the orb the KEY window of the active
-        // app (Quill itself when the user clicked the mic button; or, on the
+        // app (Mochi itself when the user clicked the mic button; or, on the
         // global-hotkey path, the orb would steal key from VS Code/the browser
         // the user is dictating into). The post-recording CGEvent Cmd+V posted
         // to `kCGHIDEventTap` is dispatched to the active app's key window — if
@@ -409,7 +409,7 @@ fn show_voice_orb(app: &tauri::AppHandle) {
         // appears over the user's frontmost app without disturbing key focus,
         // so the subsequent Cmd+V lands at the user's actual cursor. The panel
         // handle is registered in `WebviewPanelManager` by `convert_windows` at
-        // startup (`window.to_panel::<QuillPetPanel>()`); we retrieve it here.
+        // startup (`window.to_panel::<MochiPetPanel>()`); we retrieve it here.
         // Fall back to `window.show()` only if the panel isn't registered (e.g.
         // backend=legacy or convert failed) — the orb still appears, paste may
         // still be wrong, but at least the user sees recording feedback.
@@ -991,7 +991,7 @@ pub async fn voice_cancel(_app: tauri::AppHandle) -> Result<(), AppError> {
 pub async fn voice_insert_text(app: tauri::AppHandle, text: String) -> Result<(), AppError> {
     // Hide the voice-orb BEFORE posting Cmd+V. The orb is a Dock-level
     // non-activating NSPanel with `can_become_key_window: false` (see
-    // `QuillVoiceOrbPanel`), so it should never be the key window that
+    // `MochiVoiceOrbPanel`), so it should never be the key window that
     // receives the Cmd+V event — but hiding it first is defense-in-depth and
     // matches openless `hide_capsule_window_if_present` before `inserter.insert`.
     // `run_on_main_thread` is fire-and-forget on a non-main tokio worker; the
@@ -1092,10 +1092,10 @@ pub async fn voice_insert_text(_app: tauri::AppHandle, _text: String) -> Result<
     Err("voice input is not supported on this platform".into())
 }
 
-/// Debug helper: returns `bundle=<id> name=<name> pid=<pid> isQuill=<bool>`
+/// Debug helper: returns `bundle=<id> name=<name> pid=<pid> isMochi=<bool>`
 /// for the current frontmost app, so the frontend can call it before/after
 /// `voice_insert_text` to verify focus is on the user's dictation target and
-/// not Quill/the voice-orb. macOS-only: non-macOS returns the macOS-only error.
+/// not Mochi/the voice-orb. macOS-only: non-macOS returns the macOS-only error.
 ///
 /// ponytail: this is diagnostic scaffolding for the "Cmd+V didn't paste
 /// anywhere" release-build bug — delete once root cause is fixed.
@@ -1142,14 +1142,14 @@ pub async fn voice_debug_frontmost() -> Result<String, AppError> {
             let pid: i32 = msg_send![app, processIdentifier];
             let bid_s = ns_string_to_rust(bid);
             let name_s = ns_string_to_rust(name);
-            // Quill's own bundle id (matches the `[voice] module ready;
-            // bundle_id=com.quill.editor` beacon in lib.rs setup). Used to
-            // detect "the orb stole key focus" — if isQuill is true after
+            // Mochi's own bundle id (matches the `[voice] module ready;
+            // bundle_id=com.mochi.editor` beacon in lib.rs setup). Used to
+            // detect "the orb stole key focus" — if isMochi is true after
             // the insert, the orb (or main window) was frontmost when the
             // Cmd+V posted, which is the root cause of the no-paste bug.
-            const QUILL_BUNDLE: &str = "com.quill.editor";
-            let is_quill = bid_s == QUILL_BUNDLE;
-            format!("bundle={bid_s} name={name_s} pid={pid} isQuill={is_quill}")
+            const MOCHI_BUNDLE: &str = "com.mochi.editor";
+            let is_mochi = bid_s == MOCHI_BUNDLE;
+            format!("bundle={bid_s} name={name_s} pid={pid} isMochi={is_mochi}")
         };
         paste_log(&format!("[voice-paste] frontmost: {info}"));
         Ok(info)

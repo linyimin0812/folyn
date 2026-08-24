@@ -1,11 +1,11 @@
 # Plugin SDK Reference
 
-Plugin SDK (`quill-plugin-sdk`) 类型契约与示例速查。运行时微内核（`PluginHost`）位于 `@quill/plugin-host`。
+Plugin SDK (`mochi-plugin-sdk`) 类型契约与示例速查。运行时微内核（`PluginHost`）位于 `@mochi/plugin-host`。
 
 ## 1. 安装
 
 ```bash
-npm install quill-plugin-sdk
+npm install mochi-plugin-sdk
 ```
 
 ```ts
@@ -13,11 +13,11 @@ import type {
   PluginManifest,
   PluginModule,
   FileTypeHandler,
-} from "quill-plugin-sdk";
-import { definePlugin, validateManifest } from "quill-plugin-sdk";
+} from "mochi-plugin-sdk";
+import { definePlugin, validateManifest } from "mochi-plugin-sdk";
 ```
 
-内部 workspace 插件也可从 `@quill/plugin-host` 导入（re-export 全部 SDK 公共面）。SDK 无运行时依赖；React 仅作 peer 类型引用（构建时擦除）。
+内部 workspace 插件也可从 `@mochi/plugin-host` 导入（re-export 全部 SDK 公共面）。SDK 无运行时依赖；React 仅作 peer 类型引用（构建时擦除）。
 
 ## 2. manifest.json 全字段表
 
@@ -27,7 +27,7 @@ import { definePlugin, validateManifest } from "quill-plugin-sdk";
 | `name`               | `string`                 | 是           | 显示名                                                      |
 | `version`            | `string`                 | 是           | 非空，推荐 semver                                           |
 | `author`             | `string`                 | 否           | 作者                                                        |
-| `quill`              | `string`                 | 否           | 引擎兼容性，如 `>=0.1.0`                                    |
+| `mochi`              | `string`                 | 否           | 引擎兼容性，如 `>=0.1.0`                                    |
 | `tier`               | `'sandbox' \| 'trusted'` | 是           | 执行 tier                                                   |
 | `main`               | `string`                 | 是           | 入口模块相对路径                                            |
 | `html`               | `string`                 | sandbox 必填 | sandbox tier 的 HTML 入口                                   |
@@ -215,7 +215,7 @@ import { definePlugin, validateManifest } from "quill-plugin-sdk";
 "markdownCodeRenderers": [{ "language": "plantuml", "aliases": ["puml", "pu"], "component": "PlantUmlMarkdownBlock" }]
 ```
 
-> host-realm React（用 `window.React` + `resolveReact()`）。未命中回退到 `CodeBlockWrapper`。规范形态见 `quill-plugin-sdk/quill-plugin-plantuml/src/index.ts`。
+> host-realm React（用 `window.React` + `resolveReact()`）。未命中回退到 `CodeBlockWrapper`。规范形态见 `mochi-plugin-sdk/mochi-plugin-plantuml/src/index.ts`。
 
 ### editorLanguages（仅 trusted）
 
@@ -229,7 +229,7 @@ import { definePlugin, validateManifest } from "quill-plugin-sdk";
 "editorLanguages": [{ "id": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlLanguage" }]
 ```
 
-> trusted 插件经 blob URL 加载，需通过 `window.codemirrorLanguage`（host 在 `main.tsx` 中赋值）+ `resolveCodemirror()` helper 拿 `@codemirror/language`，避免 module-instance mismatch。规范形态见 `quill-plugin-sdk/quill-plugin-plantuml/src/codemirror.ts`。
+> trusted 插件经 blob URL 加载，需通过 `window.codemirrorLanguage`（host 在 `main.tsx` 中赋值）+ `resolveCodemirror()` helper 拿 `@codemirror/language`，避免 module-instance mismatch。规范形态见 `mochi-plugin-sdk/mochi-plugin-plantuml/src/codemirror.ts`。
 
 ## 5. PluginModule 导出契约（trusted）
 
@@ -257,7 +257,7 @@ entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对�
 
 ```ts
 // index.ts — self-contained ESM bundle
-import type { PluginModule, ExporterHandler } from "quill-plugin-sdk";
+import type { PluginModule, ExporterHandler } from "mochi-plugin-sdk";
 
 function loadReact() {
   if (typeof window !== "undefined" && window.React) return window.React;
@@ -406,7 +406,7 @@ await ctx.ai.createFile({
 ## 8. dev helpers
 
 ```ts
-import { definePlugin, validateManifest } from "quill-plugin-sdk";
+import { definePlugin, validateManifest } from "mochi-plugin-sdk";
 
 export const manifest = definePlugin({
   id: "my-plugin",
@@ -426,7 +426,7 @@ trusted 加载器把 `main` 包成 blob URL 后 `import()`，blob URL 无路径�
 | 约束                               | 后果                                                                          |
 | ---------------------------------- | ----------------------------------------------------------------------------- |
 | 相对 import（`./utils.js`）        | 解析失败，加载失败                                                            |
-| 远程 import                        | 被 `quill-plugin://` CSP 阻断                                                 |
+| 远程 import                        | 被 `mochi-plugin://` CSP 阻断                                                 |
 | bare specifier（`react`、`@/...`） | 仅当 Vite 留作运行时 `import()` 且 host realm 已加载时解析；否则失败          |
 | bundle 自带 React                  | hooks 抛 `Invalid hook call`（两份 React 实例）                               |
 | JSX（自动 runtime）                | 构建产物 `import { jsx } from 'react/jsx-runtime'` → blob import 失败，不可用 |

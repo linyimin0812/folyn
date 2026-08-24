@@ -1,10 +1,10 @@
 # Research: End-to-End Encryption for Vault Sync
 
 - **Query**: What's the right E2E encryption scheme for a local-first app syncing files to S3-compatible / WebDAV object storage, where the remote must never see plaintext?
-- **Scope**: mixed (external scheme survey + internal Quill mapping)
+- **Scope**: mixed (external scheme survey + internal Mochi mapping)
 - **Date**: 2026-07-05
 
-## TL;DR Recommendation for Quill
+## TL;DR Recommendation for Mochi
 
 - **Cipher**: AES-256-GCM via WebCrypto `SubtleCrypto` in the renderer. Nonce = 12 random bytes per file-version, stored in the header.
 - **KDF**: PBKDF2-SHA256, **≥ 600,000 iterations** (OWASP 2023 guidance for PBKDF2-SHA256), 16-byte random salt per vault, also derived/stored in the header. This is the only KDF natively available in WebCrypto without pulling in Rust/wasm. Argon2id is strictly better but requires Rust — keep as a documented future upgrade.
@@ -38,7 +38,7 @@ Why it's the standard (used by AWS KMS, GCP KMS, Cryptomator, age, Tailscale's t
 - The slow KDF (PBKDF2/Argon2) only runs once per session to derive the KEK; per-file encryption uses the fast raw AES-GCM of a random key — fast and avoids re-running the KDF per file.
 - Master key (random, not derived) is the *real* long-term secret; the passphrase only protects the master key. This is the Cryptomator `masterkey.cryptomator` model.
 
-**Recommended Quill model** (3-tier, Cryptomator-style):
+**Recommended Mochi model** (3-tier, Cryptomator-style):
 1. KEK = PBKDF2(passphrase, salt, iters) → 256-bit.
 2. Master key = 256 random bits, generated once per vault, stored locally + uploaded *wrapped* by KEK.
 3. DEK = 256 random bits per file-version, encrypted by master key, shipped in the object header.
@@ -65,7 +65,7 @@ Obsidian Sync / Cryptomator references (from public docs, may be stale — verif
 
 **Salt handling**: 16-byte cryptographically random salt, generated once per vault, stored in plaintext on the remote (in the keywrap object). The salt's job is to make the KDF output vault-specific; it is not secret.
 
-**Recommendation for Quill**: PBKDF2-SHA256, 600k iterations, 16-byte salt. All in renderer via `crypto.subtle.deriveKey`. ~1-2s on a typical laptop at 600k — acceptable for a once-per-session unlock. If unacceptable, move Argon2id to Rust as a fast tracked upgrade (Argon2id t=3, m=64MiB is also ~1s and is the modern preferred KDF).
+**Recommendation for Mochi**: PBKDF2-SHA256, 600k iterations, 16-byte salt. All in renderer via `crypto.subtle.deriveKey`. ~1-2s on a typical laptop at 600k — acceptable for a once-per-session unlock. If unacceptable, move Argon2id to Rust as a fast tracked upgrade (Argon2id t=3, m=64MiB is also ~1s and is the modern preferred KDF).
 
 ### 3. Symmetric Cipher: AES-GCM vs ChaCha20-Poly1305
 
@@ -108,7 +108,7 @@ WebCrypto's `aes-gcm` `encrypt` returns `(ciphertext || tag)` together, so the o
 Recommended: **(A)**. Mirror Cryptomator's per-file approach but flatter (Cryptomator uses a directory per file with `masterkey.cryptomator` style metadata; we can use a single self-describing object because we control the reader).
 
 The KDF params (iterations, salt) could live in *one* vault-level `keywrap` object rather than repeated per file — saves bytes and means iteration upgrades only re-wrap one blob. Recommended hybrid:
-- Vault-level remote object `__quill__/keywrap.json`: `{version, kdf:{algo,iter,salt}, wrappedMasterKey: <base64>, nonce}`.
+- Vault-level remote object `__mochi__/keywrap.json`: `{version, kdf:{algo,iter,salt}, wrappedMasterKey: <base64>, nonce}`.
 - Per-file remote object: `[magic][version][wrappedDEK][nonce][ct||tag]` (no KDF params repeated).
 
 This is exactly the Cryptomator topology (one `masterkey.cryptomator` + many per-file dirs).
@@ -124,13 +124,13 @@ The hard problem. Options observed in the wild:
 | **Cryptomator** | A `masterkey.cryptomator` JSON file *in the vault root* (on the cloud storage) containing the wrapped master key + KDF params. Device B opens the same cloud vault, reads `masterkey.cryptomator`, prompts for passphrase, unwraps. No server account needed. |
 | **age / magic-wormhole** | Key is shared out-of-band (recipient file, QR). No server-side bootstrap. |
 
-For Quill (server = dumb S3/WebDAV, no auth backend), the **Cryptomator model fits best**:
+For Mochi (server = dumb S3/WebDAV, no auth backend), the **Cryptomator model fits best**:
 
 1. First device: user enables E2E in Settings, sets passphrase.
    - Generate random 16-byte salt, random 32-byte master key.
    - KEK = PBKDF2(passphrase, salt, iters).
    - wrappedMaster = AES-GCM(KEK, nonce1, masterKey).
-   - Upload `__quill__/keywrap.json = {version, kdf:{...}, wrappedMaster, nonce1}`.
+   - Upload `__mochi__/keywrap.json = {version, kdf:{...}, wrappedMaster, nonce1}`.
 2. Device B: user enables E2E, enters passphrase.
    - Fetch `keywrap.json` from remote, read salt+iters+wrappedMaster.
    - KEK = PBKDF2(passphrase, salt, iters). Unwrap master key. (Wrong passphrase → GCM tag fails → clear error.)
@@ -160,14 +160,14 @@ No cryptographic difference. AES-GCM is a byte-stream AEAD. The only practical d
 
 ---
 
-## Mapping onto Quill
+## Mapping onto Mochi
 
 ### Where things live
 
 | Concern | Location | Notes |
 |---|---|---|
 | Crypto primitives (AES-GCM, PBKDF2, random) | `apps/desktop/src/services/crypto/*` (renderer, WebCrypto) | Pure functions: `deriveKey`, `encryptFile`, `decryptFile`, `wrapKey`, `unwrapKey`. No DOM/state. |
-| Vault key manager (load/save keywrap, unlock) | `apps/desktop/src/services/sync/cryptoKeyManager.ts` | Talks to `S3VaultProvider` to fetch/push `__quill__/keywrap.json`. Caches unwrapped master key in-memory for session. |
+| Vault key manager (load/save keywrap, unlock) | `apps/desktop/src/services/sync/cryptoKeyManager.ts` | Talks to `S3VaultProvider` to fetch/push `__mochi__/keywrap.json`. Caches unwrapped master key in-memory for session. |
 | Encryption layer in sync engine | wraps `VaultProvider.writeFile`/`readFile` for the *remote* provider when `e2eEncrypt` is on | Local provider stays plaintext (the local FS is already the user's trusted store). |
 | Settings | `settingsStore.ts` already has `e2eEncrypt: boolean` (default `false`) | Add `e2ePassphrase`? **No** — do not persist the passphrase. Prompt on enable / on session start. Persist only the fact that E2E is on + maybe `keywrapVersion`. |
 | Rust side | nothing for MVP | Future: Argon2id, OS keychain, streaming crypto. |

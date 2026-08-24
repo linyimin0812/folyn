@@ -3,13 +3,13 @@
 ## Conclusion (recommended approach)
 
 Use the **`tauri-nspanel` crate's built-in `tracking_area` support** — NOT raw
-objc. The crate v2.1 (already a Quill dependency) ships first-class
+objc. The crate v2.1 (already a Mochi dependency) ships first-class
 `tracking_area` + `cursorUpdate` via the `panel!` / `panel_event!` macros.
 
 ## How it works
 
 1. Add a `with: { tracking_area: { options, auto_resize } }` block to the
-   existing `QuillPetPanel` `panel!` macro in `pet_panel_macos.rs`.
+   existing `MochiPetPanel` `panel!` macro in `pet_panel_macos.rs`.
    ```rust
    TrackingAreaOptions::new()
        .active_always()              // THE flag: deliver events even when app isn't frontmost / panel isn't key
@@ -29,7 +29,7 @@ objc. The crate v2.1 (already a Quill dependency) ships first-class
 
 - `NSTrackingActiveAlways` makes the tracking area deliver mouse/cursor events
   regardless of app activation state or window key status. This is exactly the
-  flag that solves "hand cursor on plain hover when Quill isn't frontmost."
+  flag that solves "hand cursor on plain hover when Mochi isn't frontmost."
 - The tracking area is attached to the panel's `contentView` (which has the
   WKWebView as a subview). `cursorUpdate:` is sent to the tracking-area owner
   (contentView) and propagates up the responder chain to the panel subclass's
@@ -67,10 +67,10 @@ objc. The crate v2.1 (already a Quill dependency) ships first-class
 
 ## Implementation footprint
 
-- `pet_panel_macos.rs`: add `with: { tracking_area: {...} }` to `QuillPetPanel`
+- `pet_panel_macos.rs`: add `with: { tracking_area: {...} }` to `MochiPetPanel`
   `panel!`; define + wire a `panel_event!` handler with `on_cursor_update` /
   `on_mouse_exited`.
-- `convert_windows`: attach the handler to the `QuillPetPanel` panel instance.
+- `convert_windows`: attach the handler to the `MochiPetPanel` panel instance.
 - `PetApp.tsx`: the existing `handleMouseEnter`/`handleMouseLeave`
   `invoke('pet_set_cursor')` calls become redundant once the tracking-area
   cursorUpdate works — remove them (keep `pet_set_cursor` command as a fallback

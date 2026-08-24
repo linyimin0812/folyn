@@ -16,7 +16,7 @@
 - `Model.capabilities` 字段来源：`ownerMap`（`useModelRegistryStore`），无任何 setter / 写路径。要写回需要新增 store action。
 - 既有"AI 查询补元数据"模板：`apps/desktop/src/services/planMyDayService.ts:304-336`。形态：`createAdapter(aiConfig.cliAdapter)` → `adapter.start(...)` → `collectTextFromStream(...)` → `adapter.send(prompt)` → `extractJsonObject(text)` → `JSON.parse` → apply or throw friendly error。同类还有 clipService / wikiQueryService / githubAnalysisService。
 - i18n：react-i18next，`settings:` 命名空间，zh/en 各一份（`apps/desktop/src/i18n/locales/{zh,en}/settings.json`）。
-- AI 调用入口：`@quill/cli-adapter` 的 `createAdapter`，使用 `aiConfig.cliAdapter` + `aiConfig.cliPath`。
+- AI 调用入口：`@mochi/cli-adapter` 的 `createAdapter`，使用 `aiConfig.cliAdapter` + `aiConfig.cliPath`。
 
 ## Assumptions (to validate)
 

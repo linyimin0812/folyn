@@ -2,7 +2,7 @@
 
 ## Goal
 
-Enable Quill plugins to contribute **their own full-page UI** (like uTools' full-window tools), so plugin authors can build self-contained mini-apps (image viewer, color picker, clipboard manager, etc.) inside Quill — not just markdown directives or commands.
+Enable Mochi plugins to contribute **their own full-page UI** (like uTools' full-window tools), so plugin authors can build self-contained mini-apps (image viewer, color picker, clipboard manager, etc.) inside Mochi — not just markdown directives or commands.
 
 ## What I already know
 
@@ -10,10 +10,10 @@ Enable Quill plugins to contribute **their own full-page UI** (like uTools' full
   - `ToolContribution` — `{ id, title, icon, window: boolean, entry }`. `window: true` = own window, `window: false` = inline panel. `entry` is "HTML for sandbox, component for trusted".
   - `FeatureContribution` — `{ id, panel: 'left'|'right'|'bottom', component }`. Side-panel UI.
 - Current adapters (`apps/desktop/src/services/plugin-host/contributionAdapters.ts`) implement only `commands`, `fileTypes`, `containers`. **No `registerPluginTools` / `registerPluginFeatures` adapter exists yet** — the `tools` contribution in manifests is currently inert.
-- Trusted tier loads via blob-URL `import()` (`trustedLoader.ts:90-92`); sandbox tier uses `sandboxLoader.ts` (iframe + postMessage RPC via `quill-plugin://localhost` origin).
+- Trusted tier loads via blob-URL `import()` (`trustedLoader.ts:90-92`); sandbox tier uses `sandboxLoader.ts` (iframe + postMessage RPC via `mochi-plugin://localhost` origin).
 - `examples/plugins/hello-tool/` already declares a `tools` contribution (`{ id: "hello", title: "Hello Tool", window: true, entry: "index.html" }`) but it's not wired — proves the manifest shape is settled, this task just delivers the runtime.
 - `examples/plugins/markdown-todo/` only uses containers + commands.
-- Rust-side `quill-plugin://` URI scheme handler exists in `apps/desktop/src-tauri/src/plugin_commands.rs` — serves static HTML/JS/CSS from `~/.quill/plugins/<id>/`. Path-traversal hardened. **No `/rpc` POST endpoint yet** — this task adds it.
+- Rust-side `mochi-plugin://` URI scheme handler exists in `apps/desktop/src-tauri/src/plugin_commands.rs` — serves static HTML/JS/CSS from `~/.mochi/plugins/<id>/`. Path-traversal hardened. **No `/rpc` POST endpoint yet** — this task adds it.
 - `PluginPermissions` type in `packages/plugin-host/src/types.ts:89-96` already covers `fs`, `http`, `clipboard`, `dialog`, `window`, `vault: { readActive, insertContent }` — sufficient for MVP, no manifest schema changes needed.
 - Prior research exists: `.trellis/tasks/archive/2026-07/07-08-microkernel-plugin-architecture/research/utool-plugin-model.md` covers uTools' manifest, packaging, preload, isolation model.
 - `docs/plugin-development.md` already documents `tools` contribution (lines 205-213) — schema is settled; docs note `window: true` opens "its own visible iframe window (sandbox) / webview (trusted)" — but only the iframe path is implemented. This task delivers the webview path.
@@ -72,10 +72,10 @@ Enable Quill plugins to contribute **their own full-page UI** (like uTools' full
 ## Decision (ADR-lite) — Q3
 
 **Context**: Plugin's HTML (in its own WebviewWindow) needs a way to call host capabilities (fs, editor, clipboard, etc.).
-**Decision**: `quill-plugin://` custom protocol + fetch-style RPC. Plugin JS calls `fetch('quill-plugin://localhost/<id>/rpc', { method: 'POST', body: { method, params } })`; a Rust-side protocol handler validates against `PluginPermissions` (reusing `rpcBridge.ts` logic, ported to Rust or called from Rust) and executes. No Tauri SDK dependency in plugin bundles.
+**Decision**: `mochi-plugin://` custom protocol + fetch-style RPC. Plugin JS calls `fetch('mochi-plugin://localhost/<id>/rpc', { method: 'POST', body: { method, params } })`; a Rust-side protocol handler validates against `PluginPermissions` (reusing `rpcBridge.ts` logic, ported to Rust or called from Rust) and executes. No Tauri SDK dependency in plugin bundles.
 **Consequences**:
 - Plugin authors write plain HTML + `fetch()` — zero host framework dependency, true utools-style DX.
-- Need a Rust protocol handler for `quill-plugin://localhost/<id>/rpc` (POST) and `quill-plugin://localhost/<id>/<asset>` (GET, for index.html + JS/CSS).
+- Need a Rust protocol handler for `mochi-plugin://localhost/<id>/rpc` (POST) and `mochi-plugin://localhost/<id>/<asset>` (GET, for index.html + JS/CSS).
 - Validation logic from `rpcBridge.ts` (`isPathInScope`, permission checks) moves to (or is invoked from) Rust — possible port to Rust or a Tauri command that JS-bridges; design TBD in implementation.
 - Fetch is req/resp only. Host → plugin runtime pushes (lifecycle events beyond load/unload) are **out of scope** for MVP — plugin is a standalone mini-app, activate = window loaded, deactivate = window closed.
 - Existing `sandboxLoader.ts` iframe path continues to serve in-main-webview sandbox plugins; the new protocol handler is shared between iframe-sandbox and window-sandbox URL schemes.
@@ -94,8 +94,8 @@ Enable Quill plugins to contribute **their own full-page UI** (like uTools' full
 - `manifest.contributes.tools[]` with `window: true` registers tool(s) at plugin activation.
 - Adapter `registerPluginTools(manifest, bridge)` in `contributionAdapters.ts` wires tools into a new `toolWindowRegistry` (Zustand store or plain registry).
 - A user opens a tool via ⌘P → "Open: <tool title>" (one command per registered tool).
-- Opening creates a Tauri `WebviewWindow` whose URL is `quill-plugin://localhost/<plugin-id>/<entry>`.
-- The `quill-plugin://` URI handler gains a POST `/rpc` route: plugin JS calls `fetch('quill-plugin://localhost/<id>/rpc', { method: 'POST', body: { method, params } })`; handler validates against `PluginPermissions` (reuses `rpcBridge.ts` `isPathInScope` + permission checks) and dispatches to a host-side method table.
+- Opening creates a Tauri `WebviewWindow` whose URL is `mochi-plugin://localhost/<plugin-id>/<entry>`.
+- The `mochi-plugin://` URI handler gains a POST `/rpc` route: plugin JS calls `fetch('mochi-plugin://localhost/<id>/rpc', { method: 'POST', body: { method, params } })`; handler validates against `PluginPermissions` (reuses `rpcBridge.ts` `isPathInScope` + permission checks) and dispatches to a host-side method table.
 - Host method table covers: `vault.getActiveDoc()` (returns `{ id, path }`), `vault.insertContent(text)` (writes to active tab content via `editorStore`).
 - Multi-instance: each "Open" call creates a new `WebviewWindow` with a unique label.
 - Closing a window (user-initiated or plugin deactivate) destroys the WebviewWindow.
@@ -107,7 +107,7 @@ Enable Quill plugins to contribute **their own full-page UI** (like uTools' full
 
 - [ ] `registerPluginTools` adapter exists with unit tests (follow `contributionAdapters.test.ts` pattern).
 - [ ] ⌘P → "Open: <tool>" creates a WebviewWindow that renders the plugin's HTML.
-- [ ] Plugin JS `fetch('quill-plugin://localhost/<id>/rpc', ...)` reaches the host and returns a JSON result.
+- [ ] Plugin JS `fetch('mochi-plugin://localhost/<id>/rpc', ...)` reaches the host and returns a JSON result.
 - [ ] RPC validation: a call to `vault.insertContent` from a plugin whose manifest lacks `permissions.vault.insertContent` is rejected with an error response and a console warning.
 - [ ] Markdown-table demo plugin installed end-to-end: user opens it, types CSV, clicks Insert, sees the table appended to the active doc.
 - [ ] Multi-instance: opening the same tool twice yields two windows; closing one leaves the other alive.
@@ -126,8 +126,8 @@ Enable Quill plugins to contribute **their own full-page UI** (like uTools' full
 ## Technical Approach
 
 1. **Adapter (frontend)**: `registerPluginTools(manifest, bridge)` in `contributionAdapters.ts` — iterates `manifest.contributes.tools`, registers a command per tool via `registerCommand({ id: 'plugin.openTool.<pluginId>.<toolId>', run: () => toolWindowManager.open(manifest.id, tool) })`. Returns a disposable.
-2. **ToolWindowManager (frontend)**: new Zustand store `toolWindowStore.ts` — tracks open windows `{ label, pluginId, toolId, webviewWindow }`; `open()` creates a `WebviewWindow` via `@tauri-apps/api/webview-window` with URL `quill-plugin://localhost/<pluginId>/<tool.entry>` and a unique label; `close(label)` destroys it; `closeAllForPlugin(pluginId)` used on deactivate.
-3. **Rust RPC handler**: extend `plugin_commands.rs` `quill-plugin://` URI handler — when path ends with `/rpc` and method is POST, parse body as `{ method, params }`, look up plugin record, validate against `PluginPermissions` (port `isPathInScope` + permission checks from `rpcBridge.ts`, or invoke a shared JS function via a new Tauri command — decision in implementation), dispatch to a method table: `vault.getActiveDoc`, `vault.insertContent`.
+2. **ToolWindowManager (frontend)**: new Zustand store `toolWindowStore.ts` — tracks open windows `{ label, pluginId, toolId, webviewWindow }`; `open()` creates a `WebviewWindow` via `@tauri-apps/api/webview-window` with URL `mochi-plugin://localhost/<pluginId>/<tool.entry>` and a unique label; `close(label)` destroys it; `closeAllForPlugin(pluginId)` used on deactivate.
+3. **Rust RPC handler**: extend `plugin_commands.rs` `mochi-plugin://` URI handler — when path ends with `/rpc` and method is POST, parse body as `{ method, params }`, look up plugin record, validate against `PluginPermissions` (port `isPathInScope` + permission checks from `rpcBridge.ts`, or invoke a shared JS function via a new Tauri command — decision in implementation), dispatch to a method table: `vault.getActiveDoc`, `vault.insertContent`.
 4. **Demo plugin**: `examples/plugins/markdown-table/` with `manifest.json` (`tier: sandbox`, `permissions: { vault: { insertContent: true } }`, `contributes.tools: [{ id: "table-gen", title: "Markdown Table", icon: "▦", window: true, entry: "index.html" }]`), `index.html` (textarea + preview + Insert button), `index.js` (CSV parse + `fetch('/rpc', ...)` call).
 
 ## Implementation Plan (small PRs)
@@ -153,7 +153,7 @@ Enable Quill plugins to contribute **their own full-page UI** (like uTools' full
 - Trusted blob-URL `import()` already works for React components (see `TodoContainer` in markdown-todo) — so a tool's React component export should load the same way.
 - `_loadReact` pattern in markdown-todo uses `window.React` — the tool component will hit the same constraint.
 - Existing `rpcBridge.ts` does permission-scoped postMessage RPC for iframe sandbox plugins. Its validation logic (`isPathInScope`, `PluginPermissions` checks) is reusable; only the transport changes for the new-window model.
-- `sandboxLoader.ts` uses `quill-plugin://localhost/<id>/<html>` custom-scheme URL for iframe src. Same URL scheme can serve a WebviewWindow's `url:` option — no new serving path needed.
+- `sandboxLoader.ts` uses `mochi-plugin://localhost/<id>/<html>` custom-scheme URL for iframe src. Same URL scheme can serve a WebviewWindow's `url:` option — no new serving path needed.
 
 ## Research References
 

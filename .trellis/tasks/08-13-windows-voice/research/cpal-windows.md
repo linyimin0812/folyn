@@ -75,7 +75,7 @@ cpal = "0.15"
 cpal = "0.15"
 ```
 
-**注意**：cpal 在 Linux 用 ALSA（需 `libasound2-dev`），Quill 不支持 Linux，所以迁到 `[dependencies]` 会拉 ALSA 编译，但 Linux target 不在 CI matrix，**只要 `cargo check --target x86_64-pc-windows-msvc` 和 macOS 都通过即可**。更稳的做法：
+**注意**：cpal 在 Linux 用 ALSA（需 `libasound2-dev`），Mochi 不支持 Linux，所以迁到 `[dependencies]` 会拉 ALSA 编译，但 Linux target 不在 CI matrix，**只要 `cargo check --target x86_64-pc-windows-msvc` 和 macOS 都通过即可**。更稳的做法：
 
 ```toml
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]

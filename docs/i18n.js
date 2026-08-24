@@ -3,7 +3,7 @@
 // <html lang> + <title> + meta description update per language. Choice persists.
 (function () {
   var LANGS = ['zh', 'en', 'ja', 'es', 'de', 'fr'];
-  var STORAGE_KEY = 'quill.lang';
+  var STORAGE_KEY = 'mochi.lang';
   var DEFAULT = 'zh';
 
   function resolveInitial() {

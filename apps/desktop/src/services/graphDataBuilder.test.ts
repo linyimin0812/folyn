@@ -11,7 +11,7 @@ const { files, listFilesImpl, wikiReadFile, vaultReadFile, vaultFileTree } = vi.
   const listFilesImpl = vi.fn(async (_dir: string) => [] as WikiEntry[]);
   const wikiReadFile = vi.fn(async (_path: string) => '');
   const vaultReadFile = vi.fn(async (_path: string) => '');
-  const vaultFileTree = vi.fn(() => [] as import('@quill/vault-provider').VaultEntry[]);
+  const vaultFileTree = vi.fn(() => [] as import('@mochi/vault-provider').VaultEntry[]);
   return { files, listFilesImpl, wikiReadFile, vaultReadFile, vaultFileTree };
 });
 

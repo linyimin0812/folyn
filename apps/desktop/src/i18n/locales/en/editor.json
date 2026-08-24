@@ -34,7 +34,7 @@
     },
     "containerWarning": {
       "title": "⚠️ Compatibility notice",
-      "body": "The current document uses Quill container syntax (callouts, tabs, collapsible blocks, etc.), which is a Quill extension. **Other Markdown editors may fail to render it correctly.**",
+      "body": "The current document uses Mochi container syntax (callouts, tabs, collapsible blocks, etc.), which is a Mochi extension. **Other Markdown editors may fail to render it correctly.**",
       "hint": "To view in other editors, export as HTML instead.",
       "cancel": "Cancel",
       "confirm": "Export anyway"

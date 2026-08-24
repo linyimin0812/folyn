@@ -128,7 +128,7 @@ export async function routePetMenuAction(
         await invoke('exit_app');
       } catch {
         // Non-fatal; the user can still quit via the macOS app menu bar
-        // (Quill → Quit Quill) if the invoke fails.
+        // (Mochi → Quit Mochi) if the invoke fails.
       }
       break;
     // ── Pet-panel launcher actions (PR1). Dispatched by the pet-panel

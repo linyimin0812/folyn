@@ -387,7 +387,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
               // Known ceiling: rowIndex is DOM order, not TableMap row —
               // breaks if the table ever has multiple tbody/thead sections.
               // Tiptap emits a single tbody so this matches TableMap rows.
-              e.dataTransfer.setData('application/x-quill-table-row', String(hover.rowTr.rowIndex));
+              e.dataTransfer.setData('application/x-mochi-table-row', String(hover.rowTr.rowIndex));
               e.dataTransfer.effectAllowed = 'move';
             }}
             className={handleBtnClass}
@@ -409,7 +409,7 @@ export function TableControlsOverlay({ editor, containerRef }: TableControlsOver
               // ponytail: cellIndex is DOM cell order, not column index —
               // breaks for tables with colspan (a merged cell's cellIndex
               // is its DOM slot, not its column). MVP: simple tables only.
-              e.dataTransfer.setData('application/x-quill-table-col', String(hover.colCell.cellIndex));
+              e.dataTransfer.setData('application/x-mochi-table-col', String(hover.colCell.cellIndex));
               e.dataTransfer.effectAllowed = 'move';
             }}
             className={handleBtnClass}

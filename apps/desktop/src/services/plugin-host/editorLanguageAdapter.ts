@@ -12,8 +12,8 @@
  * returns a merged Disposable that unregisters all keys on deactivate.
  */
 
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { EditorLanguageContribution, EditorLanguageFactory } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { EditorLanguageContribution, EditorLanguageFactory } from '@mochi/plugin-host';
 import type { PluginModule } from './contributionAdapters';
 
 interface RegisteredLanguage {

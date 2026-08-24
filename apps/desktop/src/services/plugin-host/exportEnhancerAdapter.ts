@@ -18,8 +18,8 @@
  * a merged Disposable that unregisters all (by pluginId+key) on deactivate.
  */
 
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { ExportEnhancerContribution, ExportEnhancerHandler } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { ExportEnhancerContribution, ExportEnhancerHandler } from '@mochi/plugin-host';
 import type { PluginModule } from './contributionAdapters';
 
 interface RegisteredEnhancer {

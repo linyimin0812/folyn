@@ -20,8 +20,8 @@
  * doesn't matter.
  */
 
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { KeybindingContribution } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { KeybindingContribution } from '@mochi/plugin-host';
 import { runCommand } from '@/services/commandRegistry';
 
 interface ParsedAccelerator {

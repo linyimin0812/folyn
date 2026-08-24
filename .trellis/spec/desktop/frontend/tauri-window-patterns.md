@@ -269,8 +269,8 @@ by stripping the trailing numeric instance counter.
 ## Scenario: Windows Custom Titlebar (undecorated main window + in-app window controls)
 
 ### Problem
-On Windows, the native titlebar renders the app icon + "Quill" title on the left and
-minimize/maximize/close on the right. Quill's own Topbar already shows the logo + name on the
+On Windows, the native titlebar renders the app icon + "Mochi" title on the left and
+minimize/maximize/close on the right. Mochi's own Topbar already shows the logo + name on the
 left, so the native bar duplicates the branding and wastes a 30px strip. macOS is fine (traffic
 lights are unobtrusive and there is no icon/title duplication), so the titlebar must be removed
 **on Windows only** — `"decorations": false` in `tauri.conf.json` is NOT per-platform, it would
@@ -956,7 +956,7 @@ Add the new action to the `PetMenuAction` union (`PetContextMenu.tsx`) so the ty
 - **Rebind flow**: `SettingsPage.tsx` `ShortcutEditor`'s `handleKeyDown` calls `updateShortcut` (persists to settingsStore) THEN, if the changed shortcut id is `togglePetPanel`, invokes `pet_panel_set_shortcut` with the converted accelerator. The command's `unregister_all`+`register` makes the new combo take effect system-wide immediately.
 
 ### 4. Why
-- The pet floats over other apps; the user must summon the panel without switching to Quill first. In-app `keydown` listeners only fire when Quill is focused, defeating the purpose.
+- The pet floats over other apps; the user must summon the panel without switching to Mochi first. In-app `keydown` listeners only fire when Mochi is focused, defeating the purpose.
 - Routing through a custom Rust command (instead of the plugin's JS API) keeps the frontend dependency surface small (no `@tauri-apps/plugin-global-shortcut` npm package) and avoids the ACL capability dance for the built-in commands.
 - macOS uses Carbon `RegisterEventHotKey` under the hood (via the `global-hotkey` crate) — does NOT require Accessibility permission, unlike CGEventTap-based approaches. No permission prompt on first use.
 

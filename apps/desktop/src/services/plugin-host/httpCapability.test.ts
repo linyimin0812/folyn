@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { PluginManifest } from '@quill/plugin-host';
+import type { PluginManifest } from '@mochi/plugin-host';
 import { buildPluginHttp } from './httpCapability';
 
 vi.mock('@tauri-apps/api/core', () => ({

@@ -21,7 +21,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
   useEffect(() => {
     if (!tabListOpen) return;
     // Hide native webviews while the panel is open so it can never be covered
-    // by a web page; the active webview re-syncs on quill:overlay-closed.
+    // by a web page; the active webview re-syncs on mochi:overlay-closed.
     hideWebviewsForOverlay();
     const handleClick = (e: MouseEvent) => {
       if (tabListRef.current && !tabListRef.current.contains(e.target as Node)) {
@@ -31,7 +31,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: TabBarPro
     document.addEventListener('mousedown', handleClick);
     return () => {
       document.removeEventListener('mousedown', handleClick);
-      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+      window.dispatchEvent(new CustomEvent('mochi:overlay-closed'));
     };
   }, [tabListOpen]);
 

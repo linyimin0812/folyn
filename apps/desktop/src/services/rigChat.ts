@@ -1,5 +1,5 @@
 import { invoke, Channel } from '@tauri-apps/api/core';
-import type { CliStreamEvent } from '@quill/cli-adapter';
+import type { CliStreamEvent } from '@mochi/cli-adapter';
 
 /**
  * chat mode frontend bridge: invoke the Rust `chat_stream` command and
@@ -33,7 +33,7 @@ export interface RigChatImage {
 export type HistoryMode = 'loadSave' | 'none' | 'loadOnly' | 'saveOnly';
 
 export interface RigChatParams {
-  /** App session id — rig persists history to `~/.quill/chat-sessions/<id>.json`. */
+  /** App session id — rig persists history to `~/.mochi/chat-sessions/<id>.json`. */
   sessionId: string;
   prompt: string;
   provider: string;
@@ -126,7 +126,7 @@ export interface ChatTestResult {
  * `chat_stream`. Resolves with `{ success, message }` on `done`/`error`/invoke
  * failure, or auto-fails after `timeoutMs` (default 10s). Uses a fixed
  * sessionId `__connection_test__` so at most one test session file lingers in
- * ~/.quill/chat-sessions/ (overwritten each test).
+ * ~/.mochi/chat-sessions/ (overwritten each test).
  *
  * ponytail: thin wrapper over runRigChat — keeps the Promise-race + timeout
  * logic testable without rendering SettingsPage.

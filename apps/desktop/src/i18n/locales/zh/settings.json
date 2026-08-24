@@ -171,7 +171,7 @@
       "detected": "已检测: {{path}}"
     },
     "settingsFile": {
-      "title": "在 Quill 编辑器中打开此 Adapter 的配置文件",
+      "title": "在 Mochi 编辑器中打开此 Adapter 的配置文件",
       "missing": "未找到 {{path}}",
       "missingHint": "该配置文件尚未生成（首次使用 CLI 时通常会自动创建）。",
       "create": "创建",
@@ -424,13 +424,13 @@
       "architecture": "架构与实现",
       "developer": "开发与贡献"
     },
-    "description": "Quill 基于 Tauri 2 + React + CodeMirror 6 构建，是一款本地优先的 Markdown 编辑器。集成 AI 对话、桌宠、插件系统、ER 图、日程管理与 CLI 工具，数据完全存储在你的设备上，标准 Markdown 格式，无锁定。",
+    "description": "Mochi 基于 Tauri 2 + React + CodeMirror 6 构建，是一款本地优先的 Markdown 编辑器。集成 AI 对话、桌宠、插件系统、ER 图、日程管理与 CLI 工具，数据完全存储在你的设备上，标准 Markdown 格式，无锁定。",
     "philosophy": {
       "label": "设计理念",
       "localFirst": "本地优先 —— 你的笔记永远属于你。所有文档以标准 Markdown 文件形式保存在本地文件系统中，不依赖云端账号，离线可用，迁移自由。Vault 系统通过 vault-provider 抽象层支持可插拔存储后端，但数据所有权始终在你手中。",
-      "openFormat": "开放格式 —— 拒绝锁定。Quill 使用标准 Markdown 文件作为唯一存储格式，配合 remark/rehype 管线处理 GFM 与自定义指令。任何文本编辑器都能打开你的笔记；随时可导出为 HTML 到本地或者托管到远程存储；卸载 Quill 后你的数据仍然完整可读。",
+      "openFormat": "开放格式 —— 拒绝锁定。Mochi 使用标准 Markdown 文件作为唯一存储格式，配合 remark/rehype 管线处理 GFM 与自定义指令。任何文本编辑器都能打开你的笔记；随时可导出为 HTML 到本地或者托管到远程存储；卸载 Mochi 后你的数据仍然完整可读。",
       "extensible": "可扩展 —— 从编辑器内核到存储后端全链路开放。微内核 + 插件 SDK 支持容器指令（callout、tabs、mermaid 等 14 种）与第三方插件；CLI 适配器抽象让 6 种 AI 工具（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）可插拔接入；pnpm workspaces 让 container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk 作为独立 package 演进。",
-      "privacy": "隐私优先 —— AI 对话与代码生成通过本地 CLI 工具完成，你的 API Key 与对话内容不经过 Quill 服务器。CSP 策略与插件沙箱层提供深度防御，可信层与沙箱层分级执行，第三方插件在受限权限下运行。"
+      "privacy": "隐私优先 —— AI 对话与代码生成通过本地 CLI 工具完成，你的 API Key 与对话内容不经过 Mochi 服务器。CSP 策略与插件沙箱层提供深度防御，可信层与沙箱层分级执行，第三方插件在受限权限下运行。"
     },
     "features": {
       "label": "功能概览",
@@ -502,7 +502,7 @@
     },
     "architecture": {
       "label": "架构分层",
-      "description": "Quill 采用清晰的分层架构，从底层 Shell 到上层 AI 适配器，每一层职责单一、可独立演进。pnpm workspaces 让每个核心能力独立成包，便于复用与测试。",
+      "description": "Mochi 采用清晰的分层架构，从底层 Shell 到上层 AI 适配器，每一层职责单一、可独立演进。pnpm workspaces 让每个核心能力独立成包，便于复用与测试。",
       "layers": {
         "shell": {
           "name": "Shell",
@@ -553,8 +553,8 @@
     },
     "projectStructure": {
       "label": "项目结构",
-      "description": "Quill 是一个 pnpm monorepo，桌面应用、CLI 适配器、容器插件、Vault Provider、Plugin Host/SDK 各自独立成包。",
-      "tree": "quill/\n├── apps/\n│   └── desktop/              # Tauri 桌面应用\n│       ├── src/              # React 前端\n│       │   ├── components/   # UI 组件（shell、editor、AI、sidebar 等）\n│       │   ├── editor/       # CodeMirror 扩展\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # 工具模块\n│       └── src-tauri/        # Rust 后端（Tauri commands）\n├── packages/\n│   ├── cli-adapter/          # AI CLI 适配器抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown 容器指令插件（14 种）\n│   ├── vault-provider/       # Vault 存储后端抽象\n│   ├── plugin-host/         # 插件宿主运行时\n│   ├── plugin-sdk/          # 插件开发 SDK\n│   └── create-quill-plugin/ # 脚手架工具\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Mochi 是一个 pnpm monorepo，桌面应用、CLI 适配器、容器插件、Vault Provider、Plugin Host/SDK 各自独立成包。",
+      "tree": "mochi/\n├── apps/\n│   └── desktop/              # Tauri 桌面应用\n│       ├── src/              # React 前端\n│       │   ├── components/   # UI 组件（shell、editor、AI、sidebar 等）\n│       │   ├── editor/       # CodeMirror 扩展\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # 工具模块\n│       └── src-tauri/        # Rust 后端（Tauri commands）\n├── packages/\n│   ├── cli-adapter/          # AI CLI 适配器抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown 容器指令插件（14 种）\n│   ├── vault-provider/       # Vault 存储后端抽象\n│   ├── plugin-host/         # 插件宿主运行时\n│   ├── plugin-sdk/          # 插件开发 SDK\n│   └── create-mochi-plugin/ # 脚手架工具\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "存储后端",
@@ -576,7 +576,7 @@
     },
     "aiIntegration": {
       "label": "AI 集成",
-      "description": "通过 cli-adapter 抽象层，Quill 统一接入 6 种基于 CLI 的 AI 工具。在「设置 → 模型服务」配置 CLI 路径后，可在侧边栏进行对话、生成文本、应用代码编辑并审阅 diff。API Key 与对话内容仅本地 CLI 工具与对应 AI 服务之间流转，不经过 Quill 服务器。",
+      "description": "通过 cli-adapter 抽象层，Mochi 统一接入 6 种基于 CLI 的 AI 工具。在「设置 → 模型服务」配置 CLI 路径后，可在侧边栏进行对话、生成文本、应用代码编辑并审阅 diff。API Key 与对话内容仅本地 CLI 工具与对应 AI 服务之间流转，不经过 Mochi 服务器。",
       "adapters": {
         "label": "内置 CLI 适配器",
         "items": {
@@ -609,7 +609,7 @@
     },
     "pluginSystem": {
       "label": "插件系统",
-      "description": "微内核 + 插件 SDK 架构。插件分为可信层（Trusted，直接调用宿主能力）与沙箱层（Sandbox，在受限权限下运行），通过 plugin-host 运行时加载。第三方插件可通过 create-quill-plugin 脚手架快速创建。",
+      "description": "微内核 + 插件 SDK 架构。插件分为可信层（Trusted，直接调用宿主能力）与沙箱层（Sandbox，在受限权限下运行），通过 plugin-host 运行时加载。第三方插件可通过 create-mochi-plugin 脚手架快速创建。",
       "tiers": {
         "label": "执行层级",
         "trusted": {
@@ -628,7 +628,7 @@
     },
     "fileTypeSupport": {
       "label": "文件类型支持",
-      "description": "通过 HandlerRegistry 统一注册，Quill 可预览与编辑 15+ 种文件类型。",
+      "description": "通过 HandlerRegistry 统一注册，Mochi 可预览与编辑 15+ 种文件类型。",
       "items": "Markdown · 代码 · CSV · JSON · HTML · 图片 · DBML (ER 图) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · 思维导图 (markmap) · Office 文档 · 剪贴板片段"
     },
     "techStack": {
@@ -734,12 +734,12 @@
     },
     "microphone": {
       "title": "麦克风权限",
-      "desc": "录音需要麦克风权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 麦克风 中允许 Quill 后再点重试。",
+      "desc": "录音需要麦克风权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 麦克风 中允许 Mochi 后再点重试。",
       "action": "授权麦克风"
     },
     "speech": {
       "title": "语音识别权限",
-      "desc": "Apple Speech 转写需要语音识别权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 语音识别 中允许 Quill 后再点重试。",
+      "desc": "Apple Speech 转写需要语音识别权限。点击按钮触发系统授权弹框;若曾拒绝,需在 系统设置 → 隐私与安全性 → 语音识别 中允许 Mochi 后再点重试。",
       "action": "授权语音识别"
     },
     "polishPrompt": {
@@ -797,7 +797,7 @@
     },
     "icon": {
       "title": "图标",
-      "desc": "默认使用内置 Quill 图标，或上传自定义图片",
+      "desc": "默认使用内置 Mochi 图标，或上传自定义图片",
       "builtin": "默认",
       "custom": "自定义",
       "uploading": "上传中…",
@@ -954,7 +954,7 @@
       "collapse": "收起策略"
     },
     "baseline": {
-      "note": "Tauri IPC、quill-plugin、asset、data: 与 blob: 始终允许，不可移除。另外默认放行七牛云图床域名 http://*.clouddn.com、上传端点 https://*.qiniup.com，Cloudflare R2 上传端点 https://*.r2.cloudflarestorage.com、默认公开访问域名 https://*.r2.dev，以及阿里云 OSS 上传端点与公开访问域名 https://*.aliyuncs.com。"
+      "note": "Tauri IPC、mochi-plugin、asset、data: 与 blob: 始终允许，不可移除。另外默认放行七牛云图床域名 http://*.clouddn.com、上传端点 https://*.qiniup.com，Cloudflare R2 上传端点 https://*.r2.cloudflarestorage.com、默认公开访问域名 https://*.r2.dev，以及阿里云 OSS 上传端点与公开访问域名 https://*.aliyuncs.com。"
     },
     "apply": {
       "button": "应用并刷新",

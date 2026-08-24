@@ -10,7 +10,7 @@
 //! guiding the user to 系统设置 → 隐私与安全性 → 辅助功能.
 //!
 //! Ported from openless `insertion.rs` macOS path; the Windows / Linux /
-//! fcitx / enigo paths are NOT ported (cfg-gated out — Quill is macOS-only
+//! fcitx / enigo paths are NOT ported (cfg-gated out — Mochi is macOS-only
 //! for voice input this round).
 
 #![cfg(target_os = "macos")]
@@ -80,7 +80,7 @@ fn pending() -> &'static Mutex<Option<PendingClipboardRestore>> {
 ///
 /// `restore` should be `true` in normal operation (don't eat the user's clip);
 /// set `false` only if the caller explicitly wants to leave the text on the
-/// clipboard. Quill's voice path always restores.
+/// clipboard. Mochi's voice path always restores.
 pub fn insert_text(app: &AppHandle, text: &str) -> Result<(), String> {
     paste_log(&format!("[voice-paste] insert_text enter, text_len={}", text.len()));
     if text.is_empty() {
@@ -235,7 +235,7 @@ extern "C" {
 /// lifetime when `check_accessibility()` is false. This deviates from
 /// openless `insertion::macos::insert_with_clipboard_restore`, which never
 /// prompts from the paste path (it returns `InsertStatus::CopiedFallback`
-/// and lets the user trigger the prompt themselves). Quill deviates because
+/// and lets the user trigger the prompt themselves). Mochi deviates because
 /// the user explicitly asked for the system dialog to fire automatically on
 /// the first insert attempt — without that, they have to find and click the
 /// VoiceSettings "授权辅助功能" button, which feels broken on first use.
@@ -263,7 +263,7 @@ fn post_cmd_v() -> Result<(), String> {
         paste_log(&format!("[voice-paste] requested accessibility, now trusted: {}", now_trusted));
         if !now_trusted {
             return Err(
-                "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Quill（授权后需重启应用生效）"
+                "未授予辅助功能权限。请在 系统设置 → 隐私与安全性 → 辅助功能 中允许 Mochi（授权后需重启应用生效）"
                     .into(),
             );
         }

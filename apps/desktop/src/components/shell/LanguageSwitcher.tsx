@@ -41,7 +41,7 @@ export function LanguageSwitcher({ variant = 'compact' }: LanguageSwitcherProps)
     document.addEventListener('mousedown', onDocClick);
     return () => {
       document.removeEventListener('mousedown', onDocClick);
-      window.dispatchEvent(new CustomEvent('quill:overlay-closed'));
+      window.dispatchEvent(new CustomEvent('mochi:overlay-closed'));
     };
   }, [open]);
 

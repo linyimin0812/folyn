@@ -53,7 +53,7 @@ export function validateManifest(manifest: PluginManifest): void {
  * is validated at compile time and by `validateManifest` in its test step:
  *
  * ```ts
- * import { definePlugin, validateManifest } from 'quill-plugin-sdk';
+ * import { definePlugin, validateManifest } from 'mochi-plugin-sdk';
  * export const manifest = definePlugin({ id: 'my-plugin', ... });
  * validateManifest(manifest); // run in `test`
  * ```

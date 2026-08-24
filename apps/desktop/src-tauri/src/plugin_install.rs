@@ -65,9 +65,9 @@ fn copy_inner(src: &Path, dst: &Path) -> Result<(), String> {
 // ── Zip extraction (compiled-only distribution) ──────────────────────────────
 
 /// Install a plugin from a compiled-only `.zip` archive. Extracts to a
-/// staging dir under `~/.quill/plugins/.staging/`, filters forbidden files
+/// staging dir under `~/.mochi/plugins/.staging/`, filters forbidden files
 /// (source/lockfiles/configs), validates the manifest, then atomically
-/// renames into `~/.quill/plugins/<id>/` and emits `plugin://installed`.
+/// renames into `~/.mochi/plugins/<id>/` and emits `plugin://installed`.
 ///
 /// Hard-fails on: zip-slip (`..`, absolute, drive-letter), symlink entries,
 /// blacklisted files (src/, *.ts, package*.json, etc.), per-file > 50 MB,
@@ -163,7 +163,7 @@ pub async fn install_plugin_zip(
             .map_err(|e| format!("failed to remove existing plugin dir: {e}"))
             .map_err(|e| cleanup(e.into()))?;
     }
-    // Rename staging → plugin_dir. Same filesystem (both under ~/.quill), so
+    // Rename staging → plugin_dir. Same filesystem (both under ~/.mochi), so
     // this is atomic + instant. Fall back to a recursive copy if rename
     // refuses (cross-filesystem edge case on exotic setups).
     if let Err(e) = fs::rename(&staging, &plugin_dir) {
@@ -218,7 +218,7 @@ fn unique_staging_suffix() -> String {
 // ── Tauri commands ───────────────────────────────────────────────────────────
 
 /// Install a plugin from an unpacked source folder. Copies the folder to
-/// `~/.quill/plugins/<id>/`, reads + validates `manifest.json`, upserts the
+/// `~/.mochi/plugins/<id>/`, reads + validates `manifest.json`, upserts the
 /// entry in `plugins.json`, and emits `plugin://installed`.
 ///
 /// MVP: `source_path` must be an existing directory containing `manifest.json`.

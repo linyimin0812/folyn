@@ -6,9 +6,9 @@ import { useAiConfigStore, firstEnabledPair } from './aiConfigStore';
 import { generateId } from '@/utils/idGenerator';
 
 // ── Pet chat session storage (SEPARATE from the main AI panel) ──
-// The main window's AI panel persists its sessions to ~/.quill/vaults/<vaultId>/
+// The main window's AI panel persists its sessions to ~/.mochi/vaults/<vaultId>/
 // (vault-scoped, via aiSessionPersistence.ts). The pet-panel chat is its OWN
-// conversation surface, so it persists to ~/.quill/pet-chat/ instead — the two
+// conversation surface, so it persists to ~/.mochi/pet-chat/ instead — the two
 // never read or write the same session files. The MAIN window is the single
 // writer (it owns the $HOME fs ACL); the pet-panel mirrors these sessions over
 // events and forwards its own mutations back (host + mirror below).
@@ -18,7 +18,7 @@ let basePath = '';
 async function getBasePath(): Promise<string> {
   if (basePath) return basePath;
   const home = await homeDir();
-  basePath = await join(home, '.quill', 'pet-chat');
+  basePath = await join(home, '.mochi', 'pet-chat');
   return basePath;
 }
 
@@ -30,7 +30,7 @@ async function ensureDir(): Promise<void> {
 }
 
 /** Minimal file-backed store mirroring sessionStorage's shape, but rooted at
- *  ~/.quill/pet-chat/ with NO vault subdirectory (pet chat is vault-free). */
+ *  ~/.mochi/pet-chat/ with NO vault subdirectory (pet chat is vault-free). */
 const petChatStorage = {
   async saveSession(sessionId: string, data: unknown): Promise<void> {
     await ensureDir();

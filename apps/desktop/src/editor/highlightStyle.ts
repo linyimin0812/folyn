@@ -8,7 +8,7 @@ import { tags } from '@lezer/highlight';
 
 const t = tags;
 
-export const quillHighlightStyle = HighlightStyle.define([
+export const mochiHighlightStyle = HighlightStyle.define([
   { tag: t.meta, color: 'var(--cm-meta)' },
   { tag: t.link, textDecoration: 'underline' },
   { tag: t.heading, textDecoration: 'underline', fontWeight: 'bold' },
@@ -49,7 +49,7 @@ export const mathTokenTheme = EditorView.theme({
   },
 });
 
-export const quillHighlighting = () => [
-  syntaxHighlighting(quillHighlightStyle, { fallback: true }),
+export const mochiHighlighting = () => [
+  syntaxHighlighting(mochiHighlightStyle, { fallback: true }),
   mathTokenTheme,
 ];

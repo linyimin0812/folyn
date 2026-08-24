@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useGraphvizSvg } from '@quill/container-plugins';
+import { useGraphvizSvg } from '@mochi/container-plugins';
 import { ZoomPanCanvas } from '../image/ZoomPanCanvas';
 import type { PreviewProps } from '../types';
 

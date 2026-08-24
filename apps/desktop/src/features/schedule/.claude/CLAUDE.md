@@ -1,4 +1,4 @@
-# Quill 每日回顾（schedule feature）
+# Mochi 每日回顾（schedule feature）
 
 本目录是 schedule feature 的运行时上下文。Agent 调用时 cwd = `<vault>/__schedule__/`，自动发现 `.claude/agents/schedule.md`。调用时额外传 `--add-dir <vault>` 以便访问 `__daily__/` 日记与今日修改文档。
 

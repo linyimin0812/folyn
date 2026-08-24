@@ -1,10 +1,10 @@
 {
-  "name": "create-quill-plugin",
+  "name": "create-mochi-plugin",
   "version": "0.1.0",
-  "description": "Scaffold a Quill plugin from a template. Run: npx create-quill-plugin <name>",
+  "description": "Scaffold a Mochi plugin from a template. Run: npx create-mochi-plugin <name>",
   "type": "module",
   "bin": {
-    "create-quill-plugin": "dist/index.js"
+    "create-mochi-plugin": "dist/index.js"
   },
   "files": ["dist", "template"],
   "scripts": {

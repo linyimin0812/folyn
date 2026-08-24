@@ -6,7 +6,7 @@
 //! frontmost app. Mirrors macOS `insertion.rs` (CGEvent Cmd+V path).
 //!
 //! No Accessibility / AX permission concept on Windows. UIPI (User Interface
-//! Privilege Isolation) blocks SendInput to elevated processes when Quill is
+//! Privilege Isolation) blocks SendInput to elevated processes when Mochi is
 //! not elevated — MVP does not handle that (普通用户场景无影响).
 //!
 //! Ported from macOS `insertion.rs`; clipboard-restore logic shared by

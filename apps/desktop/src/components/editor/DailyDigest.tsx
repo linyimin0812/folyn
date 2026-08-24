@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import type { VaultEntry } from '@quill/vault-provider';
+import type { VaultEntry } from '@mochi/vault-provider';
 import { MessageContent } from '@/components/chat';
 import { getFeatureAgentSendOptions } from '@/services/featureAgentService';
 
@@ -70,7 +70,7 @@ export function DailyDigest({ currentFilePath, onInsertContent }: DailyDigestPro
 
       setModifiedFiles(modified);
 
-      const { createAdapter } = await import('@quill/cli-adapter');
+      const { createAdapter } = await import('@mochi/cli-adapter');
       const { cliAdapter, cliPath } = useAiConfigStore.getState();
       const adapter = createAdapter(cliAdapter);
       const vault = useVaultStore.getState().currentVault;

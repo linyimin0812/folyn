@@ -15,15 +15,15 @@
  *   uninstall → record removed (deactivates first if active)
  */
 
-import type { Disposable } from 'quill-plugin-sdk';
+import type { Disposable } from 'mochi-plugin-sdk';
 import type {
   PluginContext,
   PluginLoader,
   PluginManifest,
   PluginRecord,
   PluginTier,
-} from 'quill-plugin-sdk';
-import { validateManifest as validate } from 'quill-plugin-sdk';
+} from 'mochi-plugin-sdk';
+import { validateManifest as validate } from 'mochi-plugin-sdk';
 
 export class PluginHost {
   private readonly records = new Map<string, PluginRecord>();

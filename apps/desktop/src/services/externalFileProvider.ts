@@ -27,7 +27,7 @@ export async function resolveAbsolutePath(p: string): Promise<string> {
     const { homeDir, join } = await import('@tauri-apps/api/path');
     const home = (await homeDir()).replace(/[/\\]+$/, '');
     // ponytail: join() is separator-aware — string concat produced mixed
-    // separators on Windows (C:\Users\x/quill/...) failing the fs scope glob.
+    // separators on Windows (C:\Users\x/mochi/...) failing the fs scope glob.
     return await join(home, p.slice(1));
   }
   if (p.startsWith('$HOME/') || p === '$HOME') {
@@ -43,7 +43,7 @@ async function assertWithinHome(absPath: string): Promise<void> {
   if (!ok) {
     throw new Error(
       `Cannot open file outside your home directory: ${absPath}\n` +
-        `Quill currently limits external files to your home folder ($HOME).`,
+        `Mochi currently limits external files to your home folder ($HOME).`,
     );
   }
 }

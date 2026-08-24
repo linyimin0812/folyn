@@ -44,7 +44,7 @@ import {
   indentOnInput,
   indentUnit,
 } from '@codemirror/language';
-import { quillHighlighting } from '@/editor/highlightStyle';
+import { mochiHighlighting } from '@/editor/highlightStyle';
 import {
   autocompletion,
   closeBrackets,
@@ -156,7 +156,7 @@ export function Json5CodeMirror({
         EditorState.tabSize.of(2),
         indentUnit.of('  '),
         indentOnInput(),
-        quillHighlighting(),
+        mochiHighlighting(),
         bracketMatching(),
         closeBrackets(),
         autocompletion({ override: [jsonAutocomplete] }),

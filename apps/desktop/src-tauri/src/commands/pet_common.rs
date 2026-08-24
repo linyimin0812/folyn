@@ -184,7 +184,7 @@ pub fn pet_menu_label(locale: &str, key: PetMenuLabel) -> &'static str {
     }
 }
 
-/// Localized label keys for the macOS app menu bar submenus. "Quill" is a
+/// Localized label keys for the macOS app menu bar submenus. "Mochi" is a
 /// brand name and stays untranslated; `PredefinedMenuItem` (Cut/Copy/Paste
 /// /About/…) is OS-localized and untouched. macOS-only: `build_app_menu`
 /// (the only consumer) is cfg-gated to macOS, so compiling these on Windows
@@ -354,7 +354,7 @@ pub struct PetPosition {
 ///  (a) decide whether the cursor is over the mascot sprite (click-through),
 ///  (b) hide itself when the main window enters fullscreen (R7/AC9).
 ///
-/// Fullscreen detection here is best-effort: it only covers the Quill main
+/// Fullscreen detection here is best-effort: it only covers the Mochi main
 /// window being fullscreen, not arbitrary foreground apps. Detecting any-app
 /// macOS fullscreen Spaces requires NSWorkspace/Space-change notifications
 /// (see research/fullscreen-detection-macos.md); that is out of MVP scope.
@@ -401,7 +401,7 @@ pub struct PetPanelSize {
 /// Tray icon id — stable so `tray_by_id` lookups (for destroy / show_menu)
 /// always find the same icon regardless of how many times the user toggles
 /// the setting on/off-on.
-pub(crate) const TRAY_ID: &str = "quill-tray";
+pub(crate) const TRAY_ID: &str = "mochi-tray";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pet quick-action panel window (`pet-panel`).

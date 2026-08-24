@@ -27,7 +27,7 @@ interface QoderStreamEvent {
 }
 
 /** Pure seam: map a parsed Qoder CLI JSONL event into zero or more
- *  `CliStreamEvent`s for the Quill adapter event bus.
+ *  `CliStreamEvent`s for the Mochi adapter event bus.
  *
  * Qoder event taxonomy (per `research/qoder-cli-shape.md` §2):
  * - `system` `{session_id}` → `session_id` (first event; persist id for resume).

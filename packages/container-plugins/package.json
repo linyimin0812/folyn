@@ -1,7 +1,7 @@
 {
-  "name": "@quill/container-plugins",
+  "name": "@mochi/container-plugins",
   "version": "0.1.0",
-  "description": "Quill container plugins — pluggable directive components",
+  "description": "Mochi container plugins — pluggable directive components",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",
@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "quill-plugin-sdk": "workspace:*"
+    "mochi-plugin-sdk": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.0.0",

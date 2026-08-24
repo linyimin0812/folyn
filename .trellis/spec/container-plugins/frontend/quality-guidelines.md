@@ -19,7 +19,7 @@
 | Pattern | Why | Alternative |
 |---------|-----|-------------|
 | Side effects in plugin components | Preview pane should be pure render | No API calls, no store access |
-| Importing from `@quill/desktop` | Circular dependency | This package is a leaf |
+| Importing from `@mochi/desktop` | Circular dependency | This package is a leaf |
 | Tailwind classes in components | Preview pane has its own CSS | Inline styles + CSS vars |
 | Direct DOM manipulation | Breaks React rendering | Use React state |
 
@@ -40,6 +40,6 @@ No test suite currently exists. When adding tests:
 - [ ] Component handles missing `attributes` with defaults
 - [ ] `template` string uses valid `:::directive` syntax
 - [ ] CSS classes use `docmd-` prefix
-- [ ] No imports from `@quill/desktop` or other non-leaf packages
+- [ ] No imports from `@mochi/desktop` or other non-leaf packages
 - [ ] Plugin registered in `registerBuiltinPlugins()`
 - [ ] Inline styles used (no Tailwind)

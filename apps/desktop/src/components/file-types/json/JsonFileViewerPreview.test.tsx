@@ -76,7 +76,7 @@ describe('JsonFileViewerPreview — PR3', () => {
   it('renders the tree for JSON5 with comments and unquoted keys', async () => {
     const json5 = `{
   // a comment
-  name: "Quill",
+  name: "Mochi",
   /* block */
   count: 3,
 }`;

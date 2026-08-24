@@ -15,8 +15,8 @@
  * a merged Disposable that unregisters all commands on plugin deactivate.
  */
 
-import type { Disposable, PluginManifest } from '@quill/plugin-host';
-import type { ExporterContribution } from '@quill/plugin-host';
+import type { Disposable, PluginManifest } from '@mochi/plugin-host';
+import type { ExporterContribution } from '@mochi/plugin-host';
 import type { PluginModule } from './contributionAdapters';
 import { registerCommand } from '@/services/commandRegistry';
 import { getActiveDocument } from '@/hooks/useExport';

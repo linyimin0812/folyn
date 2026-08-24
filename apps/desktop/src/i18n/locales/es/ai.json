@@ -8,10 +8,10 @@
     "messageCountSuffix": "msg",
     "emptyState": {
       "greeting": {
-        "morning": "Buenos días, soy Quill AI. ¿En qué puedo ayudarte?",
-        "noon": "Buen mediodía, soy Quill AI. ¿En qué puedo ayudarte?",
-        "afternoon": "Buenas tardes, soy Quill AI. ¿En qué puedo ayudarte?",
-        "evening": "Buenas noches, soy Quill AI. ¿En qué puedo ayudarte?"
+        "morning": "Buenos días, soy Mochi AI. ¿En qué puedo ayudarte?",
+        "noon": "Buen mediodía, soy Mochi AI. ¿En qué puedo ayudarte?",
+        "afternoon": "Buenas tardes, soy Mochi AI. ¿En qué puedo ayudarte?",
+        "evening": "Buenas noches, soy Mochi AI. ¿En qué puedo ayudarte?"
       }
     },
     "attachmentPlaceholder": "(adjunto)",

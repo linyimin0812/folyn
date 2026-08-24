@@ -1,5 +1,5 @@
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import type { FileChange } from '@quill/cli-adapter';
+import type { FileChange } from '@mochi/cli-adapter';
 import type { AiSession } from './aiStore';
 import { useVaultStore } from './vaultStore';
 // ESM cycle: aiStore imports applyAcceptChange/applyRejectChange from here

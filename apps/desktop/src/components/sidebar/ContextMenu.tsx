@@ -62,7 +62,7 @@ async function resolveAbsoluteVaultPath(path: string): Promise<string> {
 
 /** Open a vault item in the OS file manager. A file opens its containing
  *  folder, a directory opens itself, and an empty path opens the vault root.
- *  Uses the opener plugin's `openPath` (ACL scope `**` — vaults at any path, e.g. `D:\quill`, open). */
+ *  Uses the opener plugin's `openPath` (ACL scope `**` — vaults at any path, e.g. `D:\mochi`, open). */
 async function openInFileManager(path: string, type: 'file' | 'dir'): Promise<void> {
   try {
     const vault = useVaultStore.getState().currentVault;

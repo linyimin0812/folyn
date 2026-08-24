@@ -1,7 +1,7 @@
 {
-  "name": "@quill/vault-provider",
+  "name": "@mochi/vault-provider",
   "version": "0.1.0",
-  "description": "Quill Vault Provider abstraction layer",
+  "description": "Mochi Vault Provider abstraction layer",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",

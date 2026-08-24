@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PluginHost } from './PluginHost';
-import type { PluginManifest } from 'quill-plugin-sdk';
+import type { PluginManifest } from 'mochi-plugin-sdk';
 
 function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   return {

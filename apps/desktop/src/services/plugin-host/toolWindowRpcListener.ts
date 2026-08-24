@@ -1,7 +1,7 @@
 /**
  * Fetch-RPC listener for tool windows.
  *
- * When a sandbox tool window POSTs to `quill-plugin://localhost/<id>/rpc`,
+ * When a sandbox tool window POSTs to `mochi-plugin://localhost/<id>/rpc`,
  * the Rust URI handler (plugin_commands.rs) emits a `plugin-rpc-request`
  * event with `{ requestId, pluginId, body }` where `body` is the raw POST
  * JSON string (`{ method, params }`). This listener (wired once at app boot
@@ -16,15 +16,15 @@
  *      the fetch response.
  *
  * Why event round-trip instead of a direct Tauri command: the plugin's HTML
- * runs in a separate WebviewWindow whose origin (`quill-plugin://localhost`)
+ * runs in a separate WebviewWindow whose origin (`mochi-plugin://localhost`)
  * is not the main app's origin, and we deliberately don't inject Tauri APIs
  * into plugin webviews (utools-style isolation). `fetch()` to the
- * `quill-plugin://` scheme is the only bridge; Rust mediates.
+ * `mochi-plugin://` scheme is the only bridge; Rust mediates.
  */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import type { PluginManifest } from '@quill/plugin-host';
+import type { PluginManifest } from '@mochi/plugin-host';
 import { dispatchPluginRpc } from './rpcBridge';
 
 export interface PluginRpcRequest {
@@ -33,14 +33,14 @@ export interface PluginRpcRequest {
   body: string;
 }
 
-/** Resolve `~/.quill/plugins/<pluginId>/<rel>` via Tauri path APIs. */
+/** Resolve `~/.mochi/plugins/<pluginId>/<rel>` via Tauri path APIs. */
 async function defaultResolvePath(
   pluginId: string,
   relativePath: string,
 ): Promise<string> {
   const { homeDir, join } = await import('@tauri-apps/api/path');
   const home = await homeDir();
-  return join(home, '.quill', 'plugins', pluginId, relativePath);
+  return join(home, '.mochi', 'plugins', pluginId, relativePath);
 }
 
 /**
@@ -49,7 +49,7 @@ async function defaultResolvePath(
  * (the listener) rejects the RPC in that case.
  */
 async function lookupManifest(pluginId: string): Promise<PluginManifest | undefined> {
-  const { pluginHost } = await import('@quill/plugin-host');
+  const { pluginHost } = await import('@mochi/plugin-host');
   const record = pluginHost.get(pluginId);
   return record?.manifest;
 }

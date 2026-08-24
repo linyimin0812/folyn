@@ -7,7 +7,7 @@
 
 import { runRigChat } from './rigChat';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import type { CliStreamEvent } from '@quill/cli-adapter';
+import type { CliStreamEvent } from '@mochi/cli-adapter';
 import type { Capability } from './modelRegistry/types';
 import type { StreamEvent } from './aiStreamUtils';
 

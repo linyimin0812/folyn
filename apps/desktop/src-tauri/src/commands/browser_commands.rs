@@ -327,7 +327,7 @@ pub async fn import_chrome_cookies() -> Result<BrowserImportResult, String> {
     let key = derive_key(&keychain_password);
     #[cfg(target_os = "windows")]
     let key = keychain_password;
-    let scratch = std::env::temp_dir().join(format!("quill-cookies-{}", std::process::id()));
+    let scratch = std::env::temp_dir().join(format!("mochi-cookies-{}", std::process::id()));
     let _ = fs::remove_dir_all(&scratch);
 
     let mut imported: Vec<ImportedCookie> = Vec::new();
@@ -477,7 +477,7 @@ pub async fn import_chrome_passwords(
     let key = derive_key(&keychain_password);
     #[cfg(target_os = "windows")]
     let key = keychain_password;
-    let scratch = std::env::temp_dir().join(format!("quill-logins-{}", std::process::id()));
+    let scratch = std::env::temp_dir().join(format!("mochi-logins-{}", std::process::id()));
     let _ = fs::remove_dir_all(&scratch);
 
     let mut passwords: Vec<ImportedPassword> = Vec::new();

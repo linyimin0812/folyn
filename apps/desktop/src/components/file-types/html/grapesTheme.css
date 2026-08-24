@@ -1,7 +1,7 @@
 /**
- * GrapesJS UI theme overrides for Quill.
+ * GrapesJS UI theme overrides for Mochi.
  *
- * All rules reference Quill's CSS custom properties (defined in index.css
+ * All rules reference Mochi's CSS custom properties (defined in index.css
  * under [data-theme="light"] / [data-theme="dark"]). When the user toggles
  * theme, the variables update and the GrapesJS UI follows automatically —
  * no JS hook needed.
@@ -14,11 +14,11 @@
 .gjs-four-color,
 .gjs-four-color-h:hover { color: var(--acc) !important; }
 
-/* Font family — make every GrapesJS chrome surface use Quill's UI font
+/* Font family — make every GrapesJS chrome surface use Mochi's UI font
    (Sora). The canvas iframe is unaffected (it has its own document). This is
    scoped to the editor root + its non-canvas panels so the page being edited
    keeps whatever font the user authored. */
-.quill-grapes-root,
+.mochi-grapes-root,
 .gjs-pn-panel,
 .gjs-sm-sector,
 .gjs-clm-tags,
@@ -57,8 +57,8 @@
    works, only the visible gutter is removed for a cleaner editor chrome.
    The class is applied to the two scrollable React-owned containers in
    GrapesEditor.tsx (selector strip + tab body). */
-.quill-no-scrollbar::-webkit-scrollbar { display: none; }
-.quill-no-scrollbar {
+.mochi-no-scrollbar::-webkit-scrollbar { display: none; }
+.mochi-no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -96,7 +96,7 @@
 }
 .gjs-field input:focus,
 .gjs-field select:focus { border-color: var(--acc) !important; outline: none !important; }
-/* Select dropdown options — match Quill's .settings-select option styling so
+/* Select dropdown options — match Mochi's .settings-select option styling so
    the open menu reads native rather than browser-default white-on-black. */
 .gjs-field select option { background: var(--panel) !important; color: var(--t1) !important; }
 .gjs-field-arrow { border-top-color: var(--t3) !important; }
@@ -163,7 +163,7 @@
 .gjs-toolbar-item:hover { background: var(--acc2) !important; }
 
 /* —— Modal (Code / Import dialogs) —— */
-/* Mirror Quill's .dlg-overlay / .dlg tokens: same 0.45 overlay opacity, same
+/* Mirror Mochi's .dlg-overlay / .dlg tokens: same 0.45 overlay opacity, same
    14px dialog radius, same panel border + drop shadow, surf2 header strip. */
 .gjs-mdl-bg { background: rgba(0, 0, 0, 0.45) !important; backdrop-filter: blur(4px) !important; }
 .gjs-mdl-dialog {
@@ -204,8 +204,8 @@
    inside the editor (canvas + right panel). Scrolling still works via
    wheel / trackpad; only the visible gutter is removed. This is the
    safety net for any gjs-* container not enumerated above. */
-.quill-grapes-root ::-webkit-scrollbar { display: none !important; }
-.quill-grapes-root * {
+.mochi-grapes-root ::-webkit-scrollbar { display: none !important; }
+.mochi-grapes-root * {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }

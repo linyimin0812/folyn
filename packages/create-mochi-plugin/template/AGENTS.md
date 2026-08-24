@@ -1,16 +1,16 @@
-# Agent Context — Quill Plugin
+# Agent Context — Mochi Plugin
 
-You are working on a **Quill plugin**. This file is the self-contained reference for plugin development. Read it before editing `manifest.json` or `src/index.ts`.
+You are working on a **Mochi plugin**. This file is the self-contained reference for plugin development. Read it before editing `manifest.json` or `src/index.ts`.
 
 ## What this is
 
-A Quill plugin is a single-file ESM bundle loaded by the Quill desktop app at runtime. It declares contributions (commands, file types, containers, exporters, feature panels, tool windows, markdown code renderers, editor languages, highlight grammars, …) in `manifest.json` and wires them up in `src/index.ts` via the `PluginModule` default export. React is provided by the host (`window.React`) — do not bundle it.
+A Mochi plugin is a single-file ESM bundle loaded by the Mochi desktop app at runtime. It declares contributions (commands, file types, containers, exporters, feature panels, tool windows, markdown code renderers, editor languages, highlight grammars, …) in `manifest.json` and wires them up in `src/index.ts` via the `PluginModule` default export. React is provided by the host (`window.React`) — do not bundle it.
 
 ## Tiers
 
 | Tier | Loader | Isolation | Capability surface |
 |------|--------|-----------|---------------------|
-| `sandbox` | Sandboxed iframe (`quill-plugin://` origin) | Full isolation; postMessage RPC only | No raw Tauri APIs; `http`/`ai`/`env` via RPC bridge |
+| `sandbox` | Sandboxed iframe (`mochi-plugin://` origin) | Full isolation; postMessage RPC only | No raw Tauri APIs; `http`/`ai`/`env` via RPC bridge |
 | `trusted` | Host-realm `import()` (TOFU-pinned) | Same realm as host; can contribute inline React/CodeMirror | Scoped Tauri capability grants; full `PluginContext` |
 
 This template defaults to `tier: "trusted"` in `manifest.json`. Switch to `sandbox` only if the plugin is untrusted or needs full isolation — the SDK contract narrows (no `ai.agent` / `ai.edit`, no inline component contribution).
@@ -22,13 +22,13 @@ pnpm install
 pnpm build        # → dist/ (self-contained installable dir)
 ```
 
-Then in Quill: **Settings → Plugins → Install from folder…** → pick `dist/`. Reload Quill (or restart) to pick up changes. Test by exercising the contribution you added.
+Then in Mochi: **Settings → Plugins → Install from folder…** → pick `dist/`. Reload Mochi (or restart) to pick up changes. Test by exercising the contribution you added.
 
 To ship a zip: `cd dist && zip -r ../<name>-<version>.zip .`
 
 ## First files to read
 
-- `manifest.json` — declares `id`, `name`, `version`, `quill` compat, `tier`, `permissions`, `contributes.*`, `activation`. The contract between plugin and host. Start here when adding a feature.
+- `manifest.json` — declares `id`, `name`, `version`, `mochi` compat, `tier`, `permissions`, `contributes.*`, `activation`. The contract between plugin and host. Start here when adding a feature.
 - `src/index.ts` — plugin entry. Default export is a `PluginModule` whose maps mirror the entry-refs in `manifest.json`'s `contributes.*`.
 - `build.mjs` — esbuild config. Bundles `src/index.ts` → `dist/index.js` (single-file ESM, all deps inlined), then writes `dist/manifest.json` with `main` rewritten to `index.js`. React stays external (resolved from `window.React` at runtime).
 - `README.md` — install + structure overview (human-facing).
@@ -41,7 +41,7 @@ To ship a zip: `cd dist && zip -r ../<name>-<version>.zip .`
   "name": "Display Name",
   "version": "0.1.0",
   "author": "Jane",
-  "quill": ">=0.1.0",                 // engine compat, semver constraint
+  "mochi": ">=0.1.0",                 // engine compat, semver constraint
   "tier": "trusted",                  // 'sandbox' | 'trusted'
   "main": "dist/index.js",            // entry path; build.mjs rewrites → "index.js" in dist/
   "html": "",                         // sandbox-tier HTML UI entry; required when tier === 'sandbox'
@@ -227,7 +227,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 The default export of `src/index.ts`. Every entry-ref in `manifest.json`'s `contributes.*[]` MUST have a matching key in the corresponding map here. Missing keys surface as runtime errors when the host tries to resolve the entry-ref.
 
 ```ts
-import type { PluginModule } from 'quill-plugin-sdk';
+import type { PluginModule } from 'mochi-plugin-sdk';
 
 const module: PluginModule = {
   // entry-ref → file-type handler (matches contributes.fileTypes[].handler)
@@ -368,7 +368,7 @@ A plugin that needs no explicit lifecycle can omit `activate`/`deactivate` — t
 2. Wire the matching key in `src/index.ts`'s `PluginModule` export map. The key MUST equal the entry-ref.
 3. Update `permissions` in `manifest.json` if the contribution touches fs / http / clipboard / dialog / window / vault / ai. Host enforces at the trust boundary — missing permission = runtime reject, not build error.
 4. If the contribution needs lifecycle setup (register listeners, start a worker), put it in `module.activate(ctx)` and register disposables via `ctx.addDisposable()`.
-5. `pnpm build` → reinstall `dist/` via Settings → Plugins → Install from folder… → reload Quill → test by exercising the contribution.
+5. `pnpm build` → reinstall `dist/` via Settings → Plugins → Install from folder… → reload Mochi → test by exercising the contribution.
 
 ## Pitfalls
 
@@ -384,12 +384,12 @@ A plugin that needs no explicit lifecycle can omit `activate`/`deactivate` — t
 
 - Make the smallest change that works end to end before adding capability. Do not scaffold for hypothetical contributions.
 - Keep `manifest.json` and `src/index.ts` in lockstep — every `contributes.*` entry must have a matching handler/component, and vice versa.
-- After any manifest or source change: `pnpm build` → reinstall `dist/` → reload Quill → exercise the contribution. Type errors that pass at build time do not prove the plugin runs.
+- After any manifest or source change: `pnpm build` → reinstall `dist/` → reload Mochi → exercise the contribution. Type errors that pass at build time do not prove the plugin runs.
 - Prefer the SDK's typed contracts (`FileTypeHandler`, `ContainerProps`, `MarkdownCodeRendererProps`, `ExporterHandler`, etc.) over `any` — the host narrows at runtime and type drift surfaces as runtime resolution failures.
 
 ## Reference
 
 - **`packages/plugin-sdk/src/types.ts`** + **`contracts.ts`** in this monorepo — authoritative SDK source. When in doubt about a type, read it there.
 - **`docs/plugin-development.md`** + **`docs/plugin-sdk-reference.md`** in this monorepo — full development guide (1257 + 445 lines): TOFU approval flow, sandbox RPC protocol, packaging, signing, examples. Not bundled into the generated plugin; read from the monorepo when you need depth.
-- **`quill-plugin-plantuml`** in the external `quill-plugin-sdk` repo — canonical reference plugin covering fileTypes + containers + exporters + markdownCodeRenderers + editorLanguages end to end.
+- **`mochi-plugin-plantuml`** in the external `mochi-plugin-sdk` repo — canonical reference plugin covering fileTypes + containers + exporters + markdownCodeRenderers + editorLanguages end to end.
 - Repo-root `AGENTS.md` — engineering principles for this monorepo (remove obsolete paths, simplest implementation, layers, prefer existing deps).

@@ -12,7 +12,7 @@
 // 输出加了 alpha（取 RGB 最大分量），光效直接浮在透明窗口上，无需底色。
 // 生命周期：挂载启动 rAF，卸载 cancel + 释放 GL 资源（不可见即零 GPU，#470 同款原则）。
 //
-// ponytail: faithful verbatim port of openless's SiriGL.tsx into Quill — no shader
+// ponytail: faithful verbatim port of openless's SiriGL.tsx into Mochi — no shader
 // simplification, no CSS substitution. The user explicitly rejected the previous
 // sub-agent's "for a 28px button the detail is invisible" shortcut and asked for
 // the full openless animation. The host component (VoiceOrbOverlay.tsx) subscribes

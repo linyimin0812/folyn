@@ -1,7 +1,7 @@
 //! Plugin URI scheme handler + the on-disk registry (`plugins.json`) of
 //! installed plugins.
 //!
-//! Sandbox-tier plugins live under `~/.quill/plugins/<id>/`. The URI scheme
+//! Sandbox-tier plugins live under `~/.mochi/plugins/<id>/`. The URI scheme
 //! serves their static assets (HTML/JS/CSS) to a sandboxed iframe so the host
 //! never gives plugins raw Tauri capabilities. Install/list/uninstall
 //! commands (in `plugin_install` / `plugin_lifecycle`) manage the on-disk
@@ -9,7 +9,7 @@
 //!
 //! This module is the shared core: it owns the `PluginEntry` type, the
 //! `plugins_dir` resolver, the `plugins.json` read/write/upsert/remove
-//! helpers, the `quill-plugin://` URI parser + CSP, and the
+//! helpers, the `mochi-plugin://` URI parser + CSP, and the
 //! `is_valid_plugin_id` path-safety helper used by `plugin_fetch` and
 //! `plugin_lifecycle`.
 
@@ -22,7 +22,7 @@ use tauri::Manager;
 
 // ── URI scheme handler ───────────────────────────────────────────────────────
 
-/// Parse a `quill-plugin://localhost/<id>/<path>` URI into `(plugin_id, file_path)`.
+/// Parse a `mochi-plugin://localhost/<id>/<path>` URI into `(plugin_id, file_path)`.
 ///
 /// The URI path is `/<id>/<rest...>`. Returns `None` if the path is empty or
 /// the id segment is missing. Path-traversal segments (`..`) are rejected.
@@ -62,19 +62,19 @@ pub fn content_type_for(path: &str) -> &'static str {
 
 /// The CSP header injected into every plugin asset response. Sandbox plugins
 /// get `default-src 'none'` so they can do nothing without going through the
-/// host RPC bridge. `script-src 'unsafe-inline' quill-plugin:` lets the
+/// host RPC bridge. `script-src 'unsafe-inline' mochi-plugin:` lets the
 /// plugin's HTML embed inline scripts AND load `<script src>` assets from the
 /// plugin's own directory (Chromium does not resolve `'self'` to the document
-/// origin for custom schemes like `quill-plugin://localhost`, so the scheme
+/// origin for custom schemes like `mochi-plugin://localhost`, so the scheme
 /// must be named explicitly); `style-src 'unsafe-inline'` for inline styles.
-/// `connect-src quill-plugin:` lets plugin JS call `fetch('quill-plugin://localhost/<id>/rpc', ...)`.
+/// `connect-src mochi-plugin:` lets plugin JS call `fetch('mochi-plugin://localhost/<id>/rpc', ...)`.
 pub const PLUGIN_CSP: &str =
-    "default-src 'none'; script-src 'unsafe-inline' quill-plugin:; style-src 'unsafe-inline'; connect-src quill-plugin:";
+    "default-src 'none'; script-src 'unsafe-inline' mochi-plugin:; style-src 'unsafe-inline'; connect-src mochi-plugin:";
 
-/// Resolve `~/.quill/plugins/` using the Tauri path resolver.
+/// Resolve `~/.mochi/plugins/` using the Tauri path resolver.
 pub fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let home = app.path().home_dir().map_err(|e| e.to_string())?;
-    Ok(home.join(".quill").join("plugins"))
+    Ok(home.join(".mochi").join("plugins"))
 }
 
 // ── On-disk registry (plugins.json) ──────────────────────────────────────────

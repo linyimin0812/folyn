@@ -5,15 +5,15 @@
 App crashes with `NSRangeException` when the pet mascot window is
 realized/shown on a Touch Bar-equipped Mac: `_NSTouchBarFinderObservation`
 tries to remove its `nextResponder` KVO observer from the swapped
-`QuillPetPanel` class but fails — the observer was registered against
+`MochiPetPanel` class but fails — the observer was registered against
 the original NSWindow class before `to_panel()` swapped it.
 
 ## Root cause
 
 `convert_windows()` in `apps/desktop/src-tauri/src/pet_panel_macos.rs`
-calls `window.to_panel::<QuillXxxPanel>()` on each Tauri WebviewWindow.
+calls `window.to_panel::<MochiXxxPanel>()` on each Tauri WebviewWindow.
 `to_panel()` uses `object_setClass` to swap the window's class to our
-custom `objc2`-defined `RawQuillXxxPanel` subclass. macOS's Touch Bar
+custom `objc2`-defined `RawMochiXxxPanel` subclass. macOS's Touch Bar
 finder registers a KVO observer on `nextResponder` against the
 pre-swap class; when the finder later invalidates (deinit / bar
 recalc), it tries to unregister from the post-swap class and throws

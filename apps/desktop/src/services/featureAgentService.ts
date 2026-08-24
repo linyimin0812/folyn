@@ -8,8 +8,8 @@
 //   不存在 → 回退 `--bare` + `--agents` 内联交付 canonical agent 定义（contract 不丢，spec `feature-agents.md` Validation Matrix 承诺的 graceful degradation）。
 // - schedule feature 额外传 `--add-dir <vault>` 以便访问 `__daily__/` 日记与今日修改文档。
 
-import type { CliAgentDefinition, CliSendOptions } from '@quill/cli-adapter';
-import type { VaultManager } from '@quill/vault-provider';
+import type { CliAgentDefinition, CliSendOptions } from '@mochi/cli-adapter';
+import type { VaultManager } from '@mochi/vault-provider';
 import analyzeAgentDoc from '@/features/analyze/.claude/agents/analyze.md?raw';
 import analyzeClaudeDoc from '@/features/analyze/.claude/CLAUDE.md?raw';
 import clipsAgentDoc from '@/features/clips/.claude/agents/clips.md?raw';
@@ -46,7 +46,7 @@ function agentFilePath(feature: string, file: string): string {
 }
 
 /** 诊断日志目录（相对 vault 根；已在 excludePatterns 里，不污染文件树）。 */
-const SEED_LOG_DIR = '.quill-tmp';
+const SEED_LOG_DIR = '.mochi-tmp';
 /** 诊断日志文件路径（相对 vault 根）。 */
 const SEED_LOG_PATH = `${SEED_LOG_DIR}/feature-agent-seed.log`;
 
@@ -253,13 +253,13 @@ export async function seedAgentFiles(manager: VaultManager): Promise<SeedAgentRe
     }
   }
 
-  // 写诊断日志到 <vault>/.quill-tmp/feature-agent-seed.log（失败不抛）。
+  // 写诊断日志到 <vault>/.mochi-tmp/feature-agent-seed.log（失败不抛）。
   await writeSeedLog(manager, results);
   return results;
 }
 
 /**
- * 把播种结果写入 `<vault>/.quill-tmp/feature-agent-seed.log`。
+ * 把播种结果写入 `<vault>/.mochi-tmp/feature-agent-seed.log`。
  * webview console 在终端看不到——写文件让用户能直接在 vault 里确认 seeding 是否生效。
  * 失败静默（只 console.warn）。
  */

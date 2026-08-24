@@ -1,7 +1,7 @@
 # Research: Claude Code (CLI) Hooks — PreToolUse/PostToolUse for Diff-Review Interception
 
-- **Query**: Claude Code hooks config schema, handler invocation protocol (stdin/exit codes/JSON output), reaching the running Quill app from the hook subprocess, Quill wiring config without polluting global claude config, matcher + tool_input for Write/Edit/MultiEdit.
-- **Scope**: external (Anthropic Claude Code docs) + internal (Quill `ClaudeAdapter`, `DiffReviewBar`, capabilities)
+- **Query**: Claude Code hooks config schema, handler invocation protocol (stdin/exit codes/JSON output), reaching the running Mochi app from the hook subprocess, Mochi wiring config without polluting global claude config, matcher + tool_input for Write/Edit/MultiEdit.
+- **Scope**: external (Anthropic Claude Code docs) + internal (Mochi `ClaudeAdapter`, `DiffReviewBar`, capabilities)
 - **Date**: 2026-06-28
 - **Sources note**: Live web fetch was unavailable in this sandbox (no `curl`/WebFetch/`mcp__exa__*` tools exposed). Findings below are from the assistant's training knowledge of Claude Code hooks (stable, core protocol). Items that are version-dependent or that I could not verify against live docs are flagged `[UNVERIFIED]` / `[VERSION-DEPENDENT]`. **Verify against the live docs URLs below before implementing.**
 
@@ -15,11 +15,11 @@
 
 ---
 
-## TL;DR for Quill
+## TL;DR for Mochi
 
-Claude Code supports **`PreToolUse` hooks** that run as a subprocess *before* a tool executes and can **allow / deny / ask** the call. Quill can register a hook for `Write|Edit|MultiEdit` whose `command` is a tiny bridge that POSTs the proposed `tool_input` to a localhost HTTP endpoint hosted by Quill's Rust backend, blocks for the user's diff-review decision, and returns `permissionDecision: deny` to block the write (or `allow` to let it through). This replaces the current post-hoc diffing in `ClaudeAdapter` (which runs `--permission-mode bypassPermissions` and reads the file *after* it's already written).
+Claude Code supports **`PreToolUse` hooks** that run as a subprocess *before* a tool executes and can **allow / deny / ask** the call. Mochi can register a hook for `Write|Edit|MultiEdit` whose `command` is a tiny bridge that POSTs the proposed `tool_input` to a localhost HTTP endpoint hosted by Mochi's Rust backend, blocks for the user's diff-review decision, and returns `permissionDecision: deny` to block the write (or `allow` to let it through). This replaces the current post-hoc diffing in `ClaudeAdapter` (which runs `--permission-mode bypassPermissions` and reads the file *after* it's already written).
 
-Recommended config plumbing: spawn `claude` with `CLAUDE_CONFIG_DIR` pointed at a Quill-managed temp dir (or `--settings <file>` + `--mcp-config <file>`), so Quill's hooks + MCP server are wired without touching the user's `~/.claude`.
+Recommended config plumbing: spawn `claude` with `CLAUDE_CONFIG_DIR` pointed at a Mochi-managed temp dir (or `--settings <file>` + `--mcp-config <file>`), so Mochi's hooks + MCP server are wired without touching the user's `~/.claude`.
 
 ---
 
@@ -37,7 +37,7 @@ Recommended config plumbing: spawn `claude` with `CLAUDE_CONFIG_DIR` pointed at 
 
 Hooks from all levels are **merged** (arrays concatenated), not overwritten — a user-level hook and a project-level hook for the same event both run.
 
-**`CLAUDE_CONFIG_DIR` env var** `[VERSION-DEPENDENT]`: when set, claude reads settings from `<dir>/settings.json` instead of `~/.claude/settings.json`. This is the cleanest way for Quill to inject config without polluting `~/.claude`. Verify this env var is still honored in the current CLI version.
+**`CLAUDE_CONFIG_DIR` env var** `[VERSION-DEPENDENT]`: when set, claude reads settings from `<dir>/settings.json` instead of `~/.claude/settings.json`. This is the cleanest way for Mochi to inject config without polluting `~/.claude`. Verify this env var is still honored in the current CLI version.
 
 **JSON shape** (in `settings.json`):
 
@@ -50,7 +50,7 @@ Hooks from all levels are **merged** (arrays concatenated), not overwritten — 
         "hooks": [
           {
             "type": "command",
-            "command": "/abs/path/to/quill-hook-bridge pre-tool-use"
+            "command": "/abs/path/to/mochi-hook-bridge pre-tool-use"
           }
         ]
       }
@@ -59,7 +59,7 @@ Hooks from all levels are **merged** (arrays concatenated), not overwritten — 
       {
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "/abs/path/to/quill-hook-bridge post-tool-use" }
+          { "type": "command", "command": "/abs/path/to/mochi-hook-bridge post-tool-use" }
         ]
       }
     ]
@@ -71,11 +71,11 @@ Hooks from all levels are **merged** (arrays concatenated), not overwritten — 
 - Each event maps to an array of `{ matcher, hooks }` entries.
 - `matcher`: a **regex string** matched against the `tool_name`. Omitted/empty = match all tools. For file writes use `"Write|Edit|MultiEdit"` (regex alternation). `[VERSION-DEPENDENT]` some docs show matcher as a simple string, not full regex — verify; `"Write|Edit|MultiEdit"` is the commonly documented form.
 - `hooks`: array of hook definitions. `type: "command"` is the only supported type. `command` is a shell command string (run via the shell; must be on `PATH` or an absolute path — prefer absolute).
-- **`timeout`** `[VERSION-DEPENDENT]`: each hook entry may accept a `timeout` (seconds, default ~60) after which claude kills the process and treats it as a non-blocking error. Quill's diff-review must complete within this window or be async (see §3).
+- **`timeout`** `[VERSION-DEPENDENT]`: each hook entry may accept a `timeout` (seconds, default ~60) after which claude kills the process and treats it as a non-blocking error. Mochi's diff-review must complete within this window or be async (see §3).
 
 **Event names** (the ones relevant here):
 - `PreToolUse` — runs before a tool executes; can block/allow/ask. ← primary hook for diff review.
-- `PostToolUse` — runs after a tool completes; receives `tool_response`. Useful for Quill to refresh its file panel after a write is allowed.
+- `PostToolUse` — runs after a tool completes; receives `tool_response`. Useful for Mochi to refresh its file panel after a write is allowed.
 - Others (not needed for diff review): `Notification`, `UserPromptSubmit`, `Stop`, `SubagentStop`, `PreCompact`, `SessionStart`, `SessionEnd`.
 
 ### 2. Hook handler invocation protocol
@@ -92,7 +92,7 @@ Claude Code spawns the `command` as a **subprocess** (via the shell) and:
 {
   "session_id": "abc123...",
   "transcript_path": "/path/to/.claude/transcript/<session>.jsonl",
-  "cwd": "/Users/yiminlin/project/quill",
+  "cwd": "/Users/yiminlin/project/mochi",
   "hook_event_name": "PreToolUse",
   "tool_name": "Write",
   "tool_input": {
@@ -116,7 +116,7 @@ For `PostToolUse`, the same payload plus a `tool_response` field carrying the to
 
 So the simplest possible bridge: on deny, `echo "reason" >&2; exit 2`; on allow, `exit 0`.
 
-**JSON output protocol** (newer, richer — preferred for Quill) `[VERSION-DEPENDENT — added ~late 2025]`:
+**JSON output protocol** (newer, richer — preferred for Mochi) `[VERSION-DEPENDENT — added ~late 2025]`:
 
 If the hook prints a JSON object on stdout, claude parses it instead of relying on exit codes:
 
@@ -127,7 +127,7 @@ If the hook prints a JSON object on stdout, claude parses it instead of relying 
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "User rejected the proposed edit in Quill diff review."
+    "permissionDecisionReason": "User rejected the proposed edit in Mochi diff review."
   }
 }
 ```
@@ -135,15 +135,15 @@ If the hook prints a JSON object on stdout, claude parses it instead of relying 
 - `permissionDecision`:
   - `"allow"` — proceed without further prompting.
   - `"deny"` — block the tool; `permissionDecisionReason` is fed back to the model (so it can adjust).
-  - `"ask"` — route through claude's normal permission prompt (Quill would normally not use this; it makes its own decision).
+  - `"ask"` — route through claude's normal permission prompt (Mochi would normally not use this; it makes its own decision).
 - `continue: false` + `stopReason` can stop the whole agent turn — not needed for per-tool gating.
 - `suppressOutput: true` hides stdout noise.
 
-**Recommendation for Quill:** use the JSON output protocol (`permissionDecision`) rather than exit-2, because it lets Quill return a structured reason to the model on denial. If the installed claude version is too old to parse JSON output, fall back to `exit 2` + stderr. **Verify** the user's `claude` version supports `permissionDecision` (check `claude --version` and the hooks docs).
+**Recommendation for Mochi:** use the JSON output protocol (`permissionDecision`) rather than exit-2, because it lets Mochi return a structured reason to the model on denial. If the installed claude version is too old to parse JSON output, fall back to `exit 2` + stderr. **Verify** the user's `claude` version supports `permissionDecision` (check `claude --version` and the hooks docs).
 
-### 3. The "reach the running Quill app" problem
+### 3. The "reach the running Mochi app" problem
 
-The hook `command` is a subprocess claude spawns — it has **no direct handle** to the already-running Quill GUI process or the renderer's diff-review UI. It must communicate over a side channel.
+The hook `command` is a subprocess claude spawns — it has **no direct handle** to the already-running Mochi GUI process or the renderer's diff-review UI. It must communicate over a side channel.
 
 **Recommended architecture (composes with the sibling MCP-server research):**
 
@@ -152,12 +152,12 @@ claude (spawned by ClaudeAdapter via Tauri shell)
   │
   │  PreToolUse on Write|Edit|MultiEdit
   ▼
-quill-hook-bridge (tiny subprocess: shell script or small binary)
+mochi-hook-bridge (tiny subprocess: shell script or small binary)
   │  reads stdin JSON (tool_name, tool_input, session_id)
   │  HTTP POST to http://127.0.0.1:<port>/v1/hooks/pre-tool-use
   │  blocks for response
   ▼
-Quill Rust backend (localhost HTTP server — SAME endpoint that hosts the MCP server)
+Mochi Rust backend (localhost HTTP server — SAME endpoint that hosts the MCP server)
   │  maps session_id → active AI session
   │  emits Tauri event to renderer
   ▼
@@ -167,7 +167,7 @@ Renderer (DiffReviewBar) — shows diff, user Accept/Reject
 Rust responds to the pending HTTP request with {permissionDecision, reason}
   │
   ▼
-quill-hook-bridge translates → JSON stdout (permissionDecision) → exit 0
+mochi-hook-bridge translates → JSON stdout (permissionDecision) → exit 0
 ```
 
 Key points:
@@ -175,25 +175,25 @@ Key points:
 - **Same localhost HTTP server** as the MCP server from the sibling research file (`mcp-server-in-tauri.md` — not yet present in `research/`, but the architecture is: Rust backend hosts `http://127.0.0.1:<port>`). One server, two concerns (MCP tools + hook callbacks). Port should be dynamic (assigned at startup, written into the generated settings.json so the bridge knows it).
 - **The bridge must be a real executable on disk** that claude can spawn via `command`. Options, best-worst:
   1. **A tiny shell script** (`#!/bin/sh`, uses `curl` to POST and `jq`/`python3` to parse) — simplest, but depends on `curl`+`jq` being on `PATH` (macOS ships `curl`; `jq` is not guaranteed). Use `python3` (ships on macOS) for JSON parse + HTTP to avoid the `jq` dependency.
-  2. **A small binary** bundled with the Tauri app (e.g., a Rust-built `quill-hook-bridge` placed in the app resources) — most robust, no system deps. Recommended for shipping.
-  3. A Node script — requires Node on `PATH`; avoid (Quill shouldn't assume Node is installed for the CLI-only path).
-- **Blocking semantics**: the hook subprocess blocks until the user decides. Claude's hook `timeout` (default ~60s `[VERSION-DEPENDENT]`) will kill it if the user is idle. Quill should either (a) configure a long `timeout` in the hook entry, or (b) make the UI prompt immediately and have a reasonable default (auto-deny on timeout). A blocked hook blocks the entire claude turn — the streaming `tool_start` event has already fired in `ClaudeAdapter`'s stream, so the UI should show "awaiting review".
-- **Session correlation**: the hook's stdin `session_id` is the same `session_id` that `ClaudeAdapter` captures from the `system/init` stream event (`claudeAdapter.ts:140-143`). Quill should keep a map `claude session_id → quill AI session id` in the Rust backend (or adapter manager) so the HTTP handler routes the review request to the right renderer session.
-- **Security**: bind the localhost HTTP server to `127.0.0.1` only, and validate the `session_id` on every request. The bridge should pass the session_id as a header or in the body. Consider a per-session random token written into the settings.json `command` (e.g., `quill-hook-bridge --token <secret>`) to prevent other local processes from approving writes. `[UNVERIFIED]` whether claude redacts the command string in transcripts — if it logs the command, a token in the command line could leak via transcript; prefer passing the token via an env var set in the hook `command` (e.g., `QUILL_HOOK_TOKEN=... /path/to/bridge`).
+  2. **A small binary** bundled with the Tauri app (e.g., a Rust-built `mochi-hook-bridge` placed in the app resources) — most robust, no system deps. Recommended for shipping.
+  3. A Node script — requires Node on `PATH`; avoid (Mochi shouldn't assume Node is installed for the CLI-only path).
+- **Blocking semantics**: the hook subprocess blocks until the user decides. Claude's hook `timeout` (default ~60s `[VERSION-DEPENDENT]`) will kill it if the user is idle. Mochi should either (a) configure a long `timeout` in the hook entry, or (b) make the UI prompt immediately and have a reasonable default (auto-deny on timeout). A blocked hook blocks the entire claude turn — the streaming `tool_start` event has already fired in `ClaudeAdapter`'s stream, so the UI should show "awaiting review".
+- **Session correlation**: the hook's stdin `session_id` is the same `session_id` that `ClaudeAdapter` captures from the `system/init` stream event (`claudeAdapter.ts:140-143`). Mochi should keep a map `claude session_id → mochi AI session id` in the Rust backend (or adapter manager) so the HTTP handler routes the review request to the right renderer session.
+- **Security**: bind the localhost HTTP server to `127.0.0.1` only, and validate the `session_id` on every request. The bridge should pass the session_id as a header or in the body. Consider a per-session random token written into the settings.json `command` (e.g., `mochi-hook-bridge --token <secret>`) to prevent other local processes from approving writes. `[UNVERIFIED]` whether claude redacts the command string in transcripts — if it logs the command, a token in the command line could leak via transcript; prefer passing the token via an env var set in the hook `command` (e.g., `MOCHI_HOOK_TOKEN=... /path/to/bridge`).
 
-### 4. Quill setting the config (no global pollution)
+### 4. Mochi setting the config (no global pollution)
 
-Quill needs `claude` to load Quill's hooks + MCP config **only for the Quill-spawned session**, without writing into the user's `~/.claude`.
+Mochi needs `claude` to load Mochi's hooks + MCP config **only for the Mochi-spawned session**, without writing into the user's `~/.claude`.
 
 **Options (preferred first):**
 
-1. **`CLAUDE_CONFIG_DIR` env var** `[VERSION-DEPENDENT — verify]`: set it to a Quill-managed temp dir (e.g., `<app data>/claude-config-<session>/`) containing `settings.json` (with hooks) and optionally `.mcp.json`. `ClaudeAdapter` already spawns via `Command.create('claude-cli', ['-l', '-c', shellCmd])` — prepend `QUILL_CONFIG_DIR=... ` or `CLAUDE_CONFIG_DIR=... ` to the shell command, or set it via the Tauri shell `Command` env. This is the cleanest isolation: the user's `~/.claude` is untouched.
+1. **`CLAUDE_CONFIG_DIR` env var** `[VERSION-DEPENDENT — verify]`: set it to a Mochi-managed temp dir (e.g., `<app data>/claude-config-<session>/`) containing `settings.json` (with hooks) and optionally `.mcp.json`. `ClaudeAdapter` already spawns via `Command.create('claude-cli', ['-l', '-c', shellCmd])` — prepend `MOCHI_CONFIG_DIR=... ` or `CLAUDE_CONFIG_DIR=... ` to the shell command, or set it via the Tauri shell `Command` env. This is the cleanest isolation: the user's `~/.claude` is untouched.
 2. **`--settings <path>` CLI flag** `[VERSION-DEPENDENT — verify this flag exists]`: pass an explicit settings file. Combined with `--mcp-config <path>` (which definitely exists for MCP). This is per-invocation and doesn't touch `~/.claude`.
 3. **`--mcp-config <path>`** for MCP servers (stable, documented) + `--settings` for hooks. If `--settings` is unavailable in the installed version, fall back to `CLAUDE_CONFIG_DIR`.
 
-**Important**: `ClaudeAdapter` currently uses `--permission-mode bypassPermissions` (`claudeAdapter.ts:64`). With PreToolUse hooks in place, Quill should **drop `bypassPermissions`** (or switch to `--permission-mode default`) so the hook's `deny` is honored. With `bypassPermissions`, hooks still run but the permission model is bypassed — `[UNVERIFIED]` whether a hook `deny` overrides `bypassPermissions`. Do not rely on it; use `default` or `acceptEdits` and let the hook be the gate. **Verify** the interaction between `--permission-mode` and hook `permissionDecision` in the current version.
+**Important**: `ClaudeAdapter` currently uses `--permission-mode bypassPermissions` (`claudeAdapter.ts:64`). With PreToolUse hooks in place, Mochi should **drop `bypassPermissions`** (or switch to `--permission-mode default`) so the hook's `deny` is honored. With `bypassPermissions`, hooks still run but the permission model is bypassed — `[UNVERIFIED]` whether a hook `deny` overrides `bypassPermissions`. Do not rely on it; use `default` or `acceptEdits` and let the hook be the gate. **Verify** the interaction between `--permission-mode` and hook `permissionDecision` in the current version.
 
-**Generated settings.json** (Quill writes this to the temp config dir before spawning):
+**Generated settings.json** (Mochi writes this to the temp config dir before spawning):
 
 ```json
 {
@@ -202,7 +202,7 @@ Quill needs `claude` to load Quill's hooks + MCP config **only for the Quill-spa
       {
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "QUILL_HOOK_TOKEN=<token> /abs/path/to/quill-hook-bridge", "timeout": 300 }
+          { "type": "command", "command": "MOCHI_HOOK_TOKEN=<token> /abs/path/to/mochi-hook-bridge", "timeout": 300 }
         ]
       }
     ]
@@ -210,7 +210,7 @@ Quill needs `claude` to load Quill's hooks + MCP config **only for the Quill-spa
 }
 ```
 
-Plus a `.mcp.json` pointing the MCP server at the same localhost port (see sibling MCP research). The port + token are generated at Quill startup and interpolated into both files.
+Plus a `.mcp.json` pointing the MCP server at the same localhost port (see sibling MCP research). The port + token are generated at Mochi startup and interpolated into both files.
 
 **`--mcp-config`** path: `[VERSION-DEPENDENT]` claude reads `.mcp.json` from the project root or `~/.claude/.mcp.json` by default; `--mcp-config <file>` overrides. If using `CLAUDE_CONFIG_DIR`, place `.mcp.json` in that dir.
 
@@ -229,7 +229,7 @@ Plus a `.mcp.json` pointing the MCP server at the same localhost port (see sibli
 So the bridge should, on receiving `PreToolUse` for these tools:
 1. Read the current file from `file_path` (the hook runs with `cwd` = the project dir, but `file_path` is absolute in the tool_input) to get "before" content. If the file doesn't exist, "before" is empty (new file).
 2. Compute "after" content: for `Write`, it's `tool_input.content`; for `Edit`, apply `old_string→new_string` to "before"; for `MultiEdit`, apply all edits in order.
-3. POST `{session_id, tool_name, file_path, before, after, old_string, new_string}` to Quill's localhost endpoint.
+3. POST `{session_id, tool_name, file_path, before, after, old_string, new_string}` to Mochi's localhost endpoint.
 4. The renderer's `DiffReviewBar` (already exists at `apps/desktop/src/components/work-area/DiffReviewBar.tsx`) renders the diff and returns accept/reject.
 
 **Note on `old_string` matching**: Claude Code's `Edit` requires `old_string` to appear exactly once in the file. If applying the edit to the "before" content fails to match (race: file changed since claude read it), the bridge should still be able to show `new_string` and let the user decide; or return `deny` with a "stale file" reason.
@@ -238,15 +238,15 @@ So the bridge should, on receiving `PreToolUse` for these tools:
 
 ---
 
-## Mapping onto Quill's constraints
+## Mapping onto Mochi's constraints
 
 | Constraint | How hooks fit |
 |---|---|
 | Tauri desktop app, Rust backend | Rust hosts the localhost HTTP endpoint that the hook bridge calls. Same server as MCP. |
 | Renderer holds diff-review UI | `DiffReviewBar.tsx` already exists. Rust forwards hook requests to the renderer via Tauri events; renderer returns the decision. |
 | No Node/Agent SDK assumed | Hooks are a native CLI feature — no SDK needed. The bridge can be a shell script or a small bundled binary. |
-| Don't pollute global claude config | Use `CLAUDE_CONFIG_DIR` (or `--settings`/`--mcp-config` flags) pointing at a Quill-managed temp dir. |
-| Existing `ClaudeAdapter` spawn path | `Command.create('claude-cli', ['-l', '-c', shellCmd])` (`claudeAdapter.ts:81`). Add env (`CLAUDE_CONFIG_DIR`, `QUILL_HOOK_TOKEN`, `QUILL_HOOK_PORT`) to the shell command, and drop `--permission-mode bypassPermissions`. |
+| Don't pollute global claude config | Use `CLAUDE_CONFIG_DIR` (or `--settings`/`--mcp-config` flags) pointing at a Mochi-managed temp dir. |
+| Existing `ClaudeAdapter` spawn path | `Command.create('claude-cli', ['-l', '-c', shellCmd])` (`claudeAdapter.ts:81`). Add env (`CLAUDE_CONFIG_DIR`, `MOCHI_HOOK_TOKEN`, `MOCHI_HOOK_PORT`) to the shell command, and drop `--permission-mode bypassPermissions`. |
 | Existing `file_change` event flow | `AiPanel` already handles `file_change` events (`AiPanel.tsx:317`). With pre-approval hooks, the flow becomes: hook → review → on `allow`, claude writes the file → `PostToolUse` hook (or the existing stream `tool_result`) → emit `file_change` for the accepted write. On `deny`, no write occurs, no `file_change` emitted. |
 
 ---
@@ -274,6 +274,6 @@ So the bridge should, on receiving `PreToolUse` for these tools:
 - **`--settings` flag existence** `[UNVERIFIED]` — I'm not 100% sure this flag is in the current CLI. `CLAUDE_CONFIG_DIR` is the safer, better-isolated mechanism; prefer it. `--mcp-config` is stable.
 - **`bypassPermissions` vs hook `deny` interaction** `[UNVERIFIED]` — whether a hook `deny` overrides `--permission-mode bypassPermissions`. Don't rely on it; switch to `default`/`acceptEdits` when hooks are active.
 - **`tool_input` exact field names** (`content` vs `file_text` for Write) `[UNVERIFIED]` — verify against hooks-guide examples; parse defensively.
-- **Hook `timeout` default + max** `[VERSION-DEPENDENT]` — verify the max configurable value; Quill needs a long timeout for human review.
+- **Hook `timeout` default + max** `[VERSION-DEPENDENT]` — verify the max configurable value; Mochi needs a long timeout for human review.
 - **Whether the `command` string is redacted in transcripts** `[UNVERIFIED]` — affects whether a token can be passed inline vs must be via env var. Use env var to be safe.
 - **Sibling `mcp-server-in-tauri.md` is missing** from `research/` — only `agent-sdk-runtime-and-api.md`, `auth-and-billing-impact.md`, `tauri-sidecar-node-packaging.md` exist. The shared localhost HTTP server design should be captured there; this hooks design composes with it.

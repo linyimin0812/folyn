@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useAiStore, type AiSession } from './aiStore';
 import { useAiConfigStore } from './aiConfigStore';
 import { useVaultStore } from './vaultStore';
-import type { FileChange } from '@quill/cli-adapter';
+import type { FileChange } from '@mochi/cli-adapter';
 
 // Stub persistence so store actions don't touch the Tauri FS session store.
 vi.mock('./aiSessionPersistence', () => ({
@@ -160,12 +160,12 @@ describe('useAiStore message actions', () => {
     // AiPanel calls this after saveBlobs so the persisted message carries the
     // on-disk path (blob preview URLs die with the page).
     useAiStore.getState().setUserMessageAttachments(sid, [
-      { name: 'pic.png', path: '/work/.quill-tmp/pic.png', type: 'image' },
+      { name: 'pic.png', path: '/work/.mochi-tmp/pic.png', type: 'image' },
     ]);
     const session = useAiStore.getState().getActiveSession()!;
     const userMsgs = session.messages.filter((m) => m.role === 'user');
     expect(userMsgs[userMsgs.length - 1].attachments).toEqual([
-      { name: 'pic.png', path: '/work/.quill-tmp/pic.png', type: 'image' },
+      { name: 'pic.png', path: '/work/.mochi-tmp/pic.png', type: 'image' },
     ]);
   });
 

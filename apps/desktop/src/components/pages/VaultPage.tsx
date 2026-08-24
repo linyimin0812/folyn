@@ -6,7 +6,7 @@ import { useEditorStore } from '@/store/editorStore';
 import * as editorIoService from '@/services/editorIoService';
 import { CreateVaultDialog } from '../vault/CreateVaultDialog';
 import { FileIcon } from '@/components/icons/FileIcon';
-import type { VaultEntry } from '@quill/vault-provider';
+import type { VaultEntry } from '@mochi/vault-provider';
 import { useTranslation } from 'react-i18next';
 import githubIcon from '@/assets/icons/github.svg';
 

@@ -362,7 +362,7 @@ function deriveExtension(att: PendingAttachment): string {
  * `claude-cli` sidecar path was removed: it embedded the whole base64
  * payload in the command line, so any sizeable image blew past the OS
  * ARG_MAX limit ("Argument list too long (os error 7)"). The main window's
- * fs ACL scope covers the attachment destinations (vault `.quill-tmp` is a
+ * fs ACL scope covers the attachment destinations (vault `.mochi-tmp` is a
  * hidden dir anywhere under the home directory, pet writes under appData),
  * so the fs plugin is sufficient.
  *

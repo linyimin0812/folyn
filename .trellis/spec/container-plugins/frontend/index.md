@@ -1,12 +1,12 @@
 # Frontend Development Guidelines
 
-> Guidelines for the @quill/container-plugins package.
+> Guidelines for the @mochi/container-plugins package.
 
 ---
 
 ## Overview
 
-`@quill/container-plugins` provides a registry-based plugin system for Markdown container directives (`:::callout`, `:::tabs`, etc.). Plugins render in the preview pane and appear in the editor's `/` slash command menu.
+`@mochi/container-plugins` provides a registry-based plugin system for Markdown container directives (`:::callout`, `:::tabs`, etc.). Plugins render in the preview pane and appear in the editor's `/` slash command menu.
 
 ---
 

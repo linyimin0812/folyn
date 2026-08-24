@@ -54,7 +54,7 @@ export function PetMascot({ state, size }: PetMascotProps) {
     <img
       className={`pet-mascot is-img is-${state}`}
       src={imgSrc}
-      alt="Quill pet"
+      alt="Mochi pet"
       style={{ width: mascotPx, height: mascotPx }}
       onError={isCustom ? () => {
         // Custom file missing or corrupt → fall back to builtin (PRD

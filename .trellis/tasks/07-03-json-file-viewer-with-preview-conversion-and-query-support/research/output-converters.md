@@ -7,7 +7,7 @@
 
 ## Internal Repo State (verified)
 
-`/Users/yiminlin/project/quill/apps/desktop/package.json` already pulls in:
+`/Users/yiminlin/project/mochi/apps/desktop/package.json` already pulls in:
 - `@codemirror/lang-json`, `@codemirror/language`, `@codemirror/view`, `@codemirror/autocomplete`, `@codemirror/lint`, `@codemirror/search` — JSON editor already wired
 - `@tauri-apps/plugin-clipboard-manager` — clipboard plugin present (relevant for Base64/escape auto-copy)
 - `highlight.js`, `diff` (v9) — for diff view / syntax highlight

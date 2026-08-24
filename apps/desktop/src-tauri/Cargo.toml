@@ -1,12 +1,12 @@
 [package]
-name = "quill"
+name = "mochi"
 version = "0.1.0"
-description = "Quill — AI-enhanced local-first Markdown editor"
+description = "Mochi — AI-enhanced local-first Markdown editor"
 authors = ["linyimin520812@gmail.com"]
 edition = "2021"
 
 [lib]
-name = "quill_lib"
+name = "mochi_lib"
 crate-type = ["lib", "cdylib"]
 
 [build-dependencies]
@@ -80,7 +80,7 @@ tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 # resolve `log::info!` / `log::warn!` at link time.
 log = "0.4"
 # `dirs` for cross-platform `paste_log` cache path (macOS ~/Library/Logs,
-# Windows %LOCALAPPDATA%\quill\logs). Pure Rust, <1s compile. Was hardcoded
+# Windows %LOCALAPPDATA%\mochi\logs). Pure Rust, <1s compile. Was hardcoded
 # to `~/Library/Logs/...` before R11; now needed on Windows too.
 dirs = "5"
 # Local HTTP API for the desktop pet (pet-external-notify-api). tiny_http is

@@ -8,7 +8,7 @@ use crate::errors::AppError;
 /// position via `pet_panel_set_position` first (or right after) so the panel
 /// appears next to the pet.
 ///
-/// After `set_focus()` (which activates the Quill app + makes the panel key),
+/// After `set_focus()` (which activates the Mochi app + makes the panel key),
 /// this also makes the **WKWebView** the first responder via
 /// `makeFirstResponder:` on the main thread. `set_focus()` alone makes the
 /// WINDOW key but does NOT make the WKWebView first responder — `document`
@@ -26,11 +26,11 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel.show().map_err(|e| e.to_string())?;
-    // `set_focus()` activates the Quill app (`activateIgnoringOtherApps:YES`)
+    // `set_focus()` activates the Mochi app (`activateIgnoringOtherApps:YES`)
     // so the pet-panel becomes the active app's key window — required for
     // the React Esc keydown listener to fire (otherwise keyboard events go
     // to whatever app was frontmost, e.g. VS Code, and Esc can't close the
-    // panel). The side effect: when the panel hides, the main Quill editor
+    // panel). The side effect: when the panel hides, the main Mochi editor
     // stays frontmost instead of returning to the user's previous app.
     // Restoring the previous app needs `NSWorkspace.frontmostApplication`
     // tracking + `activateWithOptions:` on hide — out of scope for this fix.

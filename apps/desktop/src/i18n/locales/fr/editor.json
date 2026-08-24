@@ -30,7 +30,7 @@
     },
     "containerWarning": {
       "title": "⚠️ Avis de compatibilité",
-      "body": "Le document actuel utilise la syntaxe de conteneur Quill (callouts, onglets, blocs repliables, etc.), une extension Quill. **Les autres éditeurs Markdown pourraient ne pas le rendre correctement.**",
+      "body": "Le document actuel utilise la syntaxe de conteneur Mochi (callouts, onglets, blocs repliables, etc.), une extension Mochi. **Les autres éditeurs Markdown pourraient ne pas le rendre correctement.**",
       "hint": "Pour visualiser dans d'autres éditeurs, exportez en HTML.",
       "cancel": "Annuler",
       "confirm": "Exporter quand même"

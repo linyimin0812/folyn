@@ -8,10 +8,10 @@
     "messageCountSuffix": "Nr.",
     "emptyState": {
       "greeting": {
-        "morning": "Guten Morgen, ich bin Quill AI. Wie kann ich helfen?",
-        "noon": "Guten Mittag, ich bin Quill AI. Wie kann ich helfen?",
-        "afternoon": "Guten Nachmittag, ich bin Quill AI. Wie kann ich helfen?",
-        "evening": "Guten Abend, ich bin Quill AI. Wie kann ich helfen?"
+        "morning": "Guten Morgen, ich bin Mochi AI. Wie kann ich helfen?",
+        "noon": "Guten Mittag, ich bin Mochi AI. Wie kann ich helfen?",
+        "afternoon": "Guten Nachmittag, ich bin Mochi AI. Wie kann ich helfen?",
+        "evening": "Guten Abend, ich bin Mochi AI. Wie kann ich helfen?"
       }
     },
     "attachmentPlaceholder": "(Anhang)",

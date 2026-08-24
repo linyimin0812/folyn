@@ -12,19 +12,19 @@ const TEMPLATE_DIR = join(here, '..', 'template');
 
 const DEFAULTS = {
   version: '0.1.0',
-  quill: '>=0.1.0',
+  mochi: '>=0.1.0',
 };
 
-const HELP = `Usage: create-quill-plugin [name] [options]
+const HELP = `Usage: create-mochi-plugin [name] [options]
 
-Scaffolds a Quill plugin in ./<name>/.
+Scaffolds a Mochi plugin in ./<name>/.
 
 Options:
   --name <name>          Plugin name (alternative to positional arg)
   --display-name <name>  Human-readable name (default: same as --name)
   --author <name>        Author (default: empty)
   --version <ver>        Plugin version (default: ${DEFAULTS.version})
-  --quill <constraint>    Quill engine compat (default: ${DEFAULTS.quill})
+  --mochi <constraint>    Mochi engine compat (default: ${DEFAULTS.mochi})
   --yes, -y              Skip prompts; use defaults for missing fields
   -h, --help             Show this help
 
@@ -40,7 +40,7 @@ function parseCliArgs(argv: string[]) {
         'display-name': { type: 'string' },
         author: { type: 'string' },
         version: { type: 'string' },
-        quill: { type: 'string' },
+        mochi: { type: 'string' },
         yes: { type: 'boolean', short: 'y' },
         help: { type: 'boolean', short: 'h' },
       },
@@ -52,7 +52,7 @@ function parseCliArgs(argv: string[]) {
       displayName: values['display-name'] ?? null,
       author: values.author ?? null,
       version: values.version ?? null,
-      quill: values.quill ?? null,
+      mochi: values.mochi ?? null,
       yes: Boolean(values.yes),
       help: Boolean(values.help),
     };
@@ -85,7 +85,7 @@ async function main() {
   let displayName = args.displayName;
   let author = args.author ?? '';
   let version = args.version ?? DEFAULTS.version;
-  let quill = args.quill ?? DEFAULTS.quill;
+  let mochi = args.mochi ?? DEFAULTS.mochi;
   const interactive = !args.yes && stdout.isTTY;
 
   if (interactive) {
@@ -95,7 +95,7 @@ async function main() {
       if (displayName === null) displayName = await prompt(rl, 'Display name: ', name);
       if (author === '') author = await prompt(rl, 'Author (optional): ');
       version = await prompt(rl, 'Version: ', version);
-      quill = await prompt(rl, 'Quill engine compat: ', quill);
+      mochi = await prompt(rl, 'Mochi engine compat: ', mochi);
     } finally {
       rl.close();
     }
@@ -112,7 +112,7 @@ async function main() {
     console.error(`✗ invalid plugin name: "${name}"`);
     process.exit(1);
   }
-  const pkgName = id.startsWith('quill-plugin-') ? id : `quill-plugin-${id}`;
+  const pkgName = id.startsWith('mochi-plugin-') ? id : `mochi-plugin-${id}`;
   const finalDisplayName = displayName || name;
   const target = resolve(process.cwd(), name);
   if (existsSync(target)) {
@@ -126,7 +126,7 @@ async function main() {
     ['__Name__', finalDisplayName],
     ['__author__', author],
     ['__version__', version],
-    ['__quill__', quill],
+    ['__mochi__', mochi],
   ];
   const filesToRewrite = [
     'package.json',
@@ -153,7 +153,7 @@ async function main() {
   console.log('  pnpm build');
   console.log('');
   console.log('Then edit src/index.ts and manifest.json to add contributions.');
-  console.log('See quill-plugin-sdk/quill-plugin-plantuml (external repo) for a working example.');
+  console.log('See mochi-plugin-sdk/mochi-plugin-plantuml (external repo) for a working example.');
 }
 
 main().catch((e) => {

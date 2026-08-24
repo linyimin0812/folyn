@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { VaultEntry } from '@quill/vault-provider';
+import type { VaultEntry } from '@mochi/vault-provider';
 import {
   flattenTree,
   flattenFileTree,

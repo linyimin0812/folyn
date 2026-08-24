@@ -19,7 +19,7 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
 
 import { ChatMessageList, greetingKeyForHour } from './ChatMessageList';
 import { readFile as mockedReadFile } from '@tauri-apps/plugin-fs';
-import type { CliMessage } from '@quill/cli-adapter';
+import type { CliMessage } from '@mochi/cli-adapter';
 
 function mkMsg(partial: Partial<CliMessage>): CliMessage {
   return {
@@ -90,7 +90,7 @@ describe('ChatMessageList', () => {
         attachments: [
           {
             name: 'pic.png',
-            path: '/work/.quill-tmp/pic.png',
+            path: '/work/.mochi-tmp/pic.png',
             type: 'image',
             previewUrl: 'blob:dead-after-restart',
           },
@@ -99,7 +99,7 @@ describe('ChatMessageList', () => {
     ];
     render(<ChatMessageList messages={messages} streaming={false} />);
     await vi.waitFor(() => {
-      expect(mockedReadFile).toHaveBeenCalledWith('/work/.quill-tmp/pic.png');
+      expect(mockedReadFile).toHaveBeenCalledWith('/work/.mochi-tmp/pic.png');
     });
   });
 

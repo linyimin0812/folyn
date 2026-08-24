@@ -10,10 +10,10 @@ describe('buildCsp', () => {
   it('keeps the Tauri-required baseline', () => {
     const p = buildCsp({ mode: 'custom', allowedUrls: [] }, { dev: false });
     expect(p).toContain("default-src 'self'");
-    expect(p).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: quill-plugin:");
+    expect(p).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: mochi-plugin:");
     expect(p).toContain("img-src 'self' data: blob: asset: http://asset.localhost http://*.clouddn.com https://*.r2.dev https://*.aliyuncs.com");
-    expect(p).toContain("connect-src 'self' ipc: http://ipc.localhost quill-plugin: https://*.qiniup.com https://*.r2.cloudflarestorage.com https://*.aliyuncs.com");
-    expect(p).toContain("frame-src 'self' blob: data: quill-plugin:");
+    expect(p).toContain("connect-src 'self' ipc: http://ipc.localhost mochi-plugin: https://*.qiniup.com https://*.r2.cloudflarestorage.com https://*.aliyuncs.com");
+    expect(p).toContain("frame-src 'self' blob: data: mochi-plugin:");
   });
 
   it('appends custom URLs to every network directive, trimmed and deduped', () => {

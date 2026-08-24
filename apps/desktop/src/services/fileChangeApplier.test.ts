@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { FileChange } from '@quill/cli-adapter';
+import type { FileChange } from '@mochi/cli-adapter';
 
 // ── Mocks for the editor-layer dependencies ─────────────────────────────────
 const { editorState, diffReviewState, getHandlerByIdMock } = vi.hoisted(() => ({

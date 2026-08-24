@@ -132,7 +132,7 @@ pub fn filter_argv_paths(args: &[String]) -> Vec<String> {
 /// Return and clear any OS-launch file paths buffered before the frontend
 /// registered its `app://open-external-file` listener. Invoked once on App
 /// mount BEFORE the listener is registered, so the cold-launch race is
-/// closed: whatever the OS handed Quill before React mounted is returned
+/// closed: whatever the OS handed Mochi before React mounted is returned
 /// here; everything after is delivered by the event listener.
 #[tauri::command]
 pub fn drain_pending_open_files(state: tauri::State<'_, PendingOpenFiles>) -> Vec<String> {
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn filter_argv_paths_skips_exe_and_flags_keeps_files() {
         let args = vec![
-            "C:\\Program Files\\Quill\\quill.exe".to_string(),
+            "C:\\Program Files\\Mochi\\mochi.exe".to_string(),
             "C:\\docs\\a.md".to_string(),
             "--single-instance".to_string(),
             "C:\\docs\\b markdown.md".to_string(),
@@ -191,7 +191,7 @@ mod tests {
     /// nothing, so a normal cold start never opens a spurious tab.
     #[test]
     fn filter_argv_paths_empty_when_only_exe() {
-        let args = vec!["/Applications/Quill.app/Contents/MacOS/quill".to_string()];
+        let args = vec!["/Applications/Mochi.app/Contents/MacOS/mochi".to_string()];
         assert!(filter_argv_paths(&args).is_empty());
     }
 }

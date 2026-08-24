@@ -1,9 +1,9 @@
 // The manifest schema, contribution points, contracts, and Disposable have
-// moved to `quill-plugin-sdk` (publishable, no runtime). This package keeps
+// moved to `mochi-plugin-sdk` (publishable, no runtime). This package keeps
 // only the runtime microkernel (`PluginHost` + shared instance) and re-exports
-// the SDK surface so existing `import from '@quill/plugin-host'` keeps working.
-export type { Disposable } from 'quill-plugin-sdk';
-export { disposable, validateManifest, definePlugin } from 'quill-plugin-sdk';
+// the SDK surface so existing `import from '@mochi/plugin-host'` keeps working.
+export type { Disposable } from 'mochi-plugin-sdk';
+export { disposable, validateManifest, definePlugin } from 'mochi-plugin-sdk';
 export { PluginHost, pluginHost } from './src/PluginHost';
 export type {
   Plugin,
@@ -56,4 +56,4 @@ export type {
   MarkdownCodeRendererProps,
   EditorLanguageFactory,
   HighlightGrammarFn,
-} from 'quill-plugin-sdk';
+} from 'mochi-plugin-sdk';

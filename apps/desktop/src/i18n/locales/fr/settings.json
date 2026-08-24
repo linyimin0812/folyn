@@ -168,7 +168,7 @@
       "hint": "Chemin ou nom de commande de l'exécutable ; cliquer « Détecter » pour rechercher"
     },
     "settingsFile": {
-      "title": "Ouvrir le fichier de config de cet adaptateur dans l'éditeur Quill",
+      "title": "Ouvrir le fichier de config de cet adaptateur dans l'éditeur Mochi",
       "missing": "Introuvable : {{path}}",
       "missingHint": "Le fichier n'est pas encore créé (le CLI le crée généralement au premier lancement).",
       "create": "Créer",
@@ -418,13 +418,13 @@
       "architecture": "Architecture et implémentation",
       "developer": "Développement et contribution"
     },
-    "description": "Construit sur Tauri 2 + React + CodeMirror 6, Quill est un éditeur Markdown local-first. Il intègre le chat IA, le pet de bureau, le système de plugins, les diagrammes ER, la gestion du calendrier et les outils CLI — vos données restent sur votre appareil en Markdown standard, sans lock-in.",
+    "description": "Construit sur Tauri 2 + React + CodeMirror 6, Mochi est un éditeur Markdown local-first. Il intègre le chat IA, le pet de bureau, le système de plugins, les diagrammes ER, la gestion du calendrier et les outils CLI — vos données restent sur votre appareil en Markdown standard, sans lock-in.",
     "philosophy": {
       "label": "Philosophie",
       "localFirst": "Local-first — vos notes vous appartiennent. Tous les documents sont stockés comme de simples fichiers Markdown sur votre système de fichiers local, sans compte cloud, utilisables hors ligne, libres à migrer. Le système Vault supporte des backends plug-and-play via la couche d'abstraction vault-provider, mais la propriété des données reste toujours vôtre.",
-      "openFormat": "Format ouvert — sans lock-in. Quill utilise le Markdown standard comme seul format de stockage, traité par le pipeline remark/rehype pour GFM et directives personnalisées. N'importe quel éditeur de texte peut ouvrir vos notes ; export HTML en local ou hébergé sur stockage distant à tout moment ; après désinstallation de Quill, vos données restent entièrement lisibles.",
+      "openFormat": "Format ouvert — sans lock-in. Mochi utilise le Markdown standard comme seul format de stockage, traité par le pipeline remark/rehype pour GFM et directives personnalisées. N'importe quel éditeur de texte peut ouvrir vos notes ; export HTML en local ou hébergé sur stockage distant à tout moment ; après désinstallation de Mochi, vos données restent entièrement lisibles.",
       "extensible": "Extensible — ouvert de bout en bout, du noyau de l'éditeur aux backends de stockage. Le micronoyau + le SDK de plugins supporte 14 directives de conteneur (callout, tabs, mermaid, etc.) et les plugins tiers ; l'abstraction de l'adaptateur CLI rend 6 outils IA (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) plug-and-play ; pnpm workspaces laisse container-plugins, vault-provider, cli-adapter, plugin-host et plugin-sdk évoluer comme des packages indépendants.",
-      "privacy": "Confidentialité d'abord — le chat IA et la génération de code passent par les outils CLI locaux ; vos clés API et le contenu des conversations ne touchent jamais les serveurs de Quill. La politique CSP et la couche sandbox des plugins offrent une défense en profondeur, avec les couches trusted et sandbox exécutées séparément ; les plugins tiers tournent sous permissions restreintes."
+      "privacy": "Confidentialité d'abord — le chat IA et la génération de code passent par les outils CLI locaux ; vos clés API et le contenu des conversations ne touchent jamais les serveurs de Mochi. La politique CSP et la couche sandbox des plugins offrent une défense en profondeur, avec les couches trusted et sandbox exécutées séparément ; les plugins tiers tournent sous permissions restreintes."
     },
     "features": {
       "label": "Fonctionnalités",
@@ -496,7 +496,7 @@
     },
     "architecture": {
       "label": "Couches d'architecture",
-      "description": "Quill utilise une architecture en couches propre — du shell Tauri à l'adaptateur IA en haut, chaque couche a une seule responsabilité et peut évoluer indépendamment. pnpm workspaces package chaque capacité fondamentale pour réutilisation et tests.",
+      "description": "Mochi utilise une architecture en couches propre — du shell Tauri à l'adaptateur IA en haut, chaque couche a une seule responsabilité et peut évoluer indépendamment. pnpm workspaces package chaque capacité fondamentale pour réutilisation et tests.",
       "layers": {
         "shell": {
           "name": "Shell",
@@ -547,8 +547,8 @@
     },
     "projectStructure": {
       "label": "Structure du projet",
-      "description": "Quill est un monorepo pnpm — l'app desktop, l'adaptateur CLI, les plugins de conteneur, le Vault Provider et le Plugin Host/SDK sont chacun des packages indépendants.",
-      "tree": "quill/\n├── apps/\n│   └── desktop/              # App desktop Tauri\n│       ├── src/              # Frontend React\n│       │   ├── components/   # Composants UI (shell, éditeur, IA, sidebar, etc.)\n│       │   ├── editor/       # Extensions CodeMirror\n│       │   ├── hooks/        # Hooks React\n│       │   ├── store/        # Stores Zustand\n│       │   └── utils/        # Modules utilitaires\n│       └── src-tauri/        # Backend Rust (commandes Tauri)\n├── packages/\n│   ├── cli-adapter/          # Abstraction de l'adaptateur CLI IA (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Plugins de directives de conteneur Markdown (14)\n│   ├── vault-provider/       # Abstraction du provider de stockage Vault\n│   ├── plugin-host/         # Runtime de l'hôte de plugins\n│   ├── plugin-sdk/          # SDK de développement de plugins\n│   └── create-quill-plugin/ # Outil de scaffold\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Mochi est un monorepo pnpm — l'app desktop, l'adaptateur CLI, les plugins de conteneur, le Vault Provider et le Plugin Host/SDK sont chacun des packages indépendants.",
+      "tree": "mochi/\n├── apps/\n│   └── desktop/              # App desktop Tauri\n│       ├── src/              # Frontend React\n│       │   ├── components/   # Composants UI (shell, éditeur, IA, sidebar, etc.)\n│       │   ├── editor/       # Extensions CodeMirror\n│       │   ├── hooks/        # Hooks React\n│       │   ├── store/        # Stores Zustand\n│       │   └── utils/        # Modules utilitaires\n│       └── src-tauri/        # Backend Rust (commandes Tauri)\n├── packages/\n│   ├── cli-adapter/          # Abstraction de l'adaptateur CLI IA (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Plugins de directives de conteneur Markdown (14)\n│   ├── vault-provider/       # Abstraction du provider de stockage Vault\n│   ├── plugin-host/         # Runtime de l'hôte de plugins\n│   ├── plugin-sdk/          # SDK de développement de plugins\n│   └── create-mochi-plugin/ # Outil de scaffold\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "Backends de stockage",
@@ -570,7 +570,7 @@
     },
     "aiIntegration": {
       "label": "Intégration IA",
-      "description": "Via l'abstraction cli-adapter, Quill supporte uniformément 6 outils IA basés sur CLI. Après avoir configuré le chemin du CLI dans Réglages → Model Services, utilisez le panneau latéral pour discuter, générer du texte, appliquer des éditions de code et réviser les diffs. Les clés API et le contenu des conversations ne circulent qu'entre l'outil CLI local et le service IA correspondant — jamais par les serveurs de Quill.",
+      "description": "Via l'abstraction cli-adapter, Mochi supporte uniformément 6 outils IA basés sur CLI. Après avoir configuré le chemin du CLI dans Réglages → Model Services, utilisez le panneau latéral pour discuter, générer du texte, appliquer des éditions de code et réviser les diffs. Les clés API et le contenu des conversations ne circulent qu'entre l'outil CLI local et le service IA correspondant — jamais par les serveurs de Mochi.",
       "adapters": {
         "label": "Adaptateurs CLI intégrés",
         "items": {
@@ -603,7 +603,7 @@
     },
     "pluginSystem": {
       "label": "Système de plugins",
-      "description": "Architecture micronoyau + SDK de plugins. Les plugins sont divisés en couche Trusted (appelle les capacités de l'hôte directement) et couche Sandbox (tourne sous permissions restreintes) — chargés par le runtime plugin-host. Les plugins tiers peuvent être scaffoldisés rapidement via create-quill-plugin.",
+      "description": "Architecture micronoyau + SDK de plugins. Les plugins sont divisés en couche Trusted (appelle les capacités de l'hôte directement) et couche Sandbox (tourne sous permissions restreintes) — chargés par le runtime plugin-host. Les plugins tiers peuvent être scaffoldisés rapidement via create-mochi-plugin.",
       "tiers": {
         "label": "Couches d'exécution",
         "trusted": {
@@ -622,7 +622,7 @@
     },
     "fileTypeSupport": {
       "label": "Support de types de fichiers",
-      "description": "Enregistrés via HandlerRegistry, Quill peut prévisualiser et éditer plus de 15 types de fichiers.",
+      "description": "Enregistrés via HandlerRegistry, Mochi peut prévisualiser et éditer plus de 15 types de fichiers.",
       "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (diagramme ER) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Docs Office · Clips presse-papiers"
     },
     "techStack": {
@@ -727,12 +727,12 @@
     },
     "microphone": {
       "title": "Permission du micro",
-      "desc": "L'enregistrement nécessite la permission du micro. Cliquer pour déclencher l'invite ; si déjà refusée, autorisez Quill sous Réglages Système → Confidentialité et Sécurité → Micro, puis réessayez.",
+      "desc": "L'enregistrement nécessite la permission du micro. Cliquer pour déclencher l'invite ; si déjà refusée, autorisez Mochi sous Réglages Système → Confidentialité et Sécurité → Micro, puis réessayez.",
       "action": "Accorder le micro"
     },
     "speech": {
       "title": "Permission de reconnaissance vocale",
-      "desc": "La transcription Apple Speech nécessite la reconnaissance vocale. Cliquer pour déclencher l'invite ; si déjà refusée, autorisez Quill sous Confidentialité et Sécurité → Reconnaissance vocale, puis réessayez.",
+      "desc": "La transcription Apple Speech nécessite la reconnaissance vocale. Cliquer pour déclencher l'invite ; si déjà refusée, autorisez Mochi sous Confidentialité et Sécurité → Reconnaissance vocale, puis réessayez.",
       "action": "Accorder la reconnaissance"
     },
     "polishPrompt": {
@@ -790,7 +790,7 @@
     },
     "icon": {
       "title": "Icône",
-      "desc": "Utiliser l'icône intégrée de Quill, ou téléverser une image personnalisée",
+      "desc": "Utiliser l'icône intégrée de Mochi, ou téléverser une image personnalisée",
       "builtin": "Intégré",
       "custom": "Personnalisé",
       "uploading": "Téléversement…",
@@ -943,7 +943,7 @@
       "description": "La politique entre en vigueur après « Appliquer & recharger »"
     },
     "baseline": {
-      "note": "Tauri IPC, quill-plugin, asset, data: et blob: sont toujours autorisés et non retirables."
+      "note": "Tauri IPC, mochi-plugin, asset, data: et blob: sont toujours autorisés et non retirables."
     },
     "apply": {
       "button": "Appliquer & recharger",

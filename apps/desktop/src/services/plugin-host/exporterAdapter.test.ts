@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@quill/plugin-host';
+import type { PluginManifest } from '@mochi/plugin-host';
 import { registerPluginExporters, getPluginExportersForFileType, clearPluginExporters } from './exporterAdapter';
 import type { PluginModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';

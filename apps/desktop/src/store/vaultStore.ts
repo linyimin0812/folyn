@@ -4,7 +4,7 @@ import {
   VaultProviderRegistry,
   type VaultConfig,
   type VaultEntry,
-} from '@quill/vault-provider';
+} from '@mochi/vault-provider';
 import { useAppearanceStore } from './appearanceStore';
 import { useVaultConfigStore } from './vaultConfigStore';
 import { usePrefsStore } from './prefsStore';
@@ -109,7 +109,7 @@ interface VaultState {
   // ── File Operations ──
 
   refreshFileTree: () => Promise<void>;
-  /** One-time rename of legacy built-in dir names (quill-wiki/clips/reports/daily) to __name__ form. Returns the pairs actually renamed. */
+  /** One-time rename of legacy built-in dir names (mochi-wiki/clips/reports/daily) to __name__ form. Returns the pairs actually renamed. */
   migrateSpecialDirs: () => Promise<{ from: string; to: string }[]>;
   readFile: (path: string) => Promise<string>;
   writeFile: (path: string, content: string) => Promise<void>;
@@ -247,7 +247,7 @@ export const useVaultStore = create<VaultState>()(
             await get().addVault({
               name: 'default',
               providerType: 'tauri',
-              basePath: '~/quill/default_vault',
+              basePath: '~/mochi/default_vault',
             });
           } catch (err) {
             console.warn('[VaultStore] Failed to create default vault:', err);
@@ -436,7 +436,7 @@ export const useVaultStore = create<VaultState>()(
 
         migrateSpecialDirs: async () => {
           const pairs: { from: string; to: string }[] = [
-            { from: 'quill-wiki', to: '__wiki__' },
+            { from: 'mochi-wiki', to: '__wiki__' },
             { from: 'clips', to: '__clips__' },
             { from: 'reports', to: '__reports__' },
           ];

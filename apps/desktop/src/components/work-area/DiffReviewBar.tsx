@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
-import type { QuillEditorHandle } from '@/editor/EditorView';
+import type { MochiEditorHandle } from '@/editor/EditorView';
 import { DiffToolbar } from '../editor/DiffToolbar';
 import {
   computeDiffHunks,
@@ -13,7 +13,7 @@ import {
 import type { FileTab } from '@/store/editorStore';
 
 interface DiffReviewBarProps {
-  editorRef: React.RefObject<QuillEditorHandle | null>;
+  editorRef: React.RefObject<MochiEditorHandle | null>;
   activeTab: FileTab | undefined;
 }
 

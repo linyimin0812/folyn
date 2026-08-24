@@ -2,12 +2,12 @@
 
 ## Goal
 
-为 Quill 落地真正的双向同步引擎：在本地 FS（Tauri provider）与远端对象存储（S3 兼容 / WebDAV / GitHub）之间做双向同步，包含变更检测、远端 diff、pull/push、冲突解决与可选 E2E 加密。当前 `settingsStore` 里有完整 sync 配置（`syncMethod / syncEndpoint / syncAccessKey / syncSecretKey / syncBucket / autoSync / e2eEncrypt`），但 `apps/desktop/src` 下**没有任何同步引擎实现**，`SettingsPage` 也没有渲染 sync 区块——同步目前是个"设置存了但无引擎、无 UI 入口"的空壳。
+为 Mochi 落地真正的双向同步引擎：在本地 FS（Tauri provider）与远端对象存储（S3 兼容 / WebDAV / GitHub）之间做双向同步，包含变更检测、远端 diff、pull/push、冲突解决与可选 E2E 加密。当前 `settingsStore` 里有完整 sync 配置（`syncMethod / syncEndpoint / syncAccessKey / syncSecretKey / syncBucket / autoSync / e2eEncrypt`），但 `apps/desktop/src` 下**没有任何同步引擎实现**，`SettingsPage` 也没有渲染 sync 区块——同步目前是个"设置存了但无引擎、无 UI 入口"的空壳。
 
 ## What I already know
 
 - `settingsStore` 已有 sync 字段（S3-flavored：endpoint/access/secret/bucket + autoSync + e2eEncrypt），默认 `syncMethod: 'S3 兼容（R2 / MinIO）'`。`SettingsTab` 含 `'sync'`，但 `SettingsPage.tsx` 未渲染任何 sync 控件（grep 无命中）。
-- `@quill/vault-provider` 定义了 `VaultProvider` 接口（`readFile/writeFile/deleteFile/listFiles/createDir/deleteDir/rename`，可选 `search/getHistory/watch/getMetadata`），有 5 个 provider：`tauri/github/webdav/s3`（+ base）。**接口是单文件 CRUD 级，没有任何 sync/diff/merge 能力**——同步引擎必须位于 provider 层之上，编排两个 provider（local + remote）。
+- `@mochi/vault-provider` 定义了 `VaultProvider` 接口（`readFile/writeFile/deleteFile/listFiles/createDir/deleteDir/rename`，可选 `search/getHistory/watch/getMetadata`），有 5 个 provider：`tauri/github/webdav/s3`（+ base）。**接口是单文件 CRUD 级，没有任何 sync/diff/merge 能力**——同步引擎必须位于 provider 层之上，编排两个 provider（local + remote）。
 - `VaultMetadata { path, size, lastModified: Date, etag? }` 已有，可用于变更检测；S3 天然有 ETag/LastModified，WebDAV 有 `getlastmodified`，GitHub 有 `sha`，local 有 mtime（Tauri fs stat）。
 - 本地变更检测已解决：`apps/desktop/src/utils/fileWatcher.ts` 用 `@tauri-apps/plugin-fs` 的 `watch`，已有 `suppressWatcherFor` / `pauseWatcher` / `resumeWatcher` 钩子，写路径会用它避免回环。
 - 同步目标拓扑（推断）：单用户、多设备，每设备本地一份 vault，远端一个对象存储做汇聚。不是 realtime 多人协作。
@@ -61,11 +61,11 @@
 
 ## Technical Notes
 
-- 同步引擎位置：`apps/desktop/src/services/syncEngine.ts`（新增），消费 `@quill/vault-provider` 的 `VaultManager`/`VaultProvider`，被 `settingsStore.autoSync` 与 `SettingsPage` 驱动。
+- 同步引擎位置：`apps/desktop/src/services/syncEngine.ts`（新增），消费 `@mochi/vault-provider` 的 `VaultManager`/`VaultProvider`，被 `settingsStore.autoSync` 与 `SettingsPage` 驱动。
 - 本地侧：`TauriVaultProvider` + 现有 `fileWatcher`。
 - 远端侧：`S3VaultProvider`（已有），WebDAV/GitHub 视 MVP 范围。
 - 加密：renderer 侧 WebCrypto（`SubtleCrypto` AES-GCM）即可，key 派生用 PBKDF2 over 用户口令；待研究确认库与方案。
-- 冲突元数据：可能需要本地 sidecar（如 `.quill/sync-state.json`）记录 last-synced 远端 etag/mtime per path。
+- 冲突元数据：可能需要本地 sidecar（如 `.mochi/sync-state.json`）记录 last-synced 远端 etag/mtime per path。
 
 ## Research References
 

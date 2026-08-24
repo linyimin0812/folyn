@@ -7,7 +7,7 @@
  * CORS headers, so the webview can't reach them directly.
  *
  * ponytail: response is returned to callers; persistence (write to
- * ~/.quill/providers/) is handled by `userProvidersCatalog.ts`.
+ * ~/.mochi/providers/) is handled by `userProvidersCatalog.ts`.
  *
  * On-disk shape is the RAW slice from api.json (no transform) — see
  * `ModelsDevProvider`.

@@ -20,7 +20,7 @@ import { isWebGLAvailable } from './SiriGL';
 // window (VoiceOrbApp.tsx) — shown by Rust on `voice_start`, hidden by the
 // orb's own frontend on idle/error. This component no longer hosts the
 // SiriGL overlay; the previous in-panel `VoiceOrbOverlay` is removed (the
-// user explicitly asked for the animation to show even when Quill has no
+// user explicitly asked for the animation to show even when Mochi has no
 // focus).
 //
 // WebGL-unavailable fallback: the `.voice-ring` / `.voice-glow` CSS classes

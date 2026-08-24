@@ -11,7 +11,7 @@ type AdapterDescriptor = {
   description: string;
   factory: () => CliAdapter;
   /** Home-relative path to the adapter's user-editable settings file. The
-   *  settings UI offers a button to open this file in Quill's editor. Use `~`
+   *  settings UI offers a button to open this file in Mochi's editor. Use `~`
    *  so `externalFileProvider.resolveHome` expands it; never bake in an
    *  absolute path. */
   settingsFilePath: string;

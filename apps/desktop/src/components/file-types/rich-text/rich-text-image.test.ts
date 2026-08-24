@@ -13,17 +13,17 @@ import {
 // The Tauri `convertFileSrc` + async `~`-resolution wrapper is exercised in-app.
 
 describe('resolveVaultRelativePath', () => {
-  const root = '/Users/me/quill/vault';
+  const root = '/Users/me/mochi/vault';
 
   it('joins a vault-relative path under the resolved vault root', () => {
     expect(resolveVaultRelativePath('assets/images/abc.png', root)).toBe(
-      '/Users/me/quill/vault/assets/images/abc.png',
+      '/Users/me/mochi/vault/assets/images/abc.png',
     );
   });
 
   it('strips a leading ./ before joining (markdown-style relative ref)', () => {
     expect(resolveVaultRelativePath('./assets/images/abc.png', root)).toBe(
-      '/Users/me/quill/vault/assets/images/abc.png',
+      '/Users/me/mochi/vault/assets/images/abc.png',
     );
   });
 
@@ -35,13 +35,13 @@ describe('resolveVaultRelativePath', () => {
 
   it('trims a trailing slash on the vault root', () => {
     expect(resolveVaultRelativePath('a/b.png', root + '/')).toBe(
-      '/Users/me/quill/vault/a/b.png',
+      '/Users/me/mochi/vault/a/b.png',
     );
   });
 
   it('preserves nested subpaths', () => {
     expect(resolveVaultRelativePath('assets/images/sub/deep.png', root)).toBe(
-      '/Users/me/quill/vault/assets/images/sub/deep.png',
+      '/Users/me/mochi/vault/assets/images/sub/deep.png',
     );
   });
 

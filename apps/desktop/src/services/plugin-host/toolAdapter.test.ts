@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@quill/plugin-host';
+import type { PluginManifest } from '@mochi/plugin-host';
 import { registerPluginTools } from './toolAdapter';
 import { getCommands, clearCommands } from '@/services/commandRegistry';
 import { useToolWindowStore } from '@/store/toolWindowStore';

@@ -10,7 +10,7 @@ import { PreviewPane } from './PreviewPane';
 // ponytail: snapshot view rides the live tab's fileType / path / viewMode so
 // the file-type editor pipeline (CodeMirror / custom editor / preview) renders
 // the snapshot content with the same fidelity as the live editor — no plain
-// `<pre>`. The synthetic tab id encodes the selected snapshot key so QuillEditor
+// `<pre>`. The synthetic tab id encodes the selected snapshot key so MochiEditor
 // (keyed by activeTab.id in EditorPane) remounts when the user picks a different
 // snapshot. Read-only is enforced on the CodeMirror surface via
 // `EditorState.readOnly.of(true)`; custom editors get best-effort read-only by

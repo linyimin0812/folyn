@@ -222,7 +222,7 @@ fn transcribe_pcm_blocking(
 
     // 临时 wav：唯一文件名避免并发会话碰撞；用完即删（RAII guard）。
     let path = std::env::temp_dir().join(format!(
-        "quill-apple-speech-{}-{}.wav",
+        "mochi-apple-speech-{}-{}.wav",
         std::process::id(),
         unique_suffix()
     ));
@@ -254,7 +254,7 @@ pub fn ensure_authorized() -> Result<()> {
         return Ok(());
     }
     if status == SF_AUTH_DENIED {
-        bail!("语音识别权限被拒绝，请在 系统设置 → 隐私与安全性 → 语音识别 中允许 Quill");
+        bail!("语音识别权限被拒绝，请在 系统设置 → 隐私与安全性 → 语音识别 中允许 Mochi");
     }
     if status == SF_AUTH_RESTRICTED {
         bail!("此设备的语音识别功能受限（可能由家长控制或 MDM 策略禁用）");
@@ -282,7 +282,7 @@ pub fn ensure_authorized() -> Result<()> {
     match granted {
         SF_AUTH_AUTHORIZED => Ok(()),
         SF_AUTH_DENIED => {
-            bail!("语音识别权限被拒绝，请在 系统设置 → 隐私与安全性 → 语音识别 中允许 Quill")
+            bail!("语音识别权限被拒绝，请在 系统设置 → 隐私与安全性 → 语音识别 中允许 Mochi")
         }
         SF_AUTH_RESTRICTED => bail!("此设备的语音识别功能受限"),
         other => bail!("语音识别未获授权（状态 {other}）"),
@@ -1053,7 +1053,7 @@ mod tests {
     #[test]
     fn temp_file_guard_removes_file_on_drop() {
         let path = std::env::temp_dir().join(format!(
-            "quill-apple-speech-test-{}.wav",
+            "mochi-apple-speech-test-{}.wav",
             unique_suffix()
         ));
         std::fs::write(&path, b"x").unwrap();

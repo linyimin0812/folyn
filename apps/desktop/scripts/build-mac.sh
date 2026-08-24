@@ -12,7 +12,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-APP="src-tauri/target/release/bundle/macos/Quill.app"
+APP="src-tauri/target/release/bundle/macos/Mochi.app"
 INFO="$APP/Contents/Info.plist"
 DMG_DIR="src-tauri/target/release/bundle/dmg"
 INSTALL="${INSTALL:-1}"
@@ -58,16 +58,16 @@ done < <(find "$DMG_DIR" -maxdepth 1 -name '*.dmg' -print)
 
 if [ "$INSTALL" = "1" ]; then
   echo "▶ 装到 /Applications"
-  pkill -f "Quill.app/Contents/MacOS/quill" 2>/dev/null || true
+  pkill -f "Mochi.app/Contents/MacOS/mochi" 2>/dev/null || true
   sleep 1
   # 每次重装前重置 TCC：ad-hoc 签名 hash 每次构建都会变，旧授权立即失效，
   # 不重置就会出现"系统设置里看着已勾选实际不生效"。
-  tccutil reset Accessibility com.quill.editor 2>/dev/null || true
-  tccutil reset Microphone com.quill.editor 2>/dev/null || true
-  tccutil reset SpeechRecognition com.quill.editor 2>/dev/null || true
-  rm -rf /Applications/Quill.app
+  tccutil reset Accessibility com.mochi.editor 2>/dev/null || true
+  tccutil reset Microphone com.mochi.editor 2>/dev/null || true
+  tccutil reset SpeechRecognition com.mochi.editor 2>/dev/null || true
+  rm -rf /Applications/Mochi.app
   cp -R "$APP" /Applications/
-  xattr -dr com.apple.quarantine /Applications/Quill.app 2>/dev/null || true
-  echo "✓ 装好了：/Applications/Quill.app"
-  echo "  打开方式：open /Applications/Quill.app"
+  xattr -dr com.apple.quarantine /Applications/Mochi.app 2>/dev/null || true
+  echo "✓ 装好了：/Applications/Mochi.app"
+  echo "  打开方式：open /Applications/Mochi.app"
 fi

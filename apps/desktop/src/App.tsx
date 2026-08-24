@@ -34,14 +34,14 @@ import { useSearchStore } from './store/searchStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { startPetChatSessionsHost } from './store/petChatSessions';
-import { registerBuiltinPlugins } from '@quill/container-plugins';
+import { registerBuiltinPlugins } from '@mochi/container-plugins';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { registerBuiltinCodeContributions } from './services/registerBuiltinCodeContributions';
 import { registerErrorDemoPlugin } from './services/registerErrorDemoPlugin';
 import { isTauri } from './utils/platform';
 import { useLocaleStore } from '@/store/localeStore';
-import { pluginHost } from '@quill/plugin-host';
+import { pluginHost } from '@mochi/plugin-host';
 import { sandboxLoader } from './services/plugin-host/sandboxLoader';
 import { trustedLoader } from './services/plugin-host/trustedLoader';
 import { attachToolWindowRpcListener } from './services/plugin-host/toolWindowRpcListener';
@@ -250,12 +250,12 @@ export default function App() {
     let uninstalled: (() => void) | null = null;
     let cancelled = false;
 
-    /** Read a plugin manifest from ~/.quill/plugins/<id>/manifest.json */
+    /** Read a plugin manifest from ~/.mochi/plugins/<id>/manifest.json */
     async function readPluginManifest(id: string): Promise<Record<string, unknown>> {
       const { homeDir, join } = await import('@tauri-apps/api/path');
       const { readTextFile } = await import('@tauri-apps/plugin-fs');
       const home = await homeDir();
-      const manifestPath = await join(home, '.quill', 'plugins', id, 'manifest.json');
+      const manifestPath = await join(home, '.mochi', 'plugins', id, 'manifest.json');
       return JSON.parse(await readTextFile(manifestPath)) as Record<string, unknown>;
     }
 
@@ -329,7 +329,7 @@ export default function App() {
         }
       });
 
-      // Fetch-RPC listener: routes `quill-plugin://.../rpc` POSTs from tool
+      // Fetch-RPC listener: routes `mochi-plugin://.../rpc` POSTs from tool
       // windows back through the shared `dispatchPluginRpc` so the same
       // permission checks / path resolution apply as the iframe bridge.
       const unRpc = await attachToolWindowRpcListener();
@@ -568,8 +568,8 @@ export default function App() {
   }, []);
 
   // ── OS "Open With" / file-association launch ──
-  // When the OS launches Quill to open a file (right-click → Open With →
-  // Quill, or double-click an associated file), the Rust side buffers the
+  // When the OS launches Mochi to open a file (right-click → Open With →
+  // Mochi, or double-click an associated file), the Rust side buffers the
   // paths in `PendingOpenFiles` AND emits `app://open-external-file` (from
   // `RunEvent::Opened` on macOS and the single-instance callback on both
   // platforms). We listen FIRST so warm-launch emits are never missed, then

@@ -1,6 +1,6 @@
 [English](README.md) | [简体中文](README.zh.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-<h1 align="center">Quill Editor</h1>
+<h1 align="center">Mochi Editor</h1>
 
 <p align="center">
   Lokal zuerst · Vault-isoliert · KI-nativ<br/>
@@ -9,7 +9,7 @@
 
 <p align="center">
   <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue" />
-  <img alt="downloads" src="https://img.shields.io/github/downloads/linyimin0812/quill/total?label=downloads" />
+  <img alt="downloads" src="https://img.shields.io/github/downloads/linyimin0812/mochi/total?label=downloads" />
   <img alt="stack" src="https://img.shields.io/badge/Tauri-2-orange" />
   <img alt="license" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
@@ -18,14 +18,14 @@
 
 > Eine App, all Ihr Wissen. Isoliert jeden Datensatz in einem Vault, fasst Markdown, Whiteboards, ER-Diagramme und Mindmaps in einem Editor zusammen und bindet KI-Agenten direkt in den Workflow ein — alles bleibt auf Ihren eigenen Geräten.
 
-## Why Quill
+## Why Mochi
 
 - **Vault-Isolierung mehrerer Vaults** — Öffnen Sie für jedes Projekt oder jede Notizsammlung einen eigenen Vault. Daten bleiben unabhängig, jederzeit umschaltbar. Ihr lokales Gerät ist die einzige Wahrheitsquelle.
 - **Multi-Format-Bearbeitung** — Markdown (mit Container-Plugins: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, sowie Graphviz / Mermaid / PlantUML-Diagramm-Container), Rich-Text, CSV, JSON, markmap-Mindmaps, dbml-ER-Diagramme, drawio-Architekturdiagramme, excalidraw-Handwhiteboards, graphviz-DOT — ein Editor für alles.
-- **Universelle Vorschau** — Office-Dokumente, Audio/Video, Archive, E-Books, Präsentationen und Zeichnungen — ohne Quill zu verlassen ansehen.
+- **Universelle Vorschau** — Office-Dokumente, Audio/Video, Archive, E-Books, Präsentationen und Zeichnungen — ohne Mochi zu verlassen ansehen.
 - **Tiefe KI-Integration** — Eingebaute Adapter für sechs CLI-Agenten: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Frei zwischen Modellanbietern wechseln, kein Vendor-Lock-in.
 - **Desktop-Begleiter-Assistent** — Ein auf dem Desktop residierender Begleiter, der Kalendererinnerungen und Aufgabenänderungen pushst; ein Klick öffnet einen Chat mit dem LLM.
-- **Internes Terminal** — Öffnen Sie ein Terminal in Quill und lassen Sie Claude Code / Codex / andere CLI-Agenten das aktuelle Dokument lesen und schreiben — kein Fensterwechsel.
+- **Internes Terminal** — Öffnen Sie ein Terminal in Mochi und lassen Sie Claude Code / Codex / andere CLI-Agenten das aktuelle Dokument lesen und schreiben — kein Fensterwechsel.
 - **Plugin-System** — Microkernel- + Plugin-SDK-Architektur. Übersetzung, Kalender, Wiki, Clips und Projektanalyse werden als Plugins mitgeliefert; Drittanbieter-Erweiterungen unterstützt.
 - **Spracheingabe** — Sprache-zu-Text mit automatischer Nachbearbeitung, direkt am Cursor eingefügt (aktuell nur macOS).
 
@@ -38,7 +38,7 @@ Die App ist nicht codesigniert; das System blockiert sie beim ersten Start. Gehe
 - **Windows**: Beim ersten Start erscheint eine SmartScreen-Warnung „Windows hat Ihren PC geschützt“. Klicken Sie **Weitere Informationen → Trotzdem ausführen**.
 - **macOS**: Erscheint nach der Installation „kann nicht geöffnet werden“ oder „beschädigt“, führen Sie im Terminal aus:
   ```bash
-  xattr -cr /Applications/Quill.app
+  xattr -cr /Applications/Mochi.app
   ```
   Öffnen Sie dann erneut aus dem Launchpad.
 
@@ -64,7 +64,7 @@ Die App ist nicht codesigniert; das System blockiert sie beim ersten Start. Gehe
 
 ### Universelle Vorschau
 
-Office-Dokumente, Audio/Video, Archive, E-Books, Präsentationen und Zeichnungen ohne Quill-Verlassen ansehen — keine zusätzliche Software nötig.
+Office-Dokumente, Audio/Video, Archive, E-Books, Präsentationen und Zeichnungen ohne Mochi-Verlassen ansehen — keine zusätzliche Software nötig.
 
 <p align="center">
   <img src="docs/assets/screenshots/viewing-1.png" alt="Full-format preview" width="860" />
@@ -99,7 +99,7 @@ Externe Apps (Skripte, cron, CI) können Benachrichtigungen über eine lokale HT
 
 ### Internes Terminal
 
-Öffnen Sie ein Terminal-Panel im Quill-Arbeitsbereich, nebeneinander mit dem Editor, Dateipfade automatisch synchronisiert. Claude Code / Codex CLI / andere Agenten können das aktuelle Dokument direkt ändern; KI-Bearbeitungen erscheinen sofort im Editor. Kommando-Ausgabe kann am Cursor zurückeingefügt werden — „Bearbeiten → Aufrufen → Zurücksetzen“ zu einer Pipeline verdichtet.
+Öffnen Sie ein Terminal-Panel im Mochi-Arbeitsbereich, nebeneinander mit dem Editor, Dateipfade automatisch synchronisiert. Claude Code / Codex CLI / andere Agenten können das aktuelle Dokument direkt ändern; KI-Bearbeitungen erscheinen sofort im Editor. Kommando-Ausgabe kann am Cursor zurückeingefügt werden — „Bearbeiten → Aufrufen → Zurücksetzen“ zu einer Pipeline verdichtet.
 
 <p align="center">
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
@@ -146,7 +146,7 @@ Sprache wird in Echtzeit zu Text transkribiert und automatisch nachbearbeitet �
 ### Project Structure
 
 ```
-quill/
+mochi/
 ├── apps/
 │   └── desktop/              # Tauri desktop app
 │       ├── src/              # React frontend
@@ -161,7 +161,7 @@ quill/
 │   ├── container-plugins/    # Markdown container directive plugins
 │   ├── plugin-host/          # Plugin host runtime
 │   ├── plugin-sdk/           # Plugin SDK for third-party authors
-│   ├── create-quill-plugin/  # Plugin scaffolding CLI
+│   ├── create-mochi-plugin/  # Plugin scaffolding CLI
 │   └── vault-provider/       # Vault storage provider abstraction
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -174,7 +174,7 @@ quill/
 - **`container-plugins`-Paket** — Eigene `:::directive`-Container-Plugins, im Slash-Menü registriert
 - **`vault-provider`-Paket** — Eigene Storage-Backends (über local / GitHub / WebDAV / S3 hinaus)
 - **`plugin-host` + `plugin-sdk`** — Drittanbieter-Plugins registrieren Fähigkeiten über das SDK; der Microkernel lädt sie bei Bedarf
-- **`create-quill-plugin`** — CLI-Gerüst, um schnell ein neues Plugin zu starten
+- **`create-mochi-plugin`** — CLI-Gerüst, um schnell ein neues Plugin zu starten
 - **Dateitypen** — Einen neuen Handler unter `apps/desktop/src/components/file-types/` registrieren, um Dateitypen zu erweitern
 
 Siehe `docs/plugins.html` für Details.

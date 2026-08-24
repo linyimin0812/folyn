@@ -43,8 +43,8 @@ vi.mock('@/store/vaultStore', () => ({
 }));
 
 import { buildPluginAi } from './aiCapability';
-import type { PluginManifest } from '@quill/plugin-host';
-import type { CliStreamEvent } from '@quill/cli-adapter';
+import type { PluginManifest } from '@mochi/plugin-host';
+import type { CliStreamEvent } from '@mochi/cli-adapter';
 
 function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   return {

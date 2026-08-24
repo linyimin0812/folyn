@@ -1,4 +1,4 @@
-import { ContainerRegistry } from '@quill/container-plugins';
+import { ContainerRegistry } from '@mochi/container-plugins';
 import type { ReactNode } from 'react';
 
 interface ContainerRendererProps {

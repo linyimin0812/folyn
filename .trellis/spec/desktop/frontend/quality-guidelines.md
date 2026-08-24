@@ -242,8 +242,8 @@ Observed convention (enforced by reading order, not tooling):
 3. Hook imports (`import { useTheme } from '@/hooks/useTheme'`)
 4. Component imports (`import { Topbar } from '@/components/shell/Topbar'`)
 5. Utility imports (`import { isTauri } from '@/utils/platform'`)
-6. Package imports (`import { registerBuiltinPlugins } from '@quill/container-plugins'`)
-7. Type-only imports (`import type { VaultEntry } from '@quill/vault-provider'`)
+6. Package imports (`import { registerBuiltinPlugins } from '@mochi/container-plugins'`)
+7. Type-only imports (`import type { VaultEntry } from '@mochi/vault-provider'`)
 
 ---
 

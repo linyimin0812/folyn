@@ -9,7 +9,7 @@
 ```
 packages/container-plugins/
 ├── index.ts                    # Barrel exports + registerBuiltinPlugins()
-├── package.json                # @quill/container-plugins
+├── package.json                # @mochi/container-plugins
 ├── tsconfig.json
 └── src/
     ├── ContainerPlugin.ts      # Interface: ContainerPlugin, ContainerProps, ContainerCategory
