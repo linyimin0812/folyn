@@ -133,7 +133,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
             <img src={`${import.meta.env.BASE_URL}mochi.svg`} alt="Mochi" width="24" height="24" style={{ borderRadius: 5 }} />
           </div>
           <span className="logo-name font-bold text-[length:var(--ui-font-size)]">
-            Qu<em className="text-acc not-italic">ill</em>
+            Mo<em className="text-acc not-italic">chi</em>
           </span>
         </div>
       </div>
