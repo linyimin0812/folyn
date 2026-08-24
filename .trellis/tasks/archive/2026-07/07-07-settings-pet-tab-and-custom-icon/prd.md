@@ -14,7 +14,7 @@ Also make the default pet icon smaller, and support custom icon upload so users 
 * **Settings page**: single file `apps/desktop/src/components/pages/SettingsPage.tsx` (~933 lines) with tab union `SettingsTab` in `apps/desktop/src/store/settingsStore.ts:7`. Tabs rendered as conditional `{settingsTab === '<id>' && (...)}` blocks; nav defined in `NAV_GROUPS` const (line 127-141). Reusable `Toggle` component for boolean switches.
 * **Existing pet toggle**: `petModeEnabled` + `setPetModeEnabled` already exist in `settingsStore` (line 101-128) and are wired elsewhere — we just surface them in the new tab.
 * **Pet render surface**:
-  * `apps/desktop/src/components/pet/PetMascot.tsx` — inline SVG (88×88) in a 120×120 transparent Tauri window. Artwork duplicated from `/public/quill.svg`. State-driven (idle/hover/drag/click) with CSS breathing animation.
+  * `apps/desktop/src/components/pet/PetMascot.tsx` — inline SVG (88×88) in a 120×120 transparent Tauri window. Artwork duplicated from `/public/folyn.svg`. State-driven (idle/hover/drag/click) with CSS breathing animation.
   * `apps/desktop/src/components/pet/PetApp.tsx` — window sizing/positioning, `SPRITE_SIZE = 120` constant.
 * **Tauri window config**: `apps/desktop/src-tauri/tauri.conf.json:40-44` — `pet` window `width:120, height:120, transparent:true, alwaysOnTop:true`.
 * **Settings persistence**: Zustand `useSettingsStore` with debounced (300ms) `storageClient.set('settings:all', {...})` (line 200). Loaded at startup (line 427). Persist allowlist at line ~204-227.
@@ -71,7 +71,7 @@ Also make the default pet icon smaller, and support custom icon upload so users 
 ## Out of Scope (explicit)
 
 * Per-icon size slider (only the default shrinks; custom size is a future task)
-* Multiple built-in mascots (only `quill.svg`)
+* Multiple built-in mascots (only `folyn.svg`)
 * Animated GIF frame suppression (GIF renders as `<img>` and animates natively)
 * SVG sanitization (accept the risk on user-supplied SVG)
 * Image auto-downscaling (rejected oversized files instead of resizing)

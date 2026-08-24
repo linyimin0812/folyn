@@ -4,7 +4,7 @@
 {"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "scope gate depends on knowing which file-types have editors; iframe/serialization hygiene"}
 {"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "VersionHistoryPanel component patterns, props, composition"}
 {"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "if panel state goes to Zustand, follow granular-selector rule"}
-{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tauri ACL contract for FS writes/renames under ~/.quill/"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Tauri ACL contract for FS writes/renames under ~/.folyn/"}
 {"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns + review checklist"}
 {"file": "docs/adr/0003-version-history-content-addressable-store.md", "reason": "storage architecture decision; rejected alternatives + consequences"}
 {"file": "CONTEXT.md", "reason": "glossary: Version Snapshot / Version Index / Versionable File canonical terms"}

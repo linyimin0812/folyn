@@ -2,11 +2,11 @@
 
 ## Goal
 
-Add `.drawio` (and `.dio`) file support to Quill so users can open and edit draw.io diagrams in-place, mirroring the existing `excalidraw` handler. Backed by `react-drawio`'s `DrawIoEmbed` (iframe to draw.io's web editor), with debounced XML write-back to the underlying file.
+Add `.drawio` (and `.dio`) file support to Folyn so users can open and edit draw.io diagrams in-place, mirroring the existing `excalidraw` handler. Backed by `react-drawio`'s `DrawIoEmbed` (iframe to draw.io's web editor), with debounced XML write-back to the underlying file.
 
 ## What I already know
 
-### Quill file-type system
+### Folyn file-type system
 - `apps/desktop/src/components/file-types/registry.ts:47` auto-globs `./*/index.{ts,tsx}` — **just drop a folder, no manual registration.**
 - Handler contract: `apps/desktop/src/components/file-types/types.ts:27-39` (`FileTypeHandler`).
 - Closest precedent: `excalidraw/` — `Editor`-only (no separate `Preview`), `supportedViewModes: ['edit']`, `needsFileContent: true`, `useCodeMirror: false`. Debounced 1s write-back via `onChange`, parses once per `tabId` with `useState`.
@@ -47,7 +47,7 @@ Add `.drawio` (and `.dio`) file support to Quill so users can open and edit draw
 
 ## Acceptance Criteria
 
-- [ ] Opening a `.drawio` file renders the draw.io editor inside Quill (online embed loads).
+- [ ] Opening a `.drawio` file renders the draw.io editor inside Folyn (online embed loads).
 - [ ] Edits in the embed fire the auto-save event and write XML back to the file (debounced ~1s), persisted on Cmd+S / auto-save.
 - [ ] Re-opening a saved file shows the updated diagram (round-trip verified manually).
 - [ ] `.dio` extension also opens this handler.
@@ -96,7 +96,7 @@ Add `.drawio` (and `.dio`) file support to Quill so users can open and edit draw
 
 ## Decision (ADR-lite)
 
-**Context**: draw.io's editor is a large web app. We need a `.drawio` file handler that fits Quill's file-type registry and matches the excalidraw pattern (single `Editor` component with debounced write-back). Desktop offline support is desirable but not blocking.
+**Context**: draw.io's editor is a large web app. We need a `.drawio` file handler that fits Folyn's file-type registry and matches the excalidraw pattern (single `Editor` component with debounced write-back). Desktop offline support is desirable but not blocking.
 
 **Decision**: Approach A — `react-drawio` `DrawIoEmbed` pointing at the public `embed.diagrams.net` CDN. The embed emits an auto-save `{xml}` event on edit, so write-back is a 1-line debounce, no `exportDiagram` polling needed. `['edit']` view mode only. `.drawio` + `.dio` extensions. Reuse the `dataStructure` icon (no new SVG).
 

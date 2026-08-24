@@ -1,6 +1,6 @@
 # Research: Gemini CLI Wire Shape
 
-- **Query**: Gemini CLI surface for a Quill `geminiAdapter.ts` — binary, streaming flags, resume, JSONL event shapes, permissions/trust, stdin, config, auth, sidecar precedents, UI wiring, i18n
+- **Query**: Gemini CLI surface for a Folyn `geminiAdapter.ts` — binary, streaming flags, resume, JSONL event shapes, permissions/trust, stdin, config, auth, sidecar precedents, UI wiring, i18n
 - **Scope**: mixed (local binary inspection + `--help` capture + installed-bundle source inspection); no online docs consulted; **no live `stream-json` run captured** (Gemini API endpoint unreachable from this machine — see Caveats)
 - **Date**: 2026-08-20
 
@@ -57,7 +57,7 @@ Options:
 - `-y` / `--yolo` — auto-approve all actions (the `--dangerously-skip-permissions` equivalent). Alternative: `--approval-mode yolo`. `-y` is the short form, **preferred** (matches opencode's `--auto` precedent).
 - `--skip-trust` — trust the current workspace for this session only. **OR** set env `GEMINI_CLI_TRUST_WORKSPACE=true` (bundle source at `chunk-MYCBWRZE.js:401344` reads this env var). For the Tauri sidecar, `--skip-trust` is the per-invocation switch (no global trust mutation); the env var is the alternative if the sidecar ever wants to trust everything by default.
 
-**Trust quirk**: Gemini CLI refuses to run in an untrusted folder. Without `--skip-trust` (or env), an untrusted workingDir throws `FatalUntrustedWorkspaceError` and the process exits non-zero with the message: *"Gemini CLI is not running in a trusted directory. To proceed, either use `--skip-trust`, set the `GEMINI_CLI_TRUST_WORKSPACE=true` environment variable, or trust this directory in interactive mode."* (bundle `gemini-KK7AERSF.js:10479`). The Quill workingDir (vault root / temp probe dir) is generally not pre-trusted, so `--skip-trust` is **required** on every spawn.
+**Trust quirk**: Gemini CLI refuses to run in an untrusted folder. Without `--skip-trust` (or env), an untrusted workingDir throws `FatalUntrustedWorkspaceError` and the process exits non-zero with the message: *"Gemini CLI is not running in a trusted directory. To proceed, either use `--skip-trust`, set the `GEMINI_CLI_TRUST_WORKSPACE=true` environment variable, or trust this directory in interactive mode."* (bundle `gemini-KK7AERSF.js:10479`). The Folyn workingDir (vault root / temp probe dir) is generally not pre-trusted, so `--skip-trust` is **required** on every spawn.
 
 There is no `--dir` flag. Use the shell `cd <dir> && exec gemini …` pattern (see §5).
 
@@ -107,7 +107,7 @@ No `delta` field; `content` is the whole user prompt string.
 { "type":"message", "timestamp":"<ISO>", "role":"assistant", "content":"<text delta chunk>", "delta":true }
 ```
 
-**Important**: assistant text arrives as **multiple `message` events** with `delta:true`, one per token chunk — NOT one event with the whole message. This is unlike opencode (one complete `text` event per chunk) and unlike codex (whole `agent_message` at `item.completed`). The translator must **accumulate** deltas OR emit each as an independent `text` event (the Quill UI already handles streaming `text` events by appending; verify in the consumer).
+**Important**: assistant text arrives as **multiple `message` events** with `delta:true`, one per token chunk — NOT one event with the whole message. This is unlike opencode (one complete `text` event per chunk) and unlike codex (whole `agent_message` at `item.completed`). The translator must **accumulate** deltas OR emit each as an independent `text` event (the Folyn UI already handles streaming `text` events by appending; verify in the consumer).
 
 Map → `{type:'text', content: event.content}` for `role:"assistant"`; ignore `role:"user"` (it's the echo of our own prompt, no UI value).
 
@@ -144,7 +144,7 @@ Map → `{type:'tool_end', toolId: event.tool_id, toolOutput: event.output ?? ''
 { "type":"error", "timestamp":"<ISO>", "severity":"warning" | "error", "message":"<msg>" }
 ```
 
-Source: `bundle/gemini-KK7AERSF.js:11560` (LoopDetected warning), `:11571` (MaxSessionTurns error), `:11621` (AgentExecutionBlocked warning), `:11651` (InvalidStream error). Three severities observed: `"warning"` (loop detected, blocked, invalid stream retryable) and `"error"` (max turns, fatal invalid stream). The run **may continue** after a `warning`-severity error event — do NOT treat it as terminal. Only `severity:"error"` should also emit a Quill `error` event.
+Source: `bundle/gemini-KK7AERSF.js:11560` (LoopDetected warning), `:11571` (MaxSessionTurns error), `:11621` (AgentExecutionBlocked warning), `:11651` (InvalidStream error). Three severities observed: `"warning"` (loop detected, blocked, invalid stream retryable) and `"error"` (max turns, fatal invalid stream). The run **may continue** after a `warning`-severity error event — do NOT treat it as terminal. Only `severity:"error"` should also emit a Folyn `error` event.
 
 Map → `{type:'error', content: event.message}` when `severity === "error"`; otherwise no-op (or emit a soft warning if the UI wants it).
 
@@ -170,11 +170,11 @@ The `stats` object shape (from `convertToStreamStats`, `bundle/chunk-MYCBWRZE.js
 - `status:"success"` → `{type:'done'}` (optionally capture `stats` for usage UI).
 - `status:"error"` → `{type:'error', content: event.error.message}` then `{type:'done'}`.
 
-This is the **codex pattern** (`turn.completed` → `done`), NOT the opencode pattern (no result event, rely on process exit). The Quill adapter can still rely on `command.on('close')` as a fallback in case the result event is missed (defensive, matches qoder/codex).
+This is the **codex pattern** (`turn.completed` → `done`), NOT the opencode pattern (no result event, rely on process exit). The Folyn adapter can still rely on `command.on('close')` as a fallback in case the result event is missed (defensive, matches qoder/codex).
 
 #### 3.7 Summary of all `type` values
 
-| `type` | When | Map to Quill event |
+| `type` | When | Map to Folyn event |
 |---|---|---|
 | `init` | run start, once | `session_id` (persist id) |
 | `message` (role=user) | prompt echo, once | (no-op) |
@@ -189,12 +189,12 @@ This is the **codex pattern** (`turn.completed` → `done`), NOT the opencode pa
 ### 4. Session resume
 
 - `-r, --resume <id | "latest" | index>` — resume a previous session. Accepts a session-id UUID, the literal `"latest"`, or a numeric index (e.g. `--resume 5`). `--list-sessions` lists available sessions for the current project; `--delete-session <index>` removes one.
-- `--session-id <uuid>` — **start a new** session with a manually-provided UUID (does NOT resume; this is the "I want to pin my own id" switch). For Quill's adapter this is **not** what we want — we want `-r` resume.
+- `--session-id <uuid>` — **start a new** session with a manually-provided UUID (does NOT resume; this is the "I want to pin my own id" switch). For Folyn's adapter this is **not** what we want — we want `-r` resume.
 - `--session-file <path>` — load a session from a JSON file (out of scope).
 
 **Session id format**: UUID (`fcd131a3-…`, `e752e3c7-…` from the local `logs.json`). Returned on the **first event** (`type:"init"`'s `session_id` field) — capture there and persist for the next send, same strategy as qoder (`system`/`session_id`) / codex (`thread.started`/`thread_id`) / opencode (`step_start`/`sessionID`).
 
-**Where sessions persist**: `~/.gemini/history/<project-slug>/` and `~/.gemini/tmp/<project-slug>/` — per-project. The local machine has `~/.gemini/history/quill/`, `~/.gemini/tmp/quill/` (the project slug is derived from the workingDir path; `~/.gemini/projects.json` maps `/Users/yiminlin/project/quill` → `"quill"`). Per-session chat logs live under `~/.gemini/tmp/<slug>/chats/` and a flat `~/.gemini/tmp/<slug>/logs.json` aggregates entries (`[{sessionId, messageId, type, message, timestamp}]`). The adapter does NOT need to touch these — `--resume <id>` reads from them.
+**Where sessions persist**: `~/.gemini/history/<project-slug>/` and `~/.gemini/tmp/<project-slug>/` — per-project. The local machine has `~/.gemini/history/folyn/`, `~/.gemini/tmp/folyn/` (the project slug is derived from the workingDir path; `~/.gemini/projects.json` maps `/Users/yiminlin/project/folyn` → `"folyn"`). Per-session chat logs live under `~/.gemini/tmp/<slug>/chats/` and a flat `~/.gemini/tmp/<slug>/logs.json` aggregates entries (`[{sessionId, messageId, type, message, timestamp}]`). The adapter does NOT need to touch these — `--resume <id>` reads from them.
 
 ### 5. workingDir — no `--dir` flag
 
@@ -235,14 +235,14 @@ So:
   }
   ```
   `selectedType` observed value: `"gemini-api-key"` (API key auth). Other supported types per Gemini CLI docs (not inspected here): OAuth (`google-oauth`) and Vertex AI (`vertex-ai`). The auth type drives how the CLI picks up credentials.
-- **Trust state**: `~/.gemini/trustedFolders.json` — `{"<absolute-path>":"TRUST_FOLDER", ...}`. The local file has `{"\/users\/yiminlin\/project\/quill":"TRUST_FOLDER"}` — so once a folder is trusted interactively, it stays trusted. `--skip-trust` is the per-session bypass; `GEMINI_CLI_TRUST_WORKSPACE=true` is the global env bypass.
+- **Trust state**: `~/.gemini/trustedFolders.json` — `{"<absolute-path>":"TRUST_FOLDER", ...}`. The local file has `{"\/users\/yiminlin\/project\/folyn":"TRUST_FOLDER"}` — so once a folder is trusted interactively, it stays trusted. `--skip-trust` is the per-session bypass; `GEMINI_CLI_TRUST_WORKSPACE=true` is the global env bypass.
 - **Account state**: `~/.gemini/google_accounts.json` — `{"active": null | "<account-email>", "old": [...]}`. Local file is `{"active": null, "old": []}` (no Google OAuth account active; using API key instead).
 - **Installation id**: `~/.gemini/installation_id` (opaque string).
 - **Tips state**: `~/.gemini/state.json` — `{"tipsShown": 5}` (UI hint counter).
 - **Per-project state**: `~/.gemini/projects.json` (path → slug map), `~/.gemini/history/<slug>/`, `~/.gemini/tmp/<slug>/` (chats, logs).
 - **Auth subcommand**: **none**. `gemini --help` shows NO `auth` subcommand (unlike opencode's `opencode providers login`). Auth is configured **entirely** via `~/.gemini/settings.json`'s `security.auth.selectedType` + the relevant credential (API key in env var, OAuth in `google_accounts.json`, etc.). For the adapter: surface `settingsFilePath = ~/.gemini/settings.json` and `settingsFileTemplate = { "security": { "auth": { "selectedType": "gemini-api-key" } } }` (the minimal valid shape). Do **not** auto-login (out of scope, matches qoder/opencode precedent — and there's no login subcommand to call anyway).
 
-For API-key auth specifically: the CLI reads the key from env `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) — not stored in `settings.json`. The adapter does not need to manage this; the user sets the env var out-of-band (Tauri sidecar can pass it through if Quill later wants to surface a per-adapter env var, but that's out of scope per PRD).
+For API-key auth specifically: the CLI reads the key from env `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) — not stored in `settings.json`. The adapter does not need to manage this; the user sets the env var out-of-band (Tauri sidecar can pass it through if Folyn later wants to surface a per-adapter env var, but that's out of scope per PRD).
 
 ### 8. Sidecar precedents in this repo
 
@@ -339,10 +339,10 @@ Model on `qoderAdapter.ts` (one-shot spawn per send, shell `cd` + `< /dev/null`)
 
 ### Surprising / load-bearing callouts
 
-1. **`result` IS the terminal done signal** (closer to codex than opencode). Do NOT rely solely on `command.on('close')` — but keep it as a fallback. The `result` event carries `stats` (token usage) which opencode's `step_finish` also carried but codex's `turn.completed` did not — Quill's UI doesn't currently render stats, so skip.
-2. **Assistant text is delta-streamed** (`message` with `delta:true`, multiple per turn). Unlike opencode (one complete chunk per `text` event) and codex (whole `agent_message` at `item.completed`). The translator emits one `text` event per delta — verify the Quill UI appends rather than overwrites.
+1. **`result` IS the terminal done signal** (closer to codex than opencode). Do NOT rely solely on `command.on('close')` — but keep it as a fallback. The `result` event carries `stats` (token usage) which opencode's `step_finish` also carried but codex's `turn.completed` did not — Folyn's UI doesn't currently render stats, so skip.
+2. **Assistant text is delta-streamed** (`message` with `delta:true`, multiple per turn). Unlike opencode (one complete chunk per `text` event) and codex (whole `agent_message` at `item.completed`). The translator emits one `text` event per delta — verify the Folyn UI appends rather than overwrites.
 3. **Tool start and tool result are TWO separate events** (`tool_use` then `tool_result`), paired by `tool_id`. Unlike opencode's fused single `tool_use` event with `state.status`. The translator emits `tool_start` then `tool_end` — cleaner mapping than opencode's.
-4. **`--skip-trust` is required on every spawn** (Quill's workingDirs are not pre-trusted). Alternative: `GEMINI_CLI_TRUST_WORKSPACE=true` env var. Prefer the flag (per-session, no global state mutation).
+4. **`--skip-trust` is required on every spawn** (Folyn's workingDirs are not pre-trusted). Alternative: `GEMINI_CLI_TRUST_WORKSPACE=true` env var. Prefer the flag (per-session, no global state mutation).
 5. **No `auth` subcommand** — unlike opencode's `opencode providers login`. Auth is configured entirely via `~/.gemini/settings.json` + env vars (`GEMINI_API_KEY`). The adapter surfaces only the settings file path; the user handles auth out-of-band.
 6. **`< /dev/null` is load-bearing for latency**, not just safety — Gemini's 500ms stdin timer adds a per-send delay otherwise. Always include it.
 7. **`error` events are not all fatal** — `severity:"warning"` events (loop detected, blocked, retryable invalid stream) do NOT end the run; only `severity:"error"` and `result` with `status:"error"` are terminal. Treat warnings as no-ops.
@@ -351,7 +351,7 @@ Model on `qoderAdapter.ts` (one-shot spawn per send, shell `cd` + `< /dev/null`)
 ## Caveats / Not Found
 
 - **No live `stream-json` run captured.** The Gemini API endpoint is currently unreachable from this machine (fetch failed per the task prompt). All payload shapes in §3 are reconstructed from the installed bundle source (`bundle/gemini-KK7AERSF.js` emit points + `bundle/chunk-MYCBWRZE.js` `JsonStreamEventType` enum + `StreamJsonFormatter.emitEvent`/`convertToStreamStats`). The two event shapes already confirmed by the user's partial real run (`init` with `session_id`+`model`, `message` with `role`+`content`) match the source exactly — high confidence in the rest. **Live verification is deferred** — re-run with a reachable API endpoint on first authenticated test and update the translator if any field is off.
-- **Tool names not enumerated.** The `tool_name` field in `tool_use` events uses Gemini CLI's built-in tool names (e.g. `write_file`, `run_shell_command`, `read_file`, `edit_file`, `list_directory`…) — these were not enumerated from source (would require grepping the tool registry, out of scope). The translator passes `tool_name` through unchanged; the Quill UI displays it as-is.
+- **Tool names not enumerated.** The `tool_name` field in `tool_use` events uses Gemini CLI's built-in tool names (e.g. `write_file`, `run_shell_command`, `read_file`, `edit_file`, `list_directory`…) — these were not enumerated from source (would require grepping the tool registry, out of scope). The translator passes `tool_name` through unchanged; the Folyn UI displays it as-is.
 - **`--resume` arg ordering vs `-p` not live-verified.** Yargs should accept `-r <id> -p <prompt> …` or `-p <prompt> … -r <id>`; the recommended order (`-p` first, `-r` after) mirrors qoder's `[…flags, '-r', id, prompt]` but reversed (qoder puts `-r` before the prompt; Gemini's `-p` takes the prompt as its value so order should not matter). Verify on first authenticated resume test.
 - **`stats.models` sub-shape not fully traced.** The per-model stats object is `{total_tokens, input_tokens, output_tokens, cached, input}` (5 fields) per `convertToStreamStats`. The `cached` and `input` fields are Gemini-specific (cached = cached-content tokens, input = total input including cache). Not load-bearing for the adapter — skip unless the UI later wants usage stats.
 - **OAuth/Vertex auth paths not inspected.** Only API-key auth (`selectedType: "gemini-api-key"`) was inspected locally. OAuth (`google-oauth`) and Vertex AI (`vertex-ai`) auth flows are documented elsewhere; out of scope per PRD (the adapter does not manage auth).
@@ -365,8 +365,8 @@ Model on `qoderAdapter.ts` (one-shot spawn per send, shell `cd` + `< /dev/null`)
 - Bundle source (event emit points): `bundle/gemini-KK7AERSF.js` lines 10663, 10698, 10729, 10764 (result/error), 10956, 10994, 11131, 11156, 11172, 11464, 11500, 11533, 11549, 11560, 11571, 11590, 11621, 11651, 11676, 11720 (init/message/tool_use/tool_result/error/result)
 - Bundle source (enum + formatter): `bundle/chunk-MYCBWRZE.js` line 363193 (`JsonStreamEventType`), 384611 (`StreamJsonFormatter`), 384634 (`convertToStreamStats`), 401344 (`GEMINI_CLI_TRUST_WORKSPACE` env read)
 - Local config: `~/.gemini/settings.json`, `~/.gemini/trustedFolders.json`, `~/.gemini/google_accounts.json`, `~/.gemini/projects.json`, `~/.gemini/state.json`, `~/.gemini/installation_id`
-- Local per-project state: `~/.gemini/history/quill/`, `~/.gemini/tmp/quill/{chats,logs,logs.json}`
-- Repo reference templates (one-shot spawn): `/Users/yiminlin/project/quill/packages/cli-adapter/src/qoderAdapter.ts`, `/Users/yiminlin/project/quill/packages/cli-adapter/src/codexAdapter.ts`
-- Repo sidecar precedents: `/Users/yiminlin/project/quill/apps/desktop/src-tauri/capabilities/default.json`, `/Users/yiminlin/project/quill/apps/desktop/src-tauri/capabilities/pet-panel.json`
-- Repo UI precedents: `/Users/yiminlin/project/quill/apps/desktop/src/components/ai/AdapterSelector.tsx`, `/Users/yiminlin/project/quill/apps/desktop/src/components/ai/AgentCliTag.tsx`, `/Users/yiminlin/project/quill/apps/desktop/src/components/settings/FeatureAdapterDropdown.tsx`, `/Users/yiminlin/project/quill/apps/desktop/src/assets/agents/`
-- Repo i18n precedent: `/Users/yiminlin/project/quill/apps/desktop/src/i18n/locales/en/settings.json` (lines 142-154)
+- Local per-project state: `~/.gemini/history/folyn/`, `~/.gemini/tmp/folyn/{chats,logs,logs.json}`
+- Repo reference templates (one-shot spawn): `/Users/yiminlin/project/folyn/packages/cli-adapter/src/qoderAdapter.ts`, `/Users/yiminlin/project/folyn/packages/cli-adapter/src/codexAdapter.ts`
+- Repo sidecar precedents: `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/capabilities/default.json`, `/Users/yiminlin/project/folyn/apps/desktop/src-tauri/capabilities/pet-panel.json`
+- Repo UI precedents: `/Users/yiminlin/project/folyn/apps/desktop/src/components/ai/AdapterSelector.tsx`, `/Users/yiminlin/project/folyn/apps/desktop/src/components/ai/AgentCliTag.tsx`, `/Users/yiminlin/project/folyn/apps/desktop/src/components/settings/FeatureAdapterDropdown.tsx`, `/Users/yiminlin/project/folyn/apps/desktop/src/assets/agents/`
+- Repo i18n precedent: `/Users/yiminlin/project/folyn/apps/desktop/src/i18n/locales/en/settings.json` (lines 142-154)

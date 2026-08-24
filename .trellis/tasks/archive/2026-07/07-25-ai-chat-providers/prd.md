@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-As a Quill user, when I open **Settings → AI → Chat 模式** to configure my LLM provider, I see only three entries in the provider dropdown — Anthropic, OpenAI, and "OpenAI 兼容". This is too narrow for the ecosystem: rig 0.40 supports 18 providers (Anthropic, OpenAI, Azure OpenAI, Cohere, DeepSeek, EternalAI, Google Gemini, Galadriel, Groq, HuggingFace, Hyperbolic, Mira, Moonshot, Ollama, OpenRouter, Perplexity, TogetherAI, xAI), most of which I would use if they were a one-click option instead of a manual `base_url` lookup. For every provider I also have to manually type the model id (e.g. `claude-sonnet-4-6`, `deepseek-chat`) — I either keep a browser tab open to the provider's docs or guess, and either way the id can be wrong or stale. And I have no idea whether the model I picked supports image input until I try uploading an image and watch the chat fail.
+As a Folyn user, when I open **Settings → AI → Chat 模式** to configure my LLM provider, I see only three entries in the provider dropdown — Anthropic, OpenAI, and "OpenAI 兼容". This is too narrow for the ecosystem: rig 0.40 supports 18 providers (Anthropic, OpenAI, Azure OpenAI, Cohere, DeepSeek, EternalAI, Google Gemini, Galadriel, Groq, HuggingFace, Hyperbolic, Mira, Moonshot, Ollama, OpenRouter, Perplexity, TogetherAI, xAI), most of which I would use if they were a one-click option instead of a manual `base_url` lookup. For every provider I also have to manually type the model id (e.g. `claude-sonnet-4-6`, `deepseek-chat`) — I either keep a browser tab open to the provider's docs or guess, and either way the id can be wrong or stale. And I have no idea whether the model I picked supports image input until I try uploading an image and watch the chat fail.
 
 The downstream consequence is that the Bubble Template AI Agent, Pet Chat, and any other consumer of `runRigChat` are constrained to a hand-typed Anthropic / OpenAI / custom-endpoint triangle, when rig's value proposition is exactly that switching providers should be a one-line change.
 
@@ -10,7 +10,7 @@ The downstream consequence is that the Bubble Template AI Agent, Pet Chat, and a
 
 Extend the Chat 模式 settings section with **a 20-entry provider catalog** (18 rig-supported providers + OpenAI 兼容 + Anthropic 兼容), **per-provider configuration forms** that render only the fields each provider needs (Azure gets `deployment_id` + `api_version`, Ollama hides `api_key`, everyone else gets the standard `api_key` + `model` + `base_url` triplet), and **an inline "获取 API key →" link** next to the api_key label for each provider's signup page.
 
-Replace the free-text **Model** input with a **fetched model dropdown**: a per-provider "获取模型" button calls a new Rust Tauri command `list_models(provider_id, api_key, base_url, ...)`, which routes to the appropriate fetcher — rig's native `ModelListingClient::list_models()` for the 7 providers that implement it (anthropic, openai, gemini, deepseek, ollama, openrouter, mira), a raw HTTP `/v1/models` + Bearer fallback for the 11 OpenAI-compatible family providers, and a dedicated raw HTTP strategy for Azure (different auth header + query parameter). Fetched model id lists are persisted to a single aggregated JSON file `~/.quill/models.json`, keyed by provider id.
+Replace the free-text **Model** input with a **fetched model dropdown**: a per-provider "获取模型" button calls a new Rust Tauri command `list_models(provider_id, api_key, base_url, ...)`, which routes to the appropriate fetcher — rig's native `ModelListingClient::list_models()` for the 7 providers that implement it (anthropic, openai, gemini, deepseek, ollama, openrouter, mira), a raw HTTP `/v1/models` + Bearer fallback for the 11 OpenAI-compatible family providers, and a dedicated raw HTTP strategy for Azure (different auth header + query parameter). Fetched model id lists are persisted to a single aggregated JSON file `~/.folyn/models.json`, keyed by provider id.
 
 A second "重新拉取全部" button in the section header iterates every configured provider (those with `api_key` non-empty) and refreshes their section of the JSON file in parallel.
 
@@ -22,43 +22,43 @@ The Rust side (`chat.rs`) is extended from 2 match arms (anthropic / openai fall
 
 ## User Stories
 
-1. As a Quill user, when I open Settings → AI → Chat 模式, I want to see a 20-entry provider dropdown grouped into "原生" (Anthropic, OpenAI, Azure OpenAI, Cohere, Gemini, HuggingFace, Ollama), "兼容" (OpenAI 兼容, Anthropic 兼容), "OpenAI 兼容家族" (DeepSeek, EternalAI, Galadriel, Groq, Hyperbolic, Mira, Moonshot, OpenRouter, Perplexity, TogetherAI, xAI), so that I can pick a provider without scrolling through an unstructured 20-item flat list.
-2. As a Quill user, when I select "DeepSeek" from the dropdown, I want the `base_url` field to pre-fill with `https://api.deepseek.com` (DeepSeek's default endpoint) so that I don't have to look it up.
-3. As a Quill user, when I select "OpenAI" or "Anthropic", I want the `base_url` field to stay empty (the provider's default endpoint is implicit) so that I'm not forced to fill a field I don't need.
-4. As a Quill user, when I select "Azure OpenAI", I want two additional fields — `deployment_id` and `api_version` — to appear below the standard three, so that I can supply the parameters Azure uniquely requires.
-5. As a Quill user, when I select "Ollama", I want the `api_key` field to be hidden entirely (Ollama runs locally without auth) so that I'm not asked for a credential that doesn't exist.
-6. As a Quill user, for every provider that requires an api key, I want a "获取 API key →" link next to the api_key label that opens the provider's signup page (e.g. `https://console.anthropic.com/settings/keys` for Anthropic, `https://platform.openai.com/api-keys` for OpenAI, `https://console.groq.com/keys` for Groq), so that I don't have to google "how do I get an API key for X".
-7. As a Quill user, for Ollama (which has no api key), I want no "获取 API key" link rendered so that I'm not offered a link to a page that doesn't exist.
-8. As a Quill user, after I fill in api_key (and base_url if needed) for a provider, I want a "获取模型" button next to the model field that fetches the provider's available model list, so that I can pick a model from a dropdown instead of typing an id I memorized.
-9. As a Quill user, when I click "获取模型", I want the button to show a loading spinner and the model field to convert to a dropdown once results arrive, so that I have visual feedback that the fetch is in progress.
-10. As a Quill user, when the fetch returns successfully, I want the dropdown to be populated with available model ids, each showing capability badges (e.g. "vision", "reasoning") and pricing, so that I can make an informed choice.
-11. As a Quill user, when the fetch fails (wrong api_key, network error, provider 5xx), I want a clear inline error message and the model field to remain as a free-text input, so that I can either fix the api_key or type a model id manually as a fallback.
-12. As a Quill user, when I select a model from the dropdown, I want my choice persisted across app restarts, so that I don't have to re-pick on every launch.
-13. As a Quill user, when I previously selected a model that is no longer in the freshly-fetched list (provider deprecated it), I want the dropdown to still show the old id with a "已不在可用列表" greyed-out marker, so that my setting isn't silently lost and I'm prompted to pick a replacement.
-14. As a Quill user, I want a "重新拉取全部" button in the Chat 模式 section header that re-fetches model lists for every provider I have configured (those with api_key non-empty), so that I can refresh all my catalogs at once when providers ship new models.
-15. As a Quill user, when I click "重新拉取全部", I want per-provider success/failure indicators next to each provider row (or in a result summary), so that I know which providers' keys are still valid and which I need to fix.
-16. As a Quill user, when one provider's fetch fails during "重新拉取全部", I want other providers' results to still be persisted, so that one bad key doesn't block the rest.
-17. As a Quill user, when I open Settings → AI → Chat 模式 after a previous fetch (cached in `~/.quill/models.json`), I want the model dropdown for my selected provider to be pre-populated from the cache without requiring a fresh fetch, so that the UI is responsive on first paint.
-18. As a Quill user, when I pick a model that supports image input (vision capability) and I'm in `BubbleTemplateAIChatModal`, I want the image upload button to be enabled, so that I can attach a design reference image.
-19. As a Quill user, when I pick a model that does NOT support image input and I'm in `BubbleTemplateAIChatModal`, I want the image upload button to be disabled with a tooltip "当前模型不支持图片输入", so that I don't waste a turn uploading an image the model will reject.
-20. As a Quill user, when I pick a reasoning-capable model (e.g. Claude with extended thinking, OpenAI o-series), I want a "thinking budget" input exposed in the Chat 模式 section, so that I can control how much reasoning the model does.
-21. As a Quill user, when I pick a non-reasoning model, I want the "thinking budget" field hidden, so that I'm not offered a control that does nothing.
-22. As a Quill user, when I previously configured `chatProvider: 'openai-compatible'` with a custom `chatBaseUrl` and a `chatModel` (before this update), I want my settings to keep working after the update without any migration step, so that the upgrade is invisible.
-23. As a Quill user, when I previously configured `chatProvider: 'anthropic'` or `'openai'`, I want those to keep working identically, so that the upgrade is invisible.
-24. As a Quill user, I want the provider display names localized (e.g. "OpenAI 兼容" in zh, "OpenAI Compatible" in en) so that the UI matches my locale.
-25. As a Quill user, I want provider brand names (DeepSeek, Groq, OpenRouter, Anthropic, OpenAI, etc.) to remain in their original form across locales, so that I recognize them regardless of language.
-26. As a Quill user, when I click "测试连接" (existing button), I want the test to use my currently-selected provider's native rig client (not the openai fallback) so that the test reflects the actual chat path.
-27. As a Quill user configuring Azure OpenAI, I want the test button to use my `deployment_id` and `api_version` so that the test reflects the actual Azure request shape.
-28. As a Quill user configuring Ollama, I want the test button to work even though I haven't filled an api_key, so that local Ollama instances are testable.
-29. As a Quill user, when a provider's api_key is missing and I click "获取模型" or "测试连接", I want a clear inline message "请先填 API key" (or "Ollama 无需 API key" for Ollama), so that I understand what's missing.
-30. As a Quill user, when I switch providers after filling in fields for one provider, I want the per-provider fields (e.g. Azure's `deployment_id`) to be preserved when I switch away and back, so that I don't lose my Azure config by experimenting with another provider.
-31. As a Quill user, when I look at the model dropdown, I want vision-capable models to show a small "vision" badge, reasoning models to show "reasoning", web-search-capable models to show "web", so that I can scan capabilities visually.
-32. As a Quill user, when I look at the model dropdown, I want pricing shown as a subtitle (e.g. "$3 / $15 per Mtok") so that I can compare cost across models.
-33. As a developer integrating a new provider into Quill later, I want the provider catalog in `apps/desktop/src/services/providers/catalog.ts` to be the single source of truth for the provider's display name, default base_url, default model placeholder, api key signup URL, category, and field visibility, so that adding a provider is one file edit.
+1. As a Folyn user, when I open Settings → AI → Chat 模式, I want to see a 20-entry provider dropdown grouped into "原生" (Anthropic, OpenAI, Azure OpenAI, Cohere, Gemini, HuggingFace, Ollama), "兼容" (OpenAI 兼容, Anthropic 兼容), "OpenAI 兼容家族" (DeepSeek, EternalAI, Galadriel, Groq, Hyperbolic, Mira, Moonshot, OpenRouter, Perplexity, TogetherAI, xAI), so that I can pick a provider without scrolling through an unstructured 20-item flat list.
+2. As a Folyn user, when I select "DeepSeek" from the dropdown, I want the `base_url` field to pre-fill with `https://api.deepseek.com` (DeepSeek's default endpoint) so that I don't have to look it up.
+3. As a Folyn user, when I select "OpenAI" or "Anthropic", I want the `base_url` field to stay empty (the provider's default endpoint is implicit) so that I'm not forced to fill a field I don't need.
+4. As a Folyn user, when I select "Azure OpenAI", I want two additional fields — `deployment_id` and `api_version` — to appear below the standard three, so that I can supply the parameters Azure uniquely requires.
+5. As a Folyn user, when I select "Ollama", I want the `api_key` field to be hidden entirely (Ollama runs locally without auth) so that I'm not asked for a credential that doesn't exist.
+6. As a Folyn user, for every provider that requires an api key, I want a "获取 API key →" link next to the api_key label that opens the provider's signup page (e.g. `https://console.anthropic.com/settings/keys` for Anthropic, `https://platform.openai.com/api-keys` for OpenAI, `https://console.groq.com/keys` for Groq), so that I don't have to google "how do I get an API key for X".
+7. As a Folyn user, for Ollama (which has no api key), I want no "获取 API key" link rendered so that I'm not offered a link to a page that doesn't exist.
+8. As a Folyn user, after I fill in api_key (and base_url if needed) for a provider, I want a "获取模型" button next to the model field that fetches the provider's available model list, so that I can pick a model from a dropdown instead of typing an id I memorized.
+9. As a Folyn user, when I click "获取模型", I want the button to show a loading spinner and the model field to convert to a dropdown once results arrive, so that I have visual feedback that the fetch is in progress.
+10. As a Folyn user, when the fetch returns successfully, I want the dropdown to be populated with available model ids, each showing capability badges (e.g. "vision", "reasoning") and pricing, so that I can make an informed choice.
+11. As a Folyn user, when the fetch fails (wrong api_key, network error, provider 5xx), I want a clear inline error message and the model field to remain as a free-text input, so that I can either fix the api_key or type a model id manually as a fallback.
+12. As a Folyn user, when I select a model from the dropdown, I want my choice persisted across app restarts, so that I don't have to re-pick on every launch.
+13. As a Folyn user, when I previously selected a model that is no longer in the freshly-fetched list (provider deprecated it), I want the dropdown to still show the old id with a "已不在可用列表" greyed-out marker, so that my setting isn't silently lost and I'm prompted to pick a replacement.
+14. As a Folyn user, I want a "重新拉取全部" button in the Chat 模式 section header that re-fetches model lists for every provider I have configured (those with api_key non-empty), so that I can refresh all my catalogs at once when providers ship new models.
+15. As a Folyn user, when I click "重新拉取全部", I want per-provider success/failure indicators next to each provider row (or in a result summary), so that I know which providers' keys are still valid and which I need to fix.
+16. As a Folyn user, when one provider's fetch fails during "重新拉取全部", I want other providers' results to still be persisted, so that one bad key doesn't block the rest.
+17. As a Folyn user, when I open Settings → AI → Chat 模式 after a previous fetch (cached in `~/.folyn/models.json`), I want the model dropdown for my selected provider to be pre-populated from the cache without requiring a fresh fetch, so that the UI is responsive on first paint.
+18. As a Folyn user, when I pick a model that supports image input (vision capability) and I'm in `BubbleTemplateAIChatModal`, I want the image upload button to be enabled, so that I can attach a design reference image.
+19. As a Folyn user, when I pick a model that does NOT support image input and I'm in `BubbleTemplateAIChatModal`, I want the image upload button to be disabled with a tooltip "当前模型不支持图片输入", so that I don't waste a turn uploading an image the model will reject.
+20. As a Folyn user, when I pick a reasoning-capable model (e.g. Claude with extended thinking, OpenAI o-series), I want a "thinking budget" input exposed in the Chat 模式 section, so that I can control how much reasoning the model does.
+21. As a Folyn user, when I pick a non-reasoning model, I want the "thinking budget" field hidden, so that I'm not offered a control that does nothing.
+22. As a Folyn user, when I previously configured `chatProvider: 'openai-compatible'` with a custom `chatBaseUrl` and a `chatModel` (before this update), I want my settings to keep working after the update without any migration step, so that the upgrade is invisible.
+23. As a Folyn user, when I previously configured `chatProvider: 'anthropic'` or `'openai'`, I want those to keep working identically, so that the upgrade is invisible.
+24. As a Folyn user, I want the provider display names localized (e.g. "OpenAI 兼容" in zh, "OpenAI Compatible" in en) so that the UI matches my locale.
+25. As a Folyn user, I want provider brand names (DeepSeek, Groq, OpenRouter, Anthropic, OpenAI, etc.) to remain in their original form across locales, so that I recognize them regardless of language.
+26. As a Folyn user, when I click "测试连接" (existing button), I want the test to use my currently-selected provider's native rig client (not the openai fallback) so that the test reflects the actual chat path.
+27. As a Folyn user configuring Azure OpenAI, I want the test button to use my `deployment_id` and `api_version` so that the test reflects the actual Azure request shape.
+28. As a Folyn user configuring Ollama, I want the test button to work even though I haven't filled an api_key, so that local Ollama instances are testable.
+29. As a Folyn user, when a provider's api_key is missing and I click "获取模型" or "测试连接", I want a clear inline message "请先填 API key" (or "Ollama 无需 API key" for Ollama), so that I understand what's missing.
+30. As a Folyn user, when I switch providers after filling in fields for one provider, I want the per-provider fields (e.g. Azure's `deployment_id`) to be preserved when I switch away and back, so that I don't lose my Azure config by experimenting with another provider.
+31. As a Folyn user, when I look at the model dropdown, I want vision-capable models to show a small "vision" badge, reasoning models to show "reasoning", web-search-capable models to show "web", so that I can scan capabilities visually.
+32. As a Folyn user, when I look at the model dropdown, I want pricing shown as a subtitle (e.g. "$3 / $15 per Mtok") so that I can compare cost across models.
+33. As a developer integrating a new provider into Folyn later, I want the provider catalog in `apps/desktop/src/services/providers/catalog.ts` to be the single source of truth for the provider's display name, default base_url, default model placeholder, api key signup URL, category, and field visibility, so that adding a provider is one file edit.
 34. As a developer, I want the Rust side to route by provider id via a 20-arm `match` in `chat.rs` and `list_models.rs`, so that the routing logic is co-located and auditable.
 35. As a developer, I want the catalog generation script (`scripts/sync-model-catalog.ts`) to be runnable manually before releases, so that the catalog JSON stays fresh without a CI dependency.
 36. As a developer, I want the catalog JSON to be zod-validated at runtime when first loaded, so that a malformed catalog (e.g. models.dev changes their schema) fails loudly instead of producing broken UI.
-37. As a developer, I want the `~/.quill/models.json` cache file to be keyed by provider id at the top level, so that refreshing one provider's list doesn't require reading+writing the whole file under a lock.
+37. As a developer, I want the `~/.folyn/models.json` cache file to be keyed by provider id at the top level, so that refreshing one provider's list doesn't require reading+writing the whole file under a lock.
 
 ## Implementation Decisions
 
@@ -82,7 +82,7 @@ The `ChatProvider` type in `aiConfigStore.ts` is widened from `'anthropic' | 'op
 
 Add two new persisted keys: `chatAzureDeploymentId`, `chatAzureApiVersion`. Extend `AiConfigState` interface with these + setters. The existing `chatProvider` / `chatModel` / `chatApiKey` / `chatBaseUrl` keys are unchanged — they hydrate as before for the 3 old ids. Setters follow the existing `schedulePersist()` pattern.
 
-A new sibling store `modelRegistryStore` (or a slice inside `aiConfigStore` — implementer's choice based on existing convention) holds the in-memory model list cache: `modelsByProvider: Record<providerId, Model[]>`, `fetchStatus: Record<providerId, 'idle' | 'loading' | 'success' | 'error'>`, `fetchError: Record<providerId, string>`. This store is hydrated from `~/.quill/models.json` on app boot and writes back to the file on every successful fetch.
+A new sibling store `modelRegistryStore` (or a slice inside `aiConfigStore` — implementer's choice based on existing convention) holds the in-memory model list cache: `modelsByProvider: Record<providerId, Model[]>`, `fetchStatus: Record<providerId, 'idle' | 'loading' | 'success' | 'error'>`, `fetchError: Record<providerId, string>`. This store is hydrated from `~/.folyn/models.json` on app boot and writes back to the file on every successful fetch.
 
 ### Model object shape (runtime)
 
@@ -233,7 +233,7 @@ The current `chat.rs:230-234` block that forces base URLs to end in `/v1` is rem
 - Ollama: mock server at `https://mock.test/api/tags` returns `{models: [{name: "llama3.2"}]}`.
 - Error paths: 401, 5xx, network failure → `AppError` with a meaningful message.
 
-**JSON file round-trip:** `tempdir` + write `~/.quill/models.json` sample + read back + assert enriched `Model[]`.
+**JSON file round-trip:** `tempdir` + write `~/.folyn/models.json` sample + read back + assert enriched `Model[]`.
 
 **Why this seam:** the store mock in Seam 1 cannot verify that the Rust side actually sends the right auth header to the right endpoint — only Rust-side tests can. The routing pure function is the cheapest correctness check; the `mockito` tests catch auth-header mistakes that would otherwise surface as user-visible "401 Unauthorized" errors in production.
 
@@ -245,9 +245,9 @@ The current `chat.rs:230-234` block that forces base URLs to end in `/v1` is rem
 
 ## Out of Scope
 
-- **§5 reasoning rule table + custom-id heuristics.** Models.dev reports reasoning per model; Quill does not need to infer reasoning from id patterns. Cherry Studio's `reasoning-families.gen.ts` machinery is not reproduced.
-- **§6 user overrides of model capabilities.** Users cannot edit the capabilities of a model in the UI (no "force vision on / off" toggle). The `~/.quill/model-overrides.json` concept from the doc is not implemented. `applyCapabilityOverride` may be implemented as a pure function (with a no-op override input) for forward-compatibility, but no UI surfaces it.
-- **§7 SQLite.** The doc's `user_model` table with `userOverrides` tracking is not built. JSON file persistence (`~/.quill/models.json`) is sufficient for Quill's read pattern.
+- **§5 reasoning rule table + custom-id heuristics.** Models.dev reports reasoning per model; Folyn does not need to infer reasoning from id patterns. Cherry Studio's `reasoning-families.gen.ts` machinery is not reproduced.
+- **§6 user overrides of model capabilities.** Users cannot edit the capabilities of a model in the UI (no "force vision on / off" toggle). The `~/.folyn/model-overrides.json` concept from the doc is not implemented. `applyCapabilityOverride` may be implemented as a pure function (with a no-op override input) for forward-compatibility, but no UI surfaces it.
+- **§7 SQLite.** The doc's `user_model` table with `userOverrides` tracking is not built. JSON file persistence (`~/.folyn/models.json`) is sufficient for Folyn's read pattern.
 - **Image generation, audio, embedding, rerank models.** Only chat / completion models are surfaced in the dropdown. Models.dev returns all modalities; the merge function filters to chat-relevant modalities (text output, optionally image input).
 - **Per-provider model search / filter UI.** The dropdown is a flat list per provider. No fuzzy search, no capability filter checkboxes. The 20-100 models per provider is small enough to scroll.
 - **Streaming model list.** The `list_models` command returns a single batch; no SSE / streaming for the model list itself.
@@ -263,9 +263,9 @@ The current `chat.rs:230-234` block that forces base URLs to end in `/v1` is rem
 
 The user explicitly chose all-at-once over a phased rollout. The cost is 5 new native rig client arms in `chat.rs` (Azure, Cohere, Gemini, HuggingFace, Ollama), each requiring a real API key to manually verify. The benefit is a single coherent provider catalog UI with no "coming soon" markers. The trade-off is documented in the grilling session and accepted.
 
-### Why a single aggregated `~/.quill/models.json` (vs. per-provider files)
+### Why a single aggregated `~/.folyn/models.json` (vs. per-provider files)
 
-The user chose a single aggregated file over per-provider files despite the slightly worse atomicity (one provider's fetch failure could leave the file half-written). The implementer should write the file atomically: write to `~/.quill/models.json.tmp` then `rename` to `~/.quill/models.json` only after all per-provider fetches in "重新拉取全部" have settled. Per-provider "获取模型" writes the whole file after reading the current state, merging the single provider's section, and writing back.
+The user chose a single aggregated file over per-provider files despite the slightly worse atomicity (one provider's fetch failure could leave the file half-written). The implementer should write the file atomically: write to `~/.folyn/models.json.tmp` then `rename` to `~/.folyn/models.json` only after all per-provider fetches in "重新拉取全部" have settled. Per-provider "获取模型" writes the whole file after reading the current state, merging the single provider's section, and writing back.
 
 ### Why models.dev as the catalog source (vs. self-built 18 vendor files)
 

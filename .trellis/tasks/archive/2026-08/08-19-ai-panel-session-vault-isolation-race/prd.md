@@ -6,7 +6,7 @@ Fix a race in the AI panel's session persistence: when the user switches vaults 
 
 ## What I already know
 
-- Storage layer is correct: `sessionStorage` (apps/desktop/src/utils/sessionStorage.ts) roots sessions at `~/.quill/vaults/<vaultId>/<sessionId>.json` + `_meta.json`. No cross-vault I/O at this layer.
+- Storage layer is correct: `sessionStorage` (apps/desktop/src/utils/sessionStorage.ts) roots sessions at `~/.folyn/vaults/<vaultId>/<sessionId>.json` + `_meta.json`. No cross-vault I/O at this layer.
 - Boot path is correct: `loadAiSessionsForVault` (aiSessionPersistence.ts:120) runs after `initVault` sets `activeVaultId` (App.tsx:205→207), so the loaded vault id and the in-memory sessions agree.
 - Switch path has the race:
   1. `vaultStore.switchVault` (vaultStore.ts:326) calls `useAiStore.getState().switchVaultSessions(config.id)`.
@@ -14,7 +14,7 @@ Fix a race in the AI panel's session persistence: when the user switches vaults 
   3. Back in `switchVault`: `stopVaultWatcher`, `manager.switchVault`, `seedAgentFiles`, `migrateSpecialDirs`, `refreshFileTree` all await before `set({ currentVault: config, activeVaultId: config.id })` (vaultStore.ts:333).
   4. If the 500ms timer fires in that window: `persistAiState` (aiSessionPersistence.ts:87-99) sees `suppressPersist=false`, reads `activeVaultId` (still the OLD vault), and `saveAllSessions(OLD)` writes the NEW vault's in-memory sessions to the OLD vault's directory. Leak.
 - `debouncedPersist` is trailing-edge 500ms (apps/desktop/src/utils/debounce.ts).
-- pet-chat (`~/.quill/pet-chat/`, petChatSessions.ts) is intentionally vault-free — NOT in scope for this bug.
+- pet-chat (`~/.folyn/pet-chat/`, petChatSessions.ts) is intentionally vault-free — NOT in scope for this bug.
 
 ## Root cause
 
@@ -41,9 +41,9 @@ After the fix, the 500ms timer firing anywhere in the switch window writes the i
 
 ## Acceptance Criteria
 
-- [ ] After A → B switch, `~/.quill/vaults/<A>/` contains only sessions that existed there before the switch (no new files, no overwritten _meta.json pointing at B's active session).
+- [ ] After A → B switch, `~/.folyn/vaults/<A>/` contains only sessions that existed there before the switch (no new files, no overwritten _meta.json pointing at B's active session).
 - [ ] After B → A switch, the AI panel's session list shows only A's sessions.
-- [ ] Adding a message in vault B's session does not create or modify files under `~/.quill/vaults/<A>/`.
+- [ ] Adding a message in vault B's session does not create or modify files under `~/.folyn/vaults/<A>/`.
 - [ ] `persistAiState` reads `loadedVaultId` from `aiStore`, not `activeVaultId` from `vaultStore`.
 
 ## Definition of Done

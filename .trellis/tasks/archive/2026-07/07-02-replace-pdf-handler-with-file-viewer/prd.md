@@ -2,7 +2,7 @@
 
 ## Goal
 
-PDF 预览改由 file-viewer（preset-office 的 pdf.js renderer）承接，移除 Quill 自建 PdfViewer。
+PDF 预览改由 file-viewer（preset-office 的 pdf.js renderer）承接，移除 Folyn 自建 PdfViewer。
 
 ## What I already know
 

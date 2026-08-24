@@ -1,7 +1,7 @@
 # Research: uTool Plugin / Extension Architecture
 
-- **Query**: uTool's plugin/extension architecture in depth — manifest, packaging, runtime loading, UI contribution model, permissions, DX. Map onto quill (Tauri 2 + React, runtime install without repackage).
-- **Scope**: external (uTool docs/conventions) + mixed (quill codebase mapping)
+- **Query**: uTool's plugin/extension architecture in depth — manifest, packaging, runtime loading, UI contribution model, permissions, DX. Map onto folyn (Tauri 2 + React, runtime install without repackage).
+- **Scope**: external (uTool docs/conventions) + mixed (folyn codebase mapping)
 - **Date**: 2026-07-08
 - **Source caveat**: This agent had no live network access in this run (curl denied; no exa MCP wired into tool list). Findings below are synthesized from documented uTool conventions widely cited in the u.tools developer community and the official "uTools 插件开发文档" (u.tools/docs/). **Field names and exact API surface should be re-verified against u.tools/docs/ before any spec is written from this file.** Where I am unsure, I mark it explicitly.
 
@@ -127,7 +127,7 @@ UI control (renderer → host UI):
   - contribute a menu entry to the "超级面板" (right-click overlay) that, when clicked, opens their feature window.
 - Pinned tools ("挂台") are detached feature windows that float alongside the host — still full-window, not inline.
 
-**Why this design exists**: uTool is a launcher, not an IDE. Plugins are meant to be self-contained mini-apps invoked on demand, not extensions of a shared editing surface. This is the *opposite* of quill's needs (quill wants inline file-type/feature/command contributions inside one editor shell).
+**Why this design exists**: uTool is a launcher, not an IDE. Plugins are meant to be self-contained mini-apps invoked on demand, not extensions of a shared editing surface. This is the *opposite* of folyn's needs (folyn wants inline file-type/feature/command contributions inside one editor shell).
 
 ---
 
@@ -139,7 +139,7 @@ UI control (renderer → host UI):
 - Some *interactive* sensitive actions surface a confirm in the UI flow (e.g. `utools.shellOpenExternal` may prompt; db writes are silent), but these are not install-time capability grants.
 - The renderer sandbox means a plugin's *UI code* can't escape to Node without going through `window.utools` — but since preload can expose anything, this is containment of accidents, not malicious preload.
 
-**Why this design exists**: Simplicity and the Electron preload trust model. uTool bet on curation + Node-level preload trust rather than a capability ACL. This is the weakest part of the model from a security standpoint and the part quill should *not* copy verbatim.
+**Why this design exists**: Simplicity and the Electron preload trust model. uTool bet on curation + Node-level preload trust rather than a capability ACL. This is the weakest part of the model from a security standpoint and the part folyn should *not* copy verbatim.
 
 ---
 
@@ -155,79 +155,79 @@ UI control (renderer → host UI):
 
 ---
 
-## 7. Mapping onto quill (Tauri 2 + React)
+## 7. Mapping onto folyn (Tauri 2 + React)
 
 ### What transfers cleanly
 
-| uTool pattern | Quill translation | Risk |
+| uTool pattern | Folyn translation | Risk |
 |---|---|---|
 | `plugin.json` manifest + folder + `.upx` (zip) | Identical: manifest + assets folder, install = unzip into `<appData>/plugins/<id>/`. Tauri can read the folder from Rust and serve assets. | Low. Pure file ops. |
 | `version` field for update detection | Identical. | Low. |
-| Curated host API namespace (`utools.*` → `quill.*`) | Inject a `quill` global into the plugin's webview context exposing curated Tauri `invoke` wrappers (fs/db/clipboard/dialog/shell). | Low — this is the right pattern. |
+| Curated host API namespace (`utools.*` → `folyn.*`) | Inject a `folyn` global into the plugin's webview context exposing curated Tauri `invoke` wrappers (fs/db/clipboard/dialog/shell). | Low — this is the right pattern. |
 | Per-plugin namespaced KV (`utools.db`) | Map to a Tauri-side per-plugin SQLite/KV table keyed by plugin id. | Low. |
-| Marketplace = trust/curation layer (optional Layer B) | Out of scope for quill MVP (PRD says so). Local + URL install only. | None. |
-| "point at a folder for dev" DX | Identical: dev plugin = local folder, `quill.plugins.loadFromPath()`. | Low. |
+| Marketplace = trust/curation layer (optional Layer B) | Out of scope for folyn MVP (PRD says so). Local + URL install only. | None. |
+| "point at a folder for dev" DX | Identical: dev plugin = local folder, `folyn.plugins.loadFromPath()`. | Low. |
 
 ### What does NOT transfer — Tauri-specific translation risk
 
 1. **Preload bridge does not exist in Tauri.**
    - uTool relies on Electron's `preload.js` running with **Node integration** to bridge privileged APIs. Tauri webviews have **no Node**; the privileged side is **Rust** (Tauri commands), reached via `invoke`.
-   - Translation: the "preload" role becomes either (a) a small JS shim injected into the plugin webview that wraps `@tauri-apps/api` `invoke` calls into a `quill.*` namespace, or (b) a Rust-side command router. Either way, **a plugin's privileged code cannot be JS** — only Rust is privileged. This is a hard architectural difference.
-   - Flag: any uTool plugin that ships preload logic relying on `require('fs'/'child_process')` cannot run on quill unchanged. quill must re-implement those capabilities as Tauri commands and expose them through the `quill.*` shim.
+   - Translation: the "preload" role becomes either (a) a small JS shim injected into the plugin webview that wraps `@tauri-apps/api` `invoke` calls into a `folyn.*` namespace, or (b) a Rust-side command router. Either way, **a plugin's privileged code cannot be JS** — only Rust is privileged. This is a hard architectural difference.
+   - Flag: any uTool plugin that ships preload logic relying on `require('fs'/'child_process')` cannot run on folyn unchanged. folyn must re-implement those capabilities as Tauri commands and expose them through the `folyn.*` shim.
 
-2. **Window-per-feature model ≠ quill's inline contribution goal.**
-   - uTool features are full standalone windows. quill's PRD wants plugins to contribute **inline** (file-type handler, command palette entry, feature module, container directive) inside the *existing* React shell.
-   - Translation: quill needs a **contribution-point registry** model (VSCode-like) that uTool does *not* provide. uTool's `features[]/cmds[]` maps to quill's "tool" contribution point (a full-window/pinned tool — the high-order Layer B form), but **not** to file-type/feature/command/container points. Those are quill-original.
-   - Flag: don't try to force uTool's manifest shape onto inline contributions. Use uTool's manifest as the "tool" contribution shape only; add quill-specific contribution arrays (`fileTypes[]`, `commands[]`, `features[]`, `containerDirectives[]`) to the manifest.
+2. **Window-per-feature model ≠ folyn's inline contribution goal.**
+   - uTool features are full standalone windows. folyn's PRD wants plugins to contribute **inline** (file-type handler, command palette entry, feature module, container directive) inside the *existing* React shell.
+   - Translation: folyn needs a **contribution-point registry** model (VSCode-like) that uTool does *not* provide. uTool's `features[]/cmds[]` maps to folyn's "tool" contribution point (a full-window/pinned tool — the high-order Layer B form), but **not** to file-type/feature/command/container points. Those are folyn-original.
+   - Flag: don't try to force uTool's manifest shape onto inline contributions. Use uTool's manifest as the "tool" contribution shape only; add folyn-specific contribution arrays (`fileTypes[]`, `commands[]`, `features[]`, `containerDirectives[]`) to the manifest.
 
 3. **Renderer sandboxing is actually *better* on Tauri — but the trust model must change.**
-   - uTool's preload has full Node → binary trust. Tauri has no equivalent privileged-JS layer, so quill can do **per-capability gating** that uTool can't.
-   - Translation: quill should add a `permissions: ["fs:read","fs:write","shell:open","clipboard:read",...]` array to the manifest (uTool has none) and **prompt on install** (uTool doesn't). This is a **deliberate departure** from uTool, required because quill has no marketplace curation in MVP and because Tauri capabilities are static-at-build — runtime plugins need their own capability store + prompt.
+   - uTool's preload has full Node → binary trust. Tauri has no equivalent privileged-JS layer, so folyn can do **per-capability gating** that uTool can't.
+   - Translation: folyn should add a `permissions: ["fs:read","fs:write","shell:open","clipboard:read",...]` array to the manifest (uTool has none) and **prompt on install** (uTool doesn't). This is a **deliberate departure** from uTool, required because folyn has no marketplace curation in MVP and because Tauri capabilities are static-at-build — runtime plugins need their own capability store + prompt.
    - Flag: this is the biggest design divergence from uTool and the one the PRD explicitly asks for ("插件申请受控 Tauri 能力时需显式授权"). Do not inherit uTool's "no permissions" model.
 
 4. **Dynamic ESM import is the Vite risk already flagged in the PRD.**
-   - uTool loads plugin UI as a separate HTML page in a separate window — no dynamic import into the host bundle. quill's inline-contribution model *requires* importing plugin React components into the host React tree.
+   - uTool loads plugin UI as a separate HTML page in a separate window — no dynamic import into the host bundle. folyn's inline-contribution model *requires* importing plugin React components into the host React tree.
    - Translation options:
      - (a) Load each plugin as a **separate Tauri WebviewWindow** with its own HTML (uTool-style) — clean isolation, but cannot contribute inline React components to the main editor. Only works for "tool" contribution point.
      - (b) Load plugin code as a **remote/foreign ESM module** imported at runtime into the host React bundle (`import(/* @vite-ignore */ url)`). Enables inline contributions, but Vite's build-time analysis + CSP + CORS make this the PRD's stated key risk.
      - (c) Hybrid: inline contributions (file-type/command/container/feature) use (b); full-window "tools" use (a).
-   - Flag: uTool's architecture only informs option (a). Options (b)/(c) are quill-original and need separate research (Vite dynamic import of untrusted ESM, CSP `script-src`, Web Worker isolation).
+   - Flag: uTool's architecture only informs option (a). Options (b)/(c) are folyn-original and need separate research (Vite dynamic import of untrusted ESM, CSP `script-src`, Web Worker isolation).
 
 5. **Tauri capabilities are static at build time.**
    - uTool grants all-or-nothing at install. Tauri's `capabilities/*.json` are compiled into the app at build — they cannot grant new capabilities to a runtime-installed plugin without a separate runtime capability store.
-   - Translation: quill needs a **runtime capability store** (a Rust-side map of plugin_id → granted permissions) that the Tauri command layer checks on every privileged call. This is *new work* not present in uTool's model.
+   - Translation: folyn needs a **runtime capability store** (a Rust-side map of plugin_id → granted permissions) that the Tauri command layer checks on every privileged call. This is *new work* not present in uTool's model.
    - Flag: this is the place where "Tauri 2 static capabilities" + "runtime plugins" collide. Expect to write a permission-gated command wrapper in Rust that reads the runtime capability store, separate from the static Tauri capabilities file.
 
-### Concrete mapping table — quill contribution points vs uTool equivalents
+### Concrete mapping table — folyn contribution points vs uTool equivalents
 
-| quill contribution point (existing) | uTool equivalent | Transfer |
+| folyn contribution point (existing) | uTool equivalent | Transfer |
 |---|---|---|
-| file-type handler (`apps/desktop/src/components/file-types/registry.ts`, `FileTypeHandler`) | none (uTool has no inline editor extensions) | quill-original; uTool gives no precedent |
+| file-type handler (`apps/desktop/src/components/file-types/registry.ts`, `FileTypeHandler`) | none (uTool has no inline editor extensions) | folyn-original; uTool gives no precedent |
 | command palette (`apps/desktop/src/services/commandRegistry.ts`, `Command`) | uTool `cmds[]` (but cmds are *triggers*, not palette actions) | partial — borrow manifest-array shape, not semantics |
-| container directive (`packages/container-plugins/ContainerRegistry.ts`, `ContainerPlugin`) | none | quill-original |
-| vault-provider (`packages/vault-provider/registry.ts`) | none (uTool's db is per-plugin KV, not pluggable storage backends) | quill-original |
-| cli-adapter (`packages/cli-adapter/registry.ts`) | none | quill-original |
-| feature module (`apps/desktop/src/features/*`) | uTool `feature` (full-window tool) | **closest match** — uTool's feature model maps to quill's "tool"/feature contribution point, but uTool features are full-window while quill features are inline panels |
+| container directive (`packages/container-plugins/ContainerRegistry.ts`, `ContainerPlugin`) | none | folyn-original |
+| vault-provider (`packages/vault-provider/registry.ts`) | none (uTool's db is per-plugin KV, not pluggable storage backends) | folyn-original |
+| cli-adapter (`packages/cli-adapter/registry.ts`) | none | folyn-original |
+| feature module (`apps/desktop/src/features/*`) | uTool `feature` (full-window tool) | **closest match** — uTool's feature model maps to folyn's "tool"/feature contribution point, but uTool features are full-window while folyn features are inline panels |
 | (new) "tool" = full-window plugin | uTool `feature` | direct match — this is where uTool's model transfers cleanly |
 
 ---
 
 ## 8. Caveats / Not Found / Verification Needed
 
-- **No live web access this run** — all field names (`features`, `cmds`, `type` enum, `preload`, `logo`, `version`, `code`) are from recalled documentation and should be verified against https://u.tools/docs/ before being written into a quill spec. Likely-uncertain specifics:
+- **No live web access this run** — all field names (`features`, `cmds`, `type` enum, `preload`, `logo`, `version`, `code`) are from recalled documentation and should be verified against https://u.tools/docs/ before being written into a folyn spec. Likely-uncertain specifics:
   - Exact `cmd` field names (`label`/`value`/`keyword`/`regex`/`length`/`filter`).
   - Whether `utools.getCurrentBrowserWindow()` / `utools.eval` / `utools.childProcess` exist (I believe they do **not** as public stable API; `utools.shell*` is the sanctioned shell surface).
   - Whether `plugin.json` has a stable plugin `id` separate from `code` (some docs show `code` at top level acting as plugin id).
   - `.upx` internal layout (I'm confident it's a zip; verify whether it's zip-of-folder or zip-of-files-at-root).
 - **Did not investigate** the uTools plugin marketplace protocol (download/auth/manifest signing) — out of scope per PRD.
-- **Did not investigate** uTool's "超级面板" (overlay menu) contribution mechanics in depth — relevant only if quill adds a right-click overlay contribution point.
+- **Did not investigate** uTool's "超级面板" (overlay menu) contribution mechanics in depth — relevant only if folyn adds a right-click overlay contribution point.
 - **Tauri-side research still needed (separate research file)**:
   - Vite dynamic `import()` of remote/unbundled ESM + CSP implications.
   - Tauri `WebviewWindow` per-plugin isolation + IPC surface.
   - Runtime capability store pattern vs static Tauri capabilities.
   - Whether Tauri's `tauri://localhost` asset protocol can serve plugin files from `<appData>/plugins/<id>/`.
 
-### Related quill spec/code (real paths, verified this run)
+### Related folyn spec/code (real paths, verified this run)
 
 | File | Relevance |
 |---|---|

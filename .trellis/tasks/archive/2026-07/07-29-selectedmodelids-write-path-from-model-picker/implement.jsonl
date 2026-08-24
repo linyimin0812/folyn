@@ -2,4 +2,4 @@
 {"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Code standards + forbidden patterns; review checklist for the picker onSelect change and the new selected-models list UI."}
 {"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type patterns; ensures the new setter signature + UI data flow stays strict-correct."}
 {"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns; the new selected-models list mirrors the existing manual-models collapsible group — same composition + styling conventions."}
-{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/prd.md", "reason": "Refactor PRD defines selectedModelIds semantics + providerSettings shape + customProvider flag derivation used by emptySettings()."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-folyn-dir/prd.md", "reason": "Refactor PRD defines selectedModelIds semantics + providerSettings shape + customProvider flag derivation used by emptySettings()."}

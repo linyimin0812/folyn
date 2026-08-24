@@ -148,7 +148,7 @@ Exact mechanism, AiPanel.tsx:227-261. workingDir = vault base path (213-222, wit
 if (currentAttachments.length > 0) {
   try {
     const { Command } = await import('@tauri-apps/plugin-shell');
-    const tmpDir = `${workingDir}/.quill-tmp`;
+    const tmpDir = `${workingDir}/.folyn-tmp`;
     await Command.create('claude-cli', ['-l', '-c', `mkdir -p '${tmpDir}'`]).execute();
 
     for (const att of currentAttachments) {
@@ -183,7 +183,7 @@ if (currentAttachments.length > 0) {
 }
 ```
 
-**Mechanism**: shell sidecar `claude-cli` (which maps to `/bin/sh` per pet-panel.json) runs `mkdir -p <tmpDir>` then, per blob, base64-encodes in JS (chunked `String.fromCharCode` + `btoa`) and pipes `printf '<b64>' | base64 -D > '<filePath>'`. **vault-coupled**: tmpDir = `<vault>/.quill-tmp`. The `att.path` branch just passes through (no save). `savedAttachments` carry `{name, path, type}`.
+**Mechanism**: shell sidecar `claude-cli` (which maps to `/bin/sh` per pet-panel.json) runs `mkdir -p <tmpDir>` then, per blob, base64-encodes in JS (chunked `String.fromCharCode` + `btoa`) and pipes `printf '<b64>' | base64 -D > '<filePath>'`. **vault-coupled**: tmpDir = `<vault>/.folyn-tmp`. The `att.path` branch just passes through (no save). `savedAttachments` carry `{name, path, type}`.
 
 **Why shell + not plugin-fs today?** No technical reason — `imageUploader.ts:50-75` ALREADY writes binary via `writeFile(absPath, bytes)` from `@tauri-apps/plugin-fs`. The shell-base64 approach predates / is parallel to that precedent and is more fragile (shell-quoting of base64 in single quotes; base64 decode via macOS `base64 -D` — non-portable flag on Linux would be `-d`).
 
@@ -193,10 +193,10 @@ if (currentAttachments.length > 0) {
 
 1. **Binary write**: `writeFile` accepts a `Uint8Array` directly — no base64 encode/decode, no shell quoting risk, no 8192-chunk `String.fromCharCode` (which can stack-overflow on large blobs via `...spread`). Just `await writeFile(filePath, new Uint8Array(await att.blob.arrayBuffer()))`.
 2. **pet-panel ACL**: pet-panel.json grants `fs:allow-mkdir`, `fs:allow-write-file`, `fs:scope-appdata-recursive`. Pet passes `<appData>/pet-chat-tmp` (petChatService.ts:108) — IN scope. ✅
-3. **Main window ACL**: default.json (not read here, but AiPanel already uses plugin-fs for read/write elsewhere — SettingsPage, sessionStorage, storageClient, wikiProvider). Writing to `<vault>/.quill-tmp` requires the vault path to be in the main window's fs scope. The current shell approach sidesteps fs scope by going through `/bin/sh`. ⚠️ **Risk**: plugin-fs `writeFile` to an arbitrary vault path may be DENIED by the main window's fs ACL if the vault isn't in scope. Need to verify default.json's fs scope. If vault is NOT in scope, AiPanel must keep the shell path (or the vault must be added to scope), while PetChat uses plugin-fs (appData, in scope). The helper should support BOTH: `saveBlobs(attachments, workingDir, { strategy: 'fs' | 'shell' })`, defaulting to `'fs'` for pet (appData) and allowing AiPanel to choose.
+3. **Main window ACL**: default.json (not read here, but AiPanel already uses plugin-fs for read/write elsewhere — SettingsPage, sessionStorage, storageClient, wikiProvider). Writing to `<vault>/.folyn-tmp` requires the vault path to be in the main window's fs scope. The current shell approach sidesteps fs scope by going through `/bin/sh`. ⚠️ **Risk**: plugin-fs `writeFile` to an arbitrary vault path may be DENIED by the main window's fs ACL if the vault isn't in scope. Need to verify default.json's fs scope. If vault is NOT in scope, AiPanel must keep the shell path (or the vault must be added to scope), while PetChat uses plugin-fs (appData, in scope). The helper should support BOTH: `saveBlobs(attachments, workingDir, { strategy: 'fs' | 'shell' })`, defaulting to `'fs'` for pet (appData) and allowing AiPanel to choose.
 4. **mkdir**: `mkdir(tmpDir, { recursive: true })` from plugin-fs — already used by imageUploader.ts:72 and wikiProvider.ts:22.
 
-**Recommendation**: shared helper `saveBlobs` uses **plugin-fs** (`writeFile` + `mkdir recursive`) by default. This is cleaner, works under pet-panel's ACL (appData scope), and matches the existing `imageUploader.LocalFileStrategy` precedent. AiPanel can adopt the same path IF the main window's fs scope covers the vault's `.quill-tmp`; otherwise AiPanel keeps a shell fallback. The base64-in-JS-then-shell-decode path should be dropped from the shared helper.
+**Recommendation**: shared helper `saveBlobs` uses **plugin-fs** (`writeFile` + `mkdir recursive`) by default. This is cleaner, works under pet-panel's ACL (appData scope), and matches the existing `imageUploader.LocalFileStrategy` precedent. AiPanel can adopt the same path IF the main window's fs scope covers the vault's `.folyn-tmp`; otherwise AiPanel keeps a shell fallback. The base64-in-JS-then-shell-decode path should be dropped from the shared helper.
 
 ---
 
@@ -359,7 +359,7 @@ export function handlePaste(
   opts: { idGenerator?: IdGenerator },
 ): PendingAttachment | null;
 
-/** Save blob attachments to <workingDir>/.quill-tmp via plugin-fs writeFile + mkdir recursive.
+/** Save blob attachments to <workingDir>/.folyn-tmp via plugin-fs writeFile + mkdir recursive.
  *  - path-only attachments are passed through unchanged.
  *  - blob attachments are written as `img-<ts>-<rand>.<ext>`.
  *  - revokes previewUrl after save (or on failure).
@@ -369,7 +369,7 @@ export async function saveBlobs(
   workingDir: string,
   opts?: {
     strategy?: 'fs' | 'shell';   // default 'fs' (plugin-fs). 'shell' = legacy base64+claude-cli for AiPanel vault fallback.
-    tmpSubdir?: string,           // default '.quill-tmp' — pet may pass 'pet-chat-tmp'
+    tmpSubdir?: string,           // default '.folyn-tmp' — pet may pass 'pet-chat-tmp'
   },
 ): Promise<{ name: string; path: string; type: 'image' | 'file' }[]>;
 ```
@@ -378,7 +378,7 @@ export async function saveBlobs(
 - `validateFile`: `{ maxBytes, allowedTypes }` — caller decides limits.
 - `addFiles`: `{ idGenerator }` — default `generateId` from `utils/idGenerator`.
 - `handlePaste`: `{ idGenerator }`.
-- `saveBlobs`: `{ strategy, tmpSubdir }` — strategy chooses fs vs shell; tmpSubdir defaults `.quill-tmp` (AiPanel) / `pet-chat-tmp` (pet).
+- `saveBlobs`: `{ strategy, tmpSubdir }` — strategy chooses fs vs shell; tmpSubdir defaults `.folyn-tmp` (AiPanel) / `pet-chat-tmp` (pet).
 
 **Pure**: `validateFile`, `buildReadInstructions`, `revokeUrls`, `isImageFile`.
 **Side-effectful**: `addFiles` (creates object URLs), `handlePaste` (preventDefault + object URL), `saveBlobs` (disk writes + revoke).
@@ -418,7 +418,7 @@ export async function saveBlobs(
 2. Avoids the 8192-chunk `String.fromCharCode(...spread)` stack-overflow risk on large images.
 3. **Precedent**: `imageUploader.LocalFileStrategy` (imageUploader.ts:50-75) ALREADY does exactly this — `mkdir(parent, {recursive:true})` + `writeFile(absPath, bytes)`.
 4. **Pet-panel ACL**: `fs:allow-mkdir` + `fs:allow-write-file` + `fs:scope-appdata-recursive` all granted (pet-panel.json:39-46). Pet writes to `<appData>/pet-chat-tmp` — in scope. ✅
-5. **AiPanel caveat**: AiPanel writes to `<vault>/.quill-tmp` — an arbitrary vault path. If the main window's fs ACL scope does NOT cover the vault, plugin-fs `writeFile` will be DENIED. The helper should offer `strategy: 'shell'` fallback (the current `claude-cli` base64 path) for AiPanel until the main window's fs scope is confirmed to cover the vault. Action item for the implementer: **verify `capabilities/default.json`'s fs scope covers vault paths** before dropping the shell fallback.
+5. **AiPanel caveat**: AiPanel writes to `<vault>/.folyn-tmp` — an arbitrary vault path. If the main window's fs ACL scope does NOT cover the vault, plugin-fs `writeFile` will be DENIED. The helper should offer `strategy: 'shell'` fallback (the current `claude-cli` base64 path) for AiPanel until the main window's fs scope is confirmed to cover the vault. Action item for the implementer: **verify `capabilities/default.json`'s fs scope covers vault paths** before dropping the shell fallback.
 
 ### Type whitelist (exact `accept` string to mirror)
 

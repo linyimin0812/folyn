@@ -18,7 +18,7 @@ fenced code blocks ` ```plantuml `, with SVG export.
 Reuse existing surfaces, no new registries:
 
 1. **Fenced code blocks** (` ```plantuml ` / `puml` / `pu`)
-   - New `PlantUmlBlock` component (lives in `@quill/container-plugins` next to
+   - New `PlantUmlBlock` component (lives in `@folyn/container-plugins` next to
      `MermaidPlugin`) — fetches SVG from plantuml.com, renders inline.
    - Registered as builtin markdown code renderer in
      `registerBuiltinCodeContributions.ts` under `plantuml` + aliases

@@ -1,1 +1,1 @@
-{"file": ".trellis/tasks/archive/2026-07/07-29-refactor-provider-config-storage-to-quill-dir/research/atomic-write-pattern.md", "reason": "homeDir + join(home, '.quill', sub) pattern; reused by storageClient/providers — same approach for pet-icon/pet-chat-tmp/scripts-tmp/vaults"}
+{"file": ".trellis/tasks/archive/2026-07/07-29-refactor-provider-config-storage-to-folyn-dir/research/atomic-write-pattern.md", "reason": "homeDir + join(home, '.folyn', sub) pattern; reused by storageClient/providers — same approach for pet-icon/pet-chat-tmp/scripts-tmp/vaults"}

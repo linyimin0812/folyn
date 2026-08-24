@@ -2,7 +2,7 @@
 
 ## Goal
 
-让 quill 的 `svg` 文件类型用专属 `assets/icons/svg.svg` 图标，而非现在的通用 `image` 图标。
+让 folyn 的 `svg` 文件类型用专属 `assets/icons/svg.svg` 图标，而非现在的通用 `image` 图标。
 
 **Why**: 现状 `apps/desktop/src/components/file-types/svg/index.ts:8` 调 `getFileTypeIcon('image')`，落进 `HANDLER_TO_THEME_ICON['image']` → `'image'` theme icon。`ThemeIcon` 已通过 `import.meta.glob('../../assets/icons/*.svg')` 自动注册了 `svg.svg` 为名 `'svg'`，但没人引用。两行改动即可切到专属图标。
 

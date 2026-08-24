@@ -2,7 +2,7 @@
 
 ## Goal
 
-为 Quill 添加 Graphviz（DOT 语言）文件类型支持，参考 plantuml 的实现模式：在线服务器渲染 SVG、支持伸缩、支持 `:::file-preview{src="*.gv"}` 和 ` ```graphviz ` / ` ```dot ` 代码块预览、SVG 导出。
+为 Folyn 添加 Graphviz（DOT 语言）文件类型支持，参考 plantuml 的实现模式：在线服务器渲染 SVG、支持伸缩、支持 `:::file-preview{src="*.gv"}` 和 ` ```graphviz ` / ` ```dot ` 代码块预览、SVG 导出。
 
 ## What I already know
 

@@ -108,4 +108,4 @@ DiffPaneProps 只剩 `{ left: unknown }`。
 
 - 测试：`DiffPane.test.tsx` 需 mock `@codemirror/merge`（jsdom 跑不了真实 CM6 layout measure，与 Json5CodeMirror 的 `getClientRects` 上限同源）。stub `MergeView` 为一个注入两个 `<textarea>` 的 mock，断言 mount + value 同步 + stats 徽章。
 
-- 依赖安装：`pnpm --filter @quill/desktop add @codemirror/merge`。版本对齐其它 `@codemirror/*`（`^6.x`）。
+- 依赖安装：`pnpm --filter @folyn/desktop add @codemirror/merge`。版本对齐其它 `@codemirror/*`（`^6.x`）。

@@ -1,7 +1,7 @@
 # Fullscreen Button Not Working
 
 ## Bug
-点击 Quill 主窗口的 macOS 绿色交通灯 / Window 菜单 Enter Full Screen，无法进入全屏。
+点击 Folyn 主窗口的 macOS 绿色交通灯 / Window 菜单 Enter Full Screen，无法进入全屏。
 
 ## Root cause
 `apps/desktop/src-tauri/src/lib.rs` 启动时调用 `set_dock_visibility(false)`，app 进入 `NSApplicationActivationPolicyAccessory` 模式。副作用：accessory 模式下 macOS 原生 fullscreen 入口（绿色交通灯、Window 菜单 `.fullscreen()` item）不走标准 fullscreen 流程，点不动。

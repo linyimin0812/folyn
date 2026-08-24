@@ -2,7 +2,7 @@
 
 ## Goal
 
-Bring meaningful test coverage to the Quill monorepo. Today only the GrapesJS HTML editor area has tests (4 files in `apps/desktop/src/components/file-types/html/`). Everything else — utils, services, stores, hooks, and the three workspace packages (`cli-adapter`, `container-plugins`, `vault-provider`) — is uncovered. We want a baseline that catches regressions and documents intent, without chasing a coverage number.
+Bring meaningful test coverage to the Folyn monorepo. Today only the GrapesJS HTML editor area has tests (4 files in `apps/desktop/src/components/file-types/html/`). Everything else — utils, services, stores, hooks, and the three workspace packages (`cli-adapter`, `container-plugins`, `vault-provider`) — is uncovered. We want a baseline that catches regressions and documents intent, without chasing a coverage number.
 
 ## Requirements
 

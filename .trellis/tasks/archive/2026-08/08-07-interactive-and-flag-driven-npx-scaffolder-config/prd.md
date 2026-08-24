@@ -2,7 +2,7 @@
 
 ## 目标
 
-`npx create-quill-plugin` 支持两种用法：
+`npx create-folyn-plugin` 支持两种用法：
 - 交互：TTY 下逐项 prompt 缺失字段
 - 非交互：所有配置走 flag + `--yes`
 
@@ -24,6 +24,6 @@
 
 ## 验收
 
-- `npx create-quill-plugin --yes --name foo --author Jane` 在 cwd 下生成 `foo/`，manifest.author = "Jane"
+- `npx create-folyn-plugin --yes --name foo --author Jane` 在 cwd 下生成 `foo/`，manifest.author = "Jane"
 - 不带参 TTY 下逐项 prompt
 - `pnpm test` 跑通 smoke

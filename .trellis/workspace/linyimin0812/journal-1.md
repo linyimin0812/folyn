@@ -50,7 +50,7 @@ Added 4 boolean settings (enableWikiPanel/enableClipsPanel/enableAnalyzePanel/en
 
 ### Summary
 
-Completed the GrapesJS HTML visual editor migration. Phase 4: deleted the legacy iframe-bridge editor (bridge.ts/VisualEditCanvas.tsx/PropertiesPanel.tsx, ~2,127 lines) and removed the USE_GRAPES feature flag; rewrote the file-type-editors spec to the GrapesJS architecture. Phase 5: filled theme gaps against Quill design tokens, fixed dead ZH_MESSAGES (wrong i18n key prefixes that made all Chinese translations non-resolving), localized RTE tooltips, and registered grapesjs-plugin-forms + grapesjs-tui-image-editor (CDN-loaded, no bundle bloat). All tsc/build/243 tests green.
+Completed the GrapesJS HTML visual editor migration. Phase 4: deleted the legacy iframe-bridge editor (bridge.ts/VisualEditCanvas.tsx/PropertiesPanel.tsx, ~2,127 lines) and removed the USE_GRAPES feature flag; rewrote the file-type-editors spec to the GrapesJS architecture. Phase 5: filled theme gaps against Folyn design tokens, fixed dead ZH_MESSAGES (wrong i18n key prefixes that made all Chinese translations non-resolving), localized RTE tooltips, and registered grapesjs-plugin-forms + grapesjs-tui-image-editor (CDN-loaded, no bundle bloat). All tsc/build/243 tests green.
 
 ### Main Changes
 
@@ -221,7 +221,7 @@ Verified and archived 00-bootstrap-guidelines. The .trellis/spec tree is fully p
 
 ### Summary
 
-Built a unified command palette (Cmd+P) for Quill via 3 PRs. PR1: built-in subsequence fuzzy scorer (utils/fuzzyMatch.ts, contiguous>word-boundary>plain scoring), command registry (Command type + 20 builtin commands), commandPaletteStore (open/close/query/selection, grouped+flat list, FILE_CAP=50). PR2: CommandPalette.tsx UI reusing .dlg styling (grouped list, matched-substring highlight, keyboard nav, empty state), Cmd+P/Ctrl+P wired in App.tsx (!shiftKey/!altKey to avoid Cmd+Shift+P/F conflicts). PR3: file commands sourced live from vaultStore tree (reference-memoized, not stale), enabled predicates mirror ActivityBar panel toggles, useExport refactored to expose imperative functions (behavior-preserving), newItemBridge connects palette new-file/folder to Sidebar flow. 71 new tests (465->536); tsc + build green. Full Trellis flow: brainstorm -> implement -> check -> commit -> finish-work.
+Built a unified command palette (Cmd+P) for Folyn via 3 PRs. PR1: built-in subsequence fuzzy scorer (utils/fuzzyMatch.ts, contiguous>word-boundary>plain scoring), command registry (Command type + 20 builtin commands), commandPaletteStore (open/close/query/selection, grouped+flat list, FILE_CAP=50). PR2: CommandPalette.tsx UI reusing .dlg styling (grouped list, matched-substring highlight, keyboard nav, empty state), Cmd+P/Ctrl+P wired in App.tsx (!shiftKey/!altKey to avoid Cmd+Shift+P/F conflicts). PR3: file commands sourced live from vaultStore tree (reference-memoized, not stale), enabled predicates mirror ActivityBar panel toggles, useExport refactored to expose imperative functions (behavior-preserving), newItemBridge connects palette new-file/folder to Sidebar flow. 71 new tests (465->536); tsc + build green. Full Trellis flow: brainstorm -> implement -> check -> commit -> finish-work.
 
 ### Main Changes
 
@@ -938,7 +938,7 @@ Added 'pdf' to office handler extensions; deleted components/file-types/pdf/. PD
 
 ### Summary
 
-OfficeFileViewer now expands ~ via resolveBasePath + join before plugin-fs.readFile. Fixes 'forbidden path: ~/quill/...' caused by vaultRoot carrying a literal ~ that Tauri plugin-fs doesn't expand. tsc + 856 tests green.
+OfficeFileViewer now expands ~ via resolveBasePath + join before plugin-fs.readFile. Fixes 'forbidden path: ~/folyn/...' caused by vaultRoot carrying a literal ~ that Tauri plugin-fs doesn't expand. tsc + 856 tests green.
 
 ### Main Changes
 
@@ -1422,7 +1422,7 @@ Rewrote computePanelPosition so one of the panel's four corners attaches to the 
 
 ### Summary
 
-Added a global keyboard shortcut (default Cmd+Shift+Q, user-configurable in Settings → 快捷键) that toggles the pet-panel centered in the work area, firing even when Quill is unfocused. Wired tauri-plugin-global-shortcut with a single global handler emitting pet://shortcut-toggle; pet_panel_set_shortcut swaps the bound accelerator at runtime. Shortcut path uses a new openPetPanelCentered (work-area center), sharing size-resolution + post-show re-assert helpers with the click-open path. SettingsStore backfills missing DEFAULT_SHORTCUTS entries by id on load so existing users see togglePetPanel without losing their rebindings. ShortcutEditor surfaces a 2.5s timeout hint when a pressed combo is consumed by the app menu / macOS system (e.g. Cmd+Shift+P, Cmd+Q) and never reaches keydown. Spec gained a Global Keyboard Shortcut scenario.
+Added a global keyboard shortcut (default Cmd+Shift+Q, user-configurable in Settings → 快捷键) that toggles the pet-panel centered in the work area, firing even when Folyn is unfocused. Wired tauri-plugin-global-shortcut with a single global handler emitting pet://shortcut-toggle; pet_panel_set_shortcut swaps the bound accelerator at runtime. Shortcut path uses a new openPetPanelCentered (work-area center), sharing size-resolution + post-show re-assert helpers with the click-open path. SettingsStore backfills missing DEFAULT_SHORTCUTS entries by id on load so existing users see togglePetPanel without losing their rebindings. ShortcutEditor surfaces a 2.5s timeout hint when a pressed combo is consumed by the app menu / macOS system (e.g. Cmd+Shift+P, Cmd+Q) and never reaches keydown. Spec gained a Global Keyboard Shortcut scenario.
 
 ### Main Changes
 
@@ -1523,7 +1523,7 @@ Added a 桌宠 tab to desktop settings (show/hide toggle, icon source radio, cus
 
 ### Summary
 
-trellis-implement 子代理完成。Rust: quill-plugin:// 自定义 scheme(启动期注册,按 path 路由,CSP+MIME)+ install/list/uninstall_plugin 命令 + plugins.json(22 cargo tests)。前端: sandboxLoader(隐藏 sandbox iframe,无 allow-same-origin,destroy 卸载) + rpcBridge(postMessage 协议,fs 作用域/http origin allowlist/clipboard gating,host-mediation 无原始 Tauri API) + commandAdapter(plugin.<id>.<cmd> 命名空间)。tauri.conf.json 补 CSP(原 null)。App.tsx 接线。38 desktop + 11 plugin-host tests 绿。限制: zip 提取延后 PR4、tool-window 可见面板 stubbed、无设置 UI(PR4)。
+trellis-implement 子代理完成。Rust: folyn-plugin:// 自定义 scheme(启动期注册,按 path 路由,CSP+MIME)+ install/list/uninstall_plugin 命令 + plugins.json(22 cargo tests)。前端: sandboxLoader(隐藏 sandbox iframe,无 allow-same-origin,destroy 卸载) + rpcBridge(postMessage 协议,fs 作用域/http origin allowlist/clipboard gating,host-mediation 无原始 Tauri API) + commandAdapter(plugin.<id>.<cmd> 命名空间)。tauri.conf.json 补 CSP(原 null)。App.tsx 接线。38 desktop + 11 plugin-host tests 绿。限制: zip 提取延后 PR4、tool-window 可见面板 stubbed、无设置 UI(PR4)。
 
 ### Main Changes
 
@@ -1619,7 +1619,7 @@ trellis-implement 完成。UI: pluginStore(Zustand)+ PluginsSettings tab(🧩)�
 
 ### Summary
 
-brainstorm(3 个 trellis-research 调研 uTool/VSCode/Tauri 运行时装载)→4 个 PR(trellis-implement：PR1 内核+5 registry register/unregister/Disposable；PR2 sandbox 档 quill-plugin:// scheme+install 命令+CSP+iframe+RPC bridge+command adapter；PR3 trusted 档 TOFU+SHA-256+blob-URL import+in-process 贡献适配器+add_capability 设计现实注；PR4 consent UI+ed25519 脚手架+开发指南+2 示例插件)→trellis-check 全量质检(自修 2 个生产 bug：CSP 漏 blob:、Windows fs:write 路径)→commit master。交付 packages/plugin-host 内核+46 Rust/~150 TS 测试，typecheck/clippy 干净。Follow-up：sandbox http:fetch CSP、feature ActivityBar 集成、zip 打包、ed25519 强制签名。
+brainstorm(3 个 trellis-research 调研 uTool/VSCode/Tauri 运行时装载)→4 个 PR(trellis-implement：PR1 内核+5 registry register/unregister/Disposable；PR2 sandbox 档 folyn-plugin:// scheme+install 命令+CSP+iframe+RPC bridge+command adapter；PR3 trusted 档 TOFU+SHA-256+blob-URL import+in-process 贡献适配器+add_capability 设计现实注；PR4 consent UI+ed25519 脚手架+开发指南+2 示例插件)→trellis-check 全量质检(自修 2 个生产 bug：CSP 漏 blob:、Windows fs:write 路径)→commit master。交付 packages/plugin-host 内核+46 Rust/~150 TS 测试，typecheck/clippy 干净。Follow-up：sandbox http:fetch CSP、feature ActivityBar 集成、zip 打包、ed25519 强制签名。
 
 ### Main Changes
 
@@ -1964,7 +1964,7 @@ Added 100+ file preview extensions via preset-office + explicit renderer list (a
 
 ### Summary
 
-Audited the whole quill architecture (frontend/packages/Rust) — rot is concentrated at the center (god-stores, App.tsx pet wiring, aiStore→editorStore reverse coupling), edges are healthy. Deleted the abandoned apps/api NestJS sidecar (untracked dist only) + cleaned stale quill-api gitignore lines. Then split the 618-line settingsStore god-store into 8 cohesive stores (nav/appearance/editorPrefs/vaultConfig/sync/aiConfig/prefs/pet) + boardColumns folded into scheduleStore, across 3 PRs: PR1 new stores + fan-out persistence loader, PR2 migrate 66 consumers + replace 41 updateSettings calls with dedicated setters, PR3 delete legacy store + old-blob compat verification. Zero data migration (single settings:all blob + fan-out loader), updateSettings escape hatch eliminated. Updated state-management spec with the fan-out persistence contract and the no-escape-hatch convention.
+Audited the whole folyn architecture (frontend/packages/Rust) — rot is concentrated at the center (god-stores, App.tsx pet wiring, aiStore→editorStore reverse coupling), edges are healthy. Deleted the abandoned apps/api NestJS sidecar (untracked dist only) + cleaned stale folyn-api gitignore lines. Then split the 618-line settingsStore god-store into 8 cohesive stores (nav/appearance/editorPrefs/vaultConfig/sync/aiConfig/prefs/pet) + boardColumns folded into scheduleStore, across 3 PRs: PR1 new stores + fan-out persistence loader, PR2 migrate 66 consumers + replace 41 updateSettings calls with dedicated setters, PR3 delete legacy store + old-blob compat verification. Zero data migration (single settings:all blob + fan-out loader), updateSettings escape hatch eliminated. Updated state-management spec with the fan-out persistence contract and the no-escape-hatch convention.
 
 ### Main Changes
 

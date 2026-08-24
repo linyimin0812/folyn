@@ -2,9 +2,9 @@
 
 ## Goal
 
-The quill plugin SDK now supports optional top-level `icon` and `description` on `PluginManifest` (landed in feat(plugins): show icon and description for installed plugins). The PlantUML plugin's manifest currently only sets `icon` on the `containers[0]` entry — the top-level fields are absent, so the Settings → Plugins row falls back to first-letter avatar and no description line.
+The folyn plugin SDK now supports optional top-level `icon` and `description` on `PluginManifest` (landed in feat(plugins): show icon and description for installed plugins). The PlantUML plugin's manifest currently only sets `icon` on the `containers[0]` entry — the top-level fields are absent, so the Settings → Plugins row falls back to first-letter avatar and no description line.
 
-Add top-level `icon` and `description` to `/Users/yiminlin/project/quill-plugin-sdk/quill-plugin-plantuml/manifest.json` so the plugin renders properly in the new settings UI.
+Add top-level `icon` and `description` to `/Users/yiminlin/project/folyn-plugin-sdk/folyn-plugin-plantuml/manifest.json` so the plugin renders properly in the new settings UI.
 
 ## Approach
 
@@ -14,7 +14,7 @@ Add top-level `icon` and `description` to `/Users/yiminlin/project/quill-plugin-
 
 ## Files touched
 
-- `/Users/yiminlin/project/quill-plugin-sdk/quill-plugin-plantuml/manifest.json` — add 2 fields at top level (after `name`/`version` block, before `tier`).
+- `/Users/yiminlin/project/folyn-plugin-sdk/folyn-plugin-plantuml/manifest.json` — add 2 fields at top level (after `name`/`version` block, before `tier`).
 
 ## Acceptance
 
@@ -24,4 +24,4 @@ Add top-level `icon` and `description` to `/Users/yiminlin/project/quill-plugin-
 
 ## Test plan
 
-Manual: open Settings → Plugins in dev (after `pnpm dev` in the quill repo). If the plugin isn't installed locally, install from folder. Verify icon + description render.
+Manual: open Settings → Plugins in dev (after `pnpm dev` in the folyn repo). If the plugin isn't installed locally, install from folder. Verify icon + description render.

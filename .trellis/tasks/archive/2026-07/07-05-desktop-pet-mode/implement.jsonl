@@ -1,4 +1,4 @@
-{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend tech stack + key patterns (Tauri 2 + React 18 + Zustand 5 + Tailwind; named exports, invoke(), isTauri() guards). Pet UI lives in @quill/desktop."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend tech stack + key patterns (Tauri 2 + React 18 + Zustand 5 + Tailwind; named exports, invoke(), isTauri() guards). Pet UI lives in @folyn/desktop."}
 {"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where to place the new PetApp component + pet route/entry under apps/desktop/src; follow existing components/ layout."}
 {"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns, props, composition, styling conventions for the mascot + context menu components."}
 {"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store patterns — extend settingsStore for pet enabled flag + position persistence; granular selectors, no bare useStore()."}

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add persistent per-file version history to Quill editors. When a user saves (or closes a tab of) a versionable file, the content is snapshotted; the user can browse snapshots in an in-editor side panel, view a unified diff against the current file, and restore a chosen snapshot. Restoring never loses the current state — it snapshots current first, then overwrites.
+Add persistent per-file version history to Folyn editors. When a user saves (or closes a tab of) a versionable file, the content is snapshotted; the user can browse snapshots in an in-editor side panel, view a unified diff against the current file, and restore a chosen snapshot. Restoring never loses the current state — it snapshots current first, then overwrites.
 
 ## What I already know
 
@@ -10,12 +10,12 @@ Add persistent per-file version history to Quill editors. When a user saves (or 
 * Single save seam confirmed: `editorIoService.saveFile(tabId)` at `apps/desktop/src/services/editorIoService.ts:239`. `flushAllAutoSaves` at line 486 funnels autosave through `saveFile` too, so a single hook covers manual + autosave.
 * `diff` package `^9.0.0` already in `apps/desktop/package.json` — no new dependency for diff rendering.
 * No existing reusable diff-view component in repo (`apps/desktop/src/components/git/` is a sync panel, not a diff view).
-* Existing app-data pattern: `~/.quill/vaults/<vaultId>/` already holds per-vault metadata (sessionStorage etc.).
+* Existing app-data pattern: `~/.folyn/vaults/<vaultId>/` already holds per-vault metadata (sessionStorage etc.).
 * File-types-with-editor list (scope): markdown, html, code, plantuml, graphviz, csv, json, svg, web, clip, dbml, drawio, excalidraw, mmap, rich-text.
 
 ## Requirements
 
-1. **Snapshot trigger — save**: hook into `editorIoService.saveFile(tabId)`. After the file is written to disk, compute SHA-256 of the UTF-8 bytes and consult the file's last `Version Index` entry; if the hash matches, skip (no-op). Otherwise write a blob to `~/.quill/vaults/<vaultId>/versions/blobs/{sha256}.{ext}` and append `{hash, ts, size}` to the file's entry in `index.json`.
+1. **Snapshot trigger — save**: hook into `editorIoService.saveFile(tabId)`. After the file is written to disk, compute SHA-256 of the UTF-8 bytes and consult the file's last `Version Index` entry; if the hash matches, skip (no-op). Otherwise write a blob to `~/.folyn/vaults/<vaultId>/versions/blobs/{sha256}.{ext}` and append `{hash, ts, size}` to the file's entry in `index.json`.
 2. **Snapshot trigger — tab close**: on tab close, perform the same snapshot flow against the on-disk content of the file (not editor dirty state). If the tab's file was never saved or no path is bound, skip.
 3. **Atomic index write**: write `index.json` to `index.json.tmp` then rename — single-user desktop, but torn writes corrupt the source of truth. No retry/recovery path in v1.
 4. **Blob storage**: content-addressable — filename is `{sha256}.{ext}` where `ext` is the original file's extension (preserved for debuggability). Write is conditional on blob not existing (hash dedup free across files).
@@ -30,7 +30,7 @@ Add persistent per-file version history to Quill editors. When a user saves (or 
 * [ ] Saving a versionable file via Cmd+S creates a snapshot if content changed since the last snapshot; identical-content saves are no-ops (verified by mocking the same content twice).
 * [ ] Closing a tab of a versionable file with on-disk content unchanged since last snapshot does NOT create a new snapshot (dedup holds across triggers).
 * [ ] Closing a tab whose on-disk content differs from the last snapshot creates a new snapshot.
-* [ ] `~/.quill/vaults/<vaultId>/versions/blobs/{sha256}.{ext}` exists for each snapshot; `index.json` lists entries in time order with correct `{hash, ts, size}` for each file path.
+* [ ] `~/.folyn/vaults/<vaultId>/versions/blobs/{sha256}.{ext}` exists for each snapshot; `index.json` lists entries in time order with correct `{hash, ts, size}` for each file path.
 * [ ] `index.json` is never observed in a torn state during a simulated crash between blob-write and index-rename (test: write blob, kill before rename, restart — index either reflects pre-snapshot state or post-snapshot state, never partial).
 * [ ] History panel lists snapshots for the active file; switching active file re-renders the list.
 * [ ] Clicking a snapshot shows a unified diff against current on-disk content (additions / deletions visible).
@@ -81,9 +81,9 @@ Confirm: in Tauri renderer context, `node:crypto` is typically not available; ei
 
 ## Decision (ADR-lite)
 
-**Context**: Quill needs per-file version history across sessions for editor-bearing file types. Multi-vault, multi-type (local + GitHub-backed).
+**Context**: Folyn needs per-file version history across sessions for editor-bearing file types. Multi-vault, multi-type (local + GitHub-backed).
 
-**Decision**: Self-built content-addressable store at `~/.quill/vaults/<vaultId>/versions/{blobs/{sha256}.{ext}, index.json}`. Triggered on save + tab close. Hash dedup against the file's last index entry. No retention cap, no first-launch baseline. UI is an in-editor side panel with unified diff via the existing `diff` package. Restore is snapshot-current-first then overwrite.
+**Decision**: Self-built content-addressable store at `~/.folyn/vaults/<vaultId>/versions/{blobs/{sha256}.{ext}, index.json}`. Triggered on save + tab close. Hash dedup against the file's last index entry. No retention cap, no first-launch baseline. UI is an in-editor side panel with unified diff via the existing `diff` package. Restore is snapshot-current-first then overwrite.
 
 **Consequences** (see ADR-0003 for full):
 * Snapshots are machine-local; vault export doesn't carry history.
@@ -115,7 +115,7 @@ Confirm: in Tauri renderer context, `node:crypto` is typically not available; ei
 * Files inspected:
   * `apps/desktop/src/services/editorIoService.ts:239` — `saveFile` (single seam, autosave funnels through).
   * `apps/desktop/src/services/editorIoService.ts:486` — `flushAllAutoSaves` sink is `saveFile`.
-  * `apps/desktop/src/utils/sessionStorage.ts` — `~/.quill/vaults/<vaultId>/` pattern.
+  * `apps/desktop/src/utils/sessionStorage.ts` — `~/.folyn/vaults/<vaultId>/` pattern.
   * `apps/desktop/src/utils/pathResolver.ts` — `resolveBasePath`.
   * `apps/desktop/package.json` — `diff: ^9.0.0` already present.
 * Hash impl: prefer `crypto.subtle.digest('SHA-256', ...)` (Web Crypto, zero deps) over adding `js-sha256`.

@@ -2,21 +2,21 @@
 
 ## Goal
 
-重构插件能力，让插件通过 npm 包依赖实现。当前 `@quill/plugin-host` 把 SDK 契约（manifest/贡献点/AI 能力类型）与运行时微内核（PluginHost/Loader）打包在一起，仅以 `workspace:*` 供内部插件依赖。需要拆出可发布的外部 SDK，并补齐用户列出的若干贡献能力。
+重构插件能力，让插件通过 npm 包依赖实现。当前 `@folyn/plugin-host` 把 SDK 契约（manifest/贡献点/AI 能力类型）与运行时微内核（PluginHost/Loader）打包在一起，仅以 `workspace:*` 供内部插件依赖。需要拆出可发布的外部 SDK，并补齐用户列出的若干贡献能力。
 
 ## What I already know
 
 - 现有 `packages/plugin-host`：PluginHost 微内核 + manifest schema + 5 个贡献点（commands / fileTypes / containers / features / tools）+ AI 能力（chat / agent）+ 双 tier（sandbox / trusted）+ Disposable。
-- 现有插件依赖方式：`plugins/plugin-graphviz` 与 `examples/plugins/*` 均以 `@quill/plugin-host: workspace:*` 依赖。
+- 现有插件依赖方式：`plugins/plugin-graphviz` 与 `examples/plugins/*` 均以 `@folyn/plugin-host: workspace:*` 依赖。
 - 文档 `docs/plugin-development.md` 已记录 manifest schema、tier、贡献点、RPC 表、TOFU、打包。
 - `FileTypeContribution` 已有 `extensions / handler / defaultViewMode`；但无「自定义 view mode 注册」「文件导出」「右键新建二级菜单」「AI 编辑文件」贡献点。
 - 无独立 keybinding 贡献点（commands 存在但无快捷键绑定）。
 
 ## Decision (ADR-lite) — Q1
 
-**Context**: `@quill/plugin-host` 把 SDK 契约 + 运行时微内核打在一起，仅 `workspace:*` 内部可用，外部插件作者无法从 npm 安装。
-**Decision**: 拆出 `@quill/plugin-sdk`（manifest/贡献点/AI 能力类型 + dev helpers，不含 PluginHost/Loader 运行时），发布到 npm；运行时留在 `@quill/plugin-host`。
-**Consequences**: 现有 `plugin-host` 需 re-export SDK 类型以兼容既有 import；plugin-graphviz/examples 改依赖 `@quill/plugin-sdk`；新增 dev helpers 需定义边界。
+**Context**: `@folyn/plugin-host` 把 SDK 契约 + 运行时微内核打在一起，仅 `workspace:*` 内部可用，外部插件作者无法从 npm 安装。
+**Decision**: 拆出 `@folyn/plugin-sdk`（manifest/贡献点/AI 能力类型 + dev helpers，不含 PluginHost/Loader 运行时），发布到 npm；运行时留在 `@folyn/plugin-host`。
+**Consequences**: 现有 `plugin-host` 需 re-export SDK 类型以兼容既有 import；plugin-graphviz/examples 改依赖 `@folyn/plugin-sdk`；新增 dev helpers 需定义边界。
 
 ## Decision (ADR-lite) — Q2
 
@@ -36,8 +36,8 @@
 - `src/definePlugin.ts`：dev helper `definePlugin(manifest)` 类型守卫；`validateManifest`（从 PluginHost 抽出，host 复用）。
 - `index.ts` re-export。React 作 peerDependency（契约类型引用 `ComponentType`）。
 
-### 2. `@quill/plugin-host` 瘦身
-- 依赖 `@quill/plugin-sdk`，re-export 其全部公共类型（兼容既有 `import from '@quill/plugin-host'`）。
+### 2. `@folyn/plugin-host` 瘦身
+- 依赖 `@folyn/plugin-sdk`，re-export 其全部公共类型（兼容既有 `import from '@folyn/plugin-host'`）。
 - 保留：`PluginHost` 类 + `pluginHost` 单例 + `Disposable`（re-export 自 sdk）。
 - `validateManifest` 调用 sdk 实现。
 
@@ -54,16 +54,16 @@
 `PluginModule` 增加可选导出：`exporters`/`fileTemplates`/`keybindings`。
 
 ### 4. 迁移 & 文档
-- `plugins/plugin-graphviz` + `examples/plugins/*`：依赖改 `@quill/plugin-sdk`；import 路径同步。
+- `plugins/plugin-graphviz` + `examples/plugins/*`：依赖改 `@folyn/plugin-sdk`；import 路径同步。
 - `docs/plugin-development.md`：新增「npm 安装」+ 5 新贡献点章节。
 - `pnpm-workspace`：新包注册。
 
 ## Acceptance Criteria
 
-- [ ] `@quill/plugin-sdk` 独立可 build/typecheck，无运行时依赖（types + dev helpers）。
-- [ ] `@quill/plugin-host` re-export 既有类型，既有插件/tests import 不破。
+- [ ] `@folyn/plugin-sdk` 独立可 build/typecheck，无运行时依赖（types + dev helpers）。
+- [ ] `@folyn/plugin-host` re-export 既有类型，既有插件/tests import 不破。
 - [ ] 5 新贡献点各有：SDK 类型 + host adapter + 至少 1 个 sample + 单测。
-- [ ] plugin-graphviz + examples 迁移到依赖 `@quill/plugin-sdk`。
+- [ ] plugin-graphviz + examples 迁移到依赖 `@folyn/plugin-sdk`。
 - [ ] plugin-development.md 同步。
 - [ ] lint / typecheck / test 全绿。
 
@@ -79,7 +79,7 @@
 
 ## Implementation Plan (small PRs)
 
-- PR1: 拆 `@quill/plugin-sdk` + `plugin-host` re-export + 迁移既有类型 + 既有插件改依赖（纯重构，不改行为）。
+- PR1: 拆 `@folyn/plugin-sdk` + `plugin-host` re-export + 迁移既有类型 + 既有插件改依赖（纯重构，不改行为）。
 - PR2: 5 新贡献点 SDK 类型契约 + dev helpers（`definePlugin`/`validateManifest` 抽出）。
 - PR3: trusted 侧 5 个 host adapter + 接入既有 registry。
 - PR4: samples + 单测 + plugin-development.md 更新。

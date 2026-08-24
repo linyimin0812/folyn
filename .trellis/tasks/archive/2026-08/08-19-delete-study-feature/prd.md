@@ -1,7 +1,7 @@
 # 删除整个 study feature
 
 ## Goal
-完全删除 Quill desktop app 中的 study (学习工作台) feature：UI、数据层、AI 动作、agent canonical 文件、i18n、所有交叉基础设施引用。vault 里 `__study__/` 已有内容不清理（用户数据，留盘）。
+完全删除 Folyn desktop app 中的 study (学习工作台) feature：UI、数据层、AI 动作、agent canonical 文件、i18n、所有交叉基础设施引用。vault 里 `__study__/` 已有内容不清理（用户数据，留盘）。
 
 ## Scope
 

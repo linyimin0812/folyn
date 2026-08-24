@@ -32,7 +32,7 @@
 - 外观设置页新增「显示托盘图标」Toggle，持久化。
 - Rust 侧新增 `tray_set_enabled(enabled: bool, locale: String)` 命令：
   - `enabled=true` → 若托盘不存在则 `TrayIconBuilder::new().icon(default_window_icon).menu(&build_pet_context_menu(...)).on_tray_icon_event(popup).build()`。
-  - `enabled=false` → `app.tray_by_id("quill-tray").map(|t| t.destroy())`。
+  - `enabled=false` → `app.tray_by_id("folyn-tray").map(|t| t.destroy())`。
 - `build_pet_context_menu(&app, locale, include_test_bubble: bool) -> Result<Menu, AppError>`：抽自 `pet_show_context_menu`，托盘与右键菜单共用。
 - 启动 `setup` 时读持久化值（由前端 hydrate 后调用 `tray_set_enabled`），不在 Rust 侧读配置文件。
 - `on_window_event` 主窗口关闭拦截条件追加：托盘存在时也 `prevent_close + hide`。~~取消~~（用户决定保持现状：托盘开启时关主窗口仍退出 app，不动 `on_window_event`。）
@@ -66,5 +66,5 @@
 
 - 复用 `PET_CTX_MENU_*` 常量 + `on_menu_event` 路由：托盘菜单 item id 与桌宠菜单相同 → 不改 `lib.rs` 的 `pet_ctx_menu_action` / `pet_ctx_menu_size_level` / `pet_ctx_menu_opacity_level`。
 - `TrayIconBuilder` 见 tauri 2 core API（`tauri::tray::TrayIconBuilder`）。
-- `on_tray_icon_event` 闭包内 `match event { TrayIconEvent::Click { button: MouseButton::Left, .. } => { let _ = app.tray_by_id("quill-tray").map(|t| t.show_menu()); } _ => {} }`。
-- 主窗口关闭拦截：~~`lib.rs:523-540` 的 `on_window_event` 块加一个 `app.tray_by_id("quill-tray").is_some()` 条件。~~ 不动（用户选保持现状）。
+- `on_tray_icon_event` 闭包内 `match event { TrayIconEvent::Click { button: MouseButton::Left, .. } => { let _ = app.tray_by_id("folyn-tray").map(|t| t.show_menu()); } _ => {} }`。
+- 主窗口关闭拦截：~~`lib.rs:523-540` 的 `on_window_event` 块加一个 `app.tray_by_id("folyn-tray").is_some()` 条件。~~ 不动（用户选保持现状）。

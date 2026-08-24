@@ -253,9 +253,9 @@ For Pi, `listCommands()` maps to **prompt templates**, not extension commands. I
 
 | File Path | Relevance |
 |---|---|
-| `/Users/yiminlin/project/quill/packages/cli-adapter/src/claudeAdapter.ts` | Current `buildClaudeArgs` — base flags + `--append-system-prompt`/`--agent`/`--agents`/`--add-dir`/`--resume`/`--bare`. No skill/command listing today. |
-| `/Users/yiminlin/project/quill/packages/cli-adapter/src/piAdapter.ts` | rpc-mode prompt command builder; `translatePiEvent` handles `extension_error`. No skill listing today. |
-| `/Users/yiminlin/project/quill/packages/cli-adapter/src/types.ts` | Adapter types (not read in detail). |
+| `/Users/yiminlin/project/folyn/packages/cli-adapter/src/claudeAdapter.ts` | Current `buildClaudeArgs` — base flags + `--append-system-prompt`/`--agent`/`--agents`/`--add-dir`/`--resume`/`--bare`. No skill/command listing today. |
+| `/Users/yiminlin/project/folyn/packages/cli-adapter/src/piAdapter.ts` | rpc-mode prompt command builder; `translatePiEvent` handles `extension_error`. No skill listing today. |
+| `/Users/yiminlin/project/folyn/packages/cli-adapter/src/types.ts` | Adapter types (not read in detail). |
 
 ## External references
 

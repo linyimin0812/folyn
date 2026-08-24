@@ -6,7 +6,7 @@
 1. 分组没按内置 provider 的 family-style 分组（custom 的模型 id 杂，`familyGroup(id)` 正则匹配不上 → 每条独立成组）
 2. `CapabilityPills` 因 `capabilities` 为空返回 null → 没有能力图标
 
-修法：fetch 成功后，把 24h-cached 的 owner map（`~/.quill/providers/provider-models.json`，含 `{modelId, providerId, capabilities}`）合并进 in-memory `Model[]`——custom provider 模型从 owner map 填 `capabilities` 和 `group`（group = ownerEntry.providerId）。
+修法：fetch 成功后，把 24h-cached 的 owner map（`~/.folyn/providers/provider-models.json`，含 `{modelId, providerId, capabilities}`）合并进 in-memory `Model[]`——custom provider 模型从 owner map 填 `capabilities` 和 `group`（group = ownerEntry.providerId）。
 
 ## What I already know
 
@@ -36,7 +36,7 @@
 - [ ] CapabilityPills 渲染能力图标（owner map 命中的 custom-provider 模型）
 - [ ] Owner map 未命中的 custom-provider 模型：capabilities 仍为 `[]`、group 走 `familyGroup(id)` fallback（不回归）
 - [ ] Bundled provider 拉取行为不变（不 enrich）
-- [ ] `~/.quill/providers/{pid}/models.json` 仍含 `owner` 字段（不退回）
+- [ ] `~/.folyn/providers/{pid}/models.json` 仍含 `owner` 字段（不退回）
 - [ ] `pnpm typecheck` 全绿
 - [ ] `pnpm test` 相关测试通过（新增 store 测试覆盖 custom enrichment 分支）
 

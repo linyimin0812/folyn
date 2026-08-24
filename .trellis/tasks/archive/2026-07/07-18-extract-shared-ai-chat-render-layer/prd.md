@@ -28,7 +28,7 @@ chat → ai edge (the one to break):
 
 No paired tests for `ToolCallBlock` / `FileImage` (`ai/ToolCallBlock.test.*`, `ai/FileImage.test.*` do not exist). `chat/index.ts` does not re-export them (they were ai-internal; now chat-internal).
 
-`ToolCallBlock.tsx` imports: react + `ToolCallInfo` type from `@quill/cli-adapter` (neutral layer). `FileImage.tsx` imports: react only. Neither reaches into `ai/` — so moving them to `chat/` keeps chat's deps pointing only at neutral layers (icons, types, utils, cli-adapter). Good.
+`ToolCallBlock.tsx` imports: react + `ToolCallInfo` type from `@folyn/cli-adapter` (neutral layer). `FileImage.tsx` imports: react only. Neither reaches into `ai/` — so moving them to `chat/` keeps chat's deps pointing only at neutral layers (icons, types, utils, cli-adapter). Good.
 
 ## Requirements
 

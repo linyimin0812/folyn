@@ -90,7 +90,7 @@ canonical agent .md 形如：
 ```markdown
 ---
 name: clips
-description: Quill 网页知识卡片 agent，...
+description: Folyn 网页知识卡片 agent，...
 tools: WebFetch, WebSearch, Read
 ---
 

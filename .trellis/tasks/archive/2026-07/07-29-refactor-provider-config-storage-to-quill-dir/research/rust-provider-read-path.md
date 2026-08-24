@@ -90,6 +90,6 @@ PRD §Out of Scope explicitly defers Rust-side apiKey/baseUrl reading, but AC li
 
 ## Caveats / Not Found
 
-- No existing Tauri command reads `storage.json` or `~/.quill/providers/settings.json` from Rust. Confirmed by grep over `apps/desktop/src-tauri/src` for `storage|appDataDir|home_dir|providers.json` — only `chat.rs` uses `home_dir()` and only for `~/.quill/chat-sessions/` (chat history, unrelated).
+- No existing Tauri command reads `storage.json` or `~/.folyn/providers/settings.json` from Rust. Confirmed by grep over `apps/desktop/src-tauri/src` for `storage|appDataDir|home_dir|providers.json` — only `chat.rs` uses `home_dir()` and only for `~/.folyn/chat-sessions/` (chat history, unrelated).
 - The bundled `assets/providers/providers.json` is a TS asset imported via `import providersJson from '@/assets/providers/providers.json'` (`providersCatalog.ts:12`) — it's bundled into the JS frontend, NOT readable by Rust directly. If Rust needs to resolve `defaultChatEndpoint → adapterFamily`, either (a) the frontend passes `adapterFamily` as a param, or (b) Rust gets its own copy of the catalog (e.g. embedded via `include_str!`).
 - `chat.rs:24` imports `rig_core::providers::{anthropic, azure, cohere, gemini, huggingface, ollama, openai}` — no `rig_core::providers::OpenAICompat` or generic "by adapter family" rig builder; the per-arm construction is hand-written. Adding a `defaultChatEndpoint`-routed arm means writing more arms.

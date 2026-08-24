@@ -20,7 +20,7 @@ Pass the host's current bright/dark theme and the user's locale (i18n) through t
 
 ## Acceptance Criteria
 
-- [ ] `PluginEnv` type added to `packages/plugin-sdk/src/types.ts`; re-exported from `@quill/plugin-host` and `@quill/plugin-sdk`.
+- [ ] `PluginEnv` type added to `packages/plugin-sdk/src/types.ts`; re-exported from `@folyn/plugin-host` and `@folyn/plugin-sdk`.
 - [ ] `PluginContext.env?: PluginEnv` field added.
 - [ ] Trusted loader wires `env` from `appearanceStore` + `localeStore` via `buildPluginEnv()` (mirrors `buildPluginAi`).
 - [ ] `onThemeChange` callbacks fire when `appearanceStore.setTheme` runs; same for `onLocaleChange` vs `localeStore.setLocale`.

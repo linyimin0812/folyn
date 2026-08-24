@@ -1,12 +1,12 @@
 # Research: Trusted-Plugin WASM Loading (Graphviz / `@viz-js/viz`)
 
-- **Query**: How does a trusted-tier Quill plugin ship and load a `.wasm` binary at runtime? Specifically `@viz-js/viz`'s graphviz wasm.
+- **Query**: How does a trusted-tier Folyn plugin ship and load a `.wasm` binary at runtime? Specifically `@viz-js/viz`'s graphviz wasm.
 - **Scope**: mixed (internal codebase + external npm package inspection)
 - **Date**: 2026-07-30
 
 ## TL;DR (answers the PRD's blocking open question #3)
 
-**Neither a `quill-plugin://` wasm fetch nor a hand-inlined base64 blob is needed.** `@viz-js/viz` v3.28.0 **ships its wasm embedded inside the JS bundle** (`lib/backend.js` / `dist/viz.js`) as a `binaryDecode('…')` string literal. `findWasmBinary()` returns the decoded bytes; `WebAssembly.instantiate(bytes, imports)` runs on those bytes directly. There is **no separate `.wasm` file, no `fetch()`, no `locateFile`, no `wasmURL` option**. The plugin simply bundles `@viz-js/viz` into its self-contained ESM `main` and calls `instance()`. The ~1.17 MB JS (≈456 KB gzip) — wasm included — rides inside the blob-URL `import()` that `trustedLoader.ts` already performs. CSP allows it (`wasm-unsafe-eval`). Done.
+**Neither a `folyn-plugin://` wasm fetch nor a hand-inlined base64 blob is needed.** `@viz-js/viz` v3.28.0 **ships its wasm embedded inside the JS bundle** (`lib/backend.js` / `dist/viz.js`) as a `binaryDecode('…')` string literal. `findWasmBinary()` returns the decoded bytes; `WebAssembly.instantiate(bytes, imports)` runs on those bytes directly. There is **no separate `.wasm` file, no `fetch()`, no `locateFile`, no `wasmURL` option**. The plugin simply bundles `@viz-js/viz` into its self-contained ESM `main` and calls `instance()`. The ~1.17 MB JS (≈456 KB gzip) — wasm included — rides inside the blob-URL `import()` that `trustedLoader.ts` already performs. CSP allows it (`wasm-unsafe-eval`). Done.
 
 This flattens the PRD's "Assumptions to validate" (plugin:// fetch vs base64 inline) — both paths are moot for this library.
 
@@ -18,26 +18,26 @@ This flattens the PRD's "Assumptions to validate" (plugin:// fetch vs base64 inl
 
 ```
 "csp": "default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: quill-plugin: https://cdn.jsdelivr.net https://esm.sh https://embed.diagrams.net;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: folyn-plugin: https://cdn.jsdelivr.net https://esm.sh https://embed.diagrams.net;
   ...
-  connect-src 'self' ipc: http://ipc.localhost quill-plugin: https://cdn.jsdelivr.net https://esm.sh https://embed.diagrams.net;
+  connect-src 'self' ipc: http://ipc.localhost folyn-plugin: https://cdn.jsdelivr.net https://esm.sh https://embed.diagrams.net;
   ..."
 ```
 
 - `script-src` includes **`wasm-unsafe-eval`** → `WebAssembly.instantiate` / `compile` are permitted in the main webview realm (the trusted-tier runtime).
-- `script-src` also includes `blob:` (the blob-URL `import()` of `main` is allowed) and `quill-plugin:`.
-- `connect-src` includes **`quill-plugin:`** → a `fetch('quill-plugin://localhost/<id>/<file>')` from the main webview is CSP-allowed.
+- `script-src` also includes `blob:` (the blob-URL `import()` of `main` is allowed) and `folyn-plugin:`.
+- `connect-src` includes **`folyn-plugin:`** → a `fetch('folyn-plugin://localhost/<id>/<file>')` from the main webview is CSP-allowed.
 
-### 2. `quill-plugin://` URI scheme CAN serve a `.wasm` (if ever needed)
+### 2. `folyn-plugin://` URI scheme CAN serve a `.wasm` (if ever needed)
 
-**File**: `apps/desktop/src-tauri/src/lib.rs:288-394` (the `register_asynchronous_uri_scheme_protocol("quill-plugin", …)` handler).
+**File**: `apps/desktop/src-tauri/src/lib.rs:288-394` (the `register_asynchronous_uri_scheme_protocol("folyn-plugin", …)` handler).
 
-- For `GET quill-plugin://localhost/<id>/<path>`, the handler calls `std::fs::read(&canonical)` (`lib.rs:373`) — **raw bytes**, not `read_to_string` — and responds with `Content-Type` from `content_type_for(&file_path)` (`lib.rs:386`).
+- For `GET folyn-plugin://localhost/<id>/<path>`, the handler calls `std::fs::read(&canonical)` (`lib.rs:373`) — **raw bytes**, not `read_to_string` — and responds with `Content-Type` from `content_type_for(&file_path)` (`lib.rs:386`).
 - `content_type_for` maps `"wasm" → "application/wasm"` (`plugin_commands.rs:59`).
 - Each response also carries the `PLUGIN_CSP` header (`lib.rs:391`; `plugin_commands.rs:72-73`), but **CSP headers on subresource responses (a `.wasm` fetched via `fetch()`) are ignored by the browser** — only the document's CSP governs `connect-src`/`script-src`. So this header is harmless for a wasm fetch and does not block it.
 - Path traversal is rejected (`parse_plugin_uri`, `plugin_commands.rs:30-41`) and canonicalization keeps the resolved path inside the plugin dir (`lib.rs:346-371`).
 
-**Conclusion for Q1**: A plugin *could* fetch its own `.wasm` via `fetch('quill-plugin://localhost/<id>/viz.wasm')` — the scheme serves binary with the right MIME and the main-webview CSP allows the origin. But see §4: `@viz-js/viz` doesn't need this.
+**Conclusion for Q1**: A plugin *could* fetch its own `.wasm` via `fetch('folyn-plugin://localhost/<id>/viz.wasm')` — the scheme serves binary with the right MIME and the main-webview CSP allows the origin. But see §4: `@viz-js/viz` doesn't need this.
 
 ### 3. `read_plugin_file` Tauri command CANNOT return binary (UTF-8 only)
 
@@ -82,7 +82,7 @@ export function instance() {
 - `createWasm()` wires `instantiateAsync` → `instantiateArrayBuffer` → `WebAssembly.instantiate(bytes, imports)`. **No `locateFile`, no `wasmBinaryFile` URL fetch, no `instantiateWasm` override hook, no `wasmURL` option.** (All grepped with 0 hits except `wasmBinaryFile` which is declared but assigned from `findWasmBinary()`.)
 
 **Implications**:
-1. No custom fetch function / `wasmURL` to point at a `quill-plugin://` URL.
+1. No custom fetch function / `wasmURL` to point at a `folyn-plugin://` URL.
 2. No `import.meta.url`-relative `.wasm` fetch that would break under a blob-URL `import()`.
 3. The entire wasm ships inside the JS. Bundling `@viz-js/viz` into the plugin's `main` ESM bundle = wasm travels along automatically. No separate asset, no second network/IPC fetch.
 
@@ -121,19 +121,19 @@ async function renderDotToSvg(dot: string): Promise<string> {
 }
 ```
 
-Pros/cons mapped onto Quill's constraints:
+Pros/cons mapped onto Folyn's constraints:
 
 | Constraint | How it holds |
 |---|---|
 | "plugin `main` must be self-contained ESM, no relative/remote imports" (`trustedLoader.ts:34-37`) | ✅ Vite library mode inlines `@viz-js/viz` (wasm included) into `main`. No runtime imports remain. |
-| "remote imports blocked by `quill-plugin://` CSP" | ✅ No remote/`quill-plugin://` fetch needed at all. |
+| "remote imports blocked by `folyn-plugin://` CSP" | ✅ No remote/`folyn-plugin://` fetch needed at all. |
 | "blob URL has no path, relative imports don't resolve" | ✅ No imports left after bundling; wasm is a string, not a fetch. |
 | CSP `wasm-unsafe-eval` for `WebAssembly.instantiate` | ✅ Present (`tauri.conf.json:144`). |
 | Host-app zero bundle growth when plugin absent | ✅ `@viz-js/viz` lives in the plugin chunk, dynamically `import()`-ed only when the user opens a `.dot` file after install+trust. |
 | TOFU integrity gate | ✅ `install_plugin` hashes every file incl. `main` (`plugin_commands.rs:488` `compute_integrity`), and `trustedLoader.ts:75-86` recomputes the SHA of `main` before `import()`. The inlined-wasm bytes are inside `main`'s hash. Tampering is caught. |
 | Bundle cost | ⚠ ~1.17 MB raw / ~456 KB gzip for the wasm-in-JS. Unavoidable — this is how `@viz-js/viz` ships; there is no separate-asset option in v3.28.0. Acceptable for an on-demand plugin chunk (only loaded when rendering DOT). |
 
-**Why not the `quill-plugin://` fetch path?** It works (§2) but `@viz-js/viz` gives no hook to redirect the wasm source (no `wasmURL`, no `locateFile`, no `instantiateWasm` override) — the wasm is a compile-time string. You'd have to fork/rebuild the Emscripten output to externalize the wasm, which is far more work than just letting the inlined bytes ride along.
+**Why not the `folyn-plugin://` fetch path?** It works (§2) but `@viz-js/viz` gives no hook to redirect the wasm source (no `wasmURL`, no `locateFile`, no `instantiateWasm` override) — the wasm is a compile-time string. You'd have to fork/rebuild the Emscripten output to externalize the wasm, which is far more work than just letting the inlined bytes ride along.
 
 **Why not hand-inlined base64?** Same reason — `@viz-js/viz` already inlines (with a custom `binaryDecode`, not base64, but same idea). Re-doing it buys nothing.
 
@@ -143,8 +143,8 @@ Pros/cons mapped onto Quill's constraints:
 |---|---|
 | `apps/desktop/src/services/plugin-host/trustedLoader.ts` | Trusted loader: blob-URL `import()`, TOFU SHA-256 gate, `readPluginFile`/`grantCapabilities` wrappers |
 | `apps/desktop/src-tauri/src/plugin_commands.rs` | `read_plugin_file` (UTF-8, line 624), `compute_integrity`, `content_type_for` (wasm→`application/wasm`, line 59), `PLUGIN_CSP` |
-| `apps/desktop/src-tauri/src/lib.rs:288-394` | `quill-plugin://` URI scheme handler: serves raw bytes via `std::fs::read`, adds `Content-Type` + `PLUGIN_CSP` header |
-| `apps/desktop/src-tauri/tauri.conf.json:144` | Main webview CSP — `wasm-unsafe-eval`, `blob:`, `quill-plugin:` in script-src; `quill-plugin:` in connect-src |
+| `apps/desktop/src-tauri/src/lib.rs:288-394` | `folyn-plugin://` URI scheme handler: serves raw bytes via `std::fs::read`, adds `Content-Type` + `PLUGIN_CSP` header |
+| `apps/desktop/src-tauri/tauri.conf.json:144` | Main webview CSP — `wasm-unsafe-eval`, `blob:`, `folyn-plugin:` in script-src; `folyn-plugin:` in connect-src |
 | `@viz-js/viz@3.28.0` `lib/backend.js` | Emscripten module: wasm inlined via `binaryDecode('…')`, `WebAssembly.instantiate(bytes, imports)`, no fetch/locateFile |
 | `@viz-js/viz@3.28.0` `src/index.js` | `instance()` = `Module().then(m => new Viz(m))` |
 | `packages/container-plugins/src/plugins/MermaidPlugin.tsx` | Render precedent: `mermaid.render() → svg string → dangerouslySetInnerHTML` |
@@ -157,7 +157,7 @@ Pros/cons mapped onto Quill's constraints:
 
 ## Caveats / Not Found
 
-- `@viz-js/viz` v3.28.0 is the current published version (inspected via `npm pack`). If a future major version externalizes the wasm to a separate `.wasm` with a `locateFile`/`wasmURL` hook, revisit: the `quill-plugin://localhost/<id>/viz.wasm` fetch path (§2) would then become the right answer, and `read_plugin_file` (§3) would need a binary-returning sibling command.
+- `@viz-js/viz` v3.28.0 is the current published version (inspected via `npm pack`). If a future major version externalizes the wasm to a separate `.wasm` with a `locateFile`/`wasmURL` hook, revisit: the `folyn-plugin://localhost/<id>/viz.wasm` fetch path (§2) would then become the right answer, and `read_plugin_file` (§3) would need a binary-returning sibling command.
 - `WebAssembly.instantiate` under `wasm-unsafe-eval` was reasoned from CSP spec + the Emscripten code path; **not empirically verified by running the plugin**. Implementation should open the webview console during first DOT render to confirm no CSP violation fires.
 - Bundle size numbers are from the published JS (raw 1.17 MB / gzip 456 KB). The final plugin `main` size after Vite lib-mode bundling will be ≥ this; a `rollup-plugin-visualizer` pass during implementation will give the exact emitted size.
 - The `binaryDecode` string inside `backend.js` is not standard base64 (it's an Emscripten binary-encoding scheme: `o[i]=~c>>8&c`). Do not attempt to decode/transform it; just let `@viz-js/viz`'s code run as-is.

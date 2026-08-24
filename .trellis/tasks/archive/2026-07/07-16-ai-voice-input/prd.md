@@ -23,7 +23,7 @@ Add a voice input feature to the AI chat panel (mic button in `ChatInput` leadin
 ## Acceptance Criteria
 
 - [ ] On macOS, clicking mic button records mic → transcribes via Apple Speech → (if auto-polish ON) polishes via existing AI config → inserts at cursor in focused input (cross-app).
-- [ ] Global hotkey (when configured) triggers the same flow without Quill having focus.
+- [ ] Global hotkey (when configured) triggers the same flow without Folyn having focus.
 - [ ] "保存语音源文件" ON → WAV saved to `.voice_input/<timestamp>.wav`.
 - [ ] Voice settings page renders + persists all fields via `registerPersistSlice`.
 - [ ] Auto-polish OFF → raw transcript inserted directly.
@@ -69,8 +69,8 @@ Add a voice input feature to the AI chat panel (mic button in `ChatInput` leadin
 
 ## Decision (ADR-lite)
 
-**Context**: User pointed at openless project (`/Users/yiminlin/project/openless/openless-all/app/src-tauri/src`) as the reference; it has a proven pure-Rust objc2 FFI to SFSpeechRecognizer + cpal recorder + CGEvent inserter, matching Quill's existing `objc2`/`cocoa` pattern (`pet_panel_macos.rs`).
-**Decision**: Port minimal subset of openless modules into Quill's `src-tauri/src/voice_macos.rs`. Pure Rust objc2, no Swift helper. Polish stays in frontend (reuses `runRigChat` + `aiConfigStore`); Rust side is transcribe + insert primitives only.
+**Context**: User pointed at openless project (`/Users/yiminlin/project/openless/openless-all/app/src-tauri/src`) as the reference; it has a proven pure-Rust objc2 FFI to SFSpeechRecognizer + cpal recorder + CGEvent inserter, matching Folyn's existing `objc2`/`cocoa` pattern (`pet_panel_macos.rs`).
+**Decision**: Port minimal subset of openless modules into Folyn's `src-tauri/src/voice_macos.rs`. Pure Rust objc2, no Swift helper. Polish stays in frontend (reuses `runRigChat` + `aiConfigStore`); Rust side is transcribe + insert primitives only.
 **Consequences**: + zero new deps beyond `cpal`/`block2`/`objc2` (verify); + matches repo conventions; + polish is decoupled from ASR engine. - 500+ lines objc FFI to maintain (battle-tested in openless, acceptable).
 
 ## Out of Scope
@@ -94,7 +94,7 @@ Add a voice input feature to the AI chat panel (mic button in `ChatInput` leadin
 - `objc2` + `cocoa` already in `Cargo.toml`; `pet_panel_macos.rs` establishes the FFI pattern. Add `cpal` (mic capture) + `block2` (block-based callback for SFSpeechRecognizer.requestAuthorization).
 - `tauri.conf.json` has `macOSPrivateApi: true` already (for pet panel) — no additional private API opt-in needed.
 - Clipboard plugin present; cross-app paste uses CoreGraphics CGEvent (system framework, no extra dep).
-- `.voice_input` follows `.quill-tmp` convention (per-vault hidden dir).
+- `.voice_input` follows `.folyn-tmp` convention (per-vault hidden dir).
 - SettingsPage tab list at lines 136–149; new `voice` tab inserted after `ai` (line 145).
 - `registerPersistSlice` pattern at `store/settingsPersistence.ts`; follow `aiConfigStore` template.
 
@@ -104,4 +104,4 @@ Add a voice input feature to the AI chat panel (mic button in `ChatInput` leadin
 - `…/asr/wav.rs` — `encode_wav_16k_mono` (61 lines).
 - `…/recorder.rs` — cpal mic capture → 16kHz mono Int16 PCM (932 lines).
 - `…/insertion.rs` — cross-app CGEvent Cmd+V inserter (802 lines).
-- `…/polish.rs` — polish prompt template + LLM call shape (3171 lines, only reference the prompt default; LLM call goes through Quill's `runRigChat`).
+- `…/polish.rs` — polish prompt template + LLM call shape (3171 lines, only reference the prompt default; LLM call goes through Folyn's `runRigChat`).

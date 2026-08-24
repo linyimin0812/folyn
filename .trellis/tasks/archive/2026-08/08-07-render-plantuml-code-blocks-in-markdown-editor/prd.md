@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make fenced code blocks in Markdown preview renderable by **plugins**, without touching Quill core for each new language. Concretely: a plugin author can declare "I render ` ```plantuml `" in their plugin manifest, and the Markdown preview dispatches to their renderer.
+Make fenced code blocks in Markdown preview renderable by **plugins**, without touching Folyn core for each new language. Concretely: a plugin author can declare "I render ` ```plantuml `" in their plugin manifest, and the Markdown preview dispatches to their renderer.
 
 This also retires the existing `language-mermaid` hardcode in `MarkdownPreview.tsx` by routing mermaid through the same pluggable mechanism (as a builtin), so the dispatch path is uniform.
 
@@ -11,7 +11,7 @@ This also retires the existing `language-mermaid` hardcode in `MarkdownPreview.t
 - Markdown preview: `apps/desktop/src/components/file-types/markdown/MarkdownPreview.tsx`, unified/remark pipeline.
 - Dispatch site today: `componentMap['pre'] = PreWithMermaid` (MarkdownPreview.tsx:535) — hardcoded `language-mermaid` → `<MermaidBlock>`.
 - `MermaidBlock` lives in `packages/container-plugins/src/plugins/MermaidPlugin.tsx` (a builtin package, not a user-installable plugin).
-- PlantUML file-type plugin `plugins/quill-plugin-plantuml` already renders `.puml` files via `plantuml-encoder` + public server `https://www.plantuml.com/plantuml/svg/<encoded>`; reusable building block for a markdown renderer.
+- PlantUML file-type plugin `plugins/folyn-plugin-plantuml` already renders `.puml` files via `plantuml-encoder` + public server `https://www.plantuml.com/plantuml/svg/<encoded>`; reusable building block for a markdown renderer.
 - SDK already has a contribution-point pattern (`commands`/`fileTypes`/`containers`/`exporters`/`exportEnhancers`/...). New point follows the same shape.
 - Plugin loading: `services/plugin-host/trustedLoader.ts` resolves `tier: 'trusted'` plugin manifests; adapters in `services/plugin-host/contributionAdapters.ts` (file-type/container/feature/exporter/keybinding/...) turn `contributes.*` declarations into host-registry entries. New adapter mirrors existing ones.
 - Builtin container plugins are registered via `packages/container-plugins/index.ts` `registerBuiltinPlugins()`.
@@ -43,7 +43,7 @@ This also retires the existing `language-mermaid` hardcode in `MarkdownPreview.t
 - `container-plugins` package: also register `mermaid` (+ `mmd`) as a builtin editor language pointing at the existing `mermaidLanguage` StreamLanguage (currently hardcoded in `apps/desktop/src/editor/extensions/`). Remove the hardcoded `mermaidLanguage.ts` from `apps/desktop/src/editor/extensions/` and move it to `packages/container-plugins/src/editor-languages/` (or similar) so it ships with the builtin package.
 - Remove the hardcoded `language-mermaid` branch from `MarkdownPreview.tsx`. Behavior stays identical: ` ```mermaid ` renders via `MermaidBlock` from the same package, just routed through the registry.
 
-### PlantUML plugin (`plugins/quill-plugin-plantuml`)
+### PlantUML plugin (`plugins/folyn-plugin-plantuml`)
 
 - `manifest.json` `contributes.markdownCodeRenderers`: declare `{ language: 'plantuml', aliases: ['puml', 'pu'], component: 'PlantUmlMarkdownBlock' }`.
 - `manifest.json` `contributes.containers`: declare `{ name: 'plantuml', icon, label, category: 'media', component: 'PlantUmlContainerBlock', template: ':::plantuml\n@startuml\nA -> B\n@enduml\n:::' }` so `:::plantuml` directives also render.
@@ -77,7 +77,7 @@ This also retires the existing `language-mermaid` hardcode in `MarkdownPreview.t
 
 ## Definition of Done
 
-- Type-check / lint / build green in `packages/plugin-sdk`, `packages/container-plugins`, `apps/desktop`, and `plugins/quill-plugin-plantuml`.
+- Type-check / lint / build green in `packages/plugin-sdk`, `packages/container-plugins`, `apps/desktop`, and `plugins/folyn-plugin-plantuml`.
 - Existing `trustedLoader.test.ts` / adapter tests still pass; new adapter test for `registerPluginMarkdownCodeRenderers`.
 - Manual: golden path (render), error path (bad syntax / offline), mermaid regression, disable-plugin fallback.
 - SDK type exports updated (`dist/` regenerated or built).
@@ -140,4 +140,4 @@ Builtins (mermaid) registered at app boot via `container-plugins` package init. 
 - `packages/container-plugins/src/plugins/MermaidPlugin.tsx` + `packages/container-plugins/index.ts` — register `mermaid` (+ `mmd`) as builtin renderer AND builtin editor language.
 - `apps/desktop/src/editor/extensions/mermaidLanguage.ts` — moved to `packages/container-plugins/src/editor-languages/mermaid.ts` (or similar) and registered as builtin.
 - `apps/desktop/src/services/exportService.ts` — `applyContainerEnhancers` walks `[data-container]` and consults `getEnhancer(name)`; fenced `plantuml` blocks rendered as `<img>` need to either (a) be wrapped in `[data-container="plantuml"]` by the renderer, or (b) be picked up by a fenced-block enhancer walk (TBD — verify export path for `<pre>` blocks during Markdown export).
-- `plugins/quill-plugin-plantuml/manifest.json` + `src/index.ts` — declare + export `PlantUmlMarkdownBlock`, `PlantUmlContainerBlock`, `enhancePlantUml`, `plantumlLanguage` factory.
+- `plugins/folyn-plugin-plantuml/manifest.json` + `src/index.ts` — declare + export `PlantUmlMarkdownBlock`, `PlantUmlContainerBlock`, `enhancePlantUml`, `plantumlLanguage` factory.

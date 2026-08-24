@@ -30,4 +30,4 @@
 
 ## Technical Notes
 
-- `pnpm --filter @quill/desktop remove react-pdf` 或手改 package.json + `pnpm install`。
+- `pnpm --filter @folyn/desktop remove react-pdf` 或手改 package.json + `pnpm install`。

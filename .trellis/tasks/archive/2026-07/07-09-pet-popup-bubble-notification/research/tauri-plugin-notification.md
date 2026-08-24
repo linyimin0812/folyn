@@ -129,7 +129,7 @@ let nextId = 1;
 async function osNotify(text: string, target: Target) {
   const id = nextId++;
   pendingTargets.set(id, target);
-  await sendNotification({ id, title: 'Quill', body: text });
+  await sendNotification({ id, title: 'Folyn', body: text });
   // 超时清理
   setTimeout(() => pendingTargets.delete(id), 60_000);
 }

@@ -4,7 +4,7 @@
 
 ## 一、背景与目标
 
-Quill 是一个 Tauri 2 + React 18 + TypeScript 桌面 Markdown 编辑器，已有基于 iframe + bridge 的 HTML 可视化编辑能力。当前实现共 ~1,945 行代码（bridge.ts 839行 + VisualEditCanvas.tsx 687行 + PropertiesPanel.tsx 419行），支持元素选择、拖拽、文字编辑和基础样式修改。
+Folyn 是一个 Tauri 2 + React 18 + TypeScript 桌面 Markdown 编辑器，已有基于 iframe + bridge 的 HTML 可视化编辑能力。当前实现共 ~1,945 行代码（bridge.ts 839行 + VisualEditCanvas.tsx 687行 + PropertiesPanel.tsx 419行），支持元素选择、拖拽、文字编辑和基础样式修改。
 
 **目标**：用 GrapesJS 替换现有 Visual 模式，获得完整的页面构建器能力，同时保持 Source 模式和 Preview 模式不变。
 
@@ -251,7 +251,7 @@ export function createGrapesConfig(opts: GrapesInitOptions): Record<string, any>
     height: '100%',
     width: 'auto',
     fromElement: false,
-    storageManager: false,           // Quill 的 Zustand store 管理持久化
+    storageManager: false,           // Folyn 的 Zustand store 管理持久化
     panels: { defaults: [] },        // 禁用内置面板，由 React 渲染
 
     blockManager: { appendTo: opts.blocksContainer },
@@ -412,26 +412,26 @@ export function registerCustomBlocks(editor: grapesjs.Editor): void
 
 ### 4.6 grapesTheme.css — 主题适配
 
-通过 CSS 变量映射，让 GrapesJS UI 自动跟随 Quill 的 light/dark 主题切换：
+通过 CSS 变量映射，让 GrapesJS UI 自动跟随 Folyn 的 light/dark 主题切换：
 
 ```css
-/* GrapesJS 主背景 → Quill panel 色 */
+/* GrapesJS 主背景 → Folyn panel 色 */
 .gjs-one-bg { background-color: var(--panel) !important; }
 
-/* GrapesJS 文字色 → Quill t2 */
+/* GrapesJS 文字色 → Folyn t2 */
 .gjs-two-color { color: var(--t2) !important; }
 
-/* GrapesJS 强调背景 → Quill acc */
+/* GrapesJS 强调背景 → Folyn acc */
 .gjs-three-bg { background-color: var(--acc) !important; }
 
-/* GrapesJS 强调文字 → Quill acc */
+/* GrapesJS 强调文字 → Folyn acc */
 .gjs-four-color,
 .gjs-four-color-h:hover { color: var(--acc) !important; }
 
-/* Canvas 背景 → Quill surf2 */
+/* Canvas 背景 → Folyn surf2 */
 .gjs-cv-canvas { background: var(--surf2) !important; }
 
-/* Block 组件 → 使用 Quill 的面板/边框/hover 色 */
+/* Block 组件 → 使用 Folyn 的面板/边框/hover 色 */
 .gjs-block {
   background: var(--surf) !important;
   border: 1px solid var(--brd) !important;
@@ -443,7 +443,7 @@ export function registerCustomBlocks(editor: grapesjs.Editor): void
   border-color: var(--acc) !important;
 }
 
-/* 输入框 → Quill inp 色 */
+/* 输入框 → Folyn inp 色 */
 .gjs-field {
   background: var(--inp) !important;
   border: 1px solid var(--brd) !important;
@@ -452,29 +452,29 @@ export function registerCustomBlocks(editor: grapesjs.Editor): void
 .gjs-field input,
 .gjs-field select { color: var(--t1) !important; }
 
-/* Style Manager 标签 → Quill t3 */
+/* Style Manager 标签 → Folyn t3 */
 .gjs-sm-label { color: var(--t3) !important; }
 .gjs-sm-sector .gjs-sm-sector-title {
   background: var(--surf2) !important;
   color: var(--t2) !important;
 }
 
-/* 选中/hover 组件 → Quill acc 色 */
+/* 选中/hover 组件 → Folyn acc 色 */
 .gjs-selected { outline: 2px solid var(--acc) !important; }
 .gjs-hovered { outline: 1px dashed var(--acc) !important; }
 .gjs-toolbar { background: var(--acc) !important; }
 
-/* Layer Manager → Quill 色系 */
+/* Layer Manager → Folyn 色系 */
 .gjs-layer-name { color: var(--t2) !important; }
 .gjs-layer.gjs-selected .gjs-layer-name { color: var(--acc) !important; }
 .gjs-layers { background: var(--panel) !important; }
 
-/* Modal → Quill panel 色 */
+/* Modal → Folyn panel 色 */
 .gjs-mdl-dialog { background: var(--panel) !important; border-radius: 12px !important; }
 .gjs-mdl-header { background: var(--surf2) !important; color: var(--t1) !important; }
 .gjs-mdl-bg { background: rgba(0,0,0,0.5) !important; }
 
-/* 滚动条 → 与 Quill 全局一致 */
+/* 滚动条 → 与 Folyn 全局一致 */
 /* 已由 index.css 全局 ::-webkit-scrollbar 覆盖 */
 ```
 
@@ -598,7 +598,7 @@ editor.on('load', () => {
 |------|------|
 | `editor.getHtml()` | 输出纯净 HTML，不含 GrapesJS 内部类名（gjs-selected 等） |
 | `editor.getCss()` | 输出用户样式 + GrapesJS 生成的类样式 |
-| 无需手动清理 | 对比现有 `stripBridgeArtifacts()` 需要移除 data-quill-id / 注入脚本等，GrapesJS 的序列化天然干净 |
+| 无需手动清理 | 对比现有 `stripBridgeArtifacts()` 需要移除 data-folyn-id / 注入脚本等，GrapesJS 的序列化天然干净 |
 
 ### 6.4 大文件性能
 
@@ -706,7 +706,7 @@ const USE_GRAPES = true;
 
 ### Phase 5：打磨
 
-1. 微调主题 CSS 与 Quill 设计系统精确匹配
+1. 微调主题 CSS 与 Folyn 设计系统精确匹配
 2. 所有 GrapesJS 面板标题改为中文
 3. 可选：添加 `grapesjs-plugin-forms`（表单组件）
 4. 可选：添加 `grapesjs-tui-image-editor`（图片编辑）

@@ -21,7 +21,7 @@
 
 ## Acceptance Criteria
 
-- [ ] 成功拉取后 `~/.quill/providers/{pid}/models.json` 每条 model 有 `owner` 字段，值来自 OpenRouter owner map（未匹配则 `= providerId`）
+- [ ] 成功拉取后 `~/.folyn/providers/{pid}/models.json` 每条 model 有 `owner` 字段，值来自 OpenRouter owner map（未匹配则 `= providerId`）
 - [ ] OpenRouter owner 拉取失败时，文件仍写入（owner 字段可省略或全为 providerId）
 - [ ] in-memory `modelsByProvider[pid]` 不含 owner（保持 `Model[]` 契约）
 - [ ] `pnpm typecheck` 全绿

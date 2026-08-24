@@ -401,7 +401,7 @@ Added pet notification integration for schedule module: pomodoro work/break end 
 
 ### Summary
 
-Added CodexAdapter to @quill/cli-adapter: one-shot codex exec --json per send, pure translateCodexEvent seam, resume via codex exec resume <thread_id>, no on-disk skills/commands (Codex has no discovery surface). Registered codex-cli sidecar in Tauri capabilities + added codex icon to AdapterSelector/AgentCliTag/FeatureAdapterDropdown.
+Added CodexAdapter to @folyn/cli-adapter: one-shot codex exec --json per send, pure translateCodexEvent seam, resume via codex exec resume <thread_id>, no on-disk skills/commands (Codex has no discovery surface). Registered codex-cli sidecar in Tauri capabilities + added codex icon to AdapterSelector/AgentCliTag/FeatureAdapterDropdown.
 
 ### Main Changes
 
@@ -793,7 +793,7 @@ switchVault/addVault/refreshFileTree 的 catch 块在 err 非 Error 实例时丢
 
 ### Summary
 
-Moved single-instance callback's main.show()+set_focus() ahead of the empty-paths early-return so a bare double-click of the Quill icon surfaces the hidden close-to-tray main window. File-arg plumbing stays gated on non-empty paths. Added a gotcha note to tauri-window-patterns.md.
+Moved single-instance callback's main.show()+set_focus() ahead of the empty-paths early-return so a bare double-click of the Folyn icon surfaces the hidden close-to-tray main window. File-arg plumbing stays gated on non-empty paths. Added a gotcha note to tauri-window-patterns.md.
 
 ### Main Changes
 
@@ -827,7 +827,7 @@ Moved single-instance callback's main.show()+set_focus() ahead of the empty-path
 
 ### Summary
 
-Replaced the inline quill SVG builtin mascot with a bundled pet.gif rendered via <img>. Updated PetMascot test to assert img root; PetSettings preview now shows the same gif. Custom-icon fallback path unchanged.
+Replaced the inline folyn SVG builtin mascot with a bundled pet.gif rendered via <img>. Updated PetMascot test to assert img root; PetSettings preview now shows the same gif. Custom-icon fallback path unchanged.
 
 ### Main Changes
 
@@ -895,7 +895,7 @@ Remove build-macos-universal job from release.yml; keep only aarch64/x86_64 macO
 
 ### Summary
 
-Added translationStore (zustand slice via registerPersistSlice) so pair/source/target/input/result/preview persist to ~/.quill/storage/translation.json and survive app restart. Removed prior module-level + localStorage caches. Pet panel hydrates via existing pet://settings-updated broadcast.
+Added translationStore (zustand slice via registerPersistSlice) so pair/source/target/input/result/preview persist to ~/.folyn/storage/translation.json and survive app restart. Removed prior module-level + localStorage caches. Pet panel hydrates via existing pet://settings-updated broadcast.
 
 ### Main Changes
 

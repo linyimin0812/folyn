@@ -3,7 +3,7 @@
 ## Goal
 
 Add OpenAI Codex CLI (`codex`) as a third selectable CLI adapter in
-`@quill/cli-adapter`, surfaced in the desktop AI Panel / pet Chat adapter
+`@folyn/cli-adapter`, surfaced in the desktop AI Panel / pet Chat adapter
 selector alongside Claude Code and Pi. Users who prefer Codex can switch
 to it end-to-end (prompt → streaming text/tool events → session resume).
 
@@ -125,7 +125,7 @@ to it end-to-end (prompt → streaming text/tool events → session resume).
   `item.completed`).
 - `thinking` events (Codex doesn't expose reasoning content in stdout).
 - `apply_patch` patch-field parsing (treated as generic tool call).
-- `--add-dir` mapping (Quill's `CliSendOptions.addDir` exists but Codex
+- `--add-dir` mapping (Folyn's `CliSendOptions.addDir` exists but Codex
   plumbing can land in a follow-up; YAGNI for v1).
 - `--bare` parity (no single flag in Codex; `--ignore-user-config` +
   `--ignore-rules` + `--skip-git-repo-check` approximate it; project

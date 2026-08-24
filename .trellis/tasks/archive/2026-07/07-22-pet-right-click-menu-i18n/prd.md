@@ -11,7 +11,7 @@
 - macOS app 菜单栏 3 个子菜单标题 i18n（`lib.rs` setup）：
   - `Edit` → `编辑`（zh）/ `Edit`（en）
   - `Window` → `窗口`（zh）/ `Window`（en）
-  - `Quill` 是品牌名，不翻译。
+  - `Folyn` 是品牌名，不翻译。
 - 前端 `pet_show_context_menu` 命令加 `locale: String` 参数。
 - 前端 `setLocale` 时调新命令 `pet_rebuild_app_menu(locale)`，Rust 重建 app 菜单栏。
 - Rust 端 const label 表（zh/en 两列），未知 locale → fallback en。
@@ -60,7 +60,7 @@
 ## Out of Scope
 
 - 新增第三种语言（仅打通机制，文案 zh/en 就位即可）。
-- 翻译 "Quill" 品牌名。
+- 翻译 "Folyn" 品牌名。
 - 改菜单项 ID / 顺序 / 图标。
 - PredefinedMenuItem（Cut/Copy/Paste/About 等）—— OS 已本地化。
 - 非 macOS 平台的菜单栏（当前 desktop 仅 macOS）。

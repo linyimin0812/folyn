@@ -32,7 +32,7 @@ Trim runtime prompt builders across 5 feature callers so they only emit runtime 
 - `clipService.ts` card metadata fallback (line 93-95): replace inline JSON shape with thin instruction (`请分析以下网页生成知识卡片元数据。` + `原始 URL: ${url}` + `curl.md URL: ${mdUrl}`). JSON shape lives in `clips.md`.
 - `clipService.ts` infographic prompt: leave as-is (already correct).
 - `wikiQueryService.ts buildQueryInstruction`: keep `动作：query` + `## Wiki Context` + `## User Question` + thin pointer line. Drop the contract restatement ("请按 query action 输出契约..." → replace with one-line "请按 query action 契约输出。").
-- `DailyDigest.tsx` prompt: drop "你是 Quill 知识库的 AI 助手" preamble, drop "请输出 Markdown 格式...300 字以内" contract. Keep `今日：${todayStr}` + `## 今日修改文档` block + `## 最近日记` block.
+- `DailyDigest.tsx` prompt: drop "你是 Folyn 知识库的 AI 助手" preamble, drop "请输出 Markdown 格式...300 字以内" contract. Keep `今日：${todayStr}` + `## 今日修改文档` block + `## 最近日记` block.
 - Canonical agent .md files: verify each action's contract is complete (so trimming prompts doesn't lose information). Add missing rules if a runtime prompt currently carries content not in .md.
 - No behavior change in production output: research still returns `@book`/`@web` lines, plan still returns unit lines, feynman still appends callout, etc.
 

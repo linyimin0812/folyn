@@ -44,7 +44,7 @@ Key flags (full set in `codex exec --help`):
 | `-s, --sandbox <mode>` | `read-only` / `workspace-write` / `danger-full-access`. |
 | `--dangerously-bypass-approvals-and-sandbox` | Skip approvals + sandbox (for externally-sandboxed envs — closest to pi's `--approve` / claude's bare autonomy). |
 | `--dangerously-bypass-hook-trust` | Run hooks without persisted trust. |
-| `--skip-git-repo-check` | Allow running outside a git repo (Quill's temp/probe dirs are not always git repos). |
+| `--skip-git-repo-check` | Allow running outside a git repo (Folyn's temp/probe dirs are not always git repos). |
 | `--ephemeral` | **Run without persisting session files to disk** — pass when the adapter does NOT need to resume (matches pi's `--no-session`). |
 | `--ignore-user-config` | Do not load `~/.codex/config.toml` (closest to claude's `--bare` for user config; auth still uses `CODEX_HOME`). |
 | `--ignore-rules` | Do not load user/project execpolicy `.rules` files. |
@@ -207,11 +207,11 @@ The adapter's flow per send (one-shot model, no long-lived child):
 ### 4. Working directory + isolation
 
 - **Working dir flag**: `-C, --cd <DIR>` (also top-level `codex --cd <DIR>`). Without it, Codex inherits process cwd (Tauri spawn cwd). Use it: `codex exec --json --cd <workingDir> …`.
-- **Extra writable dirs**: `--add-dir <DIR>` (repeatable). Mirrors claude's `--add-dir`. Quill's adapter currently drops addDir for pi; for codex, emit `--add-dir` per entry if `options.addDirs` is added to `CliSendOptions` later (YAGNI for v1).
+- **Extra writable dirs**: `--add-dir <DIR>` (repeatable). Mirrors claude's `--add-dir`. Folyn's adapter currently drops addDir for pi; for codex, emit `--add-dir` per entry if `options.addDirs` is added to `CliSendOptions` later (YAGNI for v1).
 - **No `--bare`-equivalent**. Closest approximations:
   - `--ignore-user-config` — skip `~/.codex/config.toml` (auth still loaded from `CODEX_HOME`). This is the closest to claude's `--bare` for skipping user-scope config.
   - `--ignore-rules` — skip user/project execpolicy `.rules` files.
-  - `--skip-git-repo-check` — needed when workingDir is not a git repo (Quill probe dirs).
+  - `--skip-git-repo-check` — needed when workingDir is not a git repo (Folyn probe dirs).
   - Project-level `AGENTS.md` is loaded from cwd by default; there is **no flag to skip project AGENTS.md specifically**. If a project's AGENTS.md would interfere with feature-agent prompts, the adapter must use a different cwd or pre-emend the file — out of scope for v1.
 - **Sandbox/approval**: `--sandbox read-only|workspace-write|danger-full-access` + `--dangerously-bypass-approvals-and-sandbox` for full autonomy (the adapter should default to `workspace-write` + `--dangerously-bypass-approvals-and-sandbox` to match pi's `--approve` behavior, OR expose a config knob — TBD by PRD).
 
@@ -252,9 +252,9 @@ $ ls ~/.codex/prompts/       → No such file or directory
 
 - `~/.codex/AGENTS.md` exists (empty, 0 bytes) — this is Codex's user-scope instructions file (the AGENTS.md convention), NOT a skills/commands registry.
 - The project-level `AGENTS.md` (at the cwd root) is the only on-disk "agent instruction" source Codex reads. It is plain markdown, not YAML-frontmatter skill files.
-- The `.codex/agents/` directory mentioned in the project's `/Users/yiminlin/project/quill/AGENTS.md` ("optional custom subagents") refers to a future/experimental concept that does not exist on disk in this codex version (0.145.0). Not a discovery source.
+- The `.codex/agents/` directory mentioned in the project's `/Users/yiminlin/project/folyn/AGENTS.md` ("optional custom subagents") refers to a future/experimental concept that does not exist on disk in this codex version (0.145.0). Not a discovery source.
 - Codex's extensibility primitives are **plugins** (`codex plugin` subcommand, `[plugins."name@market"]` entries in `config.toml`) and **MCP servers** (`codex mcp` subcommand). Neither is a simple `*.md`-in-a-dir discovery model that the adapter could enumerate with `collectSkills`/`collectCommands`.
-- **Recommendation for `CodexAdapter`**: `listSkills()` and `listCommands()` return `[]` (inherit `BaseCliAdapter` default — do not override). This matches the Quill convention of "return [] when the CLI has no on-disk skill/command concept" and avoids inventing a non-existent discovery surface. Document this in the adapter JSDoc so a future reader doesn't think it's a TODO.
+- **Recommendation for `CodexAdapter`**: `listSkills()` and `listCommands()` return `[]` (inherit `BaseCliAdapter` default — do not override). This matches the Folyn convention of "return [] when the CLI has no on-disk skill/command concept" and avoids inventing a non-existent discovery surface. Document this in the adapter JSDoc so a future reader doesn't think it's a TODO.
 
 ## Adapter shape sketch (informational, not a spec)
 
@@ -273,4 +273,4 @@ For the implementer — the codex adapter diverges from `PiAdapter` in two load-
 - **Error event**: no dedicated `{type:"error"}` event observed. Real production errors (auth failure, model 429, sandbox violation) may emit a different shape — the adapter should (a) treat any JSON line whose `type` is not in the known set as a potential error and (b) rely on stderr + non-zero exit as the error signal. Verify against a real auth-failure case when implementing.
 - **`--bare` parity**: Codex has no single flag that disables ALL user/project context (claude `--bare` semantics). `--ignore-user-config` + `--ignore-rules` + `--skip-git-repo-check` together approximate it for config/rules/git but do NOT skip project `AGENTS.md`. If the feature-agent prompt must be pristine, the adapter must spawn from a clean cwd — out of scope for v1.
 - **Codex repo source**: the OpenAI/codex Rust source was not fetched from GitHub in this research pass; event taxonomy was derived empirically from `codex exec --json` runs on the installed binary (0.145.0). The `codex` repo's `docs/` and Rust event structs (if public) would confirm the `apply_patch` / `mcp_call` / `error` shapes — a follow-up WebFetch pass to `https://github.com/openai/codex/blob/main/docs/` is recommended if the implementer hits an unmapped item type.
-- **`codex exec review`** subcommand exists for non-interactive code review — not researched; likely emits the same JSONL stream. Out of scope for the Quill adapter.
+- **`codex exec review`** subcommand exists for non-interactive code review — not researched; likely emits the same JSONL stream. Out of scope for the Folyn adapter.

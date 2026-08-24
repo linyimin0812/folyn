@@ -4,7 +4,7 @@
 {"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "manifest + PluginContext type patterns; we extend PluginPermissions.ai and PluginContext.ai"}
 {"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "aiStore session reuse path for useSharedSession=true"}
 {"file": ".trellis/spec/desktop/frontend/feature-agents.md", "reason": "canonical feature agent contract — ai.agent wraps runFeatureAgent + agents whitelist"}
-{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "sandbox iframe quill-plugin:// origin + ACL context for rpcBridge ai.chat method"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "sandbox iframe folyn-plugin:// origin + ACL context for rpcBridge ai.chat method"}
 {"file": ".trellis/spec/cli-adapter/frontend/index.md", "reason": "CliStreamEvent type — onEvent signature source of truth"}
 {"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "core principle: reuse runRigChat / runFeatureAgent as chokepoints, no new service"}
 {"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "host bridge crosses TS and Rust (chat_stream) and iframe and host (rpcBridge) boundaries"}

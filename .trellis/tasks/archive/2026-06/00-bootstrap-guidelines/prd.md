@@ -22,10 +22,10 @@ the rest conversationally.
 ## Status (update the checkboxes as you complete each item)
 
 - [x] Fill guidelines for api
-- [x] Fill guidelines for @quill/desktop
-- [x] Fill guidelines for @quill/cli-adapter
-- [x] Fill guidelines for @quill/container-plugins
-- [x] Fill guidelines for @quill/vault-provider
+- [x] Fill guidelines for @folyn/desktop
+- [x] Fill guidelines for @folyn/cli-adapter
+- [x] Fill guidelines for @folyn/container-plugins
+- [x] Fill guidelines for @folyn/vault-provider
 - [x] Add code examples
 
 ---
@@ -38,19 +38,19 @@ the rest conversationally.
 
 - Frontend guidelines: `.trellis/spec/api/frontend/`
 
-### Package: @quill/desktop (`spec/desktop/`)
+### Package: @folyn/desktop (`spec/desktop/`)
 
 - Frontend guidelines: `.trellis/spec/desktop/frontend/`
 
-### Package: @quill/cli-adapter (`spec/cli-adapter/`)
+### Package: @folyn/cli-adapter (`spec/cli-adapter/`)
 
 - Frontend guidelines: `.trellis/spec/cli-adapter/frontend/`
 
-### Package: @quill/container-plugins (`spec/container-plugins/`)
+### Package: @folyn/container-plugins (`spec/container-plugins/`)
 
 - Frontend guidelines: `.trellis/spec/container-plugins/frontend/`
 
-### Package: @quill/vault-provider (`spec/vault-provider/`)
+### Package: @folyn/vault-provider (`spec/vault-provider/`)
 
 - Frontend guidelines: `.trellis/spec/vault-provider/frontend/`
 

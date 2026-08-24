@@ -8,7 +8,7 @@ Add Aliyun (阿里云) OSS as a third storage provider alongside R2 and Qiniu �
 
 - The provider abstraction lives at `apps/desktop/src/services/storage/types.ts` (`StorageProvider` interface, discriminated `ProviderConfig` union).
 - Adding a provider = new `OssProviderConfig` member + `providers/oss.ts` implementing `StorageProvider` + push to `registry.ts` array.
-- Config persistence: `storageConfigStorage.ts` reads/writes `~/.quill/image-hosts/<provider>.json` per id. The `loadFromDisk` loop currently hardcodes `['r2', 'qiniu']` — must add `'oss'`.
+- Config persistence: `storageConfigStorage.ts` reads/writes `~/.folyn/image-hosts/<provider>.json` per id. The `loadFromDisk` loop currently hardcodes `['r2', 'qiniu']` — must add `'oss'`.
 - `storageConfigStore.ts` has `defaultR2Config`/`defaultQiniuConfig` and `initialConfigs` map; must add `defaultOssConfig` + initial entry. `getActiveConfig` type guard must include `isOssConfig`.
 - Settings UI: `StorageSharingSettings.tsx` switches on `isR2Config`/`isQiniuConfig` to render the form. Must add `isOssConfig` branch + `OssForm` component (mirrors R2Form/QiniuForm layout).
 - CSP baseline (`utils/csp.ts`): must add `https://*.aliyuncs.com` to `img-src` (public bucket domain) and `connect-src` (PUT target).
@@ -47,7 +47,7 @@ Add Aliyun (阿里云) OSS as a third storage provider alongside R2 and Qiniu �
 ## Acceptance Criteria (evolving)
 
 - [ ] Selecting "Aliyun OSS" in the provider dropdown shows the OSS form with all fields.
-- [ ] Saving a populated OSS config writes `~/.quill/image-hosts/oss.json` and shows the ✓ saved toast.
+- [ ] Saving a populated OSS config writes `~/.folyn/image-hosts/oss.json` and shows the ✓ saved toast.
 - [ ] Pasting an image with OSS active uploads to OSS bucket and the returned URL renders in the markdown preview (CSP allows the aliyuncs.com URL).
 - [ ] Share-to-cloud for markdown produces a public HTML URL on OSS.
 - [ ] Share-to-cloud for source-only/image/svg file types produces a public URL on OSS.

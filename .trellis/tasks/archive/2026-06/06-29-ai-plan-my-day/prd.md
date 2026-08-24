@@ -5,7 +5,7 @@
 Add an **"AI 规划今日"** experience to the Schedule workbench: given today's existing
 events + the last 7 days' backlog of unfinished tasks, the AI proposes a time-blocked plan
 for the day (schedule tasks into free slots, propose a few new tasks/breaks), the user
-reviews a timeline overlay with per-item accept/edit, and on apply Quill calls
+reviews a timeline overlay with per-item accept/edit, and on apply Folyn calls
 `scheduleStore` actions. First killer AI feature on the Schedule surface — built
 lightweight (Pattern B: AI as JSON advisor), no dependency on the agent-sdk-adapter task.
 
@@ -22,7 +22,7 @@ lightweight (Pattern B: AI as JSON advisor), no dependency on the agent-sdk-adap
 - `apps/desktop/src/components/schedule/ScheduleWorkbenchPage.tsx` + `ScheduleView.tsx`
   — the UI surface where the "plan my day" button + preview overlay live.
 - Existing AI: `AiPanel` + `claudeAdapter` + `adapterManager`; `DailyDigest`; `clipService`
-  is the precedent pattern — **AI generates structured JSON → user confirms → Quill applies
+  is the precedent pattern — **AI generates structured JSON → user confirms → Folyn applies
   via store actions** (no direct AI state mutation). Reuse `clipService`'s adapter-call +
   JSON-parse + error-handling shape.
 
@@ -34,8 +34,8 @@ building "plan my day" on Pattern B (JSON advisor) avoids waiting for it and mat
 light-footprint preference.
 
 **Decision**:
-- **Pattern B**: AI returns a structured plan JSON; Quill parses → preview → user accepts
-  per-item → Quill applies via `scheduleStore`. No direct AI state mutation; reuses
+- **Pattern B**: AI returns a structured plan JSON; Folyn parses → preview → user accepts
+  per-item → Folyn applies via `scheduleStore`. No direct AI state mutation; reuses
   existing AI/adapter.
 - **Scope S2**: schedule existing backlog into free slots + AI may propose a few **new**
   tasks (e.g. break a goal into subtasks) and necessary **break/buffer** blocks. No

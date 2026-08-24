@@ -24,7 +24,7 @@
 
 ## 非目标
 - 不保留用户自定义 skill 的迁移路径
-- 不清理 `~/.quill/storage/skills_*.json` 孤儿文件（用户本地文件，留作无害残留）
+- 不清理 `~/.folyn/storage/skills_*.json` 孤儿文件（用户本地文件，留作无害残留）
 - 不动其他 settings tab
 
 ## 验收

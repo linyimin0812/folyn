@@ -29,7 +29,7 @@ reappears at its last position.
 
 ## Decision for MVP
 
-Implement a **best-effort subset**: detect when the **Quill main window**
+Implement a **best-effort subset**: detect when the **Folyn main window**
 itself is fullscreen and hide the pet then. This covers the common case
 (user puts the editor in fullscreen) and needs no native code —
 `pet_cursor_probe` already returns `main_fullscreen` from

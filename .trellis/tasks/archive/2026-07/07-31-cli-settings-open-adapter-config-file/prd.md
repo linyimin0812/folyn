@@ -2,7 +2,7 @@
 
 ## Goal
 
-CLI 工具设置页（`SettingsPage → CliSettings`）每张 CLI 卡片增加一个"打开设置文件"按钮，点击后用 Quill 的 `editorIoService.openFile` 能力在编辑器里打开该 Adapter 对应的配置文件，让用户直接在 Quill 内查看 / 编辑。
+CLI 工具设置页（`SettingsPage → CliSettings`）每张 CLI 卡片增加一个"打开设置文件"按钮，点击后用 Folyn 的 `editorIoService.openFile` 能力在编辑器里打开该 Adapter 对应的配置文件，让用户直接在 Folyn 内查看 / 编辑。
 
 例：
 - claude → `~/.claude/settings.json`
@@ -12,7 +12,7 @@ CLI 工具设置页（`SettingsPage → CliSettings`）每张 CLI 卡片增加�
 
 - `CliSettings.tsx:33` 已经在 `listAdapters().map(...)` 里渲染每张 adapter 卡片，路径配置 / Detect / Test 按钮都在 `apps/desktop/src/components/settings/CliSettings.tsx`。
 - Adapter 元数据在 `packages/cli-adapter/src/registry.ts:11` 的 `ADAPTERS` 表里，目前只有 `displayName` / `description` / `factory`。
-- Quill 已有打开外部文件的能力：
+- Folyn 已有打开外部文件的能力：
   - `apps/desktop/src/services/editorIoService.ts:81` `openFile(filePath, name)` —— 直接按路径打开，外部路径走 `externalFileProvider`。
   - `apps/desktop/src/utils/isExternalPath.ts:25` 把 `~/...` 判定为 external。
   - `apps/desktop/src/services/externalFileProvider.ts:23` `resolveHome()` 自己处理 `~` / `$HOME` 展开，调用 Tauri fs scope `$HOME/**` 已授权。
@@ -62,13 +62,13 @@ CLI 工具设置页（`SettingsPage → CliSettings`）每张 CLI 卡片增加�
 
 - 不在本任务里新增 Adapter（如新增 Gemini CLI）。
 - 不改 pi 的 `models.json` schema 或 claude 的 settings schema。
-- 不在 Quill 里做 JSON schema 校验 / 字段补全；用户编辑后照原样写回。
+- 不在 Folyn 里做 JSON schema 校验 / 字段补全；用户编辑后照原样写回。
 - 不改 `externalFileProvider` / `editorIoService.openFile` 的现有契约。
 - 不做创建文件前的"是否覆盖"二次确认 —— MVP 直接写模板，覆盖路径上已有文件的风险由 `exists()` 判定规避（存在就不会进创建流程）。
 
 ## Decision (ADR-lite)
 
-**Context**: 配置文件可能在用户首次安装 Quill 时还不存在（pi 尤其如此）。
+**Context**: 配置文件可能在用户首次安装 Folyn 时还不存在（pi 尤其如此）。
 **Decision**: 点"打开设置文件"先 `exists` 判定；不存在时 inline 提示 + "创建"按钮，创建即写入 adapter 模板并立即打开。
 **Consequences**:
 - 创建按钮把"先跑一次 CLI 让其生成配置"这一步省掉，新机用户上手顺。

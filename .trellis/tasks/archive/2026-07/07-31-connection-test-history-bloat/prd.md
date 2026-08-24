@@ -2,14 +2,14 @@
 
 ## Goal
 
-Stop the model-services "检测连接" flow from accumulating chat history across clicks. Today each click appends a user+assistant turn to `~/.quill/chat-sessions/__connection_test__.json`; after enough clicks the reconstructed history pushes the request past the upstream model's context window (火山引擎 returns 400 `prompt_tokens_too_large` at 1.3M tokens). A connection test is a one-shot ping — it must not carry prior test history.
+Stop the model-services "检测连接" flow from accumulating chat history across clicks. Today each click appends a user+assistant turn to `~/.folyn/chat-sessions/__connection_test__.json`; after enough clicks the reconstructed history pushes the request past the upstream model's context window (火山引擎 returns 400 `prompt_tokens_too_large` at 1.3M tokens). A connection test is a one-shot ping — it must not carry prior test history.
 
 ## What I already know
 
 - `apps/desktop/src/components/settings/model-services/TestChatModal.tsx:107` calls `testChatConnection`.
 - `apps/desktop/src/services/rigChat.ts:118-169` `testChatConnection` calls `runRigChat` with fixed `sessionId: '__connection_test__'` and `prompt: 'ping'`.
 - `apps/desktop/src-tauri/src/chat.rs:232` `chat_stream`:
-  - `load_history` (chat.rs:253) reads `~/.quill/chat-sessions/{session_id}.json` and rebuilds rig `Message` history (user/assistant).
+  - `load_history` (chat.rs:253) reads `~/.folyn/chat-sessions/{session_id}.json` and rebuilds rig `Message` history (user/assistant).
   - streams `prompt_msg + &history` to the upstream provider.
   - `save_history` (chat.rs:518) appends this turn's user+assistant messages back to the same file.
 - `chat_stream` is the same path used by real chat — can't just nuke history handling for everyone.
@@ -56,7 +56,7 @@ if should_save { save_history(&app, &params.session_id, &hist)?; }
 
 ### Decision (ADR-lite)
 
-**Context**: Connection test was rebuilding + extending `~/.quill/chat-sessions/__connection_test__.json` every click → 1.3M tokens 400 from upstream. One-shot ping must not carry history.
+**Context**: Connection test was rebuilding + extending `~/.folyn/chat-sessions/__connection_test__.json` every click → 1.3M tokens 400 from upstream. One-shot ping must not carry history.
 
 **Decision**: Enum `HistoryMode` on `ChatParams`, defaulting to `LoadSave`. `None` mode skips both load and save. Caller `testChatConnection` opts in.
 
@@ -81,7 +81,7 @@ if should_save { save_history(&app, &params.session_id, &hist)?; }
 - [ ] `LoadOnly` mode: loads, skips save.
 - [ ] `SaveOnly` mode: skips load, saves.
 - [ ] `testChatConnection` passes `historyMode: 'none'`.
-- [ ] Unit test in chat.rs: with `history_mode = None`, calling `chat_stream` against a stub provider does not create `~/.quill/chat-sessions/<id>.json`.
+- [ ] Unit test in chat.rs: with `history_mode = None`, calling `chat_stream` against a stub provider does not create `~/.folyn/chat-sessions/<id>.json`.
 - [ ] `rigChat.ts` types updated; existing chat tests still pass.
 
 ## Definition of Done

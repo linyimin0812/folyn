@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a `gemini` CLI adapter to `packages/cli-adapter`, so Quill can drive the
+Add a `gemini` CLI adapter to `packages/cli-adapter`, so Folyn can drive the
 [Gemini CLI](https://github.com/google-gemini/gemini-cli) as a coding-agent
 backend with the same streaming/resume UX as claude/codex/pi/qoder/opencode.
 Wire it into the desktop shell sidecar allowlist, add an icon, and surface it
@@ -92,7 +92,7 @@ translator. Per `research/gemini-cli-shape.md`:
 
 - **Spawn**: `gemini -p <prompt> -o stream-json -y --skip-trust` (resume:
   append `-r <sessionId>`). Sidecar name `gemini-cli`; binary `gemini`.
-  `--skip-trust` is required on every spawn (Quill workingDirs are not
+  `--skip-trust` is required on every spawn (Folyn workingDirs are not
   pre-trusted).
 - **Wire shape** (per line, NDJSON — six `type` values total):
   - `init` → `{type:'session_id', sessionId: event.session_id}` (capture
@@ -143,7 +143,7 @@ fallback. Emit `tool_start` + `tool_end` from two separate events (cleaner
 mapping than opencode's fused event).
 
 **Consequences**:
-- Pro: clean tool-lifecycle mapping (two events → two Quill events, paired
+- Pro: clean tool-lifecycle mapping (two events → two Folyn events, paired
   by `tool_id`).
 - Pro: explicit terminal `result` event gives a more reliable `done` than
   opencode's process-exit heuristic.
@@ -156,7 +156,7 @@ mapping than opencode's fused event).
   first authenticated test and update the translator if any field is off.
 - Con: assistant text delta-streaming (multiple `message` events per turn)
   was not observed live — the translator emits one `text` event per delta;
-  verify the Quill UI appends rather than overwrites on first real run.
+  verify the Folyn UI appends rather than overwrites on first real run.
 
 ## Out of Scope
 

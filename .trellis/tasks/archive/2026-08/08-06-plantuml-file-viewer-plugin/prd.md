@@ -6,7 +6,7 @@
 
 ## What I already know
 
-* `FileTypeHandler` 契约在 `@quill/plugin-sdk/contracts.ts:45`，支持 `supportedViewModes`、`Editor`、`Preview`、`useCodeMirror`。
+* `FileTypeHandler` 契约在 `@folyn/plugin-sdk/contracts.ts:45`，支持 `supportedViewModes`、`Editor`、`Preview`、`useCodeMirror`。
 * Trusted-tier 适配器 `registerPluginFileTypes` 在 `apps/desktop/src/services/plugin-host/contributionAdapters.ts:119`；manifest `contributes.fileTypes[]` 的 `handler` entry-ref 索引 `module.handlers[entryRef]`。
 * Trusted bundle 必须**自包含**：relative imports 在 blob URL 不解析，remote imports 被 CSP 拦截（`trustedLoader.ts:34`）。React + plantuml-encoder 都要打进 bundle。
 * Shell 用 `useCodeMirror` 标志自带 CodeMirror 编辑器（`WorkArea.tsx:260`）—— 插件只需出 Preview 组件。

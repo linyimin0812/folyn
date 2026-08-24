@@ -25,7 +25,7 @@ white boxes that don't match the in-app preview.
 
 drawio's `xmlsvg` export wraps node text in `<foreignObject><div>` with
 inline HTML. When the SVG is injected via `innerHTML` into the file-preview
-body, the foreignObject divs inherit Quill's Tailwind reset + other CSS,
+body, the foreignObject divs inherit Folyn's Tailwind reset + other CSS,
 breaking their layout. The white boxes are drawio's default edge label
 `<rect fill="#ffffff">` (so text is readable over edges) plus possibly a
 page background rect.

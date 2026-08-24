@@ -2,7 +2,7 @@
 
 **What to build:** T2 实现了 per-provider"获取模型"按钮但 model 列表只在内存。T4 把列表持久化到磁盘 + 加全局"重新拉取全部"按钮 + 处理孤儿 model(用户曾选过的 id 不在新 fetch 结果里)。
 
-**`~/.quill/models.json` 单一聚合文件:** 顶层按 provider id 分段:
+**`~/.folyn/models.json` 单一聚合文件:** 顶层按 provider id 分段:
 
 ```json
 {
@@ -12,11 +12,11 @@
 }
 ```
 
-**原子写:** 写到 `~/.quill/models.json.tmp` 后 `rename` 到 `~/.quill/models.json`(POSIX 原子)。per-provider 拉取:读现文件 → 替换对应 provider 段 → 原子写回。全局"重新拉取全部":并发拉所有 configured providers,settled 后一次性原子写回(全文件替换,不是按段写)。
+**原子写:** 写到 `~/.folyn/models.json.tmp` 后 `rename` 到 `~/.folyn/models.json`(POSIX 原子)。per-provider 拉取:读现文件 → 替换对应 provider 段 → 原子写回。全局"重新拉取全部":并发拉所有 configured providers,settled 后一次性原子写回(全文件替换,不是按段写)。
 
 **`modelRegistryStore`(新 zustand store 或 `aiConfigStore` 内 slice — 实现者按现有惯例选):**
 - state: `modelsByProvider: Record<providerId, Model[]>`、`fetchStatus: Record<providerId, 'idle' | 'loading' | 'success' | 'error'>`、`fetchError: Record<providerId, string>`、`lastFetchedAt: Record<providerId, number>`
-- hydrate: app boot 时从 `~/.quill/models.json` 读 + zod 校验 → 填 `modelsByProvider` + `lastFetchedAt`
+- hydrate: app boot 时从 `~/.folyn/models.json` 读 + zod 校验 → 填 `modelsByProvider` + `lastFetchedAt`
 - write-through: per-provider 拉取成功 → 更新内存 state + 写回 JSON 文件段
 - selectors: `modelsForProvider(pid) → Model[]`、`selectedModel() → Model | null`(查 `chatModel` + `chatProvider` 对应段)
 
@@ -37,7 +37,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] `~/.quill/models.json` 单一聚合文件,顶层按 provider id 分段,zod 校验
+- [ ] `~/.folyn/models.json` 单一聚合文件,顶层按 provider id 分段,zod 校验
 - [ ] 原子写:tmp + rename,per-provider 拉取读现文件 → 替换段 → 写回
 - [ ] `modelRegistryStore`(或 `aiConfigStore` slice)存在,持 `modelsByProvider` / `fetchStatus` / `fetchError` / `lastFetchedAt`
 - [ ] app boot 时从 JSON hydrate;fetch 成功后 write-through

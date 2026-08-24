@@ -2,7 +2,7 @@
 
 ## Goal
 
-修复 OfficeFileViewer "forbidden path: ~/quill/..." 错误——`vaultRoot` prop 带字面 `~`，`@tauri-apps/plugin-fs.readFile` 不展开 `~`，路径不匹配 `fs:scope-home-recursive` 被拒。
+修复 OfficeFileViewer "forbidden path: ~/folyn/..." 错误——`vaultRoot` prop 带字面 `~`，`@tauri-apps/plugin-fs.readFile` 不展开 `~`，路径不匹配 `fs:scope-home-recursive` 被拒。
 
 ## What I already know
 

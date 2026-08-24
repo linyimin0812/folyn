@@ -19,7 +19,7 @@ Allow users to set an animated GIF as the desktop pet mascot icon. Currently the
 
 ## Acceptance Criteria
 
-- [ ] In the settings icon picker, a user can select a `.gif` file and it is saved to `~/.quill/pet-icon/pet-icon-<ts>.gif`.
+- [ ] In the settings icon picker, a user can select a `.gif` file and it is saved to `~/.folyn/pet-icon/pet-icon-<ts>.gif`.
 - [ ] The pet window mascot renders the GIF and the animation plays.
 - [ ] A `.gif` larger than 10MB is rejected with the existing `fileTooLarge` error.
 - [ ] Builtin SVG path and existing png/jpg/webp/svg paths still render unchanged.

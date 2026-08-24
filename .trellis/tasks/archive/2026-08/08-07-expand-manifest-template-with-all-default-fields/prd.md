@@ -2,7 +2,7 @@
 
 ## 目标
 
-`packages/create-quill-plugin/template/manifest.json` 列出所有可选字段的默认值，让插件作者打开模板即见完整 surface，按需填充。
+`packages/create-folyn-plugin/template/manifest.json` 列出所有可选字段的默认值，让插件作者打开模板即见完整 surface，按需填充。
 
 ## 范围
 

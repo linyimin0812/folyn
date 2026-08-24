@@ -98,7 +98,7 @@
 ## Out of Scope (explicit)
 
 - rig/chat 模式的 slash 支持
-- quill 侧自维护 skill/command 镜像 registry（明确不做，避免漂移）
+- folyn 侧自维护 skill/command 镜像 registry（明确不做，避免漂移）
 - 内置 session 命令（`/clear` `/help` `/config` 等，`-p` 通道不工作）
 - Pi extension 命令（TS 代码注册，无法静态枚举）
 - 复制 Pi project trust 逻辑（adapter 只读文件，trust 由 Pi 自己管）

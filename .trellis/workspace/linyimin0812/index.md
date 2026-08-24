@@ -101,7 +101,7 @@
 | 130 | 2026-08-07 | AI Panel 输入框加清除上下文/清空消息图标 | `9085962`, `e897d96`, `d90859f` | `master` |
 | 129 | 2026-08-07 | Code-fence autocomplete plugin langs + gitignore dummy folder | `36ea354`, `8d96391` | `master` |
 | 128 | 2026-08-07 | Plugin env capability (theme + locale) + publish plugin-sdk to npm | `f1a8099`, `271c0d7`, `a38f5f4` | `master` |
-| 127 | 2026-08-06 | Plugin SDK refactor: extract @quill/plugin-sdk + 6 contribution points | `42e053d`, `000b313`, `55c9534`, `7425727` | `sharp-mountain` |
+| 127 | 2026-08-06 | Plugin SDK refactor: extract @folyn/plugin-sdk + 6 contribution points | `42e053d`, `000b313`, `55c9534`, `7425727` | `sharp-mountain` |
 | 126 | 2026-08-06 | mmap: trim skeletons + fix xmind export | `ac79c00` | `master` |
 | 125 | 2026-08-06 | mmap fishbone spine and parallel bones | `37ce7a7` | `master` |
 | 124 | 2026-08-05 | Pet menu: connect + clamp + revert to working state | `220670a`, `1831c43`, `cc31584` | `master` |

@@ -2,10 +2,10 @@
 
 ## Goal
 
-Remove the Quill main-window CSP workaround (`https://www.plantuml.com` in `img-src`)
+Remove the Folyn main-window CSP workaround (`https://www.plantuml.com` in `img-src`)
 by making the plantuml plugin fetch its SVG through the host-mediated `http.fetch`
 RPC (which already enforces `permissions.http.origins`). Architecture rule: plugins
-declare the origins they need; the host enforces; Quill source stays untouched.
+declare the origins they need; the host enforces; Folyn source stays untouched.
 
 ## What I already know
 
@@ -17,7 +17,7 @@ declare the origins they need; the host enforces; Quill source stays untouched.
   re-checks `permissions.http.origins` from the on-disk manifest.
 - Plantuml plugin manifest already declares
   `permissions.http.origins: ["https://www.plantuml.com"]`.
-- Plantuml plugin (`/Users/yiminlin/project/quill-plugin-sdk/plantuml-plugin/src/index.ts`)
+- Plantuml plugin (`/Users/yiminlin/project/folyn-plugin-sdk/plantuml-plugin/src/index.ts`)
   currently uses direct remote URLs in 4 places:
   1. `<img src={url}>` in `PlantUmlPreview` (line 95) — main-window CSP-blocked.
   2. `<img src={url}>` in `PlantUmlDiagram` (line 176) — same.
@@ -154,15 +154,15 @@ setSrc(dataUrl);
 ## Decision (ADR-lite)
 
 **Context**: Stopgap CSP whitelist (`af777da`) leaks plugin-declared origins
-into Quill's main-window CSP, which is build-time and shared across all plugins.
-Each new remote-fetching plugin would require a Quill source edit. The plugin
+into Folyn's main-window CSP, which is build-time and shared across all plugins.
+Each new remote-fetching plugin would require a Folyn source edit. The plugin
 manifest already declares `permissions.http.origins`; the host already has a
 manifest-enforcing `plugin_http_fetch` command. The leak exists only because
 the plugin renders via `<img src=remote>` instead of going through that command.
 
 **Decision**: Add `http` to `PluginContext` (parallel to `ai`, `env`). Plugins
 fetch through `ctx.http.fetch`, render as `data:` URL. Main-window CSP reverts;
-Quill source never needs to know which remote origins a plugin uses.
+Folyn source never needs to know which remote origins a plugin uses.
 
 **Consequences**: One new SDK type (`PluginHttpCapability`) + one new host
 builder (`httpCapability.ts`) + a small plantuml plugin refactor. Future

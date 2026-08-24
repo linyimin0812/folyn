@@ -15,12 +15,12 @@
 
 ## Requirements
 
-1. **删孤儿 session 文件**：`/Users/yiminlin/.quill/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json`（studyTopic: agent开发学习，topic 文件已不存在）。同时清掉 editor_openTabs 里的 stale `agent开发学习.md` 条目。
+1. **删孤儿 session 文件**：`/Users/yiminlin/.folyn/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json`（studyTopic: agent开发学习，topic 文件已不存在）。同时清掉 editor_openTabs 里的 stale `agent开发学习.md` 条目。
 2. **`deleteTopic` 同步删 session**：`studyStore.deleteTopic(slug)` 调用 `aiStore.deleteSession` 删该 slug 的 study session（通过 `getStudySessionId(slug)` 拿 id，再 `deleteSession(id)`）。避免未来产生孤儿 session。
 
 ## Acceptance Criteria
 
-- [ ] 删除 `/Users/yiminlin/.quill/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json`
+- [ ] 删除 `/Users/yiminlin/.folyn/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json`
 - [ ] `editor_openTabs_ms97cswahwoyn.json` 不再含 `agent开发学习.md`
 - [ ] `studyStore.deleteTopic` 调 `aiStore.deleteSession` 清理 study session
 - [ ] 用户重启 app + 打开 `agent开发` topic + 点 Reflexion SQ3R → 弹窗显示 `**大纲**` + `**预读问题**` markdown 文本
@@ -41,7 +41,7 @@
 ### 操作修复
 
 ```bash
-rm /Users/yiminlin/.quill/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json
+rm /Users/yiminlin/.folyn/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json
 # editor_openTabs_ms97cswahwoyn.json 移除 agent开发学习.md 条目
 ```
 
@@ -76,6 +76,6 @@ deleteTopic: async (slug) => {
 ## Technical Notes
 
 - 关键文件：`apps/desktop/src/store/studyStore.ts:309`、`apps/desktop/src/store/aiStore.ts:233`、`apps/desktop/src/store/aiStore.ts:200`（getStudySessionId）。
-- 孤儿 session 文件：`/Users/yiminlin/.quill/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json`
-- stale tab 文件：`/Users/yiminlin/.quill/storage/editor_openTabs_ms97cswahwoyn.json`
+- 孤儿 session 文件：`/Users/yiminlin/.folyn/vaults/ms97cswahwoyn/1787098496606-4z1dfi.json`
+- stale tab 文件：`/Users/yiminlin/.folyn/storage/editor_openTabs_ms97cswahwoyn.json`
 - spec: `state-management.md`（store 间联动）、`quality-guidelines.md`（错误处理）

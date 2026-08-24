@@ -59,7 +59,7 @@
 
 ### Summary
 
-Added a desktop pet mode to Quill: a transparent always-on-top Tauri window with an ink-drop + quill-tip SVG mascot (4 CSS/SVG states: idle/hover/drag/click). Single-click focuses the main window; right-click opens a native popup context menu (Show Main Window / New Note / Toggle AI Panel / Disable Pet Mode). Toggle via View-menu checkable item (Cmd+Shift+P) with bidirectional checkmark sync. Position persisted to settingsStore and restored on launch. Click-through on transparent regions via setIgnoreCursorEvents polling. Auto-hide when the main window is fullscreen. CloseRequested hides main instead of quitting while pet visible. Captured reusable patterns in a new spec (tauri-window-patterns.md: ACL permission contract, native popup menu, close-to-tray, click-through). Merged to master and pushed to origin.
+Added a desktop pet mode to Folyn: a transparent always-on-top Tauri window with an ink-drop + folyn-tip SVG mascot (4 CSS/SVG states: idle/hover/drag/click). Single-click focuses the main window; right-click opens a native popup context menu (Show Main Window / New Note / Toggle AI Panel / Disable Pet Mode). Toggle via View-menu checkable item (Cmd+Shift+P) with bidirectional checkmark sync. Position persisted to settingsStore and restored on launch. Click-through on transparent regions via setIgnoreCursorEvents polling. Auto-hide when the main window is fullscreen. CloseRequested hides main instead of quitting while pet visible. Captured reusable patterns in a new spec (tauri-window-patterns.md: ACL permission contract, native popup menu, close-to-tray, click-through). Merged to master and pushed to origin.
 
 ### Main Changes
 

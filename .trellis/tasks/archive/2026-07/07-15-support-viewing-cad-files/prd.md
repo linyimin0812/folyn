@@ -2,7 +2,7 @@
 
 ## Goal
 
-在 Quill 桌面端增加 CAD 文件查看能力，复用现有 file-type handler 模式（参考 drawio/office/json）。
+在 Folyn 桌面端增加 CAD 文件查看能力，复用现有 file-type handler 模式（参考 drawio/office/json）。
 
 ## What I already know
 

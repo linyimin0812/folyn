@@ -2,7 +2,7 @@
 
 ## Goal
 
-把 quill 现有 AI 能力（rigChat 多轮对话 + featureAgentService 的 feature agent）作为宿主能力暴露给插件使用，统一 chokepoint、声明式权限、可审计。
+把 folyn 现有 AI 能力（rigChat 多轮对话 + featureAgentService 的 feature agent）作为宿主能力暴露给插件使用，统一 chokepoint、声明式权限、可审计。
 
 ## What I already know
 
@@ -78,7 +78,7 @@
 - 暴露 apiKey 给插件。
 - usage/audit store + Settings 面板。
 - 跨插件 AI 会话共享 / 队列调度。
-- 新建 `@quill/plugin-ai-sdk` 包。
+- 新建 `@folyn/plugin-ai-sdk` 包。
 
 ## Technical Notes
 
@@ -88,4 +88,4 @@
   - `apps/desktop/src/services/plugin-host/trustedLoader.ts`（trusted ctx 装配）
   - `apps/desktop/src/services/rigChat.ts` / `featureAgentService.ts`（复用 chokepoint）
 - 约束：sandbox iframe 跨 origin 只能 postMessage；trusted blob URL 不能解析相对 import。
-- `CliStreamEvent` 类型来自 `@quill/cli-adapter`，`onEvent` 签名直接复用。
+- `CliStreamEvent` 类型来自 `@folyn/cli-adapter`，`onEvent` 签名直接复用。

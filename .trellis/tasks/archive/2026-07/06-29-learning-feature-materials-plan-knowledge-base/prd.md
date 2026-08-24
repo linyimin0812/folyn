@@ -2,12 +2,12 @@
 
 ## Goal
 
-用户输入一个学习主题（如 "agent 开发"），Quill 帮他完成完整的学习闭环：
+用户输入一个学习主题（如 "agent 开发"），Folyn 帮他完成完整的学习闭环：
 1. **找学习资料** —— 检索网络资料 + 经典书籍/论文
 2. **做学习计划** —— 把主题拆成有序的学习单元，落到可追踪的任务/日程
 3. **建设个人知识库** —— 把学习过程中的笔记、要点、资料沉淀为 vault 里的结构化文档
 
-让 Quill 从"编辑器"升级为"学习工作站"，复用已有的 AI 助手 / Vault / Schedule 能力。
+让 Folyn 从"编辑器"升级为"学习工作站"，复用已有的 AI 助手 / Vault / Schedule 能力。
 
 ## What I already know
 
@@ -17,7 +17,7 @@
 * 示例主题：agent 开发
 
 来自代码库调研：
-* Quill = Tauri 2 + React 18 + CodeMirror 6 的本地优先 Markdown 编辑器，pnpm monorepo
+* Folyn = Tauri 2 + React 18 + CodeMirror 6 的本地优先 Markdown 编辑器，pnpm monorepo
 * **AI 助手**（`apps/desktop/src/components/ai/`）已有：`AiPanel`、`aiStore`、`cli-adapter`（Claude 适配器）、`DeepResearchDialog`（深度研究）、`IngestDialog`（资料摄取）、`WikiToolbar` / `WikiActivityLog`（已有 wiki 概念雏形）
 * **Vault 系统**（`apps/desktop/src/store/vaultStore.ts` + `packages/vault-provider/`）：本地优先文档管理，多后端（local/github/webdav/s3）。天然承载"个人知识库"
 * **Schedule 工作台**（`apps/desktop/src/schedule/` + `components/schedule/`）：daily note 里 `## 日程`（`- @event`）和 `## 任务`（`- [ ] @{col:.. cat:.. prio:.. due:..}`）格式，markdown 驱动。天然承载"学习计划"
@@ -65,7 +65,7 @@
 - **Desirable Difficulties**：作为设计原则（偏好主动检索/费曼/交错复习，不做"重读资料"按钮），不产代码。
 - 三个 AI 动作统一走"打开 AI 面板 + 预填带上下文提示词"模式（`ContextMenu.tsx:139-140` 的 `addFileToChat` + `showAiPanel`），无新调用链。
 
-**Decision 7（AI 直接编辑文档 · PR5）**: 改 4 个 AI 动作（学习研究/费曼/自测/SQ3R）的提示词，让 AI 用 Edit 工具**直接编辑主题 .md 文件**的对应段（资料/笔记/复习），而非仅在聊天产出供粘贴。复用 Quill 已有的 AI 文件编辑+diff 审阅基础设施（`FileChange`/`aiFileChangeActions`/`DiffView`/`ReviewItemList`/`aiStore.enterDiffReview`）——用户在 DiffView 审阅 diff 后应用，应用后 studyStore 经 `subscribeToFileTree` 自动 refresh。零新基础设施。
+**Decision 7（AI 直接编辑文档 · PR5）**: 改 4 个 AI 动作（学习研究/费曼/自测/SQ3R）的提示词，让 AI 用 Edit 工具**直接编辑主题 .md 文件**的对应段（资料/笔记/复习），而非仅在聊天产出供粘贴。复用 Folyn 已有的 AI 文件编辑+diff 审阅基础设施（`FileChange`/`aiFileChangeActions`/`DiffView`/`ReviewItemList`/`aiStore.enterDiffReview`）——用户在 DiffView 审阅 diff 后应用，应用后 studyStore 经 `subscribeToFileTree` 自动 refresh。零新基础设施。
 
 **Decision 8（UI 重设计 · PR6）**: 重新设计四区布局：资料卡片化、计划带进度可视化、复习原子带状态徽章、统一空态与图标、间距排版对齐 schedule 工作台质感。沿用 `sw-` 设计 token 与 Tailwind。
 
@@ -80,7 +80,7 @@
 
 ## Research References
 
-* [`research/learning-methods.md`](research/learning-methods.md) — 9 种学习法→工具参考→Quill markdown 嵌入→MVP-fit 评级表 + 可实现 SM-2 规格 + 段落写回/复用点(file:line)
+* [`research/learning-methods.md`](research/learning-methods.md) — 9 种学习法→工具参考→Folyn markdown 嵌入→MVP-fit 评级表 + 可实现 SM-2 规格 + 段落写回/复用点(file:line)
 
 ## Acceptance Criteria (evolving)
 

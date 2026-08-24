@@ -1,6 +1,6 @@
 # Research: opencode CLI Wire Shape
 
-- **Query**: opencode CLI surface for a Quill `opencodeAdapter.ts` — binary, streaming flags, resume, JSONL event shapes, permissions, stdin, config, auth, subcommands
+- **Query**: opencode CLI surface for a Folyn `opencodeAdapter.ts` — binary, streaming flags, resume, JSONL event shapes, permissions, stdin, config, auth, subcommands
 - **Scope**: mixed (local binary inspection + `--help` capture + real `run --format json` traces); no online docs consulted (see Caveats)
 - **Date**: 2026-08-20
 
@@ -228,7 +228,7 @@ opencode db                  database tools
 - **No `skills` subcommand.** opencode does not have a claude-style `/skills` surface.
 - **`opencode plugin <module>`** (alias `plug`) — installs an npm plugin module and updates config. Flags: `-g, --global` (install in global config), `-f, --force` (replace existing). This is the closest analog to a skills/commands surface — but it's a plugin **installer**, not a runtime list/dispatcher. Out of scope for the MVP adapter (matches the qoder precedent: `qodercli plugins` exists but is not wired).
 - **`opencode agent`** — `agent create` / `agent list`. Agents are configured personas (system prompts); not a runtime skills surface either.
-- **`opencode mcp`** — MCP server management. Relevant if Quill later wants to share its MCP graph with opencode; out of scope for MVP.
+- **`opencode mcp`** — MCP server management. Relevant if Folyn later wants to share its MCP graph with opencode; out of scope for MVP.
 
 For the adapter: inherit `BaseCliAdapter`'s `listSkills/listCommands → []` default, matching qoder. Plugins/agents/MCP are out of scope per the PRD.
 
@@ -261,5 +261,5 @@ Model on `qoderAdapter.ts` (one-shot spawn per send), but write a **fresh** `tra
 - Local config: `/Users/yiminlin/.config/opencode/opencode.jsonc`, `/Users/yiminlin/.config/opencode/package.json`
 - Local state: `/Users/yiminlin/.local/share/opencode/opencode.db`, `/Users/yiminlin/.local/share/opencode/auth.json`
 - Captured traces: `opencode run --format json --auto` runs in `/tmp` and `/tmp/octest` (text-only + tool-use + resume)
-- Repo reference template (one-shot spawn): `/Users/yiminlin/project/quill/packages/cli-adapter/src/qoderAdapter.ts`
-- Repo reference template (one-shot spawn, codex): `/Users/yiminlin/project/quill/packages/cli-adapter/src/codexAdapter.ts`
+- Repo reference template (one-shot spawn): `/Users/yiminlin/project/folyn/packages/cli-adapter/src/qoderAdapter.ts`
+- Repo reference template (one-shot spawn, codex): `/Users/yiminlin/project/folyn/packages/cli-adapter/src/codexAdapter.ts`

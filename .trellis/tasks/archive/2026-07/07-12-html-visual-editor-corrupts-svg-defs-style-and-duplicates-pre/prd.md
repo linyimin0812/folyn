@@ -6,7 +6,7 @@ Fix GrapesJS round-trip corruption that strikes when a user opens an `.html` fil
 
 ## What I already know
 
-### Symptoms (observed in `~/quill/default_vault/state-dataflow.html`)
+### Symptoms (observed in `~/folyn/default_vault/state-dataflow.html`)
 
 1. **SVG renders black in visual editor** — every `<rect class="hook">` / `<rect class="fn">` loses its `fill:#eff6ff` / `fill:#faf5ff` rule and falls back to SVG's default black fill.
 2. **Source file auto-changes** the moment the user switches to visual editor:
@@ -99,7 +99,7 @@ Fix GrapesJS round-trip corruption that strikes when a user opens an `.html` fil
 **Context**: Discovered after Bugs 1+2 were fixed and the user reported visual editor still mismatched preview. GrapesJS's CSS parser silently drops `var()` from shorthand declarations — e.g. `body { background: var(--bg); }` becomes a body rule with NO background declaration. Only longhand-with-var (like `color: var(--ink)`) survives. The browser's native CSS parser handles var() in shorthands correctly.
 
 **Decision**: Bypass GrapesJS's CssComposer for both rendering and serialization:
-- `injectInlineStyles` (new) — appends user's `styleBlocks` verbatim as a `<style data-quill="inline-styles">` tag in the canvas iframe head, AFTER GrapesJS's CSS. Browser parses correctly.
+- `injectInlineStyles` (new) — appends user's `styleBlocks` verbatim as a `<style data-folyn="inline-styles">` tag in the canvas iframe head, AFTER GrapesJS's CSS. Browser parses correctly.
 - `reconstructHtml` serializes CSS from `parsed.styleBlocks` (original) instead of `editor.getCss()` (broken).
 
 **Consequences**:

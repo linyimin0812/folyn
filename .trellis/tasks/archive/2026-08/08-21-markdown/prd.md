@@ -78,4 +78,4 @@
   - `MarkdownPreview.tsx:236-350` `CodeBlockWrapper` 写回参考
   - `apps/desktop/src/index.css:530` `.md-preview img`
 - 已在 pipeline:`remarkDirective` / `remarkRehype` / `rehypeRaw` / `rehypeSourceLine` / `rehypeReact`
-- 依赖外部渲染器:`MermaidBlock` / `PlantUmlBlock` / `GraphvizBlock`(@quill/container-plugins),不改它们,只在 MarkdownPreview 调用点外包
+- 依赖外部渲染器:`MermaidBlock` / `PlantUmlBlock` / `GraphvizBlock`(@folyn/container-plugins),不改它们,只在 MarkdownPreview 调用点外包

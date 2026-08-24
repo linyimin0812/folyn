@@ -13,7 +13,7 @@
 
 - 逐个 dep：`grep -r "from '<pkg>'\|from \"<pkg>\""` 在 `apps/desktop/src` + 各 workspace src，并 `pnpm why <pkg>` 判断是否被其它依赖引用。
 - 仅移除：零直接 import 且 `pnpm why` 显示无依赖者引用的包。
-- 不移除：被其它 dep 作为 peer/依赖引用的、workspace 包（`@quill/*`）、构建/测试必需（vitest/typescript/happy-dom or jsdom 其一）。
+- 不移除：被其它 dep 作为 peer/依赖引用的、workspace 包（`@folyn/*`）、构建/测试必需（vitest/typescript/happy-dom or jsdom 其一）。
 - 每移除一个后 `pnpm install` 更新 lock，最后统一 tsc + vitest + vite build 验证。
 - happy-dom 与 jsdom：查 vitest config/environment 用哪个，移除另一个。
 

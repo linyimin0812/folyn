@@ -2,16 +2,16 @@
 
 ## Goal
 
-全量接入 `@file-viewer` 的 `preset-office`，让 Quill 离线预览 Word/Excel(含 csv)/PowerPoint/OFD 等 Office 文档；放弃 Quill 自建 CSV 预览，CSV 改由 file-viewer 的 spreadsheet renderer 承接。PDF 保留 Quill 现有 PdfViewer。
+全量接入 `@file-viewer` 的 `preset-office`，让 Folyn 离线预览 Word/Excel(含 csv)/PowerPoint/OFD 等 Office 文档；放弃 Folyn 自建 CSV 预览，CSV 改由 file-viewer 的 spreadsheet renderer 承接。PDF 保留 Folyn 现有 PdfViewer。
 
 ## What I already know
 
 - `@file-viewer/react`（React 18/19 原生组件）+ `@file-viewer/preset-office`（PDF/Word/Excel/PPT/OFD/RTF/OD）+ `@file-viewer/vite-plugin`（Vite 自动发现 preset + 复制 Worker/WASM/字体资产）。Apache-2.0。
 - API：`<FileViewer file={File} url={string} options={{preset}} />`，`file` 推荐包装成带扩展名的 `File`。
 - 离线：Worker/WASM/字体自托管，`copyAssets:true` 复制；非 Vite 用 `options.preset`，Vite 用插件自动发现。
-- Quill file-type registry：`import.meta.glob('./*/index.ts')` 自动加载 handler；`PreviewProps = {content, filePath, vaultRoot}`；`needsFileContent:false` 模式已有（pdf/image）。
+- Folyn file-type registry：`import.meta.glob('./*/index.ts')` 自动加载 handler；`PreviewProps = {content, filePath, vaultRoot}`；`needsFileContent:false` 模式已有（pdf/image）。
 - Tauri FS：`@tauri-apps/plugin-fs.readFile(path): Promise<Uint8Array>`（二进制）。`vaultRoot` + `filePath` 拼绝对路径。
-- vite.config.ts：`base: isTauri ? '/' : '/quill'`，Tauri 用 `/`。CSP `null`（不挡 worker/WASM）。
+- vite.config.ts：`base: isTauri ? '/' : '/folyn'`，Tauri 用 `/`。CSP `null`（不挡 worker/WASM）。
 - csv 自建产物仅 csv handler 自用：`components/file-types/csv/{index.ts,CsvTablePreview.tsx,CsvTablePreview.test.tsx}` + `utils/csvParse.ts` + `utils/csvParse.test.ts`。`csv` icon 映射（FileIcon 两表）保留（.csv 文件树图标）。
 
 ## Requirements

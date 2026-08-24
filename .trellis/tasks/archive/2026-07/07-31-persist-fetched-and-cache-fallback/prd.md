@@ -3,7 +3,7 @@
 ## Goal
 
 「获取模型」按钮（`ModelServicesSettings` / `ModelPickerModal` refresh）目前拉取的 `Model[]` 只存内存 store。用户要：
-1. 拉取成功 → 把数据写入 `~/.quill/providers/{providerId}/models.json`（落盘缓存）
+1. 拉取成功 → 把数据写入 `~/.folyn/providers/{providerId}/models.json`（落盘缓存）
 2. 拉取失败 → 读 `{providerId}/models.json` 兜底回填 store，并提示用户"拉取失败，使用缓存数据"
 
 ## What I already know
@@ -29,7 +29,7 @@
 
 ## Acceptance Criteria (evolving)
 
-- [ ] 拉取成功 → `~/.quill/providers/{pid}/models.json` 存在，内容是 `Model[]` JSON
+- [ ] 拉取成功 → `~/.folyn/providers/{pid}/models.json` 存在，内容是 `Model[]` JSON
 - [ ] 拉取失败 + 缓存文件存在 → store 仍能展示模型列表，UI 显示"拉取失败，使用缓存数据"提示
 - [ ] 拉取失败 + 无缓存 → 仍按现有行为报错（空列表 + fetchError）
 - [ ] `pnpm typecheck` 全绿

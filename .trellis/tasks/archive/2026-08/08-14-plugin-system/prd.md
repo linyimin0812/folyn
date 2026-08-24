@@ -22,7 +22,7 @@ at the plugin→host chokepoints, not a per-surface patch.
 | Tool windows | Separate Tauri `WebviewWindow` — crash confined to that window |
 | Exporters | `exporterAdapter.ts:82` try/catch around `handler(content, ctx)` |
 | Trusted command dispatch | `commandRegistry.runCommand` swallows+logs errors (`commandRegistry.ts:98`) |
-| Sandbox tier | Plugin runs in sandboxed iframe (`quill-plugin://` origin) — isolated by construction |
+| Sandbox tier | Plugin runs in sandboxed iframe (`folyn-plugin://` origin) — isolated by construction |
 
 ### Gaps (the white-screen risk)
 

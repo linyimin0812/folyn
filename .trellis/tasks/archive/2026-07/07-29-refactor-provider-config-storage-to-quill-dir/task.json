@@ -1,7 +1,7 @@
 {
-  "id": "refactor-provider-config-storage-to-quill-dir",
-  "name": "refactor-provider-config-storage-to-quill-dir",
-  "title": "refactor-provider-config-storage-to-quill-dir",
+  "id": "refactor-provider-config-storage-to-folyn-dir",
+  "name": "refactor-provider-config-storage-to-folyn-dir",
+  "title": "refactor-provider-config-storage-to-folyn-dir",
   "description": "",
   "status": "completed",
   "dev_type": null,

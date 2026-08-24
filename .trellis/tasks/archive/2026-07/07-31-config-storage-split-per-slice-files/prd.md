@@ -3,7 +3,7 @@
 ## Goal
 
 Stop writing all persisted settings as one flat blob inside a single
-`storage.json`. Write one file per registered slice under `~/.quill/storage/`.
+`storage.json`. Write one file per registered slice under `~/.folyn/storage/`.
 Existing `storage.json` (in appDataDir) is abandoned in place — no migration,
 user accepts pref reset on first load with new code.
 
@@ -19,7 +19,7 @@ user accepts pref reset on first load with new code.
   the single blob, dispatches to each slice's `hydrate`, then re-emits.
 - 10 slices registered: prefs, editorPrefs, appearance, vaultConfig, sync,
   pet, schedule, voice, modelRegistry, aiConfig.
-- Provider configs already live as per-file storage at `~/.quill/providers/*.json`
+- Provider configs already live as per-file storage at `~/.folyn/providers/*.json`
   via `aiConfigStore.loadFromDisk()` — precedent for user-level per-file storage.
 - Secondary Tauri windows (pet-bubble / pet-corner / pet-panel) listen on
   `pet://settings-updated` and hydrate from the payload — they lack fs-plugin
@@ -28,7 +28,7 @@ user accepts pref reset on first load with new code.
 ## Requirements
 
 - `storageClient` writes each key to its own file at
-  `~/.quill/storage/<key>.json`. No more shared `storage.json`.
+  `~/.folyn/storage/<key>.json`. No more shared `storage.json`.
 - Per-key in-memory cache; per-flush dirty set; same 300ms debounce; same
   single-writer contract.
 - `registerPersistSlice` gains a `name: string` field (slice identifier used
@@ -44,7 +44,7 @@ user accepts pref reset on first load with new code.
 
 ## Acceptance Criteria
 
-- [ ] New directory `~/.quill/storage/` created on first write.
+- [ ] New directory `~/.folyn/storage/` created on first write.
 - [ ] Each slice writes a separate file (`prefs.json`, `editorPrefs.json`,
       `appearance.json`, `vault.json`, `sync.json`, `pet.json`,
       `schedule.json`, `voice.json`, `modelRegistry.json`, `aiConfig.json`).
@@ -74,7 +74,7 @@ storageClient.set(key, data):
 
 flushImpl():
   for key in dirty:
-    writeTextFile(`~/.quill/storage/${key}.json`, JSON.stringify(cache[key]))
+    writeTextFile(`~/.folyn/storage/${key}.json`, JSON.stringify(cache[key]))
   dirty.clear()
 
 debouncedPersist():
@@ -98,7 +98,7 @@ loadSettings():
 **Context**: Single-file `storage.json` mixes 10 unrelated stores; any
 corruption or partial-write risks all prefs; human inspection is opaque.
 
-**Decision**: Per-slice files at `~/.quill/storage/<name>.json`, no migration,
+**Decision**: Per-slice files at `~/.folyn/storage/<name>.json`, no migration,
 no shared `storage.json`. Whole-blob `pet://settings-updated` emit preserved.
 
 **Consequences**: First launch after upgrade resets all prefs (accepted).
@@ -114,8 +114,8 @@ big write) — negligible at 300ms debounce cadence.
 
 ## Technical Notes
 
-- Path: use `@tauri-apps/api/path` `homeDir()` + `'.quill/storage'` (matches
-  providers' `~/.quill/providers/` convention). Verify the exact call used by
+- Path: use `@tauri-apps/api/path` `homeDir()` + `'.folyn/storage'` (matches
+  providers' `~/.folyn/providers/` convention). Verify the exact call used by
   `aiConfigStore.loadFromDisk()` and reuse the same path helper.
 - `persistSlice.name` must be a valid filename stem (no slashes, no `.json`
   suffix — storageClient adds it).

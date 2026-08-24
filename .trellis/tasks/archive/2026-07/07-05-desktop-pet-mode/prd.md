@@ -2,13 +2,13 @@
 
 ## Goal
 
-Add a "desktop pet" mode to Quill: a small icon (the pet) that lives persistently on the user's
-desktop. Clicking the pet icon lets the user operate Quill (e.g. summon the main window, trigger
+Add a "desktop pet" mode to Folyn: a small icon (the pet) that lives persistently on the user's
+desktop. Clicking the pet icon lets the user operate Folyn (e.g. summon the main window, trigger
 quick actions) without keeping the full editor window open.
 
 ## What I already know
 
-* Quill is a **Tauri v2** desktop app (local-first Markdown editor), single main window defined in
+* Folyn is a **Tauri v2** desktop app (local-first Markdown editor), single main window defined in
   `apps/desktop/src-tauri/tauri.conf.json` (label `main`, 1440x900, resizable).
 * Rust entry: `apps/desktop/src-tauri/src/lib.rs` — `tauri::Builder` setup, menu built in `setup`.
   No system tray / tray icon exists today.
@@ -32,7 +32,7 @@ quick actions) without keeping the full editor window open.
     checkmark sync. Default off.
   * Smoke test: toggle shows/hides an empty transparent window.
 * **PR2 — Mascot component + states (frontend)**
-  * `PetApp` React component (SVG ink-drop + quill, CSS keyframes for idle/hover/drag/click).
+  * `PetApp` React component (SVG ink-drop + folyn, CSS keyframes for idle/hover/drag/click).
   * Drag-to-move via `startDragging` on the window; context menu component.
   * Unit tests for state machine + menu actions dispatch.
 * **PR3 — Interaction wiring + position persistence**
@@ -48,10 +48,10 @@ quick actions) without keeping the full editor window open.
   right-click (or long-press) = quick-action context menu. (chosen 2026-07-05)
 * **D2 (visual)**: full multi-state animated pet — idle / drag / hover / click-feedback states
   (and possibly walk/edge-snap). NOT a static icon. (chosen 2026-07-05)
-* **D3 (animation asset)**: CSS/SVG self-drawn Quill mascot — no external art assets, vector,
+* **D3 (animation asset)**: CSS/SVG self-drawn Folyn mascot — no external art assets, vector,
   themeable, fits editor aesthetic; states switched via CSS. (chosen 2026-07-05)
-* **D4 (mascot + MVP states)**: mascot = ink-drop sprite with a quill-pen tip (echoes product
-  name "Quill"). MVP animation states: `idle` (breathing/floating), `hover` (looks up/reacts),
+* **D4 (mascot + MVP states)**: mascot = ink-drop sprite with a folyn-pen tip (echoes product
+  name "Folyn"). MVP animation states: `idle` (breathing/floating), `hover` (looks up/reacts),
   `drag` (wobbles while dragged), `click` (squish/pop feedback). Walking/sleep/summon deferred
   to later iteration. (chosen 2026-07-05)
 * **D5 (main window coexistence)**: coexist — pet is a persistent entry point; main window
@@ -60,7 +60,7 @@ quick actions) without keeping the full editor window open.
 * **D6 (platform scope)**: macOS only for MVP. Transparent + always-on-top + skipTaskbar is most
   stable on macOS; Windows/Linux deferred. (chosen 2026-07-05)
 * **D7 (toggle entry)**: app menu bar item — add a checkable "Desktop Pet Mode" entry to the
-  existing macOS menu (View or Quill submenu), with optional keyboard shortcut. Tray icon is
+  existing macOS menu (View or Folyn submenu), with optional keyboard shortcut. Tray icon is
   NOT used (semantics differ from a desktop pet). (chosen 2026-07-05)
 * **D8 (right-click menu, MVP)**: items = [Show Main Window] [New Note] [Toggle AI Panel]
   [sep] [Disable Pet Mode]. All map to existing features. (chosen 2026-07-05)
@@ -88,10 +88,10 @@ quick actions) without keeping the full editor window open.
 * A second Tauri window (label `pet`) with: `decorations:false`, `transparent:true`,
   `alwaysOnTop:true`, `skipTaskbar:true`, `resizable:false`, small size (~120x120), no shadow.
 * Does NOT appear in Dock as a normal window; does not steal focus on creation.
-* Renders a CSS/SVG ink-drop + quill-tip mascot.
+* Renders a CSS/SVG ink-drop + folyn-tip mascot.
 
 ### R2. Mascot + animation states (CSS/SVG)
-* Mascot = ink-drop body with a quill-pen tip, echoing the "Quill" name.
+* Mascot = ink-drop body with a folyn-pen tip, echoing the "Folyn" name.
 * MVP states: `idle` (breathing/floating), `hover` (looks up/reacts on mouse enter),
   `drag` (wobbles while being dragged), `click` (squish/pop feedback on click).
 * State transitions driven by frontend mouse events; CSS keyframes for motion.
@@ -128,10 +128,10 @@ quick actions) without keeping the full editor window open.
 
 * [ ] AC1: Enabling "Desktop Pet Mode" from the menu shows a small transparent always-on-top
   mascot window on the desktop; the menu item shows a checkmark.
-* [ ] AC2: The mascot renders the ink-drop+quill sprite and plays the `idle` animation.
+* [ ] AC2: The mascot renders the ink-drop+folyn sprite and plays the `idle` animation.
 * [ ] AC3: Hovering the mascot switches to `hover`; dragging it switches to `drag` and moves
   the window; clicking switches to `click` feedback.
-* [ ] AC4: Single-clicking the mascot focuses (or re-shows) the main Quill editor window.
+* [ ] AC4: Single-clicking the mascot focuses (or re-shows) the main Folyn editor window.
 * [ ] AC5: Right-clicking the mascot opens the context menu; each item performs its action
   (Show Main Window / New Note / Toggle AI Panel / Disable Pet Mode).
 * [ ] AC6: Disabling "Desktop Pet Mode" hides the pet window; menu checkmark clears; re-enabling
@@ -140,7 +140,7 @@ quick actions) without keeping the full editor window open.
 * [ ] AC8: Clicking on transparent parts of the pet window passes through to the desktop.
 * [ ] AC9: With an app in macOS fullscreen, the pet is hidden; it returns after leaving
   fullscreen.
-* [ ] AC10: Quitting Quill closes the pet window cleanly (no orphan process / stray window).
+* [ ] AC10: Quitting Folyn closes the pet window cleanly (no orphan process / stray window).
   * **R8 manual verification (close-doesn't-quit-while-pet-on)**: a Rust unit test for the
     `CloseRequested` handler is impractical (it would require mocking the Tauri window runtime).
     The behavior is implemented in `lib.rs` `on_window_event` for the `main` window: when the pet

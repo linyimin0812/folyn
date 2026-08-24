@@ -2,7 +2,7 @@
   "id": "grapesjs-migration",
   "name": "grapesjs-migration",
   "title": "HTML Visual Editor GrapesJS Migration",
-  "description": "Replace self-built iframe-bridge HTML visual editor with GrapesJS. Plan ref: ~/quill/default_vault/graceful-drifting-rabbit.md",
+  "description": "Replace self-built iframe-bridge HTML visual editor with GrapesJS. Plan ref: ~/folyn/default_vault/graceful-drifting-rabbit.md",
   "status": "completed",
   "dev_type": null,
   "scope": null,

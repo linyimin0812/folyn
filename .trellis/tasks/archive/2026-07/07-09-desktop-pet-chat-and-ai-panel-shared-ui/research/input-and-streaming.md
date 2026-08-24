@@ -65,11 +65,11 @@
 
 - **Prompt building** (L262-291):
   - Start: `prompt = userText`.
-  - Blob attachments saved first to `${workingDir}/.quill-tmp/img-<ts>-<rand>.<ext>` via base64-decode through `claude-cli` shell command (L224-260). Path-attachments pass through unchanged.
+  - Blob attachments saved first to `${workingDir}/.folyn-tmp/img-<ts>-<rand>.<ext>` via base64-decode through `claude-cli` shell command (L224-260). Path-attachments pass through unchanged.
   - If image attachments exist: prepend `请先使用 Read 工具读取以下图片文件:\n<paths>`.
   - If file attachments exist: prepend `请先使用 Read 工具读取以下文件:\n<paths>`.
   - Then @file mentions: regex `/@([\w\-./一-鿿]+)/g` matched against `allFiles` (flattenFileTree of vault). If matches: prepend `请先使用 Read 工具读取以下文件:\n<paths>` then `\n\n用户消息: <prompt>`.
-- **Blob save location**: `<vault>/.quill-tmp/` (NOT appData — vault-grounded). Uses `claude-cli` shell `mkdir -p` + `printf base64 | base64 -D`.
+- **Blob save location**: `<vault>/.folyn-tmp/` (NOT appData — vault-grounded). Uses `claude-cli` shell `mkdir -p` + `printf base64 | base64 -D`.
 - **workingDir** (L214-221): `vault?.basePath ?? ''`, `~` expanded via `homeDir()`.
 - **Adapter start** (L299, L343-348): `getAdapterForSession(sessionId)` — per-session cached adapter in `sessionAdapters` Map. `adapter.start({ cliPath, workingDir })`.
 - **Send options** (L346-348): `resolveSendOptions(inputMode, { resumeSessionId })`. `resumeSessionId = targetSession.cliSessionId ?? undefined` (resume across turns). `resolveSendOptions` merges `permissionMode`/`bare`/`systemPrompt` from the registered mode def (agent=`bypassPermissions`, ask=`plan`).
@@ -179,7 +179,7 @@ interface ChatInputBoxProps {
 Therefore the unified contract is:
 
 - The shared component tree (`ChatInputBox` + the shared message list) only needs:
-  - `messages: CliMessage[]` (from `@quill/cli-adapter` — the shared message type)
+  - `messages: CliMessage[]` (from `@folyn/cli-adapter` — the shared message type)
   - `streaming: boolean`
 - **Stores stay separate.** Each side keeps its own store (`petChatStore` flat-string messages vs `aiStore` rich `CliMessage` sessions) and its own event→message mutation logic:
   - Pet: `petChatService` maps `text/error/done` → `appendToLastMessage`/`setStreaming`.

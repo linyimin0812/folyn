@@ -64,7 +64,7 @@ const scheduleFlush = debounce(flushImpl, FLUSH_DELAY);  // FLUSH_DELAY = 300
 
 ### Recommendation for the new `providerConfigStorage.ts` module
 
-Since the new module lives alongside `userProvidersCatalog.ts` (both under `~/.quill/providers/`) and writes small maps infrequently, the simplest correct pattern is:
+Since the new module lives alongside `userProvidersCatalog.ts` (both under `~/.folyn/providers/`) and writes small maps infrequently, the simplest correct pattern is:
 
 1. Use `getUserProvidersDir()` from `userProvidersCatalog.ts:36-41` to resolve paths.
 2. Write to `<target>.tmp` then `renameFile` to `<target>` (atomic on POSIX).
@@ -84,4 +84,4 @@ Since the new module lives alongside `userProvidersCatalog.ts` (both under `~/.q
 ## Caveats / Not Found
 
 - The `@tauri-apps/plugin-fs` version installed isn't inspected; `renameFile`'s cross-platform semantics (esp. Windows overwrite behavior) need a quick doc check before relying on temp+rename as truly atomic.
-- If atomicity matters for the `~/.quill/providers/{id}/models.json` cache too (currently non-atomic), the same helper could be retro-fit — out of scope for this PRD.
+- If atomicity matters for the `~/.folyn/providers/{id}/models.json` cache too (currently non-atomic), the same helper could be retro-fit — out of scope for this PRD.

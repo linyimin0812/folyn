@@ -35,7 +35,7 @@ Need from user:
 
 - (resolved) Q1: file has the task line (ruled out H1).
 - (resolved) Q2: task never appeared (ruled out H4).
-- (resolved) Root cause = **H3 confirmed**. User's `boardColumns` (`~/.quill/storage/schedule.json`) is customized: only `待处理 (col-mszw4q86-s9q6)` and `已完成 (done)` remain — the default `todo` column was deleted. But `ScheduleWorkbenchPage` onNew callback (line 132) and ⌘N shortcut (line 73) hardcoded `col: 'todo'` in the modal intent. `ScheduleModal`'s `<select>` options come from `boardColumns` (no `todo`), but `value='todo'` doesn't match any option → browser visually renders the first option ("待处理") but state `col` stays `'todo'`. User clicks Create thinking they chose "待处理"; task is written with `col:todo` to the daily note. BoardView filter iterates `boardColumns` (`col-mszw4q86-s9q6`, `done`) — no column id matches `'todo'`, so the task never renders.
+- (resolved) Root cause = **H3 confirmed**. User's `boardColumns` (`~/.folyn/storage/schedule.json`) is customized: only `待处理 (col-mszw4q86-s9q6)` and `已完成 (done)` remain — the default `todo` column was deleted. But `ScheduleWorkbenchPage` onNew callback (line 132) and ⌘N shortcut (line 73) hardcoded `col: 'todo'` in the modal intent. `ScheduleModal`'s `<select>` options come from `boardColumns` (no `todo`), but `value='todo'` doesn't match any option → browser visually renders the first option ("待处理") but state `col` stays `'todo'`. User clicks Create thinking they chose "待处理"; task is written with `col:todo` to the daily note. BoardView filter iterates `boardColumns` (`col-mszw4q86-s9q6`, `done`) — no column id matches `'todo'`, so the task never renders.
 
 ## Requirements
 

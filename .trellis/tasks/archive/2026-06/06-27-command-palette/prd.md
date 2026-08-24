@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a unified command palette (⌘P) to Quill — a single keyboard-driven overlay for
+Add a unified command palette (⌘P) to Folyn — a single keyboard-driven overlay for
 jumping to files, switching panels/modes, and triggering actions (export, theme
 toggle, daily note, new file, …). Today every navigation is a mouse trip to the
 ActivityBar/Topbar/AI tabs; a command palette collapses all of them into one
@@ -59,7 +59,7 @@ keystroke. Pattern is well-established (VS Code Cmd+P / Linear / Raycast).
 
 ## Decision (ADR-lite)
 
-**Context**: Quill has many navigation surfaces (ActivityBar, Topbar, AI tabs, GlobalSearchPanel) each mouse-driven. A unified ⌘P collapses them. Command palette is an established pattern; the open questions are scope, fuzzy match, and default ordering.
+**Context**: Folyn has many navigation surfaces (ActivityBar, Topbar, AI tabs, GlobalSearchPanel) each mouse-driven. A unified ⌘P collapses them. Command palette is an established pattern; the open questions are scope, fuzzy match, and default ordering.
 
 **Decision**:
 - Scope = all three sources (files + panels/modes + actions) in one registry.

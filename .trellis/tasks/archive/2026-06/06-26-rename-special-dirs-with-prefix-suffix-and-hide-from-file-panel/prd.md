@@ -7,15 +7,15 @@ Wrap the four "special" directory names (clips / daily / reports / wiki) with `_
 ## Requirements
 
 * New built-in dir names: `__clips__`, `__daily__`, `__reports__`, `__wiki__`.
-* `WIKI_DIR` constant renamed `'quill-wiki'` → `'__wiki__'`. `WIKI_PREFIX = 'wiki://'` is unchanged (virtual URL scheme, not on-disk).
+* `WIKI_DIR` constant renamed `'folyn-wiki'` → `'__wiki__'`. `WIKI_PREFIX = 'wiki://'` is unchanged (virtual URL scheme, not on-disk).
 * `dailyNotesDir` default becomes `'__daily__'`; the setting stays user-configurable in SettingsPage.
 * All path-prefix checks and dir constructions updated to new names (editorStore, clipStore, clipService, githubAnalysisService).
-* Default `excludePatterns` lists `__wiki__`, `__clips__`, `__reports__`, `__daily__` (replaces old `quill-wiki`, `clips`, `reports`).
+* Default `excludePatterns` lists `__wiki__`, `__clips__`, `__reports__`, `__daily__` (replaces old `folyn-wiki`, `clips`, `reports`).
 * Backfill in `settingsStore` start-up loader:
   * Appends the four new patterns to persisted `excludePatterns` if missing.
   * Rewrites persisted `dailyNotesDir` from `'daily'` → `'__daily__'` (only if it equals the old default `'daily'`).
 * Disk migration on vault activation (in `vaultStore`):
-  * Pairs: `quill-wiki → __wiki__`, `clips → __clips__`, `reports → __reports__`, `daily → __daily__`.
+  * Pairs: `folyn-wiki → __wiki__`, `clips → __clips__`, `reports → __reports__`, `daily → __daily__`.
   * Daily pair only migrates if persisted `dailyNotesDir === 'daily'`.
   * If old exists and new does not → `fs.rename(old, new)`.
   * If both exist → skip + log warning (do not clobber).
@@ -27,12 +27,12 @@ Wrap the four "special" directory names (clips / daily / reports / wiki) with `_
 
 ## Acceptance Criteria
 
-* [ ] `grep -rn "quill-wiki\|'clips/'\|'reports/'\|'daily'" apps/desktop/src` returns no production-code references to old names (test fixtures updated to new names).
+* [ ] `grep -rn "folyn-wiki\|'clips/'\|'reports/'\|'daily'" apps/desktop/src` returns no production-code references to old names (test fixtures updated to new names).
 * [ ] Default `excludePatterns` contains `__wiki__`, `__clips__`, `__reports__`, `__daily__`.
 * [ ] Backfill appends new patterns to an existing persisted `excludePatterns` that lacks them.
 * [ ] Backfill rewrites persisted `dailyNotesDir: 'daily'` → `'__daily__'`.
 * [ ] On vault activation with old dirs on disk, migration renames them; with both old+new present, migration skips and logs.
-* [ ] Open tabs with old `clips/…` / `reports/…` / `quill-wiki/…` paths have their paths rewritten to new prefixes after migration.
+* [ ] Open tabs with old `clips/…` / `reports/…` / `folyn-wiki/…` paths have their paths rewritten to new prefixes after migration.
 * [ ] Wiki / Clips / Analysis / Calendar panels still locate and read their files correctly after migration.
 * [ ] `npx tsc --noEmit` and `npx vitest run` pass in `apps/desktop`.
 
@@ -54,7 +54,7 @@ Wrap the four "special" directory names (clips / daily / reports / wiki) with `_
 * `apps/desktop/src/services/githubAnalysisService.ts:168` — `\`__reports__/${fileName}\``.
 
 ### 2. Default excludePatterns + backfill
-* `apps/desktop/src/store/settingsStore.ts:132` — replace `quill-wiki\nclips\nreports` with `__wiki__\n__clips__\n__reports__\n__daily__`.
+* `apps/desktop/src/store/settingsStore.ts:132` — replace `folyn-wiki\nclips\nreports` with `__wiki__\n__clips__\n__reports__\n__daily__`.
 * `apps/desktop/src/store/settingsStore.ts:245-249` — backfill:
   * If `saved.excludePatterns` lacks `__wiki__` → append the four new patterns.
   * If `saved.dailyNotesDir === 'daily'` → set to `'__daily__'`.
@@ -75,12 +75,12 @@ Wrap the four "special" directory names (clips / daily / reports / wiki) with `_
 
 ### 5. Tests
 * `store/editorStore.test.ts` — update path fixtures (`clips/foo.md` → `__clips__/foo.md`, etc.).
-* `services/wikiQueryService.test.ts` — `${VAULT_BASE}/quill-wiki` → `${VAULT_BASE}/__wiki__`.
+* `services/wikiQueryService.test.ts` — `${VAULT_BASE}/folyn-wiki` → `${VAULT_BASE}/__wiki__`.
 * Add a unit test for `migrateSpecialDirs` (mock Tauri fs) and for `rewriteTabPrefixes`.
 
 ## Decision (ADR-lite)
 
-**Context**: Built-in managed dirs (`quill-wiki`, `clips`, `reports`, `daily`) need to be visually distinguishable from user content and hidden from the file panel. Existing user vaults already have the old names on disk.
+**Context**: Built-in managed dirs (`folyn-wiki`, `clips`, `reports`, `daily`) need to be visually distinguishable from user content and hidden from the file panel. Existing user vaults already have the old names on disk.
 
 **Decision**:
 * Rename to `__name__` form (English short names) for cross-platform safety.

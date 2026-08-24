@@ -7,11 +7,11 @@ Fix the race where `App.tsx` `initializeVault` calls `initVault()` →
 hydrated `appearanceStore.excludePatterns`. The file tree is built
 against default `excludePatterns`, so user-hidden folders (e.g.
 `.voice_input`) reappear on restart even though they ARE persisted in
-`~/.quill/storage/appearance.json`.
+`~/.folyn/storage/appearance.json`.
 
 ## What I already know
 
-- `~/.quill/storage/appearance.json` contains `excludePatterns` with the
+- `~/.folyn/storage/appearance.json` contains `excludePatterns` with the
   user's `.voice_input` appended — persistence works.
 - `vaultStore.refreshFileTree` (line 354) reads
   `useAppearanceStore.getState().excludePatterns` to filter the tree.

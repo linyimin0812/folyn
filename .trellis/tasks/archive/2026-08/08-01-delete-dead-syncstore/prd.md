@@ -9,7 +9,7 @@ R3 告警暴露：`syncStore` 在生产代码里没有任何 import，`registerP
 * 删除 `apps/desktop/src/store/syncStore.ts`、`apps/desktop/src/store/syncStore.test.ts`。
 * 从 `apps/desktop/src/store/settingsPersistence.ts` 的 `EXPECTED_SLICES` 数组删 `'sync'`。
 * 从 `apps/desktop/src/store/settingsPersistence.test.ts` 删 `useSyncStore` 的 import + `resetAllDefaults` 里的 `useSyncStore.setState` + 测试断言里所有 sync 字段（mutate→persist→reload 的 `setSyncBucket('rt-bucket')` + `syncBucket === 'rt-bucket'`；legacy blob fan-out 里的 `syncMethod/syncEndpoint/syncAccessKey/syncSecretKey/syncBucket/autoSync/e2eEncrypt` 字段 + 对应断言）。
-* 删除已落到磁盘的孤儿文件 `~/.quill/storage/sync.json` 的清理路径不在此任务范围（用户可手动删，存储客户端下次启动不会复生）。
+* 删除已落到磁盘的孤儿文件 `~/.folyn/storage/sync.json` 的清理路径不在此任务范围（用户可手动删，存储客户端下次启动不会复生）。
 
 ## Acceptance Criteria
 
@@ -32,7 +32,7 @@ R3 告警暴露：`syncStore` 在生产代码里没有任何 import，`registerP
 
 ## Out of Scope
 
-* 磁盘上已存在的 `~/.quill/storage/sync.json` 清理（用户自行删，或下次 storage.ts 改动时扫一遍孤儿文件）。
+* 磁盘上已存在的 `~/.folyn/storage/sync.json` 清理（用户自行删，或下次 storage.ts 改动时扫一遍孤儿文件）。
 * 重新设计 sync 功能（如果将来要做，从零开始，不复用此尸骸）。
 * 其他 store 的死代码排查（本次只解决告警点名的 sync）。
 

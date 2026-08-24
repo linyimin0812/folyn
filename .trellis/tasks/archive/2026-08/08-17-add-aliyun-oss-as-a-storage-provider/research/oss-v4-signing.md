@@ -216,21 +216,21 @@ content = b'Never give up. - Jack Ma'
 bucket.put_object('motto.txt', content)
 ```
 
-So there is no verbatim docs-shipped PUT example to capture. **Recommendation for the self-check fixture**: derive one offline by running the SDK's `AuthV4._sign_request` locally with pinned inputs (a fake AKID/SK, a fixed `datetime.utcnow()` monkey-patched to `2026-08-17T12:00:00Z`, bucket `quill-test`, key `motto.txt`, body `b'Never give up. - Jack Ma'`, region `cn-hangzhou`, endpoint `https://quill-test.oss-cn-hangzhou.aliyuncs.com`), and capture the resulting `authorization` header. Then port that exact scenario into `crypto.ts`'s dev-only `__ossV4SelfCheck` (mirroring `__sigV4SelfCheck`). The implementation owner should produce this fixture before merging.
+So there is no verbatim docs-shipped PUT example to capture. **Recommendation for the self-check fixture**: derive one offline by running the SDK's `AuthV4._sign_request` locally with pinned inputs (a fake AKID/SK, a fixed `datetime.utcnow()` monkey-patched to `2026-08-17T12:00:00Z`, bucket `folyn-test`, key `motto.txt`, body `b'Never give up. - Jack Ma'`, region `cn-hangzhou`, endpoint `https://folyn-test.oss-cn-hangzhou.aliyuncs.com`), and capture the resulting `authorization` header. Then port that exact scenario into `crypto.ts`'s dev-only `__ossV4SelfCheck` (mirroring `__sigV4SelfCheck`). The implementation owner should produce this fixture before merging.
 
 A minimal worked-example trace (computed offline, but **unverified against the live OSS server** — treat as illustration, not as a KAT):
 
 - Inputs:
   - `access_key_id = "LTAI5tFakeAccessKeyId"` (placeholder — not a real AK)
   - `access_key_secret = "FakeSecretForDocumentationOnly1234"`
-  - `region = "cn-hangzhou"`, `bucket = "quill-test"`, `key = "motto.txt"`
+  - `region = "cn-hangzhou"`, `bucket = "folyn-test"`, `key = "motto.txt"`
   - `x-oss-date = "20260817T120000Z"`, `date_stamp = "20260817"`
   - `content-type = "text/plain"`, body = `b"Never give up. - Jack Ma"`
   - `x-oss-content-sha256 = "UNSIGNED-PAYLOAD"`
 - Canonical request:
   ```
   PUT
-  /quill-test/motto.txt
+  /folyn-test/motto.txt
 
   content-type:text/plain
   x-oss-content-sha256:UNSIGNED-PAYLOAD
@@ -268,9 +268,9 @@ The implementation owner should run the Python SDK with these exact inputs to pr
   if self.type == _ENDPOINT_TYPE_ALIYUN:  # default when bucket name is valid DNS label
       return '{0}://{1}.{2}/{3}'.format(self.scheme, bucket_name, self.netloc, key)
   ```
-  So the URL is `https://quill-test.oss-cn-hangzhou.aliyuncs.com/motto.txt` when endpoint is `https://oss-cn-hangzhou.aliyuncs.com`.
-- **The `Host` HTTP header is set by the HTTP client from the URL**: `quill-test.oss-cn-hangzhou.aliyuncs.com`. `fetch` does this automatically; we don't set it explicitly.
-- **The canonical URI in the signature is always path-style**: `/quill-test/motto.txt` — NOT `/<key>`. Even though the URL is virtual-hosted-style, the signature path component includes the bucket name as the first path segment. This matches the R2/S3 path-style canonical form, so `canonicalUri = '/' + bucket + '/' + key` in the new helper — same as `buildSigV4PutRequest`.
+  So the URL is `https://folyn-test.oss-cn-hangzhou.aliyuncs.com/motto.txt` when endpoint is `https://oss-cn-hangzhou.aliyuncs.com`.
+- **The `Host` HTTP header is set by the HTTP client from the URL**: `folyn-test.oss-cn-hangzhou.aliyuncs.com`. `fetch` does this automatically; we don't set it explicitly.
+- **The canonical URI in the signature is always path-style**: `/folyn-test/motto.txt` — NOT `/<key>`. Even though the URL is virtual-hosted-style, the signature path component includes the bucket name as the first path segment. This matches the R2/S3 path-style canonical form, so `canonicalUri = '/' + bucket + '/' + key` in the new helper — same as `buildSigV4PutRequest`.
 - Path-style endpoint (`https://<region>.aliyuncs.com/<bucket>/<key>`) is also supported (`is_path_style=True` in the SDK) but is **not** recommended for new apps — the docs and SDK default to virtual-hosted-style. We should use virtual-hosted-style.
 
 Restrictions / gotchas:

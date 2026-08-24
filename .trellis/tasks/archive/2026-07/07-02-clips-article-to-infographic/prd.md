@@ -9,7 +9,7 @@
 - clips 现有页面：`components/file-types/clip/ClipCardView.tsx`——从 markdown frontmatter + `## 摘要` + `## 要点` 渲染卡片（title/url/tags/summary/keyPoints）。
 - 生成链路：`services/clipService.ts`（`generateClip` / `saveClip` / `clipUrl`，AI 流式生成元数据）+ clips agent（输出 JSON：title/tags/suggestedTags/summary/keyPoints）。
 - clip 文件是 markdown，存 vault 内；`ClipCardView` 用正则解析 frontmatter 与 `## 摘要`/`## 要点` 段。
-- 技术栈：React 18 + TS strict + Tailwind 3 + CodeMirror 6 + Tauri 2；AI 调用走 `@quill/cli-adapter` + feature agent 机制（`featureAgentService`）。
+- 技术栈：React 18 + TS strict + Tailwind 3 + CodeMirror 6 + Tauri 2；AI 调用走 `@folyn/cli-adapter` + feature agent 机制（`featureAgentService`）。
 - 已有可视化参考：`components/graph/`（D3 force-directed wiki 图）。
 
 ## Assumptions (temporary)

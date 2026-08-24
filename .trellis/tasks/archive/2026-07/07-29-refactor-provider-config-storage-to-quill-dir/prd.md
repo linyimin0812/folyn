@@ -1,23 +1,23 @@
-# Refactor Provider Config Storage to ~/.quill Directory
+# Refactor Provider Config Storage to ~/.folyn Directory
 
 ## Goal
 
-Move provider configuration out of the unified `storage.json` blob into two dedicated files under `~/.quill/providers/`, and adopt a new schema aligned with the bundled catalog shape. Motivation: isolate user-authored provider definitions and per-provider connection settings so they can be edited, migrated, and backed up independently of unrelated app settings.
+Move provider configuration out of the unified `storage.json` blob into two dedicated files under `~/.folyn/providers/`, and adopt a new schema aligned with the bundled catalog shape. Motivation: isolate user-authored provider definitions and per-provider connection settings so they can be edited, migrated, and backed up independently of unrelated app settings.
 
 ## Requirements
 
-- Custom provider definitions persisted to `~/.quill/providers/customer/providers.json`, keyed by id, with shape:
+- Custom provider definitions persisted to `~/.folyn/providers/customer/providers.json`, keyed by id, with shape:
   ```json
   { "{id}": { "id", "name", "defaultChatEndpoint", "description?", "metadata?": { "website": { "apiKey?", "docs?", "models?", "official?" } } } }
   ```
-- Per-provider connection configs persisted to `~/.quill/providers/settings.json`, keyed by id, with shape:
+- Per-provider connection configs persisted to `~/.folyn/providers/settings.json`, keyed by id, with shape:
   ```json
   { "{id}": { "id", "baseUrl", "apiKey", "selectedModelIds": [], "enabled": false, "customProvider": false, "extra": {} } }
   ```
 - `customProvider` (bool): routing flag for the Rust/rig side. `false` → use rig's built-in provider by id; `true` → treat as custom provider (rig uses id + baseUrl + adapter family resolved from `customer/providers.json`'s `defaultChatEndpoint`). Bundled providers default `false`; entries originating from `customProviders` default `true`.
 - `defaultChatEndpoint` is an enum/select of endpoint keys (anthropic-messages, openai-chat-completions, openai-responses, …), mirroring the bundled `assets/providers/providers.json`.
 - `extra` is an opaque bag for adapter-specific fields: `azureDeploymentId`, `azureApiVersion`, `thinkingBudget`, etc. Migration packs existing fields into `extra`.
-- `selectedModelIds` = subset of models the user has enabled (merged from current `manualModels` + any selection state). The per-provider `~/.quill/providers/{id}/models.json` cache stays unchanged.
+- `selectedModelIds` = subset of models the user has enabled (merged from current `manualModels` + any selection state). The per-provider `~/.folyn/providers/{id}/models.json` cache stays unchanged.
 - Bundled providers only get an entry in `settings.json` when the user configures them (sparse, matches existing pattern).
 - Add-provider drawer captures: id, name, defaultChatEndpoint (select), description, metadata.website.{apiKey, docs, models, official}.
 - Provider settings page manages: baseUrl, apiKey, selectedModelIds, enabled, extra (azure/thinkingBudget surfaced via form fields).
@@ -56,7 +56,7 @@ New module `apps/desktop/src/services/providers/providerConfigStorage.ts`:
 - `writeCustomerProviders(defs): void`
 - `readProviderSettings(): Record<id, ProviderSettings>`
 - `writeProviderSettings(settings): void`
-- Both resolve paths under `~/.quill/providers/` via existing `userProvidersCatalog.ts` helpers (`getUserProvidersDir`).
+- Both resolve paths under `~/.folyn/providers/` via existing `userProvidersCatalog.ts` helpers (`getUserProvidersDir`).
 - Atomic writes: write to `<path>.tmp` then `renameFile` (POSIX-atomic). No existing atomic-write helper in the codebase — this module owns it.
 - Empty/missing file → `{}` (no crash).
 
@@ -105,10 +105,10 @@ Rust currently does NOT read from disk; `chat_stream` and `list_models` receive 
 **Context**: Provider configs are currently embedded in the unified `storage.json` blob, mixed with unrelated app state. User-authored definitions and connection settings need to be separable for editing/migration/backup. Current data shapes diverge from the bundled catalog shape, forcing two parallel code paths.
 
 **Decision**:
-1. Adopt the new two-file storage layout under `~/.quill/providers/`.
+1. Adopt the new two-file storage layout under `~/.folyn/providers/`.
 2. Adopt the new schema (mirrors bundled catalog shape for definitions; opaque `extra` bag for adapter-specific connection fields).
 3. One-shot migration with cleanup of legacy `storage.json` keys + version flag.
-4. Keep `~/.quill/providers/{id}/models.json` cache as-is.
+4. Keep `~/.folyn/providers/{id}/models.json` cache as-is.
 
 **Consequences**:
 - Pro: clean separation, schema aligns with bundled catalog, custom provider definitions can be hand-edited.
@@ -140,7 +140,7 @@ Rust currently does NOT read from disk; `chat_stream` and `list_models` receive 
 ## Progress Log
 
 - 2026-07-29: Brainstormed + PRD locked (full schema, one-shot migration, extra bag, selectedModelIds = user-added, defaultChatEndpoint enum, customProvider routing flag passed via Tauri params). Phase 2 research done (5 files persisted to `research/`). PR1 shipped. PR2a + PR2b shipped (catalog + aiConfigStore rewrite; tsc clean except ModelServicesSettings.tsx; 34/55 aiConfigStore tests pass). PR2c-PR2f shipped (aiConfigStore 53/53 tests pass; Rust params + resolver + cargo check clean; rigChat/fetchModels/modelRegistryStore plumbed). PR3 pending.
-- 2026-07-29 (later): PR3 audited — no incremental code work required. `CustomProviderDrawer` already captures the full new schema (id / name / defaultChatEndpoint select with 7 enum options / description / metadata.website.{apiKey,docs,models,official}, validation: id regex + name non-empty + endpoint required). Provider settings page already routes via `setChatApiKey`/`setChatBaseUrl`/`setProviderEnabled`/azure setters/thinkingBudget → `providerConfigStorage.setProviderSettings` → `~/.quill/providers/settings.json`. Catalog helpers (`providerDisplayName`, `providerApiKeyUrl`, `providerCategory`, `providerBaseUrl`) already work against new `CustomProvider` shape. `migrateLegacyBlob` packs `manualModels` into `selectedModelIds` (lines 408/428/448/463). All 13 Acceptance Criteria verified against current code. tsc clean; 77/77 store + storage + persistence tests pass. `settingsPersistence.test.ts` reports pre-existing env errors (`open-color json` import attribute + `window is not defined`) — not test failures, all 77 tests pass; unrelated to PR3.
+- 2026-07-29 (later): PR3 audited — no incremental code work required. `CustomProviderDrawer` already captures the full new schema (id / name / defaultChatEndpoint select with 7 enum options / description / metadata.website.{apiKey,docs,models,official}, validation: id regex + name non-empty + endpoint required). Provider settings page already routes via `setChatApiKey`/`setChatBaseUrl`/`setProviderEnabled`/azure setters/thinkingBudget → `providerConfigStorage.setProviderSettings` → `~/.folyn/providers/settings.json`. Catalog helpers (`providerDisplayName`, `providerApiKeyUrl`, `providerCategory`, `providerBaseUrl`) already work against new `CustomProvider` shape. `migrateLegacyBlob` packs `manualModels` into `selectedModelIds` (lines 408/428/448/463). All 13 Acceptance Criteria verified against current code. tsc clean; 77/77 store + storage + persistence tests pass. `settingsPersistence.test.ts` reports pre-existing env errors (`open-color json` import attribute + `window is not defined`) — not test failures, all 77 tests pass; unrelated to PR3.
 
 ## Technical Notes
 
@@ -155,7 +155,7 @@ Files inspected:
 - `apps/desktop/src/assets/providers/providers.json`
 
 Constraints:
-- `~/.quill/providers/` dir already created by `userProvidersCatalog.ts`; new files live alongside.
+- `~/.folyn/providers/` dir already created by `userProvidersCatalog.ts`; new files live alongside.
 - Bundled catalog at `assets/providers/providers.json` already has the target shape — custom definitions mirror it (minus `endpointConfigs`, since custom providers reference adapter families defined by bundled endpoints).
 
 Open items for Phase 2 research:

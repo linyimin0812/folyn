@@ -2,7 +2,7 @@
 
 ## Goal
 
-Quill 核心不应该硬编码 plantuml-specific 高亮逻辑。改为在 plugin SDK 增加一个 `contributes.highlightGrammars[]` contribution 点 + host 侧 `highlightGrammarAdapter`，让任何插件都能为 highlight.js 注册 grammar。PlantUML grammar 由 plantuml 插件（external repo）提供。
+Folyn 核心不应该硬编码 plantuml-specific 高亮逻辑。改为在 plugin SDK 增加一个 `contributes.highlightGrammars[]` contribution 点 + host 侧 `highlightGrammarAdapter`，让任何插件都能为 highlight.js 注册 grammar。PlantUML grammar 由 plantuml 插件（external repo）提供。
 
 ## What I already know
 
@@ -18,7 +18,7 @@ Quill 核心不应该硬编码 plantuml-specific 高亮逻辑。改为在 plugin
 
 ## Decision (ADR-lite)
 
-**Context**: 上一版方案（commit 014d16a）在核心 `apps/desktop/src/services/highlightLanguages.ts` 内置 plantuml grammar。用户反馈这把 plantuml 特例固化在 Quill 核心，应交给插件。
+**Context**: 上一版方案（commit 014d16a）在核心 `apps/desktop/src/services/highlightLanguages.ts` 内置 plantuml grammar。用户反馈这把 plantuml 特例固化在 Folyn 核心，应交给插件。
 
 **Decision**: 选 A——回滚核心 grammar，加 `contributes.highlightGrammars[]` contribution 点。grammar 由 plantuml 插件提供。
 

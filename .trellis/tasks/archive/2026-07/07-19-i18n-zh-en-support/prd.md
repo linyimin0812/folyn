@@ -2,7 +2,7 @@
 
 ## Goal
 
-为 Quill 提供 i18n 能力，先支持中文（zh）和英文（en）。覆盖 `apps/desktop` 前端 UI 文案；后续可扩展到 plugin-host / vault-provider 等包的对外文案。
+为 Folyn 提供 i18n 能力，先支持中文（zh）和英文（en）。覆盖 `apps/desktop` 前端 UI 文案；后续可扩展到 plugin-host / vault-provider 等包的对外文案。
 
 ## What I already know
 

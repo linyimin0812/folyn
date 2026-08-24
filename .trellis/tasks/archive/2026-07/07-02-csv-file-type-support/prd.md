@@ -2,7 +2,7 @@
 
 ## Goal
 
-新增 CSV 文件类型：`.csv` 文件在 Quill 中可编辑（CodeMirror raw 文本）+ 表格预览 + 分屏，同 markdown 体验。
+新增 CSV 文件类型：`.csv` 文件在 Folyn 中可编辑（CodeMirror raw 文本）+ 表格预览 + 分屏，同 markdown 体验。
 
 ## What I already know
 

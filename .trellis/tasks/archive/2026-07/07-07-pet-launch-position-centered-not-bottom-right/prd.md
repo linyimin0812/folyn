@@ -22,7 +22,7 @@ mascot 能渲染 → PetApp 已挂载；但所有位置相关调用静默失败 
 
 ## 计划
 ### Phase 1：临时文件诊断（先做）
-在 PetApp 关键节点把状态写到 `~/Library/Application Support/com.quill.editor/pet-debug.log`（绕过 console），精确定位哪一步抛错：
+在 PetApp 关键节点把状态写到 `~/Library/Application Support/com.folyn.editor/pet-debug.log`（绕过 console），精确定位哪一步抛错：
 - mount 时间戳
 - `pet_get_work_area` 返回值 / 是否抛错
 - `computeDefaultPetPosition` 计算结果

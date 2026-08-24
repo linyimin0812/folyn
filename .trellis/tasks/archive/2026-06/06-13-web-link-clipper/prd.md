@@ -45,7 +45,7 @@ AI 生成的一段话摘要...
 (curl.md 返回的 Markdown 正文)
 ```
 
-### 在 Quill 内打开链接
+### 在 Folyn 内打开链接
 
 - 已有 WebViewer + openWebTab 支持，无需额外开发
 - clips 面板中点击 clip 条目可打开原始 URL（webview tab）

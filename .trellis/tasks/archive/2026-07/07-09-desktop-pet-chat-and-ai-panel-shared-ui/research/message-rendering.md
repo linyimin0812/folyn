@@ -92,7 +92,7 @@ Adaptation for shared list typed on `CliMessage`: pet store emits `{id, role, co
 ### Tauri-window isolation
 
 - `MessageContent.tsx` imports ONLY: `react` (`useMemo`, `createElement`, `Fragment`), `unified`, `remark-parse`, `remark-gfm`, `remark-rehype`, `rehype-highlight`, `rehype-react`, `react/jsx-runtime`. **No vault/editor/ai stores.** Safe for top-level import into the pet-panel window.
-- `ChatMessages.tsx` imports `AiChatMode` from `@/store/aiStore` (type-only), `MessageContent`, `ToolCallBlock`, `FileImage`, `FileIcon`. `AiChatMode` is a type so it erases at runtime; but `ToolCallBlock`/`FileImage` pull in `@quill/cli-adapter` types (type-only) and `@tauri-apps/plugin-fs` (runtime, guarded). A shared `ChatMessageList` should NOT import `AiChatMode` — pass `onSaveToWiki?` + a generic mode flag instead, or drop the wiki-save button out of the shared core and let AiPanel wrap/slot it.
+- `ChatMessages.tsx` imports `AiChatMode` from `@/store/aiStore` (type-only), `MessageContent`, `ToolCallBlock`, `FileImage`, `FileIcon`. `AiChatMode` is a type so it erases at runtime; but `ToolCallBlock`/`FileImage` pull in `@folyn/cli-adapter` types (type-only) and `@tauri-apps/plugin-fs` (runtime, guarded). A shared `ChatMessageList` should NOT import `AiChatMode` — pass `onSaveToWiki?` + a generic mode flag instead, or drop the wiki-save button out of the shared core and let AiPanel wrap/slot it.
 - `PetChat.tsx` lives in the pet-panel window which must NOT import vault/editor stores (confirmed: it imports only `settingsStore`, `petChatStore`, `petChatService`, `platform` util). The shared component must preserve this — no top-level `aiStore`/`vaultStore`/`editorStore` imports.
 
 ## Proposed Props Contracts

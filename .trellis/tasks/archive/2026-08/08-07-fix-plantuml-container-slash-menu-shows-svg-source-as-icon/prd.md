@@ -8,12 +8,12 @@ When the user opens the `/` slash menu in the Markdown editor, the PlantUML entr
 
 - Slash menu UI: `apps/desktop/src/components/editor/SlashMenu.tsx:138` renders `<span ...>{plugin.icon}</span>` — React treats the string as a text node, no SVG parsing.
 - All builtin container plugins (`packages/container-plugins/src/plugins/*.tsx`) use emoji strings for `icon` (e.g. `💡`, `📊`, `📄`, `🔽`, `🃏`, `🟦`, `✦`, `📝`, `⊞`). This is the established convention.
-- PlantUML plugin manifest (`plugins/quill-plugin-plantuml/manifest.json`) sets the container `icon` to a raw SVG string `"<svg width=\"16\" ...>...</svg>"` — taken from the file-type handler's `makeIcon()` which returns a React element (correct for `FileTypeHandler.icon: ReactNode`, wrong for `ContainerContribution.icon: string`).
+- PlantUML plugin manifest (`plugins/folyn-plugin-plantuml/manifest.json`) sets the container `icon` to a raw SVG string `"<svg width=\"16\" ...>...</svg>"` — taken from the file-type handler's `makeIcon()` which returns a React element (correct for `FileTypeHandler.icon: ReactNode`, wrong for `ContainerContribution.icon: string`).
 - `FeatureContribution.icon` (a different contribution point) explicitly supports raw SVG strings (rendered via `IconFromSvg` host-side). `ContainerContribution.icon` does not — it's rendered as plain text by the slash menu.
 
 ## Requirements
 
-- PlantUML container `icon` in `plugins/quill-plugin-plantuml/manifest.json` changed to an emoji, parity with other container plugins.
+- PlantUML container `icon` in `plugins/folyn-plugin-plantuml/manifest.json` changed to an emoji, parity with other container plugins.
 - Pick an emoji distinct from existing ones (avoid `📊` — used by mermaid). Use a glyph that conveys "diagram/UML" — `📐` (triangular ruler) or `🪴` (potted plant, pun on "plant"). Recommend `📐` for font-coverage safety.
 
 ## Acceptance Criteria
@@ -24,7 +24,7 @@ When the user opens the `/` slash menu in the Markdown editor, the PlantUML entr
 
 ## Definition of Done
 
-- `pnpm -F quill-plugin-plantuml typecheck` + `build` + `test` green.
+- `pnpm -F folyn-plugin-plantuml typecheck` + `build` + `test` green.
 - Manual: open `/` slash menu, PlantUML entry shows an emoji.
 
 ## Out of Scope
@@ -34,10 +34,10 @@ When the user opens the `/` slash menu in the Markdown editor, the PlantUML entr
 
 ## Technical Approach
 
-One-line change: `plugins/quill-plugin-plantuml/manifest.json` container `icon` field → emoji string. No source code changes.
+One-line change: `plugins/folyn-plugin-plantuml/manifest.json` container `icon` field → emoji string. No source code changes.
 
 ## Technical Notes
 
 - `apps/desktop/src/components/editor/SlashMenu.tsx:138` — icon rendering site (don't change; preserve text-render behavior for emoji icons).
-- `plugins/quill-plugin-plantuml/manifest.json` — container declaration with the SVG-string icon.
+- `plugins/folyn-plugin-plantuml/manifest.json` — container declaration with the SVG-string icon.
 - Builtin emoji icons: see `packages/container-plugins/src/plugins/*.tsx` `icon:` field.

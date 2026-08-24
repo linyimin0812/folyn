@@ -48,7 +48,7 @@ manual verification of the desktop-pet-mode feature (commit `ab46e8c`).
 
 ## Acceptance Criteria
 
-* [ ] AC1: Enabling pet mode shows ONLY the mascot sprite (blue ink-drop + quill) on the
+* [ ] AC1: Enabling pet mode shows ONLY the mascot sprite (blue ink-drop + folyn) on the
   desktop — no opaque 120x120 square around it. Transparent regions show the desktop beneath.
 * [ ] AC2: The mascot appears at the bottom-right of the primary monitor on first launch
   (no saved position), fully on-screen (not clipped off any edge).

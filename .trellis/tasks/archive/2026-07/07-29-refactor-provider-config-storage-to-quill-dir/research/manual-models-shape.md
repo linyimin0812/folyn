@@ -69,7 +69,7 @@ So treating `manualModels` as `selectedModelIds` directly may be semantically wr
 
 The PRD's "merged from current `manualModels` + any selection state" phrasing suggests Option C. But there's no per-model "selected" flag anywhere in the store today — `chatModel` is the only single-selection state.
 
-The `manualModels` entries themselves probably need to ALSO live somewhere in the new schema (they're catalog data, not connection settings). The PRD's `~/.quill/providers/{id}/models.json` is the runtime-writable mirror — but that file is for the `refetchAllFromModelsDev` flow (a models.dev cache), not for user-authored entries. **The new schema doesn't obviously have a home for user-authored manual model entries.** Flagging as a gap.
+The `manualModels` entries themselves probably need to ALSO live somewhere in the new schema (they're catalog data, not connection settings). The PRD's `~/.folyn/providers/{id}/models.json` is the runtime-writable mirror — but that file is for the `refetchAllFromModelsDev` flow (a models.dev cache), not for user-authored entries. **The new schema doesn't obviously have a home for user-authored manual model entries.** Flagging as a gap.
 
 ## Files Found
 

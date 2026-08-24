@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add an `opencode` CLI adapter to `packages/cli-adapter`, so Quill can drive
+Add an `opencode` CLI adapter to `packages/cli-adapter`, so Folyn can drive
 the [opencode](https://opencode.ai) CLI as a coding-agent backend with the
 same streaming/resume UX as claude/codex/pi/qoder. Wire it into the desktop
 shell sidecar allowlist, add an icon, and surface it in the three adapter

@@ -22,7 +22,7 @@ Replace the "hi" sample with a full showcase payload that exercises title + sour
   - `title` / `source` (≤128) optional non-empty
   - `actions`: array of `{id, label}` (or any objects) — empty array serialized as absent
   - `launch`: `{type: "url"|"app", value}` — url must be http(s), app must match `[A-Za-z0-9 .\-]+`
-- Sample choice: `kind=reminder`, `title=任务待处理`, `source=quill`, `text=测试通知已送达`, one action `{"id":"ok","label":"知道了"}`, `launch={type:url, value:https://example.com}`.
+- Sample choice: `kind=reminder`, `title=任务待处理`, `source=folyn`, `text=测试通知已送达`, one action `{"id":"ok","label":"知道了"}`, `launch={type:url, value:https://example.com}`.
 
 ## Implementation
 1. Add a single `SAMPLE_NOTIFY_BODY` constant string in `PetExternalApiBlock` (or module scope) holding the canonical JSON.

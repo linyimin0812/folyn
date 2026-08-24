@@ -11,7 +11,7 @@
 - 面板展示当前活动面板的打开文件：文件图标、文件名、未保存圆点、当前激活态。
 - 面板内新增关闭按钮，可关闭整个下拉面板。
 - 文件行保留单项关闭按钮；点击行切到对应标签页，点击“关闭所有标签页”关闭全部标签。
-- 面板打开期间隐藏原生 webview，关闭后通过现有 `quill:overlay-closed` 机制恢复，避免网页遮挡面板。
+- 面板打开期间隐藏原生 webview，关闭后通过现有 `folyn:overlay-closed` 机制恢复，避免网页遮挡面板。
 - 移除不再使用的 `topbar_tablist_menu` 原生菜单命令及其事件转发。
 
 ## Acceptance Criteria
@@ -26,7 +26,7 @@
 
 恢复 `TabBar` 为受控 HTML 下拉面板：TabBar 持有 `tabListOpen` 状态，面板沿用此前
 HTML 下拉的列表结构，并新增面板头部的关闭按钮。打开时调用
-`hideWebviewsForOverlay()`，关闭/点击外部/选择后派发 `quill:overlay-closed`。
+`hideWebviewsForOverlay()`，关闭/点击外部/选择后派发 `folyn:overlay-closed`。
 
 ## Out of Scope
 

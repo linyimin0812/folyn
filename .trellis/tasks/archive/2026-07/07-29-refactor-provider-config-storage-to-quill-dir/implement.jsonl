@@ -1,8 +1,8 @@
-{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/prd.md", "reason": "Source of truth for the refactor: target schema, migration mapping, Rust routing decision, AC."}
-{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/category-to-endpoint-mapping.md", "reason": "Lookup table for legacy category -> defaultChatEndpoint; defensive coercion rules for typo'd legacy values."}
-{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/rust-provider-read-path.md", "reason": "Confirms Rust reads via Tauri params not disk; lists exact files/lines for ChatParams/ListModelsParams/rigChat/fetchModels edits."}
-{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/atomic-write-pattern.md", "reason": "No existing atomic-write helper; temp+rename pattern this module must implement."}
-{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/manual-models-shape.md", "reason": "manualModels shape + migration rule to selectedModelIds; caveat on semantics to honor."}
-{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-quill-dir/research/existing-provider-settings-ui.md", "reason": "Exact drawer/detail panel locations to edit; flags existing wiring gap around setChatAzureDeploymentId."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-folyn-dir/prd.md", "reason": "Source of truth for the refactor: target schema, migration mapping, Rust routing decision, AC."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-folyn-dir/research/category-to-endpoint-mapping.md", "reason": "Lookup table for legacy category -> defaultChatEndpoint; defensive coercion rules for typo'd legacy values."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-folyn-dir/research/rust-provider-read-path.md", "reason": "Confirms Rust reads via Tauri params not disk; lists exact files/lines for ChatParams/ListModelsParams/rigChat/fetchModels edits."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-folyn-dir/research/atomic-write-pattern.md", "reason": "No existing atomic-write helper; temp+rename pattern this module must implement."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-folyn-dir/research/manual-models-shape.md", "reason": "manualModels shape + migration rule to selectedModelIds; caveat on semantics to honor."}
+{"file": ".trellis/tasks/07-29-refactor-provider-config-storage-to-folyn-dir/research/existing-provider-settings-ui.md", "reason": "Exact drawer/detail panel locations to edit; flags existing wiring gap around setChatAzureDeploymentId."}
 {"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend spec conventions for new storage module + UI edits."}
 {"file": ".trellis/spec/guides/index.md", "reason": "Shared guides — applies to all packages."}

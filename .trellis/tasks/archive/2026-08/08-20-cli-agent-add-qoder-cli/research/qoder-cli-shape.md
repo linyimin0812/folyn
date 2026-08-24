@@ -192,5 +192,5 @@ Two sidecars to register: `qoder-cli` and `qoder-cli-cn`, mirroring how `codex-c
 
 - Local binary: `/Users/yiminlin/.qoder/bin/qodercli/qodercli-1.1.26` (v1.1.26, Mach-O arm64, 103920016 bytes)
 - Local config: `/Users/yiminlin/.qoder/settings.json`, `/Users/yiminlin/.qoder/.auth/`, `/Users/yiminlin/.qoder/.models/default`
-- Repo reference template: `/Users/yiminlin/project/quill/packages/cli-adapter/src/codexAdapter.ts` (one-shot + JSONL)
-- Repo reference template: `/Users/yiminlin/project/quill/packages/cli-adapter/src/piAdapter.ts` (long rpc — not recommended for qoder)
+- Repo reference template: `/Users/yiminlin/project/folyn/packages/cli-adapter/src/codexAdapter.ts` (one-shot + JSONL)
+- Repo reference template: `/Users/yiminlin/project/folyn/packages/cli-adapter/src/piAdapter.ts` (long rpc — not recommended for qoder)

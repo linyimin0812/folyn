@@ -2,7 +2,7 @@
 
 ## Goal
 
-Fix: on Windows, after clicking X to close (tray icon enabled, window hidden), double-clicking the Quill app icon in Explorer/Desktop does not bring the window back. Expected: second launch surfaces the hidden main window.
+Fix: on Windows, after clicking X to close (tray icon enabled, window hidden), double-clicking the Folyn app icon in Explorer/Desktop does not bring the window back. Expected: second launch surfaces the hidden main window.
 
 ## What I already know
 
@@ -22,8 +22,8 @@ Early-return at `lib.rs:1156-1158` skips window-surfacing when the second launch
 
 ## Acceptance Criteria
 
-- [ ] On Windows: enable tray icon, click X to hide; double-click Quill icon → main window visible + focused.
-- [ ] On Windows: same setup, drop a file onto Quill icon → existing open-external-file flow still works.
+- [ ] On Windows: enable tray icon, click X to hide; double-click Folyn icon → main window visible + focused.
+- [ ] On Windows: same setup, drop a file onto Folyn icon → existing open-external-file flow still works.
 
 ## Technical Approach
 

@@ -2,7 +2,7 @@
 
 ## Goal
 
-在 quill 桌面应用中新增 ER 文件类型：扩展名 `.dbml`，使用 DBML 语法在 CodeMirror 中编辑，预览面板渲染 ER 图（表格卡片 + 关系连线）。让用户能在 vault 中建模数据库结构并可视化预览。
+在 folyn 桌面应用中新增 ER 文件类型：扩展名 `.dbml`，使用 DBML 语法在 CodeMirror 中编辑，预览面板渲染 ER 图（表格卡片 + 关系连线）。让用户能在 vault 中建模数据库结构并可视化预览。
 
 ## Requirements
 

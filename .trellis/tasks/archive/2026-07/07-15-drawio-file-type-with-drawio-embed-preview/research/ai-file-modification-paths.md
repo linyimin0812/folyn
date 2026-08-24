@@ -122,4 +122,4 @@ Only `externalContentVersion` bump remounts the custom Editor. `updateTabContent
 
 - No `.drawio`-specific branching anywhere in the AI/diff/RPC pipeline — all paths are generic by file type. The only drawio-specific code is the handler registration (`drawio/index.ts`) and `DrawioEditor.tsx` itself.
 - `applyAcceptChange` (the version-bumping path) appears to have no live caller in the current UI — only `acceptAll`/`rejectAll` loops and tests. The DiffReviewBar Accept button bypasses it. This may be intentional or may be dead code; not for this researcher to judge.
-- Did not trace `@quill/cli-adapter` to confirm whether the CLI writes disk before or after emitting `file_change`; assumed disk is already written when the event arrives (matches user symptom: "closing/reopening shows new content").
+- Did not trace `@folyn/cli-adapter` to confirm whether the CLI writes disk before or after emitting `file_change`; assumed disk is already written when the event arrives (matches user symptom: "closing/reopening shows new content").

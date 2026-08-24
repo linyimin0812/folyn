@@ -19,7 +19,7 @@
   - `store/aiStore.ts` + `aiSessionPersistence.ts`（多 session、per-vault）
   - `adapterManager.ts`（per-session adapter Map，cwd=vault，`resumeSessionId`）
   - 样式：Tailwind utility + `index.css` 全局类（`.ai-body`、`.ai-streaming-indicator`、`.msg-md`、`.msg-thinking` 等）
-- 两端**已共享**：`@quill/cli-adapter`（CliAdapter + CliStreamEvent）、`useSettingsStore`（cliAdapter + cliPath）、Tauri clipboard、`index.css` 主题变量。
+- 两端**已共享**：`@folyn/cli-adapter`（CliAdapter + CliStreamEvent）、`useSettingsStore`（cliAdapter + cliPath）、Tauri clipboard、`index.css` 主题变量。
 - **无任何共享 chat 组件目录**（无 `components/chat` / `components/shared`）。
 - PetChat 刻意为 vault-free（无 file mention / 附件 / wiki-clip / `bare:true` / 中性 cwd / 每次全新交换）；共享 UI 必须保留此「最小模式」，不得引入 vault 相关特性。
 
@@ -62,7 +62,7 @@
   - `ChatMessageList`：消息列表 + auto-scroll + 空状态 + streaming 指示器。接收 `messages: CliMessage[]`、`streaming`、`onClear?`、`emptyState?`、`renderMessage?(msg)`；预留 session 切换可选 props（`sessions?`、`activeSessionId?`、`onSwitchSession?`），PetChat 不传、UI 暂不实现切换控件。
   - `MessageContent`：markdown 渲染器（从 `components/ai/MessageContent.tsx` 迁入）；支持「纯文本退化」路径（PetChat 不启用 markdown 标记）。
   - `ChatInputBox`：textarea + 发送/停止 + 可选清空；插槽 `leading?`（附件行等）、`trailing?`（inputMode 选择等）、`mentionLayer?`（@提及浮层）。Enter 发送 / Shift+Enter 换行 / 空输入 disabled。
-- message 类型统一为 `CliMessage`（来自 `@quill/cli-adapter`）作为超集；PetChat 将其 `{id,role,content,ts}` 适配为 `CliMessage`（无 thinking/toolCalls/attachments）。
+- message 类型统一为 `CliMessage`（来自 `@folyn/cli-adapter`）作为超集；PetChat 将其 `{id,role,content,ts}` 适配为 `CliMessage`（无 thinking/toolCalls/attachments）。
 - PetChat（`PetChat.tsx`）改用 `ChatMessageList` + `MessageContent`（纯文本路径）+ `ChatInputBox`；保留 `petChatStore` + `petChatService` 不动；保留 vault-free / `bare:true` / appData cwd / 每次全新交换 / 清空 / 复制 / 未配置 CTA 行为。
 - AiPanel（`AiPanel.tsx` + `ChatMessages.tsx` + `ChatInput.tsx`）改为复用 `ChatMessageList` + `MessageContent` + `ChatInputBox`，通过插槽注入附件 / @提及 / inputMode / 文件选择；保留 `aiStore` + `adapterManager` + 多 session / wiki / clip / markdown / 工具调用 / watcher pause-resume 等行为。
 - 共用组件全部 Tailwind 样式；删除 `pet.css` 中所有 `.pet-chat-*`，保留 `.pet-panel-*` 窗口外壳。

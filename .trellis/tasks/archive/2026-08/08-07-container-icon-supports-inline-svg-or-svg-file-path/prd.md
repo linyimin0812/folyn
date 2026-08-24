@@ -45,9 +45,9 @@ Parity with `FeatureContribution.icon` which already supports inline-SVG-string 
 
 ## Definition of Done
 
-- `pnpm -F @quill/plugin-sdk typecheck` + `build` green.
-- `pnpm -F @quill/desktop typecheck` + lint green.
-- `pnpm -F quill-plugin-plantuml typecheck` + `build` + `test` green.
+- `pnpm -F @folyn/plugin-sdk typecheck` + `build` green.
+- `pnpm -F @folyn/desktop typecheck` + lint green.
+- `pnpm -F folyn-plugin-plantuml typecheck` + `build` + `test` green.
 - New unit test: `registerPluginContainers` with a `.svg`-path icon resolves via `readPluginFile` mock and stores the resolved SVG string; missing file → fallback.
 - New unit test (or extend existing): `SlashMenu` renders inline-SVG icon via `IconFromSvg` (snapshot or DOM assertion on the `<span>` from `IconFromSvg`).
 - Manual: open `/` slash menu, PlantUML entry shows the SVG glyph.
@@ -106,6 +106,6 @@ export async function registerPluginContainers(manifest, module): Promise<Dispos
 - `apps/desktop/src/services/plugin-host/trustedLoader.ts:118` — await the async adapter.
 - `apps/desktop/src/services/plugin-host/trustedLoader.ts:218` — `readPluginFile(id, path)` Tauri command for fetching SVG file content from the plugin install dir.
 - `packages/plugin-sdk/src/types.ts` — `ContainerContribution.icon` docstring update.
-- `plugins/quill-plugin-plantuml/manifest.json` — revert `icon` to the inline SVG string.
-- `packages/create-quill-plugin/template/manifest.json` — doc-only (no change needed; the existing empty `containers: []` is fine).
+- `plugins/folyn-plugin-plantuml/manifest.json` — revert `icon` to the inline SVG string.
+- `packages/create-folyn-plugin/template/manifest.json` — doc-only (no change needed; the existing empty `containers: []` is fine).
 - Docs: `docs/plugin-development.md` + `docs/plugin-development.zh.md` — note the three icon forms in the `### containers` section.

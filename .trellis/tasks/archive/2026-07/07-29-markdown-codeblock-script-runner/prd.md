@@ -87,7 +87,7 @@
 
 ### 执行流程
 1. 用户点 Run → `CodeBlockWrapper` 调 `scriptRunnerService.runScript(config, code, { onStdout, onStderr, onClose })`
-2. service：写 `await tempDir() + '/quill-run-<rand>.<ext>'` → `Command.create('claude-cli', ['-l', '-c', `${binaryPath} ${tmpFile}`]).spawn()` → 订阅事件
+2. service：写 `await tempDir() + '/folyn-run-<rand>.<ext>'` → `Command.create('claude-cli', ['-l', '-c', `${binaryPath} ${tmpFile}`]).spawn()` → 订阅事件
 3. UI：流式 append 到输出区；Stop 按钮调 `child.kill()`
 4. close 事件到达：删除临时文件；调 `onChange(formatResultBlock(output, exitCode))` 写回
 5. 写回函数：在代码块 fence 结束位置之后，找紧邻的 `> Result:` 块（到下一个非 `>` 行或文件尾）；存在则替换，不存在则追加（保留一个空行分隔）

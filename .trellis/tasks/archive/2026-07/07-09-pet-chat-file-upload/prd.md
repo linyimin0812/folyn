@@ -2,12 +2,12 @@
 
 ## Goal
 
-为桌宠 chat 增加文件上传能力：用户可在 pet chat 消息中附带磁盘文件（与/或粘贴图片），AI 经 Read 工具读取。复用上一任务在共用 `ChatInputBox` 预留的附件插槽（`attachmentsRow`/`leadingSlot`/`onPaste` 等），参照 AiPanel 的附件实现，但适配 pet 的无 vault 语境（附件落盘到 pet 的 appData temp cwd，而非 vault `.quill-tmp`）。
+为桌宠 chat 增加文件上传能力：用户可在 pet chat 消息中附带磁盘文件（与/或粘贴图片），AI 经 Read 工具读取。复用上一任务在共用 `ChatInputBox` 预留的附件插槽（`attachmentsRow`/`leadingSlot`/`onPaste` 等），参照 AiPanel 的附件实现，但适配 pet 的无 vault 语境（附件落盘到 pet 的 appData temp cwd，而非 vault `.folyn-tmp`）。
 
 ## What I already know
 
 - 共用 `components/chat/ChatInputBox` 已预留附件能力（PR2 为 AiPanel 增补）：`leadingSlot`（文件选择按钮 + inputMode 下拉）、`attachmentsRow`（附件 chip 行）、`overlayLayer`（@mention 浮层 + 模式菜单）、`onBeforeKeyDown`、`onPaste`、`canSend`、`inputRef`。PetChat 当前**全部省略**。
-- AiPanel `components/ai/ChatInput.tsx` 是参照实现：`PendingAttachment = {id, name, type:'image'|'file', path?, blob?, previewUrl?}`；粘贴图片（`handlePaste`）、文件选择（hidden `<input type=file multiple accept=...>`）、@mention（`flattenFileTree(vaultStore.fileTree)` 过滤）；blob 落盘 `<vault>/.quill-tmp/img-<ts>-<rand>.<ext>`（base64 经 shell 解码）；发送时图片/文件分别前缀 `请先使用 Read 工具读取以下图片/文件:\n<paths>`。
+- AiPanel `components/ai/ChatInput.tsx` 是参照实现：`PendingAttachment = {id, name, type:'image'|'file', path?, blob?, previewUrl?}`；粘贴图片（`handlePaste`）、文件选择（hidden `<input type=file multiple accept=...>`）、@mention（`flattenFileTree(vaultStore.fileTree)` 过滤）；blob 落盘 `<vault>/.folyn-tmp/img-<ts>-<rand>.<ext>`（base64 经 shell 解码）；发送时图片/文件分别前缀 `请先使用 Read 工具读取以下图片/文件:\n<paths>`。
 - PetChat 现状（多 session 任务后）：`petChatStore` sessions 模型；`petChatService` per-session adapter + `resumeSessionId` + `bare:true` + cwd=`<appData>/pet-chat-tmp`；PetChat 用共用 `ChatInputBox` 仅传 base props。
 - Pet **无 vault**：`vaultStore` 不在 pet-panel 窗口 bundle；故 **@mention 列举 vault 文件不可行**（无 fileTree 来源）。
 - Pet `bare:true` 仅控制系统提示/不注入 vault 材料，与「消息正文里加 Read 指令 + 路径」正交（AiPanel 也是把 Read 指令拼进用户消息正文，非 system prompt）。
@@ -47,7 +47,7 @@
   - `validateFile(file)`：大小上限（默认 10MB/文件）+ 类型白名单（对标 AiPanel `accept`：`image/*` + `.txt/.md/.json/.csv/.html/.xml/.yaml/.yml/.log/.pdf` 等），超限/非白名单返回错误信息供 UI 提示。
 - **AiPanel 接入**：`components/ai/ChatInput.tsx` 重构为使用该 helper（@mention 仍留 wrapper，因耦合 vaultStore）；行为不变。
 - **PetChat 接入**：`PetChat.tsx` 用共用 `ChatInputBox` 的 `leadingSlot`（文件选择按钮 + hidden file input）、`attachmentsRow`（chip 行 + 移除）、`onPaste`（粘贴图片）、`canSend`（`input.trim() || attachments.length>0`，对齐 AiPanel）；无 `overlayLayer`/@mention。发送时 `saveBlobs(workingDir)` → `buildReadInstructions` → 拼进用户消息正文 → `sendPetChatMessage(sessionId, finalPrompt, handlers)`。
-- **落盘**：blob 写 `<appData>/pet-chat-tmp/attachments/`（pet workingDir 子目录，复用 `petChatService` 的 cwd 体系；AiPanel 仍用 `<vault>/.quill-tmp/`，由各自传入的 workingDir 决定）。
+- **落盘**：blob 写 `<appData>/pet-chat-tmp/attachments/`（pet workingDir 子目录，复用 `petChatService` 的 cwd 体系；AiPanel 仍用 `<vault>/.folyn-tmp/`，由各自传入的 workingDir 决定）。
 - **护栏**：超 10MB/文件或非白名单类型 → 不加入附件 + 内联提示（不 `alert()`）；可在最终确认调数值。
 - **生命周期**：附件 per-send 临时态，发送成功后清空；chip 可单独移除；session 切换/删除时既有 stop 逻辑不变（附件为输入态，不持久）。
 - **约束保留**：`bare:true`、appData cwd、独立 pet-panel 窗口、不顶层 import vaultStore/editorStore/aiStore；@mention/wiki/clip/inputMode 不做。
@@ -59,7 +59,7 @@
 - [ ] 发送时 blob 落盘到 appData temp，消息正文含 Read 指令 + 路径；AI 能读取（路径可达）。
 - [ ] 发送成功后附件清空。
 - [ ] `canSend` 允许仅附件发送（空文本 + 有附件可发）。
-- [ ] AiPanel 附件行为与重构前一致（粘贴/选择/@mention/Read 指令/落盘到 vault .quill-tmp）。
+- [ ] AiPanel 附件行为与重构前一致（粘贴/选择/@mention/Read 指令/落盘到 vault .folyn-tmp）。
 - [ ] 不破坏 PetChat 既有 send/stop/clear/session/unmount/copy 行为。
 - [ ] helper 无 vaultStore/editorStore/aiStore 顶层 import（grep 校验）。
 - [ ] typecheck + PetChat/AiPanel 既有测试通过 + 新增 helper/附件测试通过。

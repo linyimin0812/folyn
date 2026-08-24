@@ -2,7 +2,7 @@
 
 ## Goal
 
-把项目名 `mochi` / `Mochi` / `MOCHI` 全量改为 `folyn` / `Folyn` / `FOLYN`。沿用 08-24-rename-project-from-quill-to-mochi 的范围与决策。
+把项目名 `mochi` / `Mochi` / `MOCHI` 全量改为 `folyn` / `Folyn` / `FOLYN`。沿用 08-24-rename-project-from-folyn-to-mochi 的范围与决策。
 
 ## Scope (same as previous rename)
 
@@ -25,7 +25,7 @@
 - `.trellis/workspace/**` — 历史 journal
 - `.dev/worktree/**`、`apps/desktop/dist/**`、`node_modules/**`、`.git/**`、`target/**`、`learning/**`
 - 当前任务目录 `.trellis/tasks/08-24-rename-project-from-mochi-to-folyn/**`
-- 根目录 mv `/Users/yiminlin/project/quill` → `/Users/yiminlin/project/folyn`（用户自己做；上次 quill→mochi 时还没 mv，此次一起决定）
+- 根目录 mv `/Users/yiminlin/project/folyn` → `/Users/yiminlin/project/folyn`（用户自己做；上次 folyn→mochi 时还没 mv，此次一起决定）
 
 ## Acceptance Criteria
 
@@ -42,7 +42,7 @@
 
 ## Technical Notes
 
-参考上一次任务 PRD：`.trellis/tasks/08-24-rename-project-from-quill-to-mochi/prd.md`。
+参考上一次任务 PRD：`.trellis/tasks/08-24-rename-project-from-folyn-to-mochi/prd.md`。
 上次 commit：`bdc35c32`（重命名主体）+ `ec9f96b3`（`<em>` 拆字补丁）。
 
 替换顺序（最长先，避免双重替换）：

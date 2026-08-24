@@ -1,4 +1,4 @@
-{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend tech stack + key patterns. Fix is in @quill/desktop pet components."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend tech stack + key patterns. Fix is in @folyn/desktop pet components."}
 {"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Pet feature spec: click-through polling latency trade-off + position-unit contract. Update the latency note (250→60ms) and verify against the click-through scenario."}
 {"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component/styling conventions for the petPosition helper and PetApp probe changes."}
 {"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Tauri integration + code standards; verify isTauri() guards, named exports, useEffect cleanup."}

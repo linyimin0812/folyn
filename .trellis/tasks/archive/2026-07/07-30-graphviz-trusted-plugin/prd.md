@@ -2,8 +2,8 @@
 
 ## Goal
 
-把 Graphviz（DOT 语言）图渲染能力作为 **trusted-tier 插件**接入 Quill，而不是内置进
-`apps/desktop`。用户安装插件后可在 Quill 里打开 `.dot`/`.gv` 文件，左侧 CodeMirror 编辑
+把 Graphviz（DOT 语言）图渲染能力作为 **trusted-tier 插件**接入 Folyn，而不是内置进
+`apps/desktop`。用户安装插件后可在 Folyn 里打开 `.dot`/`.gv` 文件，左侧 CodeMirror 编辑
 源码、右侧实时渲染成 SVG 图。不装插件 = 主应用零包体增长。这是前面调研得出的成本最优解。
 
 ## What I already know
@@ -19,9 +19,9 @@
   读 `manifest.contributes.fileTypes[]` → 调 `registerFileTypeHandler` 注入，卸载时 dispose。
 - **trusted 插件运行模型**（`trustedLoader.ts` 注释）：跑在主 webview realm，TOFU 门
   （用户钉 + 完整性哈希）是真正安全边界；`main` 必须是**自包含 ESM bundle**——blob URL
-  里相对 import 不解析、远程 import 被 `quill-plugin://` CSP 挡，**插件必须打包所有依赖**。
+  里相对 import 不解析、远程 import 被 `folyn-plugin://` CSP 挡，**插件必须打包所有依赖**。
 - **rendering 引擎候选**：`@viz-js/viz`（MIT，纯 WASM 移植，wasm ~1.6MB / gzip ~600KB）。
-  graphviz 本体 EPL，弱 copyleft，不传染 Quill（MIT）代码，仅需 license 声明。
+  graphviz 本体 EPL，弱 copyleft，不传染 Folyn（MIT）代码，仅需 license 声明。
 - **先例 pattern**：`MermaidPlugin.tsx`（container-plugins 包）做 `mermaid.render() → SVG
   字符串 → dangerouslySetInnerHTML`；`dbml` handler 做 `useCodeMirror:true + Preview` split。
 - **FileType 是开放类型**：`editorStore.ts:15 export type FileType = string;`，无需扩 union。
@@ -35,7 +35,7 @@
 - `@viz-js/viz@3.28` 把 wasm 以内嵌 `binaryDecode('…')` 字符串打进 `lib/backend.js`，
   自调 `WebAssembly.instantiate(bytes, imports)` —— 无独立 `.wasm`、无 `fetch`、无 `locateFile`/`wasmURL`。
 - 插件只需把 `@viz-js/viz` 打进自包含 ESM `main`，wasm 随 blob-URL `import()` 自动进来。
-- 主 webview CSP（`tauri.conf.json:144`）已有 `wasm-unsafe-eval`（script-src）+ `quill-plugin:`（connect-src），
+- 主 webview CSP（`tauri.conf.json:144`）已有 `wasm-unsafe-eval`（script-src）+ `folyn-plugin:`（connect-src），
   WebAssembly 实例化放行。
 - `read_plugin_file` Rust 命令（`plugin_commands.rs:624`）用 `fs::read_to_string` 返 UTF-8，
   无法传二进制 wasm —— 但本方案用不到它。
@@ -49,17 +49,17 @@
 1. ✅ MVP 范围：文件类型 + `:::graphviz` 容器块，两条都做。
 2. ✅ 编辑模式：preview-only（只看图，不编辑，源码交外部编辑器）——绕开 CodeMirror 语言扩展。
 3. ✅ 插件包位置：**monorepo 内新建 `plugins/` 目录** + 扩 `pnpm-workspace.yaml` glob（`plugins/*`）。
-4. ✅ 宿主契约来源：插件 `workspace:*` 链 `@quill/plugin-host`（源码在仓内可直接用），**不发布 plugin-host 到 npm**。
+4. ✅ 宿主契约来源：插件 `workspace:*` 链 `@folyn/plugin-host`（源码在仓内可直接用），**不发布 plugin-host 到 npm**。
 5. ✅ 交付边界：插件与宿主同仓，**本任务单仓交付全部**——无跨仓拆分。
 
 ## Requirements (evolving)
 
-- 新建 monorepo 包 `plugins/quill-plugin-graphviz`，扩 `pnpm-workspace.yaml` 加 `plugins/*` glob。
-  插件 `workspace:*` 链 `@quill/plugin-host`（类型契约，源码在仓内直接用），**不发布 plugin-host 到 npm**。
+- 新建 monorepo 包 `plugins/folyn-plugin-graphviz`，扩 `pnpm-workspace.yaml` 加 `plugins/*` glob。
+  插件 `workspace:*` 链 `@folyn/plugin-host`（类型契约，源码在仓内直接用），**不发布 plugin-host 到 npm**。
 - 插件 Vite lib-mode 构建产出自包含 ESM `dist/main.js` + `manifest.json`（trusted `main` 必须自包含；
   `@viz-js/viz` 内嵌 wasm 随 bundle 进，无需独立 wasm 资产）。
 - manifest 声明两个贡献点：
-  - `contributes.fileTypes`：graphviz，extensions `dot`/`gv`，**preview-only**（`useCodeMirror:false`、无 `Editor`、只有 `Preview`，`defaultViewMode:'preview'`）。源码编辑交外部编辑器，Quill 只看图。
+  - `contributes.fileTypes`：graphviz，extensions `dot`/`gv`，**preview-only**（`useCodeMirror:false`、无 `Editor`、只有 `Preview`，`defaultViewMode:'preview'`）。源码编辑交外部编辑器，Folyn 只看图。
   - `contributes.containers`：`graphviz` 指令块，markdown 内 `:::graphviz\n digraph { ... }\n:::` 渲染成 SVG（仿 mermaid 块）。
 - 用 `@viz-js/viz` 把 DOT 渲染成 SVG；文件类型与容器块**共用同一个 viz 实例/懒加载模块**（wasm 只加载一次）。
 - 非法 DOT 显示错误信息 + 原文回退（仿 mermaid 的 error 路径），不崩。
@@ -113,11 +113,11 @@
 
 ## Decision (ADR-lite)
 
-**Context**：Graphviz 渲染要接入 Quill，有多种接法（内置文件类型 / 独立仓插件 / monorepo 内插件 / markdown 内嵌），且渲染引擎有 wasm 包体顾虑。
+**Context**：Graphviz 渲染要接入 Folyn，有多种接法（内置文件类型 / 独立仓插件 / monorepo 内插件 / markdown 内嵌），且渲染引擎有 wasm 包体顾虑。
 
 **Decision**：
 - 作为 **trusted-tier 插件**接入（非内置），让"是否需要 graphviz"由用户安装决定，宿主零成本。
-- 插件放 **monorepo 内 `plugins/quill-plugin-graphviz`**（扩 pnpm-workspace glob），`workspace:*` 链 `@quill/plugin-host`，**不发布 plugin-host 到 npm**。
+- 插件放 **monorepo 内 `plugins/folyn-plugin-graphviz`**（扩 pnpm-workspace glob），`workspace:*` 链 `@folyn/plugin-host`，**不发布 plugin-host 到 npm**。
 - 渲染引擎用 **`@viz-js/viz`**（内嵌 wasm，无需独立资产，CSP 已放行）。
 - **preview-only**：`.dot` 文件只看图不编辑，绕开"宿主无语言贡献点"的架构缺口。
 - 同时提供 `:::graphviz` markdown 容器块（仿 mermaid）。

@@ -4,18 +4,18 @@
 
 让用户安装插件时上传**编译后的产物**（`manifest.json` + `dist/` + 静态资源），而不是完整插件源码（`src/`、`node_modules/`、`tsconfig.json`、`package*.json` 等）。同时支持 `.zip` 包上传，作为主要分发形态。
 
-**Why**: 现状 `install_plugin` 把整个选中目录递归拷到 `~/.quill/plugins/<id>/`，没有任何「源码 vs 产物」区分，体积大、暴露源码、且与未来签名链不兼容。代码注释里 zip 已被标为 PR4 待办，本次落地。
+**Why**: 现状 `install_plugin` 把整个选中目录递归拷到 `~/.folyn/plugins/<id>/`，没有任何「源码 vs 产物」区分，体积大、暴露源码、且与未来签名链不兼容。代码注释里 zip 已被标为 PR4 待办，本次落地。
 
 ## What I already know
 
 - 安装入口：`plugin_commands.rs:467` `install_plugin(id, source_path)`，要求 `source_path` 是含 `manifest.json` 的目录，整目录拷贝。
 - 前端：`PluginsSettings.tsx:281` 走 `@tauri-apps/plugin-dialog` `open({directory: true})` 选文件夹；`pluginStore.ts:212` 调 `invoke('install_plugin', {id, sourcePath})`，`id` 由文件夹名推导。
-- 存储布局：`~/.quill/plugins/<id>/`，注册表 `plugins.json`（`PluginEntry` 含 `integrity: HashMap<relpath, sha256>`）。
+- 存储布局：`~/.folyn/plugins/<id>/`，注册表 `plugins.json`（`PluginEntry` 含 `integrity: HashMap<relpath, sha256>`）。
 - 完整性校验：装时算每文件 SHA-256；trusted loader 在 `import()` 前重算 `main` 的哈希比对——是真正的安全边界。
 - Manifest schema（`packages/plugin-sdk/src/types.ts:84`）：必填 `id/name/version/tier/main`，sandbox 还要 `html`，可选 `permissions/contributes/signature/publisherPublicKey`。
 - Trusted `main` 是 ESM 入口（如 `dist/index.js`），通过 `read_plugin_file` 读出后塞进 blob URL `import()`。
 - Cargo.toml **没有** `zip` crate，需要新增依赖。
-- CSP：`script-src 'unsafe-inline' quill-plugin:`，`default-src 'none'`——sandbox iframe 只能加载本插件目录资源。
+- CSP：`script-src 'unsafe-inline' folyn-plugin:`，`default-src 'none'`——sandbox iframe 只能加载本插件目录资源。
 
 ## Assumptions (temporary)
 
@@ -34,7 +34,7 @@
 
 ## Requirements
 
-- 新增 Tauri command `install_plugin_zip(id, zip_path)`：解压 → manifest 校验 → compiled-only 过滤 → 拷到 `~/.quill/plugins/<id>/` → 算 integrity → 写 `plugins.json` → 发 `plugin://installed`。失败即清理 staging 目录。
+- 新增 Tauri command `install_plugin_zip(id, zip_path)`：解压 → manifest 校验 → compiled-only 过滤 → 拷到 `~/.folyn/plugins/<id>/` → 算 integrity → 写 `plugins.json` → 发 `plugin://installed`。失败即清理 staging 目录。
 - 新增前端 store action `installFromZip(file)` + 「Install from .zip…」按钮（dialog `open({filters:[{extensions:['zip']}]})`）。
 - Compiled-only 校验仅对 zip 路径生效；文件夹安装路径保持现状（开发调试用）。
 - 防解压炸弹：总解压大小 ≤ 100 MB、单文件 ≤ 50 MB、文件数 ≤ 1000。
@@ -55,7 +55,7 @@
 
 **Rust 端**（`plugin_commands.rs`）：
 - 新增 `zip = "2"` 依赖。
-- `install_plugin_zip(app, id, zip_path)`：在 `~/.quill/plugins/.staging/<id>-<uuid>/` 解压；逐 entry 校验路径（zip slip）+ 大小；按规则分流（拒绝 / 软剔除 / 拷入）；解压完读 `manifest.json`、`validate_manifest`、`id` 比对；通过后 `remove_dir_all` 旧目录（若存在）+ rename staging → `~/.quill/plugins/<id>/`；`compute_integrity` + `upsert_record` + `write_plugins_json` + `emit("plugin://installed")`。
+- `install_plugin_zip(app, id, zip_path)`：在 `~/.folyn/plugins/.staging/<id>-<uuid>/` 解压；逐 entry 校验路径（zip slip）+ 大小；按规则分流（拒绝 / 软剔除 / 拷入）；解压完读 `manifest.json`、`validate_manifest`、`id` 比对；通过后 `remove_dir_all` 旧目录（若存在）+ rename staging → `~/.folyn/plugins/<id>/`；`compute_integrity` + `upsert_record` + `write_plugins_json` + `emit("plugin://installed")`。
 - 复用：`validate_manifest`、`compute_integrity`、`upsert_record`、`write_plugins_json`、`plugins_dir`。
 - 黑名单判定函数 `is_blacklisted(rel_path)` + 白名单后缀 `ALLOWED_EXTS`。违禁文件收集到 `Vec<String>` 一次性返回错误。
 
@@ -88,6 +88,6 @@
 
 - 新增 Cargo dep：`zip = "2"`。
 - Tauri dialog 已支持文件选择，无新插件。
-- Staging 目录 `~/.quill/plugins/.staging/`，安装失败时 `fs::remove_dir_all`。
+- Staging 目录 `~/.folyn/plugins/.staging/`，安装失败时 `fs::remove_dir_all`。
 - Zip slip 防护点：(a) entry 名含 `..` 段；(b) 绝对路径（Unix `/` 起首、Windows `C:\` / `C:/`）；(c) symlink entry（`zip` crate 的 `ZipFile::enclosed_name()` 可用，但显式检查更稳）。
 - 大小上限检查：累计已解压字节数 + 当前 entry 声明的 `uncompressed_size`，超限即 abort。

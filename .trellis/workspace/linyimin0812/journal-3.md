@@ -418,16 +418,16 @@ Deleted bracket/fishbone/timeline skeletons, kept mind/org/tree with resolve() f
 - None - task complete
 
 
-## Session 127: Plugin SDK refactor: extract @quill/plugin-sdk + 6 contribution points
+## Session 127: Plugin SDK refactor: extract @folyn/plugin-sdk + 6 contribution points
 
 **Date**: 2026-08-06
-**Task**: Plugin SDK refactor: extract @quill/plugin-sdk + 6 contribution points
+**Task**: Plugin SDK refactor: extract @folyn/plugin-sdk + 6 contribution points
 **Package**: api
 **Branch**: `sharp-mountain`
 
 ### Summary
 
-Split publishable @quill/plugin-sdk (types + contracts + dev helpers, no runtime) out of @quill/plugin-host; contract types (FileTypeHandler/ViewMode/ContainerProps/PluginModule) moved into SDK with re-export shims so existing consumers are unchanged. Added 6 new trusted-tier contribution points with host adapters + samples + tests + docs: exporters, fileTemplates, keybindings (app-scope keydown), custom view modes, AI editFile/createFile (vault-manager-mediated), and exportEnhancers (closes async-container export loop). Plus concise standalone SDK reference doc and ed25519 signature/publisherPublicKey fields on PluginManifest.
+Split publishable @folyn/plugin-sdk (types + contracts + dev helpers, no runtime) out of @folyn/plugin-host; contract types (FileTypeHandler/ViewMode/ContainerProps/PluginModule) moved into SDK with re-export shims so existing consumers are unchanged. Added 6 new trusted-tier contribution points with host adapters + samples + tests + docs: exporters, fileTemplates, keybindings (app-scope keydown), custom view modes, AI editFile/createFile (vault-manager-mediated), and exportEnhancers (closes async-container export loop). Plus concise standalone SDK reference doc and ed25519 signature/publisherPublicKey fields on PluginManifest.
 
 ### Main Changes
 
@@ -464,7 +464,7 @@ Split publishable @quill/plugin-sdk (types + contracts + dev helpers, no runtime
 
 ### Summary
 
-Added PluginEnv to SDK (theme + locale + on*Change returning Disposable); trusted tier wires ctx.env via buildPluginEnv subscribing appearanceStore + localeStore; sandbox tier gets env:get RPC + env-event push messages from RpcBridge. Renamed published npm package from @quill/plugin-sdk to quill-plugin-sdk (unscoped) after @quill scope publish 404'd; package.json now points at dist/ outputs with prepublishOnly=tsc and publishConfig.access=public. 145 plugin-host tests + tsc clean; npm pack dry-run produces quill-plugin-sdk-0.1.0.tgz. Actual npm publish pending user's manual step.
+Added PluginEnv to SDK (theme + locale + on*Change returning Disposable); trusted tier wires ctx.env via buildPluginEnv subscribing appearanceStore + localeStore; sandbox tier gets env:get RPC + env-event push messages from RpcBridge. Renamed published npm package from @folyn/plugin-sdk to folyn-plugin-sdk (unscoped) after @folyn scope publish 404'd; package.json now points at dist/ outputs with prepublishOnly=tsc and publishConfig.access=public. 145 plugin-host tests + tsc clean; npm pack dry-run produces folyn-plugin-sdk-0.1.0.tgz. Actual npm publish pending user's manual step.
 
 ### Main Changes
 
@@ -605,7 +605,7 @@ Removed per-plugin AI model pair selector from PluginsSettings (store field reta
 
 ### Summary
 
-Settings → Plugins rows now render the manifest icon (inline SVG / .svg-path-inlined / emoji / first-letter fallback) and one-line description. PluginManifest SDK type gained optional top-level icon/description fields; pluginStore.fetchRows Promise.all-fetches each installed plugin's manifest to surface them on PluginRow (best-effort; .svg path icons inlined via read_plugin_file). Separately: hide the activate Toggle until a trusted plugin is approved (Approve button replaces Toggle in that state). Also renamed ~/project/quill-plugin-sdk/quill-plugin-plantuml → plantuml-plugin (manifest id + test assertion updated to match folder name for install_plugin cross-check).
+Settings → Plugins rows now render the manifest icon (inline SVG / .svg-path-inlined / emoji / first-letter fallback) and one-line description. PluginManifest SDK type gained optional top-level icon/description fields; pluginStore.fetchRows Promise.all-fetches each installed plugin's manifest to surface them on PluginRow (best-effort; .svg path icons inlined via read_plugin_file). Separately: hide the activate Toggle until a trusted plugin is approved (Approve button replaces Toggle in that state). Also renamed ~/project/folyn-plugin-sdk/folyn-plugin-plantuml → plantuml-plugin (manifest id + test assertion updated to match folder name for install_plugin cross-check).
 
 ### Main Changes
 
@@ -1685,7 +1685,7 @@ Local builds passed via stale tsconfig.tsbuildinfo; CI failed with TS2307 (markm
 
 ### Summary
 
-Implemented PendingOpenFiles buffer + drain command; macOS RunEvent::Opened pushes+emits; Windows argv pre-populated before Builder::build; tauri-plugin-single-instance gated to Windows; App.tsx drains then listens. 4 new Rust unit tests pass; cargo check -p quill clean on macOS; editorIoService tests pass. Windows cross-check blocked by missing C toolchain (pre-existing, CI covers).
+Implemented PendingOpenFiles buffer + drain command; macOS RunEvent::Opened pushes+emits; Windows argv pre-populated before Builder::build; tauri-plugin-single-instance gated to Windows; App.tsx drains then listens. 4 new Rust unit tests pass; cargo check -p folyn clean on macOS; editorIoService tests pass. Windows cross-check blocked by missing C toolchain (pre-existing, CI covers).
 
 ### Main Changes
 

@@ -30,7 +30,7 @@
 
 - **Q1（scope）= Option 1（修正）**：只改 detect 按钮（`CliSettings.tsx:106-117`）。version test 不依赖 PATH（`exec <cliPath> --version`），detect 修好它就跟着对；spawn 是独立热路径，留给后续 task。
 - **Q2（platform）= Option C**：macOS + Linux + Windows 全平台。承认 Windows spawn 仍坏（spawn 不在本 task scope），本 task 只负责把 detect 三平台都能正确解析用户 shell 并 `which`/`where` 出真实路径。
-- **Q3（shell 解析方式）= Option C**：统一 helper `buildAdapterDetectCommand(adapterId, adapterCmd)`（建议放 `@quill/cli-adapter`，与 `buildAdapterVersionCommand` 同位）。平台分支：
+- **Q3（shell 解析方式）= Option C**：统一 helper `buildAdapterDetectCommand(adapterId, adapterCmd)`（建议放 `@folyn/cli-adapter`，与 `buildAdapterVersionCommand` 同位）。平台分支：
   - macOS：`exec "$(dscl . -read /Users/$(whoami) UserShell | awk '{print $2}')" -lc "which <cmd>"`
   - Linux：`exec "$(getent passwd $(whoami) | cut -d: -f7)" -lc "which <cmd>"`
   - Windows：`where <cmd>`（需新 sidecar，cmd.exe 或 PowerShell，见 capabilities 改动）

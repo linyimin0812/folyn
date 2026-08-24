@@ -1,4 +1,4 @@
-{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend tech stack + key patterns (Tauri 2 + React 18 + Tailwind; named exports, isTauri() guards). Fix is in @quill/desktop."}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend tech stack + key patterns (Tauri 2 + React 18 + Tailwind; named exports, isTauri() guards). Fix is in @folyn/desktop."}
 {"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component/styling conventions — pet.css override and main.tsx class gating must follow conventions."}
 {"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "The pet feature's own spec: transparent window, click-through, ACL contract. The fix restores R1 transparency; spec note to append the body-bg gotcha lives here."}
 {"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Tauri integration + code standards; verify the fix meets quality bar."}

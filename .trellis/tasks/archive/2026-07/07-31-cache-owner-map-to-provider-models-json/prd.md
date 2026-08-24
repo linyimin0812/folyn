@@ -3,7 +3,7 @@
 ## Goal
 
 `fetchOwnerMap()` 每次成功拉取都直接请求 OpenRouter `/models` + `/embeddings/models`。用户要：
-- 缓存到 `~/.quill/providers/provider-models.json`（**单一文件**，跨 provider 共享）
+- 缓存到 `~/.folyn/providers/provider-models.json`（**单一文件**，跨 provider 共享）
 - 文件 mtime 在 1 天内 → 直接读缓存，不请求 HTTP
 - 文件不存在或 mtime > 1 天 → 请求 OpenRouter，写回缓存
 - 文件 shape 扩展为 `{ "{modelId}": { modelId, providerId, capabilities: [] } }`（不只是 `modelId → provider` 字符串）
@@ -13,8 +13,8 @@
 - 当前 `fetchOwnerMap()`（`services/modelRegistry/fetchOwnerMap.ts:59-82`）返回 `Record<string, string>`（modelId → provider），每次都请求 HTTP
 - 消费者：`modelRegistryStore.ts:fetchModelsForProvider` 成功路径——`owner: ownerMap[ownerLookupKey(m.id)] ?? m.providerId`
 - OpenRouter `/models` 响应只解析了 `id` 字段（`interface OrModel { id: string }`），没有 capability 数据 → capabilities 暂时只能留空 `[]`
-- 路径原语：`userProvidersCatalog.ts` 的 `getUserProvidersDir()` 返回 `~/.quill/providers`，可复用做缓存目录
-- 现有 per-provider `models.json` 在 `~/.quill/providers/{pid}/models.json`；本缓存文件名为 `provider-models.json`（放在 providers/ 根目录下，**不**是 per-provider）
+- 路径原语：`userProvidersCatalog.ts` 的 `getUserProvidersDir()` 返回 `~/.folyn/providers`，可复用做缓存目录
+- 现有 per-provider `models.json` 在 `~/.folyn/providers/{pid}/models.json`；本缓存文件名为 `provider-models.json`（放在 providers/ 根目录下，**不**是 per-provider）
 
 ## Open Questions
 
@@ -39,7 +39,7 @@ OpenRouter `/api/v1/models` 单条模型 entry 关键字段：
 
 1. `fetchOwnerMap.ts` 改返回类型为 `Record<string, OwnerEntry>` where `OwnerEntry = { modelId: string; providerId: string; capabilities: never[] }`。capabilities 暂留空 `[]`。
 2. 加缓存逻辑：
-   - 缓存路径：`~/.quill/providers/provider-models.json`（用 `getUserProvidersDir()`）
+   - 缓存路径：`~/.folyn/providers/provider-models.json`（用 `getUserProvidersDir()`）
    - 读缓存：用 `exists` + `stat`（或读文件后比较 mtime）—— 文件存在 AND mtime 在 24h 内 → 返回 `JSON.parse`
    - 否则请求 OpenRouter HTTP（现有逻辑），写回缓存文件，返回
 3. 缓存读写失败不阻塞：read 失败 → 走 HTTP；write 失败 → 返回内存 map 不写盘
@@ -48,7 +48,7 @@ OpenRouter `/api/v1/models` 单条模型 entry 关键字段：
 
 ## Acceptance Criteria
 
-- [ ] 首次拉取：请求 OpenRouter，写 `~/.quill/providers/provider-models.json`
+- [ ] 首次拉取：请求 OpenRouter，写 `~/.folyn/providers/provider-models.json`
 - [ ] 文件 mtime < 24h：不再请求 HTTP，直接读缓存
 - [ ] 文件 mtime > 24h 或不存在：请求 HTTP，覆盖写
 - [ ] 文件 shape 是 `{ "{modelId}": { modelId, providerId, capabilities: [] } }`

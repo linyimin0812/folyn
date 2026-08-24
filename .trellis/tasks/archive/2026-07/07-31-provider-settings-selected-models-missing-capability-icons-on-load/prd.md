@@ -49,7 +49,7 @@ const modelsForCurrent = useMemo(() => {
 
 **问题**：ownerMap 仅来自 OpenRouter 的 `/models`，覆盖不全（如 `claude-opus-4-7` / `glm-5.2` 老版本或非 OpenRouter 列出的模型查不到）。用户 fetch 自定义 provider 时，catalog（models.dev）提供的 capabilities 没回流到 ownerMap，下次别的 provider 用到同 id 仍然查不到。
 
-**修复**：在 `fetchModelsForProvider` 的写路径，enrichment 完成后，把 enriched 中 capabilities 非空的条目合并写入 `~/.quill/providers/provider-models.json`（ownerMap 缓存）+ 更新 store 的 in-memory ownerMap。
+**修复**：在 `fetchModelsForProvider` 的写路径，enrichment 完成后，把 enriched 中 capabilities 非空的条目合并写入 `~/.folyn/providers/provider-models.json`（ownerMap 缓存）+ 更新 store 的 in-memory ownerMap。
 
 **去重规则**（用户要求 "注意去重"）：
 - 同一 `ownerLookupKey(id)` 已存在且 capabilities 非空 → **跳过**（保留 OpenRouter 原始数据）

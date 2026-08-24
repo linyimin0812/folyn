@@ -6,7 +6,7 @@ Let the user summon/dismiss the desktop pet panel (the launcher panel that curre
 
 ## Requirements
 
-- Register a global keyboard shortcut (default `Cmd+Shift+Q`) that toggles the pet-panel window's visibility, system-wide (works even when Quill is not focused).
+- Register a global keyboard shortcut (default `Cmd+Shift+Q`) that toggles the pet-panel window's visibility, system-wide (works even when Folyn is not focused).
 - On open via shortcut, the panel appears **centered in the screen's work area** (the monitor space excluding macOS Dock/menubar — i.e. `pet_get_work_area`'s returned rect), NOT at the pet-icon-adjacent corner. The click-open path is unchanged (still pet-adjacent) — only the shortcut path centers.
 - On second trigger while visible, hide the panel (toggle semantics, matching click behavior).
 - Default shortcut is `Cmd+Shift+Q`. The user can re-bind it in Settings → 快捷键 (reuse the existing `ShortcutEditor`).
@@ -14,7 +14,7 @@ Let the user summon/dismiss the desktop pet panel (the launcher panel that curre
 
 ## Acceptance Criteria
 
-- [ ] Pressing `Cmd+Shift+Q` (default) toggles pet-panel visibility when Quill is **not** the focused app.
+- [ ] Pressing `Cmd+Shift+Q` (default) toggles pet-panel visibility when Folyn is **not** the focused app.
 - [ ] Pressing the shortcut while the panel is visible hides it.
 - [ ] Open-via-shortcut centers the panel in the screen's work area (logical center of `pet_get_work_area`'s rect, minus the panel's own size).
 - [ ] Click-to-toggle still works (no regression).
@@ -53,8 +53,8 @@ Let the user summon/dismiss the desktop pet panel (the launcher panel that curre
 **Context**: Need to trigger the pet-panel from any app without clicking the floating pet icon.
 
 **Decision**:
-- Global shortcut via `tauri-plugin-global-shortcut` (not in-app keydown) — pet floats over other apps, so the shortcut must work when Quill isn't focused.
-- Default `Cmd+Shift+Q` (Q for Quill; `Cmd+Shift+P` collides with VSCode/Slack command palettes).
+- Global shortcut via `tauri-plugin-global-shortcut` (not in-app keydown) — pet floats over other apps, so the shortcut must work when Folyn isn't focused.
+- Default `Cmd+Shift+Q` (Q for Folyn; `Cmd+Shift+P` collides with VSCode/Slack command palettes).
 - Reuse existing `ShortcutItem`/`ShortcutEditor` for user-configurability — no new settings UI.
 - Toggle handler routes through Rust → `pet://shortcut-toggle` event → `PetApp.tsx` `openPetPanelCentered` (work-area centered position, distinct from click-open's pet-adjacent path) — keeps position logic unified in TS, with shared size-resolution + post-show re-assert helpers.
 
