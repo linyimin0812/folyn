@@ -4,15 +4,10 @@
 (function () {
   var LANGS = ['zh', 'en', 'ja', 'es', 'de', 'fr'];
   var STORAGE_KEY = 'folyn.lang';
-  var DEFAULT = 'zh';
+  var DEFAULT = 'en';
 
   function resolveInitial() {
-    var stored = null;
-    try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) {}
-    if (stored && LANGS.indexOf(stored) !== -1) return stored;
-    var nav = (navigator.language || '').toLowerCase();
-    var primary = nav.split('-')[0];
-    if (LANGS.indexOf(primary) !== -1) return primary;
+    try { var s = localStorage.getItem(STORAGE_KEY); if (s && LANGS.indexOf(s) !== -1) return s; } catch (e) {}
     return DEFAULT;
   }
 
