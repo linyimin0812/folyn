@@ -1223,10 +1223,12 @@ mjx-container svg {
 .excel-wrapper .toolbar { min-height: 22px !important; padding: 2px 10px !important; }
 .excel-wrapper .sheet-tab { height: 22px !important; padding: 0 10px !important; font-size: 11px !important; }
 .excel-wrapper .e-virt-table-stage { border-radius: 0 !important; }
-/* Hide the sheet-tabs bar (Sheet1 button) but keep the .summary text
- * ("共 X 行，Y 列") so the bottom line stays informative without the
- * redundant single-sheet tab. */
-.excel-wrapper .toolbar .btn-group { display: none !important; }
+/* Hide the sheet-tabs bar only when the workbook has a single (or zero)
+ * visible tab — the lone "Sheet1" button is redundant there. Multi-sheet
+ * workbooks keep the tabs so users can switch sheets. :has() targets the
+ * second tab; the renderer replaces the tab children on load/switch, so the
+ * rule re-evaluates as the tab list changes. */
+.excel-wrapper .toolbar:not(:has(.btn-group > .sheet-tab:nth-child(2))) .btn-group { display: none !important; }
 .excel-wrapper .toolbar .summary { font-size: 11px !important; font-weight: 500 !important; }
 
 /* ── Editor search/replace panel (VS Code style) ── */
