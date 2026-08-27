@@ -1,9 +1,8 @@
-import { watch, type WatchEvent } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getHandlerById } from '@/components/file-types/registry';
 
-type UnwatchFn = () => void;
-
-let currentUnwatch: UnwatchFn | null = null;
+let currentUnlisten: UnlistenFn | null = null;
 let currentBasePath = '';
 
 const suppressedPaths = new Set<string>();
@@ -33,29 +32,27 @@ function scheduleFileTreeRefresh() {
   }, 800);
 }
 
-function isModifyEvent(event: WatchEvent): boolean {
-  if (event.type === 'any') return true;
-  if (typeof event.type === 'object') {
-    return 'modify' in event.type || 'create' in event.type;
-  }
-  return false;
+interface WatcherEvent {
+  type: string;
+  paths: string[];
 }
 
-function isStructureEvent(event: WatchEvent): boolean {
-  if (typeof event.type === 'object') {
-    return 'create' in event.type || 'remove' in event.type;
-  }
-  return false;
+function isModifyEvent(type: string): boolean {
+  return type.includes('Modify') || type.includes('Create') || type === 'any';
 }
 
-async function handleWatchEvent(event: WatchEvent) {
+function isStructureEvent(type: string): boolean {
+  return type.includes('Create') || type.includes('Remove');
+}
+
+async function handleWatchEvent(event: WatcherEvent) {
   if (paused) return;
 
-  if (isStructureEvent(event)) {
+  if (isStructureEvent(event.type)) {
     scheduleFileTreeRefresh();
   }
 
-  if (!isModifyEvent(event)) return;
+  if (!isModifyEvent(event.type)) return;
 
   const { useEditorStore } = await import('@/store/editorStore');
   const { useDiffReviewStore } = await import('@/store/diffReviewStore');
@@ -99,25 +96,39 @@ export async function startVaultWatcher(basePath: string): Promise<void> {
   await stopVaultWatcher();
   currentBasePath = basePath.replace(/\/+$/, '');
 
+  // Listen for events emitted by the Rust background-thread watcher.
+  currentUnlisten = await listen<WatcherEvent>('app://vault-watcher-event', (e) => {
+    void handleWatchEvent(e.payload);
+  });
+
+  // Start the watcher on a Rust background thread — returns immediately.
+  // The heavy recursive watch setup (inotify/FSEvents for the whole tree)
+  // happens off the JS/IPC thread, so it never blocks vault creation or UI.
   try {
-    currentUnwatch = await watch(
-      currentBasePath,
-      handleWatchEvent,
-      { recursive: true, delayMs: 500 },
-    );
+    await invoke('start_vault_watcher', { root: currentBasePath });
   } catch (err) {
     console.error('[FileWatcher] Failed to start:', err);
+    if (currentUnlisten) {
+      currentUnlisten();
+      currentUnlisten = null;
+    }
   }
 }
 
 export async function stopVaultWatcher(): Promise<void> {
-  if (currentUnwatch) {
+  // Tell the Rust thread to stop (sets the atomic flag it polls).
+  try {
+    await invoke('stop_vault_watcher');
+  } catch {
+    // command may not be registered yet on cold start
+  }
+  if (currentUnlisten) {
     try {
-      currentUnwatch();
+      currentUnlisten();
     } catch {
       // already stopped
     }
-    currentUnwatch = null;
+    currentUnlisten = null;
   }
   currentBasePath = '';
   if (pendingRefresh) {

@@ -8,12 +8,11 @@ import {
   readFile as readFileBytesRaw,
   remove,
   mkdir,
-  readDir,
   exists,
-  stat,
   rename as fsRename,
 } from '@tauri-apps/plugin-fs';
 import { join, dirname } from '@tauri-apps/api/path';
+import { invoke } from '@tauri-apps/api/core';
 
 export class TauriVaultProvider implements VaultProvider {
   // ponytail: typed as interface types (not literals) so the
@@ -134,60 +133,38 @@ export class TauriVaultProvider implements VaultProvider {
     }
   }
 
-  async listFiles(path: string, recursive?: boolean, showHidden?: boolean): Promise<VaultEntry[]> {
+  async listFiles(path: string, recursive?: boolean, showHidden?: boolean, exclude?: string[]): Promise<VaultEntry[]> {
     const fullPath = await this.resolve(path);
     try {
-      const dirExists = await exists(fullPath);
-      if (!dirExists) return [];
-      const entries = await readDir(fullPath);
-      const result: VaultEntry[] = [];
-
-      for (const entry of entries) {
-        if (!showHidden && entry.name.startsWith('.')) continue;
-
-        const entryPath = path ? `${path}/${entry.name}` : entry.name;
-        const fullEntryPath = await join(fullPath, entry.name);
-
-        if (entry.isDirectory) {
-          const dirEntry: VaultEntry = {
-            path: entryPath,
-            name: entry.name,
-            type: 'dir',
-          };
-          if (recursive) {
-            try {
-              dirEntry.children = await this.listFiles(entryPath, true, showHidden);
-            } catch {
-              dirEntry.children = [];
-            }
-          }
-          result.push(dirEntry);
-        } else if (entry.isFile) {
-          let fileSize: number | undefined;
-          let lastModified: Date | undefined;
-          try {
-            const fileStat = await stat(fullEntryPath);
-            fileSize = fileStat.size;
-            lastModified = fileStat.mtime ? new Date(fileStat.mtime) : undefined;
-          } catch {
-            // stat may fail on some special files
-          }
-          result.push({
-            path: entryPath,
-            name: entry.name,
-            type: 'file',
-            size: fileSize,
-            lastModified,
-          });
-        }
-      }
-
-      result.sort((a, b) => {
-        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
-        return a.name.localeCompare(b.name);
+      // One IPC round-trip: Rust walks the tree in-process and returns a flat,
+      // nested list of relative-path entries. This replaces one-readDir-per-dir
+      // (and one-stat-per-file) which made vault add/switch crawl on large dirs.
+      // `exclude` is pruned during the Rust walk so heavy dirs (.git/node_modules)
+      // are never recursed into or shipped over IPC.
+      const raw = await invoke<
+        { path: string; name: string; is_dir: boolean; children?: unknown[] | null }[]
+      >('scan_file_tree', {
+        root: fullPath,
+        showHidden: !!showHidden,
+        exclude: exclude ?? [],
       });
 
-      return result;
+      // Rust already returns vault-relative paths (e.g. 'sub/file.md'),
+      // so use them directly — don't rebuild from name (that drops dir prefixes).
+      const prefix = path ? `${path}/` : '';
+      const convert = (
+        items: { path: string; name: string; is_dir: boolean; children?: unknown[] | null }[],
+      ): VaultEntry[] =>
+        items
+          .map((e) => {
+            const type = e.is_dir ? 'dir' : 'file';
+            const children = e.is_dir && Array.isArray(e.children) ? convert(e.children as typeof items) : undefined;
+            return { path: `${prefix}${e.path}`, name: e.name, type, children };
+          })
+          .sort((a, b) => (a.type !== b.type ? (a.type === 'dir' ? -1 : 1) : a.name.localeCompare(b.name)));
+
+      const result = convert(raw);
+      return recursive ? result : result.map(({ ...e }) => ({ ...e, children: undefined }));
     } catch (err) {
       throw new VaultError('NOT_FOUND', `Cannot list: ${path} (${err})`);
     }

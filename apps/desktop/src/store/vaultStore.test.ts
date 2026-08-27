@@ -49,7 +49,9 @@ function createFakeManager() {
     createDir: vi.fn(async (path: string) => {
       if (path) tree.push({ path, name: path, type: 'dir' });
     }),
-    listFiles: vi.fn(async () => [...tree]),
+    listFiles: vi.fn(async (_path: string, _recursive?: boolean, _showHidden?: boolean, exclude?: string[]) =>
+      [...tree].filter((e) => !exclude?.includes(e.name)),
+    ),
     writeFile: vi.fn(async (path: string, content: string) => {
       files.set(path, content);
       tree.push({ path, name: path.split('/').pop() || path, type: 'file' });

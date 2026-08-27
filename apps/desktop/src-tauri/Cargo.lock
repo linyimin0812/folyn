@@ -1748,6 +1748,7 @@ dependencies = [
  "hmac 0.13.0",
  "http",
  "log",
+ "notify",
  "objc",
  "objc2 0.5.2",
  "parking_lot",

@@ -60,7 +60,7 @@ export interface VaultProvider {
   deleteFile(path: string): Promise<void>;
 
   /** List files and directories at the given path */
-  listFiles(path: string, recursive?: boolean, showHidden?: boolean): Promise<VaultEntry[]>;
+  listFiles(path: string, recursive?: boolean, showHidden?: boolean, exclude?: string[]): Promise<VaultEntry[]>;
 
   // ── Directory Operations ──
 

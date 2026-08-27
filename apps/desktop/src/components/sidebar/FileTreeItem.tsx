@@ -39,9 +39,10 @@ export function FileTreeItem({
   onRenameCancel,
 }: FileTreeItemProps): React.JSX.Element {
   const isDir = item.type === 'dir';
-  const paddingLeft = `${12 + depth * 14}px`;
+  const paddingLeft = '12px';
 
-  const baseClasses = 'ft-item flex items-center gap-[5px] py-1 px-3 cursor-pointer text-[calc(var(--ui-font-size)-2px)] transition-all duration-[120ms] rounded-none select-none relative overflow-visible';
+  const baseClasses = 'ft-item flex items-center gap-[5px] py-1 cursor-pointer text-[calc(var(--ui-font-size)-2px)] transition-all duration-[120ms] rounded-none select-none relative overflow-visible';
+  const paddingRight = '12px';
   const stateClasses = isSelected
     ? 'bg-act text-t1'
     : (isDir && isDragOver)
@@ -71,12 +72,17 @@ export function FileTreeItem({
   return (
     <div
       className={classNames}
-      style={{ paddingLeft }}
+      style={{ paddingLeft, paddingRight }}
       onClick={handleClick}
       onMouseDown={onMouseDown}
       onContextMenu={onContextMenu}
       {...dataAttrs}
     >
+      {Array.from({ length: depth }, (_, i) => (
+        <span key={i} className="w-4 shrink-0 self-stretch relative">
+          <span className="absolute left-1/2 -translate-x-1/2 -top-1 -bottom-1 w-px bg-brd2" />
+        </span>
+      ))}
       <span className="shrink-0 w-4 h-4 flex items-center justify-center [&>svg]:block [&>svg]:shrink-0">
         <FileIcon filename={item.name} isDir={isDir} />
       </span>

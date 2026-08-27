@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { FolderOpen, Trash2 } from 'lucide-react';
+import { FolderOpen, Trash2, Loader2 } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -45,20 +45,6 @@ function renderProviderIcon(type: string): React.ReactNode {
   return <span style={{ fontSize: 15 }}>{PROVIDER_ICONS[type] || '📁'}</span>;
 }
 
-function formatDate(date: Date | undefined, t: (key: string, options?: Record<string, unknown>) => string): string {
-  if (!date) return '';
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return t('vault:time.justNow');
-  if (minutes < 60) return t('vault:time.minutesAgo', { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t('vault:time.hoursAgo', { count: hours });
-  const days = Math.floor(hours / 24);
-  if (days < 7) return t('vault:time.daysAgo', { count: days });
-  return date.toLocaleDateString();
-}
-
 export function VaultPage() {
   const { t } = useTranslation();
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
@@ -67,7 +53,9 @@ export function VaultPage() {
   const fileTree = useVaultStore((s) => s.fileTree);
   const switchVault = useVaultStore((s) => s.switchVault);
   const removeVault = useVaultStore((s) => s.removeVault);
+  const isLoading = useVaultStore((s) => s.isLoading);
   const openFile = editorIoService.openFile;
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -115,7 +103,15 @@ export function VaultPage() {
       await openEditorWithFirstFile();
     } else {
       // Switch vault and stay on vault page to browse files
-      await switchVault(vaultId);
+      setSwitchingId(vaultId);
+      // Yield to the event loop so React flushes the loading overlay before
+      // the (potentially slow) switchVault call blocks this microtask.
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      try {
+        await switchVault(vaultId);
+      } finally {
+        setSwitchingId(null);
+      }
     }
   };
 
@@ -143,23 +139,27 @@ export function VaultPage() {
       return (
         <div key={entry.path}>
           <div
-            className="fe-row flex items-center gap-[9px] py-2 px-[13px] border-b border-brd cursor-pointer transition-[background] duration-100 last:border-b-0 hover:bg-hov"
+            className="fe-row relative flex items-center gap-[9px] py-2 px-[13px] border-b border-brd cursor-pointer transition-[background] duration-100 last:border-b-0 hover:bg-hov"
             onClick={() => entry.type === 'dir' ? handleToggleDir(entry.path) : handleFileClick(entry.path, entry.name)}
             style={{ cursor: 'pointer', paddingLeft: `${13 + depth * 16}px` }}
           >
+            {Array.from({ length: depth }, (_, i) => (
+              <span key={i} className="absolute -top-2 -bottom-2 w-px bg-brd2" style={{ left: `${19 + i * 16}px` }} />
+            ))}
             <span className="text-[13px] shrink-0">
               <FileIcon filename={entry.name} isDir={entry.type === 'dir'} />
             </span>
             <span className="text-[calc(var(--ui-font-size)-2px)] text-t2 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{entry.name}</span>
             <span className="text-[10px] text-t3 font-mono shrink-0">
-              {entry.type === 'dir'
-                ? (isExpanded ? '▾' : '▸')
-                : formatDate(entry.lastModified, t)}
+              {entry.type === 'dir' ? (isExpanded ? '▾' : '▸') : ''}
             </span>
           </div>
           {entry.type === 'dir' && isExpanded && children.length > 0 && renderFileEntries(children, depth + 1)}
           {entry.type === 'dir' && isExpanded && children.length === 0 && (
-            <div className="fe-row flex items-center gap-[9px] py-2 px-[13px] border-b border-brd last:border-b-0" style={{ paddingLeft: `${13 + (depth + 1) * 16}px`, color: 'var(--t3)', fontSize: 11 }}>
+            <div className="fe-row relative flex items-center gap-[9px] py-2 px-[13px] border-b border-brd last:border-b-0" style={{ paddingLeft: `${13 + (depth + 1) * 16}px`, color: 'var(--t3)', fontSize: 11 }}>
+              {Array.from({ length: depth + 1 }, (_, i) => (
+                <span key={i} className="absolute top-0 bottom-0 w-px bg-brd2" style={{ left: `${19 + i * 16}px` }} />
+              ))}
               {t('vault:page.emptyFolder')}
             </div>
           )}
@@ -169,7 +169,12 @@ export function VaultPage() {
   };
 
   return (
-    <div className="vault-page flex-1 flex flex-col overflow-hidden bg-surf">
+    <div className="vault-page flex-1 flex flex-col overflow-hidden bg-surf relative">
+      {switchingId !== null && (
+        <div className="absolute inset-0 z-[200] bg-surf/70 backdrop-blur-[2px] flex items-center justify-center">
+          <Loader2 size={28} className="animate-spin text-acc" />
+        </div>
+      )}
       {/* Page header */}
       <div className="ph py-[18px] px-[22px] pb-3.5 border-b border-brd bg-panel shrink-0 flex items-start justify-between gap-3">
         <div>
@@ -223,9 +228,12 @@ export function VaultPage() {
                   {!isCurrent && (
                     <button
                       className="btn btn-g btn-sm flex-1"
+                      disabled={switchingId !== null || isLoading}
                       onClick={(e) => { e.stopPropagation(); handleSwitchOrOpen(vault.id); }}
                     >
-                      {t('vault:page.switch')}
+                      {switchingId === vault.id
+                        ? <><Loader2 size={13} className="animate-spin shrink-0" /> {t('vault:page.switch')}…</>
+                        : t('vault:page.switch')}
                     </button>
                   )}
                   <button

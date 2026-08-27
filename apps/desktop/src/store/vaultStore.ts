@@ -298,7 +298,7 @@ export const useVaultStore = create<VaultState>()(
             }));
             syncToSettings(config);
             await persistVaultConfigs(newVaults, config.id);
-            await startWatcherForVault(config);
+            void startWatcherForVault(config);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             set({ error: message });
@@ -378,7 +378,7 @@ export const useVaultStore = create<VaultState>()(
               useEditorStore.getState().rewriteTabPrefixes(renamedPairs);
             }
 
-            await startWatcherForVault(config);
+            void startWatcherForVault(config);
           } catch (err) {
             // ponytail: Tauri plugin-fs rejections (scope denial, path issues on
             // Windows reinstall) are often strings or plain objects, not Error.

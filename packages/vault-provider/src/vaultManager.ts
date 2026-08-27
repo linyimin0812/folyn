@@ -97,8 +97,8 @@ export class VaultManager {
     return this.getProvider().deleteFile(path);
   }
 
-  async listFiles(path: string, recursive?: boolean, showHidden?: boolean): Promise<VaultEntry[]> {
-    return this.getProvider().listFiles(path, recursive, showHidden);
+  async listFiles(path: string, recursive?: boolean, showHidden?: boolean, exclude?: string[]): Promise<VaultEntry[]> {
+    return this.getProvider().listFiles(path, recursive, showHidden, exclude);
   }
 
   async createDir(path: string): Promise<void> {
