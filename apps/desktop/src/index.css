@@ -527,8 +527,8 @@ mjx-container svg {
 .md-preview li::marker { color: var(--t1); }
 .md-preview ul.contains-task-list { list-style-type: none; padding-left: 4px; }
 .md-preview hr { border: none; border-top: 1px solid var(--brd); margin: 20px 0; }
-.md-preview table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-.md-preview th, .md-preview td { border: 1px solid var(--brd); padding: 6px 12px; font-size: 12px; text-align: left; }
+.md-preview table { border-collapse: collapse; width: 100%; margin: 12px 0; table-layout: auto; }
+.md-preview th, .md-preview td { border: 1px solid var(--brd); padding: 6px 12px; font-size: 12px; text-align: left; overflow-wrap: anywhere; word-break: break-word; }
 .md-preview th { background: var(--surf); font-weight: 600; }
 .md-preview img { max-width: 100%; border-radius: 6px; margin: 8px auto; display: block; }
 /* ponytail: inline-block shrink-to-fit + max-width:100% on inner media → wrapper
