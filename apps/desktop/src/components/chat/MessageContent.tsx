@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import { all as allLowlightGrammars } from 'lowlight';
 import type { AssistantImage } from '@folyn/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { saveImageToVault } from '@/services/chatImageService';
@@ -34,7 +35,7 @@ import { ZoomableImage } from './ZoomableImage';
 const render = (value: string): ReactNode =>
   renderMarkdownToReact(value, {
     remarkPlugins: [remarkGfm],
-    rehypePlugins: [[rehypeHighlight, { detect: true } as any]],
+    rehypePlugins: [[rehypeHighlight, { languages: allLowlightGrammars, detect: true } as any]],
     components: { code: CodeOverride },
   });
 

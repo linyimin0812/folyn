@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import type { Theme } from '@/store/appearanceStore';
+import { themeCss, themeCmVars } from '@/editor/codeThemes';
 
 /**
  * Hook to initialize and manage the theme.
  * Syncs the theme from store to the DOM on mount.
  * Supports 'system' theme that follows OS preference.
+ *
+ * Also syncs the code-highlight theme (`data-code-theme` attribute + injected
+ * `<style>` with the highlight.js CSS) from {@link AppearanceState.codeTheme}.
+ * Each named theme injects its CSS scoped to `[data-code-theme="<id>"]` so
+ * it overrides the base `.hljs-*` rules only while active. 'auto' emits no
+ * CSS — the base rules in index.css remain authoritative.
  */
 export function useTheme() {
   const theme = useAppearanceStore((state) => state.theme);
   const setTheme = useAppearanceStore((state) => state.setTheme);
   const toggleTheme = useAppearanceStore((state) => state.toggleTheme);
+  const codeTheme = useAppearanceStore((state) => state.codeTheme);
 
   useEffect(() => {
     if (theme === 'system') {
@@ -24,6 +32,21 @@ export function useTheme() {
     }
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.codeTheme = codeTheme;
+    if (codeTheme === 'auto') return;
+    const css = themeCss(codeTheme);
+    const cmVars = themeCmVars(codeTheme);
+    if (!css && !cmVars) return;
+    const style = document.createElement('style');
+    style.dataset.codeThemeStyle = codeTheme;
+    style.textContent = css + '\n' + cmVars;
+    document.head.appendChild(style);
+    return () => {
+      style.remove();
+    };
+  }, [codeTheme]);
 
   return { theme, setTheme, toggleTheme };
 }

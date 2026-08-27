@@ -17,6 +17,7 @@ import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSett
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
 import { Home, Unlock, Sparkles, Puzzle, Cat, Wrench, Bug } from 'lucide-react';
+import { THEMES } from '@/editor/codeThemes';
 import { useTranslation } from 'react-i18next';
 
 function SectionHeader({ label }: { label: string }) {
@@ -46,6 +47,8 @@ export function SettingsPage() {
 
   const theme = useAppearanceStore((s) => s.theme);
   const setTheme = useAppearanceStore((s) => s.setTheme);
+  const codeTheme = useAppearanceStore((s) => s.codeTheme);
+  const setCodeTheme = useAppearanceStore((s) => s.setCodeTheme);
   const fontFamily = useAppearanceStore((s) => s.fontFamily);
   const setFontFamily = useAppearanceStore((s) => s.setFontFamily);
   const fontSize = useAppearanceStore((s) => s.fontSize);
@@ -141,6 +144,17 @@ export function SettingsPage() {
             </div>
             <div className="border-t border-brd2 my-3.5" />
             <LanguageSwitcher variant="row" />
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+              <div className="tr-info">
+                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.codeTheme.label')}</h4>
+                <p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:appearance.codeTheme.description')}</p>
+              </div>
+              <select className="settings-select" style={{ maxWidth: 180 }} value={codeTheme} onChange={(e) => setCodeTheme(e.target.value as typeof codeTheme)}>
+                {THEMES.map((th) => (
+                  <option key={th.id} value={th.id}>{t(`settings:appearance.codeTheme.${th.labelKey}`)}</option>
+                ))}
+              </select>
+            </div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
               <div className="tr-info">
                 <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.fontSize.label')}</h4>

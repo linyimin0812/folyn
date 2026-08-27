@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
+import { themeCss } from '@/editor/codeThemes';
 import { useVaultStore } from '@/store/vaultStore';
 import {
   renderMarkdownToHtmlViaDom,
@@ -177,16 +179,18 @@ export async function exportActiveHtml(onBeforeDialog?: () => void): Promise<voi
   const theme: 'light' | 'dark' =
     (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
   const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+  const codeTheme = useAppearanceStore.getState().codeTheme;
+  const codeThemeCss = codeTheme === 'auto' ? '' : themeCss(codeTheme);
   const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot, theme);
   const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
   const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
   const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN" data-theme="${theme}">
+<html lang="zh-CN" data-theme="${theme}" data-code-theme="${codeTheme}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${themeVars}\n${runtimeFontVars()}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered against the theme's viewport bg. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
+  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered against the theme's viewport bg. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
   <script>${CONTAINER_INTERACT_SCRIPT}</script>
 </head>
 <body>
@@ -284,6 +288,8 @@ ${svg}
   const theme: 'light' | 'dark' =
     (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
   const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+  const codeTheme = useAppearanceStore.getState().codeTheme;
+  const codeThemeCss = codeTheme === 'auto' ? '' : themeCss(codeTheme);
   // ponytail: in upload mode, skip the inline-asset-URLs-as-data-URI pass
   // so `uploadImagesToProvider` can still see `asset://` srcs, upload each
   // image to the provider, and rewrite src to the public URL — instead of
@@ -302,12 +308,12 @@ ${svg}
 
   const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
   return `<!DOCTYPE html>
-<html lang="zh-CN" data-theme="${theme}">
+<html lang="zh-CN" data-theme="${theme}" data-code-theme="${codeTheme}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${themeVars}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
+  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n</style>
   <script>${CONTAINER_INTERACT_SCRIPT}</script>
 </head>
 <body>

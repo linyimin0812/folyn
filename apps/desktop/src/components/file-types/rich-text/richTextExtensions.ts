@@ -11,7 +11,7 @@ import { TextAlign } from '@tiptap/extension-text-align';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Mathematics } from '@tiptap/extension-mathematics';
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
-import { createLowlight, common } from 'lowlight';
+import { createLowlight, all } from 'lowlight';
 import { RichTextIndent } from './RichTextIndent';
 import { RichTextTableCell, RichTextTableHeader } from './RichTextTableCell';
 import { RichTextImage, type ImagePasteHandler } from './RichTextImage';
@@ -19,12 +19,14 @@ import { RichTextSlashExtension } from './RichTextSlashExtension';
 
 // ponytail: one lowlight instance shared by editor + export pipeline
 // (getRichTextExtensions is called by both, and richtext.ts imports this
-// directly to post-process exported code blocks). `common` registers ~35
-// curated highlight.js grammars; `highlightAuto` runs against that set
-// when a code block has no language attr. Upgrade path: swap `common`
-// for `all` (every hljs grammar, ~3x bundle) only if a real language
-// goes unhighlighted.
-export const richTextLowlight = createLowlight(common);
+// directly to post-process exported code blocks). `all` registers every
+// highlight.js grammar (~193 languages) so code blocks cover the long tail
+// (Dart, TOML, Dockerfile, nginx, protobuf, ...). The full hljs grammar set
+// is already shipped in the main bundle via CodeFileViewer/CodeBlockExtension,
+// so this adds no new third-party code — only wires the rich-text surface to
+// the same coverage. `highlightAuto` runs against the full set when a code
+// block has no language attr.
+export const richTextLowlight = createLowlight(all);
 
 export type MathEditKind = 'inline' | 'block';
 
@@ -71,7 +73,7 @@ export function getRichTextExtensions(options: RichTextExtensionsOptions = {}): 
     StarterKit.configure({ codeBlock: false }),
     CodeBlockLowlight.configure({
       lowlight: richTextLowlight,
-      // ponytail: null → highlightAuto (auto-detect against common grammars).
+      // ponytail: null → highlightAuto (auto-detect against all grammars).
       // A future language picker on the code block would set attrs.language;
       // until then auto-detect covers the obvious cases.
       defaultLanguage: null,

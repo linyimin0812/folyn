@@ -38,10 +38,10 @@ export function CodeFileViewer({ content, filePath }: PreviewProps) {
 
   return (
     <pre
+      className="hljs"
       style={{
         margin: 0, padding: '12px', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
         fontSize: '12px', fontFamily: 'var(--mono, monospace)',
-        color: 'var(--t1, #2a3146)', background: 'transparent',
       }}
     >
       {html ? <code dangerouslySetInnerHTML={{ __html: html }} /> : <code>{content}</code>}

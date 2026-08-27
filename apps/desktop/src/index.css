@@ -589,6 +589,43 @@ mjx-container svg {
 [data-theme="dark"] .md-preview .hljs-symbol, [data-theme="dark"] .md-preview .hljs-bullet { color: #cc7832; }
 [data-theme="dark"] .md-preview .hljs-link { color: #6897bb; }
 
+/* Base .hljs (no theme override) — covers CodeFileViewer's bare <pre class="hljs">
+   and any .hljs element outside .md-preview/.ProseMirror. The scoped rules
+   above (.md-preview .hljs-*, .ProseMirror pre code .hljs-*) don't match a
+   bare <pre>, so without this rule token spans have no color. Mirrors the
+   .md-preview light palette; a selected code theme overrides via
+   [data-code-theme] in codeThemes.ts. */
+.hljs { color: var(--t1, #2a3146); background: transparent; }
+.hljs-comment, .hljs-quote { color: #940; }
+.hljs-keyword, .hljs-selector-tag { color: #708; }
+.hljs-number, .hljs-literal { color: #164; }
+.hljs-string, .hljs-addition { color: #a11; }
+.hljs-regexp { color: #e40; }
+.hljs-tag, .hljs-name { color: #170; }
+.hljs-attr, .hljs-variable, .hljs-template-variable { color: #00c; }
+.hljs-attribute { color: #00c; }
+.hljs-type, .hljs-built_in, .hljs-builtin-name, .hljs-class .hljs-title { color: #085; }
+.hljs-meta { color: #555; }
+.hljs-title, .hljs-function .hljs-title, .hljs-section { color: #00f; }
+.hljs-deletion { color: #a11; }
+.hljs-symbol, .hljs-bullet { color: #708; }
+.hljs-link { color: #219; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: bold; }
+[data-theme="dark"] .hljs { color: #e2e8f8; }
+[data-theme="dark"] .hljs-comment, [data-theme="dark"] .hljs-quote { color: #a9b7c6; }
+[data-theme="dark"] .hljs-keyword, [data-theme="dark"] .hljs-selector-tag { color: #cc7832; }
+[data-theme="dark"] .hljs-number, [data-theme="dark"] .hljs-literal { color: #6897bb; }
+[data-theme="dark"] .hljs-string, [data-theme="dark"] .hljs-addition { color: #6a8759; }
+[data-theme="dark"] .hljs-tag, [data-theme="dark"] .hljs-name { color: #e8bf6a; }
+[data-theme="dark"] .hljs-attr, [data-theme="dark"] .hljs-variable, [data-theme="dark"] .hljs-template-variable { color: #9876aa; }
+[data-theme="dark"] .hljs-attribute { color: #9876aa; }
+[data-theme="dark"] .hljs-type, [data-theme="dark"] .hljs-built_in, [data-theme="dark"] .hljs-builtin-name, [data-theme="dark"] .hljs-class .hljs-title { color: #ffc66d; }
+[data-theme="dark"] .hljs-meta { color: #bbb529; }
+[data-theme="dark"] .hljs-title, [data-theme="dark"] .hljs-function .hljs-title, [data-theme="dark"] .hljs-section { color: #ffc66d; }
+[data-theme="dark"] .hljs-symbol, [data-theme="dark"] .hljs-bullet { color: #cc7832; }
+[data-theme="dark"] .hljs-link { color: #6897bb; }
+
 /* ── Rich-text editor code block highlighting (lowlight via tiptap) ──
    Mirrors the .md-preview rules above so a code block in RichTextEditor
    colors tokens the same as in markdown preview. Scoped to .ProseMirror

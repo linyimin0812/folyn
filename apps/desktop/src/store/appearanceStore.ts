@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { registerPersistSlice } from './settingsPersistence';
+import type { CodeThemeId } from '@/editor/codeThemes';
 
 // ponytail: appearanceStore owns Theme/LinkOpenMode type ownership and
 // backfillBuiltinExcludePatterns (PR2 migrated from legacy settingsStore).
@@ -38,6 +39,7 @@ const DEFAULT_EXCLUDE_PATTERNS =
 
 export const PERSIST_KEYS_APPEARANCE = [
   'theme',
+  'codeTheme',
   'fontFamily',
   'fontSize',
   'lineHeight',
@@ -91,6 +93,8 @@ export interface AppearanceState {
   showTrayIcon: boolean;
 
   setTheme: (theme: Theme) => void;
+  codeTheme: CodeThemeId;
+  setCodeTheme: (id: CodeThemeId) => void;
   toggleTheme: () => void;
   setFontFamily: (family: string) => void;
   setFontSize: (size: number) => void;
@@ -114,6 +118,7 @@ export interface AppearanceState {
 
 export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   theme: 'light',
+  codeTheme: 'auto',
   fontFamily: 'Sora',
   fontSize: 14,
   lineHeight: 1.7,
@@ -148,6 +153,12 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
       document.documentElement.dataset.theme = newTheme;
       return { theme: newTheme };
     });
+    persist();
+  },
+
+  setCodeTheme: (id) => {
+    document.documentElement.dataset.codeTheme = id;
+    set({ codeTheme: id });
     persist();
   },
 
@@ -210,6 +221,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   hydrate: (blob) => {
     const patch: Partial<AppearanceState> = {};
     if (blob.theme !== undefined) patch.theme = blob.theme as Theme;
+    if (blob.codeTheme !== undefined) patch.codeTheme = blob.codeTheme as CodeThemeId;
     if (blob.fontFamily !== undefined) patch.fontFamily = blob.fontFamily as string;
     if (blob.fontSize !== undefined) patch.fontSize = blob.fontSize as number;
     if (blob.lineHeight !== undefined) patch.lineHeight = blob.lineHeight as number;
@@ -241,6 +253,8 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : theme;
       document.documentElement.dataset.theme = actual;
+      const codeTheme = patch.codeTheme ?? get().codeTheme;
+      document.documentElement.dataset.codeTheme = codeTheme;
       const fontFamily = patch.fontFamily ?? get().fontFamily;
       document.documentElement.style.setProperty('--font-ui', `'${fontFamily}', sans-serif`);
       const fontSize = patch.fontSize ?? get().fontSize;

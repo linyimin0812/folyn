@@ -10,6 +10,7 @@ import remarkDirectiveRehype from 'remark-directive-rehype';
 import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
+import { all as allLowlightGrammars } from 'lowlight';
 import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
@@ -842,7 +843,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
         .use(remarkDirectiveRehype)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeRaw)
-        .use(rehypeHighlight, { ignoreMissing: true } as any)
+        .use(rehypeHighlight, { languages: allLowlightGrammars, ignoreMissing: true } as any)
         .use(rehypeRemoveCodeBreaks)
         .use(rehypeMarkResultBlock)
         .use(rehypeMathjax)
