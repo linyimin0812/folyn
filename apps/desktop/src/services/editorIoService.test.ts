@@ -40,7 +40,16 @@ vi.mock('@/utils/fileWatcher', () => ({ suppressWatcherFor: vi.fn() }));
 vi.mock('@/services/wikiProvider', () => ({ wikiProvider: { readFile: vi.fn(), writeFile: vi.fn() } }));
 vi.mock('@/types/wiki', () => ({ WIKI_PREFIX: 'wiki://' }));
 vi.mock('@/store/editorAutoSave', () => ({ scheduleAutoSave: vi.fn(), flushAllAutoSaves: vi.fn() }));
-vi.mock('@/store/editorPersistence', () => ({ persistOpenTabs: vi.fn(), flushPersistOpenTabs: vi.fn(), loadPersistedOpenTabs: vi.fn(async () => null) }));
+vi.mock('@/store/editorPersistence', () => ({ persistOpenTabs: vi.fn(), flushPersistOpenTabs: vi.fn(), loadPersistedOpenTabs: vi.fn(async () => null), persistExternalOpenTabs: vi.fn(), flushPersistExternalOpenTabs: vi.fn(), loadExternalOpenTabs: vi.fn(async () => null) }));
+vi.mock('@/utils/platform', () => ({ isTauri: () => true }));
+vi.mock('@/services/externalFileProvider', () => ({
+  externalFileProvider: {
+    readFile: vi.fn(),
+    writeFile: vi.fn(async () => {}),
+    writeFileBytes: vi.fn(async () => {}),
+    exists: vi.fn(async () => false),
+  },
+}));
 
 import {
   openFile,
@@ -50,6 +59,7 @@ import {
   restoreOpenTabs,
   checkDiskChanges,
   flushAutoSaves,
+  openDroppedFiles,
 } from './editorIoService';
 import { flushAllAutoSaves } from '@/store/editorAutoSave';
 
@@ -104,5 +114,43 @@ describe('editorIoService.saveFile', () => {
   it('is a no-op when the tab is absent', async () => {
     await saveFile('missing');
     expect(setStateMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('editorIoService.openDroppedFiles', () => {
+  it('opens a macOS file by its real path (no staging write)', async () => {
+    const { externalFileProvider } = await import('@/services/externalFileProvider');
+    (externalFileProvider.readFile as ReturnType<typeof vi.fn>).mockResolvedValue('# hi');
+    const f = new File(['# hi'], 'note.md', { type: 'text/markdown' });
+    // WebKit exposes .path on the dropped File (non-standard). Simulate it.
+    Object.defineProperty(f, 'path', { value: '/Users/x/note.md' });
+    const n = await openDroppedFiles([f]);
+    expect(n).toBe(1);
+    expect(externalFileProvider.readFile).toHaveBeenCalledWith('/Users/x/note.md');
+    expect(externalFileProvider.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('stages a Windows file (no path) into ~/.folyn/drops then opens it', async () => {
+    const { externalFileProvider } = await import('@/services/externalFileProvider');
+    (externalFileProvider.readFile as ReturnType<typeof vi.fn>).mockResolvedValue('# win');
+    (externalFileProvider.writeFileBytes as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    // jsdom File lacks arrayBuffer(); use a plain object shaped like a dropped
+    // File (name + arrayBuffer()) — the real WebView2 File has both.
+    const enc = new TextEncoder().encode('# win');
+    const f = { name: 'win.md', arrayBuffer: async () => enc.buffer } as unknown as File;
+    const n = await openDroppedFiles([f]);
+    expect(n).toBe(1);
+    const writeCall = (externalFileProvider.writeFileBytes as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(writeCall[0]).toBe('~/.folyn/drops/win.md');
+    expect(Array.from(writeCall[1] as Uint8Array)).toEqual(Array.from(enc));
+    expect(externalFileProvider.readFile).toHaveBeenCalledWith('~/.folyn/drops/win.md');
+  });
+
+  it('skips file types Folyn has no handler for', async () => {
+    const { getHandlerById } = await import('@/components/file-types/registry');
+    (getHandlerById as ReturnType<typeof vi.fn>).mockReturnValue(undefined);
+    const f = { name: 'pic.png' } as unknown as File;
+    const n = await openDroppedFiles([f]);
+    expect(n).toBe(0);
   });
 });

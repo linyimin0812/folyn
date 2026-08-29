@@ -26,6 +26,7 @@ import {
 } from '@/store/editorPersistence';
 import { snapshot as snapshotVersion } from '@/services/versionHistory';
 import { resolveBasePath } from '@/utils/pathResolver';
+import { isTauri } from '@/utils/platform';
 
 /** Default URL for a freshly created browser tab. */
 export const BROWSER_HOME_URL = 'https://www.google.com';
@@ -546,6 +547,79 @@ export async function openExternalFile(): Promise<number> {
   const name = picked.includes('/') ? picked.substring(picked.lastIndexOf('/') + 1) : picked;
   await openFile(picked, name);
   return 1;
+}
+
+/** Open file(s) dropped onto the window from the OS file manager.
+ *
+ * On macOS, WebKit (WKWebView) exposes the real absolute path on the dropped
+ * `File` object (`.path`); we open it directly as a vault-independent external
+ * tab — same route as the OS "Open With" flow.
+ *
+ * On Windows, WebView2's HTML5 `drop` event delivers a `File` object with
+ * name/size/type and readable content but NO absolute path (WebView2 security
+ * restriction). To get a real path Folyn must enable the Tauri
+ * `dragDropEnabled` window flag, but that replaces WebView2's drag-drop handler
+ * and breaks ALL in-app HTML5 drag-and-drop (the schedule board, rich-text
+ * table row/col reordering) — a Tauri-documented, hard limitation. So instead
+ * we read the dropped `File` content and write it to a per-app import staging
+ * dir (`~/.folyn/drops/`), then open that staged file by path. The user gets a
+ * real, editable, saveable Folyn tab; the cost is that it is a copy (the
+ * original is not modified on save). Non-text/binary file types that Folyn
+ * does not edit are skipped (no handler → no tab).
+ *
+ * `Files` here are Web `File` objects (HTML5 DnD), not Tauri paths. Returns the
+ * number of files opened. No-op (returns 0) when not running under Tauri. */
+export async function openDroppedFiles(files: File[]): Promise<number> {
+  if (!isTauri()) return 0;
+  let opened = 0;
+  for (const f of files) {
+    const webkitPath = (f as unknown as { path?: string }).path;
+    if (webkitPath) {
+      // macOS: real absolute path available — open the actual file.
+      const name = webkitPath.includes('/')
+        ? webkitPath.substring(webkitPath.lastIndexOf('/') + 1)
+        : webkitPath;
+      await openFile(webkitPath, name);
+      opened++;
+      continue;
+    }
+    // Windows / Linux (WebView2): no path on the File object. Stage the
+    // content into ~/.folyn/drops/ and open the staged copy by path. Read as
+    // raw bytes (arrayBuffer) and write as bytes — f.text()/writeFile do a
+    // UTF-8 round-trip that corrupts binary files (docx/xlsx/pdf/zip are ZIP
+    // archives; a bad UTF-8 decode breaks the office viewer with "Corrupted
+    // zip"). Byte writes are identity-preserving for text files too, so all
+    // handled types go through this one path. Skip types Folyn has no editor
+    // for (e.g. plain images) — they are not versionable files.
+    const fileType = detectFileType(f.name);
+    const handler = getHandlerById(fileType);
+    if (!handler) continue;
+    try {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const staged = await stageDroppedContent(f.name, bytes);
+      await openFile(staged, f.name);
+      opened++;
+    } catch (err) {
+      console.error('[EditorStore] openDroppedFiles: failed to stage', f.name, err);
+    }
+  }
+  return opened;
+}
+
+/** Write dropped file bytes to `~/.folyn/drops/<name>` and return that path.
+ *  Bytes (not text) so binary archives (docx/xlsx/zip/…) are not corrupted by
+ *  a UTF-8 encode/decode round-trip. Overwrites any prior staging of the same
+ *  name (re-import = refresh). The path is home-relative (`~/…`) so the tab id
+ *  is stable across vault switches and read/write route through
+ *  `externalFileProvider` (which resolves `~` → $HOME, enforces the
+ *  within-home boundary, and creates the dir). */
+async function stageDroppedContent(name: string, bytes: Uint8Array): Promise<string> {
+  // Sanitize: keep only the base name (File.name should already be path-free,
+  // but guard against a crafted name with separators that would escape drops/).
+  const safe = name.replace(/[/\\]+/g, '_') || 'untitled';
+  const staged = '~/.folyn/drops/' + safe;
+  await externalFileProvider.writeFileBytes(staged, bytes);
+  return staged;
 }
 
 /** Immediately save all tabs with pending auto-save timers. */

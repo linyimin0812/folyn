@@ -30,6 +30,32 @@ const BOOTSTRAP_SCRIPT = `(function(){
     }
     // ponytail: non-# href stays a dead link, matching the pre-fix onLoad behavior.
   });
+  // ponytail: this iframe is sandbox="allow-scripts" (no allow-same-origin),
+  // so it is a separate document whose dragover/drop do NOT bubble to the
+  // parent window — WKWebView's default drop navigates the iframe to the
+  // file (raw file content replaces the preview). preventDefault and forward
+  // the WebKit \`.path\` to the parent via postMessage (cross-origin-safe);
+  // the parent's message listener routes through the same openFile path.
+  function isFile(e){ return e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.indexOf('Files') !== -1; }
+  document.addEventListener('dragover', function(e){
+    if(!isFile(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    window.parent.postMessage({ type: 'folyn:file-drag-active' }, '*');
+  });
+  document.addEventListener('drop', function(e){
+    if(!isFile(e)) return;
+    e.preventDefault();
+    // Forward File objects (not .path): this iframe is sandbox="allow-scripts"
+    // only (no allow-same-origin) → cross-origin → WKWebView hides the private
+    // File.path, so reading files[i].path here is always undefined and drops
+    // were silently lost. File objects survive postMessage structured clone;
+    // the parent's openDroppedFiles handles path/staging per-platform.
+    var files = e.dataTransfer.files;
+    var arr = [];
+    if(files) for(var i=0;i<files.length;i++) arr.push(files[i]);
+    if(arr.length > 0) window.parent.postMessage({ type: 'folyn:open-dropped-files', files: arr }, '*');
+  });
 })();`;
 
 /**

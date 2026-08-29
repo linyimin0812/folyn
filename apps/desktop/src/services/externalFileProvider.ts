@@ -84,6 +84,22 @@ export const externalFileProvider = {
     await writeTextFile(abs, content);
   },
 
+  /** Write raw bytes to an external file (create or overwrite). Use this
+   *  (not `writeFile`) when the content is binary (docx/xlsx/pdf/zip/…) —
+   *  `writeFile`'s UTF-8 text encode would corrupt non-text byte sequences,
+   *  which breaks the office/pdf viewers that read the file back as bytes. */
+  async writeFileBytes(rawPath: string, bytes: Uint8Array): Promise<void> {
+    const abs = await resolveAbsolutePath(rawPath);
+    await assertWithinHome(abs);
+    const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+    const { dirname } = await import('@tauri-apps/api/path');
+    const dir = await dirname(abs);
+    if (dir && !(await exists(dir))) {
+      await mkdir(dir, { recursive: true });
+    }
+    await writeFile(abs, bytes);
+  },
+
   /** Whether the file exists on disk. */
   async exists(rawPath: string): Promise<boolean> {
     const abs = await resolveAbsolutePath(rawPath);

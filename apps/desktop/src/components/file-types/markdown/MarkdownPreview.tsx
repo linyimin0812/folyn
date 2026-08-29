@@ -564,6 +564,42 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
               };
               resize();
               new ResizeObserver(resize).observe(doc.body);
+              // ponytail: the preview iframe is a separate document — file
+              // drag/drop events do NOT bubble to the parent window, so
+              // WKWebView's default drop navigates the iframe to the file
+              // (raw file content replaces the preview). preventDefault here
+              // and forward the WebKit `.path` to the parent, which routes
+              // through the same openFile path as a window-level drop (new
+              // tab, or activate-if-already-open — the user's "detect if
+              // already open" expectation is handled by openFile's existing
+              // dedup on `ext:<path>` tab id).
+              const fwdDragOver = (ev: Event) => {
+                const de = ev as DragEvent;
+                if (!de.dataTransfer?.types?.includes('Files')) return;
+                de.preventDefault();
+                de.dataTransfer.dropEffect = 'copy';
+                window.parent?.postMessage({ type: 'folyn:file-drag-active' }, '*');
+              };
+              const fwdDrop = (ev: Event) => {
+                const de = ev as DragEvent;
+                if (!de.dataTransfer?.types?.includes('Files')) return;
+                de.preventDefault();
+                // Forward the File OBJECTS (not .path) — a sandboxed iframe
+                // without allow-same-origin is cross-origin, and WKWebView
+                // hides the private File.path from cross-origin documents, so
+                // reading .path here yields undefined and drops were silently
+                // lost. File objects survive postMessage's structured clone
+                // (name/size/type/content intact); the parent's
+                // openDroppedFiles handles path/staging per-platform.
+                const files = de.dataTransfer.files;
+                const arr: File[] = [];
+                if (files) for (let i = 0; i < files.length; i++) arr.push(files[i]);
+                if (arr.length > 0) {
+                  window.parent?.postMessage({ type: 'folyn:open-dropped-files', files: arr }, '*');
+                }
+              };
+              doc.addEventListener('dragover', fwdDragOver);
+              doc.addEventListener('drop', fwdDrop);
             } catch { /* cross-origin — leave default height */ }
           }}
         />
