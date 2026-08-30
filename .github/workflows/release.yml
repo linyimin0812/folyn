@@ -56,6 +56,7 @@ jobs:
 
       - name: Sync version from tag
         if: ${{ (inputs.tag || github.event.release.tag_name || '') != '' }}
+        shell: bash
         run: |
           TAG="${{ inputs.tag || github.event.release.tag_name }}"
           VER="${TAG#v}"
