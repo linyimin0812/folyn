@@ -120,6 +120,18 @@
     "cancel": "Cancel",
     "upload": "✓ Upload"
   },
+  "filePaste": {
+    "conflictTitle": "File already exists",
+    "conflictMessage": "A file with this name already exists in the target folder:",
+    "overwrite": "Overwrite",
+    "skip": "Skip",
+    "rename": "Rename",
+    "applyToAll": "Apply to all ({{count}} remaining)",
+    "openVaultFirst": "Open a vault first to paste files into.",
+    "vaultRoot": "vault root",
+    "imported": "Imported {{count}} file(s) into {{where}}.",
+    "allSkipped": "Skipped {{count}} file(s) — nothing imported."
+  },
   "dailyDigest": {
     "title": "AI Daily Digest",
     "generate": "Generate digest",

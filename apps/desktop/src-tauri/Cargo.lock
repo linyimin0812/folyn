@@ -1736,6 +1736,7 @@ dependencies = [
  "aes 0.9.2",
  "aes-gcm",
  "anyhow",
+ "arboard",
  "base64 0.22.1",
  "block2 0.5.1",
  "cbc",

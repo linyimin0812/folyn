@@ -113,6 +113,18 @@
     "cancel": "Cancelar",
     "upload": "✓ Subir"
   },
+  "filePaste": {
+    "conflictTitle": "El archivo ya existe",
+    "conflictMessage": "Ya existe un archivo con ese nombre en la carpeta de destino:",
+    "overwrite": "Sobrescribir",
+    "skip": "Omitir",
+    "rename": "Renombrar",
+    "applyToAll": "Aplicar a todos ({{count}} restantes)",
+    "openVaultFirst": "Abre un vault primero para pegar archivos en él.",
+    "vaultRoot": "raíz del vault",
+    "imported": "{{count}} archivo(s) importado(s) en {{where}}.",
+    "allSkipped": "{{count}} archivo(s) omitido(s) — nada importado."
+  },
   "dailyDigest": {
     "title": "Resumen diario IA",
     "generate": "Generar resumen",

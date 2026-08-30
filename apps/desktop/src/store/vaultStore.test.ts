@@ -487,6 +487,109 @@ describe('useVaultStore.copyExternalFileToVault', () => {
   });
 });
 
+describe('useVaultStore.overwriteExternalFileToVault', () => {
+  function createFakeManager() {
+    const files = new Map<string, string>();
+    const dirs = new Set<string>();
+    const splitPath = (p: string) => {
+      const idx = p.lastIndexOf('/');
+      return idx >= 0 ? { dir: p.slice(0, idx), base: p.slice(idx + 1) } : { dir: '', base: p };
+    };
+    return {
+      files,
+      dirs,
+      listFiles: vi.fn(async (path: string) => {
+        const out: VaultEntry[] = [];
+        for (const [p] of files) {
+          const { dir, base } = splitPath(p);
+          if (dir === path) out.push({ path: p, name: base, type: 'file' });
+        }
+        return out;
+      }),
+      writeFile: vi.fn(async (path: string, content: string) => { files.set(path, content); }),
+      writeFileBytes: vi.fn(async (path: string, bytes: Uint8Array) => { files.set(path, bytes); }),
+      createDir: vi.fn(async () => {}),
+      readFile: vi.fn(async () => { throw new Error('should not read via manager'); }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useVaultStore.setState({
+      manager: createFakeManager() as never,
+      currentVault: { id: 'v1', name: 'a', providerType: 'tauri', basePath: '/a' },
+      fileTree: [],
+    } as never);
+  });
+
+  it('overwrites the existing file at the original name (no 副本 suffix)', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('notes');
+    m.files.set('notes/report.md', 'old');
+
+    const newPath = await useVaultStore.getState().overwriteExternalFileToVault('/abs/report.md', 'notes');
+
+    expect(m.writeFileBytes).toHaveBeenCalledWith('notes/report.md', new TextEncoder().encode('content-for:/abs/report.md'));
+    expect(newPath).toBe('notes/report.md');
+  });
+});
+
+describe('useVaultStore.externalFileExistsAt', () => {
+  function createFakeManager() {
+    const files = new Map<string, string>();
+    const dirs = new Set<string>();
+    const splitPath = (p: string) => {
+      const idx = p.lastIndexOf('/');
+      return idx >= 0 ? { dir: p.slice(0, idx), base: p.slice(idx + 1) } : { dir: '', base: p };
+    };
+    return {
+      files,
+      dirs,
+      listFiles: vi.fn(async (path: string) => {
+        const out: VaultEntry[] = [];
+        for (const [p] of files) {
+          const { dir, base } = splitPath(p);
+          if (dir === path) out.push({ path: p, name: base, type: 'file' });
+        }
+        return out;
+      }),
+      writeFile: vi.fn(async () => {}),
+      writeFileBytes: vi.fn(async () => {}),
+      createDir: vi.fn(async () => {}),
+      readFile: vi.fn(async () => { throw new Error('unused'); }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useVaultStore.setState({
+      manager: createFakeManager() as never,
+      currentVault: { id: 'v1', name: 'a', providerType: 'tauri', basePath: '/a' },
+      fileTree: [],
+    } as never);
+  });
+
+  it('returns true when the file exists at the target dir', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('notes');
+    m.files.set('notes/report.md', 'existing');
+
+    const exists = await useVaultStore.getState().externalFileExistsAt('notes', 'report.md');
+
+    expect(exists).toBe(true);
+  });
+
+  it('returns false when no file with that name lives at the target dir', async () => {
+    const m = useVaultStore.getState().manager as ReturnType<typeof createFakeManager>;
+    m.dirs.add('notes');
+    m.files.set('notes/other.md', 'existing');
+
+    const exists = await useVaultStore.getState().externalFileExistsAt('notes', 'report.md');
+
+    expect(exists).toBe(false);
+  });
+});
+
 describe('useVaultStore.refreshFileTree', () => {
   let manager: FakeManager;
 

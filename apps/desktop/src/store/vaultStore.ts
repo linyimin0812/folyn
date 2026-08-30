@@ -127,6 +127,14 @@ interface VaultState {
    *  (original name first, ` 副本` suffix on collision). Returns the new
    *  vault-relative path so the caller can open + reveal it. */
   copyExternalFileToVault: (srcExternalPath: string, targetDir: string) => Promise<string>;
+  /** Overwrite an external file into a vault directory at its original name,
+   *  clobbering any existing file. Used by the paste-import conflict flow when
+   *  the user picks "Overwrite". Binary-safe (readFileBytes / writeFileBytes). */
+  overwriteExternalFileToVault: (srcExternalPath: string, targetDir: string) => Promise<string>;
+  /** Whether a file named `baseName` already exists at `targetDir` in the
+   *  vault. Used by the paste-import flow to decide whether to show the
+   *  conflict prompt before importing. */
+  externalFileExistsAt: (targetDir: string, baseName: string) => Promise<boolean>;
 }
 
 /** Insert `suffix` before the file extension (or append for dirs/extensionless names). */
@@ -609,6 +617,30 @@ export const useVaultStore = create<VaultState>()(
           set((state) => ({ fileTree: insertEntry(state.fileTree, targetPath, 'file') }));
           void get().refreshFileTree();
           return targetPath;
+        },
+
+        overwriteExternalFileToVault: async (srcExternalPath, targetDir) => {
+          const bytes = await externalFileProvider.readFileBytes(srcExternalPath);
+          const baseName = srcExternalPath.includes('/')
+            ? srcExternalPath.substring(srcExternalPath.lastIndexOf('/') + 1)
+            : srcExternalPath;
+          const manager = get().manager;
+          const targetPath = targetDir ? `${targetDir}/${baseName}` : baseName;
+          await manager.writeFileBytes(targetPath, bytes);
+          suppressWatcherFor(targetPath);
+          set((state) => ({ fileTree: insertEntry(state.fileTree, targetPath, 'file') }));
+          void get().refreshFileTree();
+          return targetPath;
+        },
+
+        externalFileExistsAt: async (targetDir, baseName) => {
+          const manager = get().manager;
+          try {
+            const entries = await manager.listFiles(targetDir, false, true);
+            return entries.some((e) => e.name === baseName);
+          } catch {
+            return false;
+          }
         },
       };
     },

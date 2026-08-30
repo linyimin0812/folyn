@@ -113,6 +113,18 @@
     "cancel": "Abbrechen",
     "upload": "✓ Hochladen"
   },
+  "filePaste": {
+    "conflictTitle": "Datei existiert bereits",
+    "conflictMessage": "Eine Datei mit diesem Namen existiert bereits im Zielordner:",
+    "overwrite": "Überschreiben",
+    "skip": "Überspringen",
+    "rename": "Umbenennen",
+    "applyToAll": "Auf alle anwenden ({{count}} verbleibend)",
+    "openVaultFirst": "Öffne zuerst einen Vault, um Dateien einzufügen.",
+    "vaultRoot": "Vault-Wurzel",
+    "imported": "{{count}} Datei(en) in {{where}} importiert.",
+    "allSkipped": "{{count}} Datei(en) übersprungen — nichts importiert."
+  },
   "dailyDigest": {
     "title": "KI-Tageszusammenfassung",
     "generate": "Zusammenfassung erstellen",

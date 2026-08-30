@@ -120,6 +120,18 @@
     "cancel": "取消",
     "upload": "✓ 上传"
   },
+  "filePaste": {
+    "conflictTitle": "文件已存在",
+    "conflictMessage": "目标文件夹中已存在同名文件：",
+    "overwrite": "覆盖",
+    "skip": "跳过",
+    "rename": "重命名",
+    "applyToAll": "应用到全部（剩余 {{count}} 个）",
+    "openVaultFirst": "请先打开一个 vault 再粘贴文件。",
+    "vaultRoot": "vault 根目录",
+    "imported": "已导入 {{count}} 个文件到 {{where}}。",
+    "allSkipped": "跳过 {{count}} 个文件 — 未导入任何文件。"
+  },
   "dailyDigest": {
     "title": "AI Daily Digest",
     "generate": "生成回顾",

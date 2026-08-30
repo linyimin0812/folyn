@@ -113,6 +113,18 @@
     "cancel": "キャンセル",
     "upload": "✓ アップロード"
   },
+  "filePaste": {
+    "conflictTitle": "ファイルが既に存在します",
+    "conflictMessage": "同名のファイルが対象フォルダに既に存在します：",
+    "overwrite": "上書き",
+    "skip": "スキップ",
+    "rename": "名前を変更",
+    "applyToAll": "すべてに適用（残り {{count}} 個）",
+    "openVaultFirst": "ファイルを貼り付けるには先に vault を開いてください。",
+    "vaultRoot": "vault ルート",
+    "imported": "{{count}} 個のファイルを {{where}} にインポートしました。",
+    "allSkipped": "{{count}} 個のファイルをスキップしました — インポートなし。"
+  },
   "dailyDigest": {
     "title": "AIデイリーダジェスト",
     "generate": "ラジェストを生成",

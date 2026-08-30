@@ -20,6 +20,13 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = { version = "2", features = ["watch"] }
 notify = "8"
 tauri-plugin-clipboard-manager = "2"
+# Direct dep for the `read_clipboard_files` command (paste external files into
+# the vault). Already a transitive dep via tauri-plugin-clipboard-manager 2.3.2
+# (arboard 3.6.1) — declaring it directly pins the import path. The stock plugin
+# only exposes write-text/write-image; reading Finder/Explorer file references
+# requires arboard's `Clipboard::get().file_list()` (NSPasteboard NSURL on
+# macOS, CF_HDROP on Windows). See task 08-30-paste-external-files-with-folder-picker.
+arboard = "3"
 # Windows single-instance guard: forwards a second instance's argv (file
 # paths from "Open With") to the running instance, then exits the second
 # process. Cross-platform crate; init is cfg-gated to Windows in lib.rs

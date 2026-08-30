@@ -1049,6 +1049,7 @@ pub fn run() {
             commands::open_file,
             commands::drain_pending_open_files,
             commands::save_file,
+            commands::read_clipboard_files,
             commands::check_url,
             commands::create_webview,
             commands::open_plugin_tool_window,

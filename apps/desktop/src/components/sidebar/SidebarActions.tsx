@@ -285,7 +285,7 @@ export function MoveDialog({ sources, fileTree, onCancel, onConfirm, mode = 'mov
             <button
               type="button"
               disabled={isDisabled('')}
-              className={`w-full text-left py-1 px-3 text-[12px] cursor-pointer border-none ${selected === '' ? 'bg-act text-t1' : isDisabled('') ? 'text-t3 cursor-not-allowed' : 'text-t2 hover:bg-hov hover:text-t1'}`}
+              className={`w-full text-left py-1 px-3 text-[12px] cursor-pointer border-none flex items-center ${selected === '' ? 'bg-act text-t1' : isDisabled('') ? 'text-t3 cursor-not-allowed' : 'text-t2 hover:bg-hov hover:text-t1'}`}
               style={{ paddingLeft: '12px' }}
               onClick={() => !isDisabled('') && setSelected('')}
             >
@@ -299,12 +299,35 @@ export function MoveDialog({ sources, fileTree, onCancel, onConfirm, mode = 'mov
                   key={d.path}
                   type="button"
                   disabled={disabled}
-                  className={`w-full text-left py-1 px-3 text-[12px] cursor-pointer border-none ${selected === d.path ? 'bg-act text-t1' : disabled ? 'text-t3 cursor-not-allowed' : 'text-t2 hover:bg-hov hover:text-t1'}`}
-                  style={{ paddingLeft: `${12 + d.depth * 14}px` }}
+                  className={`w-full text-left py-1 px-3 text-[12px] cursor-pointer border-none relative flex items-center ${selected === d.path ? 'bg-act text-t1' : disabled ? 'text-t3 cursor-not-allowed' : 'text-t2 hover:bg-hov hover:text-t1'}`}
+                  style={{ paddingLeft: '12px' }}
                   onClick={() => !disabled && setSelected(d.path)}
                 >
+                  {/* Indent guide lines — one per ancestor depth level. Absolute
+                      + top:0/bottom:0 so each line spans the full row height
+                      INCLUDING the py-1 padding → continuous rail across rows
+                      (no segmentation at row gaps). Centered in its 14px slot
+                      (left = 12 + lvl*14 + 7) so the rail reads as a centered
+                      spine, not a left border. pointerEvents:none so clicks
+                      pass through to the row. */}
+                  {Array.from({ length: d.depth }, (_, lvl) => (
+                    <span
+                      key={lvl}
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 0,
+                        left: `${12 + lvl * 14 + 7}px`,
+                        width: '1px',
+                        background: 'var(--brd2)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  ))}
+                  <span style={{ width: `${d.depth * 14}px`, flexShrink: 0 }} />
                   <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}><FileIcon filename="" isDir /></span>
-                  {d.name}
+                  <span className="truncate">{d.name}</span>
                 </button>
               );
             })}
