@@ -955,3 +955,37 @@ Two-stage full project rename to free up the 'quill' name (collided with Quill.j
 ### Next Steps
 
 - None - task complete
+
+
+## Session 198: Paste external files into vault via in-app folder picker
+
+**Date**: 2026-08-30
+**Task**: Paste external files into vault via in-app folder picker
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Implemented Cmd/Ctrl+V paste of external files (from Finder/Explorer) into the current vault. Reads file paths via arboard on a spawn_blocking thread; focus-event cache sidesteps the async-paste deadlock so the capture-phase handler can preventDefault+stopImmediatePropagation synchronously ('file wins' over editor text). Reused the sidebar MoveDialog (mode='copy') as the folder picker with continuous, icon-center-aligned indent guides. Per-file name conflicts flow through PasteConflictDialog (Overwrite/Skip/Rename + Apply-to-all). Import is binary-safe via overwriteExternalFileToVault/copyExternalFileToVault. Added filePaste i18n block to en/zh/ja/fr/de/es.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7b6b364b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
