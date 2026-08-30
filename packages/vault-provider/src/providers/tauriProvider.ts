@@ -157,7 +157,7 @@ export class TauriVaultProvider implements VaultProvider {
       ): VaultEntry[] =>
         items
           .map((e) => {
-            const type = e.is_dir ? 'dir' : 'file';
+            const type: VaultEntry['type'] = e.is_dir ? 'dir' : 'file';
             const children = e.is_dir && Array.isArray(e.children) ? convert(e.children as typeof items) : undefined;
             return { path: `${prefix}${e.path}`, name: e.name, type, children };
           })
