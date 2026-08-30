@@ -54,6 +54,14 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
+      - name: Sync version from tag
+        if: ${{ (inputs.tag || github.event.release.tag_name || '') != '' }}
+        run: |
+          TAG="${{ inputs.tag || github.event.release.tag_name }}"
+          VER="${TAG#v}"
+          python3 -c "import json,pathlib; p=pathlib.Path('apps/desktop/src-tauri/tauri.conf.json'); d=json.loads(p.read_text()); d['version']='$VER'; p.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')"
+          sed -i.bak "s|^version = \".*\"|version = \"$VER\"|" apps/desktop/src-tauri/Cargo.toml && rm apps/desktop/src-tauri/Cargo.toml.bak
+
       - name: Build Tauri app
         id: tauri-build
         uses: tauri-apps/tauri-action@v0
