@@ -989,3 +989,41 @@ Implemented Cmd/Ctrl+V paste of external files (from Finder/Explorer) into the c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 199: Markdown table preview: content-aware layout via native table-layout:auto
+
+**Date**: 2026-08-31
+**Task**: Markdown table preview: content-aware layout via native table-layout:auto
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Removed CSS that blocked browser-native table-layout:auto in .md-preview (width:100%, th nowrap, td break-word); wide tables now wrap in-place without a scroll wrapper, narrow tables no longer stretch to fill container.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8544e08a` | (see git log) |
+| `541292ad` | (see git log) |
+| `48f803fe` | (see git log) |
+| `a8ecd68e` | (see git log) |
+| `cbfd1159` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

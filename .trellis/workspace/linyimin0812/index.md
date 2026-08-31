@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 198
-- **Last Active**: 2026-08-30
+- **Total Sessions**: 199
+- **Last Active**: 2026-08-31
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~991 | Active |
+| `journal-4.md` | ~1029 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 199 | 2026-08-31 | Markdown table preview: content-aware layout via native table-layout:auto | `8544e08a`, `541292ad`, `48f803fe`, `a8ecd68e`, `cbfd1159` | `master` |
 | 198 | 2026-08-30 | Paste external files into vault via in-app folder picker | `7b6b364b` | `master` |
 | 197 | 2026-08-24 | Rename project: Quill → Mochi → Folyn | `bdc35c32`, `ec9f96b3`, `cb2333be`, `ac86ece3` | `master` |
 | 196 | 2026-08-23 | Persist translation panel state to config file | `9e0a91ce` | `master` |
