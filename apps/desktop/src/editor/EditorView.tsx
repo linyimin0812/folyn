@@ -26,6 +26,7 @@ import {
 import { folynHighlighting } from './highlightStyle';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
 import { listEditorLanguages } from '@/services/plugin-host/editorLanguageAdapter';
+import { extractImgSrcFromHtml } from '@/services/clipboardFiles';
 
 registerBuiltinCodeContributions();
 
@@ -379,6 +380,24 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
                 }
                 return true;
               }
+            }
+            // ponytail: Chrome "Copy image" places only text/html wrapping a
+            // remote <img src="https://…"> — no bitmap, no file ref. Insert the
+            // URL as markdown image syntax so the preview renders it remotely.
+            const html = event.clipboardData?.getData('text/html');
+            const imgSrc = html ? extractImgSrcFromHtml(html) : null;
+            if (imgSrc) {
+              event.preventDefault();
+              const view = viewRef.current;
+              if (view) {
+                const pos = view.state.selection.main.head;
+                const md = `![](${imgSrc})`;
+                view.dispatch({
+                  changes: { from: pos, to: pos, insert: md },
+                  selection: { anchor: pos + md.length },
+                });
+              }
+              return true;
             }
             return false;
           },

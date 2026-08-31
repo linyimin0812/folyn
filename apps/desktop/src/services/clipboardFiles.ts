@@ -17,3 +17,19 @@ export async function readClipboardFiles(): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Extract the first `<img src="...">` URL from a `text/html` clipboard payload.
+ * Returns `null` when the HTML has no `<img>` or the src is not an http/https/data
+ * URL. Used for the Chrome "Copy image" path: Chrome places only `text/html`
+ * wrapping a remote `<img>` on the clipboard (no bitmap, no file ref), so the
+ * webview's `paste` event surfaces no image file item — we fall back to
+ * inserting the URL verbatim as an image.
+ */
+export function extractImgSrcFromHtml(html: string): string | null {
+  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (!match) return null;
+  const src = match[1];
+  if (/^https?:\/\//i.test(src) || /^data:/i.test(src)) return src;
+  return null;
+}

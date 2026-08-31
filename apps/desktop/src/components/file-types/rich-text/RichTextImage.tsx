@@ -18,6 +18,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { isTauri } from '@/utils/platform';
+import { extractImgSrcFromHtml } from '@/services/clipboardFiles';
 import {
   resolveVaultRelativePath,
   isLoadableUrlScheme,
@@ -186,6 +187,17 @@ function imagePasteDropPlugin(onImagePaste?: ImagePasteHandler): Plugin {
         const text = cb.getData('text/plain')?.trim();
         if (text && IMAGE_URL_REGEX.test(text)) {
           const node = view.state.schema.nodes.image.create({ src: text });
+          view.dispatch(view.state.tr.replaceSelectionWith(node));
+          event.preventDefault();
+          return true;
+        }
+        // ponytail: Chrome "Copy image" places only text/html wrapping a remote
+        // <img src="https://…"> — no bitmap, no file ref. Insert an Image node
+        // with the remote src verbatim (no vault write, same as the URL branch).
+        const html = cb.getData('text/html');
+        const imgSrc = html ? extractImgSrcFromHtml(html) : null;
+        if (imgSrc) {
+          const node = view.state.schema.nodes.image.create({ src: imgSrc });
           view.dispatch(view.state.tr.replaceSelectionWith(node));
           event.preventDefault();
           return true;
