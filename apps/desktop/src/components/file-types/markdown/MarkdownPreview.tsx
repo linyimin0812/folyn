@@ -400,6 +400,8 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
 function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange, ...rest }: CodeBlockWrapperProps) {
   const preRef = useRef<HTMLPreElement>(null);
   const copyBtnRef = useRef<HTMLButtonElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [lineCount, setLineCount] = useState(0);
   const isHtml = lang === 'html';
   const [htmlView, setHtmlView] = useState<'source' | 'preview'>('source');
@@ -442,6 +444,13 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
     setSynced(false);
   }, [lineCount]);
 
+  // Forward vertical wheel from the horizontal-only scroll container to the
+  // inner element so trackpad/mouse wheel scrolls vertically as expected.
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    const el = innerRef.current;
+    if (!el) return;
+    el.scrollTop += e.deltaY;
+  }, []);
   const handleCopy = useCallback(() => {
     const codeEl = preRef.current?.querySelector('code');
     const text = codeEl?.textContent ?? preRef.current?.textContent ?? '';
@@ -524,13 +533,15 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
       {isEmptyHtml ? (
         <div className="code-block-empty-html" />
       ) : htmlView === 'source' || !isHtml ? (
-        <div className="code-block-inner">
+        <div className="code-block-inner" ref={innerRef}>
           <div className="code-line-numbers" aria-hidden="true">
             {Array.from({ length: lineCount }, (_, i) => (
               <span className="code-ln" key={i}>{i + 1}</span>
             ))}
           </div>
-          <pre ref={preRef} {...rest}>{children}</pre>
+          <div className="code-block-scroll" ref={scrollRef} onWheel={handleWheel}>
+            <pre ref={preRef} {...rest}>{children}</pre>
+          </div>
         </div>
       ) : (
         <iframe
