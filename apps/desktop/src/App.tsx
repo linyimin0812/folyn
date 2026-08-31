@@ -726,7 +726,10 @@ export default function App() {
     let applyToAll = false;
     for (let i = 0; i < srcPaths.length; i++) {
       const src = srcPaths[i];
-      const baseName = src.includes('/') ? src.substring(src.lastIndexOf('/') + 1) : src;
+      // ponytail: split on both separators — arboard returns backslash paths
+      // on Windows (`C:\Users\…`), the old `/`-only split made baseName the
+      // whole path → invalid vault filename → silent writeFileBytes failure.
+      const baseName = src.split(/[\\/]/).pop()!;
       const remaining = srcPaths.length - i - 1;
       let choice: ConflictChoice | 'write';
       const exists = await vault.externalFileExistsAt(relDir, baseName);
@@ -812,7 +815,7 @@ export default function App() {
     let cancelled = false;
     const openPaths = (paths: string[]) => {
       for (const p of paths) {
-        const name = p.includes('/') ? p.substring(p.lastIndexOf('/') + 1) : p;
+        const name = p.split(/[\\/]/).pop()!;
         void editorIoService.openFile(p, name);
       }
       if (paths.length > 0) {

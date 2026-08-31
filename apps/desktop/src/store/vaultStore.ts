@@ -603,9 +603,9 @@ export const useVaultStore = create<VaultState>()(
           // / zip arrived truncated ("Corrupted zip" error in @file-viewer).
           // Binary read+write preserves bytes for any file type.
           const bytes = await externalFileProvider.readFileBytes(srcExternalPath);
-          const baseName = srcExternalPath.includes('/')
-            ? srcExternalPath.substring(srcExternalPath.lastIndexOf('/') + 1)
-            : srcExternalPath;
+          // ponytail: split on both separators — Windows clipboard paths use
+          // backslashes; `/`-only split left the whole drive path as baseName.
+          const baseName = srcExternalPath.split(/[\\/]/).pop()!;
           // External→vault is always a cross-dir copy (the source lives outside
           // the vault), so sameDir=false: try the original name first, then
           // ` 副本` suffixes on collision.
@@ -621,9 +621,7 @@ export const useVaultStore = create<VaultState>()(
 
         overwriteExternalFileToVault: async (srcExternalPath, targetDir) => {
           const bytes = await externalFileProvider.readFileBytes(srcExternalPath);
-          const baseName = srcExternalPath.includes('/')
-            ? srcExternalPath.substring(srcExternalPath.lastIndexOf('/') + 1)
-            : srcExternalPath;
+          const baseName = srcExternalPath.split(/[\\/]/).pop()!;
           const manager = get().manager;
           const targetPath = targetDir ? `${targetDir}/${baseName}` : baseName;
           await manager.writeFileBytes(targetPath, bytes);
