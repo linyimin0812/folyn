@@ -486,10 +486,11 @@ mjx-container svg {
 .code-block-wrapper--no-height-cap { max-height: none; overflow: visible; padding: 8px; box-sizing: border-box; }
 .code-block-wrapper--empty-html { min-height: 60px; }
 .code-block-empty-html { flex: 1; }
-.code-block-inner { display: grid; grid-template-columns: auto minmax(0, 1fr); max-height: 420px; overflow: auto; background: var(--surf2); }
+.code-block-inner { display: grid; grid-template-columns: auto minmax(0, 1fr); max-height: 420px; overflow: auto; background: var(--surf); }
 .code-block-inner, .md-preview > pre, .code-block-inner pre { scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable; overscroll-behavior: none; }
 .code-block-wrapper:hover .code-block-inner, .md-preview > pre:hover, .code-block-wrapper:hover .code-block-inner pre { scrollbar-color: var(--t4) transparent; }
-.code-block-inner::-webkit-scrollbar, .md-preview > pre::-webkit-scrollbar, .code-block-inner pre::-webkit-scrollbar { width: 4px; height: 4px; }
+.code-block-inner::-webkit-scrollbar:vertical, .md-preview > pre::-webkit-scrollbar, .code-block-inner pre::-webkit-scrollbar { width: 4px; }
+.code-block-inner::-webkit-scrollbar:horizontal, .md-preview > pre::-webkit-scrollbar:horizontal, .code-block-inner pre::-webkit-scrollbar:horizontal { display: none; }
 .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre::-webkit-scrollbar-thumb, .code-block-inner pre::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
 .code-block-wrapper:hover .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre:hover::-webkit-scrollbar-thumb, .code-block-wrapper:hover .code-block-inner pre::-webkit-scrollbar-thumb { background: var(--t4); }
 .code-block-inner::-webkit-scrollbar-track, .md-preview > pre::-webkit-scrollbar-track, .code-block-inner pre::-webkit-scrollbar-track { background: transparent; border: none; box-shadow: none; margin: 0; }
