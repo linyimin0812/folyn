@@ -73,7 +73,13 @@ export function SidebarResizer({
           onMouseDown={handleMouseDown}
         />
       )}
-      <div className={`resizer shrink-0 bg-brd transition-colors duration-[140ms] h-full group-hover:bg-acc group-hover:opacity-30${collapsed ? ' w-0 cursor-default' : ' w-px cursor-col-resize'}`} onMouseDown={collapsed ? undefined : handleMouseDown} />
+      {/* ponytail: no static background — the aside's `border-r` draws the
+          divider (subpixel-snapped, crisp at fractional DPR). This div only
+          shows the accent tint on hover via absolute positioning so it never
+          doubles the static line. */}
+      <div className={`resizer shrink-0 transition-colors duration-[140ms] h-full${collapsed ? ' w-0 cursor-default' : ' w-px cursor-col-resize'}`} onMouseDown={collapsed ? undefined : handleMouseDown}>
+        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-transparent transition-[background] duration-[140ms] group-hover:bg-acc group-hover:opacity-30" />
+      </div>
       {(resizerHovered || collapsed) && (
         <button
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-5 h-5 flex items-center justify-center rounded-full border border-brd2 bg-panel text-t3 cursor-pointer transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,.12)]"
