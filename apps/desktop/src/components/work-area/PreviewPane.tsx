@@ -58,7 +58,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
         if (outlineDragging.current) {
           outlineDragging.current = false;
           document.body.style.cursor = '';
-          document.body.style.userSelect = '';
+          document.documentElement.classList.remove('is-resizing');
         }
       };
       document.addEventListener('mousemove', handleOutlineMove);
@@ -200,7 +200,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 onMouseDown={() => {
                   outlineDragging.current = true;
                   document.body.style.cursor = 'col-resize';
-                  document.body.style.userSelect = 'none';
+                  document.documentElement.classList.add('is-resizing');
                 }}
               />
               <div className="text-[10px] font-semibold text-t3 uppercase tracking-[0.08em] pt-3 px-[14px] pb-2 border-b border-brd flex items-center gap-1.5 before:content-[''] before:inline-block before:w-[3px] before:h-2.5 before:bg-acc before:rounded-[2px] before:shrink-0">大纲</div>
