@@ -210,17 +210,23 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   if (headings.length === 0) {
                     return <p className="text-[11px] text-t3 py-5 px-3 text-center leading-[1.6]">暂无标题</p>;
                   }
-                  return headings.map((heading, index) => (
+                  return headings.map((heading, index) => {
+                    const lvl = heading.level;
+                    const size = lvl <= 1 ? 'text-[12.5px]' : lvl === 2 ? 'text-[11.5px]' : 'text-[11px]';
+                    const weight = lvl <= 2 ? 'font-semibold' : 'font-normal';
+                    const color = lvl <= 1 ? 'text-t1' : lvl === 2 ? 'text-t2' : 'text-t3';
+                    return (
                     <div
                       key={index}
-                      className="text-[11.5px] text-t2 py-[5px] px-2.5 cursor-pointer transition-all duration-[120ms] rounded border-l-2 border-l-transparent overflow-hidden text-ellipsis whitespace-nowrap my-px relative hover:bg-hov hover:text-t1 hover:border-l-acc"
-                      style={{ paddingLeft: `${8 + (heading.level - 1) * 12}px` }}
+                      className={`${size} ${weight} ${color} py-[5px] px-2.5 cursor-pointer transition-all duration-[120ms] rounded border-l-2 border-l-transparent overflow-hidden text-ellipsis whitespace-nowrap my-px relative hover:bg-hov hover:text-t1 hover:border-l-acc`}
+                      style={{ paddingLeft: `${8 + (lvl - 1) * 12}px` }}
                       title={`Ln ${heading.line}`}
                       onClick={() => handleHeadingClick(heading.text)}
                     >
                       {heading.text}
                     </div>
-                  ));
+                    );
+                  });
                 })()}
               </div>
             </div>
