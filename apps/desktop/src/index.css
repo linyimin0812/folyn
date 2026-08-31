@@ -487,8 +487,7 @@ mjx-container svg {
 .code-block-wrapper--empty-html { min-height: 60px; }
 .code-block-empty-html { flex: 1; }
 .code-block-inner { display: grid; grid-template-columns: auto 1fr; max-height: 420px; overflow: auto; }
-.code-block-inner, .md-preview > pre { scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable; overscroll-behavior: none; }
-.code-block-wrapper:hover .code-block-inner, .md-preview > pre:hover { scrollbar-color: var(--t4) transparent; }
+.code-block-inner, .md-preview > pre { scrollbar-gutter: stable; overscroll-behavior: none; }
 .code-block-inner::-webkit-scrollbar, .md-preview > pre::-webkit-scrollbar { width: 4px; height: 4px; }
 .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
 .code-block-wrapper:hover .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre:hover::-webkit-scrollbar-thumb { background: var(--t4); }
