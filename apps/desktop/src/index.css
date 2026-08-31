@@ -486,7 +486,7 @@ mjx-container svg {
 .code-block-wrapper--no-height-cap { max-height: none; overflow: visible; padding: 8px; box-sizing: border-box; }
 .code-block-wrapper--empty-html { min-height: 60px; }
 .code-block-empty-html { flex: 1; }
-.code-block-inner { display: grid; grid-template-columns: auto 1fr; max-height: 420px; overflow: auto; }
+.code-block-inner { display: grid; grid-template-columns: auto 1fr; max-height: 420px; overflow: auto; background: var(--surf); }
 .code-block-inner, .md-preview > pre { scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable; overscroll-behavior: none; }
 .code-block-wrapper:hover .code-block-inner, .md-preview > pre:hover { scrollbar-color: var(--t4) transparent; }
 .code-block-inner::-webkit-scrollbar, .md-preview > pre::-webkit-scrollbar { width: 4px; height: 4px; }
