@@ -530,7 +530,9 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
               <span className="code-ln" key={i}>{i + 1}</span>
             ))}
           </div>
-          <pre ref={preRef} {...rest}>{children}</pre>
+          <div className="code-block-scroll">
+            <pre ref={preRef} {...rest}>{children}</pre>
+          </div>
         </div>
       ) : (
         <iframe
