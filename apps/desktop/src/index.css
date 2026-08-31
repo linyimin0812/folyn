@@ -486,7 +486,7 @@ mjx-container svg {
 .code-block-wrapper--no-height-cap { max-height: none; overflow: visible; padding: 8px; box-sizing: border-box; }
 .code-block-wrapper--empty-html { min-height: 60px; }
 .code-block-empty-html { flex: 1; }
-.code-block-inner { display: grid; grid-template-columns: auto minmax(0, 1fr); max-height: 420px; overflow: auto; background: var(--surf); }
+.code-block-inner { display: grid; grid-template-columns: auto minmax(0, 1fr); max-height: 420px; overflow: auto; background: var(--surf2); }
 .code-block-inner, .md-preview > pre, .code-block-inner pre { scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable; overscroll-behavior: none; }
 .code-block-wrapper:hover .code-block-inner, .md-preview > pre:hover, .code-block-wrapper:hover .code-block-inner pre { scrollbar-color: var(--t4) transparent; }
 .code-block-inner::-webkit-scrollbar, .md-preview > pre::-webkit-scrollbar, .code-block-inner pre::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -494,7 +494,6 @@ mjx-container svg {
 .code-block-wrapper:hover .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre:hover::-webkit-scrollbar-thumb, .code-block-wrapper:hover .code-block-inner pre::-webkit-scrollbar-thumb { background: var(--t4); }
 .code-block-inner::-webkit-scrollbar-track, .md-preview > pre::-webkit-scrollbar-track, .code-block-inner pre::-webkit-scrollbar-track { background: transparent; border: none; box-shadow: none; margin: 0; }
 .code-block-inner .code-line-numbers { position: sticky; left: 0; z-index: 1; padding: 12px 0; border-right: 1px solid var(--brd); background: var(--surf2); user-select: none; white-space: nowrap; }
-.code-block-inner .code-line-numbers::after { content: ''; position: absolute; left: 0; right: 0; bottom: -4px; height: 4px; background: var(--surf2); }
 .code-block-inner .code-ln { display: block; padding: 0 10px; text-align: right; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--t3); min-width: 32px; }
 .code-block-inner pre { margin: 0; border: none; border-radius: 0; background: var(--surf); padding: 0; overflow: visible; }
 .code-block-inner pre code { display: block; padding: 12px 16px; font-size: 12px; line-height: 1.6; color: var(--t1); background: none; border: none; white-space: pre; }
