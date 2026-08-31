@@ -46,7 +46,9 @@ export function ThemeIcon({ name, size = 16, className, style }: ThemeIconProps)
       width={size}
       height={size}
       className={className}
-      style={{ display: 'inline-block', ...style }}
+      // block (not inline-block) avoids the inline baseline subpixel offset
+      // that blurs 16px icons at fractional DPR (e.g. Windows 150%).
+      style={{ display: 'block', flexShrink: 0, width: size, height: size, ...style }}
       alt=""
     />
   );

@@ -39,7 +39,9 @@ export function FileTreeItem({
   onRenameCancel,
 }: FileTreeItemProps): React.JSX.Element {
   const isDir = item.type === 'dir';
-  const paddingLeft = '12px';
+  const indentUnit = 16;
+  const basePad = 12;
+  const paddingLeft = `${basePad + depth * indentUnit}px`;
 
   const baseClasses = 'ft-item flex items-center gap-[5px] py-1 cursor-pointer text-[calc(var(--ui-font-size)-2px)] transition-all duration-[120ms] rounded-none select-none relative overflow-visible';
   const paddingRight = '12px';
@@ -79,9 +81,11 @@ export function FileTreeItem({
       {...dataAttrs}
     >
       {Array.from({ length: depth }, (_, i) => (
-        <span key={i} className="w-4 shrink-0 self-stretch relative">
-          <span className="absolute left-1/2 -translate-x-1/2 -top-1 -bottom-1 w-px bg-brd2" />
-        </span>
+        <span
+          key={i}
+          className="absolute -top-1 -bottom-1 w-px bg-brd2"
+          style={{ left: `${basePad + i * indentUnit + 7}px` }}
+        />
       ))}
       <span className="shrink-0 w-4 h-4 flex items-center justify-center [&>svg]:block [&>svg]:shrink-0">
         <FileIcon filename={item.name} isDir={isDir} />
