@@ -2,15 +2,12 @@ import {
   acceptCompletion,
   closeCompletion,
   moveCompletionSelection,
-  type Completion,
   type CompletionContext,
   type CompletionResult,
 } from '@codemirror/autocomplete';
 import { Transaction, type EditorState } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
-import { useVaultStore } from '@/store/vaultStore';
-import { flattenFileTree } from '@/utils/treeUtils';
-import type { VaultEntry } from '@folyn/vault-provider';
+import { buildPathCompletion } from './pathCompletion';
 
 const SRC_ATTR_RE = /:::file-preview\b[^{]*\{[^}]*?src="([^"]*)$/;
 
@@ -22,20 +19,6 @@ function srcPartialAt(state: EditorState, pos: number): { start: number; text: s
   const m = before.match(SRC_ATTR_RE);
   if (!m) return null;
   return { start: windowStart + (m.index ?? 0) + m[0].length - m[1].length, text: m[1] };
-}
-
-/** Insert `insert` over [from, to) and CLOSE the dropdown. Deliberately NOT
- *  annotated as a user event — CodeMirror's default string-apply dispatches
- *  with userEvent "input.complete", which re-triggers completion after every
- *  pick and leaves the dropdown open on the just-inserted path. */
-function applyFileAndClose(insert: string) {
-  return (view: EditorView, _completion: Completion, from: number, to: number) => {
-    view.dispatch({
-      changes: { from, to, insert },
-      selection: { anchor: from + insert.length },
-    });
-    closeCompletion(view);
-  };
 }
 
 /**
@@ -199,133 +182,13 @@ export function filePreviewSrcSearchBox() {
  * Factory: returns a completion source for the `src` attribute of
  * `:::file-preview{src="..."}` directives, closing over the current document's
  * `filePath` so `./` and `../` resolve relative to the document's directory.
- *
- * Behavior:
- * - partial has no `/` → global search across all vault files. Options carry
- *   the full path as their label so CodeMirror's built-in fuzzy matcher
- *   (subsequence match with word-boundary bonuses) filters AND ranks them
- *   client-side — the result stays valid while typing, so the dropdown never
- *   tears down per keystroke.
- * - partial has `/` → list immediate children of the resolved directory.
- *   Directories apply with a trailing `/` so the user can keep drilling.
  */
 export function createFilePreviewSrcCompletion(filePath: string) {
-  return function filePreviewSrcCompletion(ctx: CompletionContext): CompletionResult | null {
+  return async function filePreviewSrcCompletion(ctx: CompletionContext): Promise<CompletionResult | null> {
     const found = srcPartialAt(ctx.state, ctx.pos);
     if (!found) return null;
-
-    const partial = found.text;
-    const partialStart = found.start;
-
-    const slashIdx = Math.max(partial.lastIndexOf('/'), partial.lastIndexOf('\\'));
-    if (slashIdx === -1) {
-      // No `/` → global search. Full path as label: CodeMirror fuzzy-matches
-      // and ranks against it per keystroke, and the match highlighting shows
-      // exactly which part of the path matched. No result cap — CodeMirror
-      // only renders maxRenderedOptions (100) rows.
-      const fileTree = useVaultStore.getState().fileTree;
-      const options = flattenFileTree(fileTree).map((f) => ({
-        label: f.path,
-        apply: applyFileAndClose(f.path),
-        type: 'file' as const,
-      }));
-      // ponytail: stay valid while the query has no `/` — client-side
-      // filtering handles narrowing, so no re-query (and no tooltip rebuild)
-      // happens per keystroke. A `/` transitions to the dir branch below.
-      return {
-        from: partialStart,
-        to: ctx.pos,
-        options,
-        validFor: (text: string) => !/[/\\]/.test(text),
-      };
-    }
-
-    const dirPart = partial.slice(0, slashIdx + 1);
-    const dirPath = resolveDirPart(dirPart, filePath);
-    if (dirPath === null) return null;
-
-    const fileTree = useVaultStore.getState().fileTree;
-    const children = findDirChildren(fileTree, dirPath);
-    if (!children) return null;
-
-    // ponytail: `from` is the position AFTER the last `/` in the partial, so
-    // CodeMirror's fuzzy matcher uses just the segment after it as the
-    // pattern. `apply` is the bare child name so picking replaces only that
-    // segment and preserves the typed directory prefix (e.g. `./<dir>/`).
-    // No `detail`: every row shares the same resolved dir, so a per-row
-    // detail would repeat the identical path on every line.
-    const filterStart = partialStart + slashIdx + 1;
-    const options = children.map((c): Completion =>
-      c.type === 'dir'
-        ? {
-            label: c.name + '/',
-            // Custom apply: drilling into a dir must KEEP the dropdown open
-            // with that dir's children (the default string-apply would just
-            // dismiss it). The inserted text is annotated as user typing, so
-            // completion immediately re-queries against the new dir — exactly
-            // as if the user had typed `name/` by hand.
-            apply: (view: EditorView, _completion: Completion, from: number, to: number) => {
-              const insert = c.name + '/';
-              view.dispatch({
-                changes: { from, to, insert },
-                selection: { anchor: from + insert.length },
-                annotations: Transaction.userEvent.of('input.type'),
-              });
-            },
-            type: 'dir' as const,
-          }
-        : { label: c.name, apply: applyFileAndClose(c.name), type: 'file' as const },
-    );
-    // ponytail: invalidate when the directory part of the partial changes
-    // (drilling into a subdir must re-query). Filter-only typing within the
-    // same dir reuses the result, so the popup doesn't rebuild per keystroke.
-    const validFor = (_text: string, _from: number, to: number, state: EditorState) => {
-      const currentPartial = state.sliceDoc(partialStart, to);
-      const newSlash = Math.max(currentPartial.lastIndexOf('/'), currentPartial.lastIndexOf('\\'));
-      return currentPartial.slice(0, newSlash + 1) === dirPart;
-    };
-    return { from: filterStart, to: ctx.pos, options, validFor };
+    const result = await buildPathCompletion(found.text, found.start, ctx.pos, filePath, false);
+    if (!result) return null;
+    return { from: result.from, to: result.to, options: result.options, validFor: result.validFor };
   };
-}
-
-/**
- * Resolve a `dirPart` (with trailing `/`) to a vault-relative directory path.
- * Returns null for absolute `/` or `~`-prefixed paths (no vault-inside-home
- * completion — matches the existing early-return).
- *
- * ponytail: segment-walk loop — handles N-level `../../`, replacing the old
- * single-level `../` slice. Bare paths (no `./` or `../` prefix) stay
- * vault-relative, matching the runtime resolver in FilePreviewPlugin.tsx.
- */
-function resolveDirPart(dirPart: string, filePath: string): string | null {
-  if (dirPart.startsWith('/') || dirPart.startsWith('~')) return null;
-  // Bare path (no ./ ../ prefix) → vault-relative.
-  if (
-    !dirPart.startsWith('./') && !dirPart.startsWith('.\\') &&
-    !dirPart.startsWith('../') && !dirPart.startsWith('..\\')
-  ) {
-    return dirPart;
-  }
-  const fileDir = filePath ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
-  const segments = fileDir.split('/').filter(Boolean);
-  const parts = dirPart.replace(/\\/g, '/').split('/').filter((s) => s !== '.' && s !== '');
-  for (const seg of parts) {
-    if (seg === '..') segments.pop();
-    else segments.push(seg);
-  }
-  return segments.join('/');
-}
-
-/** Walk `tree` by `/`-separated segments to find the target directory's
- *  immediate children. Returns null if the directory is not found. */
-function findDirChildren(tree: VaultEntry[], dirPath: string): VaultEntry[] | null {
-  if (!dirPath) return tree;
-  const segs = dirPath.replace(/[/\\]+$/, '').split(/[/\\]/).filter(Boolean);
-  let nodes: VaultEntry[] | undefined = tree;
-  for (const seg of segs) {
-    const found: VaultEntry | undefined = nodes?.find((n) => n.type === 'dir' && n.name === seg);
-    if (!found) return null;
-    nodes = found.children;
-  }
-  return nodes ?? null;
 }

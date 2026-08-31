@@ -73,6 +73,7 @@ import {
   type CodeBlockMenuState,
 } from './extensions/CodeBlockExtension';
 import { createFilePreviewSrcCompletion, filePreviewSrcSearchBox } from './extensions/FilePreviewSrcExtension';
+import { createMarkdownImageCompletion } from './extensions/MarkdownImageExtension';
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { mathExtension } from './extensions/MarkdownMathExtension';
@@ -326,7 +327,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         // right after the popup opens; a swallowed Enter falls through to the
         // editor's default keymap and inserts a newline into the src string.
         autocompletion({
-          override: [createFilePreviewSrcCompletion(filePath)],
+          override: [createFilePreviewSrcCompletion(filePath), createMarkdownImageCompletion(filePath)],
           closeOnBlur: false,
           interactionDelay: 0,
         }),

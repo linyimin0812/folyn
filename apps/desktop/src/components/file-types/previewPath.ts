@@ -49,11 +49,11 @@ export async function resolvePreviewPath(filePath: string, vaultRoot: string): P
 export async function resolveAssetBase(filePath: string, vaultRoot: string): Promise<string> {
   if (isExternalPath(filePath)) {
     const abs = await resolvePreviewPath(filePath, vaultRoot);
-    const idx = abs.lastIndexOf('/');
+    const idx = Math.max(abs.lastIndexOf('/'), abs.lastIndexOf('\\'));
     return idx > 0 ? abs.substring(0, idx) : abs;
   }
   const base = await resolveBasePath(vaultRoot);
   const { join } = await import('@tauri-apps/api/path');
-  const fileDir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+  const fileDir = (filePath.includes('/') || filePath.includes('\\')) ? filePath.substring(0, Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))) : '';
   return fileDir ? join(base, fileDir) : base;
 }
