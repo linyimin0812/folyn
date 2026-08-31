@@ -3,7 +3,7 @@
   "name": "markdown",
   "title": "markdown表格预览算法优化-内容感知宽度与容器约束压缩",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "api",

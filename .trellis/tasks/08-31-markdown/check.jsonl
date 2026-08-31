@@ -1,1 +1,2 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/08-31-markdown/prd.md", "reason": "Acceptance criteria: narrow table not stretched, long header wraps, td no random break, wide table scrolls in wrapper"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Lint/typecheck/manual verification expectations for CSS + React component change"}

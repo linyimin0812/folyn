@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "MarkdownPreview.tsx pipeline contract; covers componentMap and the four call sites that must stay in sync"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React component composition patterns for adding the table wrapper via componentMap"}
+{"file": ".trellis/tasks/08-31-markdown/prd.md", "reason": "PRD with the exact CSS diff and componentMap wrapper decision"}

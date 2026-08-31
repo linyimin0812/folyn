@@ -851,6 +851,17 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: impo
       );
     };
 
+    // ponytail: wrap <table> in a scroll container so wide tables (sum of
+    // column min-widths > .md-preview max-width:800px) scroll horizontally
+    // instead of overflowing into the sidebar. table-layout:auto inside
+    // handles content-aware column compression; wrapper only kicks in when
+    // even min-widths exceed the container.
+    map['table'] = function TableScrollWrap(props: any) {
+      const { children, node, ...rest } = props;
+      return createElement('div', { className: 'md-table-wrap' },
+        createElement('table', rest, children));
+    };
+
     // ponytail: drop <style>/<script> from raw HTML blocks — rehypeRaw embeds
     // them as live DOM nodes, so a raw <style> with body{height:100vh;...}
     // leaks out of .md-preview and obscures the sidebar. Inline HTML
