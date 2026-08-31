@@ -10,7 +10,6 @@ import { VoiceSettings, VoiceHotkeyRecorder } from '@/components/settings/VoiceS
 import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettings';
 import { PetSettings } from '@/components/settings/PetSettings';
 import { NotificationsSettings } from '@/components/settings/NotificationsSettings';
-import { CspSettings } from '@/components/settings/CspSettings';
 import { StorageSharingSettings } from '@/components/settings/StorageSharingSettings';
 import { ShortcutEditor } from '@/components/settings/ShortcutEditor';
 import { ScriptRuntimesSettings } from '@/components/settings/ScriptRuntimesSettings';
@@ -345,11 +344,6 @@ export function SettingsPage() {
         {/* -- 插件 -- */}
         {settingsTab === 'plugins' && (
           <PluginsSettings />
-        )}
-
-        {/* -- 安全策略 -- */}
-        {settingsTab === 'csp' && (
-          <CspSettings />
         )}
 
         {/* -- 存储与分享 -- */}

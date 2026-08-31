@@ -20,7 +20,6 @@
     "pet": "Pet",
     "notifications": "Notifications",
     "plugins": "Plugins",
-    "csp": "Security Policy",
     "storage": "Storage & Sharing",
     "about": "About"
   },
@@ -963,39 +962,6 @@
       "desc": "Auto-dismisses at TTL; \"never\" requires manual close (applies to both popover card and corner toast)",
       "never": "Never",
       "seconds": "{{seconds}}s"
-    }
-  },
-  "csp": {
-    "title": "Security Policy (CSP)",
-    "description": "Control which external URLs the app may load",
-    "mode": {
-      "label": "External URL mode",
-      "description": "Choose whether the app may load resources from any website or only from your allow-list",
-      "all": "Allow all URLs",
-      "custom": "Custom allow-list"
-    },
-    "urls": {
-      "label": "Allowed URLs",
-      "description": "Hostnames, full URLs or scheme sources (e.g. example.com, https://api.example.com, https:). Applied to scripts, styles, fonts, images, media, connections, workers and frames.",
-      "prompt": "example.com or https://…",
-      "add": "Add URL",
-      "remove": "Remove",
-      "empty": "No URLs — only the built-in baseline applies",
-      "reset": "Restore defaults",
-      "invalid": "Not a valid hostname / URL / scheme"
-    },
-    "preview": {
-      "label": "Effective policy",
-      "description": "The policy below takes effect after clicking Apply & Reload.",
-      "expand": "Expand policy",
-      "collapse": "Collapse policy"
-    },
-    "baseline": {
-      "note": "Tauri IPC, folyn-plugin, asset, data: and blob: are always allowed and cannot be removed. Qiniu's http://*.clouddn.com image host and https://*.qiniup.com upload endpoint, Cloudflare R2's https://*.r2.cloudflarestorage.com upload endpoint and https://*.r2.dev default public URL, plus Aliyun OSS's https://*.aliyuncs.com upload + public URL, are also baseline-allowed."
-    },
-    "apply": {
-      "button": "Apply & Reload",
-      "note": "Clicking Apply reloads the page — it flashes briefly. Newly added URLs and “Allow all URLs” only take effect after the reload."
     }
   },
   "storage": {

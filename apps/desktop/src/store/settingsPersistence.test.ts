@@ -6,7 +6,6 @@ import { useVaultConfigStore } from './vaultConfigStore';
 import { useAiConfigStore } from './aiConfigStore';
 import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
 import { usePetStore } from './petStore';
-import { useCspConfigStore, DEFAULT_ALLOWED_URLS } from './cspConfigStore';
 import { useScheduleStore } from './scheduleStore';
 import {
   loadSettings,
@@ -59,9 +58,6 @@ function resetAllDefaults() {
     petPanelSizeVersion: 0, petPosVersion: 1, petIconSource: 'builtin',
     petIconPath: '', petSizeVersion: 0, petSize: '100', notificationForm: 'bubble',
   }, false);
-  useCspConfigStore.setState({
-    mode: 'custom', allowedUrls: [...DEFAULT_ALLOWED_URLS],
-  }, false);
 }
 
 describe('settingsPersistence round-trip', () => {
@@ -75,8 +71,6 @@ describe('settingsPersistence round-trip', () => {
     useAiConfigStore.getState().setChatModel('rt-model');
     usePrefsStore.getState().setDailyNoteDateFormat('DD/MM');
     usePetStore.getState().setPetSize('150');
-    useCspConfigStore.getState().setMode('all');
-    useCspConfigStore.getState().addUrl('https://extra.example.com');
 
     // Flush the debounced persist.
     vi.advanceTimersByTime(400);
@@ -91,8 +85,6 @@ describe('settingsPersistence round-trip', () => {
     expect(useAiConfigStore.getState().chatModel).toBe('rt-model');
     expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('DD/MM');
     expect(usePetStore.getState().petSize).toBe('150');
-    expect(useCspConfigStore.getState().mode).toBe('all');
-    expect(useCspConfigStore.getState().allowedUrls).toContain('https://extra.example.com');
   });
 
   it('missing fields keep defaults on load', async () => {

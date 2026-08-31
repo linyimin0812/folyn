@@ -20,7 +20,6 @@
     "pet": "桌宠",
     "notifications": "通知",
     "plugins": "插件",
-    "csp": "安全策略",
     "storage": "存储与分享",
     "about": "关于"
   },
@@ -963,39 +962,6 @@
       "desc": "到点后自动消失；选\"常驻\"则需手动关闭（同时控制 Popover 卡片与角落 toast）",
       "never": "常驻",
       "seconds": "{{seconds}} 秒"
-    }
-  },
-  "csp": {
-    "title": "安全策略 (CSP)",
-    "description": "控制应用可以加载哪些外部网址",
-    "mode": {
-      "label": "外部网址模式",
-      "description": "选择允许加载任意网站资源，还是只允许白名单中的网址",
-      "all": "允许所有网址",
-      "custom": "自定义白名单"
-    },
-    "urls": {
-      "label": "允许的网址",
-      "description": "域名、完整网址或 scheme（如 example.com、https://api.example.com、https:）。应用于脚本、样式、字体、图片、媒体、网络请求、Worker 和 iframe。",
-      "prompt": "example.com 或 https://…",
-      "add": "添加网址",
-      "remove": "删除",
-      "empty": "未添加网址 — 仅应用内置基础策略",
-      "reset": "恢复默认",
-      "invalid": "不是有效的域名 / 网址 / scheme"
-    },
-    "preview": {
-      "label": "当前生效的策略",
-      "description": "点击“应用并刷新”后，以下策略才会生效。",
-      "expand": "展开策略",
-      "collapse": "收起策略"
-    },
-    "baseline": {
-      "note": "Tauri IPC、folyn-plugin、asset、data: 与 blob: 始终允许，不可移除。另外默认放行七牛云图床域名 http://*.clouddn.com、上传端点 https://*.qiniup.com，Cloudflare R2 上传端点 https://*.r2.cloudflarestorage.com、默认公开访问域名 https://*.r2.dev，以及阿里云 OSS 上传端点与公开访问域名 https://*.aliyuncs.com。"
-    },
-    "apply": {
-      "button": "应用并刷新",
-      "note": "点击“应用”会刷新页面（界面会闪一下）。新添加的网址和“允许所有网址”在刷新后才会生效。"
     }
   },
   "storage": {

@@ -4,7 +4,7 @@ import { create } from 'zustand';
 // from legacy settingsStore). These are nav-domain discriminators.
 
 export type AppPage = 'editor' | 'vault' | 'settings' | 'schedule' | 'translation';
-export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'cli' | 'models' | 'voice' | 'templates' | 'pet' | 'plugins' | 'notifications' | 'csp' | 'storage' | 'about';
+export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'cli' | 'models' | 'voice' | 'templates' | 'pet' | 'plugins' | 'notifications' | 'storage' | 'about';
 
 export interface NavState {
   currentPage: AppPage;

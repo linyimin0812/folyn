@@ -20,7 +20,6 @@
     "pet": "Pet",
     "notifications": "Benachrichtigungen",
     "plugins": "Plugins",
-    "csp": "Sicherheitspolitik",
     "storage": "Speicher & Teilen",
     "about": "Über"
   },
@@ -954,37 +953,6 @@
       "desc": "Auto-Ausblenden bei TTL; „niemals“ erfordert manuelles Schließen (für Popover und Toast)",
       "never": "Nie",
       "seconds": "{{seconds}}s"
-    }
-  },
-  "csp": {
-    "title": "Sicherheitspolitik (CSP)",
-    "description": "Steuert, welche externen URLs die App laden darf",
-    "mode": {
-      "label": "Externer URL-Modus",
-      "description": "Beliebige Quellen oder nur Whitelist",
-      "all": "Alle URLs erlauben",
-      "custom": "Eigene Whitelist"
-    },
-    "urls": {
-      "label": "Erlaubte URLs",
-      "description": "Hostnamen, volle URLs oder Schemata (z. B. example.com, https://api.example.com, https:). Angewendet auf Skripte, Styles, Fonts, Bilder, Medien, Verbindungen, Worker und Frames.",
-      "prompt": "example.com oder https://…",
-      "add": "URL hinzufügen",
-      "remove": "Entfernen",
-      "empty": "Keine URLs — nur eingebaute Baseline",
-      "reset": "Standard wiederherstellen",
-      "invalid": "Kein gültiger Hostname / URL / Schema"
-    },
-    "preview": {
-      "label": "Gültige Richtlinie",
-      "description": "Richtlinie wird nach „Anwenden & Neuladen“ aktiv"
-    },
-    "baseline": {
-      "note": "Tauri IPC, folyn-plugin, asset, data: und blob: sind immer erlaubt und nicht entfernbar."
-    },
-    "apply": {
-      "button": "Anwenden & neu laden",
-      "note": "Anwenden lädt die Seite neu — kurzes Blinken. Neue URLs und „Alle URLs erlauben“ werden erst nach Neuladen aktiv."
     }
   },
   "storage": {

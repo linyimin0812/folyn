@@ -159,19 +159,6 @@ export function PetCornerApp(): JSX.Element {
     dismissToast(toastId);
   };
 
-  // CSP on first mount — same policy as bubble (no remote resources).
-  useEffect(() => {
-    if (!isTauri()) return;
-    const cspId = 'pet-corner-csp';
-    if (!document.getElementById(cspId)) {
-      const meta = document.createElement('meta');
-      meta.id = cspId;
-      meta.httpEquiv = 'Content-Security-Policy';
-      meta.content = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
-      document.head.appendChild(meta);
-    }
-  }, []);
-
   // Listener setup — runs once. Reads `.getState()` for corner / TTL so the
   // closure always sees the latest without re-subscribing.
   useEffect(() => {

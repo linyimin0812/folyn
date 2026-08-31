@@ -20,7 +20,6 @@
     "pet": "Pet",
     "notifications": "Notifications",
     "plugins": "Plugins",
-    "csp": "Politique de sécurité",
     "storage": "Stockage et partage",
     "about": "À propos"
   },
@@ -954,37 +953,6 @@
       "desc": "Auto-fermeture au TTL ; « jamais » requiert fermeture manuelle (valable pour popover et toast)",
       "never": "Jamais",
       "seconds": "{{seconds}}s"
-    }
-  },
-  "csp": {
-    "title": "Politique de sécurité (CSP)",
-    "description": "Contrôler quelles URLs externes l'app peut charger",
-    "mode": {
-      "label": "Mode URL externe",
-      "description": "Autoriser toute source ou seulement la whitelist",
-      "all": "Autoriser toutes les URLs",
-      "custom": "Whitelist personnalisée"
-    },
-    "urls": {
-      "label": "URLs autorisées",
-      "description": "Noms d'hôtes, URLs complètes ou schémas (ex. example.com, https://api.example.com, https:). Appliqué aux scripts, styles, polices, images, médias, connexions, workers et frames.",
-      "prompt": "example.com ou https://…",
-      "add": "Ajouter une URL",
-      "remove": "Retirer",
-      "empty": "Aucune URL — seule la baseline intégrée s'applique",
-      "reset": "Restaurer les valeurs par défaut",
-      "invalid": "Hostname / URL / schéma invalide"
-    },
-    "preview": {
-      "label": "Politique effective",
-      "description": "La politique entre en vigueur après « Appliquer & recharger »"
-    },
-    "baseline": {
-      "note": "Tauri IPC, folyn-plugin, asset, data: et blob: sont toujours autorisés et non retirables."
-    },
-    "apply": {
-      "button": "Appliquer & recharger",
-      "note": "Appliquer recharge la page — bref clignotement. Les URLs ajoutées et « Autoriser toutes » ne sont actives qu'après le rechargement."
     }
   },
   "storage": {

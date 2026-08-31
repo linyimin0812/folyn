@@ -20,7 +20,6 @@
     "pet": "Mascota",
     "notifications": "Notificaciones",
     "plugins": "Plugins",
-    "csp": "Política de seguridad",
     "storage": "Almacenamiento y compartir",
     "about": "Acerca de"
   },
@@ -954,37 +953,6 @@
       "desc": "Auto-despedida en TTL; \"nunca\" requiere cierre manual (aplica a popover y toast)",
       "never": "Nunca",
       "seconds": "{{seconds}}s"
-    }
-  },
-  "csp": {
-    "title": "Política de seguridad (CSP)",
-    "description": "Controla qué URLs externas puede cargar la app",
-    "mode": {
-      "label": "Modo URL externa",
-      "description": "Permite cualquier web o solo tu lista",
-      "all": "Permitir todas",
-      "custom": "Lista personalizada"
-    },
-    "urls": {
-      "label": "URLs permitidas",
-      "description": "Hostnames, URLs completas o esquemas (p. ej. example.com, https://api.example.com, https:). Aplicado a scripts, estilos, fuentes, imágenes, media, conexiones, workers y frames.",
-      "prompt": "example.com o https://…",
-      "add": "Añadir URL",
-      "remove": "Quitar",
-      "empty": "Sin URLs — solo aplica la base integrada",
-      "reset": "Restaurar defaults",
-      "invalid": "No es hostname / URL / esquema válido"
-    },
-    "preview": {
-      "label": "Política efectiva",
-      "description": "La política entra en vigor tras Aplicar y recargar"
-    },
-    "baseline": {
-      "note": "Tauri IPC, folyn-plugin, asset, data: y blob: siempre permitidos, no se pueden quitar."
-    },
-    "apply": {
-      "button": "Aplicar y recargar",
-      "note": "Aplicar recarga la página — parpadea brevemente. URLs nuevas y \"Permitir todas\" solo activas tras recargar."
     }
   },
   "storage": {

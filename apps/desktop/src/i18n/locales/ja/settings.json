@@ -20,7 +20,6 @@
     "pet": "桌宠",
     "notifications": "通知",
     "plugins": "プラグイン",
-    "csp": "セキュリティポリシー",
     "storage": "ストレージと共有",
     "about": "情報"
   },
@@ -960,37 +959,6 @@
       "desc": "TTLで自動消去。「なし」は手動クローズが必要（ポップオーバーカードとコーナートースト両方に適用）",
       "never": "なし",
       "seconds": "{{seconds}}秒"
-    }
-  },
-  "csp": {
-    "title": "セキュリティポリシー（CSP）",
-    "description": "アプリがロード可能な外部URLを制御",
-    "mode": {
-      "label": "外部URLモード",
-      "description": "任意のウェブサイトからロード可能か、許可リストからのみかを選択",
-      "all": "全てのURLを許可",
-      "custom": "カスタム許可リスト"
-    },
-    "urls": {
-      "label": "許可URL",
-      "description": "ホスト名、完全URL、またはスキームソース（例: example.com, https://api.example.com, https:）。スクリプト、スタイル、フォント、画像、メディア、接続、ワーカー、フレームに適用。",
-      "prompt": "example.com または https://…",
-      "add": "URLを追加",
-      "remove": "削除",
-      "empty": "URLなし — 組み込みベースラインのみ適用",
-      "reset": "デフォルトに戻す",
-      "invalid": "有効なホスト名 / URL / スキームではありません"
-    },
-    "preview": {
-      "label": "有効なポリシー",
-      "description": "下記のポリシーは「適用して再読み込み」クリック後に有効化"
-    },
-    "baseline": {
-      "note": "Tauri IPC、folyn-plugin、asset、data:、blob:は常に許可され、削除不可。"
-    },
-    "apply": {
-      "button": "適用して再読み込み",
-      "note": "適用をクリックするとページが再読み込みされます — 一瞬点滅します。新規追加URLと「全てのURLを許可」は再読み込み後のみ有効化。"
     }
   },
   "storage": {

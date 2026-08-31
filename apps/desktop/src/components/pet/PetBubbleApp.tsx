@@ -265,24 +265,6 @@ export function PetBubbleApp(): JSX.Element {
     if (event.type !== 'launch' || event.launch?.type === 'url') close();
   };
 
-  // Inject the CSP meta + the template's CSS into the bubble document head.
-  // CSP is one-shot (set on first mount); CSS is re-injected when the template
-  // changes. We don't use a `<style>` React element because the template CSS
-  // may be large and we want to control injection timing exactly.
-  useEffect(() => {
-    if (!isTauri()) return;
-    // CSP: blocks remote resources — img/font/@import — so a malicious
-    // template can't exfiltrate via URL() or beacon a remote image.
-    const cspId = 'pet-bubble-csp';
-    if (!document.getElementById(cspId)) {
-      const meta = document.createElement('meta');
-      meta.id = cspId;
-      meta.httpEquiv = 'Content-Security-Policy';
-      meta.content = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
-      document.head.appendChild(meta);
-    }
-  }, []);
-
   useEffect(() => {
     if (!isTauri()) return;
     let unlistenShow: (() => void) | null = null;
