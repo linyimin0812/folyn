@@ -488,7 +488,7 @@ mjx-container svg {
 .code-block-empty-html { flex: 1; }
 .code-block-inner { display: flex; max-height: 420px; overflow: hidden; background: var(--surf); }
 .code-block-scroll { overflow: auto; flex: 1; min-width: 0; }
-.code-block-inner, .md-preview > pre, .code-block-inner pre, .code-block-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable; overscroll-behavior: none; }
+.code-block-inner, .md-preview > pre, .code-block-inner pre, .code-block-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; overscroll-behavior: none; }
 .code-block-wrapper:hover .code-block-inner, .md-preview > pre:hover, .code-block-wrapper:hover .code-block-inner pre, .code-block-wrapper:hover .code-block-scroll { scrollbar-color: var(--t4) transparent; }
 .code-block-inner::-webkit-scrollbar, .md-preview > pre::-webkit-scrollbar, .code-block-inner pre::-webkit-scrollbar, .code-block-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
 .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre::-webkit-scrollbar-thumb, .code-block-inner pre::-webkit-scrollbar-thumb, .code-block-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
