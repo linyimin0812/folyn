@@ -48,7 +48,11 @@ export function Sidebar({ collapsed, onCollapsedChange, onFileSelect }: SidebarP
   return (
     <>
       <aside
-        className={`sidebar shrink-0 h-full overflow-hidden bg-panel border-r border-brd flex flex-col${isResizing ? '' : ' transition-[width,opacity] duration-200 ease-in-out'}`}
+        // ponytail: aside intentionally has no right border — the adjacent
+        // SidebarResizer draws the 1px divider (and tints it on hover). Drawing
+        // both produces two stacked 1px lines that macOS subpixel AA blurs into
+        // one but Windows WebView2 renders as a visibly thick 2px rule.
+        className={`sidebar shrink-0 h-full overflow-hidden bg-panel flex flex-col${isResizing ? '' : ' transition-[width,opacity] duration-200 ease-in-out'}`}
         style={{ width: collapsed ? '0px' : `${width}px`, display: collapsed ? 'none' : undefined }}
       >
         <SidebarContext.Provider value={ctx}>
