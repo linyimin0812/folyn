@@ -492,7 +492,7 @@ mjx-container svg {
 .code-block-inner::-webkit-scrollbar, .md-preview > pre::-webkit-scrollbar { width: 4px; height: 4px; }
 .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
 .code-block-wrapper:hover .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre:hover::-webkit-scrollbar-thumb { background: var(--t4); }
-.code-block-inner::-webkit-scrollbar-track, .md-preview > pre::-webkit-scrollbar-track { background: transparent; }
+.code-block-inner::-webkit-scrollbar-track, .md-preview > pre::-webkit-scrollbar-track { background: transparent; border: none; box-shadow: none; margin: 0; }
 .code-block-inner .code-line-numbers { position: sticky; left: 0; z-index: 1; padding: 12px 0; border-right: 1px solid var(--brd); background: var(--surf2); user-select: none; white-space: nowrap; }
 .code-block-inner .code-ln { display: block; padding: 0 10px; text-align: right; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--t3); min-width: 32px; }
 .code-block-inner pre { margin: 0; border: none; border-radius: 0; background: var(--surf); padding: 0; overflow: visible; }
