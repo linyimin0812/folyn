@@ -16,9 +16,10 @@ import { isWindowsPlatform } from '@/utils/shellSidecar';
  * The Topbar header already carries `data-tauri-drag-region="deep"`, so
  * tauri-core turns the header into a drag handle (including clicks on its
  * non-interactive children) and makes double-click toggle maximize on
- * Windows — this component only supplies the three buttons.
- */
-export function WindowControls() {
+ * Windows — this component supplies an optional separator (rendered when
+ * `showSeparator` is set, i.e. when preceding toolbar items like the theme
+ * toggle should be visually divided from the controls) plus the buttons. */
+export function WindowControls({ showSeparator = false }: { showSeparator?: boolean }) {
   const { t } = useTranslation();
   const [maximized, setMaximized] = useState(false);
 
@@ -63,31 +64,36 @@ export function WindowControls() {
   const handleClose = run((win) => win.close());
 
   return (
-    <div className="win-controls flex items-center shrink-0">
-      <button
-        className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
-        onClick={handleMinimize}
-        title={t('topbar:window.minimize')}
-        aria-label={t('topbar:window.minimize')}
-      >
-        <Minus size={14} className="shrink-0" />
-      </button>
-      <button
-        className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
-        onClick={handleToggleMaximize}
-        title={maximized ? t('topbar:window.restore') : t('topbar:window.maximize')}
-        aria-label={maximized ? t('topbar:window.restore') : t('topbar:window.maximize')}
-      >
-        {maximized ? <Copy size={13} className="shrink-0" /> : <Square size={13} className="shrink-0" />}
-      </button>
-      <button
-        className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-red hover:text-white"
-        onClick={handleClose}
-        title={t('topbar:window.close')}
-        aria-label={t('topbar:window.close')}
-      >
-        <X size={14} className="shrink-0" />
-      </button>
-    </div>
+    <>
+      {showSeparator && (
+        <div className="win-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
+      )}
+      <div className="win-controls flex items-center shrink-0">
+        <button
+          className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
+          onClick={handleMinimize}
+          title={t('topbar:window.minimize')}
+          aria-label={t('topbar:window.minimize')}
+        >
+          <Minus size={14} className="shrink-0" />
+        </button>
+        <button
+          className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1"
+          onClick={handleToggleMaximize}
+          title={maximized ? t('topbar:window.restore') : t('topbar:window.maximize')}
+          aria-label={maximized ? t('topbar:window.restore') : t('topbar:window.maximize')}
+        >
+          {maximized ? <Copy size={13} className="shrink-0" /> : <Square size={13} className="shrink-0" />}
+        </button>
+        <button
+          className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-red hover:text-white"
+          onClick={handleClose}
+          title={t('topbar:window.close')}
+          aria-label={t('topbar:window.close')}
+        >
+          <X size={14} className="shrink-0" />
+        </button>
+      </div>
+    </>
   );
 }

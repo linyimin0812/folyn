@@ -253,7 +253,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         </>
 
         )}
-        <WindowControls />
+        <WindowControls showSeparator={currentPage !== 'settings'} />
 
       </div>
     </header>
