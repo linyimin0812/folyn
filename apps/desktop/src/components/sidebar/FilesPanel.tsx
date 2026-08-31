@@ -167,11 +167,12 @@ export function FilesPanel(): React.JSX.Element {
         return;
       }
 
-      setSelectedPaths(new Set());
       lastClickedPath.current = path;
       if (entry.type === 'file') {
+        setSelectedPaths(new Set());
         handleFileClick(entry.path, entry.name);
       } else {
+        setSelectedPaths(new Set([path]));
         handleToggleDir(entry.path);
       }
     },
@@ -349,7 +350,7 @@ export function FilesPanel(): React.JSX.Element {
           );
         }
 
-        const isActive = tabs.find((t) => t.path === item.path)?.id === activeTabId;
+        const isActive = selectedPaths.size === 0 && tabs.find((t) => t.path === item.path)?.id === activeTabId;
         const isFileSelected = selectedPaths.has(item.path);
         return (
           <FileTreeItem
