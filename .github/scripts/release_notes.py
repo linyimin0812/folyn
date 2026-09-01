@@ -45,12 +45,16 @@ for subject in (s.strip() for s in log.splitlines() if s.strip()):
         fixes.setdefault(key, desc)
 
 
-def merge_with_llm(items: list) -> list:
+def merge_with_llm(title: str, items: list) -> list:
     """Fuzzy-merge similar commit descriptions via a custom LLM provider. Falls back to input on any failure."""
     base_url = os.environ.get("LLM_BASE_URL")
     api_key = os.environ.get("LLM_API_KEY")
     model = os.environ.get("LLM_MODEL")
-    if not (base_url and api_key and model) or len(items) <= 1:
+    if not (base_url and api_key and model):
+        print(f"[{title}] LLM skipped — LLM_BASE_URL/LLM_API_KEY/LLM_MODEL not set; using exact dedup ({len(items)} items)", file=sys.stderr)
+        return items
+    if len(items) <= 1:
+        print(f"[{title}] LLM skipped — {len(items)} item only", file=sys.stderr)
         return items
     try:
         import anthropic
@@ -74,14 +78,18 @@ def merge_with_llm(items: list) -> list:
             for line in text.splitlines()
             if line.strip().startswith(("- ", "* "))
         ]
-        return bullets or items
+        if bullets:
+            print(f"[{title}] LLM merged {len(items)} → {len(bullets)} bullets (model={model})", file=sys.stderr)
+            return bullets
+        print(f"[{title}] LLM returned no bullets, using exact dedup ({len(items)} items)", file=sys.stderr)
+        return items
     except Exception as e:
-        print(f"<!-- LLM merge failed: {e}; falling back to exact dedup -->", file=sys.stderr)
+        print(f"[{title}] LLM merge failed: {e}; falling back to exact dedup ({len(items)} items)", file=sys.stderr)
         return items
 
 
 def emit(title: str, items: "OrderedDict[str, str]") -> None:
-    merged = merge_with_llm(list(items.values()))
+    merged = merge_with_llm(title, list(items.values()))
     print(f"## {title}\n")
     for desc in merged:
         print(f"- {desc}")
