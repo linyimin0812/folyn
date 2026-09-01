@@ -32,7 +32,7 @@ function isInsideCodeBlock(state: EditorState, pos: number): boolean {
   let node = syntaxTree(state).resolveInner(pos, -1);
   while (node) {
     if (CODE_BLOCK_NODES.has(node.name)) return true;
-    node = node.parent;
+    node = node.parent as typeof node;
   }
   return false;
 }
