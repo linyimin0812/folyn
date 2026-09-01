@@ -1,8 +1,9 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
@@ -14,7 +15,49 @@ permissions:
   contents: write
 
 jobs:
+  release:
+    if: ${{ (inputs.tag || github.ref_name || '') != '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: meta
+        shell: bash
+        run: echo "tag=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Install anthropic SDK
+        run: pip install anthropic
+
+      - name: Generate release notes
+        shell: bash
+        run: python3 .github/scripts/release_notes.py > release_notes.md
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+
+      - name: Create or update release
+        shell: bash
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file release_notes.md
+          else
+            gh release create "$TAG" --notes-file release_notes.md --title "$TAG" --verify-tag
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+
   build:
+    needs: release
+    if: always()
     strategy:
       fail-fast: false
       matrix:
@@ -30,7 +73,6 @@ jobs:
             args: "--bundles nsis"
 
     runs-on: ${{ matrix.platform }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,11 +96,16 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
+      - name: Resolve build tag
+        id: bmeta
+        shell: bash
+        run: echo "tag=${{ inputs.tag || needs.release.outputs.tag || github.ref_name || '' }}" >> "$GITHUB_OUTPUT"
+
       - name: Sync version from tag
-        if: ${{ (inputs.tag || github.event.release.tag_name || '') != '' }}
+        if: ${{ steps.bmeta.outputs.tag != '' }}
         shell: bash
         run: |
-          TAG="${{ inputs.tag || github.event.release.tag_name }}"
+          TAG="${{ steps.bmeta.outputs.tag }}"
           VER="${TAG#v}"
           python3 -c "import json,pathlib; p=pathlib.Path('apps/desktop/src-tauri/tauri.conf.json'); d=json.loads(p.read_text()); d['version']='$VER'; p.write_text(json.dumps(d,indent=2,ensure_ascii=False)+'\n')"
           python3 -c "import pathlib,re; p=pathlib.Path('apps/desktop/src-tauri/Cargo.toml'); s=p.read_text(); s=re.sub(r'^version = \".*\"', f'version = \"$VER\"', s, flags=re.M); p.write_text(s)"
@@ -72,7 +119,6 @@ jobs:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
           args: ${{ matrix.args }}
-          tagName: ${{ inputs.tag || github.event.release.tag_name }}
-          releaseName: ${{ inputs.tag || github.event.release.name }}
-          releaseId: ${{ github.event.release.id || '' }}
+          tagName: ${{ steps.bmeta.outputs.tag }}
+          releaseName: ${{ steps.bmeta.outputs.tag }}
           includeUpdaterJson: false
