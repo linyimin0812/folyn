@@ -58,6 +58,7 @@ vi.mock('@/services/export/shared', () => ({
 vi.mock('@/services/exportService', () => ({
   renderMarkdownToHtmlViaDom: vi.fn(),
   HTML_STYLES: '',
+  IMAGE_LIGHTBOX_SCRIPT: '',
   LIGHT_THEME_VARS: '',
   DARK_THEME_VARS: '',
   hasContainerSyntax: () => false,

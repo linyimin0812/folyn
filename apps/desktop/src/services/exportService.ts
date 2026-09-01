@@ -517,6 +517,16 @@ export const HTML_STYLES = `
 
     /* Image */
     img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
+    img { cursor: zoom-in; }
+
+    /* Resizable media wrapper — mirrors .md-preview .resizable-media rules
+       from index.css so exported images render at the same persisted width
+       as the in-app preview. The export DOM strips .resize-handle but keeps
+       the wrapper with its inline width style. */
+    .resizable-media { position: relative; display: block; width: fit-content; max-width: 100%; margin: 8px auto; line-height: 0; }
+    .resizable-media > *:not(.resize-handle) { display: block; width: 100%; }
+    .resizable-media img,
+    .resizable-media svg { width: 100% !important; height: auto !important; display: block; margin: 0; max-width: none !important; }
 
     /* Horizontal rule */
     hr { border: none; border-top: 1px solid #dde2f0; margin: 20px 0; }
@@ -592,3 +602,71 @@ export const CONTAINER_INTERACT_SCRIPT = `
     });
 `;
 
+/**
+* CSS override injected AFTER collectAppCss() in the export <style> block.
+* The app CSS from index.css sets `.md-preview .resizable-media { width:
+* fit-content }` (higher specificity than the bare rules in HTML_STYLES).
+ *
+ * fit-content + img `width:100% !important` creates a sizing cycle that
+ * resolves to the replaced element's default 300px for images WITHOUT
+ * intrinsic dimensions (e.g. SVG <img> with viewBox but no width/height).
+ * In the preview such images fill the .md-preview width because the img's
+ * max-width:100% caps against the 800px parent. This override switches the
+ * wrapper to width:100% — but ONLY for wrappers whose direct child is an
+ * <img> (`:has(> img)`). Diagram fences (plantuml/mermaid/graphviz/markmap)
+ * render inline <svg> with intrinsic dimensions inside nested divs, so they
+ * must keep fit-content to render at their natural size — the same as the
+ * in-app preview. Uses !important to win against the app CSS dump.
+*/
+export const RESIZABLE_MEDIA_OVERRIDE = `
+    .md-preview .resizable-media:not([style*="width"]):has(> img) { width: 100% !important; }
+`;
+
+/**
+ * Inline `<script>` injected into the exported HTML `<head>` to enable
+ * click-to-zoom on content images. Clicking any `<img>` inside the document
+ * body opens a fullscreen lightbox overlay (fixed, dark backdrop, image
+ * centered at up to 90vw/90vh). The overlay closes on backdrop click, image
+ * click, or Escape. Body scroll is locked while the overlay is open.
+ *
+ * ponytail: one delegated click listener covers every <img> in the doc —
+ * smaller than per-image handlers and works for images rendered dynamically
+ * (e.g. container-plugin output). The lightbox overlay element is created
+ * lazily on first open and reused thereafter.
+ */
+export const IMAGE_LIGHTBOX_SCRIPT = `
+    (function () {
+      var overlay = null;
+      function close() {
+        if (!overlay) return;
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+      function open(src, alt) {
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);cursor:zoom-out;';
+          var img = document.createElement('img');
+          img.style.cssText = 'max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px;cursor:zoom-out;';
+          overlay.appendChild(img);
+          overlay.addEventListener('click', close);
+          document.body.appendChild(overlay);
+        }
+        var lbImg = overlay.querySelector('img');
+        lbImg.src = src;
+        lbImg.alt = alt || '';
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+      document.addEventListener('click', function (e) {
+        var img = e.target.closest && e.target.closest('img');
+        if (!img || (overlay && overlay.contains(img))) return;
+        if (!img.src) return;
+        e.preventDefault();
+        open(img.src, img.alt);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') close();
+      });
+    })();
+`;

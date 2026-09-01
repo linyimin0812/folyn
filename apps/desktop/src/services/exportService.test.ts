@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   hasContainerSyntax,
   HTML_STYLES,
+  IMAGE_LIGHTBOX_SCRIPT,
   renderMarkdownToHtml,
 } from './exportService';
 import {
@@ -31,6 +32,26 @@ describe('HTML_STYLES', () => {
     expect(HTML_STYLES).toContain('body {');
     expect(HTML_STYLES).toContain('h1 {');
     expect(HTML_STYLES.toLowerCase()).toContain('pre');
+  });
+  it('includes resizable-media rules for image size parity with preview', () => {
+    expect(HTML_STYLES).toContain('.resizable-media');
+    expect(HTML_STYLES).toContain('width: 100% !important');
+  });
+});
+
+describe('IMAGE_LIGHTBOX_SCRIPT', () => {
+  it('exports a non-empty script string', () => {
+    expect(IMAGE_LIGHTBOX_SCRIPT).toBeTruthy();
+    expect(IMAGE_LIGHTBOX_SCRIPT.length).toBeGreaterThan(0);
+  });
+
+  it('registers a delegated click listener for images', () => {
+    expect(IMAGE_LIGHTBOX_SCRIPT).toContain("addEventListener('click'");
+    expect(IMAGE_LIGHTBOX_SCRIPT).toContain("closest('img')");
+  });
+
+  it('closes the overlay on Escape', () => {
+    expect(IMAGE_LIGHTBOX_SCRIPT).toContain("Escape");
   });
 });
 
