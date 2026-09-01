@@ -165,6 +165,11 @@
   },
   "table": {
     "insertButton": { "title": "Insérer un tableau" },
+    "convertTitle": "Tableau détecté",
+    "convertMessage": "Le contenu du presse-papiers ressemble à un tableau. Convertir ?",
+    "rememberChoice": "Ne plus demander",
+    "pasteAsText": "Coller comme texte",
+    "convert": "Convertir en tableau",
     "handle": { "rowActions": "Actions de ligne", "colActions": "Actions de colonne" },
     "rowMenu": {
       "insertAbove": "Insérer une ligne au-dessus",

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { registerPersistSlice } from './settingsPersistence';
 
+export type TablePasteMode = 'ask' | 'convert' | 'text';
+
 export const PERSIST_KEYS_EDITOR_PREFS = [
   'editorFont',
   'editorFontSize',
@@ -10,6 +12,7 @@ export const PERSIST_KEYS_EDITOR_PREFS = [
   'syntaxHighlight',
   'autoSave',
   'spellCheck',
+  'tablePasteMode',
 ] as const;
 
 export interface EditorPrefsState {
@@ -21,6 +24,7 @@ export interface EditorPrefsState {
   syntaxHighlight: boolean;
   autoSave: boolean;
   spellCheck: boolean;
+  tablePasteMode: TablePasteMode;
 
   setEditorFont: (v: string) => void;
   setEditorFontSize: (v: number) => void;
@@ -30,6 +34,7 @@ export interface EditorPrefsState {
   setSyntaxHighlight: (v: boolean) => void;
   setAutoSave: (v: boolean) => void;
   setSpellCheck: (v: boolean) => void;
+  setTablePasteMode: (v: TablePasteMode) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -44,6 +49,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   syntaxHighlight: true,
   autoSave: true,
   spellCheck: false,
+  tablePasteMode: 'ask',
 
   setEditorFont: (v) => { set({ editorFont: v }); persist(); },
   setEditorFontSize: (v) => { set({ editorFontSize: v }); persist(); },
@@ -53,6 +59,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   setSyntaxHighlight: (v) => { set({ syntaxHighlight: v }); persist(); },
   setAutoSave: (v) => { set({ autoSave: v }); persist(); },
   setSpellCheck: (v) => { set({ spellCheck: v }); persist(); },
+  setTablePasteMode: (v) => { set({ tablePasteMode: v }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<EditorPrefsState> = {};
@@ -64,6 +71,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
     if (blob.syntaxHighlight !== undefined) patch.syntaxHighlight = blob.syntaxHighlight as boolean;
     if (blob.autoSave !== undefined) patch.autoSave = blob.autoSave as boolean;
     if (blob.spellCheck !== undefined) patch.spellCheck = blob.spellCheck as boolean;
+    if (blob.tablePasteMode !== undefined) patch.tablePasteMode = blob.tablePasteMode as TablePasteMode;
     if (Object.keys(patch).length > 0) set(patch);
   },
 }));

@@ -165,6 +165,11 @@
   },
   "table": {
     "insertButton": { "title": "Tabelle einfügen" },
+    "convertTitle": "Tabelle erkannt",
+    "convertMessage": "Der Inhalt der Zwischenablage sieht wie eine Tabelle aus. Konvertieren?",
+    "rememberChoice": "Nicht mehr fragen",
+    "pasteAsText": "Als Text einfügen",
+    "convert": "In Tabelle umwandeln",
     "handle": { "rowActions": "Zeilenaktionen", "colActions": "Spaltenaktionen" },
     "rowMenu": {
       "insertAbove": "Zeile oben einfügen",

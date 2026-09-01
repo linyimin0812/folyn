@@ -27,7 +27,9 @@ import { folynHighlighting } from './highlightStyle';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
 import { listEditorLanguages } from '@/services/plugin-host/editorLanguageAdapter';
 import { extractImgSrcFromHtml } from '@/services/clipboardFiles';
-
+import { detectMarkdownTable, markdownTableToMarkdown, detectTsvTable, tsvTableToMarkdown, detectCsvTable, csvTableToMarkdown } from '@/components/file-types/rich-text/markdownTable';
+import { TableConvertDialog, type TableConvertChoice } from '@/components/editor/TableConvertDialog';
+import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 registerBuiltinCodeContributions();
 
 // ponytail: build markdown codeLanguages at module load. Reads the editorLanguageRegistry
@@ -61,7 +63,6 @@ import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { EditorSearchBar } from '@/components/editor/EditorSearchBar';
 import { useSearchPanelState, buildSearchExtensions } from '@/components/editor/searchPanelState';
 import { useEditorViewStateStore } from '@/store/editorViewState';
-import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import {
   computeSlashMenuState,
@@ -223,6 +224,44 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     onSaveRef.current = onSave;
     const onImagePasteRef = useRef(onImagePaste);
     onImagePasteRef.current = onImagePaste;
+    // ponytail: smart paste → table convert dialog. When a table is detected
+    // on paste and the user hasn't suppressed the prompt, show a confirmation
+    // modal before converting. The pending insert is held in a ref so the
+    // async dialog resolution can replay it into the CodeMirror view.
+    const tablePasteMode = useEditorPrefsStore((s) => s.tablePasteMode);
+    const setTablePasteMode = useEditorPrefsStore((s) => s.setTablePasteMode);
+    const [tableConvert, setTableConvert] = useState<{ visible: boolean; summary: string; insertText: string; rawText: string }>({
+      visible: false,
+      summary: '',
+      insertText: '',
+      rawText: '',
+    });
+    // ponytail: keep a ref of the latest paste mode so the paste handler
+    // (created once during setup) reads the current preference instead of a
+    // stale closure value. Mirrors the onChangeRef/onImagePasteRef pattern.
+    const tablePasteModeRef = useRef(tablePasteMode);
+    tablePasteModeRef.current = tablePasteMode;
+    // ponytail: insert text at the current cursor — used by the dialog
+    // resolve path to replay a held table paste once the user confirms.
+    const insertTextAtCursor = (text: string) => {
+      const view = viewRef.current;
+      if (!view) return;
+      const pos = view.state.selection.main.head;
+      view.dispatch({
+        changes: { from: pos, to: pos, insert: text },
+        selection: { anchor: pos + text.length },
+      });
+    };
+    // ponytail: resolve the convert dialog — convert or paste-as-text, and
+    // persist the choice when "remember" is checked. preventDefault was
+    // already called in the paste handler, so both paths replay text here.
+    const resolveTableConvert = (choice: TableConvertChoice) => {
+      insertTextAtCursor(choice.convert ? tableConvert.insertText : tableConvert.rawText);
+      if (choice.remember) {
+        setTablePasteMode(choice.convert ? 'convert' : 'text');
+      }
+      setTableConvert({ visible: false, summary: '', insertText: '', rawText: '' });
+    };
 
     useImperativeHandle(ref, () => ({
       getView: () => viewRef.current,
@@ -400,6 +439,85 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
               }
               return true;
             }
+            // ponytail: smart paste → table detection. Detect a Markdown or
+            // TSV table in the clipboard's text/plain.
+            //  - Already-Markdown tables (| ... | with a separator row): paste
+            //    directly, no prompt. The source is already valid markdown, so
+            //    converting/confirming would only add friction.
+            //  - TSV tables (rendered table copied from a web page, cells joined
+            //    by tabs): offer to convert to markdown source, gated by the
+            //    saved tablePasteMode preference ('ask'|'convert'|'text').
+            const plain = event.clipboardData?.getData('text/plain') ?? '';
+            if (plain) {
+              // Markdown table → insert as-is (re-canonicalized).
+              const mdTable = detectMarkdownTable(plain);
+              if (mdTable.matched && mdTable.table) {
+                event.preventDefault();
+                const view = viewRef.current;
+                if (view) {
+                  const pos = view.state.selection.main.head;
+                  const md = markdownTableToMarkdown(mdTable.table);
+                  view.dispatch({
+                    changes: { from: pos, to: pos, insert: md },
+                    selection: { anchor: pos + md.length },
+                  });
+                }
+                return true;
+              }
+              // TSV table → conversion is the only way to get a table here, so
+              // honor the user's preference (ask / convert silently / text).
+              const tsv = detectTsvTable(plain);
+              if (tsv) {
+                const insertMd = tsvTableToMarkdown(tsv);
+                const summary = `${tsv.header.length} columns × ${tsv.rows.length + 1} rows`;
+                const mode = tablePasteModeRef.current;
+                if (mode === 'text') {
+                  // User opted out of conversion — default plain-text paste.
+                  return false;
+                }
+                if (mode === 'convert') {
+                  event.preventDefault();
+                  const view = viewRef.current;
+                  if (view) {
+                    const pos = view.state.selection.main.head;
+                    view.dispatch({
+                      changes: { from: pos, to: pos, insert: insertMd },
+                      selection: { anchor: pos + insertMd.length },
+                    });
+                  }
+                  return true;
+                }
+                // 'ask' → hold the insert and show the confirmation dialog.
+                event.preventDefault();
+                setTableConvert({ visible: true, summary, insertText: insertMd, rawText: plain });
+                return true;
+              }
+              // CSV table → same conversion flow as TSV.
+              const csv = detectCsvTable(plain);
+              if (csv) {
+                const insertMd = csvTableToMarkdown(csv);
+                const summary = `${csv.header.length} columns × ${csv.rows.length + 1} rows`;
+                const mode = tablePasteModeRef.current;
+                if (mode === 'text') {
+                  return false;
+                }
+                if (mode === 'convert') {
+                  event.preventDefault();
+                  const view = viewRef.current;
+                  if (view) {
+                    const pos = view.state.selection.main.head;
+                    view.dispatch({
+                      changes: { from: pos, to: pos, insert: insertMd },
+                      selection: { anchor: pos + insertMd.length },
+                    });
+                  }
+                  return true;
+                }
+                event.preventDefault();
+                setTableConvert({ visible: true, summary, insertText: insertMd, rawText: plain });
+                return true;
+              }
+            }
             return false;
           },
         }),
@@ -521,6 +639,11 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           viewTick={sp.viewTick}
           onClose={() => sp.setVisible(false)}
           onToggleReplace={() => sp.setReplaceOpen((v) => !v)}
+        />
+        <TableConvertDialog
+          visible={tableConvert.visible}
+          summary={tableConvert.summary}
+          onResolve={resolveTableConvert}
         />
       </div>
     );

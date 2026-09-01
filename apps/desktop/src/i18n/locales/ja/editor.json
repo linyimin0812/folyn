@@ -165,6 +165,11 @@
   },
   "table": {
     "insertButton": { "title": "表を挿入" },
+    "convertTitle": "表が検出されました",
+    "convertMessage": "クリップボードの内容が表のようです。表に変換しますか？",
+    "rememberChoice": "今後確認しない",
+    "pasteAsText": "テキストとして貼り付け",
+    "convert": "表に変換",
     "handle": { "rowActions": "行アクション", "colActions": "列アクション" },
     "rowMenu": {
       "insertAbove": "上に行を挿入",

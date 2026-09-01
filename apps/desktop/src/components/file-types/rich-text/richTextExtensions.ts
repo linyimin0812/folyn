@@ -16,6 +16,7 @@ import { RichTextIndent } from './RichTextIndent';
 import { RichTextTableCell, RichTextTableHeader } from './RichTextTableCell';
 import { RichTextImage, type ImagePasteHandler } from './RichTextImage';
 import { RichTextSlashExtension } from './RichTextSlashExtension';
+import { MarkdownTablePaste, type TablePasteHandler } from './markdownTablePaste';
 
 // ponytail: one lowlight instance shared by editor + export pipeline
 // (getRichTextExtensions is called by both, and richtext.ts imports this
@@ -53,6 +54,13 @@ export interface RichTextExtensionsOptions {
    * Export pipeline omits it (no live editor, no paste).
    */
   onImagePaste?: ImagePasteHandler;
+  /**
+   * When provided (live editor only), a TSV table detected on plain-text paste
+   * routes here so the host can show the TableConvertDialog. Markdown-source
+   * tables convert directly in the plugin (no prompt). Export pipeline omits
+   * it (no live editor, no paste).
+   */
+  onTablePaste?: TablePasteHandler;
 }
 
 /**
@@ -68,7 +76,7 @@ export interface RichTextExtensionsOptions {
  * generateHTML only emits the node's static HTML, not NodeView output.
  */
 export function getRichTextExtensions(options: RichTextExtensionsOptions = {}): Extensions {
-  const { onMathEdit, onImagePaste } = options;
+  const { onMathEdit, onImagePaste, onTablePaste } = options;
   return [
     StarterKit.configure({ codeBlock: false }),
     CodeBlockLowlight.configure({
@@ -103,6 +111,10 @@ export function getRichTextExtensions(options: RichTextExtensionsOptions = {}): 
     RichTextTableCell,
     RichTextTableHeader,
     RichTextImage.configure({ onImagePaste }),
+    // ponytail: smart paste → Markdown table detection. Registered after
+    // RichTextImage so image-file paste wins; only fires on plain-text
+    // clipboard with no HTML table (ProseMirror already parses <table> HTML).
+    MarkdownTablePaste.configure({ onTablePaste }),
     RichTextSlashExtension,
   ];
 }

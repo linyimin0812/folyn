@@ -32,6 +32,9 @@ import { RichTextMathModal } from './RichTextMathModal';
 import { TableControlsOverlay, domCellToPos } from './TableControlsOverlay';
 import { TableMenu, type TableMenuItem } from './TableMenu';
 import { ImagePasteDialog, type ImageSaveConfig } from '@/components/editor/ImagePasteDialog';
+import { TableConvertDialog, type TableConvertChoice } from '@/components/editor/TableConvertDialog';
+import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { dispatchTableNode, type TablePasteHandler } from './markdownTablePaste';
 import { useVaultStore } from '@/store/vaultStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import {
@@ -112,10 +115,72 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
     setImagePasteVisible(true);
   };
 
+  // ponytail: smart paste → table convert dialog (rich-text path). When the
+  // MarkdownTablePaste plugin detects a TSV table on paste, it calls
+  // onTablePaste; we honor the saved tablePasteMode ('ask'|'convert'|'text')
+  // and, when 'ask', open the TableConvertDialog. On resolve we dispatch the
+  // native table node or replay the raw text. Markdown-source tables convert
+  // directly in the plugin (no prompt), mirroring the .md editor rule.
+  const tablePasteMode = useEditorPrefsStore((s) => s.tablePasteMode);
+  const setTablePasteMode = useEditorPrefsStore((s) => s.setTablePasteMode);
+  const tablePasteModeRef = useRef(tablePasteMode);
+  tablePasteModeRef.current = tablePasteMode;
+  const [tableConvert, setTableConvert] = useState<{
+    visible: boolean;
+    summary: string;
+    tableNode: import('@tiptap/react').JSONContent | null;
+    rawText: string;
+    // The editor instance captured at paste time; useEditor is stable but
+    // keep the ref to avoid stale-closure races across rapid pastes.
+    editor: ReturnType<typeof useEditor> | null;
+  }>({ visible: false, summary: '', tableNode: null, rawText: '', editor: null });
+  const onTablePasteRef = useRef<TablePasteHandler>(() => 'text');
+  onTablePasteRef.current = (payload) => {
+    const mode = tablePasteModeRef.current;
+    if (mode === 'convert') {
+      dispatchTableNode(payload.view, payload.tableNode);
+      return 'convert';
+    }
+    if (mode === 'text') {
+      return 'text';
+    }
+    // 'ask' → hold and show the dialog. The plugin claims the paste
+    // (preventDefault) so we must replay either the table or the raw text.
+    setTableConvert({
+      visible: true,
+      summary: payload.summary,
+      tableNode: payload.tableNode,
+      rawText: payload.rawText,
+      editor,
+    });
+    return 'ask';
+  };
+
+  // ponytail: resolve the table-paste dialog — dispatch the native table or
+  // replay the raw clipboard text, and persist the choice when "remember" is
+  // checked. The editor instance from useEditor dispatches via .view; we use
+  // the captured editor at paste time, falling back to the live one.
+  const resolveTableConvert = (choice: TableConvertChoice) => {
+    const cap = tableConvert;
+    const ed = cap.editor ?? editor;
+    if (choice.convert && cap.tableNode && ed) {
+      dispatchTableNode(ed.view, cap.tableNode);
+    } else if (ed && cap.rawText) {
+      // "Paste as text": insert the raw clipboard text as a text node at the
+      // current selection (preventDefault was called in the plugin).
+      ed.chain().focus().insertContent(cap.rawText).run();
+    }
+    if (choice.remember) {
+      setTablePasteMode(choice.convert ? 'convert' : 'text');
+    }
+    setTableConvert({ visible: false, summary: '', tableNode: null, rawText: '', editor: null });
+  };
+
   const editor = useEditor({
     extensions: getRichTextExtensions({
       onMathEdit: (node, pos, kind) => mathEditRef.current(node, pos, kind),
       onImagePaste: (files, pos) => onImagePasteRef.current(files, pos),
+      onTablePaste: (payload) => onTablePasteRef.current(payload),
     }),
     content: deserializeToContent(content) ?? emptyDoc(),
     onUpdate: ({ editor }) => {
@@ -589,6 +654,11 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
         vaultRoot={vaultRoot}
         onConfirm={handleImageConfirm}
         onCancel={handleImageCancel}
+      />
+      <TableConvertDialog
+        visible={tableConvert.visible}
+        summary={tableConvert.summary}
+        onResolve={resolveTableConvert}
       />
     </div>
   );
