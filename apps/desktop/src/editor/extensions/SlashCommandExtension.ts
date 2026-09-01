@@ -1,4 +1,5 @@
 import type { EditorState } from '@codemirror/state';
+import { syntaxTree } from '@codemirror/language';
 
 export interface SlashMenuState {
   visible: boolean;
@@ -17,8 +18,25 @@ export interface SlashMenuState {
  * - Open when the last '/' before the cursor is at line start or preceded by
  *   whitespace, not part of a self-closing tag (">"), and the text after it
  *   contains no whitespace.
+ * - Suppress inside a fenced (```) or indented code block: '/' there is code,
+ *   not a command trigger.
  * - `filter` is everything between that '/' and the cursor.
  */
+
+/** Lezer markdown node names that mark the interior of a code block. The
+ *  FencedCode/CodeBlock nodes wrap the whole region (including the fence
+ *  markers); CodeText is the actual code content overlay. */
+const CODE_BLOCK_NODES = new Set(['FencedCode', 'CodeBlock', 'CodeText']);
+
+function isInsideCodeBlock(state: EditorState, pos: number): boolean {
+  let node = syntaxTree(state).resolveInner(pos, -1);
+  while (node) {
+    if (CODE_BLOCK_NODES.has(node.name)) return true;
+    node = node.parent;
+  }
+  return false;
+}
+
 export function computeSlashMenuState(state: EditorState): SlashMenuState {
   const pos = state.selection.main.head;
   const line = state.doc.lineAt(pos);
@@ -35,6 +53,10 @@ export function computeSlashMenuState(state: EditorState): SlashMenuState {
     charAfterSlash !== '>';
 
   if (!isTrigger || /\s/.test(afterSlash)) {
+    return { visible: false, pos: 0, filter: '' };
+  }
+
+  if (isInsideCodeBlock(state, pos)) {
     return { visible: false, pos: 0, filter: '' };
   }
 

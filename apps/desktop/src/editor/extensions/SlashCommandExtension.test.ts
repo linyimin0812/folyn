@@ -1,9 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { EditorState } from '@codemirror/state';
+import { markdown } from '@codemirror/lang-markdown';
 import { computeSlashMenuState } from './SlashCommandExtension';
 
 function stateAt(doc: string, pos: number): EditorState {
   return EditorState.create({ doc, selection: { anchor: pos } });
+}
+
+/** State with the Markdown language loaded, so the Lezer syntax tree marks
+ *  fenced and indented code blocks and the in-block suppression can fire. */
+function stateAtMd(doc: string, pos: number): EditorState {
+  return EditorState.create({
+    doc,
+    selection: { anchor: pos },
+    extensions: [markdown()],
+  });
 }
 
 describe('computeSlashMenuState (pure derivation from doc + cursor)', () => {
@@ -37,5 +48,28 @@ describe('computeSlashMenuState (pure derivation from doc + cursor)', () => {
 
   it('hides for a self-closing HTML tag "/>"', () => {
     expect(computeSlashMenuState(stateAt('<br/>', 5))).toEqual({ visible: false, pos: 0, filter: '' });
+  });
+});
+
+describe('computeSlashMenuState inside code blocks', () => {
+  it('hides the menu inside a fenced code block', () => {
+    // ```js\nconst x = /path\n```
+    const doc = '```js\nconst x = /path\n```';
+    // cursor after "/path"
+    const pos = doc.indexOf('/path') + '/path'.length;
+    expect(computeSlashMenuState(stateAtMd(doc, pos))).toEqual({ visible: false, pos: 0, filter: '' });
+  });
+
+  it('hides the menu inside an indented code block', () => {
+    // four-space indented code block
+    const doc = '    const x = /path';
+    const pos = doc.length;
+    expect(computeSlashMenuState(stateAtMd(doc, pos))).toEqual({ visible: false, pos: 0, filter: '' });
+  });
+
+  it('still opens the menu outside a fenced code block', () => {
+    const doc = '```js\nconsole.log(1)\n```\n\n/callout';
+    const pos = doc.length;
+    expect(computeSlashMenuState(stateAtMd(doc, pos))).toEqual({ visible: true, pos, filter: 'callout' });
   });
 });
