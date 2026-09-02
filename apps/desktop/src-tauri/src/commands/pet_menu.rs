@@ -39,17 +39,18 @@ pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppErr
         .map_err(|e| e.to_string())?;
 
     // Manual fullscreen trigger for plugin tool windows. macOS blocks NATIVE
-    // fullscreen (a separate Space) on always-on-top windows, so this item /
-    // ⌘⇧F uses SIMPLE fullscreen instead (`set_simple_fullscreen`, pre-Lion
+    // fullscreen (a separate Space) on always-on-top windows, so this item
+    // uses SIMPLE fullscreen instead (`set_simple_fullscreen`, pre-Lion
     // style: fills the screen, no separate Space, keeps the pinned level).
     // Simple fullscreen also closes without the black-flash Space teardown
-    // (see the plugin-tool CloseRequested branch in lib.rs).
+    // (see the plugin-tool CloseRequested branch in lib.rs). No accelerator:
+    // Cmd+Shift+F is reserved for the frontend Global Search shortcut.
     let tool_fullscreen = tauri::menu::MenuItem::with_id(
         app,
         "plugin-tool-fullscreen",
         app_menu_label(locale, AppMenuLabel::PluginToolFullscreen),
         true,
-        Some("Cmd+Shift+F"),
+        None::<&str>,
     )
     .map_err(|e| e.to_string())?;
 

@@ -36,5 +36,8 @@
     "maximize": "Agrandir",
     "restore": "Restaurer",
     "close": "Fermer"
+  },
+  "focusMode": {
+    "toggle": "Basculer le mode concentration (Cmd+Shift+Enter)"
   }
 }

@@ -23,7 +23,7 @@ import { closeTab as closeTabWithSnapshot, openFile } from '@/services/editorIoS
 import { WIKI_PREFIX } from '@/types/wiki';
 
 
-export function WorkArea() {
+export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const { t } = useTranslation();
   const viewMode = useEditorStore((state) => state.viewMode);
   const setViewMode = useEditorStore((state) => state.setViewMode);
@@ -163,8 +163,8 @@ export function WorkArea() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
-      {/* File tabs */}
-      {tabs.length > 0 && (
+      {/* File tabs — hidden in focus mode so only the editor/preview shows */}
+      {tabs.length > 0 && !focusMode && (
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}

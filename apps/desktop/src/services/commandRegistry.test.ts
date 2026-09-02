@@ -26,6 +26,7 @@ const {
   exportHtmlMock,
   requestNewItemMock,
   requestPlanMyDayMock,
+  toggleFocusModeMock,
 } = vi.hoisted(() => ({
   toggleThemeMock: vi.fn(),
   setCurrentPageMock: vi.fn(),
@@ -37,6 +38,7 @@ const {
   exportHtmlMock: vi.fn(),
   requestNewItemMock: vi.fn(),
   requestPlanMyDayMock: vi.fn(),
+  toggleFocusModeMock: vi.fn(),
 }));
 
 vi.mock('@/store/navStore', () => ({
@@ -65,6 +67,14 @@ vi.mock('@/store/editorStore', () => ({
       setActivePanel: setActivePanelMock,
       setViewMode: setViewModeMock,
       openDailyNote: openDailyNoteMock,
+    }),
+  },
+}));
+
+vi.mock('@/store/editorViewState', () => ({
+  useEditorViewStateStore: {
+    getState: () => ({
+      toggleFocusMode: toggleFocusModeMock,
     }),
   },
 }));
@@ -104,6 +114,7 @@ beforeEach(() => {
   exportHtmlMock.mockClear();
   requestNewItemMock.mockClear();
   requestPlanMyDayMock.mockClear();
+  toggleFocusModeMock.mockClear();
 });
 
 describe('commandRegistry — basic registration', () => {
@@ -176,6 +187,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.open-global-search',
       'action.plan-my-day',
       'wiki.ingestCurrentFile',
+      'action.toggle-focus-mode',
     ]);
   });
 
@@ -235,6 +247,13 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     registerBuiltinCommands();
     await runCommand('mode.preview');
     expect(setViewModeMock).toHaveBeenCalledWith('preview');
+  });
+
+  it('action.toggle-focus-mode switches to editor page and toggles focus mode', async () => {
+    registerBuiltinCommands();
+    await runCommand('action.toggle-focus-mode');
+    expect(setCurrentPageMock).toHaveBeenCalledWith('editor');
+    expect(toggleFocusModeMock).toHaveBeenCalledTimes(1);
   });
 
   it('panel.wiki sets active panel to wiki', async () => {

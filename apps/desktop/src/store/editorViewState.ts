@@ -51,6 +51,11 @@ interface EditorViewState {
    *  without prop-drilling through the panel. */
   versionHistorySelection: VersionHistorySelection;
 
+  /** Focus mode: hides the top bar, activity bar, left sidebar, right AI
+   *  dock, terminal, and status bar so only the editor/preview area remains.
+   *  Toggled via Cmd/Ctrl+Shift+F or the Topbar button. Runtime-only. */
+  focusMode: boolean;
+
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
   toggleOutline: () => void;
@@ -71,6 +76,10 @@ interface EditorViewState {
    *  error). Pass `null` key to clear (panel close, restore success, tab
    *  switch). */
   setVersionHistorySelection: (sel: VersionHistorySelection) => void;
+  /** Toggle focus mode on/off. */
+  toggleFocusMode: () => void;
+  /** Set focus mode explicitly (used to force-exit when leaving the editor page). */
+  setFocusMode: (v: boolean) => void;
 }
 
 export const useEditorViewStateStore = create<EditorViewState>((set) => ({
@@ -84,6 +93,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   terminalRightWidth: 300,
   versionHistoryVisible: false,
   versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null },
+  focusMode: false,
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -118,4 +128,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   toggleVersionHistory: () => set((state) => ({ versionHistoryVisible: !state.versionHistoryVisible, versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null } })),
   setVersionHistoryVisible: (v) => set({ versionHistoryVisible: v, versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null } }),
   setVersionHistorySelection: (sel) => set({ versionHistorySelection: sel }),
+
+  toggleFocusMode: () => set((state) => ({ focusMode: !state.focusMode })),
+  setFocusMode: (v) => set({ focusMode: v }),
 }));

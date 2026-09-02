@@ -182,6 +182,13 @@
       "link": "Insert link",
       "dailyNote": "Today's note",
       "togglePetPanel": "Open pet panel"
+    },
+    "appItems": {
+      "focusMode": "Toggle focus mode",
+      "globalSearch": "Search in files",
+      "commandPalette": "Command palette",
+      "schedule": "Go to schedule",
+      "selectAll": "Select all"
     }
   },
   "cli": {

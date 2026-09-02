@@ -36,5 +36,8 @@
     "maximize": "最大化",
     "restore": "还原",
     "close": "关闭"
+  },
+  "focusMode": {
+    "toggle": "切换专注模式 (Cmd+Shift+Enter)"
   }
 }

@@ -140,6 +140,7 @@ export default function App() {
   const currentPage = useNavStore((state) => state.currentPage);
   const showStatusBar = useAppearanceStore((state) => state.showStatusBar);
   const fontSize = useAppearanceStore((state) => state.fontSize);
+  const focusMode = useEditorViewStateStore((state) => state.focusMode);
   // enable*Panel flags are no longer read here post-PR2 — the visibility +
   // active-panel fallback logic moved into registerBuiltinPanels (one general
   // rule: if the active panel becomes invisible, re-route to 'files').
@@ -236,12 +237,51 @@ export default function App() {
 
   // ── Hide all native webviews when leaving the editor page ──
   useEffect(() => {
-    if (currentPage !== 'editor' && isTauri()) {
-      import('@tauri-apps/api/core').then(({ invoke }) => {
-        invoke('hide_all_webviews', { labels: [] }).catch(() => {});
-      });
+    if (currentPage !== 'editor') {
+      // Focus mode only makes sense on the editor page; leaving the page
+      // exits it so the destination page's chrome is visible.
+      if (useEditorViewStateStore.getState().focusMode) {
+        useEditorViewStateStore.getState().setFocusMode(false);
+      }
+      if (isTauri()) {
+        import('@tauri-apps/api/core').then(({ invoke }) => {
+          invoke('hide_all_webviews', { labels: [] }).catch(() => {});
+        });
+      }
     }
   }, [currentPage]);
+
+  // ── Focus mode: hide the desktop-pet window, restore on exit ──
+  // The pet is a separate native window (label "pet"). Focus mode hides it
+  // (along with every other chrome) so only the editor/preview remains. We
+  // capture the pet's visibility at enter-time so exiting restores the prior
+  // state rather than forcing it on/off. Uses WebviewWindow.getByLabel so
+  // the user's petModeEnabled preference is never touched (toggle_pet_mode
+  // would flip the persisted setting).
+  const petVisibleBeforeFocusRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (currentPage !== 'editor') return;
+    (async () => {
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+      const pet = await WebviewWindow.getByLabel('pet');
+      if (!pet) return;
+      if (focusMode) {
+        try {
+          const visible = await pet.isVisible();
+          petVisibleBeforeFocusRef.current = visible;
+          if (visible) await pet.hide();
+        } catch {
+          petVisibleBeforeFocusRef.current = null;
+        }
+      } else {
+        if (petVisibleBeforeFocusRef.current === true) {
+          try { await pet.show(); } catch { /* non-fatal */ }
+        }
+        petVisibleBeforeFocusRef.current = null;
+      }
+    })();
+  }, [focusMode, currentPage]);
 
   // ── Plugin host: register loaders + sync on install/approve/uninstall ──
   // The sandbox loader is the untrusted-tier PluginLoader (sandboxed iframe +
@@ -452,7 +492,8 @@ export default function App() {
           editorIoService.saveFile(activeTabId);
         }
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+      // Global search (find in files) — Cmd/Ctrl+Shift+F.
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         const { isOpen, openPanel, closePanel } = useSearchStore.getState();
         if (isOpen) {
@@ -460,6 +501,12 @@ export default function App() {
         } else {
           openPanel();
         }
+      }
+      // Focus mode — Cmd/Ctrl+Shift+Enter. Hides every sidebar/dock/topbar/
+      // status bar so only the editor/preview area is visible.
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key === 'Enter') {
+        e.preventDefault();
+        useEditorViewStateStore.getState().toggleFocusMode();
       }
       // Cmd/Ctrl+A selects all in native <input>/<textarea>. CodeMirror has
       // its own Mod-a keymap that preventDefaults, so it never reaches here.
@@ -483,6 +530,20 @@ export default function App() {
       ) {
         e.preventDefault();
         useCommandPaletteStore.getState().toggle();
+      }
+      // Cmd/Ctrl+D — go to the schedule workbench (the ActivityBar tooltip
+      // advertises ⌘D; this binds it so the advertised shortcut actually
+      // works). No-op when the schedule panel is disabled.
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        e.key.toLowerCase() === 'd'
+      ) {
+        if (useAppearanceStore.getState().enableSchedulePanel) {
+          e.preventDefault();
+          useNavStore.getState().setCurrentPage('schedule');
+        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -905,7 +966,9 @@ export default function App() {
 
   return (
     <div className="shell flex flex-col h-dvh" style={{ '--ui-font-size': `${fontSize}px` } as any}>
-      <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />
+      {!(focusMode && currentPage === 'editor') && (
+        <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />
+      )}
 
       {fileDragActive && (
         <div
@@ -920,21 +983,24 @@ export default function App() {
       {currentPage === 'editor' && (
         <>
           <div className="body-row flex-1 flex overflow-hidden">
-            {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+            {!isMobile && !focusMode && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
             {isMobile && mobileSidebarOpen && (
               <div className="mobile-sidebar-overlay" onClick={closeMobileSidebar} />
             )}
             {/* The file bar is a full-height sibling of the editor column so
                 it keeps showing the file tree while the terminal occupies
-                only the space below the editor content. */}
-            <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
-              <Sidebar
-                collapsed={sidebarCollapsed}
-                onCollapsedChange={setSidebarCollapsed}
-                onFileSelect={isMobile ? closeMobileSidebar : undefined}
-              />
-            </div>
-            <EditorContent />
+                only the space below the editor content. In focus mode the
+                sidebar is hidden so only the editor/preview remains. */}
+            {!focusMode && (
+              <div className={`sidebar-wrapper ${isMobile ? 'mobile' : ''} ${mobileSidebarOpen ? 'open' : ''}`}>
+                <Sidebar
+                  collapsed={sidebarCollapsed}
+                  onCollapsedChange={setSidebarCollapsed}
+                  onFileSelect={isMobile ? closeMobileSidebar : undefined}
+                />
+              </div>
+            )}
+            <EditorContent hideRightDock={focusMode} />
           </div>
         </>
       )}
@@ -965,7 +1031,7 @@ export default function App() {
         </div>
       )}
 
-      {showStatusBar && <StatusBar />}
+      {showStatusBar && !(focusMode && currentPage === 'editor') && <StatusBar />}
       <ToastHost />
       {pickerVisible && (
         <MoveDialog
@@ -991,17 +1057,17 @@ export default function App() {
 /** Editor + AI dock with a single mounted terminal that moves between bottom
  *  and right via absolute positioning, so xterm and scrollback survive the
  *  dock-location switch. */
-function EditorContent() {
+function EditorContent({ hideRightDock }: { hideRightDock?: boolean }) {
   return (
-    <TerminalHost>
-      <WorkArea />
-      <RightDock />
+    <TerminalHost hideTerminal={hideRightDock}>
+      <WorkArea focusMode={hideRightDock} />
+      {!hideRightDock && <RightDock />}
     </TerminalHost>
   );
 }
 
 /** Shared terminal host used by editor and schedule layouts. */
-function TerminalHost({ children }: { children: ReactNode }) {
+function TerminalHost({ children, hideTerminal }: { children: ReactNode; hideTerminal?: boolean }) {
   const sessions = useTerminalStore((s) => s.sessions);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
   const terminalInRightDock = useEditorViewStateStore((s) => s.terminalInRightDock);
@@ -1009,8 +1075,8 @@ function TerminalHost({ children }: { children: ReactNode }) {
   const [bottomHeight, setBottomHeight] = useState(240);
 
   const hasSessions = sessions.length > 0;
-  const bottomOpen = hasSessions && terminalPanelVisible && !terminalInRightDock;
-  const rightOpen = hasSessions && terminalInRightDock;
+  const bottomOpen = hasSessions && terminalPanelVisible && !terminalInRightDock && !hideTerminal;
+  const rightOpen = hasSessions && terminalInRightDock && !hideTerminal;
 
   return (
     <div className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
@@ -1026,6 +1092,7 @@ function TerminalHost({ children }: { children: ReactNode }) {
       <TerminalDock
         bottomHeight={bottomHeight}
         onBottomHeightChange={setBottomHeight}
+        hidden={!!hideTerminal}
       />
     </div>
   );
@@ -1035,16 +1102,18 @@ function TerminalHost({ children }: { children: ReactNode }) {
 function TerminalDock({
   bottomHeight,
   onBottomHeightChange,
+  hidden,
 }: {
   bottomHeight: number;
   onBottomHeightChange: (height: number) => void;
+  hidden?: boolean;
 }) {
   const sessions = useTerminalStore((s) => s.sessions);
   const terminalPanelVisible = useEditorViewStateStore((s) => s.terminalPanelVisible);
   const terminalInRightDock = useEditorViewStateStore((s) => s.terminalInRightDock);
   const terminalRightWidth = useEditorViewStateStore((s) => s.terminalRightWidth);
 
-  if (sessions.length === 0) return null;
+  if (sessions.length === 0 || hidden) return null;
 
   const right = terminalInRightDock;
   const bottom = terminalPanelVisible && !right;

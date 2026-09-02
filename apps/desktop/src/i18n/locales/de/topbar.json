@@ -36,5 +36,8 @@
     "maximize": "Maximieren",
     "restore": "Wiederherstellen",
     "close": "Schließen"
+  },
+  "focusMode": {
+    "toggle": "Fokusmodus umschalten (Cmd+Shift+Enter)"
   }
 }

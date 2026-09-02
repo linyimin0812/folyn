@@ -182,6 +182,13 @@
       "link": "リンクを挿入",
       "dailyNote": "今日のノート",
       "togglePetPanel": "桌宠パネルを開く"
+    },
+    "appItems": {
+      "focusMode": "フォーカスモード切替",
+      "globalSearch": "ファイル内検索",
+      "commandPalette": "コマンドパレット",
+      "schedule": "スケジュールへ移動",
+      "selectAll": "すべて選択"
     }
   },
   "cli": {

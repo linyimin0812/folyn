@@ -14,6 +14,7 @@
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
 import { useSearchStore } from '@/store/searchStore';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
@@ -321,6 +322,18 @@ export function registerBuiltinCommands(): void {
       category: 'panel-mode',
       keywords: ['view', 'render'],
       run: () => useEditorStore.getState().setViewMode('preview'),
+    },
+
+    // ── Focus mode ──
+    {
+      id: 'action.toggle-focus-mode',
+      title: 'Toggle Focus Mode',
+      category: 'action',
+      keywords: ['focus', 'zen', 'distraction', 'fullscreen', 'clean', 'cmd+shift+enter'],
+      run: () => {
+        useNavStore.getState().setCurrentPage('editor');
+        useEditorViewStateStore.getState().toggleFocusMode();
+      },
     },
   ]);
 }

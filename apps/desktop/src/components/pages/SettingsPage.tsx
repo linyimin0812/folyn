@@ -18,6 +18,19 @@ import { Toggle, NAV_GROUPS } from '@/components/settings/primitives';
 import { Home, Unlock, Sparkles, Puzzle, Cat, Wrench, Bug } from 'lucide-react';
 import { THEMES } from '@/editor/codeThemes';
 import { useTranslation } from 'react-i18next';
+import { isMacPlatform } from '@/utils/shellSidecar';
+
+/** Read-only application-level shortcuts (document-level, handled in App.tsx).
+ *  Not yet rebindable — shown for discoverability. Modifier glyph is platform
+ *  primary (⌘ on macOS, Ctrl elsewhere), matching ShortcutEditor's symbol set. */
+const PRIMARY_MOD = isMacPlatform() ? '⌘' : 'Ctrl';
+const APP_SHORTCUTS: { id: string; keys: string[] }[] = [
+  { id: 'focusMode', keys: [PRIMARY_MOD, 'Shift', 'Enter'] },
+  { id: 'globalSearch', keys: [PRIMARY_MOD, 'Shift', 'F'] },
+  { id: 'commandPalette', keys: [PRIMARY_MOD, 'P'] },
+  { id: 'schedule', keys: [PRIMARY_MOD, 'D'] },
+  { id: 'selectAll', keys: [PRIMARY_MOD, 'A'] },
+];
 
 function SectionHeader({ label }: { label: string }) {
   return (
@@ -305,6 +318,25 @@ export function SettingsPage() {
               </div>
               <VoiceHotkeyRecorder />
             </div>
+
+            {/* Application-level shortcuts — handled at the document level
+                in App.tsx (not yet rebindable). Shown read-only so users can
+                discover them alongside the editable editor shortcuts. */}
+            {APP_SHORTCUTS.map((sc) => (
+              <div className="tr flex items-center justify-between py-3.5 border-b border-brd" key={sc.id}>
+                <div className="tr-info">
+                  <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t(`settings:shortcuts.appItems.${sc.id}`)}</h4>
+                </div>
+                <div className="flex items-center gap-[3px]">
+                  {sc.keys.map((k, i) => (
+                    <span key={i}>
+                      {i > 0 && <span className="text-t3 text-[9px]">+</span>}
+                      <span className="key bg-surf2 border border-brd2 rounded px-1.5 py-0.5 text-[10.5px] font-mono text-t2 shadow-[0_1px_0_var(--brd2)]">{k}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
             <div className="flex gap-2 mt-4">
               <button className="btn btn-g btn-sm" onClick={() => resetShortcuts()}>{t('settings:shortcuts.reset')}</button>
             </div>

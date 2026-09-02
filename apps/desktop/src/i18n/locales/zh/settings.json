@@ -182,6 +182,13 @@
       "link": "插入链接",
       "dailyNote": "今日笔记",
       "togglePetPanel": "唤起桌宠面板"
+    },
+    "appItems": {
+      "focusMode": "切换专注模式",
+      "globalSearch": "全局搜索",
+      "commandPalette": "命令面板",
+      "schedule": "跳转日程工作台",
+      "selectAll": "全选"
     }
   },
   "cli": {
