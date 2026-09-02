@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
+      release_id: ${{ steps.release_id.outputs.id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +52,14 @@ jobs:
           else
             gh release create "$TAG" --notes-file release_notes.md --title "$TAG" --verify-tag
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+
+      - name: Get release ID
+        id: release_id
+        shell: bash
+        run: echo "id=$(gh api repos/${{ github.repository }}/releases/tags/$TAG --jq '.id')" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
@@ -119,6 +128,5 @@ jobs:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
           args: ${{ matrix.args }}
-          tagName: ${{ steps.bmeta.outputs.tag }}
-          releaseName: ${{ steps.bmeta.outputs.tag }}
+          releaseId: ${{ needs.release.outputs.release_id }}
           includeUpdaterJson: false
