@@ -55,8 +55,8 @@ apps/desktop/src/
 │   └── work-area/       # Main editor area (WorkArea, tab bar, editor host)
 │
 ├── editor/              # CodeMirror extensions, themes, and setup
-├── features/            # Feature modules — one folder per feature (study, clips, wiki,
-│                        #   schedule, analyze). Each owns its domain logic AND its
+├── features/            # Feature modules — one folder per feature (analyze, clips,
+│                        #   schedule, wiki). Each owns its domain logic AND its
 │                        #   canonical .claude/ (CLAUDE.md + agents/<feature>.md)
 ├── hooks/               # Custom React hooks (useTheme, useExport)
 ├── services/            # Cross-feature business logic services (exportService, wikiProvider,
@@ -73,9 +73,11 @@ apps/desktop/src/
 ## Module Organization
 
 - **Feature folders** under `components/` — each folder owns one UI feature area with a main component plus helper subcomponents (e.g., `sidebar/Sidebar.tsx` + `FileTreeItem.tsx` + `SidebarActions.tsx` + `SidebarResizer.tsx`)
-- **Feature modules** under `features/` — one folder per feature (`study`, `clips`, `wiki`, `schedule`, `analyze`). Each owns its domain logic (e.g. `study/sm2.ts`, `study/studyDoc.ts`; `clips/clipParse.ts` — shared clip-markdown parsers and the infographic `{ version, blocks: Block[] }` schema with 9 block types: hero/stat/keypoints/timeline/steps/comparison/quote/tags/source) AND its canonical agent definition (`.claude/CLAUDE.md` + `.claude/agents/<feature>.md`). See `feature-agents.md` for the agent architecture contract.
-- **Stores** are flat in `store/`, one file per domain: `editorStore.ts`, `settingsStore.ts`, `vaultStore.ts`, `aiStore.ts`, `searchStore.ts`, `wikiStore.ts`, `wikiGraphStore.ts`
-- **Store helpers** co-located when logic grows: `editorAutoSave.ts`, `editorPersistence.ts`, `aiFileChangeActions.ts`, `aiSessionPersistence.ts`
+- **Feature modules** under `features/` — one folder per feature (`analyze`, `clips`, `schedule`, `wiki`). Each owns its domain logic (e.g. `clips/clipParse.ts` — shared clip-markdown parsers and the infographic `{ version, blocks: Block[] }` schema with 9 block types: hero/stat/keypoints/timeline/steps/comparison/quote/tags/source; `schedule/` columns/dnd/dailyScan/layout/markdown/types) AND its canonical agent definition (`.claude/CLAUDE.md` + `.claude/agents/<feature>.md`). See `feature-agents.md` for the agent architecture contract.
+
+  > **Note**: `features/analyze` currently holds only its canonical `.claude/`; its bespoke service logic lives in `services/` (consumed via `featureAgentService`). `features/wiki` similarly delegates most domain logic to `services/` (`wikiIngestService`, `wikiLintService`, `wikiQueryService`, etc.) — the `features/<name>/` folder is the canonical-agent home and clip/schedule parsers; heavier domain logic for analyze/wiki is service-layer, not feature-folder. See `directory-structure.md` services list and `feature-agents.md`.
+- **Stores** are flat in `store/`, one file per domain. The authoritative store registry and per-store responsibilities live in `state-management.md` ("Store Categories" table) — do not duplicate the list here. As of writing there are ~30 stores spanning navigation, appearance, editor (split into `editorStore` + `editorPrefsStore` + `editorAutoSave` + `editorPersistence` + `editorViewState`), vault/vaultConfig, ai (split into `aiStore` + `aiConfigStore` + `aiFileChangeActions` + `aiSessionPersistence`), wiki (split into `wikiStore` + `wikiGraphStore` + `wikiQueryStore`), pet (split into `petStore` + `petChatSessions`), schedule, clips, analysis, plugin, terminal, voice, translation, search, modelRegistry, bubbleTemplateChat, browser, locale, toast, toolWindow, featurePanel, commandPalette, diffReview. See `state-management.md` for the god-store split history and the `settingsStore` → 8 cohesive stores migration.
+- **Store helpers** co-located when logic grows: `editorAutoSave.ts`, `editorPersistence.ts`, `editorViewState.ts`, `aiFileChangeActions.ts`, `aiSessionPersistence.ts`
 - **Services** are flat in `services/` — cross-feature business logic (e.g. `featureAgentService` seeds canonical agent files into the vault; `clipService` / `githubAnalysisService` consume feature agents)
 - **Utils** are flat in `utils/` — pure functions with no React or store dependencies
 
