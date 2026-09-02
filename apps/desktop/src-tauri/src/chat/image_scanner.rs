@@ -157,7 +157,7 @@ fn could_start_data_url(s: &str) -> bool {
 }
 
 impl ImageScanner {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
@@ -165,7 +165,7 @@ impl ImageScanner {
     /// `Delta` (text outside a data URL) and zero or more `Image` (complete
     /// data URLs). The scanner may hold back text as `pending_text` if it
     /// could be a partial data URL prefix; call `flush` at stream end.
-    fn process_chunk(&mut self, chunk: &str) -> Vec<ScanEvent> {
+    pub(crate) fn process_chunk(&mut self, chunk: &str) -> Vec<ScanEvent> {
         let mut events = Vec::new();
         let mut input: String = chunk.to_string();
         loop {
@@ -243,7 +243,7 @@ impl ImageScanner {
     /// Flush at stream end. Emits any buffered text as Delta and any buffered
     /// image data as Image (best-effort — partial base64 at end of stream is
     /// emitted as if complete).
-    fn flush(&mut self) -> Vec<ScanEvent> {
+    pub(crate) fn flush(&mut self) -> Vec<ScanEvent> {
         let mut events = Vec::new();
         let state = std::mem::replace(&mut self.state, ScanState::Text);
         match state {
