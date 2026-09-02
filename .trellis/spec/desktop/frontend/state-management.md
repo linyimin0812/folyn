@@ -101,6 +101,8 @@ by concern over extracting helper files.
 | `translationStore` | Translation panel state (persisted to its own slice `~/.folyn/storage/translation.json`) |
 | `voiceStore` | Voice-input settings (polish prompt + behavior toggles) |
 | `browserStore` | Built-in browser panel state (incl. `ImportedPassword`) |
+
+> **Store vs helper — do not confuse them.** A file in `store/` is a **store** only if it calls `create<…>()` and exports a `use…Store` hook (or `getState`/`setState`/`subscribe`). The 7 non-store helpers in `store/` are NOT stores — they are pure functions that operate ON other stores: `aiFileChangeActions`, `aiSessionPersistence`, `clipBatchHelpers`, `editorAutoSave`, `editorPersistence`, `petChatSessions` (host+mirror logic for aiStore/aiConfigStore, no create), `settingsPersistence` (fan-out loader). The earlier count of "~30 stores" counts these helpers by mistake; the real store count is 31. When auditing "store bloat", first exclude these helpers — only `create<>()` files count toward store fragmentation.
 | `settingsPersistence` | **Not a store** — the fan-out loader that reads/writes the `settings:all` blob and calls every store's `hydrate`/`getSlice` (see Persistence) |
 
 > The legacy `settingsStore` god-store was split into the cohesive settings
@@ -110,7 +112,7 @@ by concern over extracting helper files.
 > The other stores in the table (`clipStore`, `pluginStore`, `terminalStore`,
 > `toastStore`, `voiceStore`, `translationStore`, `browserStore`, `localeStore`,
 > `modelRegistryStore`, `bubbleTemplateChatStore`, `commandPaletteStore`,
-> `diffReviewStore`, `analysisStore`, `petChatSessions`, `wikiQueryStore`, etc.)
+> `diffReviewStore`, `analysisStore`, `wikiQueryStore`, etc.)
 > were added over time as new feature domains landed — each follows the same
 > one-concern-per-store rule. Do **not** re-merge concerns into one store;
 > open a new store instead.
@@ -360,10 +362,38 @@ is **internal** (inside a private `hydrate`); it must not be exported.
 
 When a store exceeds ~400 lines, extract derived logic into sibling helper files:
 
-- `editorStore.ts` → `editorAutoSave.ts` + `editorPersistence.ts` + `editorViewState.ts`
-- `aiStore.ts` → `aiFileChangeActions.ts` + `aiSessionPersistence.ts`
+- `editorStore.ts` → `editorAutoSave.ts` + `editorPersistence.ts` (helpers) + `editorViewState.ts` (**a real store** — per-tab CodeMirror view-state, its own `create<>()`)
+- `aiStore.ts` → `aiFileChangeActions.ts` + `aiSessionPersistence.ts` (both helpers)
 
-Helper files import from the store but are not stores themselves. `settingsPersistence.ts` is also a non-store helper — the fan-out loader, not a Zustand store.
+Helper files import from the store but are not stores themselves (no `create<>()`). The full helper roster (7): `aiFileChangeActions`, `aiSessionPersistence`, `clipBatchHelpers`, `editorAutoSave`, `editorPersistence`, `petChatSessions`, `settingsPersistence`.
+
+### When is a same-domain multi-file store split legitimate vs fragmentation?
+
+The splits above are NOT fragmentation. A multi-file same-domain split is **legitimate** when ANY of:
+
+- **Different persistence shape** — `editorViewState` (runtime-only, per-tab) vs `editorStore` (open tabs, persisted). `aiConfigStore` (settings:all blob) vs `aiStore` (per-vault session files). Forcing them into one store means one `PERSIST_KEYS`/`hydrate` covers both shapes — re-introduces god-store coupling.
+- **Different lifecycle** — `editorPrefsStore` (user prefs, stable) vs `editorStore` (session tabs, churn on open/close). Different write frequency = different debounce = different store.
+- **Read/write concurrency isolation** — a high-frequency setter (e.g. pet drag → `setPetPosition`) must not trigger a big-store re-render across unrelated selectors. Its own store lets the busy path stay isolated.
+- **Secondary-window isolation** — a store consumed by a secondary Tauri window (pet-panel) in a different render root benefits from being its own store with its own selectors, so the host-mirror boundary is explicit.
+
+It is **fragmentation (re-merge)** when ALL hold:
+- Same persistence shape AND same lifecycle AND same write frequency, AND
+- The files cross-import each other's internals on every action (no real seam), AND
+- No secondary-window or concurrency isolation is gained.
+
+If in doubt: a split that exists to keep a single store under ~400 lines is legitimate; a split that produces 2+ stores with overlapping state that always change together is fragmentation.
+
+### New field/concern: where does it go?
+
+Decision tree (apply top-down):
+
+1. **Runtime-only UI state used by 1 component?** → `useState`. Do not create a store.
+2. **Pure transform of existing store data, no new state?** → a helper function or a derived selector, not a store field.
+3. **Shared across 2+ components, same concern as an existing store, same persistence shape & lifecycle?** → add a field + dedicated `setX` setter to that store. Do NOT open a new store.
+4. **Same domain but a different persistence shape or lifecycle (rules above)?** → new store in the same domain family (e.g. `aiConfigStore` next to `aiStore`).
+5. **A genuinely new domain** (no existing store owns it)?** → new store.
+
+Never route a new field through the `update(partial)` escape hatch (see below) — add a dedicated setter.
 
 ---
 
