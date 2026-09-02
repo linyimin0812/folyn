@@ -68,8 +68,9 @@ import claudeDoc from '@/features/wiki/.claude/CLAUDE.md?raw';
 **Runtime vault layout** (seeded, per-user):
 ```
 <vault>/__<feature>__/.claude/
-  CLAUDE.md              # seeded write-if-missing (never overwrites user edits)
-  agents/<feature>.md    # seeded write-if-missing (never overwrites user edits)
+  CLAUDE.md              # seeded always-overwrite (canonical is single source of truth;
+                         #   vault copies do NOT preserve user edits to these canonical files)
+  agents/<feature>.md    # seeded always-overwrite (same — canonical re-applied each seed)
 ```
 
 The `__<feature>__/` directory doubles as the feature's **content directory** (e.g. `__wiki__/` holds wiki agent working files). The 4 registered `__xxx__/` dirs (`__analyze__`, `__clips__`, `__schedule__`, `__wiki__`) are hidden from the sidebar file tree via `appearanceStore` `BUILTIN_EXCLUDE_DIRS` (the default `excludePatterns`).
@@ -100,7 +101,7 @@ Rationale: context can change (vault layout evolves) without touching the output
 
 | Condition | Behavior |
 |-----------|----------|
-| Vault switch → first run for feature | `seedAgentFiles` creates `__<feature>__/.claude/agents/` dir (idempotent), writes CLAUDE.md + agent .md write-if-missing |
+| Vault switch → first run for feature | `seedAgentFiles` creates `__<feature>__/.claude/agents/` dir (idempotent), writes CLAUDE.md + agent .md **always-overwrite** (canonical is the single source of truth; user edits to these seeded canonical files are NOT preserved across seeds) |
 | User edited CLAUDE.md / agent .md | `readFile` probe finds existing content → skip write (never overwrite) |
 | Agent file missing at invoke time | `agentFileExists` returns false → fall back to `bare:true` + `--agents` inline delivery (graceful degradation) |
 | `schedule` invoke without `--add-dir` | Agent can't see `__daily__/` diaries → schedule review fails. `getFeatureAgentSendOptions('schedule')` MUST inject `addDir: [<vault basePath>]` |
@@ -118,7 +119,7 @@ Rationale: context can change (vault layout evolves) without touching the output
 **Base** — editing an existing agent's output contract:
 1. Edit `apps/desktop/src/features/<feature>/.claude/agents/<feature>.md` only
 2. Bump any related service tests that assert the contract
-3. Existing user vaults keep their old agent .md (write-if-missing won't overwrite) — document in release notes
+3. Existing user vaults get the new canonical agent .md on the next seed (always-overwrite re-applies canonical) — document in release notes
 
 **Bad** — hardcoding seed path:
 ```ts
@@ -139,7 +140,7 @@ await manager.writeFile(`${dir}/CLAUDE.md`, entry.claudeDoc);
 | Test | File | Assertion points |
 |------|------|------------------|
 | Seeding writes to `__<feature>__/.claude/` | `featureAgentService.test.ts` | `createDir` called with `__<feature>__/.claude/agents`; `writeFile` called with `__<feature>__/.claude/CLAUDE.md` and `__<feature>__/.claude/agents/<feature>.md` |
-| Write-if-missing does not overwrite | `featureAgentService.test.ts` | When `readFile` returns existing content, `writeFile` is NOT called for that path |
+| always-overwrite re-seeds canonical | `featureAgentService.test.ts` | A second `seedAgentFiles` call re-writes every canonical path (CLAUDE.md + agent .md) — canonical is single source of truth, NOT write-if-missing; `writeFile` IS called on every seed even when content already exists |
 | `schedule` send-options include `addDir` | `featureAgentService.test.ts` | `getFeatureAgentSendOptions('schedule')` returns `{ agent: 'schedule', bare: false, addDir: [<vault basePath>] }` |
 | Non-schedule features omit `addDir` | `featureAgentService.test.ts` | `getFeatureAgentSendOptions('wiki')` returns `{ agent: 'wiki', bare: false }` (no `addDir`) |
 | Canonical agent .md contract | `features/wiki/wikiAgent.test.ts` | Asserts action names, output format lines present in the `?raw`-imported wiki agent doc |
@@ -304,4 +305,4 @@ InfographicView (renders blocks as unified poster)
 - `packages/cli-adapter/src/claudeAdapter.ts` — `buildClaudeArgs` flag ordering
 - `apps/desktop/src/store/appearanceStore.ts` — `BUILTIN_EXCLUDE_DIRS` default + `backfillBuiltinExcludePatterns`
 
-> **Missing test**: `featureAgentService.test.ts` (referenced in the Tests Required table above) does not yet exist in the repo — the seeding + send-options contracts are currently untested at the service level. Adding it is the highest-leverage test gap for this module.
+> **Test coverage**: `featureAgentService.test.ts` covers the Tests Required table above — registry, path helpers, seeding (always-overwrite, createDir, verbatim content, failure tolerance), `agentFileExists`, `getFeatureAgentSendOptions` (seeded / schedule-addDir / read-only fallback / unregistered), `isAgentAvailable`. The fallback path is triggered by a read-only vault (write failures), not by an unseeded vault — `lazySeedAgentFiles` seeds in-place before checking existence.
