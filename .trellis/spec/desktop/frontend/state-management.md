@@ -71,25 +71,49 @@ by concern over extracting helper files.
 |-------|---------------|
 | `navStore` | Runtime navigation — `currentPage`, `settingsTab` (NOT persisted) |
 | `appearanceStore` | Theme, font/lineHeight, panel toggles, excludePatterns, linkOpenMode, vaultName |
+| `localeStore` | Active locale (`zh/en/ja/es/de/fr`); persisted to its OWN key `folyn:locale` (i18next needs it sync at module init, before `settings:all` hydrates), NOT via the fan-out blob |
 | `editorPrefsStore` | Editor font/size, tab size, wrap, line numbers, syntax, autoSave, spellCheck |
+| `editorStore` | Open tabs, active tab, view mode, cursor position |
+| `editorViewState` | Per-tab CodeMirror view-state snapshots (collapse/selection/scroll) |
+| `diffReviewStore` | Diff-review mode entry/exit + accepted/rejected hunks (paired with `fileChangeApplier`) |
 | `vaultConfigStore` | Vault path/imagePath/docExtension/watchFileChanges/trashOnDelete |
-| `syncStore` | Sync method/endpoint/credentials/bucket/autoSync/e2eEncrypt |
-| `aiConfigStore` | CLI adapter/path + chat provider/model/key/baseUrl |
-| `prefsStore` | Daily notes dir/format, file templates, shortcuts |
-| `petStore` | Pet mode/position/panel geometry/icon/size/notificationForm |
-| `editorStore` | Open tabs, active tab, view mode, cursor position, diff review state |
 | `vaultStore` | File tree, vault lifecycle, pin/unpin, file CRUD operations |
+| `aiConfigStore` | CLI adapter/path + chat provider/model/key/baseUrl |
 | `aiStore` | AI sessions, messages, file change actions |
+| `modelRegistryStore` | Discovered model list per provider + selectedModelIds |
+| `bubbleTemplateChatStore` | Bubble-template AI chat multi-turn sessions (`runRigChat`-backed; see CONTEXT.md) |
+| `petStore` | Pet mode/position/panel geometry/icon/size/notificationForm |
+| `petChatSessions` | Pet-panel chat sessions (SEPARATE from main AI panel; own storage, not vault-scoped) |
+| `prefsStore` | Daily notes dir/format, file templates, shortcuts |
 | `scheduleStore` | Schedule tasks + `boardColumns` (kanban columns) |
-| `searchStore` | Global search panel open/close state |
-| `wikiStore` | Wiki graph data, ingestion, querying |
+| `clipStore` | Clip card list + CRUD for clip files |
+| `analysisStore` | Analysis report list + `ReportMeta` |
+| `wikiStore` | Wiki graph data, ingestion metadata |
+| `wikiQueryStore` | Per-vault wiki query session (sessionId + turns; vault-switch swaps, mirrors `aiStore` pattern) |
 | `wikiGraphStore` | Wiki link graph visualization state |
+| `searchStore` | Global search panel open/close state |
+| `commandPaletteStore` | Command palette items + open/close |
+| `pluginStore` | Installed plugin list + `PluginEntry` |
+| `terminalStore` | Terminal sessions (`TerminalSessionInfo`) |
 | `toolWindowStore` | Tool-window (uTool-style) lifecycle: open WebviewWindows per plugin, multi-instance |
 | `featurePanelStore` | Sidebar panel registry (built-ins + plugin panels) + activePanelId; reactive so ActivityBar/Sidebar re-render on plugin activate/deactivate |
+| `toastStore` | Ephemeral toast queue (FIFO, no persistence) |
+| `translationStore` | Translation panel state (persisted to its own slice `~/.folyn/storage/translation.json`) |
+| `voiceStore` | Voice-input settings (polish prompt + behavior toggles) |
+| `browserStore` | Built-in browser panel state (incl. `ImportedPassword`) |
+| `settingsPersistence` | **Not a store** — the fan-out loader that reads/writes the `settings:all` blob and calls every store's `hydrate`/`getSlice` (see Persistence) |
 
-> The legacy `settingsStore` god-store was split into the 8 cohesive stores
-> above (`navStore`…`petStore`) + `boardColumns` folded into `scheduleStore`.
-> Do **not** re-merge concerns into one store; open a new store instead.
+> The legacy `settingsStore` god-store was split into the cohesive settings
+> stores above (`navStore`, `appearanceStore`, `editorPrefsStore`,
+> `vaultConfigStore`, `aiConfigStore`, `prefsStore`, `petStore`) +
+> `boardColumns` folded into `scheduleStore` = 8 cohesive stores.
+> The other stores in the table (`clipStore`, `pluginStore`, `terminalStore`,
+> `toastStore`, `voiceStore`, `translationStore`, `browserStore`, `localeStore`,
+> `modelRegistryStore`, `bubbleTemplateChatStore`, `commandPaletteStore`,
+> `diffReviewStore`, `analysisStore`, `petChatSessions`, `wikiQueryStore`, etc.)
+> were added over time as new feature domains landed — each follows the same
+> one-concern-per-store rule. Do **not** re-merge concerns into one store;
+> open a new store instead.
 
 ---
 
@@ -336,10 +360,10 @@ is **internal** (inside a private `hydrate`); it must not be exported.
 
 When a store exceeds ~400 lines, extract derived logic into sibling helper files:
 
-- `editorStore.ts` → `editorAutoSave.ts` + `editorPersistence.ts`
+- `editorStore.ts` → `editorAutoSave.ts` + `editorPersistence.ts` + `editorViewState.ts`
 - `aiStore.ts` → `aiFileChangeActions.ts` + `aiSessionPersistence.ts`
 
-Helper files import from the store but are not stores themselves.
+Helper files import from the store but are not stores themselves. `settingsPersistence.ts` is also a non-store helper — the fan-out loader, not a Zustand store.
 
 ---
 

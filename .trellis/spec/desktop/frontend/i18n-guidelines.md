@@ -19,10 +19,10 @@ Pure log strings, OS-level error text, and code comments are OUT OF SCOPE (leave
 `apps/desktop/src/i18n/index.ts` is the SINGLE init site. It is imported as a side-effect at the top of `apps/desktop/src/main.tsx` (`import './i18n'`).
 
 ```ts
-export const SUPPORTED_LOCALES = ['zh', 'en'] as const;
+export const SUPPORTED_LOCALES = ['zh', 'en', 'ja', 'es', 'de', 'fr'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const LOCALE_STORAGE_KEY = 'folyn:locale';
-export const NAMESPACES = ['common','shell','topbar','sidebar','settings','vault','editor','search','ai','schedule','study','rustErrors','pet'] as const;
+export const NAMESPACES = ['common','shell','topbar','sidebar','settings','vault','editor','search','ai','schedule','rustErrors','pet','terminal','browser','markmap','wiki'] as const;
 
 export function detectInitialLocale(): Locale  // localStorage > navigator.language > 'zh'
 ```

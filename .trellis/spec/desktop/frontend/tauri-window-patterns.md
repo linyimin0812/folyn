@@ -1142,7 +1142,7 @@ await invoke('voice_set_global_hotkey', { accelerator });
 - **Dispatcher routing** (`services/petNotifyDispatcher.test.ts`): `decideNotification` over all 4 forms; `dispatchNotification` emits `pet://bubble-show` only when `bubble`, calls `osNotify` only when `system`, both for `'both'`, neither for `'off'`; OS click `onAction` → id-lookup → `emit('pet://bubble-action', { type:'navigate', target })` → entry deleted (one-shot). Mock `@tauri-apps/plugin-notification` via `vi.mock` (the plugin is NOT in `vitest.workspace.ts` tauriAlias by default — add an alias or `vi.mock` per test).
 - **Bubble component** (`components/pet/PetBubbleApp.test.tsx`): TTL auto-dismiss, ✕ close, action/title → `pet://bubble-action` emit, in-flight replacement (no double TTL). The `pet://bubble-show` listener registers on an async microtask — `await waitFor` before asserting.
 - **Positioning** (`components/pet/petPosition.test.ts`): `computeBubblePosition` — above pet when room, flips below at the menu-bar top, X clamps to work area, nonzero origin, small pet.
-- **Settings** (`store/settingsStore.test.ts`): `notificationForm` default `'bubble'`; hydrate coerces invalid → `'bubble'`; persist round-trip.
+- **Settings** (`store/petStore.test.ts`): `notificationForm` default `'bubble'`; hydrate coerces invalid → `'bubble'`; persist round-trip.
 
 ### 7. Wrong vs Correct
 
