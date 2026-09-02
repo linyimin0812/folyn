@@ -6,7 +6,7 @@
 
 ## Overview
 
-Folyn ships 5 feature agents (`study`, `clips`, `wiki`, `schedule`, `analyze`). Each agent has a **canonical source** in the desktop app's `features/<feature>/.claude/` and is **seeded into the user's vault** at runtime. Agents are invoked by `ClaudeAdapter` with `cwd = <vault>/__<feature>__/` so Claude Code auto-discovers the seeded agent file.
+Folyn ships 4 feature agents (`analyze`, `clips`, `schedule`, `wiki`). Each agent has a **canonical source** in the desktop app's `features/<feature>/.claude/` and is **seeded into the user's vault** at runtime. Agents are invoked by `ClaudeAdapter` with `cwd = <vault>/__<feature>__/` so Claude Code auto-discovers the seeded agent file.
 
 This spec is mandatory when adding a new feature agent or changing the seed/invoke contract.
 
@@ -24,26 +24,29 @@ This spec is mandatory when adding a new feature agent or changing the seed/invo
 
 ```ts
 // apps/desktop/src/services/featureAgentService.ts
-type FeatureKey = 'study' | 'clips' | 'wiki' | 'schedule' | 'analyze';
-
+// Note: `feature` is typed as `string` in the actual codebase (not a literal
+// union), so the registry stays open to future feature keys without churn.
+// The registered features today are analyze/clips/schedule/wiki.
 interface FeatureAgentEntry {
-  feature: FeatureKey;
-  agentFile: string;           // e.g. 'study.md'
+  feature: string;              // feature name; also `--agent <name>` and vault file stem
+  agentFile: string;            // e.g. 'wiki.md'
   agentDoc: string;            // canonical agent .md content (via `?raw` import)
   claudeDoc: string;           // canonical CLAUDE.md content (via `?raw` import)
   addVaultDir?: boolean;       // true → inject `--add-dir <vault>` at invoke time
+  adapterId?: 'claude' | 'pi';  // which CLI adapter runs this agent (default 'claude');
+                                 //   'pi' seeds an extra AGENTS.md the pi adapter auto-discovers
 }
 
 // CliSendOptions fields consumed (from @folyn/cli-adapter)
 interface CliSendOptions {
-  agent?: string;              // feature name, e.g. 'study'
+  agent?: string;              // feature name, e.g. 'wiki'
   bare?: boolean;              // false → Claude CLI loads cwd's .claude/agents/*.md
   addDir?: string[];           // extra dirs visible to the agent beyond cwd
   // ... other fields omitted
 }
 
-async function getFeatureAgentSendOptions(feature: FeatureKey): Promise<CliSendOptions>;
-async function runFeatureAgent(feature: FeatureKey, instruction: string): Promise<Session>;
+async function getFeatureAgentSendOptions(feature: string): Promise<CliSendOptions>;
+async function runFeatureAgent(feature: string, instruction: string): Promise<Session>;
 async function seedAgentFiles(vaultBasePath: string): Promise<void>;
 ```
 
@@ -58,8 +61,8 @@ apps/desktop/src/features/<feature>/.claude/
 
 Import via Vite `?raw`:
 ```ts
-import agentDoc from '@/features/study/.claude/agents/study.md?raw';
-import claudeDoc from '@/features/study/.claude/CLAUDE.md?raw';
+import agentDoc from '@/features/wiki/.claude/agents/wiki.md?raw';
+import claudeDoc from '@/features/wiki/.claude/CLAUDE.md?raw';
 ```
 
 **Runtime vault layout** (seeded, per-user):
@@ -69,17 +72,18 @@ import claudeDoc from '@/features/study/.claude/CLAUDE.md?raw';
   agents/<feature>.md    # seeded write-if-missing (never overwrites user edits)
 ```
 
-The `__<feature>__/` directory doubles as the feature's **content directory** (e.g. `__study__/agent-dev.md` is a study topic doc). All 5 `__xxx__/` dirs are hidden from the sidebar file tree via `settingsStore.excludePatterns`.
+The `__<feature>__/` directory doubles as the feature's **content directory** (e.g. `__wiki__/` holds wiki agent working files). The 4 registered `__xxx__/` dirs (`__analyze__`, `__clips__`, `__schedule__`, `__wiki__`) are hidden from the sidebar file tree via `appearanceStore` `BUILTIN_EXCLUDE_DIRS` (the default `excludePatterns`).
+
+> **Residual**: `__study__` is still in `BUILTIN_EXCLUDE_DIRS` / `DEFAULT_EXCLUDE_PATTERNS` even though the `study` feature agent was removed (commit `11f5bf0d`). The pattern is kept so existing user vaults with leftover `__study__/` content stay hidden; it does NOT imply a registered study agent. Do not add a study `FeatureAgentEntry` without first removing this residual note.
 
 **Invoke parameters per feature:**
 
 | Feature | cwd | `--agent` | `--add-dir` | `bare` |
 |---------|-----|-----------|-------------|--------|
-| study | `<vault>/__study__` | `study` | — | `false` |
-| clips | `<vault>/__clips__` | `clips` | — | `false` |
-| wiki | `<vault>/__wiki__` | `wiki` | — | `false` |
 | analyze | `<vault>/__analyze__` | `analyze` | — | `false` |
+| clips | `<vault>/__clips__` | `clips` | — | `false` |
 | schedule | `<vault>/__schedule__` | `schedule` | `<vault>` | `false` |
+| wiki | `<vault>/__wiki__` | `wiki` | — | `false` |
 
 `schedule` is the only feature with `addVaultDir: true` because schedule events live in `__daily__/` diaries (not in `__schedule__/`), so the agent needs cross-vault read access.
 
@@ -119,8 +123,8 @@ Rationale: context can change (vault layout evolves) without touching the output
 **Bad** — hardcoding seed path:
 ```ts
 // ❌ Don't: per-feature hardcoded paths
-await manager.writeFile('.claude/agents/study.md', studyDoc);       // old shared path
-await manager.writeFile('__study__/.claude/agents/study.md', doc);   // hardcoded feature dir
+await manager.writeFile('.claude/agents/wiki.md', wikiDoc);       // old shared path
+await manager.writeFile('__wiki__/.claude/agents/wiki.md', doc); // hardcoded feature dir
 ```
 ```ts
 // ✅ Do: derive path from FeatureAgentEntry
@@ -137,20 +141,21 @@ await manager.writeFile(`${dir}/CLAUDE.md`, entry.claudeDoc);
 | Seeding writes to `__<feature>__/.claude/` | `featureAgentService.test.ts` | `createDir` called with `__<feature>__/.claude/agents`; `writeFile` called with `__<feature>__/.claude/CLAUDE.md` and `__<feature>__/.claude/agents/<feature>.md` |
 | Write-if-missing does not overwrite | `featureAgentService.test.ts` | When `readFile` returns existing content, `writeFile` is NOT called for that path |
 | `schedule` send-options include `addDir` | `featureAgentService.test.ts` | `getFeatureAgentSendOptions('schedule')` returns `{ agent: 'schedule', bare: false, addDir: [<vault basePath>] }` |
-| Non-schedule features omit `addDir` | `featureAgentService.test.ts` | `getFeatureAgentSendOptions('study')` returns `{ agent: 'study', bare: false }` (no `addDir`) |
-| Canonical agent .md contract | `features/<feature>/<feature>Agent.test.ts` | Asserts action names, output format lines present in the `?raw`-imported doc |
-| `settingsStore` hides all `__xxx__/` | `settingsStore.test.ts` | Default `excludePatterns` includes all 5 `__<feature>__` dirs |
+| Non-schedule features omit `addDir` | `featureAgentService.test.ts` | `getFeatureAgentSendOptions('wiki')` returns `{ agent: 'wiki', bare: false }` (no `addDir`) |
+| Canonical agent .md contract | `features/wiki/wikiAgent.test.ts` | Asserts action names, output format lines present in the `?raw`-imported wiki agent doc |
+| `appearanceStore` hides all `__xxx__/` | `appearanceStore.test.ts` | Default `excludePatterns` / `BUILTIN_EXCLUDE_DIRS` includes `__analyze__`, `__clips__`, `__schedule__`, `__wiki__` (and residual `__study__`) |
+
+> **Note on test coverage**: as of writing, only the `wiki` feature has a `<feature>Agent.test.ts`; `analyze`/`clips`/`schedule` do not yet have canonical-doc contract tests. `featureAgentService.test.ts` is the shared seeding + send-options test for all features. When adding a new feature, add a `features/<feature>/<feature>Agent.test.ts` following the `wiki` shape.
 
 ### 7. Wrong vs Correct
 
 #### Wrong — agent .md duplicates context that belongs in CLAUDE.md
 ```markdown
 ---
-name: study
+name: wiki
 ---
-你是 Folyn 学习工作台的 study agent。工作区是当前 vault（cwd），可读写 `__study__/*.md` 主题文档。
-主题文档结构：## 资料 / ## 计划 / ## 笔记 / ## 复习。
-文件命名：slug 来自标题，CJK 保留，非字母数字折叠为 `-`。
+你是 Folyn 的 wiki agent。工作区是当前 vault（cwd），可读写 `__wiki__/*.md` 主题文档。
+主题文档结构与命名规则见 `../CLAUDE.md`。
 
 ## research（找资料）
 ...输出契约...
@@ -160,16 +165,16 @@ name: study
 
 #### Correct — context in CLAUDE.md, contract in agent .md
 ```markdown
-// features/study/.claude/CLAUDE.md
-# Folyn 学习工作台（study feature）
-Agent cwd = `<vault>/__study__/`. 主题文档 `__study__/<slug>.md` 结构：## 资料 / ## 计划 / ## 笔记 / ## 复习。
+// features/wiki/.claude/CLAUDE.md
+# Folyn wiki feature
+Agent cwd = `<vault>/__wiki__/`. wiki 主题文档 `__wiki__/<slug>.md` 结构与命名规则。
 命名规则：slug 来自标题，CJK 保留，非字母数字折叠为 `-`。
 
-// features/study/.claude/agents/study.md
+// features/wiki/.claude/agents/wiki.md
 ---
-name: study
+name: wiki
 ---
-你是 Folyn 学习工作台的 study agent。Feature 上下文（vault 布局、主题文档结构、文件命名规则）见同目录 `../CLAUDE.md`。
+你是 Folyn 的 wiki agent。Feature 上下文（vault 布局、主题文档结构、文件命名规则）见同目录 `../CLAUDE.md`。
 
 ## research（找资料）
 ...输出契约...
@@ -204,7 +209,7 @@ return opts;
 
 ## Convention: Runtime Prompt = Params Only, Contract = Agent .md
 
-**What**: Runtime prompt builders (e.g. `buildStudyInstruction`, `buildQueryInstruction`, card metadata fallback, `DailyDigest` schedule prompt) emit only runtime parameters — action name, topic path/name, selected context, mode markers, dynamic data the agent can't derive. All static contract content (output format rules, line grammar, callout syntax, JSON shape, "不要 Edit 改文件", 字数限制, role/preamble) lives in canonical `.claude/agents/<feature>.md` as the single contract source.
+**What**: Runtime prompt builders (e.g. `buildQueryInstruction`, card metadata fallback, `DailyDigest` schedule prompt) emit only runtime parameters — action name, topic path/name, selected context, mode markers, dynamic data the agent can't derive. All static contract content (output format rules, line grammar, callout syntax, JSON shape, "不要 Edit 改文件", 字数限制, role/preamble) lives in canonical `.claude/agents/<feature>.md` as the single contract source.
 
 **Why**: Duplicating contract in the runtime prompt means a contract change requires editing two places (caller + agent .md) — and the agent .md is the only file the agent actually loads at invoke time (via cwd auto-discovery). Trimming prompts to params-only keeps the contract authoritative in one place, matches how the agent actually loads context, and shrinks token overhead without changing behavior.
 
@@ -216,13 +221,13 @@ return opts;
 
 **Reference pattern** (correct): `apps/desktop/src/services/clipService.ts` infographic prompt — only passes `[infographic-mode]` marker + runtime data (title/url/summary/keyPoints), no contract duplication. JSON block schema lives in `clips.md`.
 
-**Anti-pattern** (pre-trim, incorrect): `buildStudyInstruction('research')` used to inline the full format rules:
+**Anti-pattern** (pre-trim, incorrect): a runtime builder used to inline the full format rules:
 ```ts
 // ❌ Don't: duplicate contract in the runtime prompt
 return [
   head,
   '动作：research',
-  '检索高质量学习资料...返回 5-8 条资料建议。',
+  '检索高质量资料...返回 5-8 条资料建议。',
   '每条严格单行，格式（| 两侧留空格；难度用 易/中/难）：',
   '- `- @book <书名> | <作者> | <简介> | 难度:<易|中|难>`...',
   '- `- @web <标题> | <链接> | <简介>`',
@@ -230,17 +235,18 @@ return [
 ].join('\n');
 ```
 ```ts
-// ✅ Do: params only; format rules live in agents/study.md
+// ✅ Do: params only; format rules live in agents/wiki.md
 return [head, '动作：research'].join('\n');
 ```
 
-**Cross-check before trimming**: diff the runtime prompt against the agent .md. Any rule in the runtime prompt that's NOT in .md must be added to .md first (so we don't silently lose contract). All 5 canonical agent .md files already contain the full contract for their actions.
+**Cross-check before trimming**: diff the runtime prompt against the agent .md. Any rule in the runtime prompt that's NOT in .md must be added to .md first (so we don't silently lose contract). All 4 canonical agent .md files already contain the full contract for their actions.
 
 **Related files**:
-- `apps/desktop/src/features/study/scheduleLink.ts` — `buildStudyInstruction` (5 actions, params only)
-- `apps/desktop/src/services/clipService.ts` — card metadata fallback (thin) + infographic (reference pattern)
 - `apps/desktop/src/services/wikiQueryService.ts` — `buildQueryInstruction` (params + wiki context block)
+- `apps/desktop/src/services/clipService.ts` — card metadata fallback (thin) + infographic (reference pattern)
 - `apps/desktop/src/components/editor/DailyDigest.tsx` — schedule prompt (today + modified docs + recent daily notes)
+
+> **Removed**: the former `features/study/scheduleLink.ts` + `buildStudyInstruction` were deleted with the `study` feature (commit `11f5bf0d`). The params-only pattern now lives in the surviving `buildQueryInstruction` (wiki) and `DailyDigest` (schedule) callers.
 
 ---
 
@@ -294,7 +300,8 @@ InfographicView (renders blocks as unified poster)
 ## Reference Files
 
 - `apps/desktop/src/services/featureAgentService.ts` — registry, seed logic, send-options
-- `apps/desktop/src/services/featureAgentService.test.ts` — seeding + send-options tests
-- `apps/desktop/src/features/<feature>/.claude/` — canonical CLAUDE.md + agents/*.md for each feature
+- `apps/desktop/src/features/<feature>/.claude/` — canonical CLAUDE.md + agents/*.md for each feature (analyze, clips, schedule, wiki)
 - `packages/cli-adapter/src/claudeAdapter.ts` — `buildClaudeArgs` flag ordering
-- `apps/desktop/src/store/settingsStore.ts` — `excludePatterns` default + backfill
+- `apps/desktop/src/store/appearanceStore.ts` — `BUILTIN_EXCLUDE_DIRS` default + `backfillBuiltinExcludePatterns`
+
+> **Missing test**: `featureAgentService.test.ts` (referenced in the Tests Required table above) does not yet exist in the repo — the seeding + send-options contracts are currently untested at the service level. Adding it is the highest-leverage test gap for this module.
