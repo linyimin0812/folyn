@@ -8,7 +8,9 @@
 
 ```
 apps/desktop/src/
-├── App.tsx              # Root component — shell layout, page routing, global shortcuts
+├── App.tsx              # Root component — shell layout, page routing, global
+│                        #   shortcuts, init/wiring. Terminal dock layout
+│                        #   subsystem lives in components/terminal/ (extracted).
 ├── main.tsx             # React entry point (ReactDOM.createRoot)
 ├── index.css            # Global styles (Tailwind directives + CSS custom properties)
 ├── vite-env.d.ts        # Vite type declarations
@@ -51,8 +53,17 @@ apps/desktop/src/
 │   ├── shell/           # App chrome (Topbar, ActivityBar, StatusBar)
 │   ├── sidebar/         # File tree sidebar (Sidebar, FileTreeItem, WikiFileTree,
 │   │                    #   CalendarPanel, ContextMenu, SidebarResizer, SidebarActions)
+│   ├── terminal/        # Terminal UI: TerminalPanel (xterm host) + the dock
+│   │                    #   layout subsystem extracted from App.tsx —
+│   │                    #   TerminalHost (bottom/right layout container),
+│   │                    #   TerminalDock (single persistent dock),
+│   │                    #   TerminalResizeHandle / TerminalRightResizeHandle
+│   │                    #   (drag handles). See work-area/EditorContent for the
+│   │                    #   composition that wires terminal into the editor area.
 │   ├── vault/           # Vault management UI
-│   └── work-area/       # Main editor area (WorkArea, tab bar, editor host)
+│   └── work-area/       # Main editor area: WorkArea (tab bar + editor/preview
+                        #   host), EditorContent (composes WorkArea + RightDock
+                        #   inside TerminalHost — focus mode drops the dock)
 │
 ├── editor/              # CodeMirror extensions, themes, and setup
 ├── features/            # Feature modules — one folder per feature (analyze, clips,
