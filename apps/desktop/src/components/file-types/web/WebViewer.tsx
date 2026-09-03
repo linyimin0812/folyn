@@ -3,17 +3,57 @@ import { isTauri } from '@/utils/platform';
 import { useEditorStore } from '@/store/editorStore';
 import { openBrowserTab, openFile } from '@/services/editorIoService';
 import { useClipStore } from '@/store/clipStore';
-import { useBrowserStore } from '@/store/browserStore';
 import { useTranslation } from 'react-i18next';
-import { Plus, Globe, KeyRound, Cookie, Copy, Lock, Trash2, Download } from 'lucide-react';
+import { Plus, Globe } from 'lucide-react';
 import type { EditorProps } from '../types';
 
-type WebviewErrorCode = 'dns' | 'refused' | 'timeout' | 'http' | 'invalid_url' | 'blocked' | 'unknown';
-type WebviewError = { code: WebviewErrorCode; status?: number };
+type WebviewError = { code: 'invalid_url' | 'unknown' };
 type WebviewStatus = 'loading' | 'ready' | { error: WebviewError };
 
 // Module-level cache to persist webview labels across component remounts
 export const webviewCache = new Map<string, { label: string; url: string }>();
+
+/**
+ * Height of the native titlebar region (in logical points) that overlaps the
+ * main webview but is excluded from its layout viewport.
+ *
+ * The main window uses the default `Visible` titlebar style, which tao/tauri
+ * map to `titlebar_transparent = false` + `fullsize_content_view = true`. The
+ * WKWebView physically fills the whole content view (including the titlebar
+ * strip behind the traffic lights), so Tauri's `innerSize()` reports the full
+ * content height (e.g. 900). But the webview's *layout* viewport
+ * (`window.innerHeight`, and the frame of `getBoundingClientRect()`) starts
+ * BELOW the titlebar, so it is shorter (e.g. 868). The difference (32) is the
+ * titlebar overlap.
+ *
+ * `set_webview_position` / `add_child` place the child in content-view
+ * coordinates whose origin is the window's true top-left (behind the
+ * titlebar), while `getBoundingClientRect().top` is relative to the layout
+ * viewport (below the titlebar). So the child is placed too high and a gap
+ * shows at the bottom equal to the titlebar overlap. We ADD this overlap to
+ * the frontend's `y` so the child reaches the true window bottom.
+ *
+ * No-op (0) off Tauri or when there is no overlap (transparent/hidden titlebar).
+ * Cached for the session — titlebar height does not change while the app runs.
+ */
+let cachedTitlebarOverlap: number | null = null;
+async function titlebarOverlap(): Promise<number> {
+  if (!isTauri()) return 0;
+  if (cachedTitlebarOverlap !== null) return cachedTitlebarOverlap;
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const win = getCurrentWindow();
+    const inner = await win.innerSize(); // physical px, full content height
+    const scale = await win.scaleFactor().catch(() => 1);
+    const contentLogicalH = inner.height / scale;
+    const layoutViewportH = window.innerHeight || 0;
+    const overlap = Math.max(0, Math.round(contentLogicalH - layoutViewportH));
+    cachedTitlebarOverlap = overlap;
+    return overlap;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * Every webview label created this session, including labels whose cache
@@ -24,6 +64,23 @@ const allWebviewLabels = new Set<string>();
 
 export function getWebviewLabels(): string[] {
   return Array.from(allWebviewLabels);
+}
+
+/** Move a native webview off-screen (x:-10000, 1×1) so HTML overlays can
+ *  render above the work area. No-op outside Tauri; swallows errors.
+ *  ponytail: one helper for the 4 raw -10000/1/1 duplications. */
+async function hideWebviewLabel(label: string): Promise<void> {
+  if (!isTauri() || !label) return;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('set_webview_position', {
+      label,
+      x: -10000,
+      y: -10000,
+      width: 1,
+      height: 1,
+    });
+  } catch {}
 }
 
 /** Hide every native webview so an HTML overlay (e.g. the open-files tab
@@ -47,19 +104,8 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   const [clipError, setClipError] = useState(false);
   const [clipDuplicate, setClipDuplicate] = useState<{ url: string; existingPath: string } | null>(null);
   const [urlInput, setUrlInput] = useState(filePath);
-  const [importOpen, setImportOpen] = useState(false);
-  const [passwordOpen, setPasswordOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const importRef = useRef<HTMLDivElement>(null);
-  const passwordRef = useRef<HTMLDivElement>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const passwords = useBrowserStore((s) => s.passwords);
-  const passwordImporting = useBrowserStore((s) => s.passwordImporting);
-  const cookieImporting = useBrowserStore((s) => s.cookieImporting);
-  const importCookies = useBrowserStore((s) => s.importCookies);
-  const importPasswords = useBrowserStore((s) => s.importPasswords);
-  const loadPasswords = useBrowserStore((s) => s.loadPasswords);
-  const removePassword = useBrowserStore((s) => s.removePassword);
 
   // Check if this web tab was opened from a clip card
   const clipPath = useEditorStore((s) => {
@@ -72,47 +118,9 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const isActive = activeTabId === tabId;
 
-  // Keep the address bar in sync with in-page navigation.
   useEffect(() => {
     setUrlInput(filePath);
   }, [filePath]);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    void loadPasswords();
-  }, [loadPasswords]);
-
-  useEffect(() => {
-    if (!importOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (importRef.current && !importRef.current.contains(e.target as Node)) setImportOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [importOpen]);
-
-  // The import / password dropdowns render directly below the address bar,
-  // exactly where the native webview starts — the webview covers the menu and
-  // swallows every click. Hide the embedded webviews while either dropdown is
-  // open and re-sync the active one when both are closed.
-  const anyOverlayOpen = importOpen || passwordOpen;
-  useEffect(() => {
-    if (!isTauri()) return;
-    if (anyOverlayOpen) {
-      hideWebviewsForOverlay();
-    } else {
-      window.dispatchEvent(new CustomEvent('folyn:overlay-closed'));
-    }
-  }, [anyOverlayOpen]);
-
-  useEffect(() => {
-    if (!passwordOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (passwordRef.current && !passwordRef.current.contains(e.target as Node)) setPasswordOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [passwordOpen]);
 
   useEffect(() => () => {
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
@@ -140,71 +148,11 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     });
   }, [urlInput, showNotice, t]);
 
-  const currentHost = (() => {
-    try { return new URL(filePath).hostname; } catch { return ''; }
-  })();
-  const matchingPasswords = passwords.filter((p) => {
-    try { return new URL(p.url).hostname === currentHost; } catch { return false; }
-  });
-
-  const fillPassword = useCallback(async (username: string, password: string) => {
-    const label = webviewLabelRef.current;
-    if (!label) return;
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('fill_webview_credentials', { label, username, password });
-      showNotice(t('browser:filled'));
-      setPasswordOpen(false);
-    } catch (err) {
-      const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : String(err);
-      showNotice(`${t('browser:fillFailed')} ${msg}`);
-    }
-  }, [showNotice, t]);
-
-  const copyText = useCallback(async (text: string) => {
-    try {
-      if (isTauri()) {
-        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        await writeText(text);
-      } else {
-        await navigator.clipboard.writeText(text);
-      }
-      showNotice(t('browser:copied'));
-    } catch {
-      showNotice(t('browser:copyFailed'));
-    }
-  }, [showNotice, t]);
-
-  const handleImportCookies = useCallback(async () => {
-    setImportOpen(false);
-    await importCookies();
-    const notice = useBrowserStore.getState().notice;
-    if (notice) showNotice(notice);
-  }, [importCookies, showNotice]);
-
-  const handleImportPasswords = useCallback(async () => {
-    setImportOpen(false);
-    await importPasswords();
-    const notice = useBrowserStore.getState().notice;
-    if (notice) showNotice(notice);
-  }, [importPasswords, showNotice]);
-
   const handleBackToClip = useCallback(async () => {
     if (!clipPath) return;
     // Hide the webview immediately before switching back to clip
     const cached = webviewCache.get(tabId);
-    if (cached && isTauri()) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('set_webview_position', {
-          label: cached.label,
-          x: -10000,
-          y: -10000,
-          width: 1,
-          height: 1,
-        });
-      } catch {}
-    }
+    if (cached) await hideWebviewLabel(cached.label);
     backToClip(tabId);
   }, [clipPath, tabId, backToClip]);
 
@@ -212,18 +160,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   // clip confirm dialog) are visible. Restored via syncPosition().
   const hideWebview = useCallback(async () => {
     const cached = webviewCache.get(tabId);
-    if (cached && isTauri()) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('set_webview_position', {
-          label: cached.label,
-          x: -10000,
-          y: -10000,
-          width: 1,
-          height: 1,
-        });
-      } catch {}
-    }
+    if (cached) await hideWebviewLabel(cached.label);
   }, [tabId]);
 
   const handleClipPage = useCallback(async () => {
@@ -261,11 +198,16 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     try {
       const rect = container.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
+      const overlap = await titlebarOverlap();
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('set_webview_position', {
         label,
         x: Math.round(rect.left),
-        y: Math.round(rect.top),
+        // `rect.top` is relative to the layout viewport (below the
+        // titlebar), but the child is placed in content-view space (origin
+        // behind the titlebar). Add the titlebar overlap so the child
+        // reaches the true window bottom instead of stopping short.
+        y: Math.round(rect.top) + overlap,
         width: Math.round(rect.width),
         height: Math.round(rect.height),
       });
@@ -336,15 +278,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         // over other pages.
         const label = webviewLabelRef.current;
         if (label) {
-          import('@tauri-apps/api/core').then(({ invoke }) => {
-            invoke('set_webview_position', {
-              label,
-              x: -10000,
-              y: -10000,
-              width: 1,
-              height: 1,
-            }).catch(() => {});
-          });
+          hideWebviewLabel(label);
           webviewLabelRef.current = null;
         }
       };
@@ -374,24 +308,34 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
 
-        const result = await invoke<{ reachable: boolean; error: string }>('check_url', { url: filePath });
-        if (!result.reachable) {
-          setStatus({ error: { code: 'unknown' } });
-          return;
-        }
-
-        const container = webViewerRef.current;
+        // Wait for the container to have non-zero size before creating the
+        // webview — at mount the tab layout may not be ready yet (0×0), and
+        // bailing silently left the spinner stuck on "正在连接…".
+        let container = webViewerRef.current;
         if (!container) return;
-        const rect = container.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return;
+        let rect = container.getBoundingClientRect();
+        let waited = 0;
+        while ((rect.width === 0 || rect.height === 0) && waited < 2000) {
+          await new Promise((r) => setTimeout(r, 50));
+          waited += 50;
+          container = webViewerRef.current;
+          if (!container) return; // unmounted during wait
+          rect = container.getBoundingClientRect();
+        }
+        if (rect.width === 0 || rect.height === 0) return; // genuinely hidden; give up silently
+
         const label = `wv-${Date.now()}`;
         const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
 
+        const overlap = await titlebarOverlap();
         await invoke('create_webview', {
           label,
           url: filePath,
           x: Math.round(rect.left),
-          y: Math.round(rect.top),
+          // `rect.top` is layout-viewport-relative; add the titlebar overlap
+          // so the initial frame matches content-view space (origin behind
+          // the titlebar). See titlebarOverlap for the coordinate rationale.
+          y: Math.round(rect.top) + overlap,
           width: Math.round(rect.width),
           height: Math.round(rect.height),
           userAgent,
@@ -402,7 +346,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         // Cache the webview for this tab
         webviewCache.set(tabId, { label, url: filePath });
         setStatus('ready');
-      } catch {
+      } catch (err) {
         setStatus({ error: { code: 'unknown' } });
       }
     }, 150);
@@ -412,15 +356,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
       // Hide webview when component unmounts (e.g., switching tabs)
       const label = webviewLabelRef.current;
       if (label) {
-        import('@tauri-apps/api/core').then(({ invoke }) => {
-          invoke('set_webview_position', {
-            label,
-            x: -10000,
-            y: -10000,
-            width: 1,
-            height: 1,
-          }).catch(() => {});
-        });
+        hideWebviewLabel(label);
         webviewLabelRef.current = null;
       }
     };
@@ -430,23 +366,10 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     if (!isTauri()) return;
     const container = webViewerRef.current;
     if (!container) return;
-    const observer = new ResizeObserver(() => syncPosition());
+    const observer = new ResizeObserver(() => { syncPosition(); });
     observer.observe(container);
     return () => observer.disconnect();
   }, [syncPosition]);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unlisten: (() => void) | null = null;
-    import('@tauri-apps/api/event').then(({ listen }) => {
-      listen<{ label: string; url: string; title: string }>('webview-url-changed', (event) => {
-        if (event.payload.label === webviewLabelRef.current) {
-          useEditorStore.getState().updateWebTabUrl(tabId, event.payload.url, event.payload.title);
-        }
-      }).then((fn) => { unlisten = fn; });
-    });
-    return () => { unlisten?.(); };
-  }, [tabId]);
 
   // Clean up webview only when tab is actually closed (not just switched away)
   useEffect(() => {
@@ -508,8 +431,6 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
       window.open(filePath, '_blank', 'noopener,noreferrer');
     }
   };
-
-  const host = (() => { try { return new URL(filePath).hostname; } catch { return filePath; } })();
 
   return (
     <div className="web-viewer-container flex-1 flex flex-col bg-surf overflow-hidden relative">
@@ -573,86 +494,6 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             )}
           </button>
         )}
-        <div className="relative shrink-0" ref={importRef}>
-          <button
-            className="flex items-center gap-1 h-[26px] px-2 border border-brd rounded-[6px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
-            title={t('browser:importData')}
-            onClick={() => setImportOpen((v) => !v)}
-          >
-            <Download size={12} />
-            <span className="text-[11px] font-medium whitespace-nowrap">{t('browser:importLabel')}</span>
-          </button>
-          {importOpen && (
-            <div className="absolute top-full right-0 mt-1 z-[120] min-w-[210px] bg-surf border border-brd rounded-[8px] shadow-[0_8px_28px_rgba(0,0,0,0.16)] py-1">
-              <button
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleImportCookies}
-                disabled={cookieImporting}
-              >
-                <Cookie size={14} className="text-t3 shrink-0" />
-                <span className="flex-1">{t('browser:importCookies')}</span>
-                {cookieImporting && <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />}
-              </button>
-              <button
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-[13px] text-t2 cursor-pointer border-none bg-transparent transition-colors duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleImportPasswords}
-                disabled={passwordImporting}
-              >
-                <KeyRound size={14} className="text-t3 shrink-0" />
-                <span className="flex-1">{t('browser:importPasswords')}</span>
-                {passwordImporting && <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />}
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="relative shrink-0" ref={passwordRef}>
-          <button
-            className="flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
-            title={t('browser:passwords')}
-            onClick={() => setPasswordOpen((v) => !v)}
-          >
-            <Lock size={14} />
-          </button>
-          {passwordOpen && (
-            <div className="absolute top-full right-0 mt-1 z-[120] min-w-[240px] max-w-[320px] max-h-[320px] overflow-y-auto bg-surf border border-brd rounded-[8px] shadow-[0_8px_28px_rgba(0,0,0,0.16)] p-1.5">
-              <div className="px-2 py-1 text-[11px] text-t3 truncate">
-                {t('browser:passwordsFor')} {currentHost || '—'}
-              </div>
-              {matchingPasswords.length === 0 && (
-                <div className="px-2 py-2.5 text-xs text-t3">{t('browser:noPasswords')}</div>
-              )}
-              {matchingPasswords.map((p) => (
-                <div key={p.id} className="flex items-center gap-1 px-2 py-1.5 rounded-[5px] hover:bg-hov">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-t2 truncate">{p.username || '—'}</div>
-                    <div className="text-[10px] text-t3 font-mono">••••••••••</div>
-                  </div>
-                  <button
-                    className="w-[22px] h-[22px] flex items-center justify-center rounded-[4px] border-none bg-transparent text-t3 cursor-pointer hover:bg-hov hover:text-t1 shrink-0"
-                    title={t('browser:fill')}
-                    onClick={() => fillPassword(p.username, p.password)}
-                  >
-                    <KeyRound size={12} />
-                  </button>
-                  <button
-                    className="w-[22px] h-[22px] flex items-center justify-center rounded-[4px] border-none bg-transparent text-t3 cursor-pointer hover:bg-hov hover:text-t1 shrink-0"
-                    title={t('browser:copyPassword')}
-                    onClick={() => copyText(p.password)}
-                  >
-                    <Copy size={12} />
-                  </button>
-                  <button
-                    className="w-[22px] h-[22px] flex items-center justify-center rounded-[4px] border-none bg-transparent text-t3 cursor-pointer hover:bg-hov hover:text-red shrink-0"
-                    title={t('browser:removePassword')}
-                    onClick={() => removePassword(p.id)}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
         <button
           className="flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
           title={t('browser:newTab')}
@@ -715,21 +556,11 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
       )}
 
       {typeof status === 'object' && (() => {
-        const { code, status: httpStatus } = status.error;
-        const info: { title: string; desc: string; detail?: string } =
-          code === 'invalid_url' ? { title: '无效的网址', desc: `"${filePath}" 不是一个有效的网址，请检查拼写是否正确。` }
-          : code === 'blocked' ? { title: '网站拒绝了嵌入显示', desc: `${host} 不允许在应用内打开。`, detail: '该网站设置了安全策略，禁止被其他程序嵌入显示。请在外部浏览器中访问。' }
-          : code === 'dns' ? { title: '找不到该网站', desc: `无法解析 ${host} 的地址。`, detail: '请检查网址是否有拼写错误，或者该网站可能已不存在。' }
-          : code === 'refused' ? { title: '连接被拒绝', desc: `${host} 拒绝了连接请求。`, detail: '该网站可能暂时停止服务，或者服务器配置了访问限制。' }
-          : code === 'timeout' ? { title: '连接超时', desc: `连接 ${host} 超时，服务器没有响应。`, detail: '请检查网络连接是否正常，或稍后再试。' }
-          : code === 'http' ? {
-              title: `请求失败（${httpStatus}）`,
-              desc: httpStatus === 404 ? `找不到页面：${host} 上不存在该内容。`
-                : httpStatus === 403 ? `访问被拒绝：无权限访问 ${host}。`
-                : httpStatus === 500 ? `服务器内部错误：${host} 出了点问题。`
-                : `服务器返回了错误状态 ${httpStatus}。`,
-            }
-          : { title: '页面无法打开', desc: '加载页面时发生了未知错误。' };
+        const { code } = status.error;
+        const info: { title: string; desc: string } =
+          code === 'invalid_url'
+            ? { title: '无效的网址', desc: `"${filePath}" 不是一个有效的网址，请检查拼写是否正确。` }
+            : { title: '页面无法打开', desc: '加载页面时发生了未知错误。' };
         return (
           <div className="web-viewer-status web-viewer-error absolute inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center gap-2 bg-surf z-10 text-t2">
             <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-t3 mb-1 opacity-85">
@@ -739,7 +570,6 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             </svg>
             <p className="text-[15px] font-semibold text-t1 m-0">{info.title}</p>
             <p className="text-[13px] text-t2 m-0 text-center max-w-[320px] leading-relaxed">{info.desc}</p>
-            {info.detail && <p className="text-xs text-t3 m-0 text-center max-w-[300px] leading-relaxed">{info.detail}</p>}
             <div className="text-[11px] font-mono text-t3 bg-bg border border-brd rounded-[5px] py-[3px] px-2.5 max-w-[340px] overflow-hidden text-ellipsis whitespace-nowrap mt-0.5">{filePath}</div>
             <button className="flex items-center gap-1.5 mt-2 py-2 px-5 rounded-[7px] border-none bg-acc text-white text-[13px] font-medium cursor-pointer transition-[opacity,transform] duration-150 hover:opacity-[.88] active:scale-[.97]" onClick={openExternal}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">

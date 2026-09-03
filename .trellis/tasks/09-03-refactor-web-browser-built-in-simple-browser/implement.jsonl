@@ -1,0 +1,8 @@
+{"file": "apps/desktop/src/components/file-types/web/WebViewer.tsx", "reason": "Primary frontend: delete check_url preflight, fix 0×0 race, remove password/cookie UI, remove url-sync listener"}
+{"file": "apps/desktop/src-tauri/src/commands/webview_commands.rs", "reason": "Remove on_webview_url_changed emitter + init-script hook + cookie seeding call; create_webview path"}
+{"file": "apps/desktop/src-tauri/src/commands/browser_commands.rs", "reason": "Remove fill_webview_credentials, load_url_webview stays, cookie/password import functions"}
+{"file": "apps/desktop/src-tauri/src/commands/file_commands.rs", "reason": "Remove dead check_url command after preflight deletion"}
+{"file": "apps/desktop/src-tauri/src/lib.rs", "reason": "Unregister removed commands (check_url, on_webview_url_changed, fill_webview_credentials, import_chrome_cookies, apply_imported_cookies, import_chrome_passwords)"}
+{"file": "apps/desktop/src/store/browserStore.ts", "reason": "Slim or remove — all fields are password/cookie after Phase 2"}
+{"file": "apps/desktop/src/store/editorStore.ts", "reason": "Drop dead updateWebTabUrl after url-sync listener removed"}
+{"file": ".trellis/spec/api/backend/directory-structure.md", "reason": "Update canonical webview command set to reflect removals"}
