@@ -984,10 +984,16 @@ pub fn run() {
                 }
             }
 
-            #[cfg(debug_assertions)]
-            if let Some(window) = app.get_webview_window("main") {
-                window.open_devtools();
-            }
+            // DevTools is opt-in: auto-opening it on every dev launch docks
+            // the inspector into the main webview and shrinks the webview's
+            // visible frame, which breaks child-webview positioning (the
+            // "bottom padding" gap — the body rect stops short of the window
+            // bottom). Open it manually when needed (right-click → Inspect or
+            // the DevTools shortcut) instead.
+            // #[cfg(debug_assertions)]
+            // if let Some(window) = app.get_webview_window("main") {
+            //     window.open_devtools();
+            // }
 
             // ponytail: Dock stays visible. The previous `set_dock_visibility(false)`
             // put the app into accessory activation policy so the pet would float
@@ -1050,29 +1056,17 @@ pub fn run() {
             commands::drain_pending_open_files,
             commands::save_file,
             commands::read_clipboard_files,
-            commands::check_url,
             commands::create_webview,
             commands::open_plugin_tool_window,
             commands::navigate_webview,
             commands::close_webview,
-            commands::hide_webview,
-            commands::show_webview,
             commands::set_webview_position,
             commands::hide_all_webviews,
-            commands::on_webview_url_changed,
             commands::load_url_webview,
             commands::terminal_create,
             commands::terminal_write,
             commands::terminal_resize,
             commands::terminal_kill,
-            commands::import_chrome_cookies,
-            commands::apply_imported_cookies,
-            commands::has_imported_cookies,
-            commands::import_chrome_passwords,
-            commands::save_imported_passwords,
-            commands::load_imported_passwords,
-            commands::clear_imported_passwords,
-            commands::fill_webview_credentials,
             commands::git_clone,
             commands::get_project_overview,
             commands::remove_dir,

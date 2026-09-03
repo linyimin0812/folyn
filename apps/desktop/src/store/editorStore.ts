@@ -82,8 +82,6 @@ interface EditorState {
   updateTabContent: (tabId: string, content: string) => void;
   markTabDirty: (tabId: string, isDirty: boolean) => void;
 
-  /** Update a web tab's URL and title after in-page navigation */
-  updateWebTabUrl: (tabId: string, url: string, title: string) => void;
   /** Open a web URL in a new tab */
   openWebTab: (url: string, title?: string) => void;
   /** Open a web URL from a clip card (converts clip tab to web tab, adds back-to-clip button) */
@@ -192,14 +190,6 @@ export const useEditorStore = create<EditorState>()(
             t.id === tabId ? { ...t, isDirty } : t,
           ),
         })),
-
-      updateWebTabUrl: (tabId, url, title) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.id === tabId ? { ...tab, path: url, name: title || tab.name } : tab,
-          ),
-        }));
-      },
 
       openWebTab: (url, title) => {
         const tabId = `web:${url}`;

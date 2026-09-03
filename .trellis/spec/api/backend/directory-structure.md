@@ -39,13 +39,12 @@ Registered in `lib.rs` via `tauri::generate_handler![]`:
 | `open_file` | Read file content as string |
 | `save_file` | Write string content to file |
 | `select_directory` | Directory picker (delegates to tauri-plugin-dialog) |
-| `check_url` | HTTP reachability check via curl |
 | `create_webview` | Create embedded webview for URL preview |
 | `navigate_webview` | Navigate an existing webview to a new URL |
+| `load_url_webview` | Address-bar navigation for an existing webview |
 | `close_webview` | Destroy a webview |
 | `set_webview_position` | Position webview overlay |
 | `hide_all_webviews` | Hide all webview overlays |
-| `on_webview_url_changed` | Handle URL change in webview |
 
 ---
 

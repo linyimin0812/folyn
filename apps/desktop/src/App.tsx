@@ -26,6 +26,7 @@ import { startProvidersBroadcast } from './store/aiConfigStore';
 import { usePetStore } from './store/petStore';
 import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
+import { getWebviewLabels } from './components/file-types/web/WebViewer';
 import * as editorIoService from './services/editorIoService';
 import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
 import { readClipboardFiles } from '@/services/clipboardFiles';
@@ -241,8 +242,9 @@ export default function App() {
         useEditorViewStateStore.getState().setFocusMode(false);
       }
       if (isTauri()) {
+        const labels = getWebviewLabels();
         import('@tauri-apps/api/core').then(({ invoke }) => {
-          invoke('hide_all_webviews', { labels: [] }).catch(() => {});
+          invoke('hide_all_webviews', { labels }).catch(() => {});
         });
       }
     }

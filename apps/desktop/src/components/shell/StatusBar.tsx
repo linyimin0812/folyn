@@ -15,6 +15,11 @@ export function StatusBar() {
   const wordCount = useEditorViewStateStore((state) => state.wordCount);
   const vaultName = useAppearanceStore((state) => state.vaultName);
 
+  // Web tabs have no meaningful status info (cursor/word count/view mode are
+  // editor-specific), and the h-6 footer would eat the bottom of the webview
+  // area. Drop out of the layout so the body row fills to the window bottom.
+  if (activeTab?.fileType === 'web') return null;
+
   return (
     <footer className="status-bar h-6 shrink-0 bg-panel border-t border-brd flex items-center justify-between px-3 text-[length:calc(var(--ui-font-size)-3px)] text-t3 font-mono">
       <div className="flex items-center gap-3">

@@ -18,106 +18,123 @@ pub async fn create_webview(
     use tauri::webview::WebviewBuilder;
     use tauri::{LogicalPosition, LogicalSize};
 
-    let window = app.get_webview_window("main")
+    // NOTE: get_webview_window("main") returns None once a child webview
+    // (label "wv-…") has been added to the main window, because its
+    // internal is_webview_window() check requires ALL webviews on the
+    // window to share the window's label. The first browser tab works
+    // (no child yet); the second fails with "Main window not found".
+    // Resolve the hosting window directly from the main webview instead.
+    let window = app
+        .get_webview("main")
+        .map(|wv| wv.window())
         .ok_or_else(|| "Main window not found".to_string())?;
 
     let parsed_url = url.parse::<tauri::Url>()
         .map_err(|e| format!("Invalid URL: {}", e))?;
 
-    // JS injected on every page load — handles target="_blank" links, URL change tracking, and blank page detection
-    let init_script = format!(r#"
-        (function() {{
+    // JS injected on every page load — opens target="_blank" links in-place.
+    let init_script = r#"
+        (function() {
             if (window.__tauriLinkHandlerInstalled) return;
             window.__tauriLinkHandlerInstalled = true;
 
-            var webviewLabel = "{}";
-
-            // Notify the host app about URL changes
-            function notifyUrlChange() {{
-                try {{
-                    var url = window.location.href;
-                    var title = document.title || url;
-                    if (window.__TAURI__ && window.__TAURI__.core) {{
-                        window.__TAURI__.core.invoke('on_webview_url_changed', {{
-                            label: webviewLabel,
-                            url: url,
-                            title: title
-                        }});
-                    }}
-                }} catch(e) {{}}
-            }}
-
-            // Intercept pushState / replaceState to detect SPA navigations
-            var origPush = history.pushState;
-            var origReplace = history.replaceState;
-            history.pushState = function() {{
-                origPush.apply(this, arguments);
-                notifyUrlChange();
-            }};
-            history.replaceState = function() {{
-                origReplace.apply(this, arguments);
-                notifyUrlChange();
-            }};
-
-            // Listen for popstate (browser back/forward)
-            window.addEventListener('popstate', notifyUrlChange);
-
-            // Listen for hashchange
-            window.addEventListener('hashchange', notifyUrlChange);
-
-            // Notify on initial load and after full page navigations
-            if (document.readyState === 'complete') {{
-                notifyUrlChange();
-            }} else {{
-                window.addEventListener('load', notifyUrlChange);
-            }}
+            // Fit the loaded page to the webview width with NO horizontal
+            // scroll and NO clipped content:
+            //  - strip default UA body margin/padding (looks like padding on
+            //    all sides, including the bottom);
+            //  - if the page's natural content width exceeds the viewport
+            //    (baidu.com et al. ship a fixed/min width larger than the
+            //    window), shrink the whole document with CSS `zoom` so every
+            //    pixel is visible — content is not clipped and there is no
+            //    horizontal scrollbar; vertical scrolling stays intact.
+            // `zoom` (not `transform: scale`) is used because it keeps
+            // position:fixed elements and layout coordinates correct and
+            // reflows the document rather than painting it at a scale.
+            // The natural (un-zoomed) width is measured by clearing zoom
+            // first, so a previously-applied zoom can't shrink scrollWidth
+            // and make us think the page fits (which would clear zoom, widen
+            // the page, and re-trigger zoom in a flicker loop).
+            // Re-evaluated on load + a couple of beats later (late site CSS /
+            // lazy images) and on resize. Re-injected on every navigation
+            // (init_script runs on each top-level document load).
+            var RULES = 'html,body{margin:0!important;padding:0!important;overflow-x:hidden!important;}';
+            function injectFitStyle() {
+                var head = document.head || document.documentElement;
+                var existing = document.getElementById('__folynFitStyle');
+                if (existing) existing.remove();
+                var s = document.createElement('style');
+                s.id = '__folynFitStyle';
+                s.textContent = RULES;
+                head.appendChild(s);
+            }
+            injectFitStyle();
+            function applyZoomToWidth() {
+                var html = document.documentElement;
+                if (!html) return;
+                // Measure the page's NATURAL content width (zoom cleared) so
+                // a previously-applied zoom can't shrink scrollWidth and make
+                // us think the page fits.
+                var prevZoom = html.style.zoom;
+                html.style.zoom = '';
+                var vw = window.innerWidth || html.clientWidth;
+                var sw = Math.max(html.scrollWidth, document.body ? document.body.scrollWidth : 0);
+                if (!vw) { html.style.zoom = prevZoom; return; }
+                if (sw <= vw + 1) return; // fits already — leave zoom cleared
+                var ratio = vw / sw;
+                if (ratio >= 1) return; // only ever shrink to fit
+                ratio = Math.max(0.1, Math.round(ratio * 1000) / 1000);
+                html.style.zoom = String(ratio);
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', injectFitStyle, true);
+            }
+            window.addEventListener('load', applyZoomToWidth, true);
+            var lateT1 = setTimeout(applyZoomToWidth, 600);
+            var lateT2 = setTimeout(applyZoomToWidth, 2000);
+            var lateT3 = setTimeout(applyZoomToWidth, 4000);
+            window.addEventListener('resize', applyZoomToWidth, true);
+            // Re-inject the overflow style if <head> changes so a site that
+            // re-declares overflow-x can't re-enable horizontal scrolling.
+            var mo = new MutationObserver(function(){ injectFitStyle(); });
+            mo.observe(document.documentElement, { childList: true, subtree: false });
+            window.addEventListener('beforeunload', function(){
+                clearTimeout(lateT1); clearTimeout(lateT2); clearTimeout(lateT3);
+            }, true);
 
             // Intercept clicks on links with target="_blank" to navigate in-place
-            document.addEventListener('click', function(e) {{
+            document.addEventListener('click', function(e) {
                 var el = e.target;
                 while (el && el.tagName !== 'A') el = el.parentElement;
                 if (!el || !el.href) return;
-                if (el.target === '_blank' || el.target === '_new') {{
+                if (el.target === '_blank' || el.target === '_new') {
                     e.preventDefault();
                     e.stopPropagation();
                     window.location.href = el.href;
-                }}
-            }}, true);
-
-            // Detect blank pages and show a friendly message
-            setTimeout(function() {{
-                var body = document.body;
-                if (!body) return;
-                var text = (body.innerText || '').trim();
-                var children = body.children.length;
-                if (text.length === 0 && children === 0) {{
-                    document.documentElement.style.background = '#1e1e2e';
-                    body.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1e1e2e;color:#cdd6f4;font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
-                    body.innerHTML = '<div style="text-align:center;max-width:400px;padding:20px;">'
-                        + '<div style="font-size:48px;margin-bottom:16px;">🌐</div>'
-                        + '<h2 style="margin:0 0 8px;font-size:18px;font-weight:600;color:#cdd6f4;">页面无法显示</h2>'
-                        + '<p style="margin:0;font-size:14px;color:#a6adc8;">此页面可能不支持在应用内嵌入显示。</p>'
-                        + '<p style="margin:8px 0 0;font-size:12px;color:#6c7086;">请使用顶部按钮在浏览器中打开。</p>'
-                        + '</div>';
-                }}
-            }}, 2000);
-        }})();
-    "#, label);
+                }
+            }, true);
+        })();
+    "#;
 
     let builder = WebviewBuilder::new(&label, tauri::WebviewUrl::External(parsed_url))
         .user_agent(&user_agent)
-        .auto_resize()
+        // No auto_resize: that flag resizes the webview to the WINDOW's
+        // content size on window events, which fights our manual
+        // set_webview_position / set_size driven by the body div's rect
+        // (syncPosition on mount, ResizeObserver, active-tab transitions,
+        // overlay-closed). Child webviews positioned at a sub-rect must be
+        // sized by those explicit calls, not window-derived dimensions.
         .initialization_script(init_script);
 
-    window.as_ref().window().add_child(
+    // Same coordinate-system fix as set_webview_position: the frontend's
+    // y is relative to the main webview's viewport, but the child is
+    // placed in contentView space. Shift it by the main webview's top
+    // offset so the initial frame is correct (syncPosition will keep it
+    // in sync on resizes).
+    window.add_child(
         builder,
         LogicalPosition::new(x, y),
         LogicalSize::new(width, height),
     ).map_err(|e| format!("Failed to create webview: {}", e))?;
-
-    // Seed freshly created browser webviews with cookies imported earlier
-    // from Chrome (if any).
-    super::browser_commands::apply_imported_cookies_to_label(&app, &label);
 
     Ok(())
 }
@@ -141,30 +158,6 @@ pub async fn navigate_webview(app: tauri::AppHandle, label: String, action: Stri
 pub async fn close_webview(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
     if let Some(wv) = app.get_webview(&label) {
         wv.close().map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-/// Hide an embedded webview by label (move off-screen to keep it alive but invisible).
-#[tauri::command]
-pub async fn hide_webview(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
-    use tauri::LogicalPosition;
-    use tauri::LogicalSize;
-
-    if let Some(wv) = app.get_webview(&label) {
-        let _ = wv.set_position(LogicalPosition::new(-10000.0, -10000.0));
-        let _ = wv.set_size(LogicalSize::new(1.0, 1.0));
-    }
-    Ok(())
-}
-
-/// Show an embedded webview by label (restore visibility - position will be set by frontend).
-#[tauri::command]
-pub async fn show_webview(app: tauri::AppHandle, label: String) -> Result<(), AppError> {
-    if let Some(wv) = app.get_webview(&label) {
-        // Just make it visible again - the frontend will call set_webview_position
-        // to restore the correct position and size
-        let _ = wv.set_size(tauri::LogicalSize::new(1.0, 1.0));
     }
     Ok(())
 }
@@ -365,31 +358,14 @@ pub async fn set_webview_position(
     width: f64,
     height: f64,
 ) -> Result<(), AppError> {
-    use tauri::LogicalPosition;
-    use tauri::LogicalSize;
+    use tauri::{LogicalPosition, LogicalSize};
 
     if let Some(wv) = app.get_webview(&label) {
-        wv.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
-        wv.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+        wv.set_bounds(tauri::Rect {
+            position: LogicalPosition::new(x, y).into(),
+            size: LogicalSize::new(width, height).into(),
+        }).map_err(|e| e.to_string())?;
     }
-    Ok(())
-}
-
-/// Receive URL change notification from an embedded webview and emit it to the frontend.
-#[tauri::command]
-pub async fn on_webview_url_changed(
-    app: tauri::AppHandle,
-    label: String,
-    url: String,
-    title: String,
-) -> Result<(), AppError> {
-    use tauri::Emitter;
-
-    app.emit("webview-url-changed", serde_json::json!({
-        "label": label,
-        "url": url,
-        "title": title,
-    })).map_err(|e| e.to_string())?;
     Ok(())
 }
 
