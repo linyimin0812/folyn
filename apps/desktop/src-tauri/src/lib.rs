@@ -1063,6 +1063,7 @@ pub fn run() {
             commands::set_webview_position,
             commands::hide_all_webviews,
             commands::load_url_webview,
+            commands::check_webview_content,
             commands::terminal_create,
             commands::terminal_write,
             commands::terminal_resize,

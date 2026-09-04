@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 use crate::errors::AppError;
 
@@ -115,6 +115,9 @@ pub async fn create_webview(
         })();
     "#;
 
+    let load_label = label.clone();
+    let load_url = url.clone();
+    let load_app = app.clone();
     let builder = WebviewBuilder::new(&label, tauri::WebviewUrl::External(parsed_url))
         .user_agent(&user_agent)
         // No auto_resize: that flag resizes the webview to the WINDOW's
@@ -123,7 +126,20 @@ pub async fn create_webview(
         // (syncPosition on mount, ResizeObserver, active-tab transitions,
         // overlay-closed). Child webviews positioned at a sub-rect must be
         // sized by those explicit calls, not window-derived dimensions.
-        .initialization_script(init_script);
+        .initialization_script(init_script)
+        // Emit load-finished when the page actually finishes loading.
+        // We do NOT rely on Started (it doesn't fire on DNS failure).
+        // The frontend arms its own 10 s timeout at creation time; if
+        // load-finished never arrives, the timeout fires and shows an
+        // error page.
+        .on_page_load(move |_wv, payload| {
+            if let tauri::webview::PageLoadEvent::Finished = payload.event() {
+                let _ = load_app.emit(
+                    "webview://load-finished",
+                    serde_json::json!({ "label": &load_label, "url": &load_url }),
+                );
+            }
+        });
 
     // Same coordinate-system fix as set_webview_position: the frontend's
     // y is relative to the main webview's viewport, but the child is
@@ -151,6 +167,29 @@ pub async fn navigate_webview(app: tauri::AppHandle, label: String, action: Stri
         _ => return Err(format!("Unknown action: {}", action).into()),
     };
     wv.eval(js).map_err(|e| AppError::from(e.to_string()))
+}
+
+/// Check whether the webview has visible content. Used by the frontend
+/// after a load timeout to distinguish a genuinely blank/failed page
+/// from a slow-but-loading one. Returns JSON { blank, title, bodyTextLen }.
+#[tauri::command]
+pub async fn check_webview_content(app: tauri::AppHandle, label: String) -> Result<String, String> {
+    let wv = app.get_webview(&label)
+        .ok_or_else(|| format!("Webview '{}' not found", label))?;
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    let js = r#"(function(){
+        var b = document.body;
+        var h = document.documentElement;
+        var bt = b ? (b.innerText || '').trim() : '';
+        var bc = b ? b.children.length : 0;
+        var hc = h ? h.children.length : 0;
+        JSON.stringify({ blank: bc === 0 && bt.length === 0 && hc <= 1, title: document.title || '', bodyTextLen: bt.length });
+    })()"#;
+    wv.eval_with_callback(js, move |result: String| {
+        let _ = tx.send(result);
+    }).map_err(|e| e.to_string())?;
+    Ok(rx.recv_timeout(std::time::Duration::from_secs(2))
+        .unwrap_or_else(|_| r#"{"blank":true,"title":"","bodyTextLen":0}"#.to_string()))
 }
 
 /// Close an embedded webview by label.

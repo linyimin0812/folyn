@@ -1,10 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { isTauri } from '@/utils/platform';
 import { useEditorStore } from '@/store/editorStore';
-import { openBrowserTab, openFile } from '@/services/editorIoService';
-import { useClipStore } from '@/store/clipStore';
-import { useTranslation } from 'react-i18next';
-import { Plus, Globe } from 'lucide-react';
+import { Globe, Copy } from 'lucide-react';
 import type { EditorProps } from '../types';
 
 type WebviewError = { code: 'invalid_url' | 'unknown' };
@@ -96,16 +93,15 @@ export function hideWebviewsForOverlay(): void {
 }
 
 export function WebViewer({ filePath, tabId }: EditorProps) {
-  const { t } = useTranslation();
   const webViewerRef = useRef<HTMLDivElement>(null);
   const webviewLabelRef = useRef<string | null>(null);
+  // 10 s timeout — if webview://load-finished doesn't arrive in time,
+  // the page failed to load (DNS error, connection refused, etc.).
+  // We hide the native webview and show the HTML error overlay.
+  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track the label whose load we're waiting for.
+  const loadingLabelRef = useRef<string | null>(null);
   const [status, setStatus] = useState<WebviewStatus>('loading');
-  const [clipping, setClipping] = useState(false);
-  const [clipError, setClipError] = useState(false);
-  const [clipDuplicate, setClipDuplicate] = useState<{ url: string; existingPath: string } | null>(null);
-  const [urlInput, setUrlInput] = useState(filePath);
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if this web tab was opened from a clip card
   const clipPath = useEditorStore((s) => {
@@ -118,35 +114,90 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const isActive = activeTabId === tabId;
 
-  useEffect(() => {
-    setUrlInput(filePath);
-  }, [filePath]);
-
-  useEffect(() => () => {
-    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+  // Start a 10 s load-failure timer. If webview://load-finished hasn't
+  // arrived by then, the navigation failed silently (wry 0.55.1 does not
+  // implement didFailProvisionalNavigation, so there is no failure event).
+  // On timeout: hide the native webview (so the HTML error overlay at
+  // z-10 is visible — native renders above all DOM) and show the error.
+  const startLoadTimeout = useCallback((label: string) => {
+    if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+    loadingLabelRef.current = label;
+    loadTimeoutRef.current = setTimeout(async () => {
+      loadTimeoutRef.current = null;
+      if (loadingLabelRef.current !== label) return;
+      // Before showing an error, check if the webview has visible
+      // content — a slow page may have started rendering. If it has
+      // content, show it instead of erroring.
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = await invoke<string>('check_webview_content', { label });
+        const info = JSON.parse(result);
+        if (!info.blank) {
+          // Page has content — bring it on-screen.
+          const container = webViewerRef.current;
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            const overlap = await titlebarOverlap();
+            await invoke('set_webview_position', {
+              label, x: Math.round(rect.left),
+              y: Math.round(rect.top) + overlap,
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+            }).catch(() => {});
+          }
+          setStatus('ready');
+          return;
+        }
+      } catch {
+        // Check failed — fall through to error.
+      }
+      hideWebviewLabel(label);
+      setStatus({ error: { code: 'unknown' } });
+    }, 3000);
   }, []);
 
-  const showNotice = useCallback((msg: string) => {
-    setNotice(msg);
-    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-    noticeTimerRef.current = setTimeout(() => setNotice(null), 4000);
-  }, []);
-
-  const submitUrl = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    const label = webviewLabelRef.current;
-    const raw = urlInput.trim();
-    if (!label || !raw) return;
-    let url = raw;
-    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-    if (!isTauri()) {
-      window.location.href = url;
-      return;
+  // Clear the load timer (page loaded successfully).
+  const clearLoadTimeout = useCallback(() => {
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
     }
-    import('@tauri-apps/api/core').then(({ invoke }) => {
-      invoke('load_url_webview', { label, url }).catch(() => showNotice(t('browser:navigateFailed')));
-    });
-  }, [urlInput, showNotice, t]);
+  }, []);
+
+  // Listen for webview://load-finished from Rust's on_page_load hook.
+  // When the page finishes, bring the webview back on-screen (it was
+  // hidden off-screen during loading so the spinner was visible) and
+  // show it.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<{ label: string; url: string }>('webview://load-finished', async (event) => {
+        if (event.payload.label !== loadingLabelRef.current) return;
+        clearLoadTimeout();
+        // Bring the webview back on-screen.
+        const container = webViewerRef.current;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            const overlap = await titlebarOverlap();
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('set_webview_position', {
+              label: event.payload.label,
+              x: Math.round(rect.left),
+              y: Math.round(rect.top) + overlap,
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+            }).catch(() => {});
+          }
+        }
+        setStatus('ready');
+      }).then((fn) => { unlisten = fn; });
+    }).catch(() => {});
+    return () => { unlisten?.(); };
+  }, [clearLoadTimeout]);
+
+
 
   const handleBackToClip = useCallback(async () => {
     if (!clipPath) return;
@@ -158,38 +209,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
 
   // Move the native webview off-screen so HTML overlays (e.g. the duplicate
   // clip confirm dialog) are visible. Restored via syncPosition().
-  const hideWebview = useCallback(async () => {
-    const cached = webviewCache.get(tabId);
-    if (cached) await hideWebviewLabel(cached.label);
-  }, [tabId]);
 
-  const handleClipPage = useCallback(async () => {
-    if (!filePath || clipping) return;
-    try {
-      new URL(filePath);
-    } catch {
-      return;
-    }
-    // Duplicate check before clipping.
-    await useClipStore.getState().loadClips();
-    const existing = useClipStore.getState().findClipByUrl(filePath);
-    if (existing) {
-      await hideWebview();
-      setClipDuplicate({ url: filePath, existingPath: existing });
-      return;
-    }
-    setClipping(true);
-    setClipError(false);
-    try {
-      await useClipStore.getState().clipUrl(filePath);
-    } catch (err) {
-      console.error('[WebViewer] Clip failed:', err);
-      setClipError(true);
-      setTimeout(() => setClipError(false), 3000);
-    } finally {
-      setClipping(false);
-    }
-  }, [filePath, clipping, hideWebview]);
 
   const syncPosition = useCallback(async () => {
     const container = webViewerRef.current;
@@ -214,41 +234,8 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     } catch {}
   }, []);
 
-  const handleDuplicateOpen = useCallback(async () => {
-    if (!clipDuplicate) return;
-    const { existingPath } = clipDuplicate;
-    const fileName = existingPath.split('/').pop() || existingPath;
-    setClipDuplicate(null);
-    await syncPosition();
-    try {
-      await openFile(existingPath, fileName);
-    } catch (err) {
-      console.error('[WebViewer] openFile failed:', err);
-    }
-  }, [clipDuplicate, syncPosition]);
 
-  const handleDuplicateRegenerate = useCallback(async () => {
-    if (!clipDuplicate) return;
-    const { url } = clipDuplicate;
-    setClipDuplicate(null);
-    setClipping(true);
-    setClipError(false);
-    try {
-      await useClipStore.getState().clipUrl(url, undefined, undefined, { force: true });
-    } catch (err) {
-      console.error('[WebViewer] Clip failed:', err);
-      setClipError(true);
-      setTimeout(() => setClipError(false), 3000);
-    } finally {
-      setClipping(false);
-      await syncPosition();
-    }
-  }, [clipDuplicate, syncPosition]);
 
-  const handleDuplicateCancel = useCallback(async () => {
-    setClipDuplicate(null);
-    await syncPosition();
-  }, [syncPosition]);
 
   useEffect(() => {
     if (!isTauri() || !filePath) return;
@@ -345,7 +332,13 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         allWebviewLabels.add(label);
         // Cache the webview for this tab
         webviewCache.set(tabId, { label, url: filePath });
-        setStatus('ready');
+        // Hide the webview off-screen while loading so the HTML spinner
+        // (z-10) is visible — native WKWebView renders above all DOM.
+        // On load-finished the listener brings it back + sets 'ready'.
+        // On timeout (10 s) the listener hides it + shows error page.
+        hideWebviewLabel(label);
+        setStatus('loading');
+        startLoadTimeout(label);
       } catch (err) {
         setStatus({ error: { code: 'unknown' } });
       }
@@ -353,6 +346,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
 
     return () => {
       clearTimeout(timer);
+      clearLoadTimeout();
       // Hide webview when component unmounts (e.g., switching tabs)
       const label = webviewLabelRef.current;
       if (label) {
@@ -360,7 +354,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         webviewLabelRef.current = null;
       }
     };
-  }, [filePath, tabId, syncPosition]);
+  }, [filePath, tabId, syncPosition, startLoadTimeout, clearLoadTimeout]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -432,6 +426,14 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
     }
   };
 
+  const [copied, setCopied] = useState(false);
+  const copyUrl = useCallback(() => {
+    navigator.clipboard.writeText(filePath).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [filePath]);
+
   return (
     <div className="web-viewer-container flex-1 flex flex-col bg-surf overflow-hidden relative">
       <div className="web-viewer-bar flex items-center gap-1.5 py-1 px-2 bg-panel border-b border-brd shrink-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -464,42 +466,28 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
             </button>
           </>
         )}
-        <form className="flex-1 min-w-[140px] flex items-center shrink-0" onSubmit={submitUrl}>
+        <div className="flex-1 min-w-[140px] flex items-center shrink-0">
           <div className="flex-1 min-w-0 flex items-center gap-1.5 h-[26px] px-2.5 rounded-[6px] bg-bg border border-brd transition-colors duration-150 focus-within:border-acc">
             <Globe size={12} className="text-t3 shrink-0" />
             <input
-              className="flex-1 min-w-0 bg-transparent border-none outline-none text-xs text-t2 font-mono placeholder:text-t3"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder={t('browser:addressPlaceholder')}
-              spellCheck={false}
-              autoCapitalize="off"
-              autoCorrect="off"
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-xs text-t2 font-mono"
+              value={filePath}
+              readOnly
             />
           </div>
-        </form>
-        {!clipPath && (
-          <button className="web-viewer-clip-btn flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed" title={clipError ? '剪藏失败，请重试' : '剪藏此页'} onClick={handleClipPage} disabled={clipping}>
-            {clipping ? (
-              <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin" />
-            ) : clipError ? (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#e05252" strokeWidth="1.5">
-                <circle cx="8" cy="8" r="6" />
-                <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3 2v12l5-3 5 3V2H3z" />
-              </svg>
-            )}
-          </button>
-        )}
+        </div>
         <button
           className="flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1"
-          title={t('browser:newTab')}
-          onClick={() => openBrowserTab()}
+          title={copied ? '已复制' : '复制链接'}
+          onClick={copyUrl}
         >
-          <Plus size={14} />
+          {copied ? (
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 8l3.5 3.5L13 4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <Copy size={14} />
+          )}
         </button>
         <button className="web-viewer-open-btn flex items-center justify-center w-7 h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="在外部浏览器打开" onClick={openExternal}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -510,43 +498,7 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
         </button>
       </div>
 
-      {notice && (
-        <div className="absolute left-3 bottom-3 z-[130] max-w-[70%] bg-panel border border-brd rounded-[8px] shadow-[0_6px_20px_rgba(0,0,0,0.18)] px-3 py-2 text-xs text-t1 pointer-events-none">
-          {notice}
-        </div>
-      )}
 
-      {clipDuplicate && (
-        <div className="web-viewer-duplicate absolute inset-x-0 top-10 bottom-0 flex items-center justify-center bg-surf z-20 p-4">
-          <div className="flex flex-col gap-2.5 max-w-[360px] w-full bg-panel border border-brd rounded-[10px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] p-5">
-            <div className="text-[14px] font-semibold text-t1">该链接已经剪藏过</div>
-            <div className="text-[11px] text-t2 break-all bg-bg rounded-md px-2.5 py-1.5 border border-brd">
-              {clipDuplicate.url}
-            </div>
-            <div className="text-[12px] text-t2 leading-relaxed">是否打开已有笔记，或重新生成并覆盖？</div>
-            <div className="flex flex-col gap-1.5">
-              <button
-                className="py-2 text-[13px] rounded-md bg-acc text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
-                onClick={handleDuplicateOpen}
-              >
-                打开已有
-              </button>
-              <button
-                className="py-2 text-[13px] rounded-md bg-amber-500 text-white border-none cursor-pointer hover:opacity-90 transition-opacity font-medium"
-                onClick={handleDuplicateRegenerate}
-              >
-                重新生成
-              </button>
-              <button
-                className="py-2 text-[13px] rounded-md bg-bg text-t2 border border-brd cursor-pointer hover:bg-hov transition-colors"
-                onClick={handleDuplicateCancel}
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {status === 'loading' && (
         <div className="web-viewer-status absolute inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center gap-3 bg-surf z-10 text-t2">
