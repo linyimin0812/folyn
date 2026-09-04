@@ -31,12 +31,16 @@ export const webviewCache = new Map<string, { label: string; url: string }>();
  * the frontend's `y` so the child reaches the true window bottom.
  *
  * No-op (0) off Tauri or when there is no overlap (transparent/hidden titlebar).
- * Cached for the session — titlebar height does not change while the app runs.
+ * Recomputed on every call — the overlap changes when the main window
+ * toggles native fullscreen (titlebar hidden in fullscreen, visible
+ * otherwise), so a session-cached value goes stale and pushes the child
+ * webview down by the (now-absent) titlebar height, leaving a top gap in
+ * fullscreen. `innerSize()` + `window.innerHeight` are cheap; the callers
+ * (syncPosition, load-finished, create) already re-run on resize/active
+ * transitions, so a fresh value keeps the child aligned at all times.
  */
-let cachedTitlebarOverlap: number | null = null;
 async function titlebarOverlap(): Promise<number> {
   if (!isTauri()) return 0;
-  if (cachedTitlebarOverlap !== null) return cachedTitlebarOverlap;
   try {
     const { getCurrentWindow } = await import('@tauri-apps/api/window');
     const win = getCurrentWindow();
@@ -45,7 +49,6 @@ async function titlebarOverlap(): Promise<number> {
     const contentLogicalH = inner.height / scale;
     const layoutViewportH = window.innerHeight || 0;
     const overlap = Math.max(0, Math.round(contentLogicalH - layoutViewportH));
-    cachedTitlebarOverlap = overlap;
     return overlap;
   } catch {
     return 0;
