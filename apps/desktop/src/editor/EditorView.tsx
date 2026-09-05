@@ -405,8 +405,19 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         ...codeBlockExtension,
         ...orderedListExtension,
         ...mathExtension,
-        EditorView.lineWrapping,
-        EditorView.domEventHandlers({
+       EditorView.lineWrapping,
+       // Wrap selected text with backticks instead of replacing the
+       // selection when a backtick is typed in Markdown mode.
+       EditorView.inputHandler.of((view, from, to, text) => {
+         if (text !== '`' || from === to) return false;
+         const sel = view.state.sliceDoc(from, to);
+         view.dispatch({
+           changes: { from, to, insert: `\`${sel}\`` },
+           selection: { anchor: from + 1, head: from + 1 + sel.length },
+         });
+         return true;
+       }),
+       EditorView.domEventHandlers({
           paste(event) {
             const items = event.clipboardData?.items;
             if (!items) return false;
