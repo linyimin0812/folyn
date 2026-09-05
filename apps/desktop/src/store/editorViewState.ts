@@ -36,6 +36,12 @@ interface EditorViewState {
   cursorLine: number;
   cursorCol: number;
   wordCount: number;
+  /** Fraction (0..1) of the cursor within the editor scroll viewport. */
+  cursorViewportY: number;
+  lineLength: number;
+  /** True when the editor has an active (non-empty) text selection.
+   *  Previews skip cursor-sync while the user is selecting. */
+  hasSelection: boolean;
   outlineVisible: boolean;
   aiPanelVisible: boolean;
   /** Right-dock terminal panel visibility (independent of the AI panel). */
@@ -58,6 +64,8 @@ interface EditorViewState {
 
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
+  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineLength: number) => void;
+  setHasSelection: (v: boolean) => void;
   toggleOutline: () => void;
   toggleAiPanel: () => void;
   /** Show the terminal panel in the bottom dock (used by the Topbar terminal icon). */
@@ -86,6 +94,10 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   cursorLine: 1,
   cursorCol: 1,
   wordCount: 0,
+  cursorViewportY: 0,
+  editorViewportTop: 0,
+  lineLength: 1,
+  hasSelection: false,
   outlineVisible: false,
   aiPanelVisible: false,
   terminalPanelVisible: false,
@@ -113,6 +125,8 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   },
 
   setWordCount: (count) => set({ wordCount: count }),
+  setCursorViewportY: (y, viewportTop, cursorCol, lineLength) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, lineLength }),
+  setHasSelection: (v) => set({ hasSelection: v }),
 
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),
   toggleAiPanel: () => set((state) => ({ aiPanelVisible: !state.aiPanelVisible })),

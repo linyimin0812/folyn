@@ -1407,3 +1407,11 @@ mjx-container svg {
   --markmap-code-bg: #1a1b26;
   --markmap-code-color: #ddd;
 }
+
+/* ponytail: persistent calm highlight on the preview block the editor
+   cursor syncs to in split mode. No flash/animation — just a soft left
+   subtle background that moves smoothly between blocks. */
+.md-preview .cursor-sync-active {
+  background-color: color-mix(in srgb, var(--acc) 6%, transparent);
+  border-radius: 4px;
+}

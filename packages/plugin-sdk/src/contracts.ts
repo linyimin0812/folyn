@@ -40,6 +40,37 @@ export interface PreviewProps {
    * (csv, office, dbml, markdown) simply omit it.
    */
   onChange?: (content: string) => void;
+  /**
+   * Current editor cursor line (1-based). When provided, a split-mode preview
+   * can scroll to the rendered block whose source line matches the cursor.
+   * Only meaningful for previews that understand source-line mapping (e.g.
+   * the built-in Markdown preview). Optional — most previews ignore it.
+   */
+  cursorLine?: number;
+  /**
+   * Pixel y-offset of the cursor line top from the top of the editor
+   * scroll VIEWPORT (excludes scrollTop). Used by split-mode previews
+   * to align the synced block to the same vertical viewport position
+   * as the cursor. Optional.
+   */
+  cursorViewportY?: number;
+  /**
+   * Screen y of the editor scroll DOM top, captured at the same time as
+   * cursorViewportY. Used to compute the offset between the editor and
+   * preview scroll viewports so the synced block aligns to the cursor's
+   * actual screen position. Optional.
+   */
+  editorViewportTop?: number;
+  /** Cursor column (0-based offset within the current line). */
+  cursorCol?: number;
+  /** Length of the line the cursor is on. */
+  lineLength?: number;
+  /**
+   * True when the editor has an active text selection (non-empty range).
+   * Previews should skip cursor-sync scrolling while the user is
+   * selecting — selection drags cause rapid jitter. Optional.
+   */
+  hasSelection?: boolean;
 }
 
 export interface FileTypeHandler {

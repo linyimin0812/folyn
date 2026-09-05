@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback, forwardRef, type ComponentType } from 'react';
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { extractHeadings } from '@/utils/markdownUtils';
 import { MarkmapCanvas } from '../file-types/markmap/MarkmapCanvas';
 import { resolveAssetBase } from '../file-types/previewPath';
@@ -24,6 +25,15 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     { activeTab, Preview, vaultRoot, viewMode, previewFlex, onScrollToHeading, onChange },
     ref,
   ) {
+    // ponytail: cursor line drives preview scroll-sync in split mode only.
+    // In preview-only mode the editor is unmounted, so cursorLine never
+    // changes; passing it would scroll to a stale position on tab switch.
+    const cursorLine = useEditorViewStateStore((s) => viewMode === 'split' ? s.cursorLine : 0);
+    const cursorViewportY = useEditorViewStateStore((s) => viewMode === 'split' ? s.cursorViewportY : 0);
+    const editorViewportTop = useEditorViewStateStore((s) => viewMode === 'split' ? s.editorViewportTop : 0);
+    const cursorCol = useEditorViewStateStore((s) => viewMode === 'split' ? s.cursorCol : 1);
+    const lineLength = useEditorViewStateStore((s) => viewMode === 'split' ? s.lineLength : 1);
+    const hasSelection = useEditorViewStateStore((s) => viewMode === 'split' ? s.hasSelection : false);
     const [outlineVisible, setOutlineVisible] = useState(false);
     const [outlineWidth, setOutlineWidth] = useState(180);
     // Markmap preview toggle (markdown only). Default false = normal preview.
@@ -167,6 +177,12 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   content={activeTab.content}
                   filePath={activeTab.path}
                   vaultRoot={vaultRoot}
+                  cursorLine={cursorLine}
+                  cursorViewportY={cursorViewportY}
+                  editorViewportTop={editorViewportTop}
+                  cursorCol={cursorCol}
+                  lineLength={lineLength}
+                  hasSelection={hasSelection}
                   onChange={onChange}
                 />
               </div>
@@ -189,6 +205,9 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 content={activeTab.content}
                 filePath={activeTab.path}
                 vaultRoot={vaultRoot}
+                cursorLine={cursorLine}
+                cursorViewportY={cursorViewportY}
+                  hasSelection={hasSelection}
                 onChange={onChange}
               />
             </div>

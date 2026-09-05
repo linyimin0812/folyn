@@ -782,10 +782,95 @@ function VaultImageInner(props: {
   return createElement(ResizableMedia, { kind: 'img', sourceLine, contentRef, onChangeRef }, imgEl);
 }
 
-export function MarkdownPreview({ content, filePath, vaultRoot, onChange }: import('../types').PreviewProps) {
+export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursorLine, cursorViewportY, editorViewportTop, cursorCol, lineLength, hasSelection }: import('../types').PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
+
+  // ponytail: cursor-driven preview scroll (split mode only). When the
+  // editor cursor moves, scroll the preview so the point in the matched
+  // block that corresponds to the cursor line aligns to the same
+  // vertical viewport position as the cursor. Both panes share the same
+  // flex-row height. Scroll-sync (preview scroll -> editor) is NOT
+  // implemented; only cursor -> preview. The effect never re-parses the
+  // markdown (no cursor prop is in reactContent deps).
+  const activeBlockRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (cursorLine == null || cursorLine <= 0) return;
+    if (hasSelection) return;
+    const root = containerRef.current;
+    if (!root) return;
+    const blocks = root.querySelectorAll('[data-source-line]');
+    if (blocks.length === 0) return;
+    let target: Element | null = null;
+    let bestLine = 0;
+    blocks.forEach((el) => {
+      const raw = el.getAttribute('data-source-line');
+      if (raw == null) return;
+      const line = Number(raw);
+      if (!Number.isFinite(line)) return;
+      if (line <= cursorLine && line >= bestLine) {
+        bestLine = line;
+        target = el;
+      }
+    });
+    const scrollContainer = root.parentElement;
+    if (!scrollContainer) return;
+    if (!target) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const el = target as HTMLElement;
+    const blockChanged = activeBlockRef.current !== el;
+    if (blockChanged) {
+      activeBlockRef.current?.classList.remove('cursor-sync-active');
+      activeBlockRef.current = el;
+      el.classList.add('cursor-sync-active');
+    }
+
+    // Align the preview block to the cursor's screen position.
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const blockRect = el.getBoundingClientRect();
+    const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop;
+    const blockHeight = blockRect.height;
+    const blockSrcLine = Number(target.getAttribute('data-source-line'));
+
+    const srcLines = contentRef.current.split('\n');
+    let blockLineSpan = 0;
+    for (let i = blockSrcLine - 1; i < srcLines.length; i++) {
+      if (srcLines[i].trim() === '') break;
+      blockLineSpan++;
+    }
+    if (blockLineSpan < 1) blockLineSpan = 1;
+
+    let intraFrac = 0;
+    if (blockLineSpan > 1) {
+      // Multi-line block: fraction by line offset.
+      intraFrac = Math.min(1, Math.max(0, (cursorLine - blockSrcLine) / (blockLineSpan - 1)));
+    } else {
+      // Single source line that renders tall (code block, image, etc.):
+      // use cursor column fraction within the line.
+      const ll = (lineLength ?? 1) || 1;
+      intraFrac = Math.min(1, Math.max(0, (cursorCol ?? 0) / ll));
+    }
+    const alignPoint = blockOffset + intraFrac * blockHeight;
+
+    // cursorScreenY = where the cursor is on screen.
+    // After setting scrollTop=desired, the align point appears at
+    // screen y = containerRect.top + (alignPoint - desired).
+    // We want that = cursorScreenY.
+    const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
+    const desired = Math.max(0, alignPoint - (cursorScreenY - containerRect.top));
+    if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
+      scrollContainer.scrollTop = desired;
+    }
+  }, [cursorLine, cursorViewportY, editorViewportTop, cursorCol, lineLength, hasSelection]);
+
+  // Clean up the active-block marker on unmount.
+  useEffect(() => {
+    return () => activeBlockRef.current?.classList.remove('cursor-sync-active');
+  }, []);
 
   // ponytail: content/onChange change every keystroke. componentMap below
   // used to close over them, which forced a full map rebuild + unified re-parse

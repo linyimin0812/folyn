@@ -302,6 +302,12 @@ export interface PreviewProps {
   filePath: string;
   vaultRoot: string;
   onChange?: (content: string) => void;
+  cursorLine?: number;
+  cursorViewportY?: number;
+  editorViewportTop?: number;
+  cursorCol?: number;
+  lineLength?: number;
+  hasSelection?: boolean;
 }
 
 export interface FileTypeHandler {

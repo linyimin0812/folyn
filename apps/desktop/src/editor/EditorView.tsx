@@ -209,6 +209,8 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     const langCompartment = useRef(new Compartment());
     const setCursorPosition = useEditorViewStateStore((s) => s.setCursorPosition);
     const setWordCount = useEditorViewStateStore((s) => s.setWordCount);
+    const setCursorViewportY = useEditorViewStateStore((s) => s.setCursorViewportY);
+    const setHasSelection = useEditorViewStateStore((s) => s.setHasSelection);
     const editorFont = useEditorPrefsStore((s) => s.editorFont);
     const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
     const showLineNumbers = useEditorPrefsStore((s) => s.showLineNumbers);
@@ -305,9 +307,28 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
             setWordCount(words);
           }
           if (update.selectionSet) {
-            const pos = update.state.selection.main.head;
+            const sel = update.state.selection.main;
+            // Skip cursor-sync entirely when the user has an active
+            // selection (drag select, multi-line select) — the sync is
+            // for single-cursor navigation only; selection moves cause
+            // rapid preview jitter. Cursor position (status bar) still
+            // updates so the user sees where they are.
+            const pos = sel.head;
             const line = update.state.doc.lineAt(pos);
             setCursorPosition(line.number, pos - line.from + 1);
+            setHasSelection(sel.from !== sel.to);
+            if (sel.from === sel.to) {
+              const v = update.view;
+              const sd = v.scrollDOM;
+              if (sd) {
+                const coords = v.coordsAtPos(pos);
+                if (coords) {
+                  const r = sd.getBoundingClientRect();
+                  const h = r.height || 1;
+                  setCursorViewportY(coords.top - r.top, r.top, pos - line.from, line.length);
+                }
+              }
+            }
           }
           // Notify parent about slash menu state changes. Derived purely from
           // the document + cursor (no CodeMirror transaction, no state field),
@@ -321,7 +342,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
         }
       },
-      [setCursorPosition, setWordCount, sp.setViewTick],
+      [setCursorPosition, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick],
     );
 
     useEffect(() => {
