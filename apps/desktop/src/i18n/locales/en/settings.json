@@ -148,6 +148,10 @@
       "label": "Auto save",
       "description": "Auto-save the current document every 5s"
     },
+    "cursorSyncPreview": {
+      "label": "Cursor sync preview",
+      "description": "Scroll the preview to the block matching the editor cursor in split mode"
+    },
     "linkOpenMode": {
       "label": "Link open mode",
       "description": "Default behavior when clicking a link",

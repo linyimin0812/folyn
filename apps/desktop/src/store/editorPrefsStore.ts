@@ -13,6 +13,7 @@ export const PERSIST_KEYS_EDITOR_PREFS = [
   'autoSave',
   'spellCheck',
   'tablePasteMode',
+  'cursorSyncPreview',
 ] as const;
 
 export interface EditorPrefsState {
@@ -25,6 +26,7 @@ export interface EditorPrefsState {
   autoSave: boolean;
   spellCheck: boolean;
   tablePasteMode: TablePasteMode;
+  cursorSyncPreview: boolean;
 
   setEditorFont: (v: string) => void;
   setEditorFontSize: (v: number) => void;
@@ -35,6 +37,7 @@ export interface EditorPrefsState {
   setAutoSave: (v: boolean) => void;
   setSpellCheck: (v: boolean) => void;
   setTablePasteMode: (v: TablePasteMode) => void;
+  setCursorSyncPreview: (v: boolean) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -50,6 +53,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   autoSave: true,
   spellCheck: false,
   tablePasteMode: 'ask',
+  cursorSyncPreview: true,
 
   setEditorFont: (v) => { set({ editorFont: v }); persist(); },
   setEditorFontSize: (v) => { set({ editorFontSize: v }); persist(); },
@@ -60,6 +64,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   setAutoSave: (v) => { set({ autoSave: v }); persist(); },
   setSpellCheck: (v) => { set({ spellCheck: v }); persist(); },
   setTablePasteMode: (v) => { set({ tablePasteMode: v }); persist(); },
+  setCursorSyncPreview: (v) => { set({ cursorSyncPreview: v }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<EditorPrefsState> = {};
@@ -72,6 +77,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
     if (blob.autoSave !== undefined) patch.autoSave = blob.autoSave as boolean;
     if (blob.spellCheck !== undefined) patch.spellCheck = blob.spellCheck as boolean;
     if (blob.tablePasteMode !== undefined) patch.tablePasteMode = blob.tablePasteMode as TablePasteMode;
+    if (blob.cursorSyncPreview !== undefined) patch.cursorSyncPreview = blob.cursorSyncPreview as boolean;
     if (Object.keys(patch).length > 0) set(patch);
   },
 }));

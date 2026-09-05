@@ -148,6 +148,10 @@
       "label": "Guardado automático",
       "description": "Guardar el documento actual cada 5s"
     },
+    "cursorSyncPreview": {
+      "label": "Sincronización del cursor",
+      "description": "En modo dividido, la vista previa se desplaza al bloque que coincide con la posición del cursor del editor"
+    },
     "linkOpenMode": {
       "label": "Modo de apertura de enlaces",
       "description": "Comportamiento por defecto al hacer clic en un enlace",

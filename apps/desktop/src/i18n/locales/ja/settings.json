@@ -148,6 +148,10 @@
       "label": "自動保存",
       "description": "現在のドキュメントを5秒ごとに自動保存"
     },
+    "cursorSyncPreview": {
+      "label": "カーソル同期プレビュー",
+      "description": "分割モードでプレビューがエディタのカーソル位置に対応するブロックにスクロール"
+    },
     "linkOpenMode": {
       "label": "リンクを開く方式",
       "description": "リンククリック時のデフォルト挙動",

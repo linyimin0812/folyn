@@ -148,6 +148,10 @@
       "label": "Enregistrement auto",
       "description": "Enregistrer le document courant toutes les 5s"
     },
+    "cursorSyncPreview": {
+      "label": "Synchronisation du curseur",
+      "description": "En mode scindé, l'aperçu défile vers le bloc correspondant au curseur de l'éditeur"
+    },
     "linkOpenMode": {
       "label": "Mode d'ouverture des liens",
       "description": "Comportement par défaut au clic sur un lien",

@@ -83,11 +83,13 @@ export function SettingsPage() {
   const tabSize = useEditorPrefsStore((s) => s.tabSize);
   const showLineNumbers = useEditorPrefsStore((s) => s.showLineNumbers);
   const autoSave = useEditorPrefsStore((s) => s.autoSave);
+  const cursorSyncPreview = useEditorPrefsStore((s) => s.cursorSyncPreview);
   const setEditorFont = useEditorPrefsStore((s) => s.setEditorFont);
   const setEditorFontSize = useEditorPrefsStore((s) => s.setEditorFontSize);
   const setTabSize = useEditorPrefsStore((s) => s.setTabSize);
   const setShowLineNumbers = useEditorPrefsStore((s) => s.setShowLineNumbers);
   const setAutoSave = useEditorPrefsStore((s) => s.setAutoSave);
+  const setCursorSyncPreview = useEditorPrefsStore((s) => s.setCursorSyncPreview);
 
   const shortcuts = usePrefsStore((s) => s.shortcuts);
   const resetShortcuts = usePrefsStore((s) => s.resetShortcuts);
@@ -272,6 +274,7 @@ export function SettingsPage() {
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.tabSize.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={tabSize} onChange={(e) => setTabSize(parseInt(e.target.value))}><option value={2}>{t('settings:editor.tabSize.2')}</option><option value={4}>{t('settings:editor.tabSize.4')}</option></select></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.showLineNumbers.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.showLineNumbers.description')}</p></div><Toggle value={showLineNumbers} onChange={(v) => setShowLineNumbers(v)} /></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.autoSave.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.autoSave.description')}</p></div><Toggle value={autoSave} onChange={(v) => setAutoSave(v)} /></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.cursorSyncPreview.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.cursorSyncPreview.description')}</p></div><Toggle value={cursorSyncPreview} onChange={(v) => setCursorSyncPreview(v)} /></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
               <div className="tr-info">
                 <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.linkOpenMode.label')}</h4>

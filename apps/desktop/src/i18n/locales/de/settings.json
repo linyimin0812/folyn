@@ -148,6 +148,10 @@
       "label": "Automatisch speichern",
       "description": "Aktuelles Dokument alle 5s speichern"
     },
+    "cursorSyncPreview": {
+      "label": "Cursor-Synchronisierung",
+      "description": "In der Split-Ansicht scrollt die Vorschau zum Block der Editor-Cursorposition"
+    },
     "linkOpenMode": {
       "label": "Link-Öffnungsmodus",
       "description": "Standardverhalten beim Klick auf einen Link",

@@ -148,6 +148,10 @@
       "label": "自动保存",
       "description": "每 5 秒自动保存当前文档"
     },
+    "cursorSyncPreview": {
+      "label": "光标同步预览",
+      "description": "在分屏模式下，预览跟随编辑器光标滚动到对应内容块"
+    },
     "linkOpenMode": {
       "label": "链接打开方式",
       "description": "点击链接时的默认打开方式",

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback, forwardRef, type ComponentTyp
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
 import { useEditorViewStateStore } from '@/store/editorViewState';
+import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { extractHeadings } from '@/utils/markdownUtils';
 import { MarkmapCanvas } from '../file-types/markmap/MarkmapCanvas';
 import { resolveAssetBase } from '../file-types/previewPath';
@@ -28,11 +29,12 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // ponytail: cursor line drives preview scroll-sync in split mode only.
     // In preview-only mode the editor is unmounted, so cursorLine never
     // changes; passing it would scroll to a stale position on tab switch.
-    const cursorLine = useEditorViewStateStore((s) => viewMode === 'split' ? s.cursorLine : 0);
-    const cursorViewportY = useEditorViewStateStore((s) => viewMode === 'split' ? s.cursorViewportY : 0);
-    const editorViewportTop = useEditorViewStateStore((s) => viewMode === 'split' ? s.editorViewportTop : 0);
-    const cursorCol = useEditorViewStateStore((s) => viewMode === 'split' ? s.cursorCol : 1);
-    const lineLength = useEditorViewStateStore((s) => viewMode === 'split' ? s.lineLength : 1);
+    const cursorSyncPreview = useEditorPrefsStore((s) => s.cursorSyncPreview);
+    const cursorLine = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorLine : 0);
+    const cursorViewportY = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorViewportY : 0);
+    const editorViewportTop = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.editorViewportTop : 0);
+    const cursorCol = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorCol : 1);
+    const lineLength = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.lineLength : 1);
     const hasSelection = useEditorViewStateStore((s) => viewMode === 'split' ? s.hasSelection : false);
     const [outlineVisible, setOutlineVisible] = useState(false);
     const [outlineWidth, setOutlineWidth] = useState(180);
