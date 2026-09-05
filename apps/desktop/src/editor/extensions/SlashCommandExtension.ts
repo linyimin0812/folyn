@@ -23,15 +23,16 @@ export interface SlashMenuState {
  * - `filter` is everything between that '/' and the cursor.
  */
 
-/** Lezer markdown node names that mark the interior of a code block. The
+/** Lezer markdown node names that mark the interior of code spans. The
  *  FencedCode/CodeBlock nodes wrap the whole region (including the fence
- *  markers); CodeText is the actual code content overlay. */
-const CODE_BLOCK_NODES = new Set(['FencedCode', 'CodeBlock', 'CodeText']);
+ *  markers); CodeText is the actual code content overlay; InlineCode is a
+ *  `backtick` span. A '/' inside any of these is code, not a command. */
+const CODE_NODES = new Set(['FencedCode', 'CodeBlock', 'CodeText', 'InlineCode']);
 
-function isInsideCodeBlock(state: EditorState, pos: number): boolean {
+function isInsideCode(state: EditorState, pos: number): boolean {
   let node = syntaxTree(state).resolveInner(pos, -1);
   while (node) {
-    if (CODE_BLOCK_NODES.has(node.name)) return true;
+    if (CODE_NODES.has(node.name)) return true;
     node = node.parent as typeof node;
   }
   return false;
@@ -56,9 +57,9 @@ export function computeSlashMenuState(state: EditorState): SlashMenuState {
     return { visible: false, pos: 0, filter: '' };
   }
 
-  if (isInsideCodeBlock(state, pos)) {
-    return { visible: false, pos: 0, filter: '' };
-  }
+  if (isInsideCode(state, pos)) {
+   return { visible: false, pos: 0, filter: '' };
+ }
 
   return { visible: true, pos, filter: afterSlash };
 }

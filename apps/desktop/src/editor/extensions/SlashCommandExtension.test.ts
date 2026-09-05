@@ -73,3 +73,11 @@ describe('computeSlashMenuState inside code blocks', () => {
     expect(computeSlashMenuState(stateAtMd(doc, pos))).toEqual({ visible: true, pos, filter: 'callout' });
   });
 });
+
+describe('computeSlashMenuState inside inline code spans', () => {
+  it('hides the menu inside a backtick inline code span', () => {
+    const doc = 'run `/path` then text';
+    const pos = doc.indexOf('/path') + '/path'.length;
+    expect(computeSlashMenuState(stateAtMd(doc, pos))).toEqual({ visible: false, pos: 0, filter: '' });
+  });
+});
