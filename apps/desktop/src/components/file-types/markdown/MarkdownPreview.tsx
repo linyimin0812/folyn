@@ -834,7 +834,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const blockRect = el.getBoundingClientRect();
     const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop;
     const blockHeight = blockRect.height;
-    const blockSrcLine = Number(target.getAttribute('data-source-line'));
+    const blockSrcLine = Number(el.getAttribute('data-source-line'));
 
     const srcLines = contentRef.current.split('\n');
     let blockLineSpan = 0;

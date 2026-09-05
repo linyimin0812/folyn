@@ -38,6 +38,8 @@ interface EditorViewState {
   wordCount: number;
   /** Fraction (0..1) of the cursor within the editor scroll viewport. */
   cursorViewportY: number;
+  /** Top of the editor scroll viewport in screen coords (for preview alignment). */
+  editorViewportTop: number;
   lineLength: number;
   /** True when the editor has an active (non-empty) text selection.
    *  Previews skip cursor-sync while the user is selecting. */

@@ -324,7 +324,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
                 const coords = v.coordsAtPos(pos);
                 if (coords) {
                   const r = sd.getBoundingClientRect();
-                  const h = r.height || 1;
                   setCursorViewportY(coords.top - r.top, r.top, pos - line.from, line.length);
                 }
               }
