@@ -509,10 +509,14 @@ export default function App() {
       }
       // Typewriter mode — Cmd/Ctrl+Shift+T. Keeps the cursor centered in
       // the editor viewport for long-form writing comfort.
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 't') {
+      console.log('[debug] keydown', { key: e.key, shift: e.shiftKey, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey });
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key.toLowerCase() === 't' || e.code === 'KeyT')) {
         e.preventDefault();
         const store = useEditorViewStateStore.getState();
+        console.log('[debug] typewriter toggle, before:', store.typewriterMode);
         store.setTypewriterMode(!store.typewriterMode);
+        console.log('[debug] typewriter toggle, after:', useEditorViewStateStore.getState().typewriterMode);
+        return;
       }
       // Cmd/Ctrl+A selects all in native <input>/<textarea>. CodeMirror has
       // its own Mod-a keymap that preventDefaults, so it never reaches here.
