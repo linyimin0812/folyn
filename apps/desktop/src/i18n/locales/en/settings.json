@@ -192,7 +192,8 @@
       "globalSearch": "Search in files",
       "commandPalette": "Command palette",
       "schedule": "Go to schedule",
-      "selectAll": "Select all"
+      "selectAll": "Select all",
+      "typewriterMode": "Toggle typewriter mode"
     }
   },
   "cli": {

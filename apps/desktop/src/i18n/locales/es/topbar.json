@@ -39,5 +39,8 @@
   },
   "focusMode": {
     "toggle": "Alternar modo enfoque (Cmd+Shift+Enter)"
+  },
+  "typewriterMode": {
+    "toggle": "Alternar modo máquina de escribir (Cmd+Shift+T)"
   }
 }

@@ -192,7 +192,8 @@
       "globalSearch": "In Dateien suchen",
       "commandPalette": "Befehlspalette",
       "schedule": "Zum Kalender",
-      "selectAll": "Alles auswählen"
+      "selectAll": "Alles auswählen",
+      "typewriterMode": "Schreibmaschinenmodus umschalten"
     }
   },
   "cli": {

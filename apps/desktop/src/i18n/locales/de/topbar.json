@@ -39,5 +39,8 @@
   },
   "focusMode": {
     "toggle": "Fokusmodus umschalten (Cmd+Shift+Enter)"
+  },
+  "typewriterMode": {
+    "toggle": "Schreibmaschinenmodus umschalten (Cmd+Shift+T)"
   }
 }

@@ -26,6 +26,7 @@ import { isMacPlatform } from '@/utils/shellSidecar';
 const PRIMARY_MOD = isMacPlatform() ? '⌘' : 'Ctrl';
 const APP_SHORTCUTS: { id: string; keys: string[] }[] = [
   { id: 'focusMode', keys: [PRIMARY_MOD, 'Shift', 'Enter'] },
+  { id: 'typewriterMode', keys: [PRIMARY_MOD, 'Shift', 'T'] },
   { id: 'globalSearch', keys: [PRIMARY_MOD, 'Shift', 'F'] },
   { id: 'commandPalette', keys: [PRIMARY_MOD, 'P'] },
   { id: 'schedule', keys: [PRIMARY_MOD, 'D'] },

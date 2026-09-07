@@ -63,6 +63,9 @@ interface EditorViewState {
    *  dock, terminal, and status bar so only the editor/preview area remains.
    *  Toggled via Cmd/Ctrl+Shift+F or the Topbar button. Runtime-only. */
   focusMode: boolean;
+  /** Typewriter mode: keeps the cursor line centered in the editor viewport.
+   *  Toggled via Cmd/Ctrl+Shift+T or the Topbar button. Runtime-only. */
+  typewriterMode: boolean;
 
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
@@ -90,6 +93,8 @@ interface EditorViewState {
   toggleFocusMode: () => void;
   /** Set focus mode explicitly (used to force-exit when leaving the editor page). */
   setFocusMode: (v: boolean) => void;
+  /** Set typewriter mode explicitly (used by the keymap and Topbar button). */
+  setTypewriterMode: (v: boolean) => void;
 }
 
 export const useEditorViewStateStore = create<EditorViewState>((set) => ({
@@ -108,6 +113,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   versionHistoryVisible: false,
   versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null },
   focusMode: false,
+  typewriterMode: false,
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -147,4 +153,5 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
 
   toggleFocusMode: () => set((state) => ({ focusMode: !state.focusMode })),
   setFocusMode: (v) => set({ focusMode: v }),
+  setTypewriterMode: (v) => set({ typewriterMode: v }),
 }));
