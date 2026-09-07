@@ -419,7 +419,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           ...lintKeymap,
           indentWithTab,
           {
-            key: 'Mod-Shift-T',
+            key: 'Mod-Shift-t',
             run: () => {
               const store = useEditorViewStateStore.getState();
               store.setTypewriterMode(!store.typewriterMode);
