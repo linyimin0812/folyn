@@ -14,7 +14,7 @@ import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, FolderInput, History, Maximize2, Minimize2, AlignVerticalJustifyCenter } from 'lucide-react';
+import { Sun, Moon, FolderInput, History, Maximize2, Minimize2 } from 'lucide-react';
 import { TerminalIcon } from '@/components/icons/TerminalIcon';
 import { WindowControls } from '@/components/shell/WindowControls';
 import { isVersionableTab } from '@/components/work-area/VersionHistoryPanel';
@@ -94,8 +94,6 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const versionHistoryVisible = useEditorViewStateStore((state) => state.versionHistoryVisible);
   const focusMode = useEditorViewStateStore((state) => state.focusMode);
   const toggleFocusMode = useEditorViewStateStore((state) => state.toggleFocusMode);
-  const typewriterMode = useEditorViewStateStore((state) => state.typewriterMode);
-  const setTypewriterMode = useEditorViewStateStore((state) => state.setTypewriterMode);
   // ponytail: show the view-mode segment when the active file-type's handler
   // declares more than one supported mode. Previously a hardcoded Set of
   // built-in ids — that forced every plugin file-type to edit host source to
@@ -229,17 +227,6 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
             title={t('topbar:focusMode.toggle')}
           >
             {focusMode ? <Minimize2 size={14} className="shrink-0" /> : <Maximize2 size={14} className="shrink-0" />}
-          </button>
-        )}
-        {currentPage === 'editor' && (
-          <button
-            className={`tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm transition-all duration-150 hover:bg-hov hover:text-t1 ${
-              typewriterMode ? 'text-acc bg-accdim' : 'text-t3'
-            }`}
-            onClick={() => setTypewriterMode(!typewriterMode)}
-            title={t('topbar:typewriterMode.toggle')}
-          >
-            <AlignVerticalJustifyCenter size={14} className="shrink-0" />
           </button>
         )}
         {isExternalFileActive && activeTab && (

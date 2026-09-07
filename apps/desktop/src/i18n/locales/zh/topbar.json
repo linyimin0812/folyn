@@ -39,8 +39,5 @@
   },
   "focusMode": {
     "toggle": "切换专注模式 (Cmd+Shift+Enter)"
-  },
-  "typewriterMode": {
-    "toggle": "切换打字机模式 (Cmd+Shift+T)"
   }
 }

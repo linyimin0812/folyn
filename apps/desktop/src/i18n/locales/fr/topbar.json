@@ -39,8 +39,5 @@
   },
   "focusMode": {
     "toggle": "Basculer le mode concentration (Cmd+Shift+Enter)"
-  },
-  "typewriterMode": {
-    "toggle": "Basculer le mode machine à écrire (Cmd+Shift+T)"
   }
 }

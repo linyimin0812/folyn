@@ -1,4 +1,4 @@
-import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { EditorView, ViewPlugin, keymap, type ViewUpdate } from '@codemirror/view';
 
 /**
  * Typewriter mode: keeps the cursor line centered in the editor viewport on

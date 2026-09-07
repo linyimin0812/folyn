@@ -39,8 +39,5 @@
   },
   "focusMode": {
     "toggle": "フォーカスモードを切り替え (Cmd+Shift+Enter)"
-  },
-  "typewriterMode": {
-    "toggle": "タイプライターモードを切り替え (Cmd+Shift+T)"
   }
 }

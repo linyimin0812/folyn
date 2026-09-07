@@ -39,8 +39,5 @@
   },
   "focusMode": {
     "toggle": "Toggle focus mode (Cmd+Shift+Enter)"
-  },
-  "typewriterMode": {
-    "toggle": "Toggle typewriter mode (Cmd+Shift+T)"
   }
 }
