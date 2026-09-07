@@ -78,6 +78,10 @@ import { createMarkdownImageCompletion } from './extensions/MarkdownImageExtensi
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { mathExtension } from './extensions/MarkdownMathExtension';
+import { listEnterExtension } from './extensions/ListEnterExtension';
+import { listTabExtension } from './extensions/ListTabExtension';
+import { escExitExtension } from './extensions/EscExitExtension';
+import { headingFoldExtension } from './extensions/headingFoldExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 
 /** JSON linter: validates JSON syntax and highlights only the error line */
@@ -424,6 +428,10 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         markdown({ base: markdownLanguage, codeLanguages }),
         ...codeBlockExtension,
         ...orderedListExtension,
+        ...listEnterExtension,
+        ...listTabExtension,
+        ...escExitExtension,
+        ...headingFoldExtension,
         ...mathExtension,
        EditorView.lineWrapping,
        // Wrap selected text with backticks instead of replacing the
