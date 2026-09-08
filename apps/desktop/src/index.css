@@ -536,7 +536,7 @@ mjx-container svg {
 .md-preview li::marker { color: var(--t1); }
 .md-preview ul.contains-task-list { list-style-type: none; padding-left: 4px; }
 .md-preview hr { border: none; border-top: 1px solid var(--brd); margin: 20px 0; }
-.md-preview table { border-collapse: collapse; width: 100%; margin: 12px 0; table-layout: auto; }
+.md-preview table { border-collapse: collapse; width: 100%; margin: 12px 0; table-layout: fixed; }
 .md-preview th, .md-preview td { border: 1px solid var(--brd); padding: 6px 12px; font-size: 12px; text-align: left; }
 .md-preview td { overflow-wrap: break-word; }
 .md-preview th { background: var(--surf); font-weight: 600; }
