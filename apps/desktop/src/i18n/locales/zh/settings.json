@@ -192,8 +192,7 @@
       "globalSearch": "全局搜索",
       "commandPalette": "命令面板",
       "schedule": "跳转日程工作台",
-      "selectAll": "全选",
-      "typewriterMode": "切换打字机模式"
+      "selectAll": "全选"
     }
   },
   "cli": {

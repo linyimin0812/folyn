@@ -192,8 +192,7 @@
       "globalSearch": "ファイル内検索",
       "commandPalette": "コマンドパレット",
       "schedule": "スケジュールへ移動",
-      "selectAll": "すべて選択",
-      "typewriterMode": "タイプライターモードを切り替え"
+      "selectAll": "すべて選択"
     }
   },
   "cli": {

@@ -192,8 +192,7 @@
       "globalSearch": "Buscar en archivos",
       "commandPalette": "Paleta de comandos",
       "schedule": "Ir a agenda",
-      "selectAll": "Seleccionar todo",
-      "typewriterMode": "Alternar modo máquina de escribir"
+      "selectAll": "Seleccionar todo"
     }
   },
   "cli": {

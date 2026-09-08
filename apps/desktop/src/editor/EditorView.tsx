@@ -82,7 +82,6 @@ import { listEnterExtension } from './extensions/ListEnterExtension';
 import { listTabExtension } from './extensions/ListTabExtension';
 import { escExitExtension } from './extensions/EscExitExtension';
 import { headingFoldExtension } from './extensions/headingFoldExtension';
-import { typewriterModeExtension } from './extensions/TypewriterModeExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 
 /** JSON linter: validates JSON syntax and highlights only the error line */
@@ -211,10 +210,8 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     const sp = useSearchPanelState();
     const tabSizeCompartment = useRef(new Compartment());
     const markdownKeymapCompartment = useRef(new Compartment());
-    const typewriterCompartment = useRef(new Compartment());
     const langCompartment = useRef(new Compartment());
     const setCursorPosition = useEditorViewStateStore((s) => s.setCursorPosition);
-    const typewriterMode = useEditorViewStateStore((s) => s.typewriterMode);
     const setWordCount = useEditorViewStateStore((s) => s.setWordCount);
     const setCursorViewportY = useEditorViewStateStore((s) => s.setCursorViewportY);
     const setHasSelection = useEditorViewStateStore((s) => s.setHasSelection);
@@ -418,18 +415,9 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           ...completionKeymap,
           ...lintKeymap,
           indentWithTab,
-          {
-            key: 'Mod-Shift-t',
-            run: () => {
-              const store = useEditorViewStateStore.getState();
-              store.setTypewriterMode(!store.typewriterMode);
-              return true;
-            },
-          },
         ]),
         EditorView.updateListener.of(handleUpdate),
         langCompartment.current.of([]),
-        typewriterCompartment.current.of(typewriterMode ? typewriterModeExtension : []),
       ];
 
       // Markdown-specific extensions
@@ -676,17 +664,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         ),
       });
     }, [shortcuts]);
-
-    // Dynamically toggle typewriter mode
-    useEffect(() => {
-      const view = viewRef.current;
-      if (!view) return;
-      view.dispatch({
-        effects: typewriterCompartment.current.reconfigure(
-          typewriterMode ? typewriterModeExtension : [],
-        ),
-      });
-    }, [typewriterMode]);
 
     return (
       <div
