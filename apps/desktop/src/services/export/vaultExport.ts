@@ -7,8 +7,9 @@
  *  - 'single' (default): one self-contained HTML file. Left tree + right
  *    content; clicking a tree node swaps the visible document. Images in
  *    markdown are inlined as base64 data URIs (same as single-doc export).
- *  - 'folder': a directory the user picks. `index.html` (tree + iframe) plus
- *    one standalone HTML per document. Closer to the on-disk vault layout.
+ *  - 'folder': a directory the user picks. Creates a <vaultName>/ subfolder
+ *    inside it holding `index.html` (tree + iframe) plus one standalone HTML
+ *    per document. Closer to the on-disk vault layout.
  *
  * Reuses the single-doc pipeline (@/services/exportService +
  * @/services/export/shared + @/services/export/richtext) so markdown
@@ -182,9 +183,9 @@ async function fileToBodyFragment(
     const content = await readVaultText(file.path);
     const srcdoc = escapeHtml(content);
     return {
-      html: `<iframe srcdoc="${srcdoc}" style="width:100%;max-width:800px;margin:0 auto;height:100%;border:0;display:block"></iframe>`,
+      html: `<iframe srcdoc="${srcdoc}" style="width:100%;height:100%;border:0;display:block"></iframe>`,
       css: '',
-      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:auto;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}body{display:flex;justify-content:center;align-items:flex-start}iframe{width:100%;max-width:800px;height:100vh;border:0}</style></head>\n<body><iframe srcdoc="${srcdoc}"></iframe></body>\n</html>`,
+      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:auto;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}iframe{width:100%;height:100vh;border:0}</style></head>\n<body><iframe srcdoc="${srcdoc}"></iframe></body>\n</html>`,
     };
   }
 
@@ -232,8 +233,9 @@ function buildTreeHtml(tree: VaultEntry[], files: ExportableFile[]): string {
       } else {
         const docId = pathToDoc.get(e.path);
         if (!docId) continue;
+        // data-path = vault-relative path, used for ?file=<path> deep-linking.
         lis.push(
-          `<li class="vt-file" data-doc="${docId}"><div class="vt-row" style="${pad}">${indentLines(depth)}<span class="vt-icon">${fileIconMarkup(e, detectFileType(e.path))}</span><span class="vt-name">${escapeHtml(e.name)}</span></div></li>`,
+          `<li class="vt-file" data-doc="${docId}" data-path="${escapeHtml(e.path)}"><div class="vt-row" style="${pad}">${indentLines(depth)}<span class="vt-icon">${fileIconMarkup(e, detectFileType(e.path))}</span><span class="vt-name">${escapeHtml(e.name)}</span></div></li>`,
         );
       }
     }
@@ -272,7 +274,7 @@ details > summary::-webkit-details-marker { display: none; }
 .vt-doc.active { display: block; }
 .vt-doc-fit { height: 100vh; }
 .vt-doc-fit.active { display: flex; justify-content: center; align-items: flex-start; }
-.vt-doc-fit iframe { width: 100%; max-width: 800px; height: 100%; border: 0; display: block; margin: 0 auto; }
+.vt-doc-fit iframe { width: 100%; height: 100%; border: 0; display: block; }
 .vt-doc-inner { max-width: none; width: 100%; padding: 32px 40px; box-sizing: border-box; }
 .vt-doc pre.vault-code { background: #f8f9fd; border: 1px solid #dde2f0; border-radius: 6px; padding: 16px; overflow: auto; }
 .vt-doc pre.vault-code code { font-family: 'DM Mono', monospace; font-size: 12px; white-space: pre; }
@@ -288,12 +290,23 @@ const VAULT_NAV_SCRIPT = `
     var el = document.querySelector('.vt-doc[data-doc="' + id + '"]');
     if (el) el.querySelector('.vt-content-scroll')?.scrollTo(0, 0);
     document.querySelector('.vt-content')?.scrollTo(0, 0);
+    // Reflect the open doc in the URL as ?file=<vault-relative path> so it
+    // can be shared/bookmarked and reopened directly.
+    var active = document.querySelector('.vt-file.active');
+    var path = active && active.getAttribute('data-path');
+    if (path) {
+      var url = new URL(location.href);
+      url.searchParams.set('file', path);
+      history.replaceState(null, '', url);
+    }
   }
   files.forEach(function (f) {
     f.querySelector('.vt-row').addEventListener('click', function () { show(f.getAttribute('data-doc')); });
   });
-  var first = files[0] && files[0].getAttribute('data-doc');
-  if (first) show(first);
+  // Deep link: ?file=<path> → open that doc; fall back to the first file.
+  var target = new URLSearchParams(location.search).get('file');
+  var initial = (target && files.filter(function (f) { return f.getAttribute('data-path') === target; })[0]) || files[0];
+  if (initial) show(initial.getAttribute('data-doc'));
 })();
 `;
 
@@ -394,7 +407,7 @@ function assembleFolderIndexHtml(
   theme: 'light' | 'dark',
 ): string {
   const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
-  const fileNames = new Map(files.map((f) => [f.path, safeDocFileName(f.docId, f.name)]));
+  const fileNames = new Map(files.map((f) => [f.path, 'docs/' + safeDocFileName(f.docId, f.name)]));
   const treeHtml = buildFolderTreeHtml(tree, fileNames);
   return `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="${theme}">
@@ -411,14 +424,26 @@ function assembleFolderIndexHtml(
   (function () {
     var leaves = [].slice.call(document.querySelectorAll('.vt-file'));
     var frame = document.getElementById('vt-frame');
-    function load(href) {
+    function load(leaf) {
+      var href = leaf.getAttribute('data-href');
       frame.src = href;
-      leaves.forEach(function (f) { f.classList.toggle('active', f.getAttribute('data-href') === href); });
+      leaves.forEach(function (f) { f.classList.toggle('active', f === leaf); });
+      // Reflect the open doc in the URL as ?file=<vault-relative path> so it
+      // can be shared/bookmarked and reopened directly.
+      var path = leaf.getAttribute('data-path');
+      if (path) {
+        var url = new URL(location.href);
+        url.searchParams.set('file', path);
+        history.replaceState(null, '', url);
+      }
     }
     leaves.forEach(function (f) {
-      f.querySelector('.vt-row').addEventListener('click', function () { load(f.getAttribute('data-href')); });
+      f.querySelector('.vt-row').addEventListener('click', function () { load(f); });
     });
-    if (leaves[0]) load(leaves[0].getAttribute('data-href'));
+    // Deep link: ?file=<path> → open that doc; fall back to the first file.
+    var target = new URLSearchParams(location.search).get('file');
+    var initial = (target && leaves.filter(function (f) { return f.getAttribute('data-path') === target; })[0]) || leaves[0];
+    if (initial) load(initial);
   })();
 ${VT_RESIZER_SCRIPT}
   </script>
@@ -440,8 +465,9 @@ function buildFolderTreeHtml(tree: VaultEntry[], fileNames: Map<string, string>)
       } else {
         const href = fileNames.get(e.path);
         if (!href) continue;
+        // data-path = vault-relative path, used for ?file=<path> deep-linking.
         lis.push(
-          `<li class="vt-file" data-href="${escapeHtml(href)}"><div class="vt-row" style="${pad}">${indentLines(depth)}<span class="vt-icon">${fileIconMarkup(e, detectFileType(e.path))}</span><span class="vt-name">${escapeHtml(e.name)}</span></div></li>`,
+          `<li class="vt-file" data-href="${escapeHtml(href)}" data-path="${escapeHtml(e.path)}"><div class="vt-row" style="${pad}">${indentLines(depth)}<span class="vt-icon">${fileIconMarkup(e, detectFileType(e.path))}</span><span class="vt-name">${escapeHtml(e.name)}</span></div></li>`,
         );
       }
     }
@@ -523,7 +549,8 @@ async function prepareVaultExport(opts?: { onProgress?: (done: number, total: nu
 /**
  * Export the current vault to HTML. Dispatches on `mode`:
  *  - 'single': one self-contained HTML via the OS save dialog.
- *  - 'folder': user picks a directory; writes index.html + one HTML per doc.
+ *  - 'folder': user picks a parent directory; writes index.html + one HTML
+ *    per doc under a <vaultName>/ subfolder.
  *
  * Reads from vaultStore at call time (file tree + manager + current vault),
  * so callers (hook, command palette) can invoke it outside React render.
@@ -551,9 +578,14 @@ export async function exportVaultToHtml(
     // User cancelled the folder pick — treat as a no-op success with zero docs.
     return { mode, docCount: 0, filteredCount };
   }
-  const outDir = picked as string;
-  // Put docs under a docs/ subdir to avoid name clashes with anything the
-  // user already has in the picked folder.
+  // Put the whole export under a <vaultName> subfolder so the product is
+  // self-identifying and index.html lives inside a folder named after the
+  // vault — mirrors the cloud folder-upload key prefix (${safeName}/...).
+  const safeName = vaultName.replace(/[/\\]/g, '_');
+  const outDir = await join(picked as string, safeName);
+  if (!(await exists(outDir))) await mkdir(outDir, { recursive: true });
+  // docs/ subdir avoids name clashes with anything the user already has
+  // under the vault-named folder.
   const docsDir = await join(outDir, 'docs');
   if (!(await exists(docsDir))) await mkdir(docsDir, { recursive: true });
 
