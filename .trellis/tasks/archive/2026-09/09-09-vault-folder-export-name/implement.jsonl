@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend spec index — export service lives in apps/desktop/src/services/export"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality: out-of-React getState store access, Tauri fs API use, no any"}
