@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { ImageDown, Cloud, Copy, ExternalLink, Check } from 'lucide-react';
+import { ImageDown, Cloud, Copy, ExternalLink, Check, FolderArchive } from 'lucide-react';
+import { VaultExportDialog } from './VaultExportDialog';
 import { useExport, hasContainerSyntax } from '@/hooks/useExport';
 import { useEditorStore, detectFileType } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
@@ -31,6 +32,7 @@ export function ExportMenu() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [urlCopied, setUrlCopied] = useState(false);
+  const [vaultExportOpen, setVaultExportOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent } = useExport();
   const activeProvider = useStorageConfigStore((s) => s.activeProvider);
@@ -273,6 +275,17 @@ export function ExportMenu() {
     });
   }
 
+  // Vault-level export — independent of the active tab's type. Placed last so
+  // the per-file export options stay on top and the whole-vault action sits
+  // at the bottom of the menu.
+  items.push({
+    key: 'vault-html',
+    icon: <FolderArchive size={16} className="w-6 flex justify-center shrink-0" />,
+    label: t('editor:export.vault.menu'),
+    description: t('editor:export.vault.menuDesc'),
+    run: () => { setOpen(false); setVaultExportOpen(true); },
+  });
+
   return (
     <>
       <div className="export-wrap relative" ref={menuRef}>
@@ -382,6 +395,11 @@ export function ExportMenu() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Export entire vault — modal mode picker */}
+      {vaultExportOpen && (
+        <VaultExportDialog onClose={() => setVaultExportOpen(false)} />
       )}
 
       {/* Share error: surface the cause; user closes */}

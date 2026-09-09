@@ -642,31 +642,146 @@ export const IMAGE_LIGHTBOX_SCRIPT = `
         overlay.style.display = 'none';
         document.body.style.overflow = '';
       }
-      function open(src, alt) {
-        if (!overlay) {
-          overlay = document.createElement('div');
-          overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);cursor:zoom-out;';
-          var img = document.createElement('img');
-          img.style.cssText = 'max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px;cursor:zoom-out;';
-          overlay.appendChild(img);
-          overlay.addEventListener('click', close);
-          document.body.appendChild(overlay);
-        }
-        var lbImg = overlay.querySelector('img');
-        lbImg.src = src;
-        lbImg.alt = alt || '';
+      function ensure() {
+        if (overlay) return;
+        overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);cursor:zoom-out;';
+        overlay.addEventListener('click', close);
+        document.body.appendChild(overlay);
+      }
+      function openImg(src, alt) {
+        ensure();
+        overlay.innerHTML = '';
+        var img = document.createElement('img');
+        img.style.cssText = 'max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px;cursor:zoom-out;';
+        img.src = src;
+        img.alt = alt || '';
+        overlay.appendChild(img);
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+      function openSvg(svg) {
+        ensure();
+        overlay.innerHTML = '';
+        var clone = svg.cloneNode(true);
+        clone.style.cssText = 'max-width:90vw;max-height:90vh;cursor:zoom-out;';
+        overlay.appendChild(clone);
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
       }
       document.addEventListener('click', function (e) {
-        var img = e.target.closest && e.target.closest('img');
-        if (!img || (overlay && overlay.contains(img))) return;
-        if (!img.src) return;
-        e.preventDefault();
-        open(img.src, img.alt);
+        var t = e.target;
+        if (!t || !t.closest) return;
+        var img = t.closest('img');
+        if (img && (!overlay || !overlay.contains(img)) && img.src) { e.preventDefault(); openImg(img.src, img.alt); return; }
+        var svg = t.closest('.vt-canvas-doc svg');
+        if (svg && (!overlay || !overlay.contains(svg))) { e.preventDefault(); openSvg(svg); return; }
       });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') close();
       });
     })();
 `;
+
+/**
+ * Build a `:root` override block carrying the user's live UI font + size CSS
+ * variables, so exported HTML renders with the same interface font the user
+ * picked in Appearance settings (instead of the hardcoded 'Sora' fallback
+ * baked into LIGHT/DARK_THEME_VARS). Reads the runtime style set by
+ * appearanceStore.setFontFamily / setFontSize; empty values fall back to the
+ * theme-vars default by emitting nothing.
+ */
+export function runtimeFontVars(): string {
+  const root = document.documentElement.style;
+  const fontFamily = root.getPropertyValue('--font-ui').trim();
+  const fontSize = root.getPropertyValue('--ui-font-size').trim();
+  const rules: string[] = [];
+  if (fontFamily) rules.push(`--font-ui: ${fontFamily};`);
+  if (fontSize) rules.push(`--ui-font-size: ${fontSize};`);
+  return rules.length ? `:root { ${rules.join(' ')} }` : '';
+}
+
+/** Styles for canvas-type docs (dbml/drawio/excalidraw/markmap/plantuml/
+ * graphviz/mermaid) rendered as SVG: constrain to the same 800px centered
+ * reading column as markdown (.md-preview), plus a scroll viewport and
+ * top-right zoom buttons. Shared by single-doc export and vault export. */
+export const CANVAS_DOC_STYLES = `
+.vt-canvas-doc { max-width: 800px; width: 100%; margin: 0 auto; position: relative; }
+.vt-canvas-scroll { cursor: zoom-in; }
+.vt-canvas-doc svg { width: 100%; height: auto; display: block; }
+.vt-svg-doc { min-height: 100vh; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.vt-svg-doc svg { width: auto !important; height: auto; max-width: 100%; max-height: 90vh; display: block; }
+`;
+
+/** Styles for code-type docs (code/csv/json/txt/…): let the code block fill
+ * the page width (override the markdown 800px column) — pre already has
+ * overflow-x:auto from HTML_STYLES so long lines scroll horizontally. */
+export const CODE_DOC_STYLES = `
+.vt-code-doc { width: 100%; display: flex; justify-content: center; }
+.vt-code-doc .code-block-wrapper,
+.vt-code-doc .code-block-inner { max-height: none !important; overflow: visible !important; }
+.vt-code-doc .code-block-scroll { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; }
+`;
+
+/** Code-block interaction for exported HTML — drops the Run button + output
+ * panel (no script runtime outside the app) and wires the Copy button to a
+ * vanilla clipboard copy with a checkmark flash. No-op on pages without
+ * code blocks (e.g. plain markdown prose). */
+export const CODE_INTERACT_SCRIPT = `
+(function () {
+  document.querySelectorAll('.code-run-btn, .code-run-output').forEach(function (e) { e.remove(); });
+  document.querySelectorAll('.code-copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.parentElement && btn.parentElement.querySelector('pre');
+      if (!pre) return;
+      var code = pre.querySelector('code') || pre;
+      var text = code.textContent || '';
+      var done = function () {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8 7 12 13 4"/></svg>';
+        setTimeout(function () { btn.innerHTML = orig; }, 1500);
+      };
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done).catch(function () {});
+      else done();
+    });
+  });
+})();
+`;
+
+
+/**
+ * Assemble a standalone HTML document shell — the exact shell used by
+ * single-file export (exportActiveHtml), reused by vault folder-mode export
+ * so every per-doc page is consistent with single-doc export: same
+ * HTML_STYLES, theme vars, code theme, runtime font vars, 800px centered
+ * reading column, container-interact + lightbox scripts.
+ */
+export function buildStandaloneDocHtml(opts: {
+  title: string;
+  bodyHtml: string;
+  css: string;
+  theme: 'light' | 'dark';
+  codeTheme: string;
+  codeThemeCss: string;
+}): string {
+  const { title, bodyHtml, css, theme, codeTheme, codeThemeCss } = opts;
+  const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
+  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const safeTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return `<!DOCTYPE html>
+<html lang="zh-CN" data-theme="${theme}" data-code-theme="${codeTheme}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base target="_blank">
+  <title>${safeTitle}</title>
+  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n${CANVAS_DOC_STYLES}\n${CODE_DOC_STYLES}\n${RESIZABLE_MEDIA_OVERRIDE}\n</style>
+  <script>${CONTAINER_INTERACT_SCRIPT}</script>
+  <script>${IMAGE_LIGHTBOX_SCRIPT}</script>
+  <script>${CODE_INTERACT_SCRIPT}</script>
+</head>
+<body>
+${bodyHtml}
+</body>
+</html>`;
+}

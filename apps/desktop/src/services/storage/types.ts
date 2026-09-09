@@ -109,6 +109,16 @@ export interface StorageProvider {
     html: string,
     config: ProviderConfig,
   ): Promise<string>;
+
+  /** Upload raw bytes at a caller-chosen relative key (folder-mode export:
+   *  index.html + docs/*.html as multiple objects). The provider prepends
+   *  its html key prefix. Returns the public https URL. */
+  uploadFile(
+    key: string,
+    bytes: Uint8Array,
+    contentType: string,
+    config: ProviderConfig,
+  ): Promise<string>;
 }
 
 // ─── Type guards ────────────────────────────────────────────────────────

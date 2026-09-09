@@ -28,6 +28,31 @@
       "label": "XMind",
       "description": "Exporter en carte mentale .xmind"
     },
+    "vault": {
+      "menu": "Exporter tout le vault",
+      "menuDesc": "Vault entier → HTML (arborescence + fichiers texte)",
+      "title": "Exporter tout le vault",
+      "hint": "Exporte tous les fichiers texte (Markdown, code, données…). Les images et documents Office sont filtrés, les images Markdown sont intégrées en base64, l'arborescence de gauche est conservée comme navigation.",
+      "single": { "label": "Fichier HTML unique", "desc": "Un .html autonome — arborescence + tous les documents, clic pour basculer" },
+      "folder": { "label": "Dossier HTML", "desc": "index.html + un HTML par document" },
+      "shape": "Forme",
+      "target": "Destination",
+      "output": {
+        "download": "Télécharger localement",
+        "upload": "Téléverser (distant)",
+        "uploadDesc": "Téléverse un HTML autonome vers le stockage configuré",
+        "uploadDisabled": "Configurez « Stockage & partage »"
+      },
+      "uploaded": "Téléversé — URL copiée dans le presse-papiens",
+      "export": "Exporter",
+      "exporting": "Exportation…",
+      "progress": "Rendu {{done}}/{{total}}…",
+      "success": "{{docs}} document(s) exporté(s) ; {{filtered}} fichier(s) binaire(s) filtré(s).",
+      "error": "Échec de l'export",
+      "noVault": "Aucun vault ouvert",
+      "noTextFiles": "Aucun fichier texte dans ce vault",
+      "close": "Fermer"
+    },
     "containerWarning": {
       "title": "⚠️ Avis de compatibilité",
       "body": "Le document actuel utilise la syntaxe de conteneur Folyn (callouts, onglets, blocs repliables, etc.), une extension Folyn. **Les autres éditeurs Markdown pourraient ne pas le rendre correctement.**",

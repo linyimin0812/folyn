@@ -28,6 +28,31 @@
       "label": "XMind",
       "description": ".xmindマインドマップとしてエクスポート"
     },
+    "vault": {
+      "menu": "Vault全体をエクスポート",
+      "menuDesc": "Vault全体 → HTML（ツリー+テキストファイル）",
+      "title": "Vault全体をエクスポート",
+      "hint": "テキスト形式ファイル（Markdown、コード、データ等）をすべてエクスポート。画像とOffice文書は除外、Markdown内の画像はbase64で埋め込み、左のファイルツリーをナビとして保持します。",
+      "single": { "label": "単一HTMLファイル", "desc": "1つのself-contained .html—ツリー+全ドキュメント、クリックで切替" },
+      "folder": { "label": "HTMLフォルダ", "desc": "index.html + ドキュメントごとに1つのHTML" },
+      "shape": "形態",
+      "target": "出力先",
+      "output": {
+        "download": "ローカルに保存",
+        "upload": "リモートにアップロード",
+        "uploadDesc": "単一のself-contained HTMLを設定済みストレージにアップロード",
+        "uploadDisabled": "「ストレージと共有」を設定してください"
+      },
+      "uploaded": "アップロード完了——URLをクリップボードにコピーしました",
+      "export": "エクスポート",
+      "exporting": "エクスポート中…",
+      "progress": "レンダリング {{done}}/{{total}}…",
+      "success": "{{docs}}件のドキュメントをエクスポート、{{filtered}}個のバイナリファイルを除外。",
+      "error": "エクスポート失敗",
+      "noVault": "Vaultが開かれていません",
+      "noTextFiles": "このVaultにテキストファイルがありません",
+      "close": "閉じる"
+    },
     "containerWarning": {
       "title": "⚠️ 互換性の注意",
       "body": "現在のドキュメントはFolynコンテナ構文（コールアウト、タブ、折りたたみブロックなど）を使用しています。これはFolyn拡張です。**他のMarkdownエディタでは正しくレンダリングできない場合があります。**",

@@ -32,6 +32,31 @@
       "label": "XMind",
       "description": "Export as .xmind mind map"
     },
+    "vault": {
+      "menu": "Export entire vault",
+      "menuDesc": "Whole vault → HTML (tree + text files)",
+      "title": "Export entire vault",
+      "hint": "Exports all text-type files (markdown, code, data…). Images and office docs are filtered out. Markdown images are inlined as base64. The left file tree is preserved as navigation.",
+      "single": { "label": "Single HTML file", "desc": "One self-contained .html — tree + all docs, click to switch" },
+      "folder": { "label": "HTML folder", "desc": "index.html + one HTML per document" },
+      "shape": "Shape",
+      "target": "Output target",
+      "output": {
+        "download": "Download to local",
+        "upload": "Upload to remote",
+        "uploadDesc": "Uploads a single self-contained HTML to the configured storage provider",
+        "uploadDisabled": "Configure 'Storage & Share' to enable"
+      },
+      "uploaded": "Uploaded — URL copied to clipboard",
+      "export": "Export",
+      "exporting": "Exporting…",
+      "progress": "Rendering {{done}}/{{total}}…",
+      "success": "Exported {{docs}} document(s); filtered out {{filtered}} binary file(s).",
+      "error": "Export failed",
+      "noVault": "No vault open",
+      "noTextFiles": "No text files found in this vault",
+      "close": "Close"
+    },
     "containerWarning": {
       "title": "⚠️ Compatibility notice",
       "body": "The current document uses Folyn container syntax (callouts, tabs, collapsible blocks, etc.), which is a Folyn extension. **Other Markdown editors may fail to render it correctly.**",

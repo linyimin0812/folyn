@@ -12,6 +12,8 @@ import {
   LIGHT_THEME_VARS,
   DARK_THEME_VARS,
   hasContainerSyntax,
+  runtimeFontVars,
+  buildStandaloneDocHtml,
 } from '@/services/exportService';
 import type { ExportFormat } from '@/services/exportService';
 import {
@@ -43,24 +45,6 @@ export interface ActiveDocument {
   path: string;
   vaultRoot: string;
   fileType: string;
-}
-
-/**
- * Build a `:root` override block carrying the user's live UI font + size CSS
- * variables, so exported HTML renders with the same interface font the user
- * picked in Appearance settings (instead of the hardcoded 'Sora' fallback
- * baked into LIGHT/DARK_THEME_VARS). Reads the runtime style set by
- * appearanceStore.setFontFamily / setFontSize; empty values (defaults, or a
- * non-browser caller) fall back to the theme-vars default by emitting nothing.
- */
-function runtimeFontVars(): string {
-  const root = document.documentElement.style;
-  const fontFamily = root.getPropertyValue('--font-ui').trim();
-  const fontSize = root.getPropertyValue('--ui-font-size').trim();
-  const rules: string[] = [];
-  if (fontFamily) rules.push(`--font-ui: ${fontFamily};`);
-  if (fontSize) rules.push(`--ui-font-size: ${fontSize};`);
-  return rules.length ? `:root { ${rules.join(' ')} }` : '';
 }
 
 /**
@@ -180,26 +164,18 @@ export async function exportActiveHtml(onBeforeDialog?: () => void): Promise<voi
   // has already resolved to the actual applied theme.
   const theme: 'light' | 'dark' =
     (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
-  const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
   const codeTheme = useAppearanceStore.getState().codeTheme;
   const codeThemeCss = codeTheme === 'auto' ? '' : themeCss(codeTheme);
   const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot, theme);
   const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
-  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
-  const htmlContent = `<!DOCTYPE html>
-<html lang="zh-CN" data-theme="${theme}" data-code-theme="${codeTheme}">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\n/* ponytail: app CSS dumps html,body{overflow:hidden;height:100%;background:var(--bg)} — override so the exported page scrolls natively and the 800px column is centered against the theme's viewport bg. */\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n${RESIZABLE_MEDIA_OVERRIDE}\n</style>
-  <script>${CONTAINER_INTERACT_SCRIPT}</script>
-  <script>${IMAGE_LIGHTBOX_SCRIPT}</script>
-</head>
-<body>
-${inlinedBody}
-</body>
-</html>`;
+  const htmlContent = buildStandaloneDocHtml({
+    title: name.replace(/\.md$/, ''),
+    bodyHtml: inlinedBody,
+    css,
+    theme,
+    codeTheme,
+    codeThemeCss,
+  });
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
   onBeforeDialog?.();
   await downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);

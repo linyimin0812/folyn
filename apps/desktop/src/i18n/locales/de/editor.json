@@ -28,6 +28,31 @@
       "label": "XMind",
       "description": "Als .xmind-Mindmap exportieren"
     },
+    "vault": {
+      "menu": "Gesamtes Vault exportieren",
+      "menuDesc": "Ganzes Vault → HTML (Baum + Textdateien)",
+      "title": "Gesamtes Vault exportieren",
+      "hint": "Exportiert alle Textdateien (Markdown, Code, Daten …). Bilder und Office-Dokumente werden ausgefiltert, Markdown-Bilder als Base64 eingebettet, der linke Dateibaum bleibt als Navigation erhalten.",
+      "single": { "label": "Einzelne HTML-Datei", "desc": "Eine eigenständige .html — Baum + alle Dokumente, Klick zum Wechseln" },
+      "folder": { "label": "HTML-Ordner", "desc": "index.html + pro Dokument eine HTML-Datei" },
+      "shape": "Form",
+      "target": "Ziel",
+      "output": {
+        "download": "Lokal speichern",
+        "upload": "Hochladen (Remote)",
+        "uploadDesc": "Lädt eine eigenständige HTML zum konfigurierten Speicher-Provider hoch",
+        "uploadDisabled": "'Speicher & Teilen' konfigurieren"
+      },
+      "uploaded": "Hochgeladen — URL in die Zwischenablage kopiert",
+      "export": "Exportieren",
+      "exporting": "Exportiere…",
+      "progress": "Rendere {{done}}/{{total}}…",
+      "success": "{{docs}} Dokument(e) exportiert; {{filtered}} Binärdatei(en) ausgefiltert.",
+      "error": "Export fehlgeschlagen",
+      "noVault": "Kein Vault geöffnet",
+      "noTextFiles": "Keine Textdateien in diesem Vault",
+      "close": "Schließen"
+    },
     "containerWarning": {
       "title": "⚠️ Kompatibilitätshinweis",
       "body": "Das aktuelle Dokument verwendet Folyn-Container-Syntax (Callouts, Tabs, einklappbare Blöcke usw.), eine Folyn-Erweiterung. **Andere Markdown-Editoren rendern es eventuell falsch.**",

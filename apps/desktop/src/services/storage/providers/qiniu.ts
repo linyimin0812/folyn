@@ -97,4 +97,11 @@ export class QiniuProvider implements StorageProvider {
     await postForm(cfg, key, bytes, 'text/html; charset=utf-8');
     return publicUrl(cfg, key);
   }
+
+  async uploadFile(key: string, bytes: Uint8Array, contentType: string, config: ProviderConfig): Promise<string> {
+    const cfg = config as QiniuProviderConfig;
+    const fullKey = joinKey(cfg.htmlKeyPrefix || 'html/', key);
+    await postForm(cfg, fullKey, bytes, contentType);
+    return publicUrl(cfg, fullKey);
+  }
 }
