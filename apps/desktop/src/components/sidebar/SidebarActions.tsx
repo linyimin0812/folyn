@@ -278,7 +278,7 @@ export function MoveDialog({ sources, fileTree, onCancel, onConfirm, mode = 'mov
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={onCancel}>
-      <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[320px] max-w-[420px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[480px] max-w-[640px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="text-[15px] font-semibold text-t1 mb-3">{t(titleKey)}{countLabel}</div>
         {hasValidTargets ? (
           <div className="max-h-[55vh] overflow-y-auto py-1 mb-4 border border-brd rounded-md">
