@@ -1027,3 +1027,37 @@ Removed CSS that blocked browser-native table-layout:auto in .md-preview (width:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 200: Vault HTML export: folder naming, docs link fix, ?file= deep-linking, html scrollbar
+
+**Date**: 2026-09-09
+**Task**: Vault HTML export: folder naming, docs link fix, ?file= deep-linking, html scrollbar
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+Improved vault HTML export (single + folder): folder mode now creates a <vaultName>/ subfolder with index.html + docs/ inside (matching cloud folder upload); fixed pre-existing bug where folder-index iframe links lacked the docs/ prefix (404 '打开index.html报错', affected local + cloud); added ?file=<vault-relative path> deep-linking to both single-file and folder exports (click sidebar → URL updates; ?file=path opens that doc); HTML file-type export uses full-width iframe so scrollbar sits at rightmost edge.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `027e8e7c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
