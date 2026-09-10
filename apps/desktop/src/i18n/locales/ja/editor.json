@@ -18,7 +18,8 @@
       "notConfigured": "「ストレージと共有」でプロバイダーを先に設定してください",
       "goToSettings": "設定へ",
       "selectPlaceholder": "プロバイダーを選択",
-      "required": "プロバイダーを選択してください"
+      "required": "プロバイダーを選択してください",
+      "openSettings": "ストレージと共有"
     },
     "html": {
       "label": "HTML",

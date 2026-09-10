@@ -172,7 +172,10 @@ export function SingleDocExportDialog({ docName, onClose }: SingleDocExportDialo
               </div>
 
               {/* File upload provider — under the output target. */}
-              <div className="text-[10px] text-t3" style={{ margin: '8px 0 4px' }}>{t('editor:export.provider.fileLabel')}</div>
+              <div className="flex items-center gap-2 text-t3" style={{ margin: '8px 0 4px' }}>
+                <span className="text-[10px]">{t('editor:export.provider.fileLabel')}</span>
+                <button className="text-[10px] text-acc hover:underline cursor-pointer" onClick={goToSettings}>{t('editor:export.provider.openSettings')}</button>
+              </div>
               {providerPicker(t('editor:export.provider.fileLabel'), fileProviderId, setFileProviderId, fileUpload, fileMissing)}
 
               {/* Image handling */}
@@ -183,7 +186,10 @@ export function SingleDocExportDialog({ docName, onClose }: SingleDocExportDialo
               </div>
 
               {/* Image upload provider — under the image-mode group. */}
-              <div className="text-[10px] text-t3" style={{ margin: '8px 0 4px' }}>{t('editor:export.provider.imageLabel')}</div>
+              <div className="flex items-center gap-2 text-t3" style={{ margin: '8px 0 4px' }}>
+                <span className="text-[10px]">{t('editor:export.provider.imageLabel')}</span>
+                <button className="text-[10px] text-acc hover:underline cursor-pointer" onClick={goToSettings}>{t('editor:export.provider.openSettings')}</button>
+              </div>
               {providerPicker(t('editor:export.provider.imageLabel'), imageProviderId, setImageProviderId, imageUpload, imageMissing)}
 
               {phase === 'exporting' && (

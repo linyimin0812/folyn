@@ -18,7 +18,8 @@
       "notConfigured": "Configurez d'abord un fournisseur dans « Stockage & partage »",
       "goToSettings": "Ouvrir les réglages",
       "selectPlaceholder": "Choisir un fournisseur",
-      "required": "Veuillez choisir un fournisseur"
+      "required": "Veuillez choisir un fournisseur",
+      "openSettings": "Stockage & partage"
     },
     "html": {
       "label": "HTML",

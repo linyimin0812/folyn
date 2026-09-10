@@ -18,7 +18,8 @@
       "notConfigured": "Configura un proveedor en «Almacenamiento y compartir» primero",
       "goToSettings": "Ir a ajustes",
       "selectPlaceholder": "Elegir proveedor",
-      "required": "Elige un proveedor"
+      "required": "Elige un proveedor",
+      "openSettings": "Almacenamiento y compartir"
     },
     "html": {
       "label": "HTML",

@@ -18,7 +18,8 @@
       "notConfigured": "Konfiguriere zuerst einen Anbieter unter „Speicher & Teilen“",
       "goToSettings": "Zu den Einstellungen",
       "selectPlaceholder": "Anbieter wählen",
-      "required": "Bitte Anbieter wählen"
+      "required": "Bitte Anbieter wählen",
+      "openSettings": "Speicher & Teilen"
     },
     "html": {
       "label": "HTML",

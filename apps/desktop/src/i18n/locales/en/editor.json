@@ -18,7 +18,8 @@
       "notConfigured": "Configure a provider in “Storage & Sharing” first",
       "goToSettings": "Go to settings",
       "selectPlaceholder": "Select provider",
-      "required": "Please select a provider"
+      "required": "Please select a provider",
+      "openSettings": "Storage & Share"
     },
     "html": {
       "label": "HTML",
