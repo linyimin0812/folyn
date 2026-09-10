@@ -67,8 +67,11 @@ async function resolveVaultPath(relPath: string): Promise<string> {
   }
   const vaultRoot = useVaultStore.getState().currentVault?.basePath ?? '';
   if (!vaultRoot) throw new Error('[extension-api] no active vault');
-  const { join } = await import('@tauri-apps/api/path');
-  return join(vaultRoot, relPath);
+  // Route through resolvePreviewPath so the vault root's `~` is expanded to the
+  // real home dir before the OS sees it (a raw join leaves a literal `~` →
+  // "No such file or directory").
+  const { resolvePreviewPath } = await import('@/components/file-types/previewPath');
+  return resolvePreviewPath(relPath, vaultRoot);
 }
 
 /** Build a real VaultApi for a manifest (Tauri-backed, vault-scoped). */
