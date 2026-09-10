@@ -1,29 +1,49 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileViewerRenderers } from '@file-viewer/vite-plugin';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Builds the extension's IFRAME bundle (`preview.html` + assets) — the
+ * Builds the extension's IFRAME bundle (`preview.html` + assets). The
  * @file-viewer renderers run there with full Worker / WASM / code-splitting
  * support (real `folyn-plugin://` origin). Vite emits relative asset URLs
  * (`base: './'`) so they resolve against the plugin origin.
  *
- * The host-realm bundle (`dist/index.js`, the PluginModule) is built
- * separately by `build.mjs` with esbuild.
+ * `fileViewerRenderers({ copyAssets: true })` copies each renderer's static
+ * assets (dwg worker, pdf.worker, cmaps, WASM, drawio viewer assets, …) into
+ * `dist/` at the paths the renderers resolve by default (relative to the
+ * document base) — without it, worker/WASM-based renderers (cad/pdf/…) fail
+ * with "worker asset cannot be resolved".
  */
 export default defineConfig({
   root,
   base: './',
-  plugins: [react()],
+  plugins: [
+    react(),
+    fileViewerRenderers({
+      preset: 'office',
+      renderers: ['archive', 'email', 'eda', 'geo', 'model', 'drawing', 'mindmap', 'ebook', 'image', 'data', 'cad', 'media'],
+      copyAssets: true,
+      inject: false,
+    }),
+  ],
   build: {
     outDir: 'dist',
     emptyOutDir: false, // keep the esbuild-produced index.js
     target: 'es2022',
     rollupOptions: {
       input: path.join(root, 'preview.html'),
+    },
+    chunkSizeWarningLimit: 4000,
+  },
+  resolve: {
+    alias: {
+      // epubjs imports `jszip/dist/jszip` (legacy bundle path removed in jszip
+      // 3.x); alias to the package entry so vite resolves it. Same as the app.
+      'jszip/dist/jszip': 'jszip',
     },
   },
 });

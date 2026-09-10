@@ -406,6 +406,9 @@ importers:
         specifier: ^2.1.30
         version: 2.1.30
     devDependencies:
+      '@file-viewer/vite-plugin':
+        specifier: ^2.1.17
+        version: 2.1.17(vite@6.4.2(@types/node@22.19.17)(jiti@1.21.7)(sass@1.51.0)(terser@5.46.1)(yaml@2.9.0))
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.28
