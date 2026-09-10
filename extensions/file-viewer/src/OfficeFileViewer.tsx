@@ -94,7 +94,7 @@ export function OfficeFileViewer(): React.JSX.Element {
       data-viewer-theme={theme}
       file={file}
       options={options}
-      style={{ height: '100vh', width: '100vw' }}
+      style={{ height: '100%', width: '100%' }}
     />
   );
 }
