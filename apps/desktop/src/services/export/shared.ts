@@ -255,10 +255,41 @@ export async function inlineImages(html: string, vaultRoot: string, currentFileP
  * regex matches nothing).
  *
  * ponytail: dedupes unique srcs so a doc with 10 references to the same
- * image uploads it once. Ceiling: sequential uploads, no batching — R2/OSS
- * PUTs are independent so a Promise.all batch would scale, but we'd need
- * retry + concurrency limits we don't need yet.
+ * image uploads it once. Uploads run with a small concurrency cap (4) so a
+ * burst doesn't trip the provider's rate limiter; throttled PUTs are also
+ * retried with backoff inside each provider (see storage/retry.ts).
  */
+const IMAGE_UPLOAD_CONCURRENCY = 4;
+
+async function uploadAllImages(
+  uniqueSrcs: string[],
+  provider: StorageProvider,
+  cfg: ProviderConfig,
+): Promise<({ original: string; url: string } | null)[]> {
+  const out: ({ original: string; url: string } | null)[] = new Array(uniqueSrcs.length).fill(null);
+  let cursor = 0;
+  const worker = async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= uniqueSrcs.length) return;
+      const src = uniqueSrcs[i];
+      const absPath = assetUrlToFilePath(src);
+      if (!absPath) continue;
+      try {
+        const bytes = await readFile(absPath);
+        const ext = absPath.split('.').pop()?.toLowerCase() ?? 'png';
+        const url = await provider.uploadImage(new Uint8Array(bytes), ext, cfg);
+        out[i] = { original: src, url };
+      } catch {
+        // Leave the original asset:// src — a broken img (outside the app)
+        // is preferable to a failed share. Caller can surface a toast.
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(IMAGE_UPLOAD_CONCURRENCY, uniqueSrcs.length) }, worker));
+  return out;
+}
+
 export async function uploadImagesToProvider(
   html: string,
   provider: StorageProvider,
@@ -268,23 +299,7 @@ export async function uploadImagesToProvider(
   if (matches.length === 0) return html;
 
   const uniqueSrcs = [...new Set(matches.map((m) => m[1]))];
-
-  const replacements = await Promise.all(
-    uniqueSrcs.map(async (src) => {
-      const absPath = assetUrlToFilePath(src);
-      if (!absPath) return null;
-      try {
-        const bytes = await readFile(absPath);
-        const ext = absPath.split('.').pop()?.toLowerCase() ?? 'png';
-        const url = await provider.uploadImage(new Uint8Array(bytes), ext, cfg);
-        return { original: src, url };
-      } catch {
-        // Leave the original asset:// src — a broken img (outside the app)
-        // is preferable to a failed share. Caller can surface a toast.
-        return null;
-      }
-    }),
-  );
+  const replacements = await uploadAllImages(uniqueSrcs, provider, cfg);
 
   let result = html;
   for (const r of replacements) {

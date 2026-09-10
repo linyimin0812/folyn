@@ -10,6 +10,7 @@ import type { ProviderConfig, R2ProviderConfig, StorageProvider } from '../types
 import { buildSigV4PutRequest, sha1Hex } from '../crypto';
 import { isR2Config } from '../types';
 import { contentTypeForExt } from '../contentType';
+import { withUploadRetry } from '../retry';
 
 function nowAmzDate(): { amzDate: string; dateStamp: string } {
   const d = new Date();
@@ -37,35 +38,35 @@ async function putObject(
   contentType: string,
 ): Promise<void> {
   const endpoint = `https://${cfg.accountId}.r2.cloudflarestorage.com`;
-  const { amzDate, dateStamp } = nowAmzDate();
-  const req = await buildSigV4PutRequest({
-    method: 'PUT',
-    endpoint,
-    bucket: cfg.bucket,
-    objectKey,
-    region: 'auto',
-    service: 's3',
-    accessKeyId: cfg.accessKeyId,
-    secretAccessKey: cfg.secretAccessKey,
-    contentType,
-    bodyBytes: body,
-    amzDate,
-    dateStamp,
+  // Retry on throttling (429) / 5xx with exponential backoff. The signed
+  // request is rebuilt each attempt (body isn't replayable; amzDate should
+  // be fresh for a retried PUT anyway).
+  await withUploadRetry(async () => {
+    const { amzDate, dateStamp } = nowAmzDate();
+    const req = await buildSigV4PutRequest({
+      method: 'PUT',
+      endpoint,
+      bucket: cfg.bucket,
+      objectKey,
+      region: 'auto',
+      service: 's3',
+      accessKeyId: cfg.accessKeyId,
+      secretAccessKey: cfg.secretAccessKey,
+      contentType,
+      bodyBytes: body,
+      amzDate,
+      dateStamp,
+    });
+    const res = await fetch(req.url, { method: 'PUT', headers: req.headers, body: req.body as BodyInit });
+    if (!res.ok) {
+      // ponytail: don't parse XML error body; surface status + key so the
+      // user sees which object failed. R2 errors are S3-style
+      // <Error><Code>…</Code>…</Error> — strip tags is overkill for a toast.
+      const text = await res.text().catch(() => '');
+      const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
+      throw new Error(`R2 upload failed: ${res.status} ${res.statusText} ${trimmed}`);
+    }
   });
-  const res = await fetch(req.url, {
-    method: 'PUT',
-    headers: req.headers,
-    body: req.body as BodyInit,
-  });
-  if (!res.ok) {
-    // ponytail: don't try to parse XML error body; surface status + key
-    // so the user can see which object failed. R2 errors come back as
-    // S3-style <Error><Code>…</Code><Message>…</Message></Error> — strip
-    // tags is overkill for a toast.
-    const text = await res.text().catch(() => '');
-    const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
-    throw new Error(`R2 upload failed: ${res.status} ${res.statusText} ${trimmed}`);
-  }
 }
 
 export class R2Provider implements StorageProvider {

@@ -14,6 +14,7 @@ import type { ProviderConfig, QiniuProviderConfig, StorageProvider } from '../ty
 import { buildQiniuUploadToken, sha1Hex } from '../crypto';
 import { isQiniuConfig } from '../types';
 import { contentTypeForExt } from '../contentType';
+import { withUploadRetry } from '../retry';
 
 // ponytail: region→upload host map. Region naming follows Qiniu docs.
 // na0 = North America, as0 = Southeast Asia / Oceania. z0=East China,
@@ -44,29 +45,32 @@ async function postForm(
   contentType: string,
 ): Promise<void> {
   const host = UPLOAD_HOST[cfg.region];
-  const token = await buildQiniuUploadToken(
-    cfg.accessKey,
-    cfg.secretKey,
-    cfg.bucket,
-    objectKey,
-    Date.now() / 1000 + 3600,
-  );
-
-  // ponytail: FormData works in Tauri webview; fetch serializes
-  // multipart with a random boundary. We don't construct it by hand.
-  // File name doesn't matter — the `key` field dictates storage path.
-  const blob = new Blob([bytes as BlobPart], { type: contentType });
-  const form = new FormData();
-  form.append('key', objectKey);
-  form.append('token', token);
-  form.append('file', blob, 'payload');
-
-  const res = await fetch(host, { method: 'POST', body: form });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
-    throw new Error(`Qiniu upload failed: ${res.status} ${res.statusText} ${trimmed}`);
-  }
+  // Retry on throttling (429) / 5xx with exponential backoff. FormData/
+  // Blob aren't replayable after fetch consumes the stream, so rebuild
+  // them (and the token) each attempt.
+  await withUploadRetry(async () => {
+    const token = await buildQiniuUploadToken(
+      cfg.accessKey,
+      cfg.secretKey,
+      cfg.bucket,
+      objectKey,
+      Date.now() / 1000 + 3600,
+    );
+    // ponytail: FormData works in Tauri webview; fetch serializes
+    // multipart with a random boundary. File name doesn't matter — the
+    // `key` field dictates storage path.
+    const blob = new Blob([bytes as BlobPart], { type: contentType });
+    const form = new FormData();
+    form.append('key', objectKey);
+    form.append('token', token);
+    form.append('file', blob, 'payload');
+    const res = await fetch(host, { method: 'POST', body: form });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
+      throw new Error(`Qiniu upload failed: ${res.status} ${res.statusText} ${trimmed}`);
+    }
+  });
 }
 
 export class QiniuProvider implements StorageProvider {

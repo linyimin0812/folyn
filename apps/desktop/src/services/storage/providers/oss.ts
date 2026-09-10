@@ -10,6 +10,7 @@ import type { ProviderConfig, OssProviderConfig, StorageProvider } from '../type
 import { buildOssV4PutRequest, sha1Hex } from '../crypto';
 import { isOssConfig } from '../types';
 import { contentTypeForExt } from '../contentType';
+import { withUploadRetry } from '../retry';
 
 function nowOssDate(): { amzDate: string; dateStamp: string } {
   const d = new Date();
@@ -49,30 +50,30 @@ async function putObject(
   body: Uint8Array,
   contentType: string,
 ): Promise<void> {
-  const { amzDate, dateStamp } = nowOssDate();
-  const req = await buildOssV4PutRequest({
-    method: 'PUT',
-    endpoint: endpoint(cfg),
-    bucket: cfg.bucket,
-    objectKey,
-    region: normalizeRegion(cfg.region),
-    accessKeyId: cfg.accessKeyId,
-    accessKeySecret: cfg.accessKeySecret,
-    contentType,
-    bodyBytes: body,
-    amzDate,
-    dateStamp,
+  // Retry on throttling (429) / 5xx with exponential backoff; the signed
+  // request is rebuilt each attempt.
+  await withUploadRetry(async () => {
+    const { amzDate, dateStamp } = nowOssDate();
+    const req = await buildOssV4PutRequest({
+      method: 'PUT',
+      endpoint: endpoint(cfg),
+      bucket: cfg.bucket,
+      objectKey,
+      region: normalizeRegion(cfg.region),
+      accessKeyId: cfg.accessKeyId,
+      accessKeySecret: cfg.accessKeySecret,
+      contentType,
+      bodyBytes: body,
+      amzDate,
+      dateStamp,
+    });
+    const res = await fetch(req.url, { method: 'PUT', headers: req.headers, body: req.body as BodyInit });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
+      throw new Error(`OSS upload failed: ${res.status} ${res.statusText} ${trimmed}`);
+    }
   });
-  const res = await fetch(req.url, {
-    method: 'PUT',
-    headers: req.headers,
-    body: req.body as BodyInit,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
-    throw new Error(`OSS upload failed: ${res.status} ${res.statusText} ${trimmed}`);
-  }
 }
 
 export class OssProvider implements StorageProvider {
