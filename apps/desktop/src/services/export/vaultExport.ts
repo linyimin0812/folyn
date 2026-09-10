@@ -144,6 +144,28 @@ async function readVaultText(path: string): Promise<string> {
  */
 const CANVAS_EXPORT_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
 
+// Max docs rendered in parallel during whole-vault export. Each render mounts
+// a DOM root + poll loop on document.body, so this is bounded to avoid
+// mounting hundreds of trees at once. ponytail: a fixed pool, not a config.
+const EXPORT_CONCURRENCY = 6;
+
+/** Map over `items` with at most `limit` in-flight promises; returns results in
+ *  input order. A rejection (e.g. CANCELLED) aborts the batch via Promise.all. */
+async function mapWithConcurrency<T, R>(items: readonly T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const run = async (): Promise<void> => {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => run());
+  await Promise.all(workers);
+  return results;
+}
+
 async function fileToBodyFragment(
   file: ExportableFile,
   vaultRoot: string,
@@ -570,20 +592,18 @@ async function prepareVaultExport(opts?: { imageMode?: HtmlImageMode; imageProvi
   const filteredCount = countFilteredFiles(fileTree);
   const total = files.length;
 
-  // Render every doc to a body fragment (+ css) up front.
-  const docs: { docId: string; html: string; css: string; standalone?: string; canvas?: boolean }[] = [];
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    // markdown with container syntax can't be losslessly exported — skip
-    // the container warning here (whole-vault export is best-effort) but
-    // still render; containers degrade to their static fallback.
-    const frag = await fileToBodyFragment(f, vaultRoot, theme, imageMode, provider, cfg);
-    docs.push({ docId: f.docId, html: frag.html, css: frag.css, standalone: frag.standalone, canvas: frag.canvas });
-    opts?.onProgress?.(i + 1, total);
-    // Honor a cancel request between docs so the user can abort a long
-    // whole-vault render from the dialog's close button.
+  // Render every doc to a body fragment (+ css) up front, in parallel with a
+  // bounded concurrency (each render spins up a DOM root + poll loop, so
+  // unbounded Promise.all would mount N trees on document.body at once).
+  // Cancellation is honored before a task starts; a CANCELLED rejection
+  // aborts the batch via Promise.all.
+  let done = 0;
+  const docs = await mapWithConcurrency(files, EXPORT_CONCURRENCY, async (f) => {
     if (opts?.shouldCancel?.()) throw new Error('CANCELLED');
-  }
+    const frag = await fileToBodyFragment(f, vaultRoot, theme, imageMode, provider, cfg);
+    opts?.onProgress?.(++done, total);
+    return { docId: f.docId, html: frag.html, css: frag.css, standalone: frag.standalone, canvas: frag.canvas };
+  });
   return { textTree, files, docs, vaultName, theme, codeTheme, codeThemeCss, filteredCount, total };
 }
 
