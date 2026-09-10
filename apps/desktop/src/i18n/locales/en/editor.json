@@ -12,9 +12,29 @@
       "mermaid": { "label": "Mermaid", "description": "Export .mermaid source file" },
       "default": { "label": "Source File", "description": "Export raw file" }
     },
+    "provider": {
+      "fileLabel": "File upload provider",
+      "imageLabel": "Image upload provider",
+      "notConfigured": "Configure a provider in “Storage & Sharing” first",
+      "goToSettings": "Go to settings",
+      "selectPlaceholder": "Select provider",
+      "required": "Please select a provider"
+    },
     "html": {
       "label": "HTML",
       "description": "Export as rendered web page"
+    },
+    "singleDoc": {
+      "title": "Export {{name}}",
+      "menu": "Export / Share HTML",
+      "downloaded": "{{name}} exported locally",
+      "imageMode": {
+        "label": "Image handling",
+        "inline": "Base64 inline",
+        "inlineDesc": "Images embedded as base64; HTML is self-contained",
+        "upload": "Upload to remote",
+        "uploadDesc": "Images uploaded to the provider; src rewritten to a public URL"
+      }
     },
     "svg": {
       "label": "SVG",
@@ -34,9 +54,9 @@
     },
     "vault": {
       "menu": "Export entire vault",
-      "menuDesc": "Whole vault → HTML (tree + text files)",
+      "menuDesc": "Whole vault → HTML",
       "title": "Export entire vault",
-      "hint": "Exports all text-type files (markdown, code, data…). Images and office docs are filtered out. Markdown images are inlined as base64. The left file tree is preserved as navigation.",
+      "hint": "Exports all text-type files (markdown, code, data…). Images and office docs are filtered out. The left file tree is preserved as navigation.",
       "single": { "label": "Single HTML file", "desc": "One self-contained .html — tree + all docs, click to switch" },
       "folder": { "label": "HTML folder", "desc": "index.html + one HTML per document" },
       "shape": "Shape",
@@ -46,6 +66,11 @@
         "upload": "Upload to remote",
         "uploadDesc": "Uploads a single self-contained HTML to the configured storage provider",
         "uploadDisabled": "Configure 'Storage & Share' to enable"
+      },
+      "imageMode": {
+        "label": "Image handling",
+        "inline": "Base64 inline",
+        "upload": "Upload to remote"
       },
       "uploaded": "Uploaded — URL copied to clipboard",
       "export": "Export",

@@ -1,7 +1,7 @@
 /**
  * 存储与分享 settings tab. Configures R2 / 七牛云 / 阿里云 OSS storage
  * provider credentials (shared by image-hosting paste flow and
- * markdown→HTML share flow). Also houses the global htmlImageMode toggle.
+ * markdown→HTML share flow).
  */
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +38,6 @@ export function StorageSharingSettings() {
   const configs = useStorageConfigStore((s) => s.configs);
   const saveProviderConfig = useStorageConfigStore((s) => s.saveProviderConfig);
   const removeProviderConfig = useStorageConfigStore((s) => s.removeProviderConfig);
-  const htmlImageMode = useStorageConfigStore((s) => s.htmlImageMode);
-  const setHtmlImageMode = useStorageConfigStore((s) => s.setHtmlImageMode);
 
   const activeCfg = configs[activeProvider] ?? null;
 
@@ -97,26 +95,6 @@ export function StorageSharingSettings() {
         />
       )}
 
-      {/* HTML image mode (global) */}
-      <div className="mt-7 pt-5 border-t border-brd2">
-        <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-1">{t('settings:storage.htmlImageMode.label')}</div>
-        <div className="text-[11px] text-t3 mb-3">{t('settings:storage.htmlImageMode.help')}</div>
-        <div className="flex border border-brd2 rounded-md overflow-hidden">
-          {(['inline', 'upload'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={`flex-1 py-1.5 px-3.5 text-xs font-medium cursor-pointer transition-all duration-150 border-r border-r-brd2 last:border-r-0 ${htmlImageMode === m ? 'bg-acc text-white font-semibold' : 'bg-surf text-t2 hover:bg-hov hover:text-t1'}`}
-              onClick={() => setHtmlImageMode(m)}
-            >
-              {t(`settings:storage.htmlImageMode.${m}`)}
-            </button>
-          ))}
-        </div>
-        <div className="text-[11px] text-t3 mt-2 leading-relaxed">
-          {t(`settings:storage.htmlImageMode.${htmlImageMode}Desc`)}
-        </div>
-      </div>
     </div>
   );
 }

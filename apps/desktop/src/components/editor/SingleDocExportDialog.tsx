@@ -1,35 +1,38 @@
 /**
- * "Export entire vault" dialog. Lets the user pick the product shape
- * (single self-contained HTML — default, or an HTML folder) and the output
+ * Single-document (markdown) export dialog. Lets the user pick the output
  * target (download locally — default, or upload to a configured storage
- * provider). Drives {@link exportVaultToHtml} / {@link uploadVaultSingleToCloud}.
+ * provider) and the in-doc image handling (base64 inline — default, or
+ * upload each image to the provider and rewrite src). Drives
+ * {@link exportActiveHtml} / {@link shareActiveToCloud} with the chosen
+ * imageMode.
  *
- * Upload is single-only — an HTML folder is multi-file and object stores
- * don't serve it as one shareable URL — so picking folder greys out the
- * upload target (and resets it to download). Surfaces per-document progress,
- * a final summary, and the uploaded URL (copy + open).
+ * Replaces the old two-step ExportMenu items ("导出 HTML" download +
+ * "分享到云端" upload) for markdown with one settings dialog, so image
+ * handling is chosen per export instead of a global toggle. Mirrors
+ * {@link VaultExportDialog}'s shape but drops the shape picker (a single
+ * doc has one product).
  */
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, ExternalLink, Check, Settings } from 'lucide-react';
-import { useVaultStore } from '@/store/vaultStore';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider, getAllProviders } from '@/services/storage/registry';
 import { IconSelect } from '@/components/common/IconSelect';
 import { useNavStore } from '@/store/navStore';
-import { exportVaultToHtml, uploadVaultSingleToCloud, type VaultExportMode } from '@/services/export/vaultExport';
+import { exportActiveHtml, shareActiveToCloud } from '@/hooks/useExport';
 import type { HtmlImageMode } from '@/services/export/shared';
 
-interface VaultExportDialogProps {
+interface SingleDocExportDialogProps {
+  /** Active doc name (e.g. "notes.md"), for the title + download filename. */
+  docName: string;
   onClose: () => void;
 }
 
 type Phase = 'idle' | 'exporting' | 'done' | 'error';
 type Output = 'download' | 'upload';
 
-export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JSX.Element {
+export function SingleDocExportDialog({ docName, onClose }: SingleDocExportDialogProps): React.JSX.Element {
   const { t } = useTranslation();
-  const currentVault = useVaultStore((s) => s.currentVault);
 
   const configs = useStorageConfigStore((s) => s.configs);
   // Configured providers for the pickers — based on what's actually filled
@@ -44,13 +47,11 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
   const [fileProviderId, setFileProviderId] = useState<string | null>(null);
   const [imageProviderId, setImageProviderId] = useState<string | null>(null);
 
-  const [imageMode, setImageMode] = useState<HtmlImageMode>('inline');
-  const [mode, setMode] = useState<VaultExportMode>('single');
   const [output, setOutput] = useState<Output>('download');
-  // Upload is single-only: a folder is multi-file and can't be one shareable
-  // URL on an object store. Grey out the upload target while folder is picked.
-  const uploadDisabled = mode === 'folder';
-  const fileUpload = output === 'upload' && !uploadDisabled;
+  // Per-export image handling — default base64 inline. 'upload' uploads
+  // each image to the chosen provider and rewrites src.
+  const [imageMode, setImageMode] = useState<HtmlImageMode>('inline');
+  const fileUpload = output === 'upload';
   const imageUpload = imageMode === 'upload';
   // Whether the chosen provider for each stream is configured.
   const fileReady = (() => { if (!fileProviderId) return false; const c = configs[fileProviderId] ?? null; return c ? getProvider(fileProviderId).isConfigured(c) : false; })();
@@ -60,9 +61,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
   const imageMissing = imageUpload && !imageReady;
   const [showProviderError, setShowProviderError] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ docCount: number; filteredCount: number } | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [urlCopied, setUrlCopied] = useState(false);
 
@@ -75,46 +74,28 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
     }
     setShowProviderError(false);
     setPhase('exporting');
-    setProgress({ done: 0, total: 0 });
     setError(null);
-    setResult(null);
     setShareUrl(null);
     try {
       if (output === 'upload') {
-        const url = await uploadVaultSingleToCloud({ imageMode, imageProviderId: imageProviderId ?? undefined, fileProviderId: fileProviderId ?? undefined, onProgress: (done, total) => setProgress({ done, total }) });
+        const url = await shareActiveToCloud({ imageMode, imageProviderId: imageProviderId ?? undefined, fileProviderId: fileProviderId ?? undefined });
         await navigator.clipboard.writeText(url).catch(() => {});
         setShareUrl(url);
         setPhase('done');
         return;
       }
-      const r = await exportVaultToHtml(mode, {
-        imageMode,
-        imageProviderId: imageProviderId ?? undefined,
-        onProgress: (done, total) => setProgress({ done, total }),
-      });
-      if (r.docCount === 0 && r.mode === 'folder') {
-        // user cancelled the folder pick — close silently
-        setPhase('idle');
-        setProgress(null);
-        onClose();
-        return;
-      }
-      setResult({ docCount: r.docCount, filteredCount: r.filteredCount });
+      await exportActiveHtml({ imageMode, imageProviderId: imageProviderId ?? undefined });
       setPhase('done');
     } catch (err) {
       const e = err as Error;
       setError(
-        e.message === 'NO_VAULT'
-          ? t('editor:export.vault.noVault')
-          : e.message === 'NO_TEXT_FILES'
-            ? t('editor:export.vault.noTextFiles')
-            : e.message === 'STORAGE_NOT_CONFIGURED' || e.message === 'STORAGE_NO_HTML_CAPABILITY'
-              ? t('settings:storage.toast.notConfigured')
-              : `${t('editor:export.vault.error')}: ${e.message}`,
+        e.message === 'STORAGE_NOT_CONFIGURED' || e.message === 'STORAGE_NO_HTML_CAPABILITY'
+          ? t('settings:storage.toast.notConfigured')
+          : `${t('editor:export.vault.error')}: ${e.message}`,
       );
       setPhase('error');
     }
-  }, [mode, output, imageMode, fileMissing, imageMissing, onClose, t]);
+  }, [output, imageMode, fileMissing, imageMissing, t]);
 
   // Jump to Settings → Storage & Sharing so the user can configure a
   // provider, then close this dialog.
@@ -160,90 +141,34 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
     );
   };
 
+  const radioRow = (checked: boolean, onChange: () => void, label: string, desc?: string) => (
+    <label
+      className="flex items-start gap-2.5 py-1.5 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
+      style={{ outline: checked ? '1.5px solid var(--acc)' : '1px solid var(--brd2)' }}
+    >
+      <input type="radio" checked={checked} onChange={onChange} className="mt-0.5 accent-[var(--acc)]" />
+      <span className="flex flex-col gap-px">
+        <span className="text-xs font-medium text-t1">{label}</span>
+        {desc && <span className="text-[10px] text-t3">{desc}</span>}
+      </span>
+    </label>
+  );
+
   return (
     <div className="dlg-overlay" data-tauri-drag-region={false} onClick={phase === 'exporting' ? undefined : onClose}>
       <div className="dlg" data-tauri-drag-region={false} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <div className="dlg-hd" onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-          <h3>{t('editor:export.vault.title')}</h3>
+          <h3>{t('editor:export.singleDoc.title', { name: docName })}</h3>
         </div>
 
         <div className="dlg-body">
           {phase !== 'done' && phase !== 'error' && (
             <>
-              <p className="text-[12px] text-t3" style={{ margin: '4px 0 10px', lineHeight: 1.6 }}>
-                {t('editor:export.vault.hint')}
-              </p>
-
-              <div className="text-[10px] text-t3" style={{ margin: '6px 0 4px' }}>{t('editor:export.vault.shape')}</div>
+              {/* Output target */}
+              <div className="text-[10px] text-t3" style={{ margin: '6px 0 4px' }}>{t('editor:export.vault.target')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label
-                  className="flex items-start gap-2.5 py-1.5 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
-                  style={{ outline: mode === 'single' ? '1.5px solid var(--acc)' : '1px solid var(--brd2)' }}
-                >
-                  <input
-                    type="radio"
-                    name="vault-export-mode"
-                    checked={mode === 'single'}
-                    onChange={() => setMode('single')}
-                    className="mt-0.5 accent-[var(--acc)]"
-                  />
-                  <span className="flex flex-col gap-px">
-                    <span className="text-xs font-medium text-t1">{t('editor:export.vault.single.label')}</span>
-                    <span className="text-[10px] text-t3">{t('editor:export.vault.single.desc')}</span>
-                  </span>
-                </label>
-
-                <label
-                  className="flex items-start gap-2.5 py-1.5 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
-                  style={{ outline: mode === 'folder' ? '1.5px solid var(--acc)' : '1px solid var(--brd2)' }}
-                >
-                  <input
-                    type="radio"
-                    name="vault-export-mode"
-                    checked={mode === 'folder'}
-                    onChange={() => { setMode('folder'); if (output === 'upload') setOutput('download'); }}
-                    className="mt-0.5 accent-[var(--acc)]"
-                  />
-                  <span className="flex flex-col gap-px">
-                    <span className="text-xs font-medium text-t1">{t('editor:export.vault.folder.label')}</span>
-                    <span className="text-[10px] text-t3">{t('editor:export.vault.folder.desc')}</span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="text-[10px] text-t3" style={{ margin: '12px 0 4px' }}>{t('editor:export.vault.target')}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label
-                  className="flex items-start gap-2.5 py-1.5 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
-                  style={{ outline: output === 'download' ? '1.5px solid var(--acc)' : '1px solid var(--brd2)' }}
-                >
-                  <input
-                    type="radio"
-                    name="vault-output"
-                    checked={output === 'download'}
-                    onChange={() => setOutput('download')}
-                    className="mt-0.5 accent-[var(--acc)]"
-                  />
-                  <span className="text-xs font-medium text-t1">{t('editor:export.vault.output.download')}</span>
-                </label>
-
-                <label
-                  className={`flex items-start gap-2.5 py-1.5 px-2.5 rounded-[5px] transition-[background] duration-100 ${uploadDisabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:bg-hov'}`}
-                  style={{ outline: output === 'upload' ? '1.5px solid var(--acc)' : '1px solid var(--brd2)' }}
-                >
-                  <input
-                    type="radio"
-                    name="vault-output"
-                    checked={output === 'upload'}
-                    onChange={() => setOutput('upload')}
-                    disabled={uploadDisabled}
-                    className="mt-0.5 accent-[var(--acc)]"
-                  />
-                  <span className="flex flex-col gap-px">
-                    <span className="text-xs font-medium text-t1">{t('editor:export.vault.output.upload')}</span>
-                    <span className="text-[10px] text-t3">{t('editor:export.vault.output.uploadDesc')}</span>
-                  </span>
-                </label>
+                {radioRow(output === 'download', () => setOutput('download'), t('editor:export.vault.output.download'))}
+                {radioRow(output === 'upload', () => setOutput('upload'), t('editor:export.vault.output.upload'), t('editor:export.vault.output.uploadDesc'))}
               </div>
 
               {/* File upload provider — under the output target. */}
@@ -251,48 +176,28 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
               {providerPicker(t('editor:export.provider.fileLabel'), fileProviderId, setFileProviderId, fileUpload, fileMissing)}
 
               {/* Image handling */}
-              <div className="text-[10px] text-t3" style={{ margin: '12px 0 4px' }}>{t('editor:export.vault.imageMode.label')}</div>
+              <div className="text-[10px] text-t3" style={{ margin: '12px 0 4px' }}>{t('editor:export.singleDoc.imageMode.label')}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label
-                  className="flex items-start gap-2.5 py-1.5 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
-                  style={{ outline: imageMode === 'inline' ? '1.5px solid var(--acc)' : '1px solid var(--brd2)' }}
-                >
-                  <input type="radio" name="vault-image-mode" checked={imageMode === 'inline'} onChange={() => setImageMode('inline')} className="mt-0.5 accent-[var(--acc)]" />
-                  <span className="flex flex-col gap-px">
-                    <span className="text-xs font-medium text-t1">{t('editor:export.vault.imageMode.inline')}</span>
-                  </span>
-                </label>
-                <label
-                  className="flex items-start gap-2.5 py-1.5 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
-                  style={{ outline: imageMode === 'upload' ? '1.5px solid var(--acc)' : '1px solid var(--brd2)' }}
-                >
-                  <input type="radio" name="vault-image-mode" checked={imageMode === 'upload'} onChange={() => setImageMode('upload')} className="mt-0.5 accent-[var(--acc)]" />
-                  <span className="flex flex-col gap-px">
-                    <span className="text-xs font-medium text-t1">{t('editor:export.vault.imageMode.upload')}</span>
-                  </span>
-                </label>
+                {radioRow(imageMode === 'inline', () => setImageMode('inline'), t('editor:export.singleDoc.imageMode.inline'), t('editor:export.singleDoc.imageMode.inlineDesc'))}
+                {radioRow(imageMode === 'upload', () => setImageMode('upload'), t('editor:export.singleDoc.imageMode.upload'), t('editor:export.singleDoc.imageMode.uploadDesc'))}
               </div>
 
               {/* Image upload provider — under the image-mode group. */}
               <div className="text-[10px] text-t3" style={{ margin: '8px 0 4px' }}>{t('editor:export.provider.imageLabel')}</div>
               {providerPicker(t('editor:export.provider.imageLabel'), imageProviderId, setImageProviderId, imageUpload, imageMissing)}
 
-              {phase === 'exporting' && progress && (
+              {phase === 'exporting' && (
                 <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span className="inline-block w-4 h-4 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0" />
-                  <span className="text-[12px] text-t2">
-                    {progress.total > 0
-                      ? t('editor:export.vault.progress', { done: progress.done, total: progress.total })
-                      : t('editor:export.processing.hint')}
-                  </span>
+                  <span className="text-[12px] text-t2">{t('editor:export.processing.hint')}</span>
                 </div>
               )}
             </>
           )}
 
-          {phase === 'done' && result && !shareUrl && (
+          {phase === 'done' && !shareUrl && (
             <p style={{ margin: '8px 0', lineHeight: 1.7, fontSize: 13 }}>
-              {t('editor:export.vault.success', { docs: result.docCount, filtered: result.filteredCount })}
+              {t('editor:export.singleDoc.downloaded', { name: docName })}
             </p>
           )}
 
@@ -341,11 +246,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
 
         <div className="dlg-ft">
           {phase !== 'done' && phase !== 'error' && (
-            <button
-              className="btn btn-g btn-sm"
-              onClick={onClose}
-              disabled={phase === 'exporting'}
-            >
+            <button className="btn btn-g btn-sm" onClick={onClose} disabled={phase === 'exporting'}>
               {t('editor:export.vault.close')}
             </button>
           )}
@@ -353,7 +254,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
             <button
               className="btn btn-p btn-sm"
               onClick={handleExport}
-              disabled={phase === 'exporting' || !currentVault || (output === 'upload' && uploadDisabled)}
+              disabled={phase === 'exporting'}
             >
               {phase === 'exporting'
                 ? t('editor:export.vault.exporting')

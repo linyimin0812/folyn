@@ -4,8 +4,14 @@
  * pulled via dynamic import by renderFilePreviewToSvg to avoid an ESM cycle).
  */
 
+import type { ProviderConfig, StorageProvider } from '../storage/types';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { resolveBasePath } from '@/utils/pathResolver';
+
+/** How export/share handles in-doc local images.
+ *  - 'inline' (default): base64-embed via {@link inlineImages}
+ *  - 'upload': upload each via {@link uploadImagesToProvider}, rewrite src */
+export type HtmlImageMode = 'inline' | 'upload';
 
 /**
  * Resolve a vault-relative path the same way FilePreviewPlugin does, so
@@ -234,6 +240,55 @@ export async function inlineImages(html: string, vaultRoot: string, currentFileP
   let result = html;
   for (const { original, dataUrl } of replacements) {
     if (dataUrl) result = result.replaceAll(original, dataUrl);
+  }
+  return result;
+}
+
+/**
+ * Walk all `asset://localhost/<path>` (or `http(s)://asset.localhost/<path>`)
+ * `<img>` srcs in `html`, upload each referenced local file to the given
+ * provider, and rewrite the src to the returned public URL. Sister to
+ * {@link inlineImages}: same idea — find local-asset <img> srcs, upload
+ * instead of inlining. The caller must have rendered the markdown with
+ * `inlineImages: false` so the srcs are still `asset://...` (otherwise
+ * `inlineContainerImages` already replaced them with data URIs and this
+ * regex matches nothing).
+ *
+ * ponytail: dedupes unique srcs so a doc with 10 references to the same
+ * image uploads it once. Ceiling: sequential uploads, no batching — R2/OSS
+ * PUTs are independent so a Promise.all batch would scale, but we'd need
+ * retry + concurrency limits we don't need yet.
+ */
+export async function uploadImagesToProvider(
+  html: string,
+  provider: StorageProvider,
+  cfg: ProviderConfig,
+): Promise<string> {
+  const matches = [...html.matchAll(ASSET_URL_SRC_REGEX)];
+  if (matches.length === 0) return html;
+
+  const uniqueSrcs = [...new Set(matches.map((m) => m[1]))];
+
+  const replacements = await Promise.all(
+    uniqueSrcs.map(async (src) => {
+      const absPath = assetUrlToFilePath(src);
+      if (!absPath) return null;
+      try {
+        const bytes = await readFile(absPath);
+        const ext = absPath.split('.').pop()?.toLowerCase() ?? 'png';
+        const url = await provider.uploadImage(new Uint8Array(bytes), ext, cfg);
+        return { original: src, url };
+      } catch {
+        // Leave the original asset:// src — a broken img (outside the app)
+        // is preferable to a failed share. Caller can surface a toast.
+        return null;
+      }
+    }),
+  );
+
+  let result = html;
+  for (const r of replacements) {
+    if (r) result = result.replaceAll(r.original, r.url);
   }
   return result;
 }

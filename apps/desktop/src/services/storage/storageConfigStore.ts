@@ -20,18 +20,13 @@ import {
 import type { ProviderConfig } from './types';
 import { isR2Config, isQiniuConfig, isOssConfig } from './types';
 
-export type HtmlImageMode = 'inline' | 'upload';
-
 export interface StorageConfigState {
   /** Active provider id ('r2' | 'qiniu' | future ids). */
   activeProvider: string;
   /** Per-provider config cache (loaded from disk). */
   configs: Partial<Record<string, ProviderConfig>>;
-  /** How HTML sharing handles in-doc local images. Default 'inline'. */
-  htmlImageMode: HtmlImageMode;
   loadFromDisk: () => Promise<void>;
   setActiveProvider: (id: string) => void;
-  setHtmlImageMode: (mode: HtmlImageMode) => void;
   saveProviderConfig: (cfg: ProviderConfig) => Promise<void>;
   removeProviderConfig: (id: string) => Promise<void>;
   getActiveConfig: () => ProviderConfig | null;
@@ -45,17 +40,14 @@ const initialConfigs: Partial<Record<string, ProviderConfig>> = {
 
 const persist = registerPersistSlice({
   name: 'storage',
-  keys: ['activeProvider', 'htmlImageMode'] as const,
+  keys: ['activeProvider'] as const,
   getState: () => {
     const s = useStorageConfigStore.getState();
-    return { activeProvider: s.activeProvider, htmlImageMode: s.htmlImageMode };
+    return { activeProvider: s.activeProvider };
   },
   hydrate: (blob) => {
     if (typeof blob.activeProvider === 'string') {
       useStorageConfigStore.setState({ activeProvider: blob.activeProvider });
-    }
-    if (blob.htmlImageMode === 'inline' || blob.htmlImageMode === 'upload') {
-      useStorageConfigStore.setState({ htmlImageMode: blob.htmlImageMode });
     }
   },
 });
@@ -63,7 +55,6 @@ const persist = registerPersistSlice({
 export const useStorageConfigStore = create<StorageConfigState>((set, get) => ({
   activeProvider: 'r2',
   configs: initialConfigs,
-  htmlImageMode: 'inline',
 
   async loadFromDisk() {
     const disk = await storageConfigStorage.load();
@@ -77,11 +68,6 @@ export const useStorageConfigStore = create<StorageConfigState>((set, get) => ({
 
   setActiveProvider(id) {
     set({ activeProvider: id });
-    persist();
-  },
-
-  setHtmlImageMode(mode) {
-    set({ htmlImageMode: mode });
     persist();
   },
 

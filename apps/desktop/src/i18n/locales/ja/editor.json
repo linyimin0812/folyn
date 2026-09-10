@@ -12,9 +12,29 @@
       "mermaid": { "label": "Mermaid", "description": ".mermaidソースファイルをエクスポート" },
       "default": { "label": "ソースファイル", "description": "生ファイルをエクスポート" }
     },
+    "provider": {
+      "fileLabel": "ファイルアップロード先",
+      "imageLabel": "画像アップロード先",
+      "notConfigured": "「ストレージと共有」でプロバイダーを先に設定してください",
+      "goToSettings": "設定へ",
+      "selectPlaceholder": "プロバイダーを選択",
+      "required": "プロバイダーを選択してください"
+    },
     "html": {
       "label": "HTML",
       "description": "レンダリングされたWebページとしてエクスポート"
+    },
+    "singleDoc": {
+      "title": "{{name}} をエクスポート",
+      "menu": "HTML エクスポート / 共有",
+      "downloaded": "{{name}} をローカルにエクスポートしました",
+      "imageMode": {
+        "label": "画像処理",
+        "inline": "Base64 埋め込み",
+        "inlineDesc": "画像をbase64で埋め込み、HTMLは自己完結",
+        "upload": "リモートへアップロード",
+        "uploadDesc": "画像をプロバイダーにアップロードし、srcを公開URLに書き換え"
+      }
     },
     "svg": {
       "label": "SVG",
@@ -30,9 +50,9 @@
     },
     "vault": {
       "menu": "Vault全体をエクスポート",
-      "menuDesc": "Vault全体 → HTML（ツリー+テキストファイル）",
+      "menuDesc": "Vault全体 → HTML",
       "title": "Vault全体をエクスポート",
-      "hint": "テキスト形式ファイル（Markdown、コード、データ等）をすべてエクスポート。画像とOffice文書は除外、Markdown内の画像はbase64で埋め込み、左のファイルツリーをナビとして保持します。",
+      "hint": "テキスト形式ファイル（Markdown、コード、データ等）をすべてエクスポート。画像とOffice文書は除外、左のファイルツリーをナビとして保持します。",
       "single": { "label": "単一HTMLファイル", "desc": "1つのself-contained .html—ツリー+全ドキュメント、クリックで切替" },
       "folder": { "label": "HTMLフォルダ", "desc": "index.html + ドキュメントごとに1つのHTML" },
       "shape": "形態",
@@ -42,6 +62,11 @@
         "upload": "リモートにアップロード",
         "uploadDesc": "単一のself-contained HTMLを設定済みストレージにアップロード",
         "uploadDisabled": "「ストレージと共有」を設定してください"
+      },
+      "imageMode": {
+        "label": "画像処理",
+        "inline": "Base64 埋め込み",
+        "upload": "リモートへアップロード"
       },
       "uploaded": "アップロード完了——URLをクリップボードにコピーしました",
       "export": "エクスポート",

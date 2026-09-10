@@ -12,9 +12,29 @@
       "mermaid": { "label": "Mermaid", "description": ".mermaid-Quelldatei exportieren" },
       "default": { "label": "Quelldatei", "description": "Rohdatei exportieren" }
     },
+    "provider": {
+      "fileLabel": "Datei-Upload-Anbieter",
+      "imageLabel": "Bild-Upload-Anbieter",
+      "notConfigured": "Konfiguriere zuerst einen Anbieter unter „Speicher & Teilen“",
+      "goToSettings": "Zu den Einstellungen",
+      "selectPlaceholder": "Anbieter wählen",
+      "required": "Bitte Anbieter wählen"
+    },
     "html": {
       "label": "HTML",
       "description": "Als gerenderte Webseite exportieren"
+    },
+    "singleDoc": {
+      "title": "{{name}} exportieren",
+      "menu": "HTML exportieren / teilen",
+      "downloaded": "{{name}} lokal exportiert",
+      "imageMode": {
+        "label": "Bildbehandlung",
+        "inline": "Base64 einbetten",
+        "inlineDesc": "Bilder als Base64 eingebettet; HTML ist eigenständig",
+        "upload": "Zum Remote hochladen",
+        "uploadDesc": "Bilder zum Anbieter hochladen; src als öffentliche URL umgeschrieben"
+      }
     },
     "svg": {
       "label": "SVG",
@@ -30,9 +50,9 @@
     },
     "vault": {
       "menu": "Gesamtes Vault exportieren",
-      "menuDesc": "Ganzes Vault → HTML (Baum + Textdateien)",
+      "menuDesc": "Ganzes Vault → HTML",
       "title": "Gesamtes Vault exportieren",
-      "hint": "Exportiert alle Textdateien (Markdown, Code, Daten …). Bilder und Office-Dokumente werden ausgefiltert, Markdown-Bilder als Base64 eingebettet, der linke Dateibaum bleibt als Navigation erhalten.",
+      "hint": "Exportiert alle Textdateien (Markdown, Code, Daten …). Bilder und Office-Dokumente werden ausgefiltert, der linke Dateibaum bleibt als Navigation erhalten.",
       "single": { "label": "Einzelne HTML-Datei", "desc": "Eine eigenständige .html — Baum + alle Dokumente, Klick zum Wechseln" },
       "folder": { "label": "HTML-Ordner", "desc": "index.html + pro Dokument eine HTML-Datei" },
       "shape": "Form",
@@ -42,6 +62,11 @@
         "upload": "Hochladen (Remote)",
         "uploadDesc": "Lädt eine eigenständige HTML zum konfigurierten Speicher-Provider hoch",
         "uploadDisabled": "'Speicher & Teilen' konfigurieren"
+      },
+      "imageMode": {
+        "label": "Bildbehandlung",
+        "inline": "Base64 einbetten",
+        "upload": "Zum Remote hochladen"
       },
       "uploaded": "Hochgeladen — URL in die Zwischenablage kopiert",
       "export": "Exportieren",

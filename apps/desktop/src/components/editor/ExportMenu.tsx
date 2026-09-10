@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { ImageDown, Cloud, Copy, ExternalLink, Check, FolderArchive } from 'lucide-react';
 import { VaultExportDialog } from './VaultExportDialog';
+import { SingleDocExportDialog } from './SingleDocExportDialog';
 import { useExport, hasContainerSyntax } from '@/hooks/useExport';
 import { useEditorStore, detectFileType } from '@/store/editorStore';
 import { FileIcon } from '@/components/icons/FileIcon';
@@ -33,8 +34,9 @@ export function ExportMenu() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [urlCopied, setUrlCopied] = useState(false);
   const [vaultExportOpen, setVaultExportOpen] = useState(false);
+  const [singleDocExportOpen, setSingleDocExportOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent } = useExport();
+  const { exportSource, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent } = useExport();
   const activeProvider = useStorageConfigStore((s) => s.activeProvider);
   const activeCfg = useStorageConfigStore((s) => s.configs[s.activeProvider] ?? null);
   const shareEnabled = activeCfg ? getProvider(activeProvider).isConfigured(activeCfg) : false;
@@ -87,10 +89,6 @@ export function ExportMenu() {
     setContainerWarning(false);
     runWithOverlay(() => exportSource());
   }, [exportSource, runWithOverlay]);
-
-  const handleHtml = useCallback(() => {
-    runWithOverlay(() => exportHtml());
-  }, [exportHtml, runWithOverlay]);
 
   const handleRichTextHtml = useCallback(() => {
     runWithOverlay(() => exportRichTextHtml());
@@ -164,9 +162,9 @@ export function ExportMenu() {
     items.push({
       key: 'html',
       icon: <span className="text-base w-6 text-center shrink-0">🌐</span>,
-      label: t('editor:export.html.label'),
+      label: t('editor:export.singleDoc.menu'),
       description: t('editor:export.html.description'),
-      run: handleHtml,
+      run: () => { setOpen(false); setSingleDocExportOpen(true); },
     });
     items.push({
       key: 'markmap',
@@ -175,15 +173,6 @@ export function ExportMenu() {
       description: t('editor:export.markmap.description'),
       run: handleMarkmap,
     });
-    if (shareEnabled) {
-      items.push({
-        key: 'share-cloud',
-        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
-        label: t('settings:storage.share.menu'),
-        description: t('settings:storage.description'),
-        run: handleShareToCloud,
-      });
-    }
   } else if (fileType === 'rich-text') {
     items.push({
       key: 'html',
@@ -400,6 +389,11 @@ export function ExportMenu() {
       {/* Export entire vault — modal mode picker */}
       {vaultExportOpen && (
         <VaultExportDialog onClose={() => setVaultExportOpen(false)} />
+      )}
+
+      {/* Export single markdown doc — target + image-mode picker */}
+      {singleDocExportOpen && (
+        <SingleDocExportDialog docName={tabName} onClose={() => setSingleDocExportOpen(false)} />
       )}
 
       {/* Share error: surface the cause; user closes */}

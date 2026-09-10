@@ -12,9 +12,29 @@
       "mermaid": { "label": "Mermaid", "description": "Exportar archivo .mermaid" },
       "default": { "label": "Archivo fuente", "description": "Exportar archivo en bruto" }
     },
+    "provider": {
+      "fileLabel": "Proveedor de subida de archivos",
+      "imageLabel": "Proveedor de subida de imágenes",
+      "notConfigured": "Configura un proveedor en «Almacenamiento y compartir» primero",
+      "goToSettings": "Ir a ajustes",
+      "selectPlaceholder": "Elegir proveedor",
+      "required": "Elige un proveedor"
+    },
     "html": {
       "label": "HTML",
       "description": "Exportar como página web renderizada"
+    },
+    "singleDoc": {
+      "title": "Exportar {{name}}",
+      "menu": "Exportar / Compartir HTML",
+      "downloaded": "{{name}} exportado localmente",
+      "imageMode": {
+        "label": "Tratamiento de imágenes",
+        "inline": "Base64 integrado",
+        "inlineDesc": "Imágenes incrustadas en base64; el HTML es autónomo",
+        "upload": "Subir a remoto",
+        "uploadDesc": "Imágenes subidas al proveedor; src reescrito a URL pública"
+      }
     },
     "svg": {
       "label": "SVG",
@@ -30,9 +50,9 @@
     },
     "vault": {
       "menu": "Exportar todo el vault",
-      "menuDesc": "Vault completo → HTML (árbol + archivos de texto)",
+      "menuDesc": "Vault completo → HTML",
       "title": "Exportar todo el vault",
-      "hint": "Exporta todos los archivos de texto (Markdown, código, datos…). Las imágenes y documentos de Office se filtran, las imágenes Markdown se incrustan en base64, el árbol de archivos de la izquierda se conserva como navegación.",
+      "hint": "Exporta todos los archivos de texto (Markdown, código, datos…). Las imágenes y documentos de Office se filtran, el árbol de archivos de la izquierda se conserva como navegación.",
       "single": { "label": "Archivo HTML único", "desc": "Un .html autónomo — árbol + todos los documentos, clic para cambiar" },
       "folder": { "label": "Carpeta HTML", "desc": "index.html + un HTML por documento" },
       "shape": "Forma",
@@ -42,6 +62,11 @@
         "upload": "Subir (remoto)",
         "uploadDesc": "Sube un HTML autónomo al almacenamiento configurado",
         "uploadDisabled": "Configura «Almacenamiento y compartir»"
+      },
+      "imageMode": {
+        "label": "Tratamiento de imágenes",
+        "inline": "Base64 integrado",
+        "upload": "Subir a remoto"
       },
       "uploaded": "Subido — URL copiada al portapapeles",
       "export": "Exportar",

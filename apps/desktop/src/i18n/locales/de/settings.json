@@ -1021,14 +1021,6 @@
       "ossCopyButton": "OSS-CORS-Konfiguration kopieren",
       "copied": "Kopiert"
     },
-    "htmlImageMode": {
-      "label": "HTML-Bildbehandlung",
-      "help": "Wenn ein Markdown-Dokument als HTML geteilt wird, was mit lokalen Bildern darin passiert.",
-      "inline": "Inline",
-      "inlineDesc": "Bilder werden zu Data-URIs; die HTML-Datei ist selbstenthalten.",
-      "upload": "Hochladen",
-      "uploadDesc": "Bilder werden zum Anbieter hochgeladen; src wird als öffentliche URL umgeschrieben."
-    },
     "toast": {
       "uploading": "In die Cloud hochladen…",
       "imageUploaded": "Bild hochgeladen",

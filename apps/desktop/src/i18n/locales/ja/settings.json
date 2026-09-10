@@ -1027,14 +1027,6 @@
       "ossCopyButton": "OSS CORS 設定をコピー",
       "copied": "コピー済み"
     },
-    "htmlImageMode": {
-      "label": "HTML 内画像処理",
-      "help": "Markdown を HTML として共有する際、ドキュメント内のローカル画像をどう扱うか。",
-      "inline": "インライン",
-      "inlineDesc": "画像を data URI としてインライン化し、HTML ファイルを自己完結させます。",
-      "upload": "アップロード",
-      "uploadDesc": "画像をプロバイダーにアップロードし、src を公開 URL に書き換えます。"
-    },
     "toast": {
       "uploading": "クラウドにアップロード中…",
       "imageUploaded": "画像をアップロードしました",

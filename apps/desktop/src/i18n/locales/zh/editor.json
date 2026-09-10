@@ -12,9 +12,29 @@
       "mermaid": { "label": "Mermaid", "description": "导出 .mermaid 源文件" },
       "default": { "label": "源文件", "description": "导出原始文件" }
     },
+    "provider": {
+      "fileLabel": "文件上传服务商",
+      "imageLabel": "图片上传服务商",
+      "notConfigured": "请先在「存储与分享」中配置服务商",
+      "goToSettings": "前往设置",
+      "selectPlaceholder": "选择服务商",
+      "required": "请选择服务商"
+    },
     "html": {
       "label": "HTML",
       "description": "导出为渲染后的网页"
+    },
+    "singleDoc": {
+      "title": "导出 {{name}}",
+      "menu": "导出 / 分享 HTML",
+      "downloaded": "{{name}} 已导出到本地",
+      "imageMode": {
+        "label": "图片处理方式",
+        "inline": "Base64 内置",
+        "inlineDesc": "图片内联为 base64，HTML 自包含",
+        "upload": "上传到远程",
+        "uploadDesc": "图片上传到服务商，src 重写为公网 URL"
+      }
     },
     "svg": {
       "label": "SVG",
@@ -34,9 +54,9 @@
     },
     "vault": {
       "menu": "导出整个 Vault",
-      "menuDesc": "整个 Vault → HTML（保留文件树+文本文件）",
+      "menuDesc": "整个 Vault → HTML",
       "title": "导出整个 Vault",
-      "hint": "导出所有文本类文件（Markdown、代码、数据等），图片和 Office 文档会被过滤，Markdown 中的图片转为 base64 内联，左侧文件树保留为导航。",
+      "hint": "导出所有文本类文件（Markdown、代码、数据等），图片和 Office 文档会被过滤，左侧文件树保留为导航。",
       "single": { "label": "单个 HTML 文件", "desc": "一个自包含 .html——文件树+全部文档，点击切换" },
       "folder": { "label": "HTML 文件夹", "desc": "index.html + 每篇文档一个 HTML" },
       "shape": "产物形态",
@@ -46,6 +66,11 @@
         "upload": "上传到远程",
         "uploadDesc": "将单个自包含 HTML 上传到已配置的存储与分享",
         "uploadDisabled": "请先配置「存储与分享」"
+      },
+      "imageMode": {
+        "label": "图片处理方式",
+        "inline": "Base64 内置",
+        "upload": "上传到远程"
       },
       "uploaded": "已上传——链接已复制到剪贴板",
       "export": "导出",

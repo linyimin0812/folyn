@@ -16,9 +16,11 @@ interface IconSelectProps {
   className?: string;
   triggerClassName?: string;
   ariaLabel?: string;
+  /** Trigger text when no option matches the current value. */
+  placeholder?: string;
 }
 
-export function IconSelect({ value, options, onChange, className, triggerClassName, ariaLabel }: IconSelectProps) {
+export function IconSelect({ value, options, onChange, className, triggerClassName, ariaLabel, placeholder }: IconSelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value);
@@ -42,7 +44,7 @@ export function IconSelect({ value, options, onChange, className, triggerClassNa
         onClick={() => setOpen((o) => !o)}
       >
         {selected && <span className="flex items-center shrink-0">{selected.icon}</span>}
-        <span className="flex-1 text-left truncate">{selected?.label}{selected?.suffix}</span>
+        <span className="flex-1 text-left truncate text-t3">{selected ? `${selected.label}${selected.suffix ?? ''}` : (placeholder ?? '')}</span>
         <ChevronDown size={14} className="text-t3 shrink-0" />
       </button>
       {open && (

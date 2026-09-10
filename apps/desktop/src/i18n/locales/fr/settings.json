@@ -1021,14 +1021,6 @@
       "ossCopyButton": "Copier la configuration CORS OSS",
       "copied": "Copié"
     },
-    "htmlImageMode": {
-      "label": "Traitement des images HTML",
-      "help": "Lors du partage d'un document markdown en HTML, comment traiter les images locales qu'il contient.",
-      "inline": "Inline",
-      "inlineDesc": "Les images deviennent des data URIs ; le fichier HTML est autonome.",
-      "upload": "Téléverser",
-      "uploadDesc": "Les images sont téléversées vers le fournisseur ; src est réécrit en URL publique."
-    },
     "toast": {
       "uploading": "Téléversement vers le cloud…",
       "imageUploaded": "Image téléversée",

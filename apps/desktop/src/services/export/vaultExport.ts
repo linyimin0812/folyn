@@ -20,6 +20,8 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
+import type { StorageProvider, ProviderConfig } from '@/services/storage/types';
+import type { HtmlImageMode } from '@/services/export/shared';
 import { themeCss } from '@/editor/codeThemes';
 import { detectFileType } from '@/store/editorStore';
 import { getHandlerById } from '@/components/file-types/registry';
@@ -41,6 +43,7 @@ import {
   downloadBlob,
   escapeHtml,
   renderFilePreviewToSvg,
+  uploadImagesToProvider,
 } from '@/services/export/shared';
 import { richTextToHtmlBlob } from '@/services/export/richtext';
 import React from 'react';
@@ -142,10 +145,22 @@ async function fileToBodyFragment(
   file: ExportableFile,
   vaultRoot: string,
   theme: 'light' | 'dark',
+  imageMode: HtmlImageMode,
+  provider: StorageProvider | null,
+  cfg: ProviderConfig | null,
 ): Promise<{ html: string; css: string; standalone?: string }> {
   // markdown / clip (clip is a md variant under __clips__) → full render
   if (file.fileType === 'markdown' || file.fileType === 'clip') {
     const content = await readVaultText(file.path);
+    // upload mode needs the provider: render without the DOM inline pass so
+    // asset:// srcs survive, then upload each and rewrite to the public URL.
+    // Mirrors shareActiveToCloud. Falls back to inline when no provider is
+    // configured (upload was picked but nothing is set up yet).
+    if (imageMode === 'upload' && provider && cfg) {
+      const { html, css } = await renderMarkdownToHtmlViaDom(content, file.path, vaultRoot, theme, { inlineImages: false });
+      const uploaded = await uploadImagesToProvider(html, provider, cfg);
+      return { html: uploaded, css };
+    }
     const { html, css } = await renderMarkdownToHtmlViaDom(content, file.path, vaultRoot, theme);
     const inlined = await inlineImages(html, vaultRoot, file.path);
     return { html: inlined, css };
@@ -346,7 +361,7 @@ const VT_RESIZER_SCRIPT = `
 function assembleSingleHtml(
   tree: VaultEntry[],
   files: ExportableFile[],
-  docs: { docId: string; html: string; css: string }[],
+  docs: { docId: string; html: string; css: string; standalone?: string }[],
   vaultName: string,
   theme: 'light' | 'dark',
   codeThemeCss: string,
@@ -505,7 +520,7 @@ function countFilteredFiles(tree: VaultEntry[]): number {
 /** Shared render prep for vault export — reads stores, filters text files,
  * renders each doc to a body fragment. Used by both download (exportVaultToHtml)
  * and cloud upload (uploadVaultSingleToCloud) so the heavy work isn't duplicated. */
-async function prepareVaultExport(opts?: { onProgress?: (done: number, total: number) => void }): Promise<{
+async function prepareVaultExport(opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; onProgress?: (done: number, total: number) => void }): Promise<{
   textTree: VaultEntry[];
   files: ExportableFile[];
   docs: { docId: string; html: string; css: string; standalone?: string }[];
@@ -525,6 +540,17 @@ async function prepareVaultExport(opts?: { onProgress?: (done: number, total: nu
   const codeTheme = useAppearanceStore.getState().codeTheme;
   const codeThemeCss = codeTheme === 'auto' ? '' : themeCss(codeTheme);
 
+  // Image handling follows the caller's imageMode (per-export choice from
+  // the dialog). In 'upload' mode each markdown image is uploaded to the
+  // image provider and src is rewritten to the public URL; 'inline'
+  // base64-embeds them. Null provider/cfg when nothing is configured —
+  // fileToBodyFragment then falls back to inline.
+  const storageStore = useStorageConfigStore.getState();
+  const imageMode = opts?.imageMode ?? 'inline';
+  const imgId = opts?.imageProviderId ?? storageStore.activeProvider;
+  const cfg = storageStore.configs[imgId] ?? null;
+  const provider = cfg ? getProvider(imgId) : null;
+
   const textTree = filterTextTree(fileTree);
   const files = collectFiles(textTree);
   if (files.length === 0) throw new Error('NO_TEXT_FILES');
@@ -539,7 +565,7 @@ async function prepareVaultExport(opts?: { onProgress?: (done: number, total: nu
     // markdown with container syntax can't be losslessly exported — skip
     // the container warning here (whole-vault export is best-effort) but
     // still render; containers degrade to their static fallback.
-    const frag = await fileToBodyFragment(f, vaultRoot, theme);
+    const frag = await fileToBodyFragment(f, vaultRoot, theme, imageMode, provider, cfg);
     docs.push({ docId: f.docId, html: frag.html, css: frag.css, standalone: frag.standalone });
     opts?.onProgress?.(i + 1, total);
   }
@@ -557,7 +583,7 @@ async function prepareVaultExport(opts?: { onProgress?: (done: number, total: nu
  */
 export async function exportVaultToHtml(
   mode: VaultExportMode,
-  opts?: { onProgress?: (done: number, total: number) => void },
+  opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; onProgress?: (done: number, total: number) => void },
 ): Promise<VaultExportResult> {
   const { textTree, files, docs, vaultName, theme, codeTheme, codeThemeCss, filteredCount, total } = await prepareVaultExport(opts);
 
@@ -610,43 +636,14 @@ export async function exportVaultToHtml(
  * provider (mirrors shareActiveToCloud). Verifies config + html capability,
  * builds the single HTML, uploads via provider.uploadHtml → returns the
  * public URL. Only single mode is supported (folder is multi-file). */
-export async function uploadVaultSingleToCloud(opts?: { onProgress?: (done: number, total: number) => void }): Promise<string> {
+export async function uploadVaultSingleToCloud(opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; fileProviderId?: string; onProgress?: (done: number, total: number) => void }): Promise<string> {
   const { textTree, files, docs, vaultName, theme, codeThemeCss } = await prepareVaultExport(opts);
   const html = assembleSingleHtml(textTree, files, docs, vaultName, theme, codeThemeCss);
   const store = useStorageConfigStore.getState();
-  const cfg = store.getActiveConfig();
-  if (!cfg) throw new Error('STORAGE_NOT_CONFIGURED');
-  const provider = getProvider(store.activeProvider);
+  const fileId = opts?.fileProviderId ?? store.activeProvider;
+  const cfg = store.configs[fileId] ?? null;
+  if (!cfg || !getProvider(fileId).isConfigured(cfg)) throw new Error('STORAGE_NOT_CONFIGURED');
+  const provider = getProvider(fileId);
   if (!provider.capabilities.html) throw new Error('STORAGE_NO_HTML_CAPABILITY');
   return provider.uploadHtml(html, cfg);
-}
-
-/**
- * Upload the vault as a folder of HTML files (index.html + docs/*.html) to the
- * configured storage provider. Avoids the single-file size ceiling by
- * splitting into one object per document. Returns the index.html public URL;
- * the index's iframe uses ./docs/<file> relative paths that resolve to the
- * uploaded doc objects under the same key prefix.
- */
-export async function uploadVaultFolderToCloud(opts?: { onProgress?: (done: number, total: number) => void }): Promise<string> {
-  const { textTree, files, docs, vaultName, theme, codeTheme, codeThemeCss } = await prepareVaultExport(opts);
-  const store = useStorageConfigStore.getState();
-  const cfg = store.getActiveConfig();
-  if (!cfg) throw new Error('STORAGE_NOT_CONFIGURED');
-  const provider = getProvider(store.activeProvider);
-  if (!provider.capabilities.html) throw new Error('STORAGE_NO_HTML_CAPABILITY');
-  const safeName = vaultName.replace(/[\/\\]/g, '_');
-  const encoder = new TextEncoder();
-  // index.html — tree + iframe; iframe src resolves to ./docs/<file>
-  const indexHtml = assembleFolderIndexHtml(textTree, files, vaultName, theme);
-  const indexUrl = await provider.uploadFile(`${safeName}/index.html`, encoder.encode(indexHtml), 'text/html; charset=utf-8', cfg);
-  const total = files.length;
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    const pageHtml = docs[i].standalone ?? buildStandaloneDocHtml({ title: f.name.replace(/\.[^.]+$/, ''), bodyHtml: docs[i].html, css: docs[i].css, theme, codeTheme, codeThemeCss });
-    const fileName = safeDocFileName(f.docId, f.name);
-    await provider.uploadFile(`${safeName}/docs/${fileName}`, encoder.encode(pageHtml), 'text/html; charset=utf-8', cfg);
-    opts?.onProgress?.(i + 1, total);
-  }
-  return indexUrl;
 }

@@ -12,9 +12,29 @@
       "mermaid": { "label": "Mermaid", "description": "Exporter le fichier .mermaid" },
       "default": { "label": "Fichier source", "description": "Exporter le fichier brut" }
     },
+    "provider": {
+      "fileLabel": "Fournisseur de téléversement de fichiers",
+      "imageLabel": "Fournisseur de téléversement d’images",
+      "notConfigured": "Configurez d'abord un fournisseur dans « Stockage & partage »",
+      "goToSettings": "Ouvrir les réglages",
+      "selectPlaceholder": "Choisir un fournisseur",
+      "required": "Veuillez choisir un fournisseur"
+    },
     "html": {
       "label": "HTML",
       "description": "Exporter en page web rendue"
+    },
+    "singleDoc": {
+      "title": "Exporter {{name}}",
+      "menu": "Exporter / Partager HTML",
+      "downloaded": "{{name}} exporté localement",
+      "imageMode": {
+        "label": "Traitement des images",
+        "inline": "Intégrer en base64",
+        "inlineDesc": "Images intégrées en base64 ; le HTML est autonome",
+        "upload": "Téléverser vers distant",
+        "uploadDesc": "Images téléversées vers le fournisseur ; src réécrit en URL publique"
+      }
     },
     "svg": {
       "label": "SVG",
@@ -30,9 +50,9 @@
     },
     "vault": {
       "menu": "Exporter tout le vault",
-      "menuDesc": "Vault entier → HTML (arborescence + fichiers texte)",
+      "menuDesc": "Vault entier → HTML",
       "title": "Exporter tout le vault",
-      "hint": "Exporte tous les fichiers texte (Markdown, code, données…). Les images et documents Office sont filtrés, les images Markdown sont intégrées en base64, l'arborescence de gauche est conservée comme navigation.",
+      "hint": "Exporte tous les fichiers texte (Markdown, code, données…). Les images et documents Office sont filtrés, l'arborescence de gauche est conservée comme navigation.",
       "single": { "label": "Fichier HTML unique", "desc": "Un .html autonome — arborescence + tous les documents, clic pour basculer" },
       "folder": { "label": "Dossier HTML", "desc": "index.html + un HTML par document" },
       "shape": "Forme",
@@ -42,6 +62,11 @@
         "upload": "Téléverser (distant)",
         "uploadDesc": "Téléverse un HTML autonome vers le stockage configuré",
         "uploadDisabled": "Configurez « Stockage & partage »"
+      },
+      "imageMode": {
+        "label": "Traitement des images",
+        "inline": "Intégrer en base64",
+        "upload": "Téléverser vers distant"
       },
       "uploaded": "Téléversé — URL copiée dans le presse-papiens",
       "export": "Exporter",

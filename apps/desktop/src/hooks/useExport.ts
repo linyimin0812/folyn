@@ -22,8 +22,8 @@ import {
   escapeHtml,
   renderFilePreviewToSvg,
   svgToPngBlob,
-  ASSET_URL_SRC_REGEX,
-  assetUrlToFilePath,
+  uploadImagesToProvider,
+  type HtmlImageMode,
 } from '@/services/export/shared';
 import { richTextToHtmlBlob } from '@/services/export/richtext';
 import { renderMarkmapSvg } from '@/services/export/markmapShared';
@@ -156,28 +156,47 @@ export async function exportActiveMarkmapSvg(onBeforeDialog?: () => void): Promi
   await downloadBlob(blob, `${baseName}.svg`, ['svg']);
 }
 
-/** Export the active document as a standalone HTML file. Imperative. */
-export async function exportActiveHtml(onBeforeDialog?: () => void): Promise<void> {
+/** Export the active document as a standalone HTML file. Imperative.
+ *  imageMode controls how in-doc images are handled: 'inline' (default)
+ *  base64-embeds them; 'upload' sends each to the image provider and
+ *  rewrites src to the public URL (needs a configured provider).
+ *  imageProviderId overrides the active provider for image upload. */
+export async function exportActiveHtml(opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; onBeforeDialog?: () => void }): Promise<void> {
   const { name, content, path, vaultRoot } = getActiveDocument();
-  // Resolve app theme to light/dark at call time — appearanceStore.theme can
-  // be 'system', so we look at documentElement.dataset.theme which the store
-  // has already resolved to the actual applied theme.
   const theme: 'light' | 'dark' =
     (document.documentElement.dataset.theme as 'light' | 'dark') === 'dark' ? 'dark' : 'light';
   const codeTheme = useAppearanceStore.getState().codeTheme;
   const codeThemeCss = codeTheme === 'auto' ? '' : themeCss(codeTheme);
+  const imageMode = opts?.imageMode ?? 'inline';
+  let bodyHtml: string;
+  if (imageMode === 'upload') {
+    const store = useStorageConfigStore.getState();
+    const imgId = opts?.imageProviderId ?? store.activeProvider;
+    const cfg = store.configs[imgId] ?? null;
+    const provider = cfg ? getProvider(imgId) : null;
+    if (cfg && provider) {
+      const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot, theme, { inlineImages: false });
+      bodyHtml = await uploadImagesToProvider(renderedBody, provider, cfg);
+      const htmlContent = buildStandaloneDocHtml({ title: name.replace(/\.md$/, ''), bodyHtml, css, theme, codeTheme, codeThemeCss });
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      opts?.onBeforeDialog?.();
+      await downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
+      return;
+    }
+    // no provider configured — fall through to inline
+  }
   const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(content, path, vaultRoot, theme);
-  const inlinedBody = await inlineImages(renderedBody, vaultRoot, path);
+  bodyHtml = await inlineImages(renderedBody, vaultRoot, path);
   const htmlContent = buildStandaloneDocHtml({
     title: name.replace(/\.md$/, ''),
-    bodyHtml: inlinedBody,
+    bodyHtml,
     css,
     theme,
     codeTheme,
     codeThemeCss,
   });
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-  onBeforeDialog?.();
+  opts?.onBeforeDialog?.();
   await downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
 }
 
@@ -197,25 +216,32 @@ export async function exportActiveRichTextHtml(onBeforeDialog?: () => void): Pro
  * surfaces a toast.
  *
  * ponytail: mirrors exportActiveHtml up to the HTML assembly, then
- * swaps the final `downloadBlob` for `provider.uploadHtml`. Image
- * handling follows the global `htmlImageMode` setting:
- *   - 'inline' (default): existing `inlineImages()` → data URIs
+ * swaps the final `downloadBlob` for `provider.uploadHtml`. imageMode
+ * controls in-doc images (caller-supplied, default 'inline'):
+ *   - 'inline': existing `inlineImages()` → data URIs
  *   - 'upload': walk vault-file:// <img> tags, upload each via the
- *     active provider, rewrite src to the public URL
+ *     image provider, rewrite src to the public URL
+ * fileProviderId / imageProviderId override the active provider for the
+ * HTML upload and image upload respectively (default = active provider).
  */
-export async function shareActiveToCloud(): Promise<string> {
+export async function shareActiveToCloud(opts?: { imageMode?: HtmlImageMode; fileProviderId?: string; imageProviderId?: string }): Promise<string> {
   const { name, content, path, vaultRoot, fileType } = getActiveDocument();
   const store = useStorageConfigStore.getState();
-  const cfg = store.getActiveConfig();
-  if (!cfg) {
+  const fileId = opts?.fileProviderId ?? store.activeProvider;
+  const cfg = store.configs[fileId] ?? null;
+  if (!cfg || !getProvider(fileId).isConfigured(cfg)) {
     throw new Error('STORAGE_NOT_CONFIGURED');
   }
-  const provider = getProvider(store.activeProvider);
+  const provider = getProvider(fileId);
   if (!provider.capabilities.html) {
     throw new Error('STORAGE_NO_HTML_CAPABILITY');
   }
+  // Image upload may use a different provider.
+  const imgId = opts?.imageProviderId ?? store.activeProvider;
+  const imgCfg = store.configs[imgId] ?? null;
+  const imgProvider = imgCfg ? getProvider(imgId) : null;
 
-  const htmlContent = await buildShareableHtml(name, content, path, vaultRoot, fileType, store, cfg, provider);
+  const htmlContent = await buildShareableHtml(name, content, path, vaultRoot, fileType, imgProvider, imgCfg, opts?.imageMode ?? 'inline');
   return provider.uploadHtml(htmlContent, cfg);
 }
 
@@ -234,9 +260,9 @@ async function buildShareableHtml(
   path: string,
   vaultRoot: string,
   fileType: string,
-  store: ReturnType<typeof useStorageConfigStore.getState>,
-  cfg: ProviderConfig,
-  provider: ReturnType<typeof getProvider>,
+  imgProvider: ReturnType<typeof getProvider> | null,
+  imgCfg: ProviderConfig | null,
+  imageMode: HtmlImageMode,
 ): Promise<string> {
   const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
 
@@ -273,16 +299,17 @@ ${svg}
   // so `uploadImagesToProvider` can still see `asset://` srcs, upload each
   // image to the provider, and rewrite src to the public URL — instead of
   // getting HTML back with already-base64 images and a no-op regex.
+  const canUpload = imageMode === 'upload' && imgProvider && imgCfg;
   const { html: renderedBody, css } = await renderMarkdownToHtmlViaDom(
     content, path, vaultRoot, theme,
-    { inlineImages: store.htmlImageMode !== 'upload' },
+    { inlineImages: !canUpload },
   );
 
   let body: string;
-  if (store.htmlImageMode === 'inline') {
-    body = await inlineImages(renderedBody, vaultRoot, path);
+  if (canUpload && imgProvider && imgCfg) {
+    body = await uploadImagesToProvider(renderedBody, imgProvider, imgCfg);
   } else {
-    body = await uploadImagesToProvider(renderedBody, provider, cfg);
+    body = await inlineImages(renderedBody, vaultRoot, path);
   }
 
   const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
@@ -343,57 +370,6 @@ export async function shareActiveBytesToCloud(): Promise<string> {
 }
 
 /**
- * Walk all `asset://localhost/<path>` (or `http(s)://asset.localhost/<path>`)
- * `<img>` srcs in `html`, upload each referenced local file to the active
- * provider, and rewrite the src to the returned public URL.
- *
- * Sister to `inlineImages` / `inlineContainerImages` (services/export/shared.ts):
- * same idea — find local-asset <img> srcs, upload instead of inlining. The
- * caller must have rendered the markdown with `inlineImages: false` so the
- * srcs are still `asset://...` (otherwise `inlineContainerImages` already
- * replaced them with data URIs and this regex matches nothing).
- *
- * ponytail: dedupes unique srcs so a doc with 10 references to the same
- * image uploads it once. Ceiling: sequential uploads, no batching — R2/OSS
- * PUTs are independent so a Promise.all batch would scale, but we'd need
- * retry + concurrency limits we don't need yet.
- */
-async function uploadImagesToProvider(
-  html: string,
-  provider: ReturnType<typeof getProvider>,
-  cfg: ProviderConfig,
-): Promise<string> {
-  const matches = [...html.matchAll(ASSET_URL_SRC_REGEX)];
-  if (matches.length === 0) return html;
-
-  const { readFile } = await import('@tauri-apps/plugin-fs');
-  const uniqueSrcs = [...new Set(matches.map((m) => m[1]))];
-
-  const replacements = await Promise.all(
-    uniqueSrcs.map(async (src) => {
-      const absPath = assetUrlToFilePath(src);
-      if (!absPath) return null;
-      try {
-        const bytes = await readFile(absPath);
-        const ext = absPath.split('.').pop()?.toLowerCase() ?? 'png';
-        const url = await provider.uploadImage(new Uint8Array(bytes), ext, cfg);
-        return { original: src, url };
-      } catch {
-        // Leave the original asset:// src — a broken img (outside the app)
-        // is preferable to a failed share. Caller can surface a toast.
-        return null;
-      }
-    }),
-  );
-
-  let result = html;
-  for (const r of replacements) {
-    if (r) result = result.replaceAll(r.original, r.url);
-  }
-  return result;
-}
-
-/**
  * React hook facade over the imperative export functions. Reads from stores at
  * call time so the returned callbacks always reflect the latest active tab and
  * vault without depending on render-captured state. Kept for component
@@ -402,7 +378,6 @@ async function uploadImagesToProvider(
 export function useExport() {
   const exportMarkdown = useCallback((onBeforeDialog?: () => void) => exportActiveMarkdown(onBeforeDialog), []);
   const exportSource = useCallback((onBeforeDialog?: () => void) => exportActiveSource(onBeforeDialog), []);
-  const exportHtml = useCallback((onBeforeDialog?: () => void) => exportActiveHtml(onBeforeDialog), []);
   const exportRichTextHtml = useCallback((onBeforeDialog?: () => void) => exportActiveRichTextHtml(onBeforeDialog), []);
   const exportSvg = useCallback((onBeforeDialog?: () => void) => exportActiveSvg(onBeforeDialog), []);
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
@@ -416,5 +391,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportHtml, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent };
+  return { exportMarkdown, exportSource, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent };
 }
