@@ -281,8 +281,8 @@ fn build_user_message(
     Message::User { content }
 }
 
-/// `~/.folyn/chat-sessions/`, created if missing. Mirrors `plugins_dir` in
-/// `plugin_commands.rs` — same data-root convention.
+/// `~/.folyn/chat-sessions/`, created if missing. Mirrors `extensions_dir` in
+/// `extension_commands.rs` — same data-root convention.
 fn sessions_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     let home = app.path().home_dir().map_err(|e| e.to_string())?;
     let dir = home.join(".folyn").join("chat-sessions");

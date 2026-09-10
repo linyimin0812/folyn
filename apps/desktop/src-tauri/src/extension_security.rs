@@ -1,10 +1,10 @@
-//! Plugin trust-boundary primitives: integrity hashing, optional Ed25519
+//! Extension trust-boundary primitives: integrity hashing, optional Ed25519
 //! signature verification, manifest validation, zip-slip / zip-bomb defenses,
 //! and sandbox http:fetch origin checks.
 //!
-//! Extracted from `plugin_commands.rs` so the security-sensitive code lives
+//! Extracted from `extension_commands.rs` so the security-sensitive code lives
 //! apart from install / URI-scheme / RPC business logic. Pure functions where
-//! possible — no `AppHandle`, no I/O except `compute_integrity` (reads plugin
+//! possible — no `AppHandle`, no I/O except `compute_integrity` (reads extension
 //! dir) and `extract_zip_filtered` (reads/writes staging).
 
 use std::collections::HashMap;
@@ -43,7 +43,7 @@ const BLACKLIST_TOP_DIRS: &[&str] = &[
 
 /// Basename blacklist. Files named exactly this (case-sensitive) anywhere in
 /// the zip → hard-fail. Lockfiles + build configs that don't belong in a
-/// shipped plugin package.
+/// shipped extension package.
 const BLACKLIST_BASENAMES_EXACT: &[&str] = &[
     "package.json",
     "package-lock.json",
@@ -84,13 +84,13 @@ pub fn compute_hash(bytes: &[u8]) -> String {
     out
 }
 
-/// Walk `plugin_dir` recursively and return a map of relative-path → SHA-256
+/// Walk `extension_dir` recursively and return a map of relative-path → SHA-256
 /// hex for every regular file. Relative paths use forward slashes. The
-/// `plugins.json` file itself (if present in the dir) is skipped — it is not
-/// plugin code and would self-reference.
-pub fn compute_integrity(plugin_dir: &Path) -> Result<HashMap<String, String>, String> {
+/// `extensions.json` file itself (if present in the dir) is skipped — it is not
+/// extension code and would self-reference.
+pub fn compute_integrity(extension_dir: &Path) -> Result<HashMap<String, String>, String> {
     let mut out = HashMap::new();
-    walk_and_hash(plugin_dir, plugin_dir, &mut out)?;
+    walk_and_hash(extension_dir, extension_dir, &mut out)?;
     Ok(out)
 }
 
@@ -117,8 +117,8 @@ fn walk_and_hash(
                 .map_err(|e| e.to_string())?
                 .to_string_lossy()
                 .replace('\\', "/");
-            // Skip the on-disk registry — it's metadata, not plugin code.
-            if rel == "plugins.json" {
+            // Skip the on-disk registry — it's metadata, not extension code.
+            if rel == "extensions.json" {
                 continue;
             }
             let bytes = fs::read(&path).map_err(|e| e.to_string())?;
@@ -152,11 +152,11 @@ pub fn verify_integrity(
 //
 // MVP INTEGRITY MODEL: SHA-256 per-file integrity (computed at install, verified
 // on load by the trusted loader) is the *gate*. Ed25519 signatures are OPTIONAL
-// scaffolding: a plugin MAY carry `signature` + `publisherPublicKey` (base64)
-// in its manifest/plugins.json. When present, `verify_plugin_signature` checks
+// scaffolding: a extension MAY carry `signature` + `publisherPublicKey` (base64)
+// in its manifest/extensions.json. When present, `verify_extension_signature` checks
 // the signature over the canonicalized manifest. When absent, verification is a
 // no-op (Ok(())). This lets a future marketplace require signatures without a
-// breaking change — see `docs/plugin-development.md` "Integrity upgrade path".
+// breaking change — see `docs/extension-development.md` "Integrity upgrade path".
 //
 // The signature is over the canonicalized manifest JSON (serde_json with sorted
 // keys, no whitespace) — NOT over individual files. Per-file integrity is
@@ -192,7 +192,7 @@ pub fn canonicalize_manifest(manifest: &serde_json::Value) -> Result<String, Str
 ///
 /// This is a pure function — no I/O, no app handle — so it is unit-testable
 /// without a running Tauri instance.
-pub fn verify_plugin_signature(
+pub fn verify_extension_signature(
     manifest: &serde_json::Value,
     signature: Option<&str>,
     public_key: Option<&str>,
@@ -250,7 +250,7 @@ pub fn verify_plugin_signature(
 // ── Manifest validation (pure) ───────────────────────────────────────────────
 
 /// Validate a raw manifest JSON value. Checks the same invariants as the
-/// TypeScript `PluginHost.validateManifest`: kebab-case id, version present,
+/// TypeScript `ExtensionHost.validateManifest`: kebab-case id, version present,
 /// tier ∈ {sandbox, trusted}, `main` present, sandbox requires `html`.
 pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
     let id = manifest["id"]
@@ -284,9 +284,9 @@ pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
     if tier == "sandbox" {
         let html = manifest["html"]
             .as_str()
-            .ok_or_else(|| "sandbox plugins require manifest.html".to_string())?;
+            .ok_or_else(|| "sandbox extensions require manifest.html".to_string())?;
         if html.is_empty() {
-            return Err("sandbox plugins require manifest.html".into());
+            return Err("sandbox extensions require manifest.html".into());
         }
     }
 
@@ -380,7 +380,7 @@ fn is_blacklisted_path(rel: &Path) -> bool {
     if BLACKLIST_BASENAME_PREFIXES.iter().any(|p| basename.starts_with(p)) {
         return true;
     }
-    if let Some(ext) = rel.extension().and_then(|s| s.to_str()) {
+    if let Some(ext) = rel.plugin().and_then(|s| s.to_str()) {
         if BLACKLIST_EXTS.contains(&ext) {
             return true;
         }
@@ -395,7 +395,7 @@ fn is_unknown_ext(rel: &Path) -> bool {
     if basename == "manifest.json" || basename == "LICENSE" || basename == "README.md" {
         return false;
     }
-    match rel.extension().and_then(|s| s.to_str()) {
+    match rel.plugin().and_then(|s| s.to_str()) {
         Some(ext) => !ALLOWED_EXTS.contains(&ext),
         None => true, // no extension and not in the basename allowlist
     }
@@ -598,7 +598,7 @@ pub fn is_origin_allowed(url: &str, allowed_origins: &[String]) -> bool {
         .any(|allowed| allowed.eq_ignore_ascii_case(&origin))
 }
 
-/// Defense-in-depth origin check against a plugin manifest. Reads
+/// Defense-in-depth origin check against a extension manifest. Reads
 /// `permissions.http.origins` from the manifest JSON value and calls
 /// {@link is_origin_allowed}. Pure — no I/O, no app handle — so it is
 /// unit-testable without a live reqwest or AppHandle.
@@ -625,8 +625,8 @@ mod tests {
     #[test]
     fn manifest_valid_sandbox() {
         let m = serde_json::json!({
-            "id": "my-plugin",
-            "name": "My Plugin",
+            "id": "my-extension",
+            "name": "My Extension",
             "version": "1.0.0",
             "tier": "sandbox",
             "main": "index.js",
@@ -638,8 +638,8 @@ mod tests {
     #[test]
     fn manifest_valid_trusted() {
         let m = serde_json::json!({
-            "id": "my-plugin",
-            "name": "My Plugin",
+            "id": "my-extension",
+            "name": "My Extension",
             "version": "1.0.0",
             "tier": "trusted",
             "main": "index.js",
@@ -662,7 +662,7 @@ mod tests {
     #[test]
     fn manifest_rejects_sandbox_without_html() {
         let m = serde_json::json!({
-            "id": "my-plugin",
+            "id": "my-extension",
             "version": "1.0.0",
             "tier": "sandbox",
             "main": "index.js",
@@ -673,7 +673,7 @@ mod tests {
     #[test]
     fn manifest_rejects_unknown_tier() {
         let m = serde_json::json!({
-            "id": "my-plugin",
+            "id": "my-extension",
             "version": "1.0.0",
             "tier": "wat",
             "main": "index.js",
@@ -685,7 +685,7 @@ mod tests {
     #[test]
     fn manifest_rejects_missing_main() {
         let m = serde_json::json!({
-            "id": "my-plugin",
+            "id": "my-extension",
             "version": "1.0.0",
             "tier": "sandbox",
             "html": "index.html",
@@ -698,18 +698,18 @@ mod tests {
 
     #[test]
     fn kebab_valid() {
-        assert!(is_kebab_case("my-plugin"));
+        assert!(is_kebab_case("my-extension"));
         assert!(is_kebab_case("a-b-c"));
         assert!(is_kebab_case("pdf-tools-3"));
     }
 
     #[test]
     fn kebab_invalid() {
-        assert!(!is_kebab_case("myplugin")); // no hyphen
-        assert!(!is_kebab_case("My-Plugin")); // uppercase
-        assert!(!is_kebab_case("-my-plugin")); // leading -
-        assert!(!is_kebab_case("my-plugin-")); // trailing -
-        assert!(!is_kebab_case("my--plugin")); // double hyphen
+        assert!(!is_kebab_case("myextension")); // no hyphen
+        assert!(!is_kebab_case("My-Extension")); // uppercase
+        assert!(!is_kebab_case("-my-extension")); // leading -
+        assert!(!is_kebab_case("my-extension-")); // trailing -
+        assert!(!is_kebab_case("my--extension")); // double hyphen
         assert!(!is_kebab_case(""));
     }
 
@@ -807,26 +807,26 @@ mod tests {
     }
 
 
-    // ── verify_plugin_signature (ed25519 scaffolding) ──
+    // ── verify_extension_signature (ed25519 scaffolding) ──
 
     #[test]
     fn signature_absent_returns_ok() {
         // MVP: no signature = no check. SHA-256 integrity is the gate.
         let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
-        assert!(verify_plugin_signature(&m, None, None).is_ok());
+        assert!(verify_extension_signature(&m, None, None).is_ok());
     }
 
     #[test]
     fn signature_without_key_is_err() {
         let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
-        assert!(verify_plugin_signature(&m, Some("sig"), None).is_err());
-        assert!(verify_plugin_signature(&m, None, Some("key")).is_err());
+        assert!(verify_extension_signature(&m, Some("sig"), None).is_err());
+        assert!(verify_extension_signature(&m, None, Some("key")).is_err());
     }
 
     #[test]
     fn signature_malformed_base64_is_err() {
         let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
-        assert!(verify_plugin_signature(&m, Some("!!!bad-b64!!!"), Some("aGVsbG8=")).is_err());
+        assert!(verify_extension_signature(&m, Some("!!!bad-b64!!!"), Some("aGVsbG8=")).is_err());
     }
 
     #[test]
@@ -836,7 +836,7 @@ mod tests {
         // 32-byte key but 1-byte signature — both wrong length.
         let key = base64::engine::general_purpose::STANDARD.encode([0u8; 32]);
         let sig = base64::engine::general_purpose::STANDARD.encode([0u8; 1]);
-        assert!(verify_plugin_signature(&m, Some(&sig), Some(&key)).is_err());
+        assert!(verify_extension_signature(&m, Some(&sig), Some(&key)).is_err());
     }
 
     #[test]
@@ -856,7 +856,7 @@ mod tests {
         let sig_b64 = base64::engine::general_purpose::STANDARD.encode(bad_sig.to_bytes());
         let key_b64 = base64::engine::general_purpose::STANDARD.encode(key_bytes);
         let m = serde_json::json!({ "id": "x", "version": "1.0.0", "tier": "trusted" });
-        assert!(verify_plugin_signature(&m, Some(&sig_b64), Some(&key_b64)).is_err());
+        assert!(verify_extension_signature(&m, Some(&sig_b64), Some(&key_b64)).is_err());
     }
 
     #[test]
@@ -874,7 +874,7 @@ mod tests {
         let sig = signing_key.sign(canonical.as_bytes());
         let sig_b64 = base64::engine::general_purpose::STANDARD.encode(sig.to_bytes());
         let key_b64 = base64::engine::general_purpose::STANDARD.encode(verifying_key.to_bytes());
-        assert!(verify_plugin_signature(&m, Some(&sig_b64), Some(&key_b64)).is_ok());
+        assert!(verify_extension_signature(&m, Some(&sig_b64), Some(&key_b64)).is_ok());
     }
 
 
@@ -1000,7 +1000,7 @@ mod tests {
     }
 
 
-    // ── install_plugin_zip: pure helpers ──
+    // ── install_extension_zip: pure helpers ──
 
     #[test]
     fn check_size_accepts_within_limits() {
@@ -1105,7 +1105,7 @@ mod tests {
     }
 
 
-    // ── install_plugin_zip: extract_zip_filtered end-to-end ──
+    // ── install_extension_zip: extract_zip_filtered end-to-end ──
     //
     // We build in-memory zips with `zip::ZipWriter` over a `Cursor<Vec<u8>>`,
     // write them to a temp file, and call `extract_zip_filtered` against a
@@ -1120,7 +1120,7 @@ mod tests {
     fn write_zip_to_temp(entries: &[(String, Vec<u8>)]) -> (tempfile::TempDir, PathBuf) {
         use zip::ZipWriter;
         let dir = tempfile::tempdir().expect("tempdir");
-        let path = dir.path().join("plugin.zip");
+        let path = dir.path().join("extension.zip");
         let file = std::fs::File::create(&path).expect("create zip file");
         let mut zip = ZipWriter::new(file);
         let opts = zip::write::SimpleFileOptions::default();
@@ -1133,7 +1133,7 @@ mod tests {
     }
 
     fn manifest_json() -> Vec<u8> {
-        b"{\"id\":\"test-plugin\",\"name\":\"T\",\"version\":\"1.0.0\",\"tier\":\"sandbox\",\"main\":\"index.html\",\"html\":\"index.html\"}"
+        b"{\"id\":\"test-extension\",\"name\":\"T\",\"version\":\"1.0.0\",\"tier\":\"sandbox\",\"main\":\"index.html\",\"html\":\"index.html\"}"
             .to_vec()
     }
 
@@ -1199,7 +1199,7 @@ mod tests {
         // attributes — `unix_permissions()` alone masks the upper bits
         // away, so it does NOT mark the entry as a symlink).
         let dir = tempfile::tempdir().unwrap();
-        let zip_path = dir.path().join("plugin.zip");
+        let zip_path = dir.path().join("extension.zip");
         let file = std::fs::File::create(&zip_path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
         let opts = zip::write::SimpleFileOptions::default();

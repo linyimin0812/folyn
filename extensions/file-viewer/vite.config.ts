@@ -11,7 +11,7 @@ const outDir = path.join(extRoot, 'dist');
 /**
  * Builds the extension's IFRAME bundle (`dist/preview.html` + assets). The
  * @file-viewer renderers run there with full Worker / WASM / code-splitting
- * support (real `folyn-plugin://` origin). Vite emits relative asset URLs
+ * support (real `folyn-extension://` origin). Vite emits relative asset URLs
  * (`base: './'`) so they resolve against the plugin origin.
  *
  * Vite's root is `src/` so the HTML entry (src/preview.html) lands at

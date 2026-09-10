@@ -1,12 +1,12 @@
-//! Fetch-RPC bridge for plugin tool windows.
+//! Fetch-RPC bridge for extension tool windows.
 //!
 //! When a sandbox tool window (Tauri WebviewWindow loaded from
-//! `folyn-plugin://localhost/<id>/<entry>`) POSTs to
-//! `folyn-plugin://localhost/<id>/rpc`, the URI scheme handler in `lib.rs`
-//! hands the request here. We emit a `plugin-rpc-request` event that the
+//! `folyn-extension://localhost/<id>/<entry>`) POSTs to
+//! `folyn-extension://localhost/<id>/rpc`, the URI scheme handler in `lib.rs`
+//! hands the request here. We emit a `extension-rpc-request` event that the
 //! main webview's `toolWindowRpcListener` picks up; it dispatches via the
-//! shared `dispatchPluginRpc` (same permission checks as the iframe bridge)
-//! and calls back via the `plugin_rpc_respond` Tauri command below. The
+//! shared `dispatchExtensionRpc` (same permission checks as the iframe bridge)
+//! and calls back via the `extension_rpc_respond` Tauri command below. The
 //! oneshot channel keyed by `request_id` is the join point.
 
 use std::collections::HashMap;
@@ -18,7 +18,7 @@ use crate::errors::AppError;
 
 static RPC_REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-/// The response delivered by the main webview via `plugin_rpc_respond`.
+/// The response delivered by the main webview via `extension_rpc_respond`.
 /// `result` is an arbitrary JSON value (already permission-checked on the JS
 /// side); `error` is a human-readable string. Exactly one is `Some`.
 #[derive(Clone, Debug)]
@@ -28,10 +28,10 @@ pub struct RpcResponseData {
 }
 
 /// Global pending-RPC table. Keyed by request_id (a u64 formatted as a
-/// string). The URI handler inserts; `plugin_rpc_respond` removes and
-/// resolves. ponytail: global lock — a per-plugin lock would only matter
-/// if a single plugin saturates the bridge with thousands of concurrent
-/// RPCs; upgrade to a sharded map if a real plugin hits contention.
+/// string). The URI handler inserts; `extension_rpc_respond` removes and
+/// resolves. ponytail: global lock — a per-extension lock would only matter
+/// if a single extension saturates the bridge with thousands of concurrent
+/// RPCs; upgrade to a sharded map if a real extension hits contention.
 pub static RPC_PENDING: LazyLock<Mutex<HashMap<String, tokio::sync::oneshot::Sender<RpcResponseData>>>> =
     LazyLock::new(|| {
         Mutex::new(HashMap::new())
@@ -44,11 +44,11 @@ pub fn next_rpc_request_id() -> String {
 }
 
 /// Tauri command invoked by the main webview's `toolWindowRpcListener`
-/// after `dispatchPluginRpc` resolves. Delivers the result/error to the
+/// after `dispatchExtensionRpc` resolves. Delivers the result/error to the
 /// URI handler waiting on the oneshot. Unknown `request_id`s are silently
 /// dropped (the request may have timed out and been reaped).
 #[tauri::command]
-pub async fn plugin_rpc_respond(
+pub async fn extension_rpc_respond(
     request_id: String,
     result: Option<serde_json::Value>,
     error: Option<String>,
@@ -66,7 +66,7 @@ pub async fn plugin_rpc_respond(
 /// Entry point invoked by the URI scheme handler for `POST .../rpc`.
 /// Spawns an async task that:
 ///   1. Inserts a oneshot sender into `RPC_PENDING` keyed by `request_id`.
-///   2. Emits `plugin-rpc-request` with `{ requestId, pluginId, body }` to
+///   2. Emits `extension-rpc-request` with `{ requestId, extensionId, body }` to
 ///      the main webview.
 ///   3. Awaits the oneshot (30s timeout).
 ///   4. Calls `responder.respond(...)` with the JSON response (or 504 on
@@ -75,10 +75,10 @@ pub async fn plugin_rpc_respond(
 /// The body is forwarded as a raw string so Rust does not need to know the
 /// RPC protocol shape; the main webview parses `JSON.parse(body)` into
 /// `{ method, params }`.
-pub fn handle_plugin_rpc_request(
+pub fn handle_extension_rpc_request(
     app: tauri::AppHandle,
     request_id: String,
-    plugin_id: String,
+    extension_id: String,
     body: String,
     responder: tauri::UriSchemeResponder,
 ) {
@@ -96,11 +96,11 @@ pub fn handle_plugin_rpc_request(
     tauri::async_runtime::spawn(async move {
         let payload = serde_json::json!({
             "requestId": req_id_for_emit,
-            "pluginId": plugin_id,
+            "extensionId": extension_id,
             "body": body,
         });
-        if let Err(e) = app.emit("plugin-rpc-request", payload) {
-            log::warn!("[plugin-rpc] emit failed: {e}");
+        if let Err(e) = app.emit("extension-rpc-request", payload) {
+            log::warn!("[extension-rpc] emit failed: {e}");
         }
 
         let response = match tokio::time::timeout(
@@ -160,7 +160,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn plugin_rpc_respond_delivers_result_to_pending_sender() {
+    async fn extension_rpc_respond_delivers_result_to_pending_sender() {
         let request_id = format!("test-{}", std::process::id());
         let (tx, mut rx) = tokio::sync::oneshot::channel::<RpcResponseData>();
         {
@@ -169,7 +169,7 @@ mod tests {
         }
         // Act: invoke the command as the main webview would.
         let result = serde_json::json!({ "ok": true });
-        let _ = plugin_rpc_respond(request_id.clone(), Some(result.clone()), None)
+        let _ = extension_rpc_respond(request_id.clone(), Some(result.clone()), None)
             .await;
         // The pending entry is removed even on the timeout path; here the
         // happy path.
@@ -185,24 +185,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn plugin_rpc_respond_delivers_error_to_pending_sender() {
+    async fn extension_rpc_respond_delivers_error_to_pending_sender() {
         let request_id = format!("test-err-{}", std::process::id());
         let (tx, mut rx) = tokio::sync::oneshot::channel::<RpcResponseData>();
         {
             let mut map = RPC_PENDING.lock().unwrap();
             map.insert(request_id.clone(), tx);
         }
-        let _ = plugin_rpc_respond(request_id.clone(), None, Some("denied".into())).await;
+        let _ = extension_rpc_respond(request_id.clone(), None, Some("denied".into())).await;
         let data = rx.try_recv().expect("error delivered via oneshot");
         assert!(data.result.is_none());
         assert_eq!(data.error.as_deref(), Some("denied"));
     }
 
     #[tokio::test]
-    async fn plugin_rpc_respond_silently_drops_unknown_request_id() {
+    async fn extension_rpc_respond_silently_drops_unknown_request_id() {
         // Unknown id (e.g., the request already timed out and was reaped).
         // Should not panic and should return Ok(()).
-        let result = plugin_rpc_respond(
+        let result = extension_rpc_respond(
             "nonexistent-id".to_string(),
             Some(serde_json::Value::Null),
             None,

@@ -1,12 +1,12 @@
-//! Plugin install paths: recursive directory copy + zip extraction → install.
+//! Extension install paths: recursive directory copy + zip extraction → install.
 //!
-//! `install_plugin` copies an **unpacked folder** as the source (dev/debug path).
-//! `install_plugin_zip` extracts a compiled-only `.zip` archive (no `src/`,
+//! `install_extension` copies an **unpacked folder** as the source (dev/debug path).
+//! `install_extension_zip` extracts a compiled-only `.zip` archive (no `src/`,
 //! `*.ts`, `package*.json`, etc.) and is the main distribution path; see
-//! "Distributing as a .zip" in `docs/plugin-development.md`.
+//! "Distributing as a .zip" in `docs/extension-development.md`.
 //!
-//! Both emit `plugin://installed` on success and upsert the entry in the
-//! on-disk registry (`plugins.json`) maintained by `plugin_commands`.
+//! Both emit `extension://installed` on success and upsert the entry in the
+//! on-disk registry (`extensions.json`) maintained by `extension_commands`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,11 +15,11 @@ use std::time::SystemTime;
 use tauri::Emitter;
 
 use crate::errors::AppError;
-use crate::plugin_commands::{
-    PluginEntry, plugins_dir, read_plugins_json, upsert_record, write_plugins_json,
+use crate::extension_commands::{
+    ExtensionEntry, extensions_dir, read_extensions_json, upsert_record, write_extensions_json,
 };
-use crate::plugin_security::{
-    compute_integrity, extract_zip_filtered, validate_manifest, verify_plugin_signature,
+use crate::extension_security::{
+    compute_integrity, extract_zip_filtered, validate_manifest, verify_extension_signature,
 };
 
 // ── Recursive directory copy ─────────────────────────────────────────────────
@@ -28,7 +28,7 @@ use crate::plugin_security::{
 /// (re-install / update path). Creates parent dirs as needed.
 pub fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
     if dst.exists() {
-        fs::remove_dir_all(dst).map_err(|e| format!("failed to remove existing plugin dir: {e}"))?;
+        fs::remove_dir_all(dst).map_err(|e| format!("failed to remove existing extension dir: {e}"))?;
     }
     fs::create_dir_all(dst).map_err(|e| e.to_string())?;
     copy_inner(src, dst)
@@ -64,27 +64,27 @@ fn copy_inner(src: &Path, dst: &Path) -> Result<(), String> {
 
 // ── Zip extraction (compiled-only distribution) ──────────────────────────────
 
-/// Install a plugin from a compiled-only `.zip` archive. Extracts to a
-/// staging dir under `~/.folyn/plugins/.staging/`, filters forbidden files
+/// Install a extension from a compiled-only `.zip` archive. Extracts to a
+/// staging dir under `~/.folyn/extensions/.staging/`, filters forbidden files
 /// (source/lockfiles/configs), validates the manifest, then atomically
-/// renames into `~/.folyn/plugins/<id>/` and emits `plugin://installed`.
+/// renames into `~/.folyn/extensions/<id>/` and emits `extension://installed`.
 ///
 /// Hard-fails on: zip-slip (`..`, absolute, drive-letter), symlink entries,
 /// blacklisted files (src/, *.ts, package*.json, etc.), per-file > 50 MB,
 /// total > 100 MB, > 1000 entries, manifest mismatch. Soft-skips (does NOT
 /// copy) files whose extension is outside the whitelist.
 #[tauri::command]
-pub async fn install_plugin_zip(
+pub async fn install_extension_zip(
     app: tauri::AppHandle,
     id: String,
     zip_path: String,
-) -> Result<PluginEntry, AppError> {
+) -> Result<ExtensionEntry, AppError> {
     let zp = PathBuf::from(&zip_path);
     if !zp.is_file() {
         return Err(format!("zip_path must be an existing file: {zip_path}").into());
     }
 
-    let dir = plugins_dir(&app)?;
+    let dir = extensions_dir(&app)?;
     let staging_root = dir.join(".staging");
     fs::create_dir_all(&staging_root).map_err(|e| format!("staging root create failed: {e}"))?;
 
@@ -114,7 +114,7 @@ pub async fn install_plugin_zip(
         // stderr; surfacing this in the install return type would force an
         // API shape change for a non-blocking warning.
         eprintln!(
-            "[plugin_commands] install_plugin_zip: skipped {n} file(s) with non-allowlisted extensions: {files}",
+            "[extension_commands] install_extension_zip: skipped {n} file(s) with non-allowlisted extensions: {files}",
             n = skipped.len(),
             files = skipped.join(", ")
         );
@@ -126,7 +126,7 @@ pub async fn install_plugin_zip(
         offenders.sort();
         offenders.dedup();
         return Err(cleanup(
-            format!("plugin contains forbidden files: {}", offenders.join(", ")).into(),
+            format!("extension contains forbidden files: {}", offenders.join(", ")).into(),
         ));
     }
 
@@ -155,35 +155,35 @@ pub async fn install_plugin_zip(
         ));
     }
 
-    // Replace any existing plugin dir with the same id (matches the folder
+    // Replace any existing extension dir with the same id (matches the folder
     // install path's `copy_dir_recursive` behavior — re-install = wipe + new).
-    let plugin_dir = dir.join(&id);
-    if plugin_dir.exists() {
-        fs::remove_dir_all(&plugin_dir)
-            .map_err(|e| format!("failed to remove existing plugin dir: {e}"))
+    let extension_dir = dir.join(&id);
+    if extension_dir.exists() {
+        fs::remove_dir_all(&extension_dir)
+            .map_err(|e| format!("failed to remove existing extension dir: {e}"))
             .map_err(|e| cleanup(e.into()))?;
     }
-    // Rename staging → plugin_dir. Same filesystem (both under ~/.folyn), so
+    // Rename staging → extension_dir. Same filesystem (both under ~/.folyn), so
     // this is atomic + instant. Fall back to a recursive copy if rename
     // refuses (cross-filesystem edge case on exotic setups).
-    if let Err(e) = fs::rename(&staging, &plugin_dir) {
-        eprintln!("[plugin_commands] install_plugin_zip: rename failed ({e}), falling back to copy");
-        if let Err(copy_err) = copy_dir_recursive(&staging, &plugin_dir) {
+    if let Err(e) = fs::rename(&staging, &extension_dir) {
+        eprintln!("[extension_commands] install_extension_zip: rename failed ({e}), falling back to copy");
+        if let Err(copy_err) = copy_dir_recursive(&staging, &extension_dir) {
             let _ = fs::remove_dir_all(&staging);
             return Err(format!("rename+copy fallback failed: rename {e}; copy {copy_err}").into());
         }
         let _ = fs::remove_dir_all(&staging);
     }
 
-    let integrity = compute_integrity(&plugin_dir).unwrap_or_default();
+    let integrity = compute_integrity(&extension_dir).unwrap_or_default();
 
     let signature = manifest["signature"].as_str().map(|s| s.to_string());
     let publisher_public_key = manifest["publisherPublicKey"].as_str().map(|s| s.to_string());
-    if let Err(e) = verify_plugin_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
-        eprintln!("[plugin_commands] install_plugin_zip: signature check warning for {id}: {e}");
+    if let Err(e) = verify_extension_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
+        eprintln!("[extension_commands] install_extension_zip: signature check warning for {id}: {e}");
     }
 
-    let entry = PluginEntry {
+    let entry = ExtensionEntry {
         id: id.clone(),
         name: manifest["name"].as_str().unwrap_or(&id).to_string(),
         version: manifest["version"].as_str().unwrap_or("0.0.0").to_string(),
@@ -194,18 +194,18 @@ pub async fn install_plugin_zip(
         publisher_public_key,
     };
 
-    let records = read_plugins_json(&dir)?;
+    let records = read_extensions_json(&dir)?;
     let records = upsert_record(records, entry.clone());
-    write_plugins_json(&dir, &records)?;
+    write_extensions_json(&dir, &records)?;
 
-    app.emit("plugin://installed", &entry)
+    app.emit("extension://installed", &entry)
         .map_err(|e| e.to_string())?;
     Ok(entry)
 }
 
 /// Build a unique short suffix for a staging dir name. Combines the pid +
 /// monotonic nanos from `SystemTime` so two concurrent installs of the same
-/// plugin id can't clobber each other.
+/// extension id can't clobber each other.
 fn unique_staging_suffix() -> String {
     let pid = std::process::id();
     let nanos = SystemTime::now()
@@ -217,17 +217,17 @@ fn unique_staging_suffix() -> String {
 
 // ── Tauri commands ───────────────────────────────────────────────────────────
 
-/// Install a plugin from an unpacked source folder. Copies the folder to
-/// `~/.folyn/plugins/<id>/`, reads + validates `manifest.json`, upserts the
-/// entry in `plugins.json`, and emits `plugin://installed`.
+/// Install a extension from an unpacked source folder. Copies the folder to
+/// `~/.folyn/extensions/<id>/`, reads + validates `manifest.json`, upserts the
+/// entry in `extensions.json`, and emits `extension://installed`.
 ///
 /// MVP: `source_path` must be an existing directory containing `manifest.json`.
 /// Zip extraction is deferred to PR4.
 #[tauri::command]
-pub async fn install_plugin(
+pub async fn install_extension(
     app: tauri::AppHandle,
     source_path: String,
-) -> Result<PluginEntry, AppError> {
+) -> Result<ExtensionEntry, AppError> {
     let src = PathBuf::from(&source_path);
     if !src.is_dir() {
         return Err(format!("source_path must be an existing directory: {source_path}").into());
@@ -249,19 +249,19 @@ pub async fn install_plugin(
         .ok_or_else(|| "manifest.id missing".to_string())?
         .to_string();
 
-    let dir = plugins_dir(&app)?;
-    let plugin_dir = dir.join(&id);
-    copy_dir_recursive(&src, &plugin_dir)?;
+    let dir = extensions_dir(&app)?;
+    let extension_dir = dir.join(&id);
+    copy_dir_recursive(&src, &extension_dir)?;
 
     // Compute per-file SHA-256 integrity for the TOFU trust gate. Stored in
-    // plugins.json; the trusted loader recomputes `main`'s hash before
+    // extensions.json; the trusted loader recomputes `main`'s hash before
     // `import()` and compares against this.
-    let integrity = compute_integrity(&plugin_dir).unwrap_or_default();
+    let integrity = compute_integrity(&extension_dir).unwrap_or_default();
 
     // Optional ed25519 signature scaffolding (PR4). The manifest MAY carry
     // `signature` + `publisherPublicKey` (base64). We persist them onto the
     // entry so a future load path can require verification; MVP does NOT
-    // enforce — `verify_plugin_signature` returns Ok(()) when absent.
+    // enforce — `verify_extension_signature` returns Ok(()) when absent.
     let signature = manifest["signature"]
         .as_str()
         .map(|s| s.to_string());
@@ -272,11 +272,11 @@ pub async fn install_plugin(
     // bad signature surfaces at install time rather than at activation. Non-
     // fatal — we still install (the SHA-256 gate is the real boundary); the
     // error is logged to stderr for the diagnostics UI to pick up later.
-    if let Err(e) = verify_plugin_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
-        eprintln!("[plugin_commands] install_plugin: signature check warning for {id}: {e}");
+    if let Err(e) = verify_extension_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
+        eprintln!("[extension_commands] install_extension: signature check warning for {id}: {e}");
     }
 
-    let entry = PluginEntry {
+    let entry = ExtensionEntry {
         id: id.clone(),
         name: manifest["name"]
             .as_str()
@@ -296,11 +296,11 @@ pub async fn install_plugin(
         publisher_public_key,
     };
 
-    let records = read_plugins_json(&dir)?;
+    let records = read_extensions_json(&dir)?;
     let records = upsert_record(records, entry.clone());
-    write_plugins_json(&dir, &records)?;
+    write_extensions_json(&dir, &records)?;
 
-    app.emit("plugin://installed", &entry)
+    app.emit("extension://installed", &entry)
         .map_err(|e| e.to_string())?;
     Ok(entry)
 }

@@ -1,8 +1,8 @@
-//! Network fetch on behalf of plugins + catalog refresh.
+//! Network fetch on behalf of extensions + catalog refresh.
 //!
-//! `plugin_http_fetch` is the sandbox-tier `http:fetch`: routes the request
+//! `extension_http_fetch` is the sandbox-tier `http:fetch`: routes the request
 //! through `reqwest` to bypass the host webview's CSP `connect-src`, and
-//! re-checks the plugin manifest's `permissions.http.origins` allowlist as
+//! re-checks the extension manifest's `permissions.http.origins` allowlist as
 //! defense-in-depth behind the JS-side `isOriginAllowed` fast-fail.
 //!
 //! `fetch_url` is the ungated host-allowlisted GET used for catalog refresh
@@ -16,24 +16,24 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::errors::AppError;
-use crate::plugin_commands::{is_valid_plugin_id, plugins_dir};
-use crate::plugin_security::check_http_origin;
+use crate::extension_commands::{is_valid_extension_id, extensions_dir};
+use crate::extension_security::check_http_origin;
 
 // ── sandbox http:fetch (CSP bypass via Rust) ─────────────────────────────────
 //
 // Sandbox-tier `http:fetch` used to run `fetch()` in the host webview realm,
 // which is gated by the main page's CSP `connect-src 'self' ipc: http://ipc.localhost`.
-// Any plugin-declared origin (e.g. `https://api.example.com`) is blocked by CSP
+// Any extension-declared origin (e.g. `https://api.example.com`) is blocked by CSP
 // in release (dev does not inject CSP, so the bug was invisible locally). The
 // fix: route `http:fetch` to this Rust command, which performs the request with
 // `reqwest` (no CSP) and re-checks the manifest's `permissions.http.origins`
 // allowlist as defense-in-depth behind the JS-side `isOriginAllowed` fast-fail.
 //
 // Contract (matches the old JS `fetch()` return shape so rpcBridge is unchanged):
-//   request:  { pluginId, url, method?, headers?, body? }
+//   request:  { extensionId, url, method?, headers?, body? }
 //   response: { status: u16, headers: HashMap<String,String>, body: String }
 
-/// Response shape returned by `plugin_http_fetch`. Mirrors the object the old
+/// Response shape returned by `extension_http_fetch`. Mirrors the object the old
 /// JS `fetch()` branch returned so the rpcBridge caller is unchanged.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HttpResponse {
@@ -48,8 +48,8 @@ pub struct HttpResponse {
 /// host here means any webview code can GET from it.
 const FETCH_URL_ALLOWED_HOSTS: &[&str] = &["models.dev", "openrouter.ai"];
 
-/// Shared reqwest implementation used by `plugin_http_fetch` (gated by
-/// plugin manifest) and `fetch_url` (gated by host allowlist).
+/// Shared reqwest implementation used by `extension_http_fetch` (gated by
+/// extension manifest) and `fetch_url` (gated by host allowlist).
 async fn reqwest_fetch(
     url: &str,
     method: Option<String>,
@@ -129,33 +129,33 @@ pub async fn fetch_url(
         .map_err(AppError::from)
 }
 
-/// Perform an HTTP request on behalf of a sandbox plugin. The origin is
-/// re-checked against the plugin's on-disk `manifest.json`
+/// Perform an HTTP request on behalf of a sandbox extension. The origin is
+/// re-checked against the extension's on-disk `manifest.json`
 /// `permissions.http.origins` (defense-in-depth behind the JS-side fast-fail).
 /// Uses `reqwest` to bypass the host webview's CSP `connect-src`. Returns a
 /// buffered `{status, headers, body}` matching the old JS `fetch()` shape.
 #[tauri::command]
-pub async fn plugin_http_fetch(
+pub async fn extension_http_fetch(
     app: tauri::AppHandle,
-    plugin_id: String,
+    extension_id: String,
     url: String,
     method: Option<String>,
     headers: Option<HashMap<String, String>>,
     body: Option<String>,
 ) -> Result<HttpResponse, AppError> {
-    // Load the plugin's manifest from disk and re-check the origin allowlist.
+    // Load the extension's manifest from disk and re-check the origin allowlist.
     // The JS rpcBridge already fast-fails on non-allowlisted origins; this is
     // the defense-in-depth layer that holds even if the JS bridge is bypassed.
-    // Reject path-traversal/path-separator chars in `plugin_id` so a caller
-    // cannot point at another plugin's manifest and read its declared origins.
-    // `plugin_id` is a bare id segment (`<id>`, not a path).
-    if !is_valid_plugin_id(&plugin_id) {
-        return Err(format!("http:fetch denied: invalid plugin id: {plugin_id}").into());
+    // Reject path-traversal/path-separator chars in `extension_id` so a caller
+    // cannot point at another extension's manifest and read its declared origins.
+    // `extension_id` is a bare id segment (`<id>`, not a path).
+    if !is_valid_extension_id(&extension_id) {
+        return Err(format!("http:fetch denied: invalid extension id: {extension_id}").into());
     }
-    let dir = plugins_dir(&app)?;
-    let manifest_path = dir.join(&plugin_id).join("manifest.json");
+    let dir = extensions_dir(&app)?;
+    let manifest_path = dir.join(&extension_id).join("manifest.json");
     let manifest_str = fs::read_to_string(&manifest_path)
-        .map_err(|e| format!("failed to read manifest for {plugin_id}: {e}"))?;
+        .map_err(|e| format!("failed to read manifest for {extension_id}: {e}"))?;
     let manifest: serde_json::Value =
         serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
     check_http_origin(&manifest, &url)?;

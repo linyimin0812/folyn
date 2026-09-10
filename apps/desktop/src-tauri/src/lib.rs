@@ -10,12 +10,12 @@
 
 mod commands;
 pub mod errors;
-mod plugin_commands;
-mod plugin_security;
-mod plugin_install;
-mod plugin_lifecycle;
-mod plugin_fetch;
-mod plugin_rpc;
+mod extension_commands;
+mod extension_security;
+mod extension_install;
+mod extension_lifecycle;
+mod extension_fetch;
+mod extension_rpc;
 mod chat;
 mod list_models;
 mod voice;
@@ -457,35 +457,35 @@ pub fn run() {
     let pending_open_files = commands::PendingOpenFiles::from_process_args();
 
     let builder = tauri::Builder::default()
-        // ── folyn-plugin:// URI scheme ──
+        // ── folyn-extension:// URI scheme ──
         // Registered ONCE at startup (register_uri_scheme_protocol is on
         // tauri::Builder and consumes self — cannot add schemes at runtime).
-        // Dispatches by path: folyn-plugin://localhost/<id>/<file> reads from
-        // ~/.folyn/plugins/<id>/<file>. Each response carries a per-plugin CSP
-        // header so sandbox plugins cannot reach the network or the host DOM
+        // Dispatches by path: folyn-extension://localhost/<id>/<file> reads from
+        // ~/.folyn/extensions/<id>/<file>. Each response carries a per-extension CSP
+        // header so sandbox extensions cannot reach the network or the host DOM
         // without going through the postMessage RPC bridge.
         //
-        // POST `<id>/rpc` is the fetch-RPC endpoint for tool windows: plugin
-        // JS does `fetch('folyn-plugin://localhost/<id>/rpc', { method:
-        // 'POST', body })` and the handler emits a `plugin-rpc-request` event
+        // POST `<id>/rpc` is the fetch-RPC endpoint for tool windows: extension
+        // JS does `fetch('folyn-extension://localhost/<id>/rpc', { method:
+        // 'POST', body })` and the handler emits a `extension-rpc-request` event
         // that the main webview's `toolWindowRpcListener` dispatches through
-        // the shared `dispatchPluginRpc`. Async responder lets us wait for the
+        // the shared `dispatchExtensionRpc`. Async responder lets us wait for the
         // round-trip without blocking the webview thread.
-        .register_asynchronous_uri_scheme_protocol("folyn-plugin", |ctx, request, responder| {
-            use plugin_commands::{
-                content_type_for, parse_plugin_uri, plugins_dir, PLUGIN_CSP,
+        .register_asynchronous_uri_scheme_protocol("folyn-extension", |ctx, request, responder| {
+            use extension_commands::{
+                content_type_for, parse_extension_uri, extensions_dir, EXTENSION_CSP,
             };
-            use plugin_rpc::{handle_plugin_rpc_request, next_rpc_request_id};
+            use extension_rpc::{handle_extension_rpc_request, next_rpc_request_id};
 
             let uri_path = request.uri().path().to_string();
-            let (id, file_path) = match parse_plugin_uri(&uri_path) {
+            let (id, file_path) = match parse_extension_uri(&uri_path) {
                 Some(v) => v,
                 None => {
                     responder.respond(
                         http::Response::builder()
                             .status(400)
-                            .body(b"invalid plugin uri".to_vec())
-                            .unwrap_or_else(|_| http::Response::new(b"invalid plugin uri".to_vec())),
+                            .body(b"invalid extension uri".to_vec())
+                            .unwrap_or_else(|_| http::Response::new(b"invalid extension uri".to_vec())),
                     );
                     return;
                 }
@@ -496,7 +496,7 @@ pub fn run() {
                 let body = String::from_utf8_lossy(request.body()).to_string();
                 let request_id = next_rpc_request_id();
                 let app = ctx.app_handle().clone();
-                handle_plugin_rpc_request(app, request_id, id, body, responder);
+                handle_extension_rpc_request(app, request_id, id, body, responder);
                 return;
             }
 
@@ -511,7 +511,7 @@ pub fn run() {
                 return;
             }
 
-            let dir = match plugins_dir(ctx.app_handle()) {
+            let dir = match extensions_dir(ctx.app_handle()) {
                 Ok(d) => d,
                 Err(e) => {
                     responder.respond(
@@ -527,7 +527,7 @@ pub fn run() {
             let file_full = dir.join(&id).join(&file_path);
 
             // Defense-in-depth: canonicalize and verify the resolved path is
-            // still within the plugin's directory (prevents symlinks from
+            // still within the extension's directory (prevents symlinks from
             // escaping).
             let canonical = match file_full.canonicalize() {
                 Ok(c) => c,
@@ -541,12 +541,12 @@ pub fn run() {
                     return;
                 }
             };
-            let plugin_root = dir.join(&id);
-            let plugin_root = match plugin_root.canonicalize() {
+            let extension_root = dir.join(&id);
+            let extension_root = match extension_root.canonicalize() {
                 Ok(c) => c,
                 Err(_) => dir.join(&id),
             };
-            if !canonical.starts_with(&plugin_root) {
+            if !canonical.starts_with(&extension_root) {
                 responder.respond(
                     http::Response::builder()
                         .status(403)
@@ -574,41 +574,41 @@ pub fn run() {
                 http::Response::builder()
                     .status(200)
                     .header("Content-Type", ct)
-                    .header("Content-Security-Policy", PLUGIN_CSP)
+                    .header("Content-Security-Policy", EXTENSION_CSP)
                     .body(bytes)
                     .unwrap_or_else(|_| http::Response::new(b"error".to_vec())),
             );
         })
-        // ── plugin init chain ──
-        // Each `.plugin(...)` is preceded by a `startup_log` so a plugin that
-        // panics during init lands a line naming which plugin was at fault.
+        // ── extension init chain ──
+        // Each `.plugin(...)` is preceded by a `startup_log` so a extension that
+        // panics during init lands a line naming which extension was at fault.
         .plugin({
-            startup_log("[plugin] shell");
+            startup_log("[extension] shell");
             tauri_plugin_shell::init()
         })
         // Open files/folders in the system file manager (external-file tab icon
         // "open containing folder"). Shell's `open` is URL-only, so this uses
-        // the dedicated opener plugin instead.
+        // the dedicated opener extension instead.
         .plugin({
-            startup_log("[plugin] opener");
+            startup_log("[extension] opener");
             tauri_plugin_opener::init()
         })
         // OS native notifications (PRD pet-popup-bubble-notification: system
-        // notification form). The main window's dispatcher calls the plugin's
+        // notification form). The main window's dispatcher calls the extension's
         // JS API (`sendNotification`/`registerActionTypes`/`onAction`);
         .plugin({
-            startup_log("[plugin] dialog");
+            startup_log("[extension] dialog");
             tauri_plugin_dialog::init()
         })
         .plugin({
-            startup_log("[plugin] fs");
+            startup_log("[extension] fs");
             tauri_plugin_fs::init()
         })
         .plugin({
-            startup_log("[plugin] clipboard_manager");
+            startup_log("[extension] clipboard_manager");
             tauri_plugin_clipboard_manager::init()
         })
-        // Global keyboard shortcut plugin. A single global handler dispatches
+        // Global keyboard shortcut extension. A single global handler dispatches
         // by HotKey id: the voice toggle HotKey (stored in
         // `VoiceState::voice_hotkey` by `voice_set_global_hotkey`) emits
         // `voice://hotkey-toggle` on Pressed only (toggle semantics — first
@@ -618,14 +618,14 @@ pub fn run() {
         // HotKey (currently the pet-panel toggle managed by
         // `pet_panel_set_shortcut`) emits `pet://shortcut-toggle` on Pressed. WHICH accelerator fires each is swapped at runtime by
         // the respective `*_set_shortcut` commands; this closure only decides
-        // the routing. Pet mode is macOS-only at present, but the plugin loads
+        // the routing. Pet mode is macOS-only at present, but the extension loads
         // on all platforms — non-macOS just never has an accelerator registered
         // until the frontend calls a command. No ACL capability entry is
-        // needed: the frontend never invokes the plugin's built-in commands
+        // needed: the frontend never invokes the extension's built-in commands
         // directly, only our custom `pet_panel_set_shortcut` +
         // `voice_set_global_hotkey` (custom invoke bypasses the ACL).
         .plugin({
-            startup_log("[plugin] global_shortcut");
+            startup_log("[extension] global_shortcut");
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     use tauri_plugin_global_shortcut::ShortcutState;
@@ -656,7 +656,7 @@ pub fn run() {
             startup_log("[hook] on_menu_event registered");
             |app, event| {
             let id = event.id().as_ref();
-            // Manual fullscreen toggle for the focused plugin tool window
+            // Manual fullscreen toggle for the focused extension tool window
             // (Window menu → "插件弹窗全屏", ⌘⇧F). Tool windows are pinned
             // (alwaysOnTop), which macOS blocks from entering NATIVE
             // fullscreen — so this item uses simple fullscreen instead
@@ -669,13 +669,13 @@ pub fn run() {
             // below). Native fullscreen remains available via the standard
             // Window menu "Enter Full Screen" (⌃⌘F) and is handled
             // separately.
-            if id == "plugin-tool-fullscreen" {
+            if id == "extension-tool-fullscreen" {
                 if let Some((label, win)) = app
                     .webview_windows()
                     .iter()
-                    .find(|(l, w)| l.starts_with("plugin-tool-") && w.is_focused().unwrap_or(false))
+                    .find(|(l, w)| l.starts_with("extension-tool-") && w.is_focused().unwrap_or(false))
                 {
-                    let state = app.state::<commands::PluginToolWindowState>();
+                    let state = app.state::<commands::ExtensionToolWindowState>();
                     let already_native = win.is_fullscreen().unwrap_or(false);
                     let in_simple = state.is_simple_fullscreen(label);
                     if already_native {
@@ -816,8 +816,8 @@ pub fn run() {
                     return;
                 }
 
-                // Plugin tool windows (multi-instance WebviewWindows opened
-                // by the plugin host, see store/toolWindowStore.ts). Two
+                // Extension tool windows (multi-instance WebviewWindows opened
+                // by the extension host, see store/toolWindowStore.ts). Two
                 // fullscreen modes, each with its own teardown:
                 //
                 // 1. NATIVE fullscreen (standard Window menu "Enter Full
@@ -847,12 +847,12 @@ pub fn run() {
                 // `WindowManager::attach_window` registers the global
                 // listeners for every window created via
                 // `WindowBuilder`/`WebviewWindowBuilder`.
-                if label.starts_with("plugin-tool-") {
-                    let state = app.state::<commands::PluginToolWindowState>();
+                if label.starts_with("extension-tool-") {
+                    let state = app.state::<commands::ExtensionToolWindowState>();
                     let fullscreen = window.is_fullscreen().unwrap_or(false);
                     let simple_fullscreen = state.is_simple_fullscreen(label);
                     // Remember the fullscreen mode this tool was closed in so
-                    // `open_plugin_tool_window` can restore it on the next
+                    // `open_extension_tool_window` can restore it on the next
                     // open of the same tool.
                     let mode = if fullscreen {
                         Some(commands::ToolFullscreenMode::Native)
@@ -904,8 +904,8 @@ pub fn run() {
         // Windows flash-quit crash. Builder-level `.manage(...)` makes the
         // state visible from t=0.
         .manage({
-            startup_log("[builder] manage PluginToolWindowState");
-            commands::PluginToolWindowState::new()
+            startup_log("[builder] manage ExtensionToolWindowState");
+            commands::ExtensionToolWindowState::new()
         })
         .manage({
             startup_log("[builder] manage MainWindowFullscreenRestore");
@@ -1057,7 +1057,7 @@ pub fn run() {
             commands::save_file,
             commands::read_clipboard_files,
             commands::create_webview,
-            commands::open_plugin_tool_window,
+            commands::open_extension_tool_window,
             commands::navigate_webview,
             commands::close_webview,
             commands::set_webview_position,
@@ -1114,17 +1114,17 @@ pub fn run() {
             pet_api::open_external,
             chat::chat_stream,
             list_models::list_models,
-            plugin_install::install_plugin,
-            plugin_install::install_plugin_zip,
-            plugin_lifecycle::list_plugins,
-            plugin_lifecycle::uninstall_plugin,
-            plugin_lifecycle::approve_plugin,
-            plugin_lifecycle::get_plugin_record,
-            plugin_lifecycle::read_plugin_file,
-            plugin_lifecycle::verify_plugin_signature_cmd,
-            plugin_fetch::plugin_http_fetch,
-            plugin_fetch::fetch_url,
-            plugin_rpc::plugin_rpc_respond,
+            extension_install::install_extension,
+            extension_install::install_extension_zip,
+            extension_lifecycle::list_extensions,
+            extension_lifecycle::uninstall_extension,
+            extension_lifecycle::approve_extension,
+            extension_lifecycle::get_extension_record,
+            extension_lifecycle::read_extension_file,
+            extension_lifecycle::verify_extension_signature_cmd,
+            extension_fetch::extension_http_fetch,
+            extension_fetch::fetch_url,
+            extension_rpc::extension_rpc_respond,
             voice::voice_start,
             voice::voice_stop,
             voice::voice_cancel,
@@ -1141,7 +1141,7 @@ pub fn run() {
     // associated file while Folyn is running launches a SECOND process; on
     // macOS it normally routes to the running instance via RunEvent::Opened,
     // but if the running instance isn't registered as the document handler
-    // macOS also spawns a second process instead. In both cases the plugin
+    // macOS also spawns a second process instead. In both cases the extension
     // forwards the second argv to the RUNNING instance's callback here,
     // then exits the second process. The callback mirrors the
     // RunEvent::Opened path: buffer AND emit so a still-mounting webview
@@ -1151,7 +1151,7 @@ pub fn run() {
     // 08-16-fix-external-file-open-cold-launch-not-shown.
     #[cfg(not(target_os = "linux"))]
     let builder = builder.plugin({
-        startup_log("[plugin] single_instance");
+        startup_log("[extension] single_instance");
         tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // Surface the main window first — a bare double-click on Windows
             // passes no file path; the hidden (close-to-tray) window still
