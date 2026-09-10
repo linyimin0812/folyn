@@ -380,7 +380,7 @@ fn is_blacklisted_path(rel: &Path) -> bool {
     if BLACKLIST_BASENAME_PREFIXES.iter().any(|p| basename.starts_with(p)) {
         return true;
     }
-    if let Some(ext) = rel.plugin().and_then(|s| s.to_str()) {
+    if let Some(ext) = rel.extension().and_then(|s| s.to_str()) {
         if BLACKLIST_EXTS.contains(&ext) {
             return true;
         }
@@ -395,7 +395,7 @@ fn is_unknown_ext(rel: &Path) -> bool {
     if basename == "manifest.json" || basename == "LICENSE" || basename == "README.md" {
         return false;
     }
-    match rel.plugin().and_then(|s| s.to_str()) {
+    match rel.extension().and_then(|s| s.to_str()) {
         Some(ext) => !ALLOWED_EXTS.contains(&ext),
         None => true, // no extension and not in the basename allowlist
     }
