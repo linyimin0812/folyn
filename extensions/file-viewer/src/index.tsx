@@ -1,31 +1,35 @@
 /**
- * File Viewer extension entry (trusted tier).
+ * Host-realm entry (trusted tier). Registers a fallback FileType provider whose
+ * single mode is {@link OfficeFrame} — a tiny iframe wrapper.
  *
- * Contributes a fallback FileType provider (priority -1000) that renders
- * office / pdf / archive / dataset / media files via OfficeFileViewer.
- * The manifest declares the extensions + the `office` handler entry-ref.
+ * The heavy renderers do NOT run here: {@link OfficeFrame} reads the file bytes
+ * via the host capability `api.vault.readBinary` and hands them to the
+ * extension's OWN `folyn-plugin://` iframe (`preview.html`), where the
+ * @file-viewer renderers run with full Web Worker / WASM / code-splitting
+ * support (their assets resolve against the plugin origin — impossible from a
+ * blob-URL host module).
  */
-import type { PluginModule, FileTypeProvider, ExtensionApi } from 'folyn-plugin-sdk';
-import { OfficeFileViewer } from './OfficeFileViewer';
-import { setApi } from './api';
+import type { PluginModule, FileTypeProvider, ExtensionApi, ExtensionContext } from 'folyn-plugin-sdk';
+import { OfficeFrame } from './OfficeFrame';
+import { setApi, setExtensionId } from './api';
 
+/** Fallback provider — extensions/window are declared in the manifest. */
 const officeProvider: FileTypeProvider = {
   id: 'office',
-  // Fallback (doc §24): a specialized provider overrides this.
   priority: -1000,
-  // Extensions are declared in the manifest; kept in sync here so resolution
-  // works even before the manifest merge (defensive).
   extensions: [],
   needsFileContent: false,
+  defaultMode: 'preview',
   modes: [
-    { id: 'preview', kind: 'component', component: OfficeFileViewer },
+    { id: 'preview', kind: 'component', component: OfficeFrame },
   ],
 };
 
 const pluginModule: PluginModule = {
   handlers: { office: officeProvider },
-  activate(api: ExtensionApi) {
+  activate(api: ExtensionApi, ctx: ExtensionContext) {
     setApi(api);
+    setExtensionId(ctx.extensionId);
   },
 };
 

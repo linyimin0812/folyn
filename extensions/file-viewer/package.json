@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Folyn Generic File Viewer extension — office / media / archive / dataset preview (fallback FileType extension)",
+  "description": "Folyn Generic File Viewer extension \u2014 office / media / archive / dataset preview (fallback FileType extension)",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -22,13 +22,19 @@
     "@file-viewer/renderer-geo": "^2.1.30",
     "@file-viewer/renderer-image": "^2.1.30",
     "@file-viewer/renderer-mindmap": "^2.1.30",
-    "@file-viewer/renderer-3d": "^2.1.30"
+    "@file-viewer/renderer-3d": "^2.1.30",
+    "@file-viewer/renderer-cad": "^2.1.30",
+    "@file-viewer/renderer-media": "^2.1.30"
   },
   "devDependencies": {
     "folyn-plugin-sdk": "workspace:*",
     "@types/react": "^18.3.12",
+    "@vitejs/plugin-react": "^4.3.0",
     "esbuild": "^0.23.0",
     "react": "^18.3.1",
-    "typescript": "^5.7.0"
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "@types/react-dom": "^18.3.0"
   }
 }

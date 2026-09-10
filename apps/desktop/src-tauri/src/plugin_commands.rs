@@ -69,7 +69,7 @@ pub fn content_type_for(path: &str) -> &'static str {
 /// must be named explicitly); `style-src 'unsafe-inline'` for inline styles.
 /// `connect-src folyn-plugin:` lets plugin JS call `fetch('folyn-plugin://localhost/<id>/rpc', ...)`.
 pub const PLUGIN_CSP: &str =
-    "default-src 'none'; script-src 'unsafe-inline' folyn-plugin:; style-src 'unsafe-inline'; connect-src folyn-plugin:";
+    "default-src 'none'; script-src 'unsafe-inline' folyn-plugin:; style-src 'unsafe-inline' folyn-plugin:; connect-src folyn-plugin:; worker-src folyn-plugin: blob:; img-src folyn-plugin: data: blob:; font-src folyn-plugin: data:; media-src folyn-plugin: data: blob:";
 
 /// Resolve `~/.folyn/plugins/` using the Tauri path resolver.
 pub fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {

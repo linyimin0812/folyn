@@ -1,10 +1,11 @@
 /**
- * OfficeFileViewer — renders office / archive / dataset / media files via
- * @file-viewer/react. Renderers are bundled locally (esbuild inlines every
- * @file-viewer/renderer-* dep) — no CDN fetch at runtime.
+ * FileViewer host inside the extension's iframe (`preview.html`).
  *
- * File bytes come from the host capability `api.vault.readBinary(filePath)`
- * (vault-scoped); the viewer never touches Tauri directly.
+ * Receives `{ name, bytes, theme }` from the host wrapper (OfficeFrame) via
+ * postMessage and renders it with @file-viewer/react. All renderers are
+ * bundled locally (esbuild/vite inlines every @file-viewer/renderer-* dep) and
+ * run with full Worker/WASM support because this frame has a real
+ * `folyn-plugin://` origin.
  */
 import { useEffect, useMemo, useState } from 'react';
 import FileViewer from '@file-viewer/react';
@@ -19,8 +20,8 @@ import { geoRenderer } from '@file-viewer/renderer-geo';
 import { imageRenderer } from '@file-viewer/renderer-image';
 import { mindmapRenderer } from '@file-viewer/renderer-mindmap';
 import { modelRenderer } from '@file-viewer/renderer-3d';
-import type { PreviewProps } from 'folyn-plugin-sdk';
-import { getApi } from './api';
+import { cadRenderer } from '@file-viewer/renderer-cad';
+import { mediaRenderer } from '@file-viewer/renderer-media';
 
 /** All renderer lines bundled into the extension (local, no CDN). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,51 +37,41 @@ const PRESET: any[] = [
   imageRenderer,
   mindmapRenderer,
   modelRenderer,
+  cadRenderer,
+  mediaRenderer,
 ];
 
-/** Read the host theme (`<html data-theme>`), reacting to changes. */
-function useHostTheme(): 'light' | 'dark' {
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    () => (document.documentElement.dataset.theme as 'light' | 'dark') ?? 'light',
-  );
-  useEffect(() => {
-    const el = document.documentElement;
-    const apply = () => {
-      const t = el.dataset.theme;
-      if (t === 'light' || t === 'dark') setTheme(t);
-    };
-    apply();
-    const obs = new MutationObserver(apply);
-    obs.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => obs.disconnect();
-  }, []);
-  return theme;
+interface Incoming {
+  type: string;
+  name?: string;
+  bytes?: ArrayBuffer;
+  theme?: 'light' | 'dark';
 }
 
-export function OfficeFileViewer({ filePath }: PreviewProps): React.JSX.Element {
+export function OfficeFileViewer(): React.JSX.Element {
   const [file, setFile] = useState<File | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const theme = useHostTheme();
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    (async () => {
+    // Tell the host wrapper we're ready to receive the document.
+    window.parent.postMessage({ type: 'folyn-file-viewer:ready' }, '*');
+
+    const onMessage = (ev: MessageEvent) => {
+      const d = ev.data as Incoming | null;
+      if (!d || d.type !== 'folyn-file-viewer:open') return;
       try {
-        const bytes = await getApi().vault.readBinary(filePath);
-        if (cancelled) return;
-        const name = filePath.split('/').pop() || 'file';
-        setFile(new File([bytes as BlobPart], name));
+        if (d.theme) setTheme(d.theme);
+        if (!d.bytes) throw new Error('no bytes received');
+        setFile(new File([d.bytes], d.name || 'file'));
+        setError(null);
       } catch (e: unknown) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
+        setError(e instanceof Error ? e.message : String(e));
       }
-    })();
-    return () => { cancelled = true; };
-  }, [filePath]);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   const options = useMemo(() => ({
     preset: PRESET,
@@ -91,23 +82,19 @@ export function OfficeFileViewer({ filePath }: PreviewProps): React.JSX.Element 
     },
   }), [theme]);
 
+  if (error) {
+    return <div style={{ padding: 24, color: '#e05252', fontSize: 13 }}>无法加载文件：{error}</div>;
+  }
+  if (!file) {
+    return <div style={{ padding: 24, color: '#888', fontSize: 13 }}>加载中…</div>;
+  }
   return (
-    <div className="h-full w-full overflow-y-auto overflow-x-hidden bg-panel">
-      {loading && <div className="flex h-full items-center justify-center text-t3 text-[13px]">加载中…</div>}
-      {error && (
-        <div className="flex h-full items-center justify-center text-t3 text-[13px] text-red-500">
-          无法加载文件：{error}
-        </div>
-      )}
-      {!loading && !error && file && (
-        <FileViewer
-          key={theme}
-          data-viewer-theme={theme}
-          file={file}
-          options={options}
-          style={{ height: '100%', width: '100%' }}
-        />
-      )}
-    </div>
+    <FileViewer
+      key={theme}
+      data-viewer-theme={theme}
+      file={file}
+      options={options}
+      style={{ height: '100vh', width: '100vw' }}
+    />
   );
 }
