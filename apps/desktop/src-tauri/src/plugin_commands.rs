@@ -66,10 +66,14 @@ pub fn content_type_for(path: &str) -> &'static str {
 /// plugin's HTML embed inline scripts AND load `<script src>` assets from the
 /// plugin's own directory (Chromium does not resolve `'self'` to the document
 /// origin for custom schemes like `folyn-plugin://localhost`, so the scheme
-/// must be named explicitly); `style-src 'unsafe-inline'` for inline styles.
-/// `connect-src folyn-plugin:` lets plugin JS call `fetch('folyn-plugin://localhost/<id>/rpc', ...)`.
+/// must be named explicitly); `'wasm-unsafe-eval'` is required to *compile*
+/// WebAssembly (pdf.js, libredwg, sql.js…) — without it the compile is refused
+/// with a CompileError. It permits WASM compilation only, not JS `eval`, and
+/// does not weaken the sandbox (network/DOM stay blocked by the other
+/// directives). `worker-src` is explicit because it would otherwise fall back
+/// to `default-src 'none'` and block the renderers' workers.
 pub const PLUGIN_CSP: &str =
-    "default-src 'none'; script-src 'unsafe-inline' folyn-plugin:; style-src 'unsafe-inline' folyn-plugin:; connect-src folyn-plugin:; worker-src folyn-plugin: blob:; img-src folyn-plugin: data: blob:; font-src folyn-plugin: data:; media-src folyn-plugin: data: blob:";
+    "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' folyn-plugin:; style-src 'unsafe-inline' folyn-plugin:; connect-src folyn-plugin:; worker-src folyn-plugin: blob:; img-src folyn-plugin: data: blob:; font-src folyn-plugin: data:; media-src folyn-plugin: data: blob:";
 
 /// Resolve `~/.folyn/plugins/` using the Tauri path resolver.
 pub fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
