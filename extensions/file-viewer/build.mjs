@@ -48,8 +48,11 @@ console.log('host bundle → dist/index.js');
 await viteBuild({ configFile: path.join(root, 'vite.config.ts') });
 console.log('iframe bundle → dist/preview.html');
 
-// 3. Self-contained installable manifest.
-const manifest = JSON.parse(await readFile(path.join(root, 'manifest.json'), 'utf8'));
+// 3. Self-contained installable manifest. The SOURCE manifest lives in src/
+// (never at the extension root — that keeps the repo root un-installable, so
+// picking it in "install from folder" fails with a clear manifest error
+// instead of silently loading unbuilt assets).
+const manifest = JSON.parse(await readFile(path.join(root, 'src/manifest.json'), 'utf8'));
 if (typeof manifest.main === 'string') {
   manifest.main = manifest.main.replace(/^dist\//, '');
 }
@@ -58,4 +61,4 @@ await writeFile(
   JSON.stringify(manifest, null, 2) + '\n',
 );
 
-console.log('built dist/ — install this folder in Folyn → Plugins → Install from folder…');
+console.log('built dist/ — install the dist/ folder in Folyn → Plugins → Install from folder…');
