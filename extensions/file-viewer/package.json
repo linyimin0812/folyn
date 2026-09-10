@@ -27,7 +27,7 @@
     "@file-viewer/renderer-media": "^2.1.30"
   },
   "devDependencies": {
-    "folyn-plugin-sdk": "workspace:*",
+    "folyn-extension-sdk": "workspace:*",
     "@types/react": "^18.3.12",
     "@vitejs/plugin-react": "^4.3.0",
     "esbuild": "^0.23.0",

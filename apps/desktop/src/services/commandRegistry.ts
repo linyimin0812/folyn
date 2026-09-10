@@ -24,7 +24,7 @@ import {
 } from '@/hooks/useExport';
 import { requestNewItem } from './newItemBridge';
 import { requestPlanMyDay } from './planMyDayBridge';
-import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/plugin-host';
+import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/extension-host';
 
 export type CommandCategory = 'action' | 'panel-mode' | 'file';
 

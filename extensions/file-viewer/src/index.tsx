@@ -18,7 +18,7 @@
  * blob-URL host module).
  */
 import type { ReactNode } from 'react';
-import type { PluginModule, FileTypeProvider, ExtensionApi, ExtensionContext } from 'folyn-plugin-sdk';
+import type { PluginModule, FileTypeProvider, ExtensionApi, ExtensionContext } from 'folyn-extension-sdk';
 import { OfficeFrame } from './OfficeFrame';
 import { setApi, setExtensionId } from './api';
 import {

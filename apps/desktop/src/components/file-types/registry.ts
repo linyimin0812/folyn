@@ -1,6 +1,6 @@
 import type { FileTypeHandler, PresentationModeId, PresentationModeRegistration } from './types';
 import { HandlerRegistry } from './HandlerRegistry';
-import { FOLYN_CORE_OWNER } from '@folyn/plugin-host';
+import { FOLYN_CORE_OWNER } from '@folyn/extension-host';
 
 /**
  * File-type handler registry.

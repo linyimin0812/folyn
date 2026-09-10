@@ -9,7 +9,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "folyn-plugin-sdk": "^0.1.0",
+    "folyn-extension-sdk": "^0.1.0",
     "@types/react": "^18.3.12",
     "esbuild": "^0.23.0",
     "react": "^18.3.1",

@@ -1,0 +1,824 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { RpcBridge, isPathInScope, isOriginAllowed, hasPermission, dispatchPluginRpc } from './rpcBridge';
+import type { PluginManifest, PluginAiStreamEvent } from '@folyn/extension-host';
+import { __internals as fsInternals } from '@tauri-apps/plugin-fs';
+import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { invoke } from '@tauri-apps/api/core';
+
+// ── AI capability mocks ─────────────────────────────────────────────────────
+const { runRigChatMock, aiConfigGetMock } = vi.hoisted(() => {
+  return {
+    runRigChatMock: vi.fn(),
+    aiConfigGetMock: vi.fn(),
+  };
+});
+vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
+vi.mock('@/store/aiConfigStore', () => ({ useAiConfigStore: { getState: aiConfigGetMock } }));
+
+// ── Fixtures ─────────────────────────────────────────────────────────────────
+
+function sandboxManifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+  return {
+    id: 'demo-plugin',
+    name: 'Demo',
+    version: '1.0.0',
+    tier: 'sandbox',
+    main: 'index.js',
+    html: 'index.html',
+    permissions: {
+      fs: { scope: ['data/**'] },
+      http: { origins: ['https://api.example.com'] },
+      clipboard: true,
+      dialog: true,
+      window: true,
+      vault: { readActive: true, insertContent: true },
+    },
+    ...overrides,
+  };
+}
+
+/** A fake target window that captures postMessage calls. */
+function fakeTarget() {
+  const sent: unknown[] = [];
+  const target = {
+    postMessage: vi.fn((msg: unknown, _origin: string) => {
+      sent.push(msg);
+    }),
+  };
+  return { target: target as unknown as Window, sent };
+}
+
+beforeEach(() => {
+  fsInternals.reset();
+  runRigChatMock.mockReset();
+  aiConfigGetMock.mockReset();
+  aiConfigGetMock.mockReturnValue({
+    chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: 'sk-test', chatBaseUrl: '',
+  });
+});
+
+// ── Pure helper tests ────────────────────────────────────────────────────────
+
+describe('isPathInScope', () => {
+  it('matches data/** for nested files', () => {
+    expect(isPathInScope('data/foo.txt', ['data/**'])).toBe(true);
+    expect(isPathInScope('data/sub/bar.json', ['data/**'])).toBe(true);
+    expect(isPathInScope('data/sub/deep/x.txt', ['data/**'])).toBe(true);
+  });
+
+  it('matches data/ itself (base dir of data/**)', () => {
+    // data/** should match "data" as the zero-segment case
+    expect(isPathInScope('data', ['data/**'])).toBe(true);
+  });
+
+  it('rejects path outside scope', () => {
+    expect(isPathInScope('config/settings.json', ['data/**'])).toBe(false);
+    expect(isPathInScope('index.html', ['data/**'])).toBe(false);
+  });
+
+  it('rejects path traversal', () => {
+    expect(isPathInScope('../escape', ['data/**'])).toBe(false);
+    expect(isPathInScope('data/../escape', ['data/**'])).toBe(false);
+  });
+
+  it('skips vault: tokens in scope', () => {
+    expect(isPathInScope('data/x.txt', ['vault:read-active', 'data/**'])).toBe(true);
+    expect(isPathInScope('vault:read-active', ['vault:read-active', 'data/**'])).toBe(false);
+  });
+
+  it('matches single-segment glob (*)', () => {
+    expect(isPathInScope('config/settings.json', ['config/*'])).toBe(true);
+    expect(isPathInScope('config/sub/deep.json', ['config/*'])).toBe(false);
+  });
+
+  it('rejects empty path', () => {
+    expect(isPathInScope('', ['data/**'])).toBe(false);
+  });
+
+  it('rejects when scope is empty', () => {
+    expect(isPathInScope('data/foo.txt', [])).toBe(false);
+  });
+});
+
+describe('isOriginAllowed', () => {
+  it('matches exact origin', () => {
+    expect(isOriginAllowed('https://api.example.com/data', ['https://api.example.com'])).toBe(true);
+  });
+
+  it('rejects different origin', () => {
+    expect(isOriginAllowed('https://evil.com/data', ['https://api.example.com'])).toBe(false);
+  });
+
+  it('rejects when allowlist is empty', () => {
+    expect(isOriginAllowed('https://api.example.com/data', [])).toBe(false);
+  });
+
+  it('rejects invalid URL', () => {
+    expect(isOriginAllowed('not-a-url', ['https://api.example.com'])).toBe(false);
+  });
+
+  it('handles port-specific origins', () => {
+    expect(isOriginAllowed('http://localhost:3000/api', ['http://localhost:3000'])).toBe(true);
+    expect(isOriginAllowed('http://localhost:8080/api', ['http://localhost:3000'])).toBe(false);
+  });
+});
+
+describe('hasPermission', () => {
+  it('returns true for granted boolean permissions', () => {
+    expect(hasPermission(sandboxManifest(), 'clipboard')).toBe(true);
+    expect(hasPermission(sandboxManifest(), 'dialog')).toBe(true);
+    expect(hasPermission(sandboxManifest(), 'window')).toBe(true);
+  });
+
+  it('returns false for ungranted permissions', () => {
+    expect(hasPermission(sandboxManifest({ permissions: { clipboard: false } }), 'clipboard')).toBe(false);
+  });
+
+  it('returns true for granted vault sub-permissions', () => {
+    expect(hasPermission(sandboxManifest(), 'vault:read-active')).toBe(true);
+    expect(hasPermission(sandboxManifest(), 'vault:insert-content')).toBe(true);
+  });
+
+  it('returns false when no permissions object', () => {
+    const m = sandboxManifest();
+    delete m.permissions;
+    expect(hasPermission(m, 'clipboard')).toBe(false);
+  });
+
+  it('returns false for unknown capability', () => {
+    expect(hasPermission(sandboxManifest(), 'unknown:cap')).toBe(false);
+  });
+});
+
+// ── RpcBridge message protocol round-trip ────────────────────────────────────
+
+describe('RpcBridge / message protocol', () => {
+  it('sends lifecycle messages to iframe', () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    bridge.sendLifecycle('activate');
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({ type: 'lifecycle', event: 'activate' });
+
+    bridge.sendLifecycle('deactivate');
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual({ type: 'lifecycle', event: 'deactivate' });
+
+    bridge.dispose();
+  });
+
+  it('sends invoke and resolves on invoke-result', async () => {
+    const manifest = sandboxManifest();
+    const { target } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    // Capture the invoke message
+    const targetObj = target as unknown as { postMessage: (msg: unknown) => void };
+    let invokeId = '';
+    const origPost = targetObj.postMessage;
+    targetObj.postMessage = vi.fn((msg: unknown) => {
+      const m = msg as { type: string; id: string; command: string };
+      if (m.type === 'invoke') invokeId = m.id;
+    });
+
+    const promise = bridge.invokeCommand('my-command', { x: 1 });
+
+    // Simulate the iframe sending back an invoke-result
+    await Promise.resolve();
+    bridge.handleMessage(
+      { type: 'invoke-result', id: invokeId, result: 'ok' },
+      target,
+    );
+
+    await expect(promise).resolves.toBe('ok');
+    bridge.dispose();
+    targetObj.postMessage = origPost;
+  });
+
+  it('rejects invoke on timeout if iframe never responds', async () => {
+    vi.useFakeTimers();
+    const manifest = sandboxManifest();
+    const { target } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    const promise = bridge.invokeCommand('no-response');
+    vi.advanceTimersByTime(31_000);
+    await expect(promise).rejects.toThrow(/timed out/);
+    bridge.dispose();
+    vi.useRealTimers();
+  });
+
+  it('ignores messages from wrong source', () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    // Message from a different window — should be ignored
+    bridge.handleMessage(
+      { type: 'request', id: '1', method: 'clipboard:read', params: {} },
+      {} as Window,
+    );
+    expect(sent).toHaveLength(0);
+    bridge.dispose();
+  });
+
+  it('dispose rejects pending invokes and stops listening', async () => {
+    const manifest = sandboxManifest();
+    const { target } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    const promise = bridge.invokeCommand('pending');
+    bridge.dispose();
+    await expect(promise).rejects.toThrow(/bridge disposed/);
+  });
+});
+
+// ── RpcBridge capability gating ──────────────────────────────────────────────
+
+describe('RpcBridge / fs scope enforcement', () => {
+  it('reads a file within scope', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    // Pre-seed the fs mock with a file at the resolved path
+    await fsInternals.root.children.clear() || true;
+    // The bridge resolves via homeDir mock → /mock/home/.folyn/plugins/demo-plugin/data/test.txt
+    // We can't easily seed without a real path, so use a custom resolver
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+      resolvePluginPath: async (p) => `/mock/plugins/${p}`,
+    });
+
+    // Seed the mock fs
+    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+    await writeTextFile('/mock/plugins/data/test.txt', 'hello');
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'r1', method: 'fs:read', params: { path: 'data/test.txt' } },
+      target,
+    );
+    await Promise.resolve();
+
+    // Should have sent a response with result
+    expect(sent).toHaveLength(1);
+    const resp = sent[0] as { type: string; id: string; result?: string; error?: string };
+    expect(resp.type).toBe('response');
+    expect(resp.id).toBe('r1');
+    expect(resp.result).toBe('hello');
+    expect(resp.error).toBeUndefined();
+
+    bridge.dispose();
+  });
+
+  it('rejects read outside scope', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+      resolvePluginPath: async (p) => `/mock/plugins/${p}`,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'r2', method: 'fs:read', params: { path: 'secrets/key.txt' } },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(sent).toHaveLength(1);
+    const resp = sent[0] as { type: string; id: string; error?: string };
+    expect(resp.error).toMatch(/out of scope/);
+
+    bridge.dispose();
+  });
+
+  it('rejects write outside scope', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+      resolvePluginPath: async (p) => `/mock/plugins/${p}`,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'r3', method: 'fs:write', params: { path: '../escape.txt', content: 'x' } },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { error?: string };
+    expect(resp.error).toMatch(/out of scope/);
+
+    bridge.dispose();
+  });
+});
+
+describe('RpcBridge / http origin enforcement', () => {
+  it('routes allowed-origin fetch to the Rust plugin_http_fetch command', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    // The Rust command returns the buffered {status, headers, body} shape.
+    invoke.mockResolvedValueOnce({
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+      body: 'body-text',
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'h1', method: 'http:fetch', params: { url: 'https://api.example.com/data' } },
+      target,
+    );
+    await Promise.resolve();
+
+    // Must invoke the Rust command with the plugin id + url, NOT global fetch.
+    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+      pluginId: 'demo-plugin',
+      url: 'https://api.example.com/data',
+    }));
+
+    const resp = sent[0] as { result?: { status: number; body: string; headers: Record<string, string> } };
+    expect(resp.result?.status).toBe(200);
+    expect(resp.result?.body).toBe('body-text');
+    expect(resp.result?.headers).toEqual({ 'content-type': 'text/plain' });
+
+    bridge.dispose();
+  });
+
+  it('passes method/headers/body through to plugin_http_fetch', async () => {
+    const manifest = sandboxManifest();
+    const { target } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    invoke.mockResolvedValueOnce({ status: 201, headers: {}, body: '' });
+
+    await bridge.handleMessage(
+      {
+        type: 'request', id: 'h1b', method: 'http:fetch',
+        params: {
+          url: 'https://api.example.com/data',
+          init: {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: '{"a":1}',
+          },
+        },
+      },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"a":1}',
+    }));
+
+    bridge.dispose();
+  });
+
+  it('normalizes a Headers object into a plain string map for IPC', async () => {
+    const manifest = sandboxManifest();
+    const { target } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    invoke.mockResolvedValueOnce({ status: 200, headers: {}, body: '' });
+
+    const headers = new Headers();
+    headers.set('x-custom', 'yes');
+
+    await bridge.handleMessage(
+      {
+        type: 'request', id: 'h1c', method: 'http:fetch',
+        params: { url: 'https://api.example.com/data', init: { headers } },
+      },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+      headers: { 'x-custom': 'yes' },
+    }));
+
+    bridge.dispose();
+  });
+
+  it('rejects fetch from unallowed origin WITHOUT calling invoke', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'h2', method: 'http:fetch', params: { url: 'https://evil.com/data' } },
+      target,
+    );
+    await Promise.resolve();
+
+    // JS-side fast-fail: the Rust command must never be invoked.
+    expect(invoke).not.toHaveBeenCalled();
+
+    const resp = sent[0] as { error?: string };
+    expect(resp.error).toMatch(/not allowed/);
+
+    bridge.dispose();
+  });
+});
+
+describe('RpcBridge / clipboard gating', () => {
+  it('reads clipboard when permission granted', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    readText.mockResolvedValue('clipboard-content');
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'c1', method: 'clipboard:read', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { result?: string };
+    expect(resp.result).toBe('clipboard-content');
+
+    bridge.dispose();
+  });
+
+  it('rejects clipboard read without permission', async () => {
+    const manifest = sandboxManifest({ permissions: { clipboard: false } });
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'c2', method: 'clipboard:read', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { error?: string };
+    expect(resp.error).toMatch(/clipboard permission/);
+
+    bridge.dispose();
+  });
+
+  it('writes clipboard when permission granted', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'c3', method: 'clipboard:write', params: { text: 'hello' } },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(writeText).toHaveBeenCalledWith('hello');
+    const resp = sent[0] as { result?: unknown };
+    expect(resp.result).toBeUndefined();
+
+    bridge.dispose();
+  });
+});
+
+// ── ai:chat (sandbox streaming) ─────────────────────────────────────────────
+
+describe('dispatchPluginRpc / ai:chat', () => {
+  it('rejects when permissions.ai.chat not declared', async () => {
+    const manifest = sandboxManifest({ permissions: {} });
+    await expect(
+      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
+    ).rejects.toThrow(/permissions\.ai\.chat/);
+    expect(runRigChatMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects when stream transport absent (tool-window fetch path)', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await expect(
+      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p),
+    ).rejects.toThrow(/streaming transport/);
+  });
+
+  it('rejects when chatApiKey missing', async () => {
+    aiConfigGetMock.mockReturnValue({ chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: '', chatBaseUrl: '' });
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await expect(
+      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
+    ).rejects.toThrow(/chatApiKey/);
+  });
+
+  it('pushes ai-stream events then resolves; filters tool/file_change', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: { type: string; content?: string; toolName?: string }) => void }) => {
+      p.onEvent({ type: 'thinking', content: 'hmm' });
+      p.onEvent({ type: 'text', content: 'hello' });
+      p.onEvent({ type: 'tool_start', toolName: 'Read' });
+      p.onEvent({ type: 'text', content: ' world' });
+      p.onEvent({ type: 'file_change' });
+      p.onEvent({ type: 'done' });
+    });
+    const events: PluginAiStreamEvent[] = [];
+    const stream = (e: PluginAiStreamEvent) => events.push(e);
+    await dispatchPluginRpc(
+      manifest, 'demo', 'ai:chat',
+      { sessionId: 's', prompt: 'p' },
+      async (p) => p, stream,
+    );
+    expect(events.map((e) => `${e.type}:${e.content ?? ''}`)).toEqual([
+      'thinking:hmm',
+      'text:hello',
+      'text: world',
+      'done:',
+    ]);
+  });
+});
+
+describe('RpcBridge / ai:chat streaming end-to-end', () => {
+  it('sends ai-stream messages then final response', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+      resolvePluginPath: async (p) => `/mock/${p}`,
+    });
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: { type: string; content?: string }) => void }) => {
+      p.onEvent({ type: 'text', content: 'hi' });
+      p.onEvent({ type: 'done' });
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'a1', method: 'ai:chat', params: { sessionId: 's', prompt: 'p' } },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(sent.map((m) => (m as { type: string }).type)).toEqual(['ai-stream', 'ai-stream', 'response']);
+    expect((sent[0] as { event: PluginAiStreamEvent }).event).toEqual({ type: 'text', content: 'hi' });
+    expect((sent[1] as { event: PluginAiStreamEvent }).event).toEqual({ type: 'done' });
+    const finalResp = sent[2] as { id: string; result?: unknown; error?: string };
+    expect(finalResp.id).toBe('a1');
+    expect(finalResp.error).toBeUndefined();
+
+    bridge.dispose();
+  });
+
+  it('sends final response with error when runRigChat rejects', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+      resolvePluginPath: async (p) => `/mock/${p}`,
+    });
+    runRigChatMock.mockRejectedValue(new Error('boom'));
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'a2', method: 'ai:chat', params: { sessionId: 's', prompt: 'p' } },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[sent.length - 1] as { id: string; error?: string };
+    expect(resp.id).toBe('a2');
+    expect(resp.error).toBe('boom');
+
+    bridge.dispose();
+  });
+
+  it('rejects when permissions.ai.chat not declared (via bridge)', async () => {
+    const manifest = sandboxManifest({ permissions: {} });
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'a3', method: 'ai:chat', params: { sessionId: 's', prompt: 'p' } },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { id: string; error?: string };
+    expect(resp.id).toBe('a3');
+    expect(resp.error).toMatch(/permissions\.ai\.chat/);
+    expect(runRigChatMock).not.toHaveBeenCalled();
+
+    bridge.dispose();
+  });
+});
+
+describe('dispatchPluginRpc / env:get', () => {
+  it('returns current {theme, locale} from host stores', async () => {
+    const manifest = sandboxManifest();
+    // No permission flag for env:get — env is non-sensitive.
+    const result = await dispatchPluginRpc(
+      manifest,
+      'demo',
+      'env:get',
+      undefined,
+      async (p) => `/mock/${p}`,
+    );
+    expect(result).toMatchObject({
+      theme: expect.stringMatching(/^(light|dark)$/),
+      locale: expect.any(String),
+    });
+  });
+});
+
+describe('RpcBridge / env-event push', () => {
+  it('pushes env-event for theme change after stores subscribe', async () => {
+    const manifest = sandboxManifest();
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    // Wait for the bridge's dynamic-import env subscription setup to resolve
+    // (both stores). The bridge's Promise.all needs two imports to land.
+    await Promise.all([
+      import('@/store/appearanceStore'),
+      import('@/store/localeStore'),
+    ]);
+    await new Promise((r) => setTimeout(r, 0));
+
+    const { useAppearanceStore } = await import('@/store/appearanceStore');
+    const before = useAppearanceStore.getState().theme;
+    const next = before === 'dark' ? 'light' : 'dark';
+    useAppearanceStore.getState().setTheme(next);
+
+    // Allow the store subscriber + postMessage to flush.
+    await new Promise((r) => setTimeout(r, 0));
+
+    const envEvents = sent.filter(
+      (m): m is { type: 'env-event'; event: 'theme' | 'locale'; value: string } =>
+        typeof m === 'object' && m !== null && (m as { type?: string }).type === 'env-event',
+    );
+    expect(envEvents.length).toBeGreaterThanOrEqual(1);
+    expect(envEvents[envEvents.length - 1].event).toBe('theme');
+    expect(envEvents[envEvents.length - 1].value).toMatch(/^(light|dark)$/);
+
+    bridge.dispose();
+  });
+});
+
+// ── vault:read-binary (sandbox File Viewer capability, doc §29) ─────────────
+
+describe('RpcBridge / vault:read-binary gating', () => {
+  // Hoisted store mocks — the bridge imports these lazily inside the handler.
+  const { editorGetMock, vaultGetMock } = vi.hoisted(() => ({
+    editorGetMock: vi.fn(),
+    vaultGetMock: vi.fn(),
+  }));
+  vi.mock('@/store/editorStore', () => ({ useEditorStore: { getState: editorGetMock } }));
+  vi.mock('@/store/vaultStore', () => ({ useVaultStore: { getState: vaultGetMock } }));
+
+  beforeEach(() => {
+    editorGetMock.mockReset();
+    vaultGetMock.mockReset();
+    fsInternals.reset();
+  });
+
+  it('returns the active document bytes when vault.readBinary is granted', async () => {
+    const manifest = sandboxManifest({
+      permissions: { vault: { readBinary: true } },
+    });
+    editorGetMock.mockReturnValue({
+      tabs: [{ id: 't1', path: 'docs/report.docx' }], activeTabId: 't1',
+    });
+    vaultGetMock.mockReturnValue({ currentVault: { basePath: '/mock/vault' } });
+
+    // Seed the mock fs with bytes at the resolved vault path.
+    const { writeFile } = await import('@tauri-apps/plugin-fs');
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    await writeFile('/mock/vault/docs/report.docx', bytes);
+
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'rb1', method: 'vault:read-binary', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(sent).toHaveLength(1);
+    const resp = sent[0] as { type: string; id: string; result?: Uint8Array; error?: string };
+    expect(resp.type).toBe('response');
+    expect(resp.id).toBe('rb1');
+    expect(resp.error).toBeUndefined();
+    expect(resp.result instanceof Uint8Array).toBe(true);
+    expect(Array.from(resp.result as Uint8Array)).toEqual([1, 2, 3, 4]);
+
+    bridge.dispose();
+  });
+
+  it('denies when vault.readBinary is not granted', async () => {
+    const manifest = sandboxManifest(); // no readBinary
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'rb2', method: 'vault:read-binary', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { type: string; error?: string };
+    expect(resp.error).toMatch(/readBinary not granted/);
+    bridge.dispose();
+  });
+
+  it('throws when no active document path', async () => {
+    const manifest = sandboxManifest({
+      permissions: { vault: { readBinary: true } },
+    });
+    editorGetMock.mockReturnValue({ tabs: [], activeTabId: null });
+    vaultGetMock.mockReturnValue({ currentVault: { basePath: '/mock/vault' } });
+
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'rb3', method: 'vault:read-binary', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { type: string; error?: string };
+    expect(resp.error).toMatch(/no active document path/);
+    bridge.dispose();
+  });
+});

@@ -18,9 +18,9 @@ import type {
   ExportResult,
   ExportService,
   ExportContext,
-} from 'folyn-plugin-sdk';
-import { OwnedRegistry, FOLYN_CORE_OWNER } from 'folyn-plugin-sdk';
-import type { Disposable } from 'folyn-plugin-sdk';
+} from 'folyn-extension-sdk';
+import { OwnedRegistry, FOLYN_CORE_OWNER } from 'folyn-extension-sdk';
+import type { Disposable } from 'folyn-extension-sdk';
 import { downloadBlob, svgToPngBlob, renderFilePreviewToSvg } from './shared';
 import { hasContainerSyntax } from '../exportService';
 import { renderMarkmapSvg } from './markmapShared';

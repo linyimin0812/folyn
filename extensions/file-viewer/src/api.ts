@@ -4,7 +4,7 @@
  * captured api to access host capabilities (here: `vault.readBinary` for file
  * bytes) and the extension id (to build the plugin-origin iframe URL).
  */
-import type { ExtensionApi } from 'folyn-plugin-sdk';
+import type { ExtensionApi } from 'folyn-extension-sdk';
 
 let api: ExtensionApi | undefined;
 let extensionId = '';

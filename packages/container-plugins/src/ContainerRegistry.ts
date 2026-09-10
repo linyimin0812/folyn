@@ -1,5 +1,5 @@
 import type { ContainerPlugin, ContainerCategory } from './ContainerPlugin';
-import { OwnedRegistry, FOLYN_CORE_OWNER } from 'folyn-plugin-sdk';
+import { OwnedRegistry, FOLYN_CORE_OWNER } from 'folyn-extension-sdk';
 
 /**
  * Singleton registry for container plugins.

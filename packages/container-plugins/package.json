@@ -17,7 +17,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "folyn-plugin-sdk": "workspace:*"
+    "folyn-extension-sdk": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.0.0",

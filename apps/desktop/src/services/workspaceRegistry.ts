@@ -11,7 +11,7 @@
  * injection). Real + testable now.
  */
 
-import type { Disposable, WorkspaceApi, WorkspaceContribution } from 'folyn-plugin-sdk';
+import type { Disposable, WorkspaceApi, WorkspaceContribution } from 'folyn-extension-sdk';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
 import type { ComponentType } from 'react';

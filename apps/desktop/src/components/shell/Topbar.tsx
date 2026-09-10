@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
 import { getHandlerById, getSupportedModes } from "@/components/file-types/registry";
 import { toolbarResolver, resolvedFileType } from '@/services/toolbarResolver';
-import type { ToolbarContext } from 'folyn-plugin-sdk';
+import type { ToolbarContext } from 'folyn-extension-sdk';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';

@@ -11,7 +11,7 @@
 import { createElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock, GraphvizBlock, plantumlLanguageFactory, dotLanguageFactory } from '@folyn/container-plugins';
-import type { MarkdownCodeRendererProps } from '@folyn/plugin-host';
+import type { MarkdownCodeRendererProps } from '@folyn/extension-host';
 import { registerMarkdownCodeRenderer } from './plugin-host/markdownCodeRendererAdapter';
 import { registerEditorLanguage } from './plugin-host/editorLanguageAdapter';
 import { MarkmapBlock } from '@/components/file-types/markmap/MarkmapBlock';

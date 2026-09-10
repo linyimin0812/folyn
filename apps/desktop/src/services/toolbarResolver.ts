@@ -14,7 +14,7 @@ import type {
   ToolbarContext,
   ToolbarResolver,
   ToolbarState,
-} from 'folyn-plugin-sdk';
+} from 'folyn-extension-sdk';
 
 class ToolbarResolverImpl implements ToolbarResolver {
   private cache = new Map<string, ToolbarState>();

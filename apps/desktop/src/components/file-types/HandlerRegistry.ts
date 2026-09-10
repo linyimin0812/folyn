@@ -1,5 +1,5 @@
 import type { FileTypeHandler } from './types';
-import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/plugin-host';
+import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/extension-host';
 
 /**
  * Map-backed file-type handler registry with extension indexing + priority

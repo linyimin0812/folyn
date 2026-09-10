@@ -31,7 +31,7 @@ import { renderMarkmapSvg } from './export/markmapShared';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
 import type { EnhanceCtx } from './export/dbml';
 import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
-import type { ExporterContext } from '@folyn/plugin-host';
+import type { ExporterContext } from '@folyn/extension-host';
 
 // Ensure built-in plugins are registered once
 registerBuiltinPlugins();

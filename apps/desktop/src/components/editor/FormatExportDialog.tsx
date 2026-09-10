@@ -4,7 +4,7 @@ import { Copy, ExternalLink, Check } from 'lucide-react';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
 import { ProviderPicker, useGoToSettings, ExportRadioRow, EXPORT_DIALOG_STYLE } from './ProviderPicker';
-import type { ExportResult } from 'folyn-plugin-sdk';
+import type { ExportResult } from 'folyn-extension-sdk';
 
 interface FormatExportDialogProps {
   /** Display name of the export target, e.g. "SVG" or "PNG". */

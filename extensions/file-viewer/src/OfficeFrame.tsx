@@ -8,7 +8,7 @@
  * / …) works. The heavy code never runs in the host realm.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PreviewProps } from 'folyn-plugin-sdk';
+import type { PreviewProps } from 'folyn-extension-sdk';
 import { getApi, getExtensionId } from './api';
 
 const MESSAGE_TYPE = 'folyn-file-viewer:open';
