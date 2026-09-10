@@ -58,9 +58,16 @@ describe('detectFileType', () => {
     expect(detectFileType('__clips__/tech/foo.md')).toBe('clip');
   });
 
-  it('falls back to "code" for unknown extensions', () => {
-    // '.xyz' is not registered; registry mock returns undefined.
-    expect(detectFileType('weird.xyz')).toBe('code');
+  it('falls back to "code" for unknown text-ish extensions', () => {
+    // '.zzz' is not registered and not a known binary format → generic code editor.
+    expect(detectFileType('weird.zzz')).toBe('code');
+  });
+
+  it('returns "unsupported" for known binary formats no provider claims', () => {
+    // .docx has no builtin provider (the File Viewer extension would claim it);
+    // a binary format must not fall through to the text editor.
+    expect(detectFileType('report.docx')).toBe('unsupported');
+    expect(detectFileType('archive.zip')).toBe('unsupported');
   });
 
   it('returns "code" for files with no extension', () => {

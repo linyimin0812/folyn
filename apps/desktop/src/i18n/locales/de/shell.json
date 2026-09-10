@@ -63,6 +63,10 @@
       "calendar": "Keine Tagebucheinträge",
       "analyze": "Keine Analyseberichte",
       "files": "Keine offenen Dateien"
+    },
+    "unsupported": {
+      "title": "Nicht unterstützter Dateityp",
+      "desc": "\"{{name}}\" hat keinen verfügbaren Viewer. Installiere eine Erweiterung für dieses Format."
     }
   }
 }

@@ -63,6 +63,10 @@
       "calendar": "Sin entradas de diario",
       "analyze": "Sin informes de análisis",
       "files": "Sin archivos abiertos"
+    },
+    "unsupported": {
+      "title": "Tipo de archivo no compatible",
+      "desc": "\"{{name}}\" no tiene un visor disponible. Instala una extensión compatible."
     }
   }
 }

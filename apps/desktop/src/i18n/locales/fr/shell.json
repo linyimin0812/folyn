@@ -63,6 +63,10 @@
       "calendar": "Aucune entrée de journal",
       "analyze": "Aucun rapport d'analyse",
       "files": "Aucun fichier ouvert"
+    },
+    "unsupported": {
+      "title": "Type de fichier non pris en charge",
+      "desc": "\"{{name}}\" n'a pas de visionneuse. Installez une extension compatible."
     }
   }
 }

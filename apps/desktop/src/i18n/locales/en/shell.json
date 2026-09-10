@@ -64,6 +64,10 @@
       "calendar": "No journal entries",
       "analyze": "No analysis reports",
       "files": "No open files"
+    },
+    "unsupported": {
+      "title": "Unsupported file type",
+      "desc": "\"{{name}}\" has no available viewer. Install an extension that supports this format."
     }
   }
 }
