@@ -56,10 +56,10 @@
     "inbox": "收件箱"
   },
   "search": {
-    "placeholder": "搜索文件 / 命令 / 插件",
+    "placeholder": "搜索文件 / 命令 / 扩展",
     "files": "文件",
     "commands": "命令",
-    "plugins": "插件",
+    "extensions": "扩展",
     "noResults": "无匹配结果"
   },
   "inbox": {

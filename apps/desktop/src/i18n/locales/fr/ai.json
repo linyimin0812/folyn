@@ -87,7 +87,7 @@
     "commandsLabel": "Commandes",
     "sourceUser": "utilisateur",
     "sourceProject": "projet",
-    "sourcePlugin": "plugin",
+    "sourceExtension": "extension",
     "empty": "Aucune compétence ni commande trouvée",
     "argumentPlaceholder": "Arguments pour /{{name}}",
     "argumentConfirm": "Insérer"

@@ -19,7 +19,7 @@
     "templates": "文件模板",
     "pet": "桌宠",
     "notifications": "通知",
-    "plugins": "插件",
+    "extensions": "扩展",
     "storage": "存储与分享",
     "about": "关于"
   },
@@ -471,13 +471,13 @@
       "architecture": "架构与实现",
       "developer": "开发与贡献"
     },
-    "description": "Folyn 基于 Tauri 2 + React + CodeMirror 6 构建，是一款本地优先的 Markdown 编辑器。集成 AI 对话、桌宠、插件系统、ER 图、日程管理与 CLI 工具，数据完全存储在你的设备上，标准 Markdown 格式，无锁定。",
+    "description": "Folyn 基于 Tauri 2 + React + CodeMirror 6 构建，是一款本地优先的 Markdown 编辑器。集成 AI 对话、桌宠、扩展系统、ER 图、日程管理与 CLI 工具，数据完全存储在你的设备上，标准 Markdown 格式，无锁定。",
     "philosophy": {
       "label": "设计理念",
       "localFirst": "本地优先 —— 你的笔记永远属于你。所有文档以标准 Markdown 文件形式保存在本地文件系统中，不依赖云端账号，离线可用，迁移自由。Vault 系统通过 vault-provider 抽象层支持可插拔存储后端，但数据所有权始终在你手中。",
       "openFormat": "开放格式 —— 拒绝锁定。Folyn 使用标准 Markdown 文件作为唯一存储格式，配合 remark/rehype 管线处理 GFM 与自定义指令。任何文本编辑器都能打开你的笔记；随时可导出为 HTML 到本地或者托管到远程存储；卸载 Folyn 后你的数据仍然完整可读。",
-      "extensible": "可扩展 —— 从编辑器内核到存储后端全链路开放。微内核 + 插件 SDK 支持容器指令（callout、tabs、mermaid 等 14 种）与第三方插件；CLI 适配器抽象让 6 种 AI 工具（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）可插拔接入；pnpm workspaces 让 container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk 作为独立 package 演进。",
-      "privacy": "隐私优先 —— AI 对话与代码生成通过本地 CLI 工具完成，你的 API Key 与对话内容不经过 Folyn 服务器。CSP 策略与插件沙箱层提供深度防御，可信层与沙箱层分级执行，第三方插件在受限权限下运行。"
+      "extensible": "可扩展 —— 从编辑器内核到存储后端全链路开放。微内核 + 扩展 SDK 支持容器指令（callout、tabs、mermaid 等 14 种）与第三方扩展；CLI 适配器抽象让 6 种 AI 工具（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）可插拔接入；pnpm workspaces 让 container-extensions、vault-provider、cli-adapter、extension-host、extension-sdk 作为独立 package 演进。",
+      "privacy": "隐私优先 —— AI 对话与代码生成通过本地 CLI 工具完成，你的 API Key 与对话内容不经过 Folyn 服务器。CSP 策略与扩展沙箱层提供深度防御，可信层与沙箱层分级执行，第三方扩展在受限权限下运行。"
     },
     "features": {
       "label": "功能概览",
@@ -493,9 +493,9 @@
         "title": "AI 辅助",
         "description": "内置 AI 侧边栏，通过适配器接入 Claude Code 等 CLI 工具，支持写作辅助、代码生成与 diff 审阅"
       },
-      "plugins": {
-        "title": "插件生态",
-        "description": "微内核 + 插件 SDK 架构，支持容器指令（callout、tabs 等）与第三方插件扩展"
+      "extensions": {
+        "title": "扩展生态",
+        "description": "微内核 + 扩展 SDK 架构，支持容器指令（callout、tabs 等）与第三方扩展扩展"
       },
       "pet": {
         "title": "桌宠伴侣",
@@ -521,8 +521,8 @@
           "title": "Vault 系统",
           "description": "本地优先文档管理，存储后端可插拔（本地、GitHub、WebDAV、S3）"
         },
-        "containerPlugins": {
-          "title": "容器插件",
+        "containerExtensions": {
+          "title": "容器扩展",
           "description": "可扩展指令系统（:::callout、:::tabs 等）与斜杠菜单插入"
         },
         "export": {
@@ -581,9 +581,9 @@
           "tech": "Tailwind CSS 3",
           "description": "原子化 CSS，配合 CSS 变量实现主题切换与字号控制"
         },
-        "plugins": {
-          "name": "插件系统",
-          "tech": "plugin-host + plugin-sdk",
+        "extensions": {
+          "name": "扩展系统",
+          "tech": "extension-host + extension-sdk",
           "description": "微内核架构，可信层与沙箱层分级执行，支持容器指令与第三方扩展"
         },
         "storage": {
@@ -600,8 +600,8 @@
     },
     "projectStructure": {
       "label": "项目结构",
-      "description": "Folyn 是一个 pnpm monorepo，桌面应用、CLI 适配器、容器插件、Vault Provider、Plugin Host/SDK 各自独立成包。",
-      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri 桌面应用\n│       ├── src/              # React 前端\n│       │   ├── components/   # UI 组件（shell、editor、AI、sidebar 等）\n│       │   ├── editor/       # CodeMirror 扩展\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # 工具模块\n│       └── src-tauri/        # Rust 后端（Tauri commands）\n├── packages/\n│   ├── cli-adapter/          # AI CLI 适配器抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown 容器指令插件（14 种）\n│   ├── vault-provider/       # Vault 存储后端抽象\n│   ├── plugin-host/         # 插件宿主运行时\n│   ├── plugin-sdk/          # 插件开发 SDK\n│   └── create-folyn-plugin/ # 脚手架工具\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Folyn 是一个 pnpm monorepo，桌面应用、CLI 适配器、容器扩展、Vault Provider、Extension Host/SDK 各自独立成包。",
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri 桌面应用\n│       ├── src/              # React 前端\n│       │   ├── components/   # UI 组件（shell、editor、AI、sidebar 等）\n│       │   ├── editor/       # CodeMirror 扩展\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # 工具模块\n│       └── src-tauri/        # Rust 后端（Tauri commands）\n├── packages/\n│   ├── cli-adapter/          # AI CLI 适配器抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-extensions/    # Markdown 容器指令扩展（14 种）\n│   ├── vault-provider/       # Vault 存储后端抽象\n│   ├── extension-host/         # 扩展宿主运行时\n│   ├── extension-sdk/          # 扩展开发 SDK\n│   └── create-folyn-extension/ # 脚手架工具\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "存储后端",
@@ -654,22 +654,22 @@
         }
       }
     },
-    "pluginSystem": {
-      "label": "插件系统",
-      "description": "微内核 + 插件 SDK 架构。插件分为可信层（Trusted，直接调用宿主能力）与沙箱层（Sandbox，在受限权限下运行），通过 plugin-host 运行时加载。第三方插件可通过 create-folyn-plugin 脚手架快速创建。",
+    "extensionSystem": {
+      "label": "扩展系统",
+      "description": "微内核 + 扩展 SDK 架构。扩展分为可信层（Trusted，直接调用宿主能力）与沙箱层（Sandbox，在受限权限下运行），通过 extension-host 运行时加载。第三方扩展可通过 create-folyn-extension 脚手架快速创建。",
       "tiers": {
         "label": "执行层级",
         "trusted": {
           "name": "可信层（Trusted）",
-          "description": "直接调用宿主能力，适合需要文件系统、网络、原生 API 的内置或受信插件"
+          "description": "直接调用宿主能力，适合需要文件系统、网络、原生 API 的内置或受信扩展"
         },
         "sandbox": {
           "name": "沙箱层（Sandbox）",
-          "description": "在受限权限下运行，通过 plugin-sdk 暴露白名单 API，适合第三方插件"
+          "description": "在受限权限下运行，通过 extension-sdk 暴露白名单 API，适合第三方扩展"
         }
       },
-      "containerPlugins": {
-        "label": "容器指令插件（14 种）",
+      "containerExtensions": {
+        "label": "容器指令扩展（14 种）",
         "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
       }
     },
@@ -696,7 +696,7 @@
       "groups": {
         "general": {
           "name": "通用",
-          "items": "外观、编辑器、快捷键、文件模板、桌宠、通知、插件、安全策略 (CSP)、存储与分享"
+          "items": "外观、编辑器、快捷键、文件模板、桌宠、通知、扩展、安全策略 (CSP)、存储与分享"
         },
         "ai": {
           "name": "AI",
@@ -712,15 +712,15 @@
     "viewOnGithub": "在 GitHub 上查看",
     "reportIssue": "问题反馈"
   },
-  "plugins": {
-    "title": "插件",
-    "description": "安装、批准、启用或卸载第三方插件（微内核 + 插件 SDK）",
+  "extensions": {
+    "title": "扩展",
+    "description": "安装、批准、启用或卸载第三方扩展（微内核 + 扩展 SDK）",
     "installFromFolder": "从文件夹安装…",
     "installFromZip": "从 .zip 安装…",
     "installing": "安装中（{{id}}）…",
     "refresh": "刷新",
     "refreshing": "刷新中…",
-    "empty": "尚未安装任何插件",
+    "empty": "尚未安装任何扩展",
     "state": {
       "active": "运行中",
       "inactive": "已停用",
@@ -747,19 +747,19 @@
     "deactivating": "停用中…",
     "uninstall": "卸载",
     "uninstalling": "卸载中…",
-    "uninstallTitle": "卸载插件",
+    "uninstallTitle": "卸载扩展",
     "uninstallConfirm": {
-      "title": "卸载插件",
-      "message": "确定卸载此插件？",
+      "title": "卸载扩展",
+      "message": "确定卸载此扩展？",
       "confirm": "卸载",
       "cancel": "取消"
     },
     "consent": {
-      "title": "批准可信插件",
+      "title": "批准可信扩展",
       "intro": "即将批准",
       "permissionsLabel": "声明的权限与贡献点：",
       "noPermissions": "无",
-      "warning": "可信插件运行在主进程中，拥有完整的宿主能力（可读写 vault、调用 Tauri 命令、访问所有 React 状态）。批准等同于完全信任——仅批准来自你信任的来源的插件。",
+      "warning": "可信扩展运行在主进程中，拥有完整的宿主能力（可读写 vault、调用 Tauri 命令、访问所有 React 状态）。批准等同于完全信任——仅批准来自你信任的来源的扩展。",
       "cancel": "取消",
       "confirm": "我了解，批准"
     }

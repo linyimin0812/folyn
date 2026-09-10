@@ -56,10 +56,10 @@
     "inbox": "Inbox"
   },
   "search": {
-    "placeholder": "Search files / commands / plugins",
+    "placeholder": "Search files / commands / extensions",
     "files": "Files",
     "commands": "Commands",
-    "plugins": "Plugins",
+    "extensions": "Extensions",
     "noResults": "No matching results"
   },
   "inbox": {

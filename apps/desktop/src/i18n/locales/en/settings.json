@@ -19,7 +19,7 @@
     "templates": "File Templates",
     "pet": "Pet",
     "notifications": "Notifications",
-    "plugins": "Plugins",
+    "extensions": "Extensions",
     "storage": "Storage & Sharing",
     "about": "About"
   },
@@ -471,13 +471,13 @@
       "architecture": "Architecture & Implementation",
       "developer": "Development & Contributing"
     },
-    "description": "Built on Tauri 2 + React + CodeMirror 6, Folyn is a local-first Markdown editor. It integrates AI chat, desktop pet, plugin system, ER diagrams, schedule management, and CLI tools — your data stays on your device in standard Markdown, no lock-in.",
+    "description": "Built on Tauri 2 + React + CodeMirror 6, Folyn is a local-first Markdown editor. It integrates AI chat, desktop pet, extension system, ER diagrams, schedule management, and CLI tools — your data stays on your device in standard Markdown, no lock-in.",
     "philosophy": {
       "label": "Philosophy",
       "localFirst": "Local-first — your notes belong to you. All documents are stored as plain Markdown files on your local filesystem, no cloud account required, fully usable offline, free to migrate. The Vault system supports pluggable backends via the vault-provider abstraction layer, but data ownership always stays with you.",
       "openFormat": "Open format — no lock-in. Folyn uses standard Markdown as its only storage format, processed by the remark/rehype pipeline for GFM and custom directives. Any text editor can open your notes; export to HTML locally or hosted to remote storage anytime; after uninstalling Folyn, your data remains fully readable.",
-      "extensible": "Extensible — open end-to-end, from editor core to storage backends. The microkernel + plugin SDK supports 14 container directives (callout, tabs, mermaid, etc.) and third-party plugins; the CLI adapter abstraction makes 6 AI tools (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) pluggable; pnpm workspaces lets container-plugins, vault-provider, cli-adapter, plugin-host, and plugin-sdk evolve as independent packages.",
-      "privacy": "Privacy-first — AI chat and code generation flow through local CLI tools; your API keys and conversation content never touch Folyn's servers. CSP policy and the plugin sandbox tier provide defense-in-depth, with trusted and sandbox tiers executing separately; third-party plugins run under restricted permissions."
+      "extensible": "Extensible — open end-to-end, from editor core to storage backends. The microkernel + extension SDK supports 14 container directives (callout, tabs, mermaid, etc.) and third-party extensions; the CLI adapter abstraction makes 6 AI tools (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) pluggable; pnpm workspaces lets container-extensions, vault-provider, cli-adapter, extension-host, and extension-sdk evolve as independent packages.",
+      "privacy": "Privacy-first — AI chat and code generation flow through local CLI tools; your API keys and conversation content never touch Folyn's servers. CSP policy and the extension sandbox tier provide defense-in-depth, with trusted and sandbox tiers executing separately; third-party extensions run under restricted permissions."
     },
     "features": {
       "label": "Features",
@@ -493,9 +493,9 @@
         "title": "AI-assisted",
         "description": "Built-in AI side panel talks to CLI tools like Claude Code for writing help, codegen, and diff review"
       },
-      "plugins": {
-        "title": "Plugin ecosystem",
-        "description": "Microkernel + plugin SDK — supports container directives (callout, tabs, etc.) and third-party plugins"
+      "extensions": {
+        "title": "Extension ecosystem",
+        "description": "Microkernel + extension SDK — supports container directives (callout, tabs, etc.) and third-party extensions"
       },
       "pet": {
         "title": "Desktop pet",
@@ -521,8 +521,8 @@
           "title": "Vault system",
           "description": "Local-first document management with pluggable storage backends (local, GitHub, WebDAV, S3)"
         },
-        "containerPlugins": {
-          "title": "Container plugins",
+        "containerExtensions": {
+          "title": "Container extensions",
           "description": "Extensible directive system (:::callout, :::tabs, etc.) with slash-menu insertion"
         },
         "export": {
@@ -581,9 +581,9 @@
           "tech": "Tailwind CSS 3",
           "description": "Atomic CSS — paired with CSS variables for theme switching and font-size control"
         },
-        "plugins": {
-          "name": "Plugin system",
-          "tech": "plugin-host + plugin-sdk",
+        "extensions": {
+          "name": "Extension system",
+          "tech": "extension-host + extension-sdk",
           "description": "Microkernel — trusted and sandbox tiers execute separately; container directives + third-party extensions"
         },
         "storage": {
@@ -600,8 +600,8 @@
     },
     "projectStructure": {
       "label": "Project structure",
-      "description": "Folyn is a pnpm monorepo — the desktop app, CLI adapter, container plugins, Vault Provider, and Plugin Host/SDK are each independent packages.",
-      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri desktop app\n│       ├── src/              # React frontend\n│       │   ├── components/   # UI components (shell, editor, AI, sidebar, etc.)\n│       │   ├── editor/       # CodeMirror extensions\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # Utility modules\n│       └── src-tauri/        # Rust backend (Tauri commands)\n├── packages/\n│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Markdown container directive plugins (14)\n│   ├── vault-provider/       # Vault storage provider abstraction\n│   ├── plugin-host/         # Plugin host runtime\n│   ├── plugin-sdk/          # Plugin development SDK\n│   └── create-folyn-plugin/ # Scaffold tool\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Folyn is a pnpm monorepo — the desktop app, CLI adapter, container extensions, Vault Provider, and Extension Host/SDK are each independent packages.",
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri desktop app\n│       ├── src/              # React frontend\n│       │   ├── components/   # UI components (shell, editor, AI, sidebar, etc.)\n│       │   ├── editor/       # CodeMirror extensions\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # Utility modules\n│       └── src-tauri/        # Rust backend (Tauri commands)\n├── packages/\n│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-extensions/    # Markdown container directive extensions (14)\n│   ├── vault-provider/       # Vault storage provider abstraction\n│   ├── extension-host/         # Extension host runtime\n│   ├── extension-sdk/          # Extension development SDK\n│   └── create-folyn-extension/ # Scaffold tool\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "Storage backends",
@@ -654,22 +654,22 @@
         }
       }
     },
-    "pluginSystem": {
-      "label": "Plugin system",
-      "description": "Microkernel + plugin SDK architecture. Plugins are split into a Trusted tier (calls host capabilities directly) and a Sandbox tier (runs under restricted permissions) — loaded by the plugin-host runtime. Third-party plugins can be scaffolded quickly via create-folyn-plugin.",
+    "extensionSystem": {
+      "label": "Extension system",
+      "description": "Microkernel + extension SDK architecture. Extensions are split into a Trusted tier (calls host capabilities directly) and a Sandbox tier (runs under restricted permissions) — loaded by the extension-host runtime. Third-party extensions can be scaffolded quickly via create-folyn-extension.",
       "tiers": {
         "label": "Execution tiers",
         "trusted": {
           "name": "Trusted tier",
-          "description": "Calls host capabilities directly — for built-in or trusted plugins that need filesystem, network, or native APIs"
+          "description": "Calls host capabilities directly — for built-in or trusted extensions that need filesystem, network, or native APIs"
         },
         "sandbox": {
           "name": "Sandbox tier",
-          "description": "Runs under restricted permissions — plugin-sdk exposes a whitelisted API, for third-party plugins"
+          "description": "Runs under restricted permissions — extension-sdk exposes a whitelisted API, for third-party extensions"
         }
       },
-      "containerPlugins": {
-        "label": "Container directive plugins (14)",
+      "containerExtensions": {
+        "label": "Container directive extensions (14)",
         "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
       }
     },
@@ -696,7 +696,7 @@
       "groups": {
         "general": {
           "name": "General",
-          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Plugins, CSP, Storage & sharing"
+          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Extensions, CSP, Storage & sharing"
         },
         "ai": {
           "name": "AI",
@@ -712,15 +712,15 @@
     "viewOnGithub": "View on GitHub",
     "reportIssue": "Report an issue"
   },
-  "plugins": {
-    "title": "Plugins",
-    "description": "Install, approve, enable or uninstall third-party plugins (microkernel + plugin SDK)",
+  "extensions": {
+    "title": "Extensions",
+    "description": "Install, approve, enable or uninstall third-party extensions (microkernel + extension SDK)",
     "installFromFolder": "Install from folder…",
     "installFromZip": "Install from .zip…",
     "installing": "Installing ({{id}})…",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
-    "empty": "No plugins installed yet",
+    "empty": "No extensions installed yet",
     "state": {
       "active": "Active",
       "inactive": "Disabled",
@@ -747,19 +747,19 @@
     "deactivating": "Disabling…",
     "uninstall": "Uninstall",
     "uninstalling": "Uninstalling…",
-    "uninstallTitle": "Uninstall plugin",
+    "uninstallTitle": "Uninstall extension",
     "uninstallConfirm": {
-      "title": "Uninstall plugin",
-      "message": "Uninstall this plugin? Its folder, approval, and registered contributions will be removed.",
+      "title": "Uninstall extension",
+      "message": "Uninstall this extension? Its folder, approval, and registered contributions will be removed.",
       "confirm": "Uninstall",
       "cancel": "Cancel"
     },
     "consent": {
-      "title": "Approve trusted plugin",
+      "title": "Approve trusted extension",
       "intro": "About to approve",
       "permissionsLabel": "Declared permissions & contribution points:",
       "noPermissions": "None",
-      "warning": "Trusted plugins run in the main process and have full host capabilities (read/write the vault, invoke Tauri commands, access all React state). Approval equals full trust — only approve plugins from sources you trust.",
+      "warning": "Trusted extensions run in the main process and have full host capabilities (read/write the vault, invoke Tauri commands, access all React state). Approval equals full trust — only approve extensions from sources you trust.",
       "cancel": "Cancel",
       "confirm": "I understand, approve"
     }

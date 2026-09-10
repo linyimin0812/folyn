@@ -37,9 +37,12 @@ describe('extension icon resolution (real plantuml-extension shape)', () => {
   it('fetchRows inlines the top-level .svg icon', async () => {
     await useExtensionStore.getState().refresh();
     const rows = useExtensionStore.getState().rows;
-    expect(rows).toHaveLength(1);
-    expect(rows[0].description).toBe('PlantUML 图表查看器');
-    expect(rows[0].icon).toBe(SVG);
+    // fetchRows merges the 5 builtin panels with the installed extensions; find
+    // the plantuml row among them.
+    const row = rows.find((r) => r.entry.id === 'plantuml-extension');
+    expect(row).toBeDefined();
+    expect(row!.description).toBe('PlantUML 图表查看器');
+    expect(row!.icon).toBe(SVG);
     const readCalls = vi.mocked(invoke).mock.calls.filter((c) => c[0] === 'read_extension_file');
     expect(readCalls).toContainEqual(['read_extension_file', { id: 'plantuml-extension', path: 'assets/plantuml.svg' }]);
   });

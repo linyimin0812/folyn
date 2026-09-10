@@ -19,7 +19,7 @@
     "templates": "ファイルテンプレート",
     "pet": "桌宠",
     "notifications": "通知",
-    "plugins": "プラグイン",
+    "extensions": "拡張機能",
     "storage": "ストレージと共有",
     "about": "情報"
   },
@@ -471,13 +471,13 @@
       "architecture": "アーキテクチャと実装",
       "developer": "開発とコントリビュート"
     },
-    "description": "Tauri 2 + React + CodeMirror 6 をベースに、Folyn はローカルファーストの Markdown エディタです。AI チャット、デスクトップペット、プラグインシステム、ER 図、スケジュール管理、CLI ツールを統合し、データはあなたのデバイス上に標準 Markdown で保存され、ロックインはありません。",
+    "description": "Tauri 2 + React + CodeMirror 6 をベースに、Folyn はローカルファーストの Markdown エディタです。AI チャット、デスクトップペット、拡張機能システム、ER 図、スケジュール管理、CLI ツールを統合し、データはあなたのデバイス上に標準 Markdown で保存され、ロックインはありません。",
     "philosophy": {
       "label": "設計理念",
       "localFirst": "ローカルファースト —— あなたのノートはあなたのもの。すべてのドキュメントはローカルのファイルシステムにプレーン Markdown ファイルとして保存され、クラウドアカウント不要、オフラインで完全に利用可能、自由に移行できます。Vault システムは vault-provider 抽象レイヤーで着脱可能なバックエンドをサポートしますが、データの所有権は常にあなたにあります。",
       "openFormat": "オープンフォーマット —— ロックインなし。Folyn は標準 Markdown を唯一の保存形式として使い、GFM と独自ディレクティブのために remark/rehype パイプラインで処理します。どんなテキストエディタでもノートを開け、HTML をローカルへ、またはリモートストレージへいつでもエクスポートでき、Folyn をアンインストールした後もデータは完全に読めます。",
-      "extensible": "拡張可能 —— エディタコアからストレージバックエンドまでエンドツーエンドで開いています。マイクロカーネル + プラグイン SDK は 14 種のコンテナディレクティブ（callout、tabs、mermaid 等）とサードパーティプラグインをサポートし、CLI アダプター抽象は 6 種の AI ツール（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）を着脱可能にし、pnpm workspaces は container-plugins、vault-provider、cli-adapter、plugin-host、plugin-sdk を独立パッケージとして進化させます。",
-      "privacy": "プライバシーファースト —— AI チャットとコード生成はローカル CLI ツール経由で行われ、あなたの API キーと会話内容は Folyn のサーバーを通りません。CSP ポリシーとプラグインサンドボックス層が多層防御を提供し、trusted 層と sandbox 層は分離実行され、サードパーティプラグインは制限付き権限下で動きます。"
+      "extensible": "拡張可能 —— エディタコアからストレージバックエンドまでエンドツーエンドで開いています。マイクロカーネル + 拡張機能 SDK は 14 種のコンテナディレクティブ（callout、tabs、mermaid 等）とサードパーティ拡張機能をサポートし、CLI アダプター抽象は 6 種の AI ツール（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）を着脱可能にし、pnpm workspaces は container-extensions、vault-provider、cli-adapter、extension-host、extension-sdk を独立パッケージとして進化させます。",
+      "privacy": "プライバシーファースト —— AI チャットとコード生成はローカル CLI ツール経由で行われ、あなたの API キーと会話内容は Folyn のサーバーを通りません。CSP ポリシーと拡張機能サンドボックス層が多層防御を提供し、trusted 層と sandbox 層は分離実行され、サードパーティ拡張機能は制限付き権限下で動きます。"
     },
     "features": {
       "label": "機能",
@@ -493,9 +493,9 @@
         "title": "AI 支援",
         "description": "内蔵の AI サイドパネルが Claude Code などの CLI ツールと話し、執筆支援、コード生成、差分レビューを行います"
       },
-      "plugins": {
-        "title": "プラグインエコシステム",
-        "description": "マイクロカーネル + プラグイン SDK —— コンテナディレクティブ（callout、tabs 等）とサードパーティプラグインをサポート"
+      "extensions": {
+        "title": "拡張機能エコシステム",
+        "description": "マイクロカーネル + 拡張機能 SDK —— コンテナディレクティブ（callout、tabs 等）とサードパーティ拡張機能をサポート"
       },
       "pet": {
         "title": "デスクトップペット",
@@ -521,8 +521,8 @@
           "title": "Vault システム",
           "description": "ローカルファーストのドキュメント管理、着脱可能なストレージバックエンド（ローカル、GitHub、WebDAV、S3）"
         },
-        "containerPlugins": {
-          "title": "コンテナプラグイン",
+        "containerExtensions": {
+          "title": "コンテナ拡張機能",
           "description": "拡張可能なディレクティブシステム（:::callout、:::tabs 等）、スラッシュメニューから挿入"
         },
         "export": {
@@ -581,9 +581,9 @@
           "tech": "Tailwind CSS 3",
           "description": "アトミック CSS —— テーマ切替とフォントサイズ制御のために CSS 変数と組み合わせ"
         },
-        "plugins": {
-          "name": "プラグインシステム",
-          "tech": "plugin-host + plugin-sdk",
+        "extensions": {
+          "name": "拡張機能システム",
+          "tech": "extension-host + extension-sdk",
           "description": "マイクロカーネル —— trusted と sandbox 層は分離実行、コンテナディレクティブ + サードパーティ拡張"
         },
         "storage": {
@@ -600,8 +600,8 @@
     },
     "projectStructure": {
       "label": "プロジェクト構成",
-      "description": "Folyn は pnpm モノレポであり、デスクトップアプリ、CLI アダプター、コンテナプラグイン、Vault Provider、Plugin Host/SDK がそれぞれ独立パッケージです。",
-      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri デスクトップアプリ\n│       ├── src/              # React フロントエンド\n│       │   ├── components/   # UI コンポーネント（シェル、エディタ、AI、サイドバー等）\n│       │   ├── editor/       # CodeMirror 拡張\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand ストア\n│       │   └── utils/        # ユーティリティモジュール\n│       └── src-tauri/        # Rust バックエンド（Tauri コマンド）\n├── packages/\n│   ├── cli-adapter/          # AI CLI アダプター抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-plugins/    # Markdown コンテナディレクティブプラグイン（14）\n│   ├── vault-provider/       # Vault ストレージ Provider 抽象\n│   ├── plugin-host/         # プラグインホストランタイム\n│   ├── plugin-sdk/          # プラグイン開発 SDK\n│   └── create-folyn-plugin/ # Scaffold ツール\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Folyn は pnpm モノレポであり、デスクトップアプリ、CLI アダプター、コンテナ拡張機能、Vault Provider、Extension Host/SDK がそれぞれ独立パッケージです。",
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri デスクトップアプリ\n│       ├── src/              # React フロントエンド\n│       │   ├── components/   # UI コンポーネント（シェル、エディタ、AI、サイドバー等）\n│       │   ├── editor/       # CodeMirror 拡張\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand ストア\n│       │   └── utils/        # ユーティリティモジュール\n│       └── src-tauri/        # Rust バックエンド（Tauri コマンド）\n├── packages/\n│   ├── cli-adapter/          # AI CLI アダプター抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-extensions/    # Markdown コンテナディレクティブ拡張機能（14）\n│   ├── vault-provider/       # Vault ストレージ Provider 抽象\n│   ├── extension-host/         # 拡張機能ホストランタイム\n│   ├── extension-sdk/          # 拡張機能開発 SDK\n│   └── create-folyn-extension/ # Scaffold ツール\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "ストレージバックエンド",
@@ -654,22 +654,22 @@
         }
       }
     },
-    "pluginSystem": {
-      "label": "プラグインシステム",
-      "description": "マイクロカーネル + プラグイン SDK アーキテクチャ。プラグインは Trusted 層（ホスト機能を直接呼ぶ）と Sandbox 層（制限付き権限下で動く）に分かれ、plugin-host ランタイムが読み込みます。サードパーティプラグインは create-folyn-plugin で素早く scaffold できます。",
+    "extensionSystem": {
+      "label": "拡張機能システム",
+      "description": "マイクロカーネル + 拡張機能 SDK アーキテクチャ。拡張機能は Trusted 層（ホスト機能を直接呼ぶ）と Sandbox 層（制限付き権限下で動く）に分かれ、extension-host ランタイムが読み込みます。サードパーティ拡張機能は create-folyn-extension で素早く scaffold できます。",
       "tiers": {
         "label": "実行階層",
         "trusted": {
           "name": "Trusted 層",
-          "description": "ホスト機能を直接呼ぶ —— ファイルシステム、ネットワーク、ネイティブ API が必要な内蔵または信頼できるプラグイン向け"
+          "description": "ホスト機能を直接呼ぶ —— ファイルシステム、ネットワーク、ネイティブ API が必要な内蔵または信頼できる拡張機能向け"
         },
         "sandbox": {
           "name": "Sandbox 層",
-          "description": "制限付き権限下で動く —— plugin-sdk がホワイトリスト API を提供、サードパーティプラグイン向け"
+          "description": "制限付き権限下で動く —— extension-sdk がホワイトリスト API を提供、サードパーティ拡張機能向け"
         }
       },
-      "containerPlugins": {
-        "label": "コンテナディレクティブプラグイン（14）",
+      "containerExtensions": {
+        "label": "コンテナディレクティブ拡張機能（14）",
         "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
       }
     },
@@ -696,7 +696,7 @@
       "groups": {
         "general": {
           "name": "一般",
-          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Plugins, CSP, Storage & sharing"
+          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Extensions, CSP, Storage & sharing"
         },
         "ai": {
           "name": "AI",
@@ -712,15 +712,15 @@
     "viewOnGithub": "GitHub で見る",
     "reportIssue": "Issue を報告"
   },
-  "plugins": {
-    "title": "プラグイン",
-    "description": "サードパーティプラグインのインストール、承認、有効化、アンインストール（マイクロカーネル＋プラグインSDK）",
+  "extensions": {
+    "title": "拡張機能",
+    "description": "サードパーティ拡張機能のインストール、承認、有効化、アンインストール（マイクロカーネル＋拡張機能SDK）",
     "installFromFolder": "フォルダからインストール…",
     "installFromZip": ".zipからインストール…",
     "installing": "インストール中（{{id}}）…",
     "refresh": "更新",
     "refreshing": "更新中…",
-    "empty": "まだプラグインはインストールされていません",
+    "empty": "まだ拡張機能はインストールされていません",
     "state": {
       "active": "アクティブ",
       "inactive": "無効",
@@ -746,19 +746,19 @@
     "deactivating": "無効化中…",
     "uninstall": "アンインストール",
     "uninstalling": "アンインストール中…",
-    "uninstallTitle": "プラグインをアンインストール",
+    "uninstallTitle": "拡張機能をアンインストール",
     "uninstallConfirm": {
-      "title": "プラグインをアンインストール",
-      "message": "このプラグインをアンインストールしますか？フォルダ、承認、登録されたコントリビューションが削除されます。",
+      "title": "拡張機能をアンインストール",
+      "message": "この拡張機能をアンインストールしますか？フォルダ、承認、登録されたコントリビューションが削除されます。",
       "confirm": "アンインストール",
       "cancel": "キャンセル"
     },
     "consent": {
-      "title": "Trustedプラグインを承認",
+      "title": "Trusted拡張機能を承認",
       "intro": "以下を承認しようとしています",
       "permissionsLabel": "宣言された権限とコントリビューションポイント:",
       "noPermissions": "なし",
-      "warning": "Trustedプラグインはメインプロセスで動作し、ホストの全機能を使用できます（Vaultの読み書き、Tauriコマンドの呼び出し、すべてのReact状態へのアクセス）。承認は完全信頼と同義です — 信頼するソースのプラグインのみ承認してください。",
+      "warning": "Trusted拡張機能はメインプロセスで動作し、ホストの全機能を使用できます（Vaultの読み書き、Tauriコマンドの呼び出し、すべてのReact状態へのアクセス）。承認は完全信頼と同義です — 信頼するソースの拡張機能のみ承認してください。",
       "cancel": "キャンセル",
       "confirm": "理解した上で承認"
     }

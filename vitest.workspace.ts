@@ -56,9 +56,9 @@ export default defineWorkspace([
   },
   {
     test: {
-      name: 'container-plugins',
+      name: 'container-extensions',
       environment: 'jsdom',
-      root: path.resolve(root, 'packages/container-plugins'),
+      root: path.resolve(root, 'packages/container-extensions'),
       include: ['**/*.test.ts'],
       setupFiles: [setupFile],
     },
@@ -76,9 +76,9 @@ export default defineWorkspace([
   },
   {
     test: {
-      name: 'plugin-host',
+      name: 'extension-host',
       environment: 'jsdom',
-      root: path.resolve(root, 'packages/plugin-host'),
+      root: path.resolve(root, 'packages/extension-host'),
       include: ['**/*.test.ts'],
       setupFiles: [setupFile],
     },

@@ -87,7 +87,7 @@
     "commandsLabel": "Befehle",
     "sourceUser": "Benutzer",
     "sourceProject": "Projekt",
-    "sourcePlugin": "Plugin",
+    "sourceExtension": "Extension",
     "empty": "Keine Fähigkeiten oder Befehle gefunden",
     "argumentPlaceholder": "Argumente für /{{name}}",
     "argumentConfirm": "Einfügen"

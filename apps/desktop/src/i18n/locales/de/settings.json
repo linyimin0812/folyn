@@ -19,7 +19,7 @@
     "templates": "Dateivorlagen",
     "pet": "Pet",
     "notifications": "Benachrichtigungen",
-    "plugins": "Plugins",
+    "extensions": "Extensions",
     "storage": "Speicher & Teilen",
     "about": "Über"
   },
@@ -465,13 +465,13 @@
       "architecture": "Architektur & Implementierung",
       "developer": "Entwicklung & Mitwirken"
     },
-    "description": "Auf Basis von Tauri 2 + React + CodeMirror 6 ist Folyn ein lokal-first Markdown-Editor. Er integriert AI-Chat, Desktop-Pet, Plugin-System, ER-Diagramme, Terminverwaltung und CLI-Werkzeuge — deine Daten bleiben auf deinem Gerät, im Standard-Markdown-Format, ohne Lock-in.",
+    "description": "Auf Basis von Tauri 2 + React + CodeMirror 6 ist Folyn ein lokal-first Markdown-Editor. Er integriert AI-Chat, Desktop-Pet, Extension-System, ER-Diagramme, Terminverwaltung und CLI-Werkzeuge — deine Daten bleiben auf deinem Gerät, im Standard-Markdown-Format, ohne Lock-in.",
     "philosophy": {
       "label": "Philosophie",
       "localFirst": "Lokal-first — deine Notizen gehören dir. Alle Dokumente werden als reine Markdown-Dateien im lokalen Dateisystem gespeichert, kein Cloud-Konto nötig, voll nutzbar offline, frei migrierbar. Das Vault-System unterstützt austauschbare Backends über die vault-provider Abstraktionsschicht, aber die Datenhoheit bleibt immer bei dir.",
       "openFormat": "Offenes Format — kein Lock-in. Folyn verwendet Standard-Markdown als einziges Speicherformat, verarbeitet über die remark/rehype-Pipeline für GFM und eigene Direktiven. Jeder Texteditor kann deine Notizen öffnen; Export nach HTML lokal oder gehostet im Remote-Speicher jederzeit möglich; nach Deinstallation von Folyn bleiben deine Daten vollständig lesbar.",
-      "extensible": "Erweiterbar — durchgehend offen, vom Editor-Kern bis zu den Speicher-Backends. Der Mikrokernel + das Plugin-SDK unterstützen 14 Container-Direktiven (callout, tabs, mermaid usw.) und Drittanbieter-Plugins; die CLI-Adapter-Abstraktion macht 6 AI-Werkzeuge (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) austauschbar; pnpm workspaces lässt container-plugins, vault-provider, cli-adapter, plugin-host und plugin-sdk als unabhängige Packages weiterentwickeln.",
-      "privacy": "Privacy-first — AI-Chat und Code-Erzeugung laufen über lokale CLI-Werkzeuge; deine API-Schlüssel und Gesprächsinhalte berühren niemals die Server von Folyn. CSP-Policy und die Plugin-Sandbox-Stufe bieten Defense-in-Depth, mit getrennter Ausführung von Trusted- und Sandbox-Stufe; Drittanbieter-Plugins laufen unter eingeschränkten Berechtigungen."
+      "extensible": "Erweiterbar — durchgehend offen, vom Editor-Kern bis zu den Speicher-Backends. Der Mikrokernel + das Extension-SDK unterstützen 14 Container-Direktiven (callout, tabs, mermaid usw.) und Drittanbieter-Extensions; die CLI-Adapter-Abstraktion macht 6 AI-Werkzeuge (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) austauschbar; pnpm workspaces lässt container-extensions, vault-provider, cli-adapter, extension-host und extension-sdk als unabhängige Packages weiterentwickeln.",
+      "privacy": "Privacy-first — AI-Chat und Code-Erzeugung laufen über lokale CLI-Werkzeuge; deine API-Schlüssel und Gesprächsinhalte berühren niemals die Server von Folyn. CSP-Policy und die Extension-Sandbox-Stufe bieten Defense-in-Depth, mit getrennter Ausführung von Trusted- und Sandbox-Stufe; Drittanbieter-Extensions laufen unter eingeschränkten Berechtigungen."
     },
     "features": {
       "label": "Funktionen",
@@ -487,9 +487,9 @@
         "title": "AI-gestützt",
         "description": "Eingebautes AI-Seitenpanel spricht mit CLI-Werkzeugen wie Claude Code für Schreibhilfe, Codegen und Diff-Review"
       },
-      "plugins": {
-        "title": "Plugin-Ökosystem",
-        "description": "Mikrokernel + Plugin-SDK — unterstützt Container-Direktiven (callout, tabs usw.) und Drittanbieter-Plugins"
+      "extensions": {
+        "title": "Extension-Ökosystem",
+        "description": "Mikrokernel + Extension-SDK — unterstützt Container-Direktiven (callout, tabs usw.) und Drittanbieter-Extensions"
       },
       "pet": {
         "title": "Desktop-Pet",
@@ -515,8 +515,8 @@
           "title": "Vault-System",
           "description": "Lokal-first Dokumentenverwaltung mit austauschbaren Speicher-Backends (lokal, GitHub, WebDAV, S3)"
         },
-        "containerPlugins": {
-          "title": "Container-Plugins",
+        "containerExtensions": {
+          "title": "Container-Extensions",
           "description": "Erweiterbares Direktiven-System (:::callout, :::tabs usw.) mit Slash-Menü-Einfügung"
         },
         "export": {
@@ -575,9 +575,9 @@
           "tech": "Tailwind CSS 3",
           "description": "Atomares CSS — kombiniert mit CSS-Variablen für Theme-Wechsel und Schriftgrößensteuerung"
         },
-        "plugins": {
-          "name": "Plugin-System",
-          "tech": "plugin-host + plugin-sdk",
+        "extensions": {
+          "name": "Extension-System",
+          "tech": "extension-host + extension-sdk",
           "description": "Mikrokernel — Trusted- und Sandbox-Stufen getrennt ausgeführt; Container-Direktiven + Drittanbieter-Erweiterungen"
         },
         "storage": {
@@ -594,8 +594,8 @@
     },
     "projectStructure": {
       "label": "Projektstruktur",
-      "description": "Folyn ist ein pnpm-Monorepo — die Desktop-App, der CLI-Adapter, die Container-Plugins, der Vault Provider und der Plugin Host/SDK sind jeweils unabhängige Packages.",
-      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri-Desktop-App\n│       ├── src/              # React-Frontend\n│       │   ├── components/   # UI-Komponenten (Shell, Editor, AI, Sidebar usw.)\n│       │   ├── editor/       # CodeMirror-Erweiterungen\n│       │   ├── hooks/        # React-Hooks\n│       │   ├── store/        # Zustand-Stores\n│       │   └── utils/        # Hilfsmodule\n│       └── src-tauri/        # Rust-Backend (Tauri-Befehle)\n├── packages/\n│   ├── cli-adapter/          # AI-CLI-Adapter-Abstraktion (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-plugins/    # Markdown-Container-Direktiven-Plugins (14)\n│   ├── vault-provider/       # Vault-Speicher-Provider-Abstraktion\n│   ├── plugin-host/         # Plugin-Host-Runtime\n│   ├── plugin-sdk/          # Plugin-Entwicklungs-SDK\n│   └── create-folyn-plugin/ # Scaffold-Werkzeug\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "description": "Folyn ist ein pnpm-Monorepo — die Desktop-App, der CLI-Adapter, die Container-Extensions, der Vault Provider und der Extension Host/SDK sind jeweils unabhängige Packages.",
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri-Desktop-App\n│       ├── src/              # React-Frontend\n│       │   ├── components/   # UI-Komponenten (Shell, Editor, AI, Sidebar usw.)\n│       │   ├── editor/       # CodeMirror-Erweiterungen\n│       │   ├── hooks/        # React-Hooks\n│       │   ├── store/        # Zustand-Stores\n│       │   └── utils/        # Hilfsmodule\n│       └── src-tauri/        # Rust-Backend (Tauri-Befehle)\n├── packages/\n│   ├── cli-adapter/          # AI-CLI-Adapter-Abstraktion (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-extensions/    # Markdown-Container-Direktiven-Extensions (14)\n│   ├── vault-provider/       # Vault-Speicher-Provider-Abstraktion\n│   ├── extension-host/         # Extension-Host-Runtime\n│   ├── extension-sdk/          # Extension-Entwicklungs-SDK\n│   └── create-folyn-extension/ # Scaffold-Werkzeug\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "Speicher-Backends",
@@ -648,22 +648,22 @@
         }
       }
     },
-    "pluginSystem": {
-      "label": "Plugin-System",
-      "description": "Mikrokernel + Plugin-SDK-Architektur. Plugins sind in eine Trusted-Stufe (ruft Host-Fähigkeiten direkt auf) und eine Sandbox-Stufe (läuft unter eingeschränkten Berechtigungen) geteilt — geladen von der plugin-host Runtime. Drittanbieter-Plugins lassen sich schnell über create-folyn-plugin scaffolden.",
+    "extensionSystem": {
+      "label": "Extension-System",
+      "description": "Mikrokernel + Extension-SDK-Architektur. Extensions sind in eine Trusted-Stufe (ruft Host-Fähigkeiten direkt auf) und eine Sandbox-Stufe (läuft unter eingeschränkten Berechtigungen) geteilt — geladen von der extension-host Runtime. Drittanbieter-Extensions lassen sich schnell über create-folyn-extension scaffolden.",
       "tiers": {
         "label": "Ausführungsstufen",
         "trusted": {
           "name": "Trusted-Stufe",
-          "description": "Ruft Host-Fähigkeiten direkt auf — für eingebaute oder vertrauenswürdige Plugins, die Dateisystem, Netzwerk oder native APIs brauchen"
+          "description": "Ruft Host-Fähigkeiten direkt auf — für eingebaute oder vertrauenswürdige Extensions, die Dateisystem, Netzwerk oder native APIs brauchen"
         },
         "sandbox": {
           "name": "Sandbox-Stufe",
-          "description": "Läuft unter eingeschränkten Berechtigungen — plugin-sdk stellt eine Whitelist-API bereit, für Drittanbieter-Plugins"
+          "description": "Läuft unter eingeschränkten Berechtigungen — extension-sdk stellt eine Whitelist-API bereit, für Drittanbieter-Extensions"
         }
       },
-      "containerPlugins": {
-        "label": "Container-Direktiven-Plugins (14)",
+      "containerExtensions": {
+        "label": "Container-Direktiven-Extensions (14)",
         "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
       }
     },
@@ -690,7 +690,7 @@
       "groups": {
         "general": {
           "name": "Allgemein",
-          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Plugins, CSP, Storage & sharing"
+          "items": "Appearance, Editor, Shortcuts, File templates, Pet, Notifications, Extensions, CSP, Storage & sharing"
         },
         "ai": {
           "name": "AI",
@@ -706,15 +706,15 @@
     "viewOnGithub": "Auf GitHub ansehen",
     "reportIssue": "Issue melden"
   },
-  "plugins": {
-    "title": "Plugins",
-    "description": "Drittanbieter-Plugins installieren, genehmigen, aktivieren oder deinstallieren (Mikrokernel + Plugin-SDK)",
+  "extensions": {
+    "title": "Extensions",
+    "description": "Drittanbieter-Extensions installieren, genehmigen, aktivieren oder deinstallieren (Mikrokernel + Extension-SDK)",
     "installFromFolder": "Aus Ordner installieren…",
     "installFromZip": "Aus .zip installieren…",
     "installing": "Installiere ({{id}})…",
     "refresh": "Aktualisieren",
     "refreshing": "Aktualisiere…",
-    "empty": "Noch keine Plugins installiert",
+    "empty": "Noch keine Extensions installiert",
     "state": {
       "active": "Aktiv",
       "inactive": "Deaktiviert",
@@ -740,19 +740,19 @@
     "deactivating": "Deaktiviere…",
     "uninstall": "Deinstallieren",
     "uninstalling": "Deinstalliere…",
-    "uninstallTitle": "Plugin deinstallieren",
+    "uninstallTitle": "Extension deinstallieren",
     "uninstallConfirm": {
-      "title": "Plugin deinstallieren",
-      "message": "Dieses Plugin deinstallieren? Ordner, Genehmigung und eingetragene Beiträge werden entfernt.",
+      "title": "Extension deinstallieren",
+      "message": "Dieses Extension deinstallieren? Ordner, Genehmigung und eingetragene Beiträge werden entfernt.",
       "confirm": "Deinstallieren",
       "cancel": "Abbrechen"
     },
     "consent": {
-      "title": "Trusted Plugin genehmigen",
+      "title": "Trusted Extension genehmigen",
       "intro": "Zur Genehmigung anstehend",
       "permissionsLabel": "Deklarierte Berechtigungen und Beitragspunkte:",
       "noPermissions": "Keine",
-      "warning": "Trusted Plugins laufen im Hauptprozess und haben volle Host-Fähigkeiten (Vault lesen/schreiben, Tauri-Befehle aufrufen, auf den gesamten React-State zugreifen). Genehmigung bedeutet volles Vertrauen — nur Plugins aus vertrauten Quellen genehmigen.",
+      "warning": "Trusted Extensions laufen im Hauptprozess und haben volle Host-Fähigkeiten (Vault lesen/schreiben, Tauri-Befehle aufrufen, auf den gesamten React-State zugreifen). Genehmigung bedeutet volles Vertrauen — nur Extensions aus vertrauten Quellen genehmigen.",
       "cancel": "Abbrechen",
       "confirm": "Verstanden, genehmigen"
     }

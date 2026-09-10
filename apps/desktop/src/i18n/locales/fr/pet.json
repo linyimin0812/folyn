@@ -56,10 +56,10 @@
     "inbox": "Boîte de réception"
   },
   "search": {
-    "placeholder": "Rechercher fichiers / commandes / plugins",
+    "placeholder": "Rechercher fichiers / commandes / extensions",
     "files": "Fichiers",
     "commands": "Commandes",
-    "plugins": "Plugins",
+    "extensions": "Extensions",
     "noResults": "Aucun résultat correspondant"
   },
   "inbox": {

@@ -87,7 +87,7 @@
     "commandsLabel": "コマンド",
     "sourceUser": "ユーザ",
     "sourceProject": "プロジェクト",
-    "sourcePlugin": "プラグイン",
+    "sourceExtension": "拡張機能",
     "empty": "スキルやコマンドが見つかりません",
     "argumentPlaceholder": "/{{name}}への引数",
     "argumentConfirm": "挿入"

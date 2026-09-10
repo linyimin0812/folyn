@@ -56,10 +56,10 @@
     "inbox": "受信箱"
   },
   "search": {
-    "placeholder": "ファイル / コマンド / プラグインを検索",
+    "placeholder": "ファイル / コマンド / 拡張機能を検索",
     "files": "ファイル",
     "commands": "コマンド",
-    "plugins": "プラグイン",
+    "extensions": "拡張機能",
     "noResults": "一致する結果はありません"
   },
   "inbox": {
