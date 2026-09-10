@@ -21,12 +21,12 @@
 ## Why Folyn
 
 - **Vault の複数倉庫隔離** — プロジェクトやメモごとに独立した Vault を作成。データは互いに干渉せず、いつでも切り替え可能。ローカルが唯一の真のソースです。
-- **多形式編集** — Markdown（コンテナプラグイン：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible、および Graphviz / Mermaid / PlantUML 図表コンテナ）、リッチテキスト、CSV、JSON、markmap マインドマップ、dbml ER 図、drawio アーキテクチャ図、excalidraw 手描きホワイトボード、graphviz DOT——ひとつのエディタですべて対応。
+- **多形式編集** — Markdown（コンテナ拡張機能：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible、および Graphviz / Mermaid / PlantUML 図表コンテナ）、リッチテキスト、CSV、JSON、markmap マインドマップ、dbml ER 図、drawio アーキテクチャ図、excalidraw 手描きホワイトボード、graphviz DOT——ひとつのエディタですべて対応。
 - **全形式プレビュー** — Office ドキュメント、音声・動画、アーカイブ、電子書籍、プレゼンや図面を Folyn から離れずに表示。
 - **AI 深度統合** — 6 種の CLI エージェントを内蔵アダプターで統合：Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder。モデルベンダーを横断して自由に切り替え、単一ベンダーに縛られません。
 - **デスクトップペットアシスタント** — デスクトップ常駐の相棒がスケジュール通知やタスク変更通知をプッシュし、クリックで LLM とのチャットを起動します。
 - **アプリ内ターミナル** — Folyn 内でターミナルを開き、Claude Code / Codex などの CLI エージェントが現在のドキュメントを読み書き——ウィンドウ切り替え不要。
-- **プラグインシステム** — マイクロカーネル + プラグイン SDK アーキテクチャ。翻訳・スケジュール・Wiki・Clips・プロジェクト分析はプラグインとして提供され、サードパーティ拡張も可能。
+- **拡張機能システム** — マイクロカーネル + 拡張機能 SDK アーキテクチャ。翻訳・スケジュール・Wiki・Clips・プロジェクト分析は拡張機能として提供され、サードパーティ拡張も可能。
 - **音声入力** — 音声をテキストに書き起こし自動で補正し、カーソル位置に直接貼り付け（現在は macOS のみ対応）。
 
 ## For Users
@@ -44,7 +44,7 @@
 
 ### Vault 複数倉庫隔離
 
-プロジェクトやメモごとに独立した Vault を作成します。各 Vault は独立したデータ空間——メモ・添付ファイル・プラグイン設定は個別に保存され、Vault の切り替えはワークスペースごと切り替えるのと同じです。データはローカルデバイスに保存され、クラウドアカウントに依存しません。
+プロジェクトやメモごとに独立した Vault を作成します。各 Vault は独立したデータ空間——メモ・添付ファイル・拡張機能設定は個別に保存され、Vault の切り替えはワークスペースごと切り替えるのと同じです。データはローカルデバイスに保存され、クラウドアカウントに依存しません。
 
 <p align="center">
   <img src="docs/assets/screenshots/vault-1.png" alt="Vault switching" width="860" />
@@ -52,14 +52,14 @@
 
 ### 多形式編集
 
-- **Markdown** — 標準構文 + コンテナプラグイン：Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline、および Graphviz / Mermaid / PlantUml 図表コンテナ
+- **Markdown** — 標準構文 + コンテナ拡張機能：Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline、および Graphviz / Mermaid / PlantUml 図表コンテナ
 - **リッチテキスト** — WYSIWYG、Markdown 構文が不要なレイアウト向け
 - **構造化データ** — CSV・JSON を直接編集
 - **マインドマップ** — markmap、Markdown アウトラインを自動的に視覚構造に変換
 - **モデリングと図** — dbml（ER）／ drawio（アーキテクチャ図・フロー図）／ excalidraw（手描きホワイトボード）／ graphviz（DOT）／ plantuml／ mermaid
 
 <p align="center">
-  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container plugins" width="860" />
+  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container extensions" width="860" />
 </p>
 
 ### 全形式プレビュー
@@ -105,9 +105,9 @@ Folyn ワークスペース内にターミナルパネルを開き、エディ�
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
-### プラグインシステム
+### 拡張機能システム
 
-マイクロカーネル + プラグイン SDK アーキテクチャ、コアは軽量に保ち機能はオンデマンドで読み込み：
+マイクロカーネル + 拡張機能 SDK アーキテクチャ、コアは軽量に保ち機能はオンデマンドで読み込み：
 
 - **翻訳** — 多言語コンテンツ処理
 - **スケジュール** — タスク設定／通知リマインダー／集中ポモドーロ／タスクボード
@@ -115,10 +115,10 @@ Folyn ワークスペース内にターミナルパネルを開き、エディ�
 - **Clips** — ウェブコンテンツを取得し自動で要約
 - **プロジェクト分析** — GitHub プロジェクトを分析し HTML 形式でレポートを出力
 
-サードパーティプラグイン拡張対応、詳細は `docs/plugins.html` を参照。
+サードパーティ拡張機能拡張対応、詳細は `docs/extensions.html` を参照。
 
 <p align="center">
-  <img src="docs/assets/screenshots/plugins-1.png" alt="Plugins" width="860" />
+  <img src="docs/assets/screenshots/extensions-1.png" alt="Extensions" width="860" />
 </p>
 
 ### 音声入力
@@ -158,10 +158,10 @@ folyn/
 │       └── src-tauri/        # Rust backend (Tauri commands)
 ├── packages/
 │   ├── cli-adapter/          # AI CLI adapter abstraction (Claude / Codex / Gemini / Opencode / Pi / Qoder)
-│   ├── container-plugins/    # Markdown container directive plugins
-│   ├── plugin-host/          # Plugin host runtime
-│   ├── plugin-sdk/           # Plugin SDK for third-party authors
-│   ├── create-folyn-plugin/  # Plugin scaffolding CLI
+│   ├── container-extensions/    # Markdown container directive extensions
+│   ├── extension-host/          # Extension host runtime
+│   ├── extension-sdk/           # Extension SDK for third-party authors
+│   ├── create-folyn-extension/  # Extension scaffolding CLI
 │   └── vault-provider/       # Vault storage provider abstraction
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -171,13 +171,13 @@ folyn/
 ### Extension Points
 
 - **`cli-adapter` パッケージ** — アダプターインターフェースを実装すれば新しい CLI Agent を統合可能
-- **`container-plugins` パッケージ** — `:::directive` コンテナプラグインをカスタマイズしスラッシュメニューに登録
+- **`container-extensions` パッケージ** — `:::directive` コンテナ拡張機能をカスタマイズしスラッシュメニューに登録
 - **`vault-provider` パッケージ** — カスタムストレージバックエンド（local／GitHub／WebDAV／S3 以外）
-- **`plugin-host` + `plugin-sdk`** — サードパーティプラグインは SDK プロトコルで能力を登録、マイクロカーネルがオンデマンドで読み込み
-- **`create-folyn-plugin`** — 新しいプラグインを素早く始める足場 CLI
+- **`extension-host` + `extension-sdk`** — サードパーティ拡張機能は SDK プロトコルで能力を登録、マイクロカーネルがオンデマンドで読み込み
+- **`create-folyn-extension`** — 新しい拡張機能を素早く始める足場 CLI
 - **ファイル形式** — `apps/desktop/src/components/file-types/` に Handler を登録すれば新しいファイル形式を拡張
 
-詳細は `docs/plugins.html` を参照。
+詳細は `docs/extensions.html` を参照。
 
 ## Getting Started
 

@@ -21,12 +21,12 @@
 ## Why Folyn
 
 - **Aislamiento multi-Vault** — Abre un Vault separado para cada proyecto o conjunto de notas. Los datos son independientes entre sí, cambia en cualquier momento. Tu dispositivo local es la única fuente de verdad.
-- **Edición multiformato** — Markdown (con plugins de contenedor: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, más contenedores de diagramas Graphviz / Mermaid / PlantUML), texto enriquecido, CSV, JSON, mapas mentales markmap, diagramas ER dbml, diagramas de arquitectura drawio, pizarras manuales excalidraw, DOT graphviz — un editor para todo.
+- **Edición multiformato** — Markdown (con extensions de contenedor: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, más contenedores de diagramas Graphviz / Mermaid / PlantUML), texto enriquecido, CSV, JSON, mapas mentales markmap, diagramas ER dbml, diagramas de arquitectura drawio, pizarras manuales excalidraw, DOT graphviz — un editor para todo.
 - **Vista previa universal** — Documentos de Office, audio/vídeo, archivos comprimidos, libros electrónicos, presentaciones y planos — visualízalos sin salir de Folyn.
 - **Integración profunda de IA** — Adaptadores integrados para seis agentes CLI: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Cambia libremente entre proveedores de modelos, sin atarte a uno.
 - **Asistente mascota de escritorio** — Un compañero residente en el escritorio que envía recordatorios de calendario y notificaciones de cambios de tareas; un clic abre un chat con el LLM.
 - **Terminal integrada** — Abre una terminal dentro de Folyn y deja que Claude Code / Codex / otros agentes CLI lean y escriban el documento actual — sin cambiar de ventana.
-- **Sistema de plugins** — Arquitectura de microkernel + SDK de plugin. Traducción, calendario, Wiki, Clips y análisis de proyectos se entregan como plugins; se admiten extensiones de terceros.
+- **Sistema de extensions** — Arquitectura de microkernel + SDK de extension. Traducción, calendario, Wiki, Clips y análisis de proyectos se entregan como extensions; se admiten extensiones de terceros.
 - **Entrada por voz** — Voz a texto con pulido automático, pegado directo en el cursor (actualmente solo macOS).
 
 ## For Users
@@ -44,7 +44,7 @@ La app no está firmada con código; el sistema la bloqueará en el primer inici
 
 ### Aislamiento multi-Vault
 
-Abre un Vault separado para cada proyecto o conjunto de notas. Cada Vault es su propio espacio de datos — notas, adjuntos y configuraciones de plugins se almacenan de forma independiente; cambiar de Vault es como cambiar de entorno de trabajo completo. Los datos permanecen en el dispositivo local; no se requiere cuenta en la nube.
+Abre un Vault separado para cada proyecto o conjunto de notas. Cada Vault es su propio espacio de datos — notas, adjuntos y configuraciones de extensions se almacenan de forma independiente; cambiar de Vault es como cambiar de entorno de trabajo completo. Los datos permanecen en el dispositivo local; no se requiere cuenta en la nube.
 
 <p align="center">
   <img src="docs/assets/screenshots/vault-1.png" alt="Vault switching" width="860" />
@@ -52,14 +52,14 @@ Abre un Vault separado para cada proyecto o conjunto de notas. Cada Vault es su 
 
 ### Edición multiformato
 
-- **Markdown** — Sintaxis estándar + un conjunto de plugins de contenedor: Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline, más contenedores de diagramas Graphviz / Mermaid / PlantUml
+- **Markdown** — Sintaxis estándar + un conjunto de extensions de contenedor: Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline, más contenedores de diagramas Graphviz / Mermaid / PlantUml
 - **Texto enriquecido** — WYSIWYG, para composiciones que no necesitan sintaxis markdown
 - **Datos estructurados** — CSV, JSON, editados directamente
 - **Mapas mentales** — markmap, esquemas markdown auto-renderizados como estructura visual
 - **Modelado y diagramas** — dbml (ER) / drawio (arquitectura, flujo) / excalidraw (pizarra manual) / graphviz (DOT) / plantuml / mermaid
 
 <p align="center">
-  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container plugins" width="860" />
+  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container extensions" width="860" />
 </p>
 
 ### Vista previa universal
@@ -105,9 +105,9 @@ Abre un panel de terminal en el espacio de trabajo de Folyn, junto al editor, co
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
-### Sistema de plugins
+### Sistema de extensions
 
-Arquitectura de microkernel + SDK de plugin; el núcleo se mantiene ligero y las funciones se cargan bajo demanda:
+Arquitectura de microkernel + SDK de extension; el núcleo se mantiene ligero y las funciones se cargan bajo demanda:
 
 - **Traducción** — Procesamiento de contenido multilingüe
 - **Calendario** — Ajustes de tareas / notificaciones / pomodoro de enfoque / tablero de tareas
@@ -115,10 +115,10 @@ Arquitectura de microkernel + SDK de plugin; el núcleo se mantiene ligero y las
 - **Clips** — Capturar contenido web y resumir páginas automáticamente
 - **Análisis de proyectos** — Analizar proyectos de GitHub, generar informes en HTML
 
-Extensiones de terceros soportadas; ver `docs/plugins.html`.
+Extensiones de terceros soportadas; ver `docs/extensions.html`.
 
 <p align="center">
-  <img src="docs/assets/screenshots/plugins-1.png" alt="Plugins" width="860" />
+  <img src="docs/assets/screenshots/extensions-1.png" alt="Extensions" width="860" />
 </p>
 
 ### Entrada por voz
@@ -158,10 +158,10 @@ folyn/
 │       └── src-tauri/        # Rust backend (Tauri commands)
 ├── packages/
 │   ├── cli-adapter/          # AI CLI adapter abstraction (Claude / Codex / Gemini / Opencode / Pi / Qoder)
-│   ├── container-plugins/    # Markdown container directive plugins
-│   ├── plugin-host/          # Plugin host runtime
-│   ├── plugin-sdk/           # Plugin SDK for third-party authors
-│   ├── create-folyn-plugin/  # Plugin scaffolding CLI
+│   ├── container-extensions/    # Markdown container directive extensions
+│   ├── extension-host/          # Extension host runtime
+│   ├── extension-sdk/           # Extension SDK for third-party authors
+│   ├── create-folyn-extension/  # Extension scaffolding CLI
 │   └── vault-provider/       # Vault storage provider abstraction
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -171,13 +171,13 @@ folyn/
 ### Extension Points
 
 - **Paquete `cli-adapter`** — Implementa la interfaz de adaptador para conectar un nuevo Agent de CLI
-- **Paquete `container-plugins`** — Plugins de contenedor `:::directive` personalizados, registrados en el menú slash
+- **Paquete `container-extensions`** — Extensions de contenedor `:::directive` personalizados, registrados en el menú slash
 - **Paquete `vault-provider`** — Backends de almacenamiento personalizados (más allá de local / GitHub / WebDAV / S3)
-- **`plugin-host` + `plugin-sdk`** — Plugins de terceros registran capacidades vía el SDK; el microkernel los carga bajo demanda
-- **`create-folyn-plugin`** — CLI de scaffolding para iniciar rápidamente un nuevo plugin
+- **`extension-host` + `extension-sdk`** — Extensions de terceros registran capacidades vía el SDK; el microkernel los carga bajo demanda
+- **`create-folyn-extension`** — CLI de scaffolding para iniciar rápidamente un nuevo extension
 - **Tipos de archivo** — Registra un nuevo Handler bajo `apps/desktop/src/components/file-types/` para extender tipos de archivo
 
-Ver `docs/plugins.html` para detalles.
+Ver `docs/extensions.html` para detalles.
 
 ## Getting Started
 

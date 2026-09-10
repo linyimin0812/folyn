@@ -21,12 +21,12 @@
 ## Why Folyn
 
 - **Vault 多仓库隔离** — 为每个项目、每份笔记开一个独立仓库，数据互不干扰，随时切换。本地是唯一真源。
-- **多格式编辑** — Markdown（含容器插件：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible，以及 Graphviz / Mermaid / PlantUML 图表容器）、富文本、CSV、JSON、markmap 思维导图、dbml ER 图、drawio 架构图、excalidraw 手绘白板、graphviz DOT 图——一个编辑器全部搞定。
+- **多格式编辑** — Markdown（含容器扩展：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible，以及 Graphviz / Mermaid / PlantUML 图表容器）、富文本、CSV、JSON、markmap 思维导图、dbml ER 图、drawio 架构图、excalidraw 手绘白板、graphviz DOT 图——一个编辑器全部搞定。
 - **全格式预览** — Office 文档、音视频、压缩包、电子书、演示与图纸，不离开 Folyn 就能查看。
 - **AI 深度集成** — 内置适配 Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder 六种 CLI 代理，跨模型厂商自由切换，不绑定单一供应商。
 - **桌宠助手** — 常驻桌面的小伙伴，负责推送日程提醒、任务变更通知，一点即可唤起大模型对话。
 - **应用内终端** — 在 Folyn 中直接打开终端，调用 Claude Code / Codex 等 CLI 代理读写当前文档，无需窗口切换。
-- **插件系统** — 微内核 + 插件 SDK 架构，翻译、日程、Wiki、Clips 剪藏、项目分析均以插件形式提供，支持第三方扩展。
+- **扩展系统** — 微内核 + 扩展 SDK 架构，翻译、日程、Wiki、Clips 剪藏、项目分析均以扩展形式提供，支持第三方扩展。
 - **语音输入** — 语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。
 
 ## For Users
@@ -44,7 +44,7 @@
 
 ### Vault 多仓库隔离
 
-为每个项目、每份笔记开一个独立仓库。每个 Vault 都是一套独立的数据空间——笔记、附件、插件配置都各自存放,切换 Vault 就像切换一整套工作环境。数据保存在本地设备,不依赖云端账号。
+为每个项目、每份笔记开一个独立仓库。每个 Vault 都是一套独立的数据空间——笔记、附件、扩展配置都各自存放,切换 Vault 就像切换一整套工作环境。数据保存在本地设备,不依赖云端账号。
 
 <p align="center">
   <img src="docs/assets/screenshots/vault-1.png" alt="Vault switching" width="860" />
@@ -52,14 +52,14 @@
 
 ### 多格式编辑
 
-- **Markdown** — 标准语法 + 一套容器插件:Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline,以及 Graphviz / Mermaid / PlantUml 图表容器
+- **Markdown** — 标准语法 + 一套容器扩展:Button / Callout / Card / Collapsible / FilePreview / Grid / StatusTag / Steps / Tabs / Timeline,以及 Graphviz / Mermaid / PlantUml 图表容器
 - **富文本** — 所见即所得,适合不需要 markdown 语法的排版场景
 - **结构化数据** — CSV、JSON 直接编辑
 - **思维导图** — markmap,markdown 大纲自动生成可视化结构
 - **建模与制图** — dbml (ER 图) / drawio (架构图、流程图) / excalidraw (手绘白板) / graphviz (DOT) / plantuml / mermaid
 
 <p align="center">
-  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container plugins" width="860" />
+  <img src="docs/assets/screenshots/editing-2.png" alt="Markdown editor with container extensions" width="860" />
 </p>
 
 ### 全格式预览
@@ -105,9 +105,9 @@
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
-### 插件系统
+### 扩展系统
 
-微内核 + 插件 SDK 架构,核心保持轻量,功能按需加载:
+微内核 + 扩展 SDK 架构,核心保持轻量,功能按需加载:
 
 - **翻译** — 多语言内容处理
 - **日程** — 任务设置 / 通知提醒 / 专注番茄 / 任务看板
@@ -115,10 +115,10 @@
 - **Clips 剪藏** — 获取网页内容并自动总结摘要页面
 - **项目分析** — 分析 GitHub 项目,输出 HTML 格式分析结果
 
-支持第三方插件扩展,详见 `docs/plugins.html`。
+支持第三方扩展,详见 `docs/extensions.html`。
 
 <p align="center">
-  <img src="docs/assets/screenshots/plugins-1.png" alt="Plugins" width="860" />
+  <img src="docs/assets/screenshots/extensions-1.png" alt="Extensions" width="860" />
 </p>
 
 ### 语音输入
@@ -158,10 +158,10 @@ folyn/
 │       └── src-tauri/        # Rust backend (Tauri commands)
 ├── packages/
 │   ├── cli-adapter/          # AI CLI adapter abstraction (Claude / Codex / Gemini / Opencode / Pi / Qoder)
-│   ├── container-plugins/    # Markdown container directive plugins
-│   ├── plugin-host/          # Plugin host runtime
-│   ├── plugin-sdk/           # Plugin SDK for third-party authors
-│   ├── create-folyn-plugin/  # Plugin scaffolding CLI
+│   ├── container-extensions/    # Markdown container directive extensions
+│   ├── extension-host/          # Extension host runtime
+│   ├── extension-sdk/           # Extension SDK for third-party authors
+│   ├── create-folyn-extension/  # Extension scaffolding CLI
 │   └── vault-provider/       # Vault storage provider abstraction
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -171,13 +171,13 @@ folyn/
 ### Extension Points
 
 - **`cli-adapter` 包** — 实现 adapter 接口即可接入新的 CLI Agent
-- **`container-plugins` 包** — 自定义 `:::directive` 容器插件,注册到 slash 菜单
+- **`container-extensions` 包** — 自定义 `:::directive` 容器扩展,注册到 slash 菜单
 - **`vault-provider` 包** — 自定义存储后端(local / GitHub / WebDAV / S3 之外)
-- **`plugin-host` + `plugin-sdk`** — 第三方插件按 SDK 协议注册能力,微内核按需加载
-- **`create-folyn-plugin`** — 脚手架快速起一个新插件
+- **`extension-host` + `extension-sdk`** — 第三方扩展按 SDK 协议注册能力,微内核按需加载
+- **`create-folyn-extension`** — 脚手架快速起一个新扩展
 - **文件类型** — 在 `apps/desktop/src/components/file-types/` 下注册新 Handler 即可扩展文件类型
 
-详见 `docs/plugins.html`。
+详见 `docs/extensions.html`。
 
 ## Getting Started
 
