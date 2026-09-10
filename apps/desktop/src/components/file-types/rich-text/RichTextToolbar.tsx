@@ -187,7 +187,7 @@ export function RichTextToolbar({ editor, zoom, onZoomChange, onInsertMath }: Ri
   // ImagePasteDialog (RichTextEditor.tsx); this button keeps the hash-named
   // direct-persist path (dedup-friendly, no rename prompt).
   // isTauri() gate: no-op outside Tauri (browser dev) — paste/drop still work.
-  // Image-by-URL entry is covered by the paste plugin's bare-URL detection
+  // Image-by-URL entry is covered by the paste extension's bare-URL detection
   // (RichTextImage.tsx), so no separate URL modal here.
   const pickImageFile = async () => {
     if (!isTauri()) return;

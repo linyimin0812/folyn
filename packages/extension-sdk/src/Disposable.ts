@@ -1,7 +1,7 @@
 /**
- * Disposable — the lifecycle primitive every plugin contribution must return.
+ * Disposable — the lifecycle primitive every extension contribution must return.
  *
- * The host stores every disposable a plugin registers via `PluginContext.addDisposable`
+ * The host stores every disposable a extension registers via `ExtensionContext.addDisposable`
  * and calls `dispose()` on deactivation / uninstall so listeners, registry entries,
  * React roots, and timers are cleaned up deterministically.
  */

@@ -652,7 +652,7 @@ function WikiIngestProgressStrip() {
   );
 }
 
-// ponytail: in-app vault file picker. Tauri's plugin-dialog open() is OS-native
+// ponytail: in-app vault file picker. Tauri's extension-dialog open() is OS-native
 // and can't be hard-restricted to the vault dir, so we walk the vault ourselves
 // and present the result as a tree mirroring the on-disk layout — users navigate
 // by expanding dirs, same mental model as the wiki file tree beside it.

@@ -82,7 +82,7 @@ beforeEach(() => {
     manualModels: {},
     scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES.map((r) => ({ ...r })),
     voicePair: null,
-    pluginPair: null,
+    extensionPair: null,
   });
   useAiStore.setState({ sessions: [], activeSessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
 });
@@ -665,24 +665,24 @@ describe('useAiConfigStore scriptRuntimes', () => {
 });
 
 // Per-caller (provider, model) pairs — pet/bubble moved to their session
-// stores in Phase 2; only voice/plugin remain here.
+// stores in Phase 2; only voice/extension remain here.
 describe('useAiConfigStore per-caller pairs', () => {
-  it('voicePair / pluginPair default to null', () => {
+  it('voicePair / extensionPair default to null', () => {
     const s = useAiConfigStore.getState();
     expect(s.voicePair).toBeNull();
-    expect(s.pluginPair).toBeNull();
+    expect(s.extensionPair).toBeNull();
   });
 
-  it('PERSIST_KEYS_AI_CONFIG includes voicePair / pluginPair (pet/bubble dropped in Phase 2)', () => {
+  it('PERSIST_KEYS_AI_CONFIG includes voicePair / extensionPair (pet/bubble dropped in Phase 2)', () => {
     expect(PERSIST_KEYS_AI_CONFIG).toContain('voicePair');
-    expect(PERSIST_KEYS_AI_CONFIG).toContain('pluginPair');
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('extensionPair');
     expect(PERSIST_KEYS_AI_CONFIG).not.toContain('petPair');
     expect(PERSIST_KEYS_AI_CONFIG).not.toContain('bubblePair');
   });
 
   it.each([
     ['setVoicePair', 'voicePair'] as const,
-    ['setPluginPair', 'pluginPair'] as const,
+    ['setExtensionPair', 'extensionPair'] as const,
   ])('%s writes the pair and persists to the aiConfig slice', (setter, field) => {
     const setSpy = vi.spyOn(storageClient, 'set');
     const pair = { provider: 'openai', model: 'gpt-4o' };
@@ -696,7 +696,7 @@ describe('useAiConfigStore per-caller pairs', () => {
 
   it.each([
     ['setVoicePair', 'voicePair'] as const,
-    ['setPluginPair', 'pluginPair'] as const,
+    ['setExtensionPair', 'extensionPair'] as const,
   ])('%s accepts null to clear the pair', (setter, field) => {
     const pair = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
     (useAiConfigStore.getState()[setter] as (p: typeof pair | null) => void)(pair);
@@ -705,17 +705,17 @@ describe('useAiConfigStore per-caller pairs', () => {
     expect(useAiConfigStore.getState()[field]).toBeNull();
   });
 
-  it('hydrate reads voice/plugin pairs from the blob (pet/bubble silently dropped post-Phase 2)', () => {
+  it('hydrate reads voice/extension pairs from the blob (pet/bubble silently dropped post-Phase 2)', () => {
     useAiConfigStore.getState().hydrate({
       voicePair: { provider: 'ollama', model: 'llama3' },
-      pluginPair: { provider: 'openai', model: 'gpt-4o-mini' },
+      extensionPair: { provider: 'openai', model: 'gpt-4o-mini' },
       // Legacy petPair/bubblePair in the blob must be ignored (not crash).
       petPair: { provider: 'openai', model: 'gpt-4o' },
       bubblePair: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
     });
     const s = useAiConfigStore.getState();
     expect(s.voicePair).toEqual({ provider: 'ollama', model: 'llama3' });
-    expect(s.pluginPair).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
+    expect(s.extensionPair).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
     // petPair/bubblePair no longer exist on the state.
     expect((s as Record<string, unknown>).petPair).toBeUndefined();
     expect((s as Record<string, unknown>).bubblePair).toBeUndefined();
@@ -725,7 +725,7 @@ describe('useAiConfigStore per-caller pairs', () => {
     useAiConfigStore.getState().setVoicePair({ provider: 'openai', model: 'gpt-4o' });
     useAiConfigStore.getState().hydrate({});
     expect(useAiConfigStore.getState().voicePair).toBeNull();
-    expect(useAiConfigStore.getState().pluginPair).toBeNull();
+    expect(useAiConfigStore.getState().extensionPair).toBeNull();
   });
 
   it('hydrate accepts a voice pair with a custom (non-catalog) provider id', () => {

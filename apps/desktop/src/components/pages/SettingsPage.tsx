@@ -5,7 +5,7 @@ import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { CliSettings } from '@/components/settings/CliSettings';
 import { ModelServicesSettings } from '@/components/settings/ModelServicesSettings';
-import { PluginsSettings } from '@/components/settings/PluginsSettings';
+import { ExtensionsSettings } from '@/components/settings/ExtensionsSettings';
 import { VoiceSettings, VoiceHotkeyRecorder } from '@/components/settings/VoiceSettings';
 import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettings';
 import { PetSettings } from '@/components/settings/PetSettings';
@@ -377,8 +377,8 @@ export function SettingsPage() {
         )}
 
         {/* -- 插件 -- */}
-        {settingsTab === 'plugins' && (
-          <PluginsSettings />
+        {settingsTab === 'extensions' && (
+          <ExtensionsSettings />
         )}
 
         {/* -- 存储与分享 -- */}
@@ -421,7 +421,7 @@ export function SettingsPage() {
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Home size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.localFirst.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.localFirst.description')}</p></div></div>
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Unlock size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.openFormat.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.openFormat.description')}</p></div></div>
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Sparkles size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.ai.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.ai.description')}</p></div></div>
-                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Puzzle size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.plugins.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.plugins.description')}</p></div></div>
+                <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Puzzle size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.extensions.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.extensions.description')}</p></div></div>
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Cat size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.pet.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.pet.description')}</p></div></div>
                 <div className="info-c bg-surf2 border border-brd2 rounded-lg py-3.5 px-4 flex gap-2.5"><Wrench size={17} className="shrink-0 mt-px text-t2" /><div><h4 className="text-[12.5px] font-bold text-t1 m-0 mb-0.5">{t('settings:about.features.builtInTools.title')}</h4><p className="text-[11px] text-t3 leading-relaxed m-0">{t('settings:about.features.builtInTools.description')}</p></div></div>
               </div>
@@ -431,7 +431,7 @@ export function SettingsPage() {
               <SectionHeader label={t('settings:about.highlights.label')} />
               <div className="bg-surf2/40 border border-brd2 rounded-lg p-4 max-w-[640px]">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px 32px' }}>
-                  {(['editor', 'preview', 'vault', 'containerPlugins', 'export', 'crossPlatform', 'themes', 'shortcuts', 'i18n'] as const).map((k) => (
+                  {(['editor', 'preview', 'vault', 'containerExtensions', 'export', 'crossPlatform', 'themes', 'shortcuts', 'i18n'] as const).map((k) => (
                     <div key={k} className="flex gap-2.5">
                       <div className="w-[5px] h-[5px] rounded-full bg-t2 mt-[6px] shrink-0" />
                       <div>
@@ -484,26 +484,26 @@ export function SettingsPage() {
             </div>
 
             <div className="mb-8">
-              <SectionHeader label={t('settings:about.pluginSystem.label')} />
+              <SectionHeader label={t('settings:about.extensionSystem.label')} />
               <div className="bg-surf2/40 border border-brd2 rounded-lg p-4 max-w-[640px] space-y-5">
-                <p className="text-justify text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0">{t('settings:about.pluginSystem.description')}</p>
+                <p className="text-justify text-[length:calc(var(--ui-font-size)-2px)] text-t3 leading-relaxed m-0">{t('settings:about.extensionSystem.description')}</p>
                 <div>
-                  <div className="text-[11.5px] font-bold text-t2 mb-3">{t('settings:about.pluginSystem.tiers.label')}</div>
+                  <div className="text-[11.5px] font-bold text-t2 mb-3">{t('settings:about.extensionSystem.tiers.label')}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px 32px' }}>
                     {(['trusted', 'sandbox'] as const).map((k) => (
                       <div key={k} className="flex gap-2.5">
                         <div className="w-[5px] h-[5px] rounded-full bg-t2 mt-[6px] shrink-0" />
                         <div>
-                          <div className="text-[12px] font-bold text-t1 mb-0.5">{t(`settings:about.pluginSystem.tiers.${k}.name`)}</div>
-                          <div className="text-[11px] text-t3 leading-relaxed">{t(`settings:about.pluginSystem.tiers.${k}.description`)}</div>
+                          <div className="text-[12px] font-bold text-t1 mb-0.5">{t(`settings:about.extensionSystem.tiers.${k}.name`)}</div>
+                          <div className="text-[11px] text-t3 leading-relaxed">{t(`settings:about.extensionSystem.tiers.${k}.description`)}</div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[11.5px] font-bold text-t2 mb-2">{t('settings:about.pluginSystem.containerPlugins.label')}</div>
-                  <div className="font-mono text-[11px] text-t3 leading-relaxed bg-surf border border-brd2 rounded-md px-3 py-2.5">{t('settings:about.pluginSystem.containerPlugins.list')}</div>
+                  <div className="text-[11.5px] font-bold text-t2 mb-2">{t('settings:about.extensionSystem.containerExtensions.label')}</div>
+                  <div className="font-mono text-[11px] text-t3 leading-relaxed bg-surf border border-brd2 rounded-md px-3 py-2.5">{t('settings:about.extensionSystem.containerExtensions.list')}</div>
                 </div>
               </div>
             </div>

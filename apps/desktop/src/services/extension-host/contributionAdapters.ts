@@ -1,19 +1,19 @@
 /**
- * In-process contribution adapters for trusted-tier plugins.
+ * In-process contribution adapters for trusted-tier extensions.
  *
- * Trusted plugins are `import()`-ed into the host realm (see `trustedLoader`),
+ * Trusted extensions are `import()`-ed into the host realm (see `trustedLoader`),
  * so their contributions resolve to real React components / handlers — not
  * postMessage proxies. Each adapter maps a manifest contribution array into
  * the matching app registry (`commandRegistry` / `file-types` /
  * `ContainerRegistry`) and returns a single
- * `Disposable` that unregisters everything on plugin deactivate/uninstall.
+ * `Disposable` that unregisters everything on extension deactivate/uninstall.
  *
- * The plugin module's export shape (the contract a trusted plugin authors
+ * The extension module's export shape (the contract a trusted extension authors
  * against):
  *
  * ```ts
  * // index.js — a self-contained ESM bundle (no remote imports)
- * import type { FileTypeHandler, ContainerPlugin, ... } from '@folyn/extension-host';
+ * import type { FileTypeHandler, ContainerExtension, ... } from '@folyn/extension-host';
  * import type { ComponentType } from 'react';
  *
  * // Named export maps keyed by the manifest's entry-ref strings.
@@ -22,36 +22,36 @@
  * export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
  *
  * // Optional lifecycle hooks (also accepted as a default-export factory).
- * export function activate(ctx: PluginContext) { ... }
+ * export function activate(ctx: ExtensionContext) { ... }
  * export function deactivate() { ... }
  * ```
  *
  * Entry-refs in the manifest (`handler: 'default'`, `component: 'callout'`,
  * `run: 'greet'`) index into these maps. An entry-ref that is missing from
  * the module's exports is skipped with a console warning (best-effort: a
- * partial plugin should still load its other contributions).
+ * partial extension should still load its other contributions).
  */
 
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type {
   CommandContribution,
   ContainerContribution,
 } from '@folyn/extension-host';
 import type { FileTypeHandler } from '@/components/file-types/types';
-import type { ContainerCategory } from '@folyn/container-plugins';
-import { withPluginBoundary } from './pluginBoundary';
+import type { ContainerCategory } from '@folyn/container-extensions';
+import { withExtensionBoundary } from './extensionBoundary';
 
 /**
- * The resolved exports of a trusted plugin's ESM bundle. All maps are
- * optional — a plugin may contribute only commands, only file-types, etc.
+ * The resolved exports of a trusted extension's ESM bundle. All maps are
+ * optional — a extension may contribute only commands, only file-types, etc.
  *
  * ponytail: interface moved to `folyn-extension-sdk` contracts (so external
- * plugin authors typecheck against the publishable SDK). Re-exported here so
- * existing `import type { PluginModule } from './contributionAdapters'` keeps
+ * extension authors typecheck against the publishable SDK). Re-exported here so
+ * existing `import type { ExtensionModule } from './contributionAdapters'` keeps
  * working.
  */
-export type { PluginModule } from 'folyn-extension-sdk';
-import type { PluginModule } from 'folyn-extension-sdk';
+export type { ExtensionModule } from 'folyn-extension-sdk';
+import type { ExtensionModule } from 'folyn-extension-sdk';
 
 /** Merge a list of disposables into one. */
 function mergeDisposables(disposables: Disposable[]): Disposable {
@@ -61,7 +61,7 @@ function mergeDisposables(disposables: Disposable[]): Disposable {
         try {
           await d.dispose();
         } catch (err) {
-          console.error('[plugin-host] contribution dispose failed:', err);
+          console.error('[extension-host] contribution dispose failed:', err);
         }
       }
     },
@@ -73,13 +73,13 @@ function mergeDisposables(disposables: Disposable[]): Disposable {
 import { registerCommand } from '@/services/commandRegistry';
 
 /**
- * Register a trusted plugin's commands directly into `commandRegistry`. The
+ * Register a trusted extension's commands directly into `commandRegistry`. The
  * `run` handler is resolved from `module.commands[entryRef]` and called
  * in-process (no postMessage bridge, unlike the sandbox tier).
  */
-export function registerTrustedPluginCommands(
-  manifest: PluginManifest,
-  module: PluginModule,
+export function registerTrustedExtensionCommands(
+  manifest: ExtensionManifest,
+  module: ExtensionModule,
 ): Disposable {
   const commands: CommandContribution[] = manifest.contributes?.commands ?? [];
   if (commands.length === 0) return { dispose: () => {} };
@@ -89,11 +89,11 @@ export function registerTrustedPluginCommands(
     const handler = module.commands?.[cmd.run];
     if (typeof handler !== 'function') {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" command "${cmd.id}" has no handler for entry-ref "${cmd.run}" — skipped`,
+        `[extension-host] extension "${manifest.id}" command "${cmd.id}" has no handler for entry-ref "${cmd.run}" — skipped`,
       );
       continue;
     }
-    const fullId = `plugin.${manifest.id}.${cmd.id}`;
+    const fullId = `extension.${manifest.id}.${cmd.id}`;
     const d = registerCommand(
       {
         id: fullId,
@@ -115,14 +115,14 @@ export function registerTrustedPluginCommands(
 import { registerFileTypeHandler } from '@/components/file-types/registry';
 
 /**
- * Register a trusted plugin's file-type handlers. Each
+ * Register a trusted extension's file-type handlers. Each
  * `contributes.fileTypes[]` entry's `handler` entry-ref indexes into
  * `module.handlers`. The handler must be a complete `FileTypeHandler`
  * (including `extensions`, `supportedViewModes`, etc.).
  */
-export function registerPluginFileTypes(
-  manifest: PluginManifest,
-  module: PluginModule,
+export function registerExtensionFileTypes(
+  manifest: ExtensionManifest,
+  module: ExtensionModule,
 ): Disposable {
   const fileTypes = manifest.contributes?.fileTypes ?? [];
   if (fileTypes.length === 0) return { dispose: () => {} };
@@ -132,14 +132,14 @@ export function registerPluginFileTypes(
     const handler = module.handlers?.[ft.handler];
     if (!handler) {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" file-type "${ft.id}" has no handler for entry-ref "${ft.handler}" — skipped`,
+        `[extension-host] extension "${manifest.id}" file-type "${ft.id}" has no handler for entry-ref "${ft.handler}" — skipped`,
       );
       continue;
     }
     // Ensure the handler's id matches the contribution id (defensive: the
-    // plugin author may have set a different id in the handler object).
+    // extension author may have set a different id in the handler object).
     const merged: FileTypeHandler = { ...handler, id: ft.id, extensions: ft.extensions };
-    // Wrap the plugin's mode components in an error boundary at the
+    // Wrap the extension's mode components in an error boundary at the
     // registration chokepoint so a render throw is isolated to this file-type
     // surface and never white-screens the host.
     if (merged.modes) {
@@ -147,7 +147,7 @@ export function registerPluginFileTypes(
         if (mode.kind === 'component' && mode.component) {
           return {
             ...mode,
-            component: withPluginBoundary(mode.component, manifest.id, `file-type:${ft.id}:${mode.id}`),
+            component: withExtensionBoundary(mode.component, manifest.id, `file-type:${ft.id}:${mode.id}`),
           };
         }
         return mode;
@@ -175,13 +175,13 @@ export function registerPluginFileTypes(
 
 // ── Container adapter ───────────────────────────────────────────────────────
 
-import { ContainerRegistry } from '@folyn/container-plugins';
-import { readPluginFile } from './trustedLoader';
+import { ContainerRegistry } from '@folyn/container-extensions';
+import { readExtensionFile } from './trustedLoader';
 
 /**
  * Resolve a container `icon` field to the string the registry will store.
  *
- * - `.svg` file path → host reads the file from the plugin install dir.
+ * - `.svg` file path → host reads the file from the extension install dir.
  *   On failure, warn + return '' (slash menu renders empty; never crashes).
  * - Anything else (inline `<svg>...</svg>` or emoji) → returned as-is; the
  *   slash-menu dispatcher branches on the `<svg` prefix at render time.
@@ -190,15 +190,15 @@ import { readPluginFile } from './trustedLoader';
  * bounded by the manifest's container count; no caching layer needed.
  */
 async function resolveContainerIcon(
-  manifest: PluginManifest,
+  manifest: ExtensionManifest,
   icon: string,
 ): Promise<string> {
   if (icon.endsWith('.svg')) {
     try {
-      return await readPluginFile(manifest.id, icon);
+      return await readExtensionFile(manifest.id, icon);
     } catch (err) {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" container icon "${icon}" could not be read — falling back to empty`,
+        `[extension-host] extension "${manifest.id}" container icon "${icon}" could not be read — falling back to empty`,
         err,
       );
       return '';
@@ -208,18 +208,18 @@ async function resolveContainerIcon(
 }
 
 /**
- * Register a trusted plugin's container directives into `ContainerRegistry`.
+ * Register a trusted extension's container directives into `ContainerRegistry`.
  * The contribution's `component` entry-ref resolves to a React component
- * exported by the plugin module. A `ContainerPlugin` object is built from the
+ * exported by the extension module. A `ContainerExtension` object is built from the
  * manifest's declarative fields + the resolved component.
  *
  * Async because each container's `icon` may be a `.svg` file path that the
- * host must read from the plugin install dir before registration. The
+ * host must read from the extension install dir before registration. The
  * trusted loader awaits this in `activate`.
  */
-export async function registerPluginContainers(
-  manifest: PluginManifest,
-  module: PluginModule,
+export async function registerExtensionContainers(
+  manifest: ExtensionManifest,
+  module: ExtensionModule,
 ): Promise<Disposable> {
   const containers: ContainerContribution[] = manifest.contributes?.containers ?? [];
   if (containers.length === 0) return { dispose: () => {} };
@@ -236,11 +236,11 @@ export async function registerPluginContainers(
     const component = module.containers?.[c.component];
     if (!component) {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" container "${c.name}" has no component for entry-ref "${c.component}" — skipped`,
+        `[extension-host] extension "${manifest.id}" container "${c.name}" has no component for entry-ref "${c.component}" — skipped`,
       );
       continue;
     }
-    const plugin = {
+    const extension = {
       name: c.name,
       icon,
       label: c.label,
@@ -251,7 +251,7 @@ export async function registerPluginContainers(
     };
     // register() now returns a Disposable (owned by manifest.id); no need to
     // track names manually for cleanup.
-    disposables.push(registry.register(plugin, manifest.id));
+    disposables.push(registry.register(extension, manifest.id));
   }
   return mergeDisposables(disposables);
 }

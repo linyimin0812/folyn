@@ -12,13 +12,13 @@
  *
  * The heavy renderers do NOT run here: {@link OfficeFrame} reads the file
  * bytes via the host capability `api.vault.readBinary` and hands them to the
- * extension's OWN `folyn-plugin://` iframe (`preview.html`), where the
+ * extension's OWN `folyn-extension://` iframe (`preview.html`), where the
  * @file-viewer renderers run with full Web Worker / WASM / code-splitting
- * support (their assets resolve against the plugin origin — impossible from a
+ * support (their assets resolve against the extension origin — impossible from a
  * blob-URL host module).
  */
 import type { ReactNode } from 'react';
-import type { PluginModule, FileTypeProvider, ExtensionApi, ExtensionContext } from 'folyn-extension-sdk';
+import type { ExtensionModule, FileTypeProvider, ExtensionApi, ExtensionContext } from 'folyn-extension-sdk';
 import { OfficeFrame } from './OfficeFrame';
 import { setApi, setExtensionId } from './api';
 import {
@@ -42,7 +42,7 @@ function provider(id: string, icon: ReactNode): FileTypeProvider {
 
 /** Family id → provider. The manifest's `contributes.fileTypes[]` entries
  * reference these ids via their `handler` field and supply the extensions. */
-const handlers: PluginModule['handlers'] = {
+const handlers: ExtensionModule['handlers'] = {
   'office-document': provider('office-document', <DocIcon />),
   'office-presentation': provider('office-presentation', <PresentationIcon />),
   'office-spreadsheet': provider('office-spreadsheet', <SpreadsheetIcon />),
@@ -60,7 +60,7 @@ const handlers: PluginModule['handlers'] = {
   'office-misc': provider('office-misc', <GenericFileIcon />),
 };
 
-const pluginModule: PluginModule = {
+const extensionModule: ExtensionModule = {
   handlers,
   activate(api: ExtensionApi, ctx: ExtensionContext) {
     setApi(api);
@@ -68,4 +68,4 @@ const pluginModule: PluginModule = {
   },
 };
 
-export default pluginModule;
+export default extensionModule;

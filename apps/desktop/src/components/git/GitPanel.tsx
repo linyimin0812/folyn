@@ -66,7 +66,7 @@ const GROUP_ORDER: FileKind[] = [
 /**
  * Git panel for the active GitHub vault. Plain-language status summary +
  * Pull / Commit & Push actions. Operations run via `gitService` (shell
- * plugin, scoped to the vault's local clone path).
+ * extension, scoped to the vault's local clone path).
  *
  * ponytail: modal dialog (dlg-overlay) reuses existing styling — no new
  * panel infrastructure. A side-popover would be nicer but costs more.

@@ -11,7 +11,7 @@ import { exportService } from '@/services/export/exporterRegistry';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { useTranslation } from 'react-i18next';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
-import { getPluginExportersForFileType } from '@/services/plugin-host/exporterAdapter';
+import { getExtensionExportersForFileType } from '@/services/extension-host/exporterAdapter';
 import { runCommand } from '@/services/commandRegistry';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
@@ -98,7 +98,7 @@ export function ExportMenu() {
   // ── Context-driven export menu (doc §80: no per-file-type if/else) ───────
   // Source item first (per-type label + markdown container-warning gate),
   // then format exporters from the ExporterRegistry (html/svg/png/markmap),
-  // then share-to-cloud (special — not a file save), then plugin exporters.
+  // then share-to-cloud (special — not a file save), then extension exporters.
   const exportCtx = {
     filePath: activeTabPath,
     vaultRoot: useVaultStore.getState().currentVault?.basePath ?? '',
@@ -157,12 +157,12 @@ export function ExportMenu() {
     });
   }
 
-  // Plugin-contributed exporters (kept via the adapter for now; will migrate
+  // Extension-contributed exporters (kept via the adapter for now; will migrate
   // to ExporterRegistry in a later pass).
-  for (const e of getPluginExportersForFileType(fileType)) {
+  for (const e of getExtensionExportersForFileType(fileType)) {
     const commandId = e.commandId;
     items.push({
-      key: `plugin-export-${e.pluginId}-${e.contrib.format}`,
+      key: `extension-export-${e.extensionId}-${e.contrib.format}`,
       icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
       label: e.contrib.label,
       description: e.contrib.label,

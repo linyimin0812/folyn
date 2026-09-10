@@ -17,7 +17,7 @@ const EXT_TO_LANG: Record<string, string> = {
 
 export function CodeFileViewer({ content, filePath }: PreviewProps) {
   const ext = filePath.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
-  // ponytail: prefer the file extension itself if hljs knows it — lets plugin-contributed
+  // ponytail: prefer the file extension itself if hljs knows it — lets extension-contributed
   // grammars (e.g. plantuml registering 'plantuml' + aliases 'puml'/'pu') drive
   // .puml/.plantuml/.pu highlighting without a per-extension core mapping. Fall back
   // to the EXT_TO_LANG alias table, then highlightAuto.

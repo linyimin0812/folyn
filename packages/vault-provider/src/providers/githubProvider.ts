@@ -7,7 +7,7 @@ import type { ProviderType, VaultCapabilities } from '../types';
  * operations (read/write/list/rename/delete) are identical to the local
  * Tauri provider. This class only overrides identity + capabilities; the
  * actual clone is orchestrated by the desktop `gitService` (via the shell
- * plugin) at vault-creation time, not on every `connect()`.
+ * extension) at vault-creation time, not on every `connect()`.
  *
  * `connect()` inherits Tauri's behavior: expand `~`, ensure the directory
  * exists. On reconnect (repo already cloned) this means "open local dir",

@@ -138,7 +138,7 @@ export function FileIcon({ filename, isDir, fileType }: FileIconProps) {
 
   // ponytail: no built-in ext mapping — consult the registry lazily (render
   // time, AFTER the registry's eager `import.meta.glob` has resolved, so no
-  // TDZ). A plugin handler may supply its own `icon` (ReactNode), so plugin
+  // TDZ). A extension handler may supply its own `icon` (ReactNode), so extension
   // file types get their icon without modifying host source.
   //
   // NOTE: only the <FileIcon> component does this. The legacy `getFileTypeIcon`

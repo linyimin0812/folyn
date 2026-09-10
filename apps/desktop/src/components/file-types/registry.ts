@@ -8,7 +8,7 @@ import { FOLYN_CORE_OWNER } from '@folyn/extension-host';
  * Built-in handlers are discovered at build time via `import.meta.glob` and
  * registered once at module load. {@link registerFileTypeHandler} /
  * {@link unregisterFileTypeHandler} expose the registry as the contribution
- * target for plugins (PR3 trusted tier): a plugin can register a handler for
+ * target for extensions (PR3 trusted tier): a extension can register a handler for
  * a new extension at runtime and it takes effect immediately, and is removed
  * on uninstall.
  *

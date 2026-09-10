@@ -1,9 +1,9 @@
 /**
  * OfficeFrame — host-realm file-type mode. Renders the extension's OWN
- * `folyn-plugin://` iframe (`preview.html`) and hands it the file bytes.
+ * `folyn-extension://` iframe (`preview.html`) and hands it the file bytes.
  *
  * Why an iframe: the @file-viewer renderers need Web Workers + WASM, which
- * cannot load from a blob-URL host module. Inside the plugin-origin iframe
+ * cannot load from a blob-URL host module. Inside the extension-origin iframe
  * those assets resolve relatively, so every renderer (pptx / xlsx / pdf / cad
  * / …) works. The heavy code never runs in the host realm.
  */
@@ -20,7 +20,7 @@ export function OfficeFrame({ filePath }: PreviewProps): React.JSX.Element {
   const [bytes, setBytes] = useState<ArrayBuffer | null>(null);
 
   const src = useMemo(
-    () => `folyn-plugin://localhost/${getExtensionId()}/preview.html`,
+    () => `folyn-extension://localhost/${getExtensionId()}/preview.html`,
     [],
   );
 

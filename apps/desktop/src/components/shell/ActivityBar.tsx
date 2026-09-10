@@ -32,7 +32,7 @@ import { ScheduleIcon } from '@/components/icons/ScheduleIcon';
 import { TranslationIcon } from '@/components/icons/TranslationIcon';
 
 /**
- * Active panel id. Widened to `string` in PR2 — plugin panels contribute
+ * Active panel id. Widened to `string` in PR2 — extension panels contribute
  * arbitrary ids (the old `'files'|'wiki'|'clips'|'analyze'|'calendar'` union
  * is no longer adequate). The 5 built-in ids remain reserved.
  */
@@ -66,7 +66,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   // change (no infinite loop on the empty path: EMPTY_PANELS constant).
   // Files is the first entry (order=0); we slice it off and render it at the
   // very top of the bar, then Schedule, then the rest of the panels
-  // (Wiki/Clips/Analyze when enabled, plus any plugin panels).
+  // (Wiki/Clips/Analyze when enabled, plus any extension panels).
   const visiblePanels = useVisiblePanels();
   const [filesPanel, ...restPanels] = visiblePanels;
 

@@ -653,7 +653,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: ChatInputPr
   ) : null;
 
   // `/`-slash overlay: lists skills (Zap icon) then commands (Command icon).
-  // Source tag (user/project/plugin) mirrors config-layering terminology.
+  // Source tag (user/project/extension) mirrors config-layering terminology.
   // When the picked command has an `argument-hint`, the overlay switches to
   // the argPrompt mini-input (below) instead of inserting immediately.
   const sourceTag = (s: SkillEntry['source']): string => t(`ai:slash.source${s[0].toUpperCase()}${s.slice(1)}`);

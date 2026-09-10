@@ -7,7 +7,7 @@ import { ImagePasteDialog, type ImageSaveConfig } from '../editor/ImagePasteDial
 import { type SlashMenuState } from '@/editor/extensions/SlashCommandExtension';
 import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
-import type { ContainerPlugin } from '@folyn/container-plugins';
+import type { ContainerExtension } from '@folyn/container-extensions';
 import type { FileTab } from '@/store/editorStore';
 import { DiffReviewBar } from './DiffReviewBar';
 import { DbmlStyleStatusButton } from '../file-types/dbml/DbmlStyleStatusButton';
@@ -125,7 +125,7 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
       }
     }, [getView]);
 
-    const handleSlashSelect = useCallback((plugin: ContainerPlugin) => {
+    const handleSlashSelect = useCallback((extension: ContainerExtension) => {
       const view = getView();
       if (!view) return;
 
@@ -135,13 +135,13 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
 
       // ponytail: if template contains an empty "" (e.g. file-preview's src=""),
       // drop the cursor between the quotes so the user can type the path immediately.
-      // Ceiling: no other plugin template uses empty quotes today; if one starts,
+      // Ceiling: no other extension template uses empty quotes today; if one starts,
       // the heuristic would jump to the first "" — revisit if/when it bites.
-      const emptyQuoteIdx = plugin.template.indexOf('""');
+      const emptyQuoteIdx = extension.template.indexOf('""');
 
       dismissedSlashPosRef.current = null;
       view.dispatch({
-        changes: { from: slashStart, to: menuState.pos, insert: plugin.template },
+        changes: { from: slashStart, to: menuState.pos, insert: extension.template },
         selection: emptyQuoteIdx >= 0
           ? { anchor: slashStart + emptyQuoteIdx + 1 }
           : undefined,

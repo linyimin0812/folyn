@@ -2,9 +2,9 @@
  * Feature panel state (the data-driven sidebar/activity-bar registry).
  *
  * Each entry (`PanelEntry`) is a sidebar panel — one of the 5 built-ins
- * (files/wiki/clips/analyze/calendar, registered in PR2) or a plugin panel
+ * (files/wiki/clips/analyze/calendar, registered in PR2) or a extension panel
  * registered via `featureAdapter.ts`. The store is reactive so `ActivityBar`
- * and `Sidebar` re-render when plugins activate/deactivate at runtime.
+ * and `Sidebar` re-render when extensions activate/deactivate at runtime.
  *
  * Built-in ids reserved: `files`, `wiki`, `clips`, `analyze`, `calendar`.
  * Registering an existing id is refused with a console.warn (collision guard).
@@ -132,5 +132,5 @@ export function useActivePanelId(): string | null {
 // subscription set up in `registerBuiltinPanels.tsx`; `setActive` stays a pure
 // setter (no editorStore coupling) so this store and its PR1 tests stay
 // leaf-testable. Startup validation: if editorStore.activePanel isn't a
-// registered+visible panel (e.g. an uninstalled plugin's panel id),
+// registered+visible panel (e.g. an uninstalled extension's panel id),
 // `registerBuiltinPanels` re-routes to 'files'.

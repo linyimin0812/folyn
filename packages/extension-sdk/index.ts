@@ -1,10 +1,10 @@
 export type { Disposable } from './src/Disposable';
 export { disposable } from './src/Disposable';
-export { validateManifest, definePlugin } from './src/definePlugin';
+export { validateManifest, defineExtension } from './src/defineExtension';
 export type {
-  PluginManifest,
-  PluginPermissions,
-  PluginTier,
+  ExtensionManifest,
+  ExtensionPermissions,
+  ExtensionTier,
   ContributionPoints,
   CommandContribution,
   FileTypeContribution,
@@ -19,20 +19,20 @@ export type {
   EditorLanguageContribution,
   HighlightGrammarContribution,
   ActivationEvents,
-  PluginAiCapability,
-  PluginAiChatParams,
-  PluginAiAgentParams,
-  PluginAiEditFileParams,
-  PluginAiCreateFileParams,
-  PluginAiStreamEvent,
-  PluginAiEventType,
-  PluginAiEventHandler,
-  PluginEnv,
-  PluginTheme,
-  PluginLocale,
-  PluginHttpCapability,
-  PluginHttpInit,
-  PluginHttpResponse,
+  ExtensionAiCapability,
+  ExtensionAiChatParams,
+  ExtensionAiAgentParams,
+  ExtensionAiEditFileParams,
+  ExtensionAiCreateFileParams,
+  ExtensionAiStreamEvent,
+  ExtensionAiEventType,
+  ExtensionAiEventHandler,
+  ExtensionEnv,
+  ExtensionTheme,
+  ExtensionLocale,
+  ExtensionHttpCapability,
+  ExtensionHttpInit,
+  ExtensionHttpResponse,
 } from './src/types';
 export { DisposableStore, combineSignals } from './src/runtime';
 export type { Registry } from './src/registry';
@@ -40,7 +40,6 @@ export { OwnedRegistry, FOLYN_CORE_OWNER } from './src/registry';
 export type {
   Extension,
   ExtensionLoader,
-  ExtensionManifest,
   ExtensionContext,
   ExtensionUIContext,
   ToolExtensionUIContext,
@@ -104,8 +103,8 @@ export type {
   IconRef,
   ContainerProps,
   ContainerCategory,
-  ContainerPlugin,
-  PluginModule,
+  ContainerExtension,
+  ExtensionModule,
   ExporterContext,
   ExporterHandler,
   ExportEnhancerHandler,

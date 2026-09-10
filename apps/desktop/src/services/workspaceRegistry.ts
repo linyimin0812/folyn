@@ -15,7 +15,7 @@ import type { Disposable, WorkspaceApi, WorkspaceContribution } from 'folyn-exte
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
 import type { ComponentType } from 'react';
-import { renderIcon } from '@/services/plugin-host/featureAdapter';
+import { renderIcon } from '@/services/extension-host/featureAdapter';
 
 /** A Workspace contribution whose `view` has been resolved to a component. */
 export interface ResolvedWorkspaceContribution extends Omit<WorkspaceContribution, 'view'> {

@@ -25,7 +25,7 @@ import {
 } from '@codemirror/language';
 import { folynHighlighting } from './highlightStyle';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
-import { listEditorLanguages } from '@/services/plugin-host/editorLanguageAdapter';
+import { listEditorLanguages } from '@/services/extension-host/editorLanguageAdapter';
 import { extractImgSrcFromHtml } from '@/services/clipboardFiles';
 import { detectMarkdownTable, markdownTableToMarkdown, detectTsvTable, tsvTableToMarkdown, detectCsvTable, csvTableToMarkdown } from '@/components/file-types/rich-text/markdownTable';
 import { TableConvertDialog, type TableConvertChoice } from '@/components/editor/TableConvertDialog';
@@ -33,8 +33,8 @@ import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 registerBuiltinCodeContributions();
 
 // ponytail: build markdown codeLanguages at module load. Reads the editorLanguageRegistry
-// (mermaid builtin + any plugin-registered languages loaded before this module) and falls
-// back to @codemirror/language-data. Open editors do NOT live-migrate on later plugin load —
+// (mermaid builtin + any extension-registered languages loaded before this module) and falls
+// back to @codemirror/language-data. Open editors do NOT live-migrate on later extension load —
 // MVP; affects newly-opened editors only.
 function buildCodeLanguages(): LanguageDescription[] {
   const registryDescs = listEditorLanguages().map((entry) =>
@@ -384,7 +384,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '[', '{', "'", '"', '$'] } }]),
         closeBrackets(),
         // closeOnBlur: false — the src dropdown hosts its own search input;
-        // focusing it must not dismiss the dropdown. The search-box plugin
+        // focusing it must not dismiss the dropdown. The search-box extension
         // closes the completion when focus leaves the editor entirely.
         // interactionDelay: 0 — the default 75ms swallows accept/arrow keys
         // right after the popup opens; a swallowed Enter falls through to the
@@ -615,7 +615,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           }
         } else {
           // ponytail: codeLanguages merges listEditorLanguages() (plantuml/graphviz builtin
-          // + plugin-contributed) with @codemirror/language-data fallback, so .puml/.gv
+          // + extension-contributed) with @codemirror/language-data fallback, so .puml/.gv
           // files match their registered StreamLanguage instead of falling through to plain-text.
           // Lowercase to match file-type detection (detectFileType) and the
           // lowercase extensions registered in the language registry — Foo.PUML

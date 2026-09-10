@@ -69,8 +69,8 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
       'toggle-theme',
       'open-ai-settings',
       'run-command',
-      'open-plugins-settings',
-      'open-plugin-tool',
+      'open-extensions-settings',
+      'open-extension-tool',
     ]);
   });
 
@@ -89,8 +89,8 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
       'toggle-theme',
       'open-ai-settings',
       'run-command',
-      'open-plugins-settings',
-      'open-plugin-tool',
+      'open-extensions-settings',
+      'open-extension-tool',
     ]);
   });
 

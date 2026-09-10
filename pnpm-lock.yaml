@@ -101,12 +101,12 @@ importers:
       '@folyn/cli-adapter':
         specifier: workspace:*
         version: link:../../packages/cli-adapter
-      '@folyn/container-plugins':
+      '@folyn/container-extensions':
         specifier: workspace:*
-        version: link:../../packages/container-plugins
-      '@folyn/plugin-host':
+        version: link:../../packages/container-extensions
+      '@folyn/extension-host':
         specifier: workspace:*
-        version: link:../../packages/plugin-host
+        version: link:../../packages/extension-host
       '@folyn/vault-provider':
         specifier: workspace:*
         version: link:../../packages/vault-provider
@@ -200,9 +200,9 @@ importers:
       fast-xml-parser:
         specifier: ^5.0.0
         version: 5.9.3
-      folyn-plugin-sdk:
+      folyn-extension-sdk:
         specifier: workspace:*
-        version: link:../../packages/plugin-sdk
+        version: link:../../packages/extension-sdk
       grapesjs:
         specifier: ^0.21.13
         version: 0.21.13
@@ -421,9 +421,9 @@ importers:
       esbuild:
         specifier: ^0.23.0
         version: 0.23.1
-      folyn-plugin-sdk:
+      folyn-extension-sdk:
         specifier: workspace:*
-        version: link:../../packages/plugin-sdk
+        version: link:../../packages/extension-sdk
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -452,11 +452,11 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
 
-  packages/container-plugins:
+  packages/container-extensions:
     dependencies:
-      folyn-plugin-sdk:
+      folyn-extension-sdk:
         specifier: workspace:*
-        version: link:../plugin-sdk
+        version: link:../extension-sdk
     devDependencies:
       '@codemirror/language':
         specifier: ^6.10.0
@@ -474,7 +474,7 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
-  packages/create-folyn-plugin:
+  packages/create-folyn-extension:
     devDependencies:
       '@types/node':
         specifier: ^20.14.0
@@ -483,17 +483,17 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
-  packages/plugin-host:
+  packages/extension-host:
     dependencies:
-      folyn-plugin-sdk:
+      folyn-extension-sdk:
         specifier: workspace:*
-        version: link:../plugin-sdk
+        version: link:../extension-sdk
     devDependencies:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
 
-  packages/plugin-sdk:
+  packages/extension-sdk:
     devDependencies:
       '@types/react':
         specifier: ^18.3.12

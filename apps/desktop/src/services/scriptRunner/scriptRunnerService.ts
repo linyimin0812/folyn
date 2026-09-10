@@ -40,7 +40,7 @@ export interface RuntimeConfig {
   /** Args to print version, appended to binaryPath. */
   versionArgs: string[];
   /** stdout/stderr decoding for the spawned process, e.g. 'gbk'. Omitted/
-   *  undefined = the shell plugin's UTF-8 default. Set per-runtime because
+   *  undefined = the shell extension's UTF-8 default. Set per-runtime because
    *  each runtime emits a different console codepage on Windows: PowerShell
    *  writes the OEM/ANSI codepage (GBK on Chinese Windows), while node writes
    *  UTF-8 — so only the shell runtime opts into GBK. */
@@ -187,7 +187,7 @@ export async function runScript(
   const cmd = Command.create(sidecar, args, config.encoding ? { encoding: config.encoding } : undefined);
   let stdoutBuf = '';
   let stderrBuf = '';
-  // ponytail: the shell plugin already includes the trailing newline in each
+  // ponytail: the shell extension already includes the trailing newline in each
   //  `data` payload (tauri::utils::io::read_line keeps the \n/\r byte), so
   //  appending `+ '\n'` here doubles it — every row gained a blank line
   //  (dir's contiguous rows became row / blank / row / blank). On Windows
@@ -226,7 +226,7 @@ export function formatResultBlock(
 ): string {
   const lines: string[] = ['<!-- Result -->'];
   const pushChunk = (text: string) => {
-    // ponytail: normalize CRLF/CR to LF — the shell plugin emits Windows
+    // ponytail: normalize CRLF/CR to LF — the shell extension emits Windows
     //  \r\n split across two payloads (row\r then \n), so the buffer carries
     //  raw \r bytes that would otherwise trail each `> ` line as a stray CR.
     const trimmed = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');

@@ -12,15 +12,15 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@folyn/extension-host';
-import { registerPluginKeybindings } from './keybindingAdapter';
+import type { ExtensionManifest } from '@folyn/extension-host';
+import { registerExtensionKeybindings } from './keybindingAdapter';
 
 const runCommandMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/services/commandRegistry', () => ({
   runCommand: (id: string) => runCommandMock(id),
 }));
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'kb-test',
     name: 'Keybinding Test',
@@ -29,7 +29,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
     main: 'index.js',
     contributes: {
       keybindings: [
-        { command: 'plugin.kb-test.ping', key: 'Control+Alt+Shift+T', mac: 'Cmd+Alt+Shift+T' },
+        { command: 'extension.kb-test.ping', key: 'Control+Alt+Shift+T', mac: 'Cmd+Alt+Shift+T' },
       ],
     },
     ...overrides,
@@ -50,15 +50,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginKeybindings', () => {
+describe('registerExtensionKeybindings', () => {
   it('runs the bound command when a matching keydown fires', () => {
     // Force the non-darwin branch: key = Control+Alt+Shift+T.
     const originalPlatform = navigator.platform;
     Object.defineProperty(navigator, 'platform', { value: 'Linux', configurable: true });
-    const d = registerPluginKeybindings(manifest());
+    const d = registerExtensionKeybindings(manifest());
     dispatchKey({ key: 'T', ctrlKey: true, altKey: true, shiftKey: true });
     expect(runCommandMock).toHaveBeenCalledTimes(1);
-    expect(runCommandMock).toHaveBeenCalledWith('plugin.kb-test.ping');
+    expect(runCommandMock).toHaveBeenCalledWith('extension.kb-test.ping');
     d.dispose();
     Object.defineProperty(navigator, 'platform', { value: originalPlatform, configurable: true });
   });
@@ -66,7 +66,7 @@ describe('registerPluginKeybindings', () => {
   it('does not run the command when modifiers do not match', () => {
     const originalPlatform = navigator.platform;
     Object.defineProperty(navigator, 'platform', { value: 'Linux', configurable: true });
-    const d = registerPluginKeybindings(manifest());
+    const d = registerExtensionKeybindings(manifest());
     // Missing alt + shift, wrong key.
     dispatchKey({ key: 't', ctrlKey: true });
     expect(runCommandMock).not.toHaveBeenCalled();
@@ -77,10 +77,10 @@ describe('registerPluginKeybindings', () => {
   it('uses the mac accelerator on darwin', () => {
     const originalPlatform = navigator.platform;
     Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
-    const d = registerPluginKeybindings(manifest());
+    const d = registerExtensionKeybindings(manifest());
     // Cmd (metaKey) + Alt + Shift + T
     dispatchKey({ key: 'T', metaKey: true, altKey: true, shiftKey: true });
-    expect(runCommandMock).toHaveBeenCalledWith('plugin.kb-test.ping');
+    expect(runCommandMock).toHaveBeenCalledWith('extension.kb-test.ping');
     // The Control-based accelerator must NOT fire on darwin.
     runCommandMock.mockClear();
     dispatchKey({ key: 'T', ctrlKey: true, altKey: true, shiftKey: true });
@@ -92,7 +92,7 @@ describe('registerPluginKeybindings', () => {
   it('dispose removes the listener (no further runs)', () => {
     const originalPlatform = navigator.platform;
     Object.defineProperty(navigator, 'platform', { value: 'Linux', configurable: true });
-    const d = registerPluginKeybindings(manifest());
+    const d = registerExtensionKeybindings(manifest());
     d.dispose();
     dispatchKey({ key: 'T', ctrlKey: true, altKey: true, shiftKey: true });
     expect(runCommandMock).not.toHaveBeenCalled();
@@ -101,7 +101,7 @@ describe('registerPluginKeybindings', () => {
 
   it('returns no-op disposable when no keybindings declared', () => {
     expect(() =>
-      registerPluginKeybindings(manifest({ contributes: {} })).dispose(),
+      registerExtensionKeybindings(manifest({ contributes: {} })).dispose(),
     ).not.toThrow();
   });
 });

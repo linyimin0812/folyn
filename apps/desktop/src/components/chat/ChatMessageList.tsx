@@ -105,8 +105,8 @@ function DefaultEmptyHint() {
   );
 }
 
-/** Copy text to the clipboard via the Tauri clipboard-manager plugin. The
- *  dynamic import keeps the plugin out of the main-window bundle; the
+/** Copy text to the clipboard via the Tauri clipboard-manager extension. The
+ *  dynamic import keeps the extension out of the main-window bundle; the
  *  `isTauri()` guard makes it a no-op in non-Tauri (web/dev) contexts.
  *  Returns true on success so the caller can toggle "已复制" feedback. */
 async function copyToClipboard(text: string): Promise<boolean> {

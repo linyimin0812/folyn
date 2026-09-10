@@ -12,12 +12,12 @@
  * returns a merged Disposable that unregisters all keys on deactivate.
  */
 
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type { EditorLanguageContribution, EditorLanguageFactory } from '@folyn/extension-host';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 
 interface RegisteredLanguage {
-  pluginId: string;
+  extensionId: string;
   canonical: string;
   factory: EditorLanguageFactory;
   /** File extensions (no leading dot) that should open with this language. */
@@ -28,22 +28,22 @@ const languages = new Map<string, RegisteredLanguage>();
 
 /** Register a language factory for an id (and optional aliases). First-registered-wins. */
 export function registerEditorLanguage(
-  pluginId: string,
+  extensionId: string,
   id: string,
   canonical: string,
   factory: EditorLanguageFactory,
   extensions: string[] = [],
 ): { dispose: () => void } {
   if (!languages.has(id)) {
-    languages.set(id, { pluginId, canonical, factory, extensions });
+    languages.set(id, { extensionId, canonical, factory, extensions });
   }
-  return { dispose: () => unregisterEditorLanguage(id, pluginId) };
+  return { dispose: () => unregisterEditorLanguage(id, extensionId) };
 }
 
-/** Remove a language (only if it still belongs to this plugin). */
-export function unregisterEditorLanguage(id: string, pluginId: string): void {
+/** Remove a language (only if it still belongs to this extension). */
+export function unregisterEditorLanguage(id: string, extensionId: string): void {
   const existing = languages.get(id);
-  if (existing?.pluginId === pluginId) languages.delete(id);
+  if (existing?.extensionId === extensionId) languages.delete(id);
 }
 
 /** Look up a language factory by id or alias. */
@@ -57,7 +57,7 @@ export function getEditorLanguage(
 /**
  * Enumerate distinct registered languages (deduped by canonical id, with the
  * alias keys that point at each). `EditorView.tsx` builds its markdown
- * `codeLanguages` lookup from this so plugin-contributed languages (e.g.
+ * `codeLanguages` lookup from this so extension-contributed languages (e.g.
  * plantuml) get CodeMirror highlighting — not just the hardcoded mermaid
  * builtin. Each entry's `aliases` excludes the canonical itself; `extensions`
  * are the union across all keys so standalone files (`.puml`, `.dot`, ...)
@@ -96,9 +96,9 @@ export function clearEditorLanguages(): void {
   languages.clear();
 }
 
-export function registerPluginEditorLanguages(
-  manifest: PluginManifest,
-  module: PluginModule,
+export function registerExtensionEditorLanguages(
+  manifest: ExtensionManifest,
+  module: ExtensionModule,
 ): Disposable {
   const contributions: EditorLanguageContribution[] = manifest.contributes?.editorLanguages ?? [];
   if (contributions.length === 0) return { dispose: () => {} };
@@ -108,7 +108,7 @@ export function registerPluginEditorLanguages(
     const factory = module.editorLanguages?.[c.entry];
     if (typeof factory !== 'function') {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" editor-language "${c.id}" has no factory for entry-ref "${c.entry}" — skipped`,
+        `[extension-host] extension "${manifest.id}" editor-language "${c.id}" has no factory for entry-ref "${c.entry}" — skipped`,
       );
       continue;
     }

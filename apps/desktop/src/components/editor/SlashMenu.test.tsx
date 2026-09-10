@@ -7,16 +7,16 @@
  * `contributionAdapters.test.ts` (host-side resolve at activate); here we
  * assert the registry's resolved string renders as the right element.
  *
- * Also covers menu-level behavior: plugins hidden from the `/` menu
- * (`ai-result`, `plugin-error-demo`) are not rendered, and the active item
+ * Also covers menu-level behavior: extensions hidden from the `/` menu
+ * (`ai-result`, `extension-error-demo`) are not rendered, and the active item
  * resets to the first entry every time the menu reopens (no stale selection).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { SlashMenu } from './SlashMenu';
-import { ContainerRegistry } from '@folyn/container-plugins';
-import type { ContainerPlugin } from '@folyn/container-plugins';
+import { ContainerRegistry } from '@folyn/container-extensions';
+import type { ContainerExtension } from '@folyn/container-extensions';
 
 // jsdom doesn't implement Element.scrollIntoView; SlashMenu's active-item
 // scroll effect calls it. Ponyfill on the prototype for the duration of these
@@ -25,7 +25,7 @@ if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = vi.fn();
 }
 
-function makePlugin(overrides: Partial<ContainerPlugin> = {}): ContainerPlugin {
+function makeExtension(overrides: Partial<ContainerExtension> = {}): ContainerExtension {
   return {
     name: 'test-block',
     icon: '📦',
@@ -51,7 +51,7 @@ afterEach(() => {
 describe('SlashMenu container icon dispatcher', () => {
   it('renders an inline-SVG icon via IconFromSvg (not as literal text)', () => {
     const svg = '<svg width="16" height="16"><rect/></svg>';
-    ContainerRegistry.getInstance().register(makePlugin({ icon: svg }));
+    ContainerRegistry.getInstance().register(makeExtension({ icon: svg }));
     const { container } = render(
       <SlashMenu
         visible={true}
@@ -70,7 +70,7 @@ describe('SlashMenu container icon dispatcher', () => {
   });
 
   it('renders an emoji icon as plain text (no IconFromSvg span)', () => {
-    ContainerRegistry.getInstance().register(makePlugin({ icon: '💡' }));
+    ContainerRegistry.getInstance().register(makeExtension({ icon: '💡' }));
     const { container } = render(
       <SlashMenu
         visible={true}
@@ -87,7 +87,7 @@ describe('SlashMenu container icon dispatcher', () => {
   });
 
   it('renders an empty icon as an empty text span (fallback path, no crash)', () => {
-    ContainerRegistry.getInstance().register(makePlugin({ icon: '' }));
+    ContainerRegistry.getInstance().register(makeExtension({ icon: '' }));
     const { container } = render(
       <SlashMenu
         visible={true}
@@ -103,12 +103,12 @@ describe('SlashMenu container icon dispatcher', () => {
   });
 });
 
-describe('SlashMenu hidden plugins', () => {
-  it('excludes ai-result and plugin-error-demo from the rendered menu', () => {
+describe('SlashMenu hidden extensions', () => {
+  it('excludes ai-result and extension-error-demo from the rendered menu', () => {
     const cr = ContainerRegistry.getInstance();
-    cr.register(makePlugin({ name: 'ai-result', label: 'AI 结果', category: 'ai' }));
-    cr.register(makePlugin({ name: 'plugin-error-demo', label: '错误隔离自检', category: 'data' }));
-    cr.register(makePlugin({ name: 'callout', label: '提示框', category: 'layout' }));
+    cr.register(makeExtension({ name: 'ai-result', label: 'AI 结果', category: 'ai' }));
+    cr.register(makeExtension({ name: 'extension-error-demo', label: '错误隔离自检', category: 'data' }));
+    cr.register(makeExtension({ name: 'callout', label: '提示框', category: 'layout' }));
 
     const { container } = render(
       <SlashMenu
@@ -131,9 +131,9 @@ describe('SlashMenu hidden plugins', () => {
 describe('SlashMenu selection reset', () => {
   it('resets to the first item when the menu reopens with the same filter', () => {
     const cr = ContainerRegistry.getInstance();
-    cr.register(makePlugin({ name: 'one', label: 'One' }));
-    cr.register(makePlugin({ name: 'two', label: 'Two' }));
-    cr.register(makePlugin({ name: 'three', label: 'Three' }));
+    cr.register(makeExtension({ name: 'one', label: 'One' }));
+    cr.register(makeExtension({ name: 'two', label: 'Two' }));
+    cr.register(makeExtension({ name: 'three', label: 'Three' }));
 
     const props = {
       visible: true,
@@ -162,7 +162,7 @@ describe('SlashMenu selection reset', () => {
 describe('SlashMenu IME composition', () => {
   it('ignores Enter while an IME composition is active (no selection)', () => {
     const cr = ContainerRegistry.getInstance();
-    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    cr.register(makeExtension({ name: 'callout', label: '提示框' }));
     const onSelect = vi.fn();
     render(
       <SlashMenu
@@ -185,7 +185,7 @@ describe('SlashMenu IME composition', () => {
 
   it('ignores keys during a document-level composition even if the event flag is missing', () => {
     const cr = ContainerRegistry.getInstance();
-    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    cr.register(makeExtension({ name: 'callout', label: '提示框' }));
     const onSelect = vi.fn();
     render(
       <SlashMenu
@@ -209,7 +209,7 @@ describe('SlashMenu IME composition', () => {
 
   it('selects the active item with Enter when not composing', () => {
     const cr = ContainerRegistry.getInstance();
-    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    cr.register(makeExtension({ name: 'callout', label: '提示框' }));
     const onSelect = vi.fn();
     render(
       <SlashMenu
@@ -230,7 +230,7 @@ describe('SlashMenu IME composition', () => {
 
   it('selects with Enter once the composition has ended (WKWebView confirming keydown)', () => {
     const cr = ContainerRegistry.getInstance();
-    cr.register(makePlugin({ name: 'callout', label: '提示框' }));
+    cr.register(makeExtension({ name: 'callout', label: '提示框' }));
     const onSelect = vi.fn();
     render(
       <SlashMenu

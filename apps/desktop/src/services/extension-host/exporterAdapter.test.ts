@@ -11,9 +11,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@folyn/extension-host';
-import { registerPluginExporters, getPluginExportersForFileType, clearPluginExporters } from './exporterAdapter';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionManifest } from '@folyn/extension-host';
+import { registerExtensionExporters, getExtensionExportersForFileType, clearExtensionExporters } from './exporterAdapter';
+import type { ExtensionModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 
 vi.mock('@/hooks/useExport', () => ({
@@ -31,7 +31,7 @@ vi.mock('@/services/export/shared', () => ({
   downloadBlob: (...args: unknown[]) => downloadBlobMock(...args),
 }));
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'exporter-test',
     name: 'Exporter Test',
@@ -53,7 +53,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-function fakeModule(): PluginModule {
+function fakeModule(): ExtensionModule {
   return {
     exporters: {
       'txt-with-header': async (content, ctx) =>
@@ -64,7 +64,7 @@ function fakeModule(): PluginModule {
 
 beforeEach(() => {
   clearCommands();
-  clearPluginExporters();
+  clearExtensionExporters();
   downloadBlobMock.mockClear();
 });
 
@@ -73,10 +73,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginExporters', () => {
+describe('registerExtensionExporters', () => {
   it('registers an "Export as <label>" command', () => {
-    registerPluginExporters(manifest(), fakeModule());
-    const cmd = getCommand('plugin.exporter-test.export.txt-header');
+    registerExtensionExporters(manifest(), fakeModule());
+    const cmd = getCommand('extension.exporter-test.export.txt-header');
     expect(cmd).toBeDefined();
     expect(cmd!.title).toBe('Export as Text with header');
     expect(cmd!.category).toBe('action');
@@ -86,31 +86,31 @@ describe('registerPluginExporters', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const mod = fakeModule();
     mod.exporters = {}; // no handler for the entry-ref
-    registerPluginExporters(manifest(), mod);
-    expect(getCommand('plugin.exporter-test.export.txt-header')).toBeUndefined();
+    registerExtensionExporters(manifest(), mod);
+    expect(getCommand('extension.exporter-test.export.txt-header')).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
 
   it('returns no-op disposable when no exporters declared', () => {
     expect(() =>
-      registerPluginExporters(manifest({ contributes: {} }), fakeModule()).dispose(),
+      registerExtensionExporters(manifest({ contributes: {} }), fakeModule()).dispose(),
     ).not.toThrow();
   });
 
   it('dispose unregisters the command', () => {
-    const d = registerPluginExporters(manifest(), fakeModule());
-    expect(getCommand('plugin.exporter-test.export.txt-header')).toBeDefined();
+    const d = registerExtensionExporters(manifest(), fakeModule());
+    expect(getCommand('extension.exporter-test.export.txt-header')).toBeDefined();
     d.dispose();
-    expect(getCommand('plugin.exporter-test.export.txt-header')).toBeUndefined();
+    expect(getCommand('extension.exporter-test.export.txt-header')).toBeUndefined();
   });
 
   it('running the command invokes the handler with active doc + ctx and writes via downloadBlob', async () => {
     const handler = vi.fn(async (_content: string, _ctx) => 'BODY');
     const mod = fakeModule();
     mod.exporters = { 'txt-with-header': handler };
-    registerPluginExporters(manifest(), mod);
-    const cmd = getCommand('plugin.exporter-test.export.txt-header')!;
+    registerExtensionExporters(manifest(), mod);
+    const cmd = getCommand('extension.exporter-test.export.txt-header')!;
     await cmd.run();
     expect(handler).toHaveBeenCalledTimes(1);
     const [content, ctx] = handler.mock.calls[0];
@@ -125,16 +125,16 @@ describe('registerPluginExporters', () => {
   });
 
   it('running the command with a string result wraps it in a Blob', async () => {
-    registerPluginExporters(manifest(), fakeModule());
-    const cmd = getCommand('plugin.exporter-test.export.txt-header')!;
+    registerExtensionExporters(manifest(), fakeModule());
+    const cmd = getCommand('extension.exporter-test.export.txt-header')!;
     await cmd.run();
     expect(downloadBlobMock).toHaveBeenCalledTimes(1);
     const [blob] = downloadBlobMock.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
   });
 
-  describe('getPluginExportersForFileType', () => {
-    function manifestWithFileType(fileType: string | undefined): PluginManifest {
+  describe('getExtensionExportersForFileType', () => {
+    function manifestWithFileType(fileType: string | undefined): ExtensionManifest {
       return {
         ...manifest(),
         contributes: {
@@ -155,40 +155,40 @@ describe('registerPluginExporters', () => {
     const svgHandler = async () => new Blob([''], { type: 'image/svg+xml' });
 
     it('returns exporters whose fileType matches the active tab', () => {
-      const d = registerPluginExporters(manifestWithFileType('plantuml'), {
+      const d = registerExtensionExporters(manifestWithFileType('plantuml'), {
         exporters: { svg: svgHandler },
       });
-      const matches = getPluginExportersForFileType('plantuml');
+      const matches = getExtensionExportersForFileType('plantuml');
       expect(matches).toHaveLength(1);
       expect(matches[0].contrib.label).toBe('Export as SVG');
-      expect(matches[0].commandId).toBe('plugin.exporter-test.export.svg');
+      expect(matches[0].commandId).toBe('extension.exporter-test.export.svg');
       d.dispose();
     });
 
     it('excludes exporters whose fileType does not match', () => {
-      const d = registerPluginExporters(manifestWithFileType('plantuml'), {
+      const d = registerExtensionExporters(manifestWithFileType('plantuml'), {
         exporters: { svg: svgHandler },
       });
-      expect(getPluginExportersForFileType('markdown')).toHaveLength(0);
+      expect(getExtensionExportersForFileType('markdown')).toHaveLength(0);
       d.dispose();
     });
 
     it('includes exporters with no fileType for any tab (backward-compat)', () => {
-      const d = registerPluginExporters(manifestWithFileType(undefined), {
+      const d = registerExtensionExporters(manifestWithFileType(undefined), {
         exporters: { svg: svgHandler },
       });
-      expect(getPluginExportersForFileType('plantuml')).toHaveLength(1);
-      expect(getPluginExportersForFileType('markdown')).toHaveLength(1);
+      expect(getExtensionExportersForFileType('plantuml')).toHaveLength(1);
+      expect(getExtensionExportersForFileType('markdown')).toHaveLength(1);
       d.dispose();
     });
 
     it('removes entries on dispose', () => {
-      const d = registerPluginExporters(manifestWithFileType('plantuml'), {
+      const d = registerExtensionExporters(manifestWithFileType('plantuml'), {
         exporters: { svg: svgHandler },
       });
-      expect(getPluginExportersForFileType('plantuml')).toHaveLength(1);
+      expect(getExtensionExportersForFileType('plantuml')).toHaveLength(1);
       d.dispose();
-      expect(getPluginExportersForFileType('plantuml')).toHaveLength(0);
+      expect(getExtensionExportersForFileType('plantuml')).toHaveLength(0);
     });
   });
 });

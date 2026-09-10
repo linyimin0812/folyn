@@ -7,7 +7,7 @@
  * mirrors `editorStore.activePanel`), and the registered `PanelEntry.
  * component` is rendered inside {@link PanelErrorBoundary}. Built-in panels
  * (files/wiki/clips/analyze/calendar) are registered by
- * `registerBuiltinPanels`; plugin panels arrive via `featureAdapter` (PR3).
+ * `registerBuiltinPanels`; extension panels arrive via `featureAdapter` (PR3).
  *
  * Shell-owned state stays here: sidebar width, collapse, resize-in-progress.
  * Panel-owned state (e.g. the files tree's search/expanded dirs) lives in each
@@ -69,7 +69,7 @@ export function Sidebar({ collapsed, onCollapsedChange, onFileSelect }: SidebarP
               <ActiveComponent />
             </PanelErrorBoundary>
           ) : (
-            // Fallback: no panel registered for the active id (e.g. a plugin
+            // Fallback: no panel registered for the active id (e.g. a extension
             // panel still loading). Render nothing rather than crash; the
             // store's fallback logic will re-route to 'files' shortly.
             <div className="flex-1" />

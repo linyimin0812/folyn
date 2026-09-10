@@ -67,7 +67,7 @@ describe('tauriBrowserShim', () => {
     // enough to assert the prototype is patched on install and restored on
     // cleanup. The image-routing branch is exercised manually in a running
     // Tauri session — full end-to-end coverage needs WKWebView + the Tauri
-    // clipboard plugin, which vitest can't simulate.
+    // clipboard extension, which vitest can't simulate.
     class FakeClipboard {}
     const fakeProto = FakeClipboard.prototype as unknown as Clipboard['prototype'];
     const origWrite = vi.fn(async () => undefined);

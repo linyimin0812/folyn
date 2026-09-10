@@ -83,7 +83,7 @@ async function reparseAndSetDecorations(view: EditorView): Promise<void> {
   view.dispatch({ effects: setErrorDecorations.of(deco) });
 }
 
-const reparsePlugin = ViewPlugin.fromClass(
+const reparseExtension = ViewPlugin.fromClass(
   class {
     timer: number | null = null;
 
@@ -117,5 +117,5 @@ const reparsePlugin = ViewPlugin.fromClass(
 
 export const errorInlineWidgetExtension: Extension = [
   errorDecorationsField,
-  reparsePlugin,
+  reparseExtension,
 ];

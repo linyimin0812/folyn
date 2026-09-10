@@ -1,19 +1,19 @@
 /**
  * Register built-in markdown code renderers + editor languages.
  *
- * Parallel to `registerBuiltinPlugins` (container directives): the mermaid
+ * Parallel to `registerBuiltinExtensions` (container directives): the mermaid
  * renderer and mermaid CodeMirror StreamLanguage used to be hardcoded in
  * `MarkdownPreview.tsx` + `apps/desktop/src/editor/extensions/mermaidLanguage.ts`.
- * They now register through the same contribution registries plugins use, so
+ * They now register through the same contribution registries extensions use, so
  * the dispatch path is uniform. First-registered-wins makes repeat calls safe.
  */
 
 import { createElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock, GraphvizBlock, plantumlLanguageFactory, dotLanguageFactory } from '@folyn/container-plugins';
+import { MermaidBlock, mermaidLanguageFactory, PlantUmlBlock, GraphvizBlock, plantumlLanguageFactory, dotLanguageFactory } from '@folyn/container-extensions';
 import type { MarkdownCodeRendererProps } from '@folyn/extension-host';
-import { registerMarkdownCodeRenderer } from './plugin-host/markdownCodeRendererAdapter';
-import { registerEditorLanguage } from './plugin-host/editorLanguageAdapter';
+import { registerMarkdownCodeRenderer } from './extension-host/markdownCodeRendererAdapter';
+import { registerEditorLanguage } from './extension-host/editorLanguageAdapter';
 import { MarkmapBlock } from '@/components/file-types/markmap/MarkmapBlock';
 
 /** Adapt MermaidBlock (children-based) to the renderer-props (source-based) shape. */
@@ -43,14 +43,14 @@ let registered = false;
 export function registerBuiltinCodeContributions(): void {
   if (registered) return;
   registered = true;
-  // ponytail: builtins register before plugins; first-registered-wins keeps the
-  // builtin mermaid renderer authoritative even if a plugin also declares it.
+  // ponytail: builtins register before extensions; first-registered-wins keeps the
+  // builtin mermaid renderer authoritative even if a extension also declares it.
   registerMarkdownCodeRenderer('builtin', 'mermaid', 'mermaid', MermaidCodeRenderer);
   registerMarkdownCodeRenderer('builtin', 'mmd', 'mermaid', MermaidCodeRenderer);
   registerEditorLanguage('builtin', 'mermaid', 'mermaid', mermaidLanguageFactory, ['mmd', 'mermaid']);
   registerEditorLanguage('builtin', 'mmd', 'mermaid', mermaidLanguageFactory, ['mmd', 'mermaid']);
   // PlantUML: rendered via plantuml.com. StreamLanguage defined in
-  // container-plugins/src/editor-languages/plantuml.ts (covers common
+  // container-extensions/src/editor-languages/plantuml.ts (covers common
   // diagram keywords, ' line comments, /' block comments, strings).
   registerMarkdownCodeRenderer('builtin', 'plantuml', 'plantuml', PlantUmlCodeRenderer);
   registerMarkdownCodeRenderer('builtin', 'puml', 'plantuml', PlantUmlCodeRenderer);
@@ -59,7 +59,7 @@ export function registerBuiltinCodeContributions(): void {
   registerEditorLanguage('builtin', 'puml', 'plantuml', plantumlLanguageFactory, ['puml', 'pu', 'plantuml']);
   registerEditorLanguage('builtin', 'pu', 'plantuml', plantumlLanguageFactory, ['puml', 'pu', 'plantuml']);
   // Graphviz: rendered via quickchart.io. StreamLanguage defined in
-  // container-plugins/src/editor-languages/dot.ts (covers digraph/graph/
+  // container-extensions/src/editor-languages/dot.ts (covers digraph/graph/
   // subgraph, attributes, // and # line comments, /* block comments,
   // " strings, <html labels>).
   registerMarkdownCodeRenderer('builtin', 'graphviz', 'graphviz', GraphvizCodeRenderer);

@@ -9,7 +9,7 @@
  * Guarantees:
  *  - AbortSignal: each activation gets its own; deactivate aborts it.
  *  - Transactional activation: a failed activate rolls back all staged
- *    disposables so a half-wired plugin is fully inert (doc §42.1, §59).
+ *    disposables so a half-wired extension is fully inert (doc §42.1, §59).
  *  - State machine: discovered → validated → loading → activating → active →
  *    deactivating → failed (doc §37).
  *  - Error isolation: an activate throw is caught → runtime disposed →
@@ -138,8 +138,8 @@ export class ExtensionHost {
       if (!loader) {
         throw new Error(`No loader registered for tier: ${record.manifest.tier}`);
       }
-      const plugin = await loader.load(record.manifest);
-      record.extension = plugin;
+      const extension = await loader.load(record.manifest);
+      record.extension = extension;
       record.state = 'activating';
 
       const apiHandle = this.hooks.createApi?.(record);

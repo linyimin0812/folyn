@@ -305,7 +305,7 @@ export function splitJsonlLines(prevBuffer: string, chunk: string): { lines: str
   return { lines: parts, buffer };
 }
 
-/** Tauri shell plugin message shape (subset we use). */
+/** Tauri shell extension message shape (subset we use). */
 interface ShellChild {
   write(data: string | number[]): Promise<void>;
   kill(): Promise<void>;
@@ -352,7 +352,7 @@ export class PiAdapter extends BaseCliAdapter {
    *  sources from the research file: `~/.pi/agent/skills/` (rootMd),
    *  `~/.agents/skills/` (SKILL.md dirs only), project `.pi/skills/` (rootMd)
    *  + `.agents/skills/`, and package skills from `settings.json` `skills[]`.
-   *  Precedence: user > project > plugin (first occurrence wins). Skills
+   *  Precedence: user > project > extension (first occurrence wins). Skills
    *  WITHOUT `description` are skipped (Pi refuses to load them). Skills with
    *  `disable-model-invocation: true` ARE included (user-triggerable via
    *  `/skill:name`). Returns [] when not started.
@@ -367,7 +367,7 @@ export class PiAdapter extends BaseCliAdapter {
     sources.push({ path: `${this.config.workingDir}/.pi/skills`, source: 'project', rootMd: true });
     sources.push({ path: `${this.config.workingDir}/.agents/skills`, source: 'project' });
     for (const dir of await this.packageSkillDirs()) {
-      sources.push({ path: dir, source: 'plugin' });
+      sources.push({ path: dir, source: 'extension' });
     }
     return collectSkills(sources);
   }
@@ -375,14 +375,14 @@ export class PiAdapter extends BaseCliAdapter {
   /** List discoverable Pi prompt templates (the slash-command analog).
    *  Templates are NON-recursive: `~/.pi/agent/prompts/*.md` → `/review`;
    *  subfolders must be added explicitly (per docs). Precedence:
-   *  user > project > plugin. */
+   *  user > project > extension. */
   async listCommands(): Promise<CommandEntry[]> {
     if (!this.config) return [];
     const sources: CommandSource[] = [];
     sources.push({ path: await resolveHome('~/.pi/agent/prompts'), source: 'user', flat: true });
     sources.push({ path: `${this.config.workingDir}/.pi/prompts`, source: 'project', flat: true });
     for (const dir of await this.packagePromptDirs()) {
-      sources.push({ path: dir, source: 'plugin', flat: true });
+      sources.push({ path: dir, source: 'extension', flat: true });
     }
     return collectCommands(sources);
   }

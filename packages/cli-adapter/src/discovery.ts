@@ -69,7 +69,7 @@ export async function parseSkillFile(
 export interface SkillSource {
   path: string;
   source: SkillEntry['source'];
-  pluginName?: string;
+  extensionName?: string;
   /** When true, a direct-child `*.md` file (not in a subfolder) is also
    *  discovered as an individual skill — Pi's rule for
    *  `~/.pi/agent/skills/` and `.pi/skills/`. Claude and `~/.agents/skills/`
@@ -95,7 +95,7 @@ export async function collectSkills(sources: SkillSource[]): Promise<SkillEntry[
             entries.push({
               ...parsed,
               source: src.source,
-              pluginName: src.pluginName,
+              extensionName: src.extensionName,
               dir: sf.slice(0, -'/SKILL.md'.length),
             });
           }
@@ -103,7 +103,7 @@ export async function collectSkills(sources: SkillSource[]): Promise<SkillEntry[
       } else if (child.isFile && src.rootMd && child.name.endsWith('.md') && child.name !== 'SKILL.md') {
         const parsed = await parseSkillFile(childPath);
         if (parsed) {
-          entries.push({ ...parsed, source: src.source, pluginName: src.pluginName, dir: src.path });
+          entries.push({ ...parsed, source: src.source, extensionName: src.extensionName, dir: src.path });
         }
       }
     }
@@ -130,13 +130,13 @@ async function findSkillMds(dir: string): Promise<string[]> {
 export interface CommandSource {
   path: string;
   source: CommandEntry['source'];
-  pluginName?: string;
+  extensionName?: string;
   /** When true, command files are read non-recursively (Pi prompt
    *  templates: filename = command name, no subfolder grouping). When
    *  false (Claude), the tree is walked recursively and subfolder →
    *  `group:name`. */
   flat?: boolean;
-  /** When true, parse `.toml` command files (Claude plugin commands) in
+  /** When true, parse `.toml` command files (Claude extension commands) in
    *  addition to `.md`. Ignored when `flat` (Pi has no toml templates). */
   toml?: boolean;
 }
@@ -144,7 +144,7 @@ export interface CommandSource {
 /** Collect slash commands / prompt templates from source dirs (in
  *  precedence order — first occurrence wins). `.md` files use YAML
  *  frontmatter (`description`, `argument-hint`); `.toml` files (Claude
- *  plugins only) use top-level `description`/`prompt` keys. */
+ *  extensions only) use top-level `description`/`prompt` keys. */
 export async function collectCommands(sources: CommandSource[]): Promise<CommandEntry[]> {
   const entries: CommandEntry[] = [];
   for (const src of sources) {
@@ -213,7 +213,7 @@ async function parseMdCommand(
     description,
     source: src.source,
     argumentHint,
-    pluginName: src.pluginName,
+    extensionName: src.extensionName,
     file,
   };
 }
@@ -232,11 +232,11 @@ async function parseTomlCommand(
   const data = parseTomlTopLevel(text);
   const description = (data.description ?? '').trim();
   if (!description) return null;
-  return { name, description, source: src.source, pluginName: src.pluginName, file };
+  return { name, description, source: src.source, extensionName: src.extensionName, file };
 }
 
 /** Deduplicate entries by `name`, keeping the first occurrence (callers pass
- *  sources in precedence order: user > project > plugin). */
+ *  sources in precedence order: user > project > extension). */
 export function dedupeByName<T extends { name: string }>(entries: T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];

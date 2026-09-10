@@ -150,7 +150,7 @@ export function buildOpencodeShellCommand(
     : `exec ${cliCmd}`;
 }
 
-/** Tauri shell plugin child shape (subset we use). */
+/** Tauri shell extension child shape (subset we use). */
 interface ShellChild {
   kill(): Promise<void>;
 }
@@ -172,7 +172,7 @@ interface ShellChild {
  * emits NO terminal `result` event (unlike codex/qoder).
  *
  * listSkills / listCommands inherit `BaseCliAdapter`'s `[]` default —
- * opencode's `plugin`/`agent`/`mcp` subcommands exist but are not wired
+ * opencode's `extension`/`agent`/`mcp` subcommands exist but are not wired
  * here (Out of Scope, see prd.md). */
 export class OpencodeAdapter extends BaseCliAdapter {
   readonly id = 'opencode';

@@ -140,7 +140,7 @@ async function readVaultText(path: string): Promise<string> {
  * wrapped in a <pre><code> source block.
  *
  * Returns { html, css } — css is the markdown-renderer's scoped CSS
- * (container plugins, code highlights); non-markdown types emit ''.
+ * (container extensions, code highlights); non-markdown types emit ''.
  */
 const CANVAS_EXPORT_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
 

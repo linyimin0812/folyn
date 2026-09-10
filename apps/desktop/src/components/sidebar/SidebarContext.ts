@@ -12,7 +12,7 @@
  *
  * Using context (vs. props on the registered component) keeps `PanelEntry.
  * component` typed as a plain `ComponentType` so the store/adapter don't need
- * to know about shell plumbing. Plugin panels (PR3) can opt-in to the same
+ * to know about shell plumbing. Extension panels (PR3) can opt-in to the same
  * context if they need shell-aware behavior.
  */
 

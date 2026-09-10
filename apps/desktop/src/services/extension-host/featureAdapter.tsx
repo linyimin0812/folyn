@@ -1,21 +1,21 @@
 /**
  * Feature contribution adapter (trusted-tier sidebar panels).
  *
- * Wires a trusted plugin's `contributes.features[]` declarations into
+ * Wires a trusted extension's `contributes.features[]` declarations into
  * {@link useFeaturePanelStore}: each feature becomes a `PanelEntry` rendered
  * in the activity bar (icon) + sidebar (component) when active. Mirrors the
  * `toolAdapter.ts` shape: iterate contributions, register, return a Disposable
- * that unregisters on plugin deactivate.
+ * that unregisters on extension deactivate.
  *
  * MVP scope (see prd.md decisions):
- * - **Trusted-tier only** (Decision Q1). Sandbox plugins contribute tool
+ * - **Trusted-tier only** (Decision Q1). Sandbox extensions contribute tool
  *   windows instead; this adapter is wired only into `trustedLoader` (PR3).
  * - **Left panel only** (Decision Q2). `panel: 'right'|'bottom'` is warned +
  *   skipped; right/bottom shell slots are a follow-up task.
  * - **icon required** (Decision Q3/Q4). Missing/empty `icon` is warned + skipped.
  * - **id collision guard**: built-in ids (files/wiki/clips/analyze/calendar)
- *   are reserved; a plugin declaring them is refused. A second plugin (or
- *   the same plugin re-registering) hitting an already-registered id is also
+ *   are reserved; a extension declaring them is refused. A second extension (or
+ *   the same extension re-registering) hitting an already-registered id is also
  *   refused by the store's own guard.
  *
  * Dispose: unregisters the panel; if the panel was active at dispose time,
@@ -24,25 +24,25 @@
  */
 
 import type { ComponentType, ReactNode } from 'react';
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type { FeatureContribution } from '@folyn/extension-host';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 
-/** Reserved built-in ids; plugins may not register these. */
+/** Reserved built-in ids; extensions may not register these. */
 const BUILTIN_IDS = new Set(['files', 'wiki', 'clips', 'analyze', 'calendar']);
 
-/** Starting `order` slot for plugin panels that don't declare `order`. */
+/** Starting `order` slot for extension panels that don't declare `order`. */
 const FIRST_PLUGIN_ORDER = 100;
 
-/** Module-level counter so unordered plugin panels land after built-ins in registration order. */
-let nextPluginOrder = FIRST_PLUGIN_ORDER;
+/** Module-level counter so unordered extension panels land after built-ins in registration order. */
+let nextExtensionOrder = FIRST_PLUGIN_ORDER;
 
 export function renderIcon(icon: string): ReactNode {
-  // ponytail: a raw `<svg>` string is the common case for plugin authors (inline,
+  // ponytail: a raw `<svg>` string is the common case for extension authors (inline,
   // self-contained). A `ThemeIcon` name (e.g. "folder") is the convenience path
   // for built-in host icons. Both return ReactNode; the activity bar renders it.
   if (icon.trim().startsWith('<svg')) {
@@ -51,9 +51,9 @@ export function renderIcon(icon: string): ReactNode {
   return <ThemeIcon name={icon} size={12} />;
 }
 
-export function registerPluginFeatures(
-  manifest: PluginManifest,
-  module: PluginModule,
+export function registerExtensionFeatures(
+  manifest: ExtensionManifest,
+  module: ExtensionModule,
 ): Disposable {
   const features: FeatureContribution[] = manifest.contributes?.features ?? [];
   if (features.length === 0) return { dispose: () => {} };
@@ -65,7 +65,7 @@ export function registerPluginFeatures(
     // Decision Q2: left only. right/bottom warned + skipped.
     if (feature.panel !== 'left') {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" feature "${feature.id}" has panel: "${feature.panel}" — only 'left' is implemented, skipped`,
+        `[extension-host] extension "${manifest.id}" feature "${feature.id}" has panel: "${feature.panel}" — only 'left' is implemented, skipped`,
       );
       continue;
     }
@@ -73,7 +73,7 @@ export function registerPluginFeatures(
     // Collision guard: built-in reserved ids.
     if (BUILTIN_IDS.has(feature.id)) {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" feature "${feature.id}" collides with a reserved built-in id — refused`,
+        `[extension-host] extension "${manifest.id}" feature "${feature.id}" collides with a reserved built-in id — refused`,
       );
       continue;
     }
@@ -81,7 +81,7 @@ export function registerPluginFeatures(
     // Icon required (Q3/Q4).
     if (!feature.icon || !feature.icon.trim()) {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" feature "${feature.id}" has no icon — icon is required, skipped`,
+        `[extension-host] extension "${manifest.id}" feature "${feature.id}" has no icon — icon is required, skipped`,
       );
       continue;
     }
@@ -90,7 +90,7 @@ export function registerPluginFeatures(
     const component: ComponentType | undefined = module.features?.[feature.component];
     if (!component) {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" feature "${feature.id}" has no component for entry-ref "${feature.component}" — skipped`,
+        `[extension-host] extension "${manifest.id}" feature "${feature.id}" has no component for entry-ref "${feature.component}" — skipped`,
       );
       continue;
     }
@@ -98,7 +98,7 @@ export function registerPluginFeatures(
     const order =
       typeof feature.order === 'number'
         ? feature.order
-        : (nextPluginOrder++); // next-after-builtin slot by registration order
+        : (nextExtensionOrder++); // next-after-builtin slot by registration order
 
     store.register({
       id: feature.id,
@@ -125,7 +125,7 @@ export function registerPluginFeatures(
       // featurePanelStore, set up in `registerBuiltinPanels`). When the
       // disposed panel was active, we must ALSO call
       // `useEditorStore.setActivePanel('files')` so editorStore stays in sync
-      // — otherwise editorStore still points at the now-gone plugin panel id,
+      // — otherwise editorStore still points at the now-gone extension panel id,
       // and WorkArea's tab `activity` filter would stay pointed at it. The
       // mirror subscription would eventually re-route the invalid id to
       // 'files' (via its invalid-active fallback), but setting editorStore

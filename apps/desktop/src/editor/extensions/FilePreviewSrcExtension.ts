@@ -12,7 +12,7 @@ import { buildPathCompletion } from './pathCompletion';
 const SRC_ATTR_RE = /:::file-preview\b[^{]*\{[^}]*?src="([^"]*)$/;
 
 /** Locate the `src="..."` partial being typed before `pos`, and its document
- *  offset. Shared by the completion source and the search-box plugin. */
+ *  offset. Shared by the completion source and the search-box extension. */
 function srcPartialAt(state: EditorState, pos: number): { start: number; text: string } | null {
   const windowStart = Math.max(0, pos - 500);
   const before = state.sliceDoc(windowStart, pos);

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ContainerRegistry } from '@folyn/container-plugins';
-import type { ContainerPlugin, ContainerCategory } from '@folyn/container-plugins';
+import { ContainerRegistry } from '@folyn/container-extensions';
+import type { ContainerExtension, ContainerCategory } from '@folyn/container-extensions';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
 
 const CATEGORY_KEYS: Record<ContainerCategory, string> = {
@@ -13,23 +13,23 @@ const CATEGORY_KEYS: Record<ContainerCategory, string> = {
   custom: 'editor:slashMenu.categories.custom',
 };
 
-/** Plugins that still render in the preview pane but should not be offered as
+/** Extensions that still render in the preview pane but should not be offered as
  *  `/`-commands. `ai-result` is inserted through the AI panel's own flow;
- *  `plugin-error-demo` is a dev-only error-boundary self-check. */
-const SLASH_MENU_HIDDEN_PLUGINS = new Set(['ai-result', 'plugin-error-demo']);
+ *  `extension-error-demo` is a dev-only error-boundary self-check. */
+const SLASH_MENU_HIDDEN_PLUGINS = new Set(['ai-result', 'extension-error-demo']);
 
 interface SlashMenuProps {
   visible: boolean;
   filter: string;
   position: { top: number; left: number };
-  onSelect: (plugin: ContainerPlugin) => void;
+  onSelect: (extension: ContainerExtension) => void;
   onClose: () => void;
 }
 
 /**
  * Render a container's resolved `icon` string. Inline `<svg>...</svg>` strings
  * (set directly from the manifest, OR pre-resolved from a `.svg` file path by
- * `registerPluginContainers`) go through `IconFromSvg`; anything else is the
+ * `registerExtensionContainers`) go through `IconFromSvg`; anything else is the
  * emoji/text fallback (preserves the builtin convention).
  *
  * ponytail: inline two-branch dispatcher; not worth a shared file — the
@@ -59,29 +59,29 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
   const flippedRef = useRef(false);
   const registry = ContainerRegistry.getInstance();
 
-  const allPlugins = registry
+  const allExtensions = registry
     .getAll()
     .filter((p) => !SLASH_MENU_HIDDEN_PLUGINS.has(p.name) && p.name !== 'step' && p.name !== 'tab');
   const filtered = filter
-    ? allPlugins.filter(
+    ? allExtensions.filter(
         (p) =>
           p.name.toLowerCase().includes(filter.toLowerCase()) ||
           p.label.includes(filter),
       )
-    : allPlugins;
+    : allExtensions;
 
   // Group by category
-  const grouped = new Map<ContainerCategory, ContainerPlugin[]>();
-  for (const plugin of filtered) {
-    const list = grouped.get(plugin.category) || [];
-    list.push(plugin);
-    grouped.set(plugin.category, list);
+  const grouped = new Map<ContainerCategory, ContainerExtension[]>();
+  for (const extension of filtered) {
+    const list = grouped.get(extension.category) || [];
+    list.push(extension);
+    grouped.set(extension.category, list);
   }
 
   // Build flat list in the same order as the grouped rendering
-  const flatList: ContainerPlugin[] = [];
-  for (const plugins of grouped.values()) {
-    flatList.push(...plugins);
+  const flatList: ContainerExtension[] = [];
+  for (const extensions of grouped.values()) {
+    flatList.push(...extensions);
   }
 
   // Always start on the first item: reset when the menu reopens AND when the
@@ -211,20 +211,20 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
       ref={menuRef}
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
-      {Array.from(grouped.entries()).map(([category, plugins]) => (
+      {Array.from(grouped.entries()).map(([category, extensions]) => (
         <div key={category} className="mb-0.5">
           <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] pt-1.5 pb-1 px-2">{t(CATEGORY_KEYS[category])}</div>
-          {plugins.map((plugin) => {
+          {extensions.map((extension) => {
             const currentIndex = itemIndex++;
             return (
               <div
-                key={plugin.name}
+                key={extension.name}
                 className={`slash-menu-item group flex items-center gap-2.5 py-2 px-2 rounded-lg cursor-pointer transition-[background-color,box-shadow] duration-100 ${
                   currentIndex === activeIndex
                     ? 'active bg-accglow shadow-[inset_0_0_0_1px_var(--accdim)]'
                     : 'hover:bg-hov'
                 }`}
-                onClick={() => onSelect(plugin)}
+                onClick={() => onSelect(extension)}
                 onMouseEnter={() => setActiveIndex(currentIndex)}
               >
                 <span
@@ -232,12 +232,12 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
                     currentIndex === activeIndex ? 'bg-accdim' : ''
                   }`}
                 >
-                  {renderContainerIcon(plugin.icon)}
+                  {renderContainerIcon(extension.icon)}
                 </span>
                 <div className="flex flex-col gap-px min-w-0">
-                  <span className="text-xs font-medium text-t1 truncate">{plugin.label}</span>
-                  {plugin.description && (
-                    <span className="text-[10px] text-t3 truncate">{plugin.description}</span>
+                  <span className="text-xs font-medium text-t1 truncate">{extension.label}</span>
+                  {extension.description && (
+                    <span className="text-[10px] text-t3 truncate">{extension.description}</span>
                   )}
                 </div>
               </div>

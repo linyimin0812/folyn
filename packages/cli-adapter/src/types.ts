@@ -93,13 +93,13 @@ export interface CliAdapterConfig {
 /** A discoverable skill (Agent Skills standard `SKILL.md`). `name` and
  *  `description` come from the file's YAML frontmatter; skills without a
  *  `description` are skipped (Pi refuses to load them; Claude mirrors that).
- *  `source` mirrors config layering; `pluginName` is set for plugin skills.
+ *  `source` mirrors config layering; `extensionName` is set for extension skills.
  *  `dir` is the skill's directory (parent of `SKILL.md`). */
 export interface SkillEntry {
   name: string;
   description: string;
-  source: 'user' | 'project' | 'plugin' | 'builtin';
-  pluginName?: string;
+  source: 'user' | 'project' | 'extension' | 'builtin';
+  extensionName?: string;
   dir: string;
 }
 
@@ -111,9 +111,9 @@ export interface SkillEntry {
 export interface CommandEntry {
   name: string;
   description: string;
-  source: 'user' | 'project' | 'plugin' | 'builtin';
+  source: 'user' | 'project' | 'extension' | 'builtin';
   argumentHint?: string;
-  pluginName?: string;
+  extensionName?: string;
   file: string;
 }
 

@@ -1,19 +1,21 @@
 {
   "name": "folyn-extension-sdk",
   "version": "0.1.2",
-  "description": "Folyn Plugin SDK — manifest schema, contribution points, contracts, and dev helpers. Publishable to npm; no runtime.",
+  "description": "Folyn Extension SDK — manifest schema, contribution points, contracts, and dev helpers. Publishable to npm; no runtime.",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./index.ts",
+  "types": "./index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "default": "./index.ts"
     }
   },
   "files": [
     "dist",
+    "index.ts",
+    "src",
     "README.md"
   ],
   "scripts": {

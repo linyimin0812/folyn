@@ -783,7 +783,7 @@ export function PetApp() {
 
   // ── Global shortcut: toggle pet-panel from any app ──
   // Rust's `tauri_plugin_global_shortcut` handler emits `pet://shortcut-toggle`
-  // on every Pressed event (see lib.rs plugin build). Two effects:
+  // on every Pressed event (see lib.rs extension build). Two effects:
   //
   //   1. REGISTER the toggle accelerator with the OS, re-running whenever the
   //      persisted `toggleKeys` change. This is crucial because the `pet`

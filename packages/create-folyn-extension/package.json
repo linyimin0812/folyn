@@ -1,0 +1,24 @@
+{
+  "name": "create-folyn-extension",
+  "version": "0.1.0",
+  "description": "Scaffold a Folyn plugin from a template. Run: npx create-folyn-extension <name>",
+  "type": "module",
+  "bin": {
+    "create-folyn-extension": "dist/index.js"
+  },
+  "files": ["dist", "template"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc && node test/smoke.mjs",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.7.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

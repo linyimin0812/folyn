@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RpcBridge, isPathInScope, isOriginAllowed, hasPermission, dispatchPluginRpc } from './rpcBridge';
-import type { PluginManifest, PluginAiStreamEvent } from '@folyn/extension-host';
+import { RpcBridge, isPathInScope, isOriginAllowed, hasPermission, dispatchExtensionRpc } from './rpcBridge';
+import type { ExtensionManifest, ExtensionAiStreamEvent } from '@folyn/extension-host';
 import { __internals as fsInternals } from '@tauri-apps/plugin-fs';
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
@@ -17,9 +17,9 @@ vi.mock('@/store/aiConfigStore', () => ({ useAiConfigStore: { getState: aiConfig
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
-function sandboxManifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function sandboxManifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
-    id: 'demo-plugin',
+    id: 'demo-extension',
     name: 'Demo',
     version: '1.0.0',
     tier: 'sandbox',
@@ -157,7 +157,7 @@ describe('RpcBridge / message protocol', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -177,7 +177,7 @@ describe('RpcBridge / message protocol', () => {
     const manifest = sandboxManifest();
     const { target } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -210,7 +210,7 @@ describe('RpcBridge / message protocol', () => {
     const manifest = sandboxManifest();
     const { target } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -226,7 +226,7 @@ describe('RpcBridge / message protocol', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -244,7 +244,7 @@ describe('RpcBridge / message protocol', () => {
     const manifest = sandboxManifest();
     const { target } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -263,18 +263,18 @@ describe('RpcBridge / fs scope enforcement', () => {
     const { target, sent } = fakeTarget();
     // Pre-seed the fs mock with a file at the resolved path
     await fsInternals.root.children.clear() || true;
-    // The bridge resolves via homeDir mock → /mock/home/.folyn/plugins/demo-plugin/data/test.txt
+    // The bridge resolves via homeDir mock → /mock/home/.folyn/extensions/demo-extension/data/test.txt
     // We can't easily seed without a real path, so use a custom resolver
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
-      resolvePluginPath: async (p) => `/mock/plugins/${p}`,
+      resolveExtensionPath: async (p) => `/mock/extensions/${p}`,
     });
 
     // Seed the mock fs
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-    await writeTextFile('/mock/plugins/data/test.txt', 'hello');
+    await writeTextFile('/mock/extensions/data/test.txt', 'hello');
 
     await bridge.handleMessage(
       { type: 'request', id: 'r1', method: 'fs:read', params: { path: 'data/test.txt' } },
@@ -297,10 +297,10 @@ describe('RpcBridge / fs scope enforcement', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
-      resolvePluginPath: async (p) => `/mock/plugins/${p}`,
+      resolveExtensionPath: async (p) => `/mock/extensions/${p}`,
     });
 
     await bridge.handleMessage(
@@ -320,10 +320,10 @@ describe('RpcBridge / fs scope enforcement', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
-      resolvePluginPath: async (p) => `/mock/plugins/${p}`,
+      resolveExtensionPath: async (p) => `/mock/extensions/${p}`,
     });
 
     await bridge.handleMessage(
@@ -340,11 +340,11 @@ describe('RpcBridge / fs scope enforcement', () => {
 });
 
 describe('RpcBridge / http origin enforcement', () => {
-  it('routes allowed-origin fetch to the Rust plugin_http_fetch command', async () => {
+  it('routes allowed-origin fetch to the Rust extension_http_fetch command', async () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -362,9 +362,9 @@ describe('RpcBridge / http origin enforcement', () => {
     );
     await Promise.resolve();
 
-    // Must invoke the Rust command with the plugin id + url, NOT global fetch.
-    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
-      pluginId: 'demo-plugin',
+    // Must invoke the Rust command with the extension id + url, NOT global fetch.
+    expect(invoke).toHaveBeenCalledWith('extension_http_fetch', expect.objectContaining({
+      extensionId: 'demo-extension',
       url: 'https://api.example.com/data',
     }));
 
@@ -376,11 +376,11 @@ describe('RpcBridge / http origin enforcement', () => {
     bridge.dispose();
   });
 
-  it('passes method/headers/body through to plugin_http_fetch', async () => {
+  it('passes method/headers/body through to extension_http_fetch', async () => {
     const manifest = sandboxManifest();
     const { target } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -403,7 +403,7 @@ describe('RpcBridge / http origin enforcement', () => {
     );
     await Promise.resolve();
 
-    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+    expect(invoke).toHaveBeenCalledWith('extension_http_fetch', expect.objectContaining({
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: '{"a":1}',
@@ -416,7 +416,7 @@ describe('RpcBridge / http origin enforcement', () => {
     const manifest = sandboxManifest();
     const { target } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -435,7 +435,7 @@ describe('RpcBridge / http origin enforcement', () => {
     );
     await Promise.resolve();
 
-    expect(invoke).toHaveBeenCalledWith('plugin_http_fetch', expect.objectContaining({
+    expect(invoke).toHaveBeenCalledWith('extension_http_fetch', expect.objectContaining({
       headers: { 'x-custom': 'yes' },
     }));
 
@@ -446,7 +446,7 @@ describe('RpcBridge / http origin enforcement', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -472,7 +472,7 @@ describe('RpcBridge / clipboard gating', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -495,7 +495,7 @@ describe('RpcBridge / clipboard gating', () => {
     const manifest = sandboxManifest({ permissions: { clipboard: false } });
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -516,7 +516,7 @@ describe('RpcBridge / clipboard gating', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -537,11 +537,11 @@ describe('RpcBridge / clipboard gating', () => {
 
 // ── ai:chat (sandbox streaming) ─────────────────────────────────────────────
 
-describe('dispatchPluginRpc / ai:chat', () => {
+describe('dispatchExtensionRpc / ai:chat', () => {
   it('rejects when permissions.ai.chat not declared', async () => {
     const manifest = sandboxManifest({ permissions: {} });
     await expect(
-      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
+      dispatchExtensionRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
     ).rejects.toThrow(/permissions\.ai\.chat/);
     expect(runRigChatMock).not.toHaveBeenCalled();
   });
@@ -549,7 +549,7 @@ describe('dispatchPluginRpc / ai:chat', () => {
   it('rejects when stream transport absent (tool-window fetch path)', async () => {
     const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
     await expect(
-      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p),
+      dispatchExtensionRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p),
     ).rejects.toThrow(/streaming transport/);
   });
 
@@ -557,7 +557,7 @@ describe('dispatchPluginRpc / ai:chat', () => {
     aiConfigGetMock.mockReturnValue({ chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: '', chatBaseUrl: '' });
     const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
     await expect(
-      dispatchPluginRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
+      dispatchExtensionRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
     ).rejects.toThrow(/chatApiKey/);
   });
 
@@ -571,9 +571,9 @@ describe('dispatchPluginRpc / ai:chat', () => {
       p.onEvent({ type: 'file_change' });
       p.onEvent({ type: 'done' });
     });
-    const events: PluginAiStreamEvent[] = [];
-    const stream = (e: PluginAiStreamEvent) => events.push(e);
-    await dispatchPluginRpc(
+    const events: ExtensionAiStreamEvent[] = [];
+    const stream = (e: ExtensionAiStreamEvent) => events.push(e);
+    await dispatchExtensionRpc(
       manifest, 'demo', 'ai:chat',
       { sessionId: 's', prompt: 'p' },
       async (p) => p, stream,
@@ -592,10 +592,10 @@ describe('RpcBridge / ai:chat streaming end-to-end', () => {
     const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
-      resolvePluginPath: async (p) => `/mock/${p}`,
+      resolveExtensionPath: async (p) => `/mock/${p}`,
     });
     runRigChatMock.mockImplementation(async (p: { onEvent: (e: { type: string; content?: string }) => void }) => {
       p.onEvent({ type: 'text', content: 'hi' });
@@ -609,8 +609,8 @@ describe('RpcBridge / ai:chat streaming end-to-end', () => {
     await Promise.resolve();
 
     expect(sent.map((m) => (m as { type: string }).type)).toEqual(['ai-stream', 'ai-stream', 'response']);
-    expect((sent[0] as { event: PluginAiStreamEvent }).event).toEqual({ type: 'text', content: 'hi' });
-    expect((sent[1] as { event: PluginAiStreamEvent }).event).toEqual({ type: 'done' });
+    expect((sent[0] as { event: ExtensionAiStreamEvent }).event).toEqual({ type: 'text', content: 'hi' });
+    expect((sent[1] as { event: ExtensionAiStreamEvent }).event).toEqual({ type: 'done' });
     const finalResp = sent[2] as { id: string; result?: unknown; error?: string };
     expect(finalResp.id).toBe('a1');
     expect(finalResp.error).toBeUndefined();
@@ -622,10 +622,10 @@ describe('RpcBridge / ai:chat streaming end-to-end', () => {
     const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
-      resolvePluginPath: async (p) => `/mock/${p}`,
+      resolveExtensionPath: async (p) => `/mock/${p}`,
     });
     runRigChatMock.mockRejectedValue(new Error('boom'));
 
@@ -646,7 +646,7 @@ describe('RpcBridge / ai:chat streaming end-to-end', () => {
     const manifest = sandboxManifest({ permissions: {} });
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -666,11 +666,11 @@ describe('RpcBridge / ai:chat streaming end-to-end', () => {
   });
 });
 
-describe('dispatchPluginRpc / env:get', () => {
+describe('dispatchExtensionRpc / env:get', () => {
   it('returns current {theme, locale} from host stores', async () => {
     const manifest = sandboxManifest();
     // No permission flag for env:get — env is non-sensitive.
-    const result = await dispatchPluginRpc(
+    const result = await dispatchExtensionRpc(
       manifest,
       'demo',
       'env:get',
@@ -689,7 +689,7 @@ describe('RpcBridge / env-event push', () => {
     const manifest = sandboxManifest();
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -755,7 +755,7 @@ describe('RpcBridge / vault:read-binary gating', () => {
 
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -781,7 +781,7 @@ describe('RpcBridge / vault:read-binary gating', () => {
     const manifest = sandboxManifest(); // no readBinary
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });
@@ -806,7 +806,7 @@ describe('RpcBridge / vault:read-binary gating', () => {
 
     const { target, sent } = fakeTarget();
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => target,
     });

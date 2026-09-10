@@ -388,7 +388,7 @@ export const useVaultStore = create<VaultState>()(
 
             void startWatcherForVault(config);
           } catch (err) {
-            // ponytail: Tauri plugin-fs rejections (scope denial, path issues on
+            // ponytail: Tauri extension-fs rejections (scope denial, path issues on
             // Windows reinstall) are often strings or plain objects, not Error.
             // Surface the real value instead of the generic fallback so the user
             // sees the actual cause (e.g. 'path not allowed by scope').
@@ -661,7 +661,7 @@ export function subscribeToFileTree(cb: () => void): () => void {
  *  (pet-panel) that mount AiPanel in `embedded` mode. AiPanel's @-mention
  *  reads `useVaultStore.fileTree`, but secondary windows lack vault-path fs
  *  ACL — `refreshFileTree()` fails silently there. The main window owns the
- *  authoritative fileTree (via fs plugin + fileWatcher) and pushes it to
+ *  authoritative fileTree (via fs extension + fileWatcher) and pushes it to
  *  secondary windows on change. Mirrors the `pet://settings-updated` pattern.
  *  Caller is responsible for only invoking this in the MAIN window — the
  *  pet-panel window listens via `listen('pet://file-tree-updated', …)` and

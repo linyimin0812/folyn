@@ -2,7 +2,7 @@
  * Module-scope ExtensionApi + id holder. The host calls the module's
  * `activate(api, ctx)` before any file-type handler renders; handlers read the
  * captured api to access host capabilities (here: `vault.readBinary` for file
- * bytes) and the extension id (to build the plugin-origin iframe URL).
+ * bytes) and the extension id (to build the extension-origin iframe URL).
  */
 import type { ExtensionApi } from 'folyn-extension-sdk';
 

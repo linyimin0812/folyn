@@ -11,7 +11,7 @@
 
 import type { Editor, RichTextEditorAction } from 'grapesjs';
 import grapesjsBlocksBasic from 'grapesjs-blocks-basic';
-import grapesjsPluginForms from 'grapesjs-plugin-forms';
+import grapesjsExtensionForms from 'grapesjs-plugin-forms';
 import grapesjsTuiImageEditor from 'grapesjs-tui-image-editor';
 
 export interface GrapesInitOptions {
@@ -103,7 +103,7 @@ const CANVAS_STYLES = [
 ];
 
 /**
- * Chinese labels for the blocks added by `grapesjs-plugin-forms`. The plugin
+ * Chinese labels for the blocks added by `grapesjs-plugin-forms`. The extension
  * merges the return value of its `block(blockId)` option LAST, so returning
  * `{ label }` overrides the English default ('Form', 'Input', …). Category is
  * set globally via the `category` option below.
@@ -119,7 +119,7 @@ const FORM_BLOCK_LABELS: Record<string, string> = {
   radio: '单选框',
 };
 
-/** TOAST UI Image Editor modal strings (set via plugin options, not i18n). */
+/** TOAST UI Image Editor modal strings (set via extension options, not i18n). */
 const TUI_LABELS = {
   labelImageEditor: '图片编辑器',
   labelApply: '应用',
@@ -315,16 +315,16 @@ export function createGrapesConfig(opts: GrapesInitOptions): Record<string, unkn
       styles: CANVAS_STYLES,
     },
 
-    plugins: [grapesjsBlocksBasic, grapesjsPluginForms, grapesjsTuiImageEditor],
-    pluginsOpts: {
-      // GrapesJS matches plugin options by plugin reference; at runtime the
+    extensions: [grapesjsBlocksBasic, grapesjsExtensionForms, grapesjsTuiImageEditor],
+    extensionsOpts: {
+      // GrapesJS matches extension options by extension reference; at runtime the
       // function is coerced to a string key. The cast keeps TS happy because
-      // `pluginsOpts` is typed as `Record<string, any>`.
+      // `extensionsOpts` is typed as `Record<string, any>`.
       [grapesjsBlocksBasic as unknown as string]: {
         flexGrid: true,
         category: '基础',
       },
-      [grapesjsPluginForms as unknown as string]: {
+      [grapesjsExtensionForms as unknown as string]: {
         // All form blocks share one Chinese category.
         category: '表单',
         // Override each block's English label with Chinese.
@@ -334,9 +334,9 @@ export function createGrapesConfig(opts: GrapesInitOptions): Record<string, unkn
         },
       },
       [grapesjsTuiImageEditor as unknown as string]: {
-        // The plugin loads tui-image-editor from CDN at runtime (only when the
+        // The extension loads tui-image-editor from CDN at runtime (only when the
         // user opens the image editor), so the heavy fabric.js stack never
-        // enters the Vite bundle. Modal strings are passed as plugin options.
+        // enters the Vite bundle. Modal strings are passed as extension options.
         ...TUI_LABELS,
       },
     },

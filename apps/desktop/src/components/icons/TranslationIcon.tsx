@@ -3,7 +3,7 @@ import { useAppearanceStore } from '@/store/appearanceStore';
 import translationSvgText from '@/assets/icons/translation.svg?raw';
 
 /** Translation page icon. The asset uses `fill="currentColor"` so both
- *  consumers (PluginIcon in settings + this ActivityBar icon) can recolor
+ *  consumers (ExtensionIcon in settings + this ActivityBar icon) can recolor
  *  it. Inactive → `--t3` (faded gray); active → `--acc`. */
 export function TranslationIcon({ size = 18, active = false }: { size?: number; active?: boolean }) {
   const theme = useAppearanceStore((s) => s.theme);

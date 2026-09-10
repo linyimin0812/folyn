@@ -3,7 +3,7 @@
  * new-item actions + file tree + context menu). Extracted from the old
  * monolithic Sidebar so the sidebar shell can data-drive panel rendering via
  * {@link useFeaturePanelStore}: the files panel is now registered as a
- * `PanelEntry.component` like every other built-in/plugin panel.
+ * `PanelEntry.component` like every other built-in/extension panel.
  *
  * Behavior is identical to the pre-PR2 inline files block in Sidebar.tsx —
  * all files-specific state (search, expanded dirs, drag-drop, context menu,

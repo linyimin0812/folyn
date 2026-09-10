@@ -9,7 +9,7 @@
  * ponytail: `@tauri-apps/plugin-global-shortcut` is NOT a project dependency,
  * so OS-global shortcuts (fired even when the app is unfocused) would need a
  * new Rust command. The fallback here is app-scope `keydown`: works only
- * while the app window has focus. Ceiling: a plugin-bound key won't fire when
+ * while the app window has focus. Ceiling: a extension-bound key won't fire when
  * the app is backgrounded. Upgrade path: add `@tauri-apps/plugin-global-shortcut`,
  * call `register(accelerator, () => runCommand(command))` in `run`, and
  * `unregister(accelerator)` in dispose; swap the `registerKeybinding` impl.
@@ -20,7 +20,7 @@
  * doesn't matter.
  */
 
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type { KeybindingContribution } from '@folyn/extension-host';
 import { runCommand } from '@/services/commandRegistry';
 
@@ -53,7 +53,7 @@ function normalizeEvent(e: KeyboardEvent): ParsedAccelerator {
 // shifted-symbol accelerators — e.g. `Cmd+Shift+1` parses to key `1` but the
 // event's `e.key` is `!` on a US layout. Letters (the common case, incl. the
 // sample's `Cmd+Alt+Shift+T`) and function keys match fine because their
-// glyph is layout-stable. Ceiling: a plugin binding a shifted-digit/symbol
+// glyph is layout-stable. Ceiling: a extension binding a shifted-digit/symbol
 // key won't fire. Upgrade path: match on `e.code` (`KeyT`, `Digit1`) instead
 // of `e.key`, and parse the accelerator's last token into a `code` via a
 // layout map — layout-independent but loses mac localized-key semantics.
@@ -84,7 +84,7 @@ function handlerFor(kb: KeybindingContribution): (e: KeyboardEvent) => void {
   };
 }
 
-export function registerPluginKeybindings(manifest: PluginManifest): Disposable {
+export function registerExtensionKeybindings(manifest: ExtensionManifest): Disposable {
   const keybindings: KeybindingContribution[] = manifest.contributes?.keybindings ?? [];
   if (keybindings.length === 0) return { dispose: () => {} };
 

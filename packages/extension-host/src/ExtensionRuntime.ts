@@ -4,7 +4,7 @@
  * Owns the AbortController, a DisposableStore, and the scoped
  * {@link ExtensionContext} (with `signal`). Activation is **transactional**:
  * disposables pushed during `activate()` are buffered, then committed on
- * success or rolled back (reverse order) on failure — so a plugin that
+ * success or rolled back (reverse order) on failure — so a extension that
  * activates half-way then throws leaves NO contributions behind (doc §59).
  *
  * `dispose()` = abort (cancel in-flight ops) → `deactivate()` hook → reap
@@ -80,7 +80,7 @@ export class ExtensionRuntime {
     this.state = 'deactivating';
     // 1. Abort all in-flight operations using the runtime signal.
     this.abortController.abort();
-    // 2. Plugin cleanup hook (contributions still registered at this point).
+    // 2. Extension cleanup hook (contributions still registered at this point).
     // ponytail: save the error, complete cleanup (dispose disposables),
     // then rethrow so the host can mark state='failed'. A deactivate throw
     // must not stop the LIFO disposable reap below.

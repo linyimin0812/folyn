@@ -1,9 +1,9 @@
 /**
  * Sandbox-tier ExtensionLoader.
  *
- * Implements the `ExtensionLoader` interface for `tier: 'sandbox'` plugins. On
+ * Implements the `ExtensionLoader` interface for `tier: 'sandbox'` extensions. On
  * `load()`, creates a hidden `<iframe sandbox="allow-scripts">` (NO
- * `allow-same-origin`) loading from `folyn-plugin://localhost/<id>/<html>`,
+ * `allow-same-origin`) loading from `folyn-extension://localhost/<id>/<html>`,
  * wires a {@link RpcBridge} for host-mediated capability calls, and returns an
  * `Extension` whose `activate`/`deactivate` send lifecycle messages and
  * register contributed commands.
@@ -14,7 +14,7 @@
  *   - Cross-origin `postMessage` is the only bridge.
  *   - ES module cache cannot be evicted → unload by destroying the iframe
  *     element (remove from DOM), not by module eviction.
- *   - Plugins get NO raw Tauri capabilities (no `add_capability`).
+ *   - Extensions get NO raw Tauri capabilities (no `add_capability`).
  */
 
 import type {
@@ -22,20 +22,20 @@ import type {
   ExtensionApi,
   ExtensionContext,
   ExtensionLoader,
-  PluginManifest,
+  ExtensionManifest,
 } from '@folyn/extension-host';
 import { disposable } from '@folyn/extension-host';
 import { RpcBridge } from './rpcBridge';
-import { registerPluginCommands } from './commandAdapter';
-import { registerPluginTools } from './toolAdapter';
+import { registerExtensionCommands } from './commandAdapter';
+import { registerExtensionTools } from './toolAdapter';
 
 export const sandboxLoader: ExtensionLoader = {
   tier: 'sandbox',
 
-  async load(manifest: PluginManifest): Promise<Extension> {
-    const iframe = createPluginIframe(manifest);
+  async load(manifest: ExtensionManifest): Promise<Extension> {
+    const iframe = createExtensionIframe(manifest);
     const bridge = new RpcBridge({
-      pluginId: manifest.id,
+      extensionId: manifest.id,
       manifest,
       targetWindow: () => iframe.contentWindow,
     });
@@ -45,13 +45,13 @@ export const sandboxLoader: ExtensionLoader = {
         // Register contributed commands — their `run` dispatches invoke
         // messages to the iframe via the bridge. Push the disposable so
         // ExtensionHost reaps it on deactivate.
-        const cmdDisposable = registerPluginCommands(manifest, bridge);
+        const cmdDisposable = registerExtensionCommands(manifest, bridge);
         ctx.addDisposable(cmdDisposable);
 
-        // Register contributed tools (full-window plugin UIs). Each tool
+        // Register contributed tools (full-window extension UIs). Each tool
         // becomes an "Open: <title>" command in ⌘P that opens a Tauri
-        // WebviewWindow loading the plugin's HTML entry.
-        const toolDisposable = registerPluginTools(manifest);
+        // WebviewWindow loading the extension's HTML entry.
+        const toolDisposable = registerExtensionTools(manifest);
         ctx.addDisposable(toolDisposable);
 
         // The iframe-destroy disposable: destroying the iframe is the
@@ -64,11 +64,11 @@ export const sandboxLoader: ExtensionLoader = {
           }),
         );
 
-        // Signal the plugin to activate (it may set up its UI / state).
+        // Signal the extension to activate (it may set up its UI / state).
         bridge.sendLifecycle('activate');
       },
       deactivate: (_ctx: ExtensionContext) => {
-        // Tell the plugin it's being deactivated. The iframe itself is
+        // Tell the extension it's being deactivated. The iframe itself is
         // destroyed by the disposable reaped immediately after this call.
         bridge.sendLifecycle('deactivate');
       },
@@ -77,17 +77,17 @@ export const sandboxLoader: ExtensionLoader = {
 };
 
 /**
- * Create a hidden sandboxed iframe for the plugin. The iframe is attached to
- * `document.body` but visually hidden (0×0, off-screen). Tool-window plugins
+ * Create a hidden sandboxed iframe for the extension. The iframe is attached to
+ * `document.body` but visually hidden (0×0, off-screen). Tool-window extensions
  * that need visible UI will create their own visible iframe via the
  * `window:open` RPC path.
  */
-function createPluginIframe(manifest: PluginManifest): HTMLIFrameElement {
+function createExtensionIframe(manifest: ExtensionManifest): HTMLIFrameElement {
   const html = manifest.html ?? 'index.html';
-  const src = `folyn-plugin://localhost/${manifest.id}/${html}`;
+  const src = `folyn-extension://localhost/${manifest.id}/${html}`;
 
   const iframe = document.createElement('iframe');
-  // `allow-scripts` lets the plugin run JS; NO `allow-same-origin` gives a
+  // `allow-scripts` lets the extension run JS; NO `allow-same-origin` gives a
   // unique opaque origin so the iframe cannot access parent DOM, cookies,
   // localStorage, or Tauri APIs.
   iframe.setAttribute('sandbox', 'allow-scripts');

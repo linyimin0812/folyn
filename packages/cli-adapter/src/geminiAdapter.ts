@@ -219,7 +219,7 @@ export function isGeminiStderrNoise(line: string): boolean {
   return false;
 }
 
-/** Tauri shell plugin child shape (subset we use). */
+/** Tauri shell extension child shape (subset we use). */
 interface ShellChild {
   kill(): Promise<void>;
 }

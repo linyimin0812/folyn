@@ -151,12 +151,12 @@ describe('registerBuiltinPanels: active-panel mirror + persisted-invalid fallbac
     dispose();
   });
 
-  it('persisted-invalid id (uninstalled plugin panel) falls back to files', () => {
+  it('persisted-invalid id (uninstalled extension panel) falls back to files', () => {
     // Simulate a persisted active panel id that no longer exists (e.g. a
-    // plugin panel from an uninstalled plugin). Register with that id
+    // extension panel from an uninstalled extension). Register with that id
     // already set as editorStore.activePanel — the initial sync should
     // re-route to 'files'.
-    useEditorStore.setState({ activePanel: 'oldplugin.panel' });
+    useEditorStore.setState({ activePanel: 'oldextension.panel' });
     const dispose = registerBuiltinPanels();
     expect(useEditorStore.getState().activePanel).toBe('files');
     expect(useFeaturePanelStore.getState().activePanelId).toBe('files');

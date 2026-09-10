@@ -1,67 +1,67 @@
 /**
  * Fetch-RPC listener for tool windows.
  *
- * When a sandbox tool window POSTs to `folyn-plugin://localhost/<id>/rpc`,
- * the Rust URI handler (plugin_commands.rs) emits a `plugin-rpc-request`
- * event with `{ requestId, pluginId, body }` where `body` is the raw POST
+ * When a sandbox tool window POSTs to `folyn-extension://localhost/<id>/rpc`,
+ * the Rust URI handler (extension_commands.rs) emits a `extension-rpc-request`
+ * event with `{ requestId, extensionId, body }` where `body` is the raw POST
  * JSON string (`{ method, params }`). This listener (wired once at app boot
  * in App.tsx):
  *   1. Parses `body` into `{ method, params }`.
- *   2. Looks up the plugin manifest from the in-memory PluginHost.
- *   3. Dispatches via the shared `dispatchPluginRpc` (same code path as
+ *   2. Looks up the extension manifest from the in-memory ExtensionHost.
+ *   3. Dispatches via the shared `dispatchExtensionRpc` (same code path as
  *      the iframe postMessage bridge — same permission checks, same path
  *      resolution).
- *   4. Calls the Rust `plugin_rpc_respond` command with `{ requestId,
+ *   4. Calls the Rust `extension_rpc_respond` command with `{ requestId,
  *      result }` or `{ requestId, error }` so the URI handler can complete
  *      the fetch response.
  *
- * Why event round-trip instead of a direct Tauri command: the plugin's HTML
- * runs in a separate WebviewWindow whose origin (`folyn-plugin://localhost`)
+ * Why event round-trip instead of a direct Tauri command: the extension's HTML
+ * runs in a separate WebviewWindow whose origin (`folyn-extension://localhost`)
  * is not the main app's origin, and we deliberately don't inject Tauri APIs
- * into plugin webviews (utools-style isolation). `fetch()` to the
- * `folyn-plugin://` scheme is the only bridge; Rust mediates.
+ * into extension webviews (utools-style isolation). `fetch()` to the
+ * `folyn-extension://` scheme is the only bridge; Rust mediates.
  */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import type { PluginManifest } from '@folyn/extension-host';
-import { dispatchPluginRpc } from './rpcBridge';
+import type { ExtensionManifest } from '@folyn/extension-host';
+import { dispatchExtensionRpc } from './rpcBridge';
 
-export interface PluginRpcRequest {
+export interface ExtensionRpcRequest {
   requestId: string;
-  pluginId: string;
+  extensionId: string;
   body: string;
 }
 
-/** Resolve `~/.folyn/plugins/<pluginId>/<rel>` via Tauri path APIs. */
+/** Resolve `~/.folyn/extensions/<extensionId>/<rel>` via Tauri path APIs. */
 async function defaultResolvePath(
-  pluginId: string,
+  extensionId: string,
   relativePath: string,
 ): Promise<string> {
   const { homeDir, join } = await import('@tauri-apps/api/path');
   const home = await homeDir();
-  return join(home, '.folyn', 'plugins', pluginId, relativePath);
+  return join(home, '.folyn', 'extensions', extensionId, relativePath);
 }
 
 /**
- * Look up the live manifest for `pluginId` from the in-memory PluginHost.
- * Returns `undefined` if the plugin is not installed or not active — caller
+ * Look up the live manifest for `extensionId` from the in-memory ExtensionHost.
+ * Returns `undefined` if the extension is not installed or not active — caller
  * (the listener) rejects the RPC in that case.
  */
-async function lookupManifest(pluginId: string): Promise<PluginManifest | undefined> {
+async function lookupManifest(extensionId: string): Promise<ExtensionManifest | undefined> {
   const { extensionHost } = await import("@folyn/extension-host");
-  const record = extensionHost.get(pluginId);
+  const record = extensionHost.get(extensionId);
   return record?.manifest;
 }
 
 /**
- * Wire the `plugin-rpc-request` listener. Returns an `UnlistenFn` to detach.
+ * Wire the `extension-rpc-request` listener. Returns an `UnlistenFn` to detach.
  * Safe to call once per app session; calling it again before unlistening
  * will double-dispatch every request.
  */
 export async function attachToolWindowRpcListener(): Promise<UnlistenFn> {
-  return listen<PluginRpcRequest>('plugin-rpc-request', async (event) => {
-    const { requestId, pluginId, body } = event.payload;
+  return listen<ExtensionRpcRequest>('extension-rpc-request', async (event) => {
+    const { requestId, extensionId, body } = event.payload;
     let method: string;
     let params: unknown;
     try {
@@ -70,32 +70,32 @@ export async function attachToolWindowRpcListener(): Promise<UnlistenFn> {
       params = parsed.params;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await invoke('plugin_rpc_respond', {
+      await invoke('extension_rpc_respond', {
         requestId,
         error: `invalid rpc body: ${message}`,
       });
       return;
     }
     try {
-      const manifest = await lookupManifest(pluginId);
+      const manifest = await lookupManifest(extensionId);
       if (!manifest) {
-        await invoke('plugin_rpc_respond', {
+        await invoke('extension_rpc_respond', {
           requestId,
-          error: `plugin not installed: ${pluginId}`,
+          error: `extension not installed: ${extensionId}`,
         });
         return;
       }
-      const result = await dispatchPluginRpc(
+      const result = await dispatchExtensionRpc(
         manifest,
-        pluginId,
+        extensionId,
         method,
         params,
-        (rel) => defaultResolvePath(pluginId, rel),
+        (rel) => defaultResolvePath(extensionId, rel),
       );
-      await invoke('plugin_rpc_respond', { requestId, result: result ?? null });
+      await invoke('extension_rpc_respond', { requestId, result: result ?? null });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await invoke('plugin_rpc_respond', { requestId, error: message });
+      await invoke('extension_rpc_respond', { requestId, error: message });
     }
   });
 }

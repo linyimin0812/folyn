@@ -64,7 +64,7 @@ async function resolveAbsoluteVaultPath(path: string): Promise<string> {
 
 /** Open a vault item in the OS file manager. A file opens its containing
  *  folder, a directory opens itself, and an empty path opens the vault root.
- *  Uses the opener plugin's `openPath` (ACL scope `**` — vaults at any path, e.g. `D:\folyn`, open). */
+ *  Uses the opener extension's `openPath` (ACL scope `**` — vaults at any path, e.g. `D:\folyn`, open). */
 async function openInFileManager(path: string, type: 'file' | 'dir'): Promise<void> {
   try {
     const vault = useVaultStore.getState().currentVault;
@@ -104,9 +104,9 @@ export function ContextMenu({
     () => new Map(creatableTypes.map((handler) => [handler.id, handler])),
     [creatableTypes],
   );
-  // ponytail: NEW_FILE_GROUPS is the curated built-in ordering. Plugin
+  // ponytail: NEW_FILE_GROUPS is the curated built-in ordering. Extension
   // handlers (anything in creatableById not already in a built-in group)
-  // are appended as a final "extensions" group so plugins surface in the
+  // are appended as a final "extensions" group so extensions surface in the
   // new-file menu without modifying host source.
   const newFileGroups = useMemo(() => {
     const builtin = new Set(NEW_FILE_GROUPS.flat());

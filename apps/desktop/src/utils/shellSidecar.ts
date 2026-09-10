@@ -1,5 +1,5 @@
 /**
- * Build the Tauri shell-plugin sidecar name + args for a one-shot shell command.
+ * Build the Tauri shell-extension sidecar name + args for a one-shot shell command.
  *
  * Two sidecars are ACL-granted (see src-tauri/capabilities/*.json):
  * - `claude-cli` (`/bin/sh`) on macOS/Linux — invoked as `sh -lc "<cmd>"` so

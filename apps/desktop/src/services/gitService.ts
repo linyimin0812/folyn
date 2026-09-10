@@ -107,7 +107,7 @@ export async function runShell(shellCmd: string): Promise<GitResult> {
   const cmd = Command.create(sidecarName, sidecarArgs);
   let stdout = '';
   let stderr = '';
-  // ponytail: the shell plugin already includes the trailing newline in each
+  // ponytail: the shell extension already includes the trailing newline in each
   //  `data` payload (tauri::utils::io::read_line keeps the \n/\r byte), so
   //  appending `+ '\n'` here doubled it — every output row gained a blank
   //  line. On Windows \r\n also splits across two payloads (row\r then \n).

@@ -4,7 +4,7 @@
  * that makes the data-driven ActivityBar/Sidebar behave identically to the
  * pre-PR2 hardcoded version.
  *
- * Called once at app start (mirrors `registerBuiltinPlugins` /
+ * Called once at app start (mirrors `registerBuiltinExtensions` /
  * `registerBuiltinCommands`). Idempotent — a module-level guard skips re-runs.
  *
  * Sync contract (PR2 reconciliation of editorStore.activePanel vs
@@ -22,8 +22,8 @@
  *
  * Fallback rules:
  * - Startup: if editorStore.activePanel isn't a registered+visible panel
- *   (e.g. a persisted plugin panel id whose plugin hasn't loaded yet, or an
- *   uninstalled plugin), re-route to 'files'.
+ *   (e.g. a persisted extension panel id whose extension hasn't loaded yet, or an
+ *   uninstalled extension), re-route to 'files'.
  * - Enable-flag toggle: if the active panel's flag flips to false (e.g.
  *   enableWikiPanel off while wiki is active), re-route to 'files'. Replaces
  *   the 4 hardcoded conditionals that lived in App.tsx pre-PR2.
@@ -142,7 +142,7 @@ export function registerBuiltinPanels(): () => void {
 
   // ── editorStore.activePanel → featurePanelStore.activePanelId (mirror) ──
   // One-way sync: the UI's activePanelId follows the editor source of truth.
-  // Validates the id exists AND is visible; if not (uninstalled plugin panel,
+  // Validates the id exists AND is visible; if not (uninstalled extension panel,
   // or a panel hidden by an enable flag) it re-routes to 'files', which
   // re-fires this subscription with a valid id and converges.
   const mirrorActive = (id: string | null) => {

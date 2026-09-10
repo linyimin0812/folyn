@@ -46,9 +46,9 @@ export class ClaudeAdapter extends BaseCliAdapter {
 
   /** List discoverable Claude Code skills. Reads the on-disk sources from
    *  the research file: user (`~/.claude/skills/`), project
-   *  (`<cwd>/.claude/skills/`), and plugin skills (via
-   *  `~/.claude/plugins/installed_plugins.json` → `<installPath>/skills/`).
-   *  Precedence: user > project > plugin (first occurrence wins). Returns []
+   *  (`<cwd>/.claude/skills/`), and extension skills (via
+   *  `~/.claude/extensions/installed_extensions.json` → `<installPath>/skills/`).
+   *  Precedence: user > project > extension (first occurrence wins). Returns []
    *  when the adapter has not been started.
    *  ponytail: project sources use workingDir only (the vault root in Folyn);
    *  walking up to a `.git` repo root is not done — add if a non-vault cwd
@@ -59,8 +59,8 @@ export class ClaudeAdapter extends BaseCliAdapter {
     const userDir = await resolveHome('~/.claude/skills');
     sources.push({ path: userDir, source: 'user', rootMd: true });
     sources.push({ path: `${this.config.workingDir}/.claude/skills`, source: 'project' });
-    for (const plugin of await this.pluginSkillDirs()) {
-      sources.push({ path: plugin.dir, source: 'plugin', pluginName: plugin.name });
+    for (const extension of await this.extensionSkillDirs()) {
+      sources.push({ path: extension.dir, source: 'extension', extensionName: extension.name });
     }
     return collectSkills(sources);
   }
@@ -68,35 +68,35 @@ export class ClaudeAdapter extends BaseCliAdapter {
   /** List discoverable Claude Code slash commands. Same three trees as
    *  skills, globbing `*.md` AND `*.toml` under `commands/`; subfolder →
    *  `group:name` (e.g. `.claude/commands/trellis/continue.md` →
-   *  `trellis:continue`). Precedence: user > project > plugin. */
+   *  `trellis:continue`). Precedence: user > project > extension. */
   async listCommands(): Promise<CommandEntry[]> {
     if (!this.config) return [];
     const sources: CommandSource[] = [];
     const userDir = await resolveHome('~/.claude/commands');
     sources.push({ path: userDir, source: 'user', toml: true });
     sources.push({ path: `${this.config.workingDir}/.claude/commands`, source: 'project', toml: true });
-    for (const plugin of await this.pluginCommandDirs()) {
-      sources.push({ path: plugin.dir, source: 'plugin', pluginName: plugin.name, toml: true });
+    for (const extension of await this.extensionCommandDirs()) {
+      sources.push({ path: extension.dir, source: 'extension', extensionName: extension.name, toml: true });
     }
     return collectCommands(sources);
   }
 
-  /** Read `~/.claude/plugins/installed_plugins.json` and return the
-   *  `{dir, name}` for each installed plugin's `skills/` dir. Malformed /
+  /** Read `~/.claude/extensions/installed_extensions.json` and return the
+   *  `{dir, name}` for each installed extension's `skills/` dir. Malformed /
    *  missing registry → []. */
-  private async pluginSkillDirs(): Promise<{ dir: string; name: string }[]> {
-    return this.pluginDirs('skills');
+  private async extensionSkillDirs(): Promise<{ dir: string; name: string }[]> {
+    return this.extensionDirs('skills');
   }
 
-  private async pluginCommandDirs(): Promise<{ dir: string; name: string }[]> {
-    return this.pluginDirs('commands');
+  private async extensionCommandDirs(): Promise<{ dir: string; name: string }[]> {
+    return this.extensionDirs('commands');
   }
 
-  /** Parse the installed-plugins registry (`name@marketplace` →
-   *  `{installPath, version}`) and return each plugin's `<installPath>/<kind>/`
-   *  dir + the plugin's short name (before `@`). */
-  private async pluginDirs(kind: 'skills' | 'commands'): Promise<{ dir: string; name: string }[]> {
-    const registryPath = await resolveHome('~/.claude/plugins/installed_plugins.json');
+  /** Parse the installed-extensions registry (`name@marketplace` →
+   *  `{installPath, version}`) and return each extension's `<installPath>/<kind>/`
+   *  dir + the extension's short name (before `@`). */
+  private async extensionDirs(kind: 'skills' | 'commands'): Promise<{ dir: string; name: string }[]> {
+    const registryPath = await resolveHome('~/.claude/extensions/installed_extensions.json');
     let text: string;
     try {
       text = await readTextFile(registryPath);

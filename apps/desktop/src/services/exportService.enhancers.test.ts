@@ -1,6 +1,6 @@
 /**
  * Focused unit test for `applyContainerEnhancers` — the export DOM walk that
- * applies plugin-contributed export enhancers to `[data-container]` blocks.
+ * applies extension-contributed export enhancers to `[data-container]` blocks.
  *
  * `renderMarkdownToHtmlViaDom` is not driven here (it mounts MarkdownPreview
  * which pulls excalidraw + x6 — jsdom ceiling, see file-type-editors.md spec).
@@ -13,11 +13,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { applyContainerEnhancers } from './exportService';
 
 // Mock the registry so we control which enhancer is returned for which key.
-vi.mock('./plugin-host/exportEnhancerAdapter', () => ({
+vi.mock('./extension-host/exportEnhancerAdapter', () => ({
   getEnhancer: vi.fn(),
 }));
 
-import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
+import { getEnhancer } from './extension-host/exportEnhancerAdapter';
 const getEnhancerMock = vi.mocked(getEnhancer);
 
 beforeEach(() => {

@@ -9,8 +9,8 @@
  * Aliases declared in the grammar's returned `aliases` field are
  * auto-registered by hljs itself — no host-side alias bookkeeping needed.
  *
- * Tracking the plugin id on each registration lets `unregisterLanguage` skip
- * foreign plugins' grammars on deactivate (matches `editorLanguageAdapter`'s
+ * Tracking the extension id on each registration lets `unregisterLanguage` skip
+ * foreign extensions' grammars on deactivate (matches `editorLanguageAdapter`'s
  * first-registered-wins semantics). ponytail: re-registering the same name on
  * activate-over-activate is a no-op guard — hljs overwrites silently.
  *
@@ -18,35 +18,35 @@
  * a merged Disposable that unregisters all on deactivate.
  */
 
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type { HighlightGrammarContribution, HighlightGrammarFn } from '@folyn/extension-host';
 import hljs from 'highlight.js';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 
 interface RegisteredGrammar {
-  pluginId: string;
+  extensionId: string;
   name: string;
 }
 
 const registered = new Map<string, RegisteredGrammar>();
 
-/** Register a grammar with hljs under `name`. Idempotent per (pluginId, name). */
+/** Register a grammar with hljs under `name`. Idempotent per (extensionId, name). */
 export function registerHighlightGrammar(
-  pluginId: string,
+  extensionId: string,
   name: string,
   fn: HighlightGrammarFn,
 ): { dispose: () => void } {
   if (!registered.has(name)) {
     hljs.registerLanguage(name, fn as Parameters<typeof hljs.registerLanguage>[1]);
-    registered.set(name, { pluginId, name });
+    registered.set(name, { extensionId, name });
   }
-  return { dispose: () => unregisterHighlightGrammar(name, pluginId) };
+  return { dispose: () => unregisterHighlightGrammar(name, extensionId) };
 }
 
-/** Remove a grammar (only if it still belongs to this plugin). */
-export function unregisterHighlightGrammar(name: string, pluginId: string): void {
+/** Remove a grammar (only if it still belongs to this extension). */
+export function unregisterHighlightGrammar(name: string, extensionId: string): void {
   const existing = registered.get(name);
-  if (existing?.pluginId !== pluginId) return;
+  if (existing?.extensionId !== extensionId) return;
   hljs.unregisterLanguage(name);
   registered.delete(name);
 }
@@ -56,14 +56,14 @@ export function clearHighlightGrammars(): void {
   registered.clear();
 }
 
-/** Look up which plugin owns a grammar (test/debug helper). */
+/** Look up which extension owns a grammar (test/debug helper). */
 export function getHighlightGrammarOwner(name: string): string | undefined {
-  return registered.get(name)?.pluginId;
+  return registered.get(name)?.extensionId;
 }
 
-export function registerPluginHighlightGrammars(
-  manifest: PluginManifest,
-  module: PluginModule,
+export function registerExtensionHighlightGrammars(
+  manifest: ExtensionManifest,
+  module: ExtensionModule,
 ): Disposable {
   const contributions: HighlightGrammarContribution[] = manifest.contributes?.highlightGrammars ?? [];
   if (contributions.length === 0) return { dispose: () => {} };
@@ -73,7 +73,7 @@ export function registerPluginHighlightGrammars(
     const fn = module.highlightGrammars?.[c.entry];
     if (typeof fn !== 'function') {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" highlight-grammar "${c.name}" has no factory for entry-ref "${c.entry}" — skipped`,
+        `[extension-host] extension "${manifest.id}" highlight-grammar "${c.name}" has no factory for entry-ref "${c.entry}" — skipped`,
       );
       continue;
     }

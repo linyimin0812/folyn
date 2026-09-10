@@ -2,24 +2,24 @@
  * Tests for the file-template contribution adapter + registry.
  *
  * Covers: register populates the registry (`getFileTemplate` /
- * `getPluginFileTemplates`); dispose removes both the registry entry and the
- * palette command; the registry survives across plugin ids; no-op when no
+ * `getExtensionFileTemplates`); dispose removes both the registry entry and the
+ * palette command; the registry survives across extension ids; no-op when no
  * templates declared. The Tauri save-dialog + writeTextFile path inside the
  * command's `run` is NOT exercised (jsdom + no Tauri) — the adapter's
  * contract is: register → registry + command present; dispose → both gone.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@folyn/extension-host';
+import type { ExtensionManifest } from '@folyn/extension-host';
 import {
-  registerPluginFileTemplates,
+  registerExtensionFileTemplates,
   getFileTemplate,
-  getPluginFileTemplates,
+  getExtensionFileTemplates,
   clearFileTemplates,
 } from './fileTemplateAdapter';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'tpl-test',
     name: 'Template Test',
@@ -53,8 +53,8 @@ afterEach(() => {
 });
 
 describe('fileTemplateRegistry', () => {
-  it('registers a template keyed by <pluginId>.<templateId>', () => {
-    registerPluginFileTemplates(manifest());
+  it('registers a template keyed by <extensionId>.<templateId>', () => {
+    registerExtensionFileTemplates(manifest());
     const tpl = getFileTemplate('tpl-test.meeting-notes');
     expect(tpl).toBeDefined();
     expect(tpl!.label).toBe('Meeting Notes');
@@ -62,20 +62,20 @@ describe('fileTemplateRegistry', () => {
     expect(tpl!.template).toBe('# Meeting Notes\n\n');
   });
 
-  it('getPluginFileTemplates lists all registered templates', () => {
-    registerPluginFileTemplates(manifest());
-    registerPluginFileTemplates(
-      manifest({ id: 'other-plugin', contributes: { fileTemplates: [{ id: 'x', label: 'X', fileName: 'x.md', template: 'x' }] } }),
+  it('getExtensionFileTemplates lists all registered templates', () => {
+    registerExtensionFileTemplates(manifest());
+    registerExtensionFileTemplates(
+      manifest({ id: 'other-extension', contributes: { fileTemplates: [{ id: 'x', label: 'X', fileName: 'x.md', template: 'x' }] } }),
     );
-    const all = getPluginFileTemplates();
-    expect(all.map((t) => t.id).sort()).toEqual(['other-plugin.x', 'tpl-test.meeting-notes']);
+    const all = getExtensionFileTemplates();
+    expect(all.map((t) => t.id).sort()).toEqual(['other-extension.x', 'tpl-test.meeting-notes']);
   });
 });
 
-describe('registerPluginFileTemplates', () => {
+describe('registerExtensionFileTemplates', () => {
   it('registers a "New <label>" command per template', () => {
-    registerPluginFileTemplates(manifest());
-    const cmd = getCommand('plugin.tpl-test.new.meeting-notes');
+    registerExtensionFileTemplates(manifest());
+    const cmd = getCommand('extension.tpl-test.new.meeting-notes');
     expect(cmd).toBeDefined();
     expect(cmd!.title).toBe('New Meeting Notes');
     expect(cmd!.category).toBe('action');
@@ -83,16 +83,16 @@ describe('registerPluginFileTemplates', () => {
 
   it('returns no-op disposable when no templates declared', () => {
     expect(() =>
-      registerPluginFileTemplates(manifest({ contributes: {} })).dispose(),
+      registerExtensionFileTemplates(manifest({ contributes: {} })).dispose(),
     ).not.toThrow();
   });
 
   it('dispose unregisters both the registry entry and the command', () => {
-    const d = registerPluginFileTemplates(manifest());
-    expect(getCommand('plugin.tpl-test.new.meeting-notes')).toBeDefined();
+    const d = registerExtensionFileTemplates(manifest());
+    expect(getCommand('extension.tpl-test.new.meeting-notes')).toBeDefined();
     expect(getFileTemplate('tpl-test.meeting-notes')).toBeDefined();
     d.dispose();
-    expect(getCommand('plugin.tpl-test.new.meeting-notes')).toBeUndefined();
+    expect(getCommand('extension.tpl-test.new.meeting-notes')).toBeUndefined();
     expect(getFileTemplate('tpl-test.meeting-notes')).toBeUndefined();
   });
 });

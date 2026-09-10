@@ -1,7 +1,7 @@
 /**
  * Tests for the feature contribution adapter (trusted-tier sidebar panels).
  *
- * Covers: register a plugin's features, skip `panel !== 'left'`, skip missing
+ * Covers: register a extension's features, skip `panel !== 'left'`, skip missing
  * component entry-ref, skip missing icon, refuse reserved built-in ids,
  * dispose unregisters + falls back active panel. Doesn't render the React
  * component — the adapter's contract is: register → store has the entry;
@@ -10,15 +10,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { ComponentType } from 'react';
-import type { PluginManifest } from '@folyn/extension-host';
-import type { PluginModule } from './contributionAdapters';
-import { registerPluginFeatures } from './featureAdapter';
+import type { ExtensionManifest } from '@folyn/extension-host';
+import type { ExtensionModule } from './contributionAdapters';
+import { registerExtensionFeatures } from './featureAdapter';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
 
 const NullPanel: ComponentType = () => null;
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'feature-test',
     name: 'Feature Test',
@@ -40,7 +40,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-function fakeModule(): PluginModule {
+function fakeModule(): ExtensionModule {
   return {
     features: { panel: NullPanel },
   };
@@ -57,9 +57,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginFeatures', () => {
+describe('registerExtensionFeatures', () => {
   it('registers a left panel into the store', () => {
-    registerPluginFeatures(manifest(), fakeModule());
+    registerExtensionFeatures(manifest(), fakeModule());
     const ids = useFeaturePanelStore.getState().panels.map((p) => p.id);
     expect(ids).toEqual(['my-panel']);
   });
@@ -67,14 +67,14 @@ describe('registerPluginFeatures', () => {
   it('resolves component via module.features entry-ref', () => {
     const mod = fakeModule();
     const expected = mod.features!['panel'];
-    registerPluginFeatures(manifest(), mod);
+    registerExtensionFeatures(manifest(), mod);
     const entry = useFeaturePanelStore.getState().panels[0];
     expect(entry.component).toBe(expected);
   });
 
   it('skips panel !== left and warns', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    registerPluginFeatures(
+    registerExtensionFeatures(
       manifest({
         contributes: {
           features: [
@@ -94,7 +94,7 @@ describe('registerPluginFeatures', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const mod = fakeModule();
     mod.features = {}; // no 'panel' handler
-    registerPluginFeatures(manifest(), mod);
+    registerExtensionFeatures(manifest(), mod);
     expect(useFeaturePanelStore.getState().panels).toHaveLength(0);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
@@ -102,7 +102,7 @@ describe('registerPluginFeatures', () => {
 
   it('skips a feature with missing icon and warns (icon required)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    registerPluginFeatures(
+    registerExtensionFeatures(
       manifest({
         contributes: {
           features: [{ id: 'no-icon', panel: 'left', component: 'panel', icon: '' }],
@@ -117,7 +117,7 @@ describe('registerPluginFeatures', () => {
 
   it('refuses a feature whose id collides with a reserved built-in', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    registerPluginFeatures(
+    registerExtensionFeatures(
       manifest({
         contributes: {
           features: [
@@ -134,8 +134,8 @@ describe('registerPluginFeatures', () => {
     warn.mockRestore();
   });
 
-  it('assigns plugin order incrementing per unordered plugin panel (>= 100)', () => {
-    registerPluginFeatures(
+  it('assigns extension order incrementing per unordered extension panel (>= 100)', () => {
+    registerExtensionFeatures(
       manifest({
         contributes: {
           features: [
@@ -149,7 +149,7 @@ describe('registerPluginFeatures', () => {
     const panels = useFeaturePanelStore.getState().panels;
     const o1 = panels.find((p) => p.id === 'p1')!.order;
     const o2 = panels.find((p) => p.id === 'p2')!.order;
-    // Built-in calendar is 40; unordered plugin panels start at 100 so they
+    // Built-in calendar is 40; unordered extension panels start at 100 so they
     // land after built-ins. The module-level counter persists across tests
     // in this file, so we assert the relative increment, not absolute values.
     expect(o1).toBeGreaterThanOrEqual(100);
@@ -157,7 +157,7 @@ describe('registerPluginFeatures', () => {
   });
 
   it('uses manifest-declared order when present', () => {
-    registerPluginFeatures(
+    registerExtensionFeatures(
       manifest({
         contributes: {
           features: [{ id: 'p1', panel: 'left', component: 'panel', icon: '<svg/>', order: 5 }],
@@ -169,7 +169,7 @@ describe('registerPluginFeatures', () => {
   });
 
   it('dispose unregisters the panel', () => {
-    const d = registerPluginFeatures(manifest(), fakeModule());
+    const d = registerExtensionFeatures(manifest(), fakeModule());
     expect(useFeaturePanelStore.getState().panels).toHaveLength(1);
     d.dispose();
     expect(useFeaturePanelStore.getState().panels).toHaveLength(0);
@@ -186,14 +186,14 @@ describe('registerPluginFeatures', () => {
       visible: true,
       builtin: true,
     });
-    const d = registerPluginFeatures(manifest(), fakeModule());
+    const d = registerExtensionFeatures(manifest(), fakeModule());
     useFeaturePanelStore.getState().setActive('my-panel');
     d.dispose();
     expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
   });
 
   it('dispose clears activePanelId when the disposed panel was active and files is NOT registered (PR1 guard)', () => {
-    const d = registerPluginFeatures(manifest(), fakeModule());
+    const d = registerExtensionFeatures(manifest(), fakeModule());
     useFeaturePanelStore.getState().setActive('my-panel');
     d.dispose();
     expect(useFeaturePanelStore.getState().activePanelId).toBe(null);
@@ -210,7 +210,7 @@ describe('registerPluginFeatures', () => {
       builtin: true,
     });
     useFeaturePanelStore.getState().setActive('files');
-    const d = registerPluginFeatures(manifest(), fakeModule());
+    const d = registerExtensionFeatures(manifest(), fakeModule());
     d.dispose();
     expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
   });
@@ -226,8 +226,8 @@ describe('registerPluginFeatures', () => {
       visible: true,
       builtin: true,
     });
-    const d = registerPluginFeatures(manifest(), fakeModule());
-    // Simulate the user activating the plugin panel: editorStore is the
+    const d = registerExtensionFeatures(manifest(), fakeModule());
+    // Simulate the user activating the extension panel: editorStore is the
     // source of truth (the mirror would normally propagate to featurePanelStore,
     // but here we set both directly to assert dispose syncs editorStore).
     useEditorStore.setState({ activePanel: 'my-panel' });
@@ -249,14 +249,14 @@ describe('registerPluginFeatures', () => {
     });
     useEditorStore.setState({ activePanel: 'files' });
     useFeaturePanelStore.getState().setActive('files');
-    const d = registerPluginFeatures(manifest(), fakeModule());
+    const d = registerExtensionFeatures(manifest(), fakeModule());
     d.dispose();
     expect(useEditorStore.getState().activePanel).toBe('files');
   });
 
   it('returns no-op disposable when no features are contributed', () => {
     expect(() =>
-      registerPluginFeatures(manifest({ contributes: {} }), fakeModule()).dispose(),
+      registerExtensionFeatures(manifest({ contributes: {} }), fakeModule()).dispose(),
     ).not.toThrow();
   });
 });

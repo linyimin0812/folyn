@@ -219,7 +219,7 @@ describe('inline math line-break (MarkdownPreview contract)', () => {
   // the math on one line and emits no <br> around it.
   it('inline math on its own line: no <br> adjacent to mjx-container', () => {
     const html = renderMarkdownToHtml('text before\n$x^2$\ntext after', {
-      remarkPlugins: [remarkBreaks],
+      remarkExtensions: [remarkBreaks],
     });
     expect(html).toContain('<mjx-container');
     // The paragraph should not contain a <br> between text and mjx-container
@@ -231,7 +231,7 @@ describe('inline math line-break (MarkdownPreview contract)', () => {
 
   it('inline math on same line: still inline, no <br>', () => {
     const html = renderMarkdownToHtml('text $x^2$ more', {
-      remarkPlugins: [remarkBreaks],
+      remarkExtensions: [remarkBreaks],
     });
     const body = html.split('<style')[0];
     expect(body).not.toMatch(/<br\s*\/?>/);

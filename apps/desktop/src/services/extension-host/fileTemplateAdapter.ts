@@ -5,8 +5,8 @@
  * A `contributes.fileTemplates[]` entry is fully declarative (no module map):
  * `{ id, label, fileName, template, icon? }`. This adapter registers each
  * template into a module-level {@link fileTemplateRegistry} (keyed by
- * `<pluginId>.<templateId>`) AND surfaces a palette command
- * `plugin.<pluginId>.new.<templateId>` titled `New <label>` that prompts for
+ * `<extensionId>.<templateId>`) AND surfaces a palette command
+ * `extension.<extensionId>.new.<templateId>` titled `New <label>` that prompts for
  * a save path (default under the vault root) and writes the template content.
  *
  * ponytail: the right-click "新建" submenu (ContextMenu.tsx) is NOT wired
@@ -14,22 +14,22 @@
  * prefsStore.fileTemplates, which can't carry an arbitrary body. Surfacing
  * templates as palette commands is the MVP consumption path. The registry is
  * the single source of truth so a future submenu group can read
- * `getPluginFileTemplates()` without re-plumbing the adapter. Ceiling:
+ * `getExtensionFileTemplates()` without re-plumbing the adapter. Ceiling:
  * templates don't appear in the right-click submenu. Upgrade path: thread a
  * `onStartNewFromTemplate(parentDir, template)` callback through
- * SidebarActions → FilesPanel → ContextMenu and render a plugin-templates
+ * SidebarActions → FilesPanel → ContextMenu and render a extension-templates
  * group in `NEW_FILE_GROUPS`.
  */
 
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type { FileTemplateContribution } from '@folyn/extension-host';
 import { registerCommand } from '@/services/commandRegistry';
 import { useVaultStore } from '@/store/vaultStore';
 
 export interface RegisteredFileTemplate {
-  /** Globally-unique id: `<pluginId>.<templateId>`. */
+  /** Globally-unique id: `<extensionId>.<templateId>`. */
   id: string;
-  pluginId: string;
+  extensionId: string;
   label: string;
   fileName: string;
   template: string;
@@ -38,15 +38,15 @@ export interface RegisteredFileTemplate {
 
 const templates = new Map<string, RegisteredFileTemplate>();
 
-/** Register a plugin file template. Returns a remove handle. */
+/** Register a extension file template. Returns a remove handle. */
 export function registerFileTemplate(
-  pluginId: string,
+  extensionId: string,
   contribution: FileTemplateContribution,
 ): { dispose: () => void } {
-  const id = `${pluginId}.${contribution.id}`;
+  const id = `${extensionId}.${contribution.id}`;
   const entry: RegisteredFileTemplate = {
     id,
-    pluginId,
+    extensionId,
     label: contribution.label,
     fileName: contribution.fileName,
     template: contribution.template,
@@ -56,13 +56,13 @@ export function registerFileTemplate(
   return { dispose: () => templates.delete(id) };
 }
 
-/** Look up a registered template by `<pluginId>.<templateId>`. */
+/** Look up a registered template by `<extensionId>.<templateId>`. */
 export function getFileTemplate(id: string): RegisteredFileTemplate | undefined {
   return templates.get(id);
 }
 
-/** All registered plugin file templates (insertion order). */
-export function getPluginFileTemplates(): RegisteredFileTemplate[] {
+/** All registered extension file templates (insertion order). */
+export function getExtensionFileTemplates(): RegisteredFileTemplate[] {
   return Array.from(templates.values());
 }
 
@@ -71,7 +71,7 @@ export function clearFileTemplates(): void {
   templates.clear();
 }
 
-export function registerPluginFileTemplates(manifest: PluginManifest): Disposable {
+export function registerExtensionFileTemplates(manifest: ExtensionManifest): Disposable {
   const contributions: FileTemplateContribution[] = manifest.contributes?.fileTemplates ?? [];
   if (contributions.length === 0) return { dispose: () => {} };
 
@@ -79,13 +79,13 @@ export function registerPluginFileTemplates(manifest: PluginManifest): Disposabl
   for (const contribution of contributions) {
     const templateId = `${manifest.id}.${contribution.id}`;
     disposables.push(registerFileTemplate(manifest.id, contribution));
-    const fullId = `plugin.${manifest.id}.new.${contribution.id}`;
+    const fullId = `extension.${manifest.id}.new.${contribution.id}`;
     const d = registerCommand({
       id: fullId,
       title: `New ${contribution.label}`,
       category: 'action',
       icon: contribution.icon,
-      keywords: ['plugin', 'new', 'template', manifest.id, contribution.id],
+      keywords: ['extension', 'new', 'template', manifest.id, contribution.id],
       run: async () => {
         const entry = getFileTemplate(templateId);
         const tpl = entry ?? {

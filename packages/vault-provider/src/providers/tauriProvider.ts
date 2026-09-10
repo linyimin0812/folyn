@@ -183,7 +183,7 @@ export class TauriVaultProvider implements VaultProvider {
       // ponytail: surface the original fs error — see deleteFile comment. The
       // user's `.voice_input` delete failure was silently masked as NOT_FOUND,
       // hiding the real reason (scope denial / EBUSY / open handle). Including
-      // `${err}` exposes the underlying plugin:fs|remove rejection string so
+      // `${err}` exposes the underlying extension:fs|remove rejection string so
       // the next iteration can actually root-cause instead of guessing.
       throw new VaultError('NOT_FOUND', `Cannot delete directory: ${path} (${err})`);
     }

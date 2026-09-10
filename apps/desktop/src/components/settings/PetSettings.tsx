@@ -205,7 +205,7 @@ export function PetSettings() {
   // `window.confirm` — browser-extension userscripts (Stay/Tampermonkey)
   // can intercept `window.confirm` and route it through a non-existent
   // `dialog.confirm` command, surfacing as "Command not found". The Tauri
-  // plugin's `confirm()` goes through the IPC layer directly and isn't
+  // extension's `confirm()` goes through the IPC layer directly and isn't
   // affected. Non-Tauri envs (tests, web preview) fall back to
   // `window.confirm` (no userscript interception there).
   const handleDeleteIcon = useCallback(async (path: string) => {

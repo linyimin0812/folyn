@@ -30,7 +30,7 @@ function buildDecorations(text: string): DecorationSet {
   return RangeSet.of(ranges, true);
 }
 
-const mathHighlightPlugin = ViewPlugin.fromClass(
+const mathHighlightExtension = ViewPlugin.fromClass(
   class MathHighlight {
     decorations: DecorationSet;
     constructor(view: EditorView) {
@@ -69,4 +69,4 @@ const mathFoldService = foldService.of((state: EditorState, lineStart: number, l
   return null;
 });
 
-export const mathExtension: Extension[] = [mathHighlightPlugin, mathFoldService];
+export const mathExtension: Extension[] = [mathHighlightExtension, mathFoldService];

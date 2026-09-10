@@ -13,7 +13,7 @@
  *
  * `FilePresentationContext` is the props bundle the shell hands to a mode's
  * component (content / cursor-sync / signal). It subsumes the legacy
- * EditorProps/PreviewProps so plugin-authored custom editors/previews share
+ * EditorProps/PreviewProps so extension-authored custom editors/previews share
  * one shape.
  *
  * React appears as a peer type only (`ComponentType`, `ReactNode`); type-only
@@ -70,7 +70,7 @@ export interface SplitComposition {
  * A presentation mode offered by a provider. `kind` selects how the shell
  * renders it:
  *  - `shell-editor`: the host renders its built-in CodeMirror editor. Core
- *    owns CodeMirror; plugins never get the internal view (doc §15).
+ *    owns CodeMirror; extensions never get the internal view (doc §15).
  *  - `component`: render `component` with the active {@link FilePresentationContext}.
  *  - `split`: shell-owned layout composing two sibling modes (resizer etc.).
  */

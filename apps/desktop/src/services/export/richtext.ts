@@ -128,7 +128,7 @@ function serializeHast(node: any): string {
 /**
  * generateHTML runs each node's static renderHTML — for CodeBlockLowlight
  * that's the inherited CodeBlock `<pre><code class="language-…">text</code>`
- * (the lowlight plugin that decorates tokens only runs inside a live
+ * (the lowlight extension that decorates tokens only runs inside a live
  * ProseMirror view, not generateHTML). Post-process: re-run lowlight on
  * each code block and swap its innerHTML for the token spans. Same
  * lowlight instance as the editor → same grammar coverage + same colors.

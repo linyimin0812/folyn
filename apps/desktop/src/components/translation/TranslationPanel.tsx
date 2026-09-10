@@ -65,11 +65,11 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
 
   // pair = user's explicit override (persisted); null → fall back to global
-  // pluginPair. Derived each render so async pluginPair hydration flows in.
-  const pluginPair = useAiConfigStore((s) => s.pluginPair);
+  // extensionPair. Derived each render so async extensionPair hydration flows in.
+  const extensionPair = useAiConfigStore((s) => s.extensionPair);
   const pair = useTranslationStore((s) => s.pair);
   const setPair = useTranslationStore((s) => s.setPair);
-  const selectedPair: Pair | null = pair ?? (pluginPair ? { provider: pluginPair.provider, model: pluginPair.model } : null);
+  const selectedPair: Pair | null = pair ?? (extensionPair ? { provider: extensionPair.provider, model: extensionPair.model } : null);
 
   const source = useTranslationStore((s) => s.source);
   const target = useTranslationStore((s) => s.target);
@@ -89,10 +89,10 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
   const handleTranslate = useCallback(async () => {
     if (streaming) return;
     if (!input.trim()) return;
-    // ponytail: selectedPair hydrates async from pluginPair (Tauri store).
-    // Falling back to pluginPair avoids a "first click sets noPair error,
+    // ponytail: selectedPair hydrates async from extensionPair (Tauri store).
+    // Falling back to extensionPair avoids a "first click sets noPair error,
     // second click works" race on a freshly mounted panel.
-    const fallback = selectedPair ?? (pluginPair ? { provider: pluginPair.provider, model: pluginPair.model } : null);
+    const fallback = selectedPair ?? (extensionPair ? { provider: extensionPair.provider, model: extensionPair.model } : null);
     const resolved = resolvePairConfig(fallback);
     if (!resolved) {
       setError(t('settings:translation.error.noPair'));
@@ -121,7 +121,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
     } finally {
       setStreaming(false);
     }
-  }, [streaming, input, selectedPair, pluginPair, source, target, t, setResult]);
+  }, [streaming, input, selectedPair, extensionPair, source, target, t, setResult]);
 
   const handleCopy = useCallback(async () => {
     if (!result) return;

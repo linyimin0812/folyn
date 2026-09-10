@@ -69,8 +69,8 @@ export function FeatureAdapterDropdown({ rowId }: { rowId: string }) {
         className="px-1.5 h-6 flex items-center gap-1 rounded text-[10.5px] cursor-pointer border border-brd2 bg-surf2 transition-all duration-[120ms] text-t2 hover:bg-hov hover:text-t1"
         onClick={() => setOpen((v) => !v)}
         title={override
-          ? t('settings:plugins.cli.overrideTooltip', { adapter: current.displayName })
-          : t('settings:plugins.cli.fallbackTooltip', { adapter: current.displayName })}
+          ? t('settings:extensions.cli.overrideTooltip', { adapter: current.displayName })
+          : t('settings:extensions.cli.fallbackTooltip', { adapter: current.displayName })}
       >
         <img src={ADAPTER_ICON[current.id]} alt={current.displayName} className="w-3.5 h-3.5" />
         <span className="font-mono">{current.displayName}</span>

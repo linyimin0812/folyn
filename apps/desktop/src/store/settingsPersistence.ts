@@ -112,7 +112,7 @@ function pickSliceData(slice: PersistSlice): Record<string, unknown> {
 /** Merge every registered slice's keys into a single blob. Used only to
  *  assemble the `pet://settings-updated` payload — on disk, each slice
  *  writes its own file. Secondary Tauri windows (pet-corner, pet-bubble,
- *  pet-panel) lack fs-plugin ACL perms to re-read ~/.folyn/storage/ files
+ *  pet-panel) lack fs-extension ACL perms to re-read ~/.folyn/storage/ files
  *  themselves, so they hydrate from the broadcast blob instead. */
 /** Merge every registered slice's keys into a single blob. Used to assemble
  *  the `pet://settings-updated` broadcast payload and to answer
@@ -238,7 +238,7 @@ export async function loadSettings(): Promise<Record<string, unknown> | null> {
 
   if (!any) return null;
   // Broadcast to secondary Tauri windows (pet-bubble / pet-corner /
-  // pet-panel) which hold their own store instances but lack fs-plugin ACL
+  // pet-panel) which hold their own store instances but lack fs-extension ACL
   // perms to re-read ~/.folyn/storage/ files themselves. Without this, the
   // bubble window's petStore stays at defaults (petSize='100') on startup —
   // `computeBubblePosition` then sizes the gap against the wrong pet

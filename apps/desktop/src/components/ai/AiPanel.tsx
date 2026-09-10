@@ -431,7 +431,7 @@ export function AiPanel({ embedded = false, showClose = false }: AiPanelProps = 
 
     // Save blob attachments to temp directory.
     //
-    // Saves blob attachments via the shared `saveBlobs` helper's fs-plugin
+    // Saves blob attachments via the shared `saveBlobs` helper's fs-extension
     // path (`mkdir` + `writeFile` → `<vault>/.folyn-tmp`). The main window's
     // fs ACL scope includes `$HOME/**/.*/**`, which covers the dot-dir
     // `.folyn-tmp` under any home-based vault, so no shell sidecar is

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-// ponytail: import fs helpers from the aliased mock (test/mocks/plugin-fs);
+// ponytail: import fs helpers from the aliased mock (test/mocks/extension-fs);
 // setup.ts resets the mock state in beforeEach, so no manual __internals here.
 import { writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
 import { ClaudeAdapter } from './claudeAdapter';
 import { parseMarkdownFrontmatter, parseTomlTopLevel } from './frontmatter';
 
-// ponytail: seed the in-memory fs mock (test/mocks/plugin-fs) with skill /
+// ponytail: seed the in-memory fs mock (test/mocks/extension-fs) with skill /
 // command trees mirroring the real on-disk layout described in the research
 // file. homeDir() mock returns /mock/home.
 
@@ -41,7 +41,7 @@ beforeEach(async () => {
   // Create the root dirs the mock needs.
   await mkdir(`${HOME}/.claude/skills`);
   await mkdir(`${HOME}/.claude/commands`);
-  await mkdir(`${HOME}/.claude/plugins`);
+  await mkdir(`${HOME}/.claude/extensions`);
   await mkdir(`${CWD}/.claude/skills`);
   await mkdir(`${CWD}/.claude/commands`);
 });
@@ -113,26 +113,26 @@ describe('ClaudeAdapter.listSkills', () => {
     expect(await a.listSkills()).toEqual([]);
   });
 
-  it('reads plugin skills via installed_plugins.json', async () => {
-    await seedSkill(`${HOME}/.claude/plugins/cache/mkt/pony/1.0.0/skills/pt`, 'ponytail', 'audit');
+  it('reads extension skills via installed_extensions.json', async () => {
+    await seedSkill(`${HOME}/.claude/extensions/cache/mkt/pony/1.0.0/skills/pt`, 'ponytail', 'audit');
     await writeTextFile(
-      `${HOME}/.claude/plugins/installed_plugins.json`,
-      JSON.stringify({ 'ponytail@mkt': { installPath: `${HOME}/.claude/plugins/cache/mkt/pony/1.0.0`, version: '1.0.0' } }),
+      `${HOME}/.claude/extensions/installed_extensions.json`,
+      JSON.stringify({ 'ponytail@mkt': { installPath: `${HOME}/.claude/extensions/cache/mkt/pony/1.0.0`, version: '1.0.0' } }),
     );
     const a = await adapterWith();
     const skills = await a.listSkills();
-    const plugin = skills.find((s) => s.name === 'ponytail');
-    expect(plugin).toBeDefined();
-    expect(plugin!.source).toBe('plugin');
-    expect(plugin!.pluginName).toBe('ponytail');
+    const extension = skills.find((s) => s.name === 'ponytail');
+    expect(extension).toBeDefined();
+    expect(extension!.source).toBe('extension');
+    expect(extension!.extensionName).toBe('ponytail');
   });
 
-  it('precedence: user wins over plugin on name collision', async () => {
+  it('precedence: user wins over extension on name collision', async () => {
     await seedSkill(`${HOME}/.claude/skills/dup`, 'dup', 'user desc');
-    await seedSkill(`${HOME}/.claude/plugins/cache/mkt/p/1.0.0/skills/dup`, 'dup', 'plugin desc');
+    await seedSkill(`${HOME}/.claude/extensions/cache/mkt/p/1.0.0/skills/dup`, 'dup', 'extension desc');
     await writeTextFile(
-      `${HOME}/.claude/plugins/installed_plugins.json`,
-      JSON.stringify({ 'p@mkt': { installPath: `${HOME}/.claude/plugins/cache/mkt/p/1.0.0`, version: '1.0.0' } }),
+      `${HOME}/.claude/extensions/installed_extensions.json`,
+      JSON.stringify({ 'p@mkt': { installPath: `${HOME}/.claude/extensions/cache/mkt/p/1.0.0`, version: '1.0.0' } }),
     );
     const a = await adapterWith();
     const skills = await a.listSkills();
@@ -164,19 +164,19 @@ describe('ClaudeAdapter.listCommands', () => {
     expect(c!.source).toBe('project');
   });
 
-  it('parses .toml plugin commands (description + prompt)', async () => {
-    await mkdir(`${HOME}/.claude/plugins/cache/mkt/p/1.0.0/commands`);
-    await seedTomlCommand(`${HOME}/.claude/plugins/cache/mkt/p/1.0.0/commands/audit.toml`, 'audit it', 'do audit');
+  it('parses .toml extension commands (description + prompt)', async () => {
+    await mkdir(`${HOME}/.claude/extensions/cache/mkt/p/1.0.0/commands`);
+    await seedTomlCommand(`${HOME}/.claude/extensions/cache/mkt/p/1.0.0/commands/audit.toml`, 'audit it', 'do audit');
     await writeTextFile(
-      `${HOME}/.claude/plugins/installed_plugins.json`,
-      JSON.stringify({ 'p@mkt': { installPath: `${HOME}/.claude/plugins/cache/mkt/p/1.0.0`, version: '1.0.0' } }),
+      `${HOME}/.claude/extensions/installed_extensions.json`,
+      JSON.stringify({ 'p@mkt': { installPath: `${HOME}/.claude/extensions/cache/mkt/p/1.0.0`, version: '1.0.0' } }),
     );
     const a = await adapterWith();
     const cmds = await a.listCommands();
     const c = cmds.find((x) => x.name === 'audit');
     expect(c).toBeDefined();
     expect(c!.description).toBe('audit it');
-    expect(c!.source).toBe('plugin');
+    expect(c!.source).toBe('extension');
   });
 
   it('exposes argumentHint from frontmatter', async () => {

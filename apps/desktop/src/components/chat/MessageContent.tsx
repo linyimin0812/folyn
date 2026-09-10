@@ -34,8 +34,8 @@ import { ZoomableImage } from './ZoomableImage';
 // per-segment useMemo cache below keeps prior segments from re-parsing.
 const render = (value: string): ReactNode =>
   renderMarkdownToReact(value, {
-    remarkPlugins: [remarkGfm],
-    rehypePlugins: [[rehypeHighlight, { languages: allLowlightGrammars, detect: true } as any]],
+    remarkExtensions: [remarkGfm],
+    rehypeExtensions: [[rehypeHighlight, { languages: allLowlightGrammars, detect: true } as any]],
     components: { code: CodeOverride },
   });
 

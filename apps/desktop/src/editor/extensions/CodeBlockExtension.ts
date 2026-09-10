@@ -1,8 +1,8 @@
 import { EditorView, ViewPlugin, ViewUpdate, keymap } from '@codemirror/view';
 import { StateField, StateEffect, Prec } from '@codemirror/state';
 import hljs from 'highlight.js';
-import { listMarkdownCodeRendererLanguages } from '@/services/plugin-host/markdownCodeRendererAdapter';
-import { listEditorLanguages } from '@/services/plugin-host/editorLanguageAdapter';
+import { listMarkdownCodeRendererLanguages } from '@/services/extension-host/markdownCodeRendererAdapter';
+import { listEditorLanguages } from '@/services/extension-host/editorLanguageAdapter';
 
 interface LanguageEntry {
   name: string;
@@ -14,9 +14,9 @@ function getAllLanguages(): LanguageEntry[] {
   // ponytail: html is an alias of xml in highlight.js so it's absent from listLanguages();
   // swap vbscript-html → html so the menu shows `html`.
   const extras: LanguageEntry[] = [{ name: 'mermaid', label: 'mermaid' }, { name: 'html', label: 'html' }];
-  // ponytail: plugin-contributed renderer langs (e.g. plantuml + aliases puml, pu) and
+  // ponytail: extension-contributed renderer langs (e.g. plantuml + aliases puml, pu) and
   // editor-language aliases. Lookup is per-call — sub-ms, only invoked while the
-  // popup is visible or triggering, so no module-level cache. Plugins load
+  // popup is visible or triggering, so no module-level cache. Extensions load
   // asynchronously; a cached list would miss plantuml on first trigger.
   const rendererLangs = listMarkdownCodeRendererLanguages();
   const editorLangs = listEditorLanguages().flatMap(({ canonical, aliases }) => [

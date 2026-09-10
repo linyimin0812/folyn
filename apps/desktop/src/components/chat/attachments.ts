@@ -364,7 +364,7 @@ function deriveExtension(att: PendingAttachment): string {
  * ARG_MAX limit ("Argument list too long (os error 7)"). The main window's
  * fs ACL scope covers the attachment destinations (vault `.folyn-tmp` is a
  * hidden dir anywhere under the home directory, pet writes under appData),
- * so the fs plugin is sufficient.
+ * so the fs extension is sufficient.
  *
  * Throws when not running inside Tauri (caller catches and surfaces an
  * inline error).
@@ -388,7 +388,7 @@ async function saveBlobsFs(
   }
 
   const dir = `${workingDir}/${subdir}`;
-  // The mock and real plugin both accept { recursive: true }; the mock's
+  // The mock and real extension both accept { recursive: true }; the mock's
   // ensureDir already creates intermediate dirs recursively regardless.
   await mkdir(dir, { recursive: true });
 

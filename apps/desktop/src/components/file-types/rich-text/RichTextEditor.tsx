@@ -91,7 +91,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
   const loadedContentRef = useRef(content);
 
   // ponytail: image paste/drop dialog state. The RichTextImage extension's
-  // ProseMirror plugin calls onImagePaste with the pasted files + insert
+  // ProseMirror extension calls onImagePaste with the pasted files + insert
   // position; we open the same ImagePasteDialog the markdown editor uses so
   // target/format/size selection is consistent across file types. Confirm
   // reuses imageUploader strategies (LocalFileStrategy → vault-relative
@@ -116,11 +116,11 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
   };
 
   // ponytail: smart paste → table convert dialog (rich-text path). When the
-  // MarkdownTablePaste plugin detects a TSV table on paste, it calls
+  // MarkdownTablePaste extension detects a TSV table on paste, it calls
   // onTablePaste; we honor the saved tablePasteMode ('ask'|'convert'|'text')
   // and, when 'ask', open the TableConvertDialog. On resolve we dispatch the
   // native table node or replay the raw text. Markdown-source tables convert
-  // directly in the plugin (no prompt), mirroring the .md editor rule.
+  // directly in the extension (no prompt), mirroring the .md editor rule.
   const tablePasteMode = useEditorPrefsStore((s) => s.tablePasteMode);
   const setTablePasteMode = useEditorPrefsStore((s) => s.setTablePasteMode);
   const tablePasteModeRef = useRef(tablePasteMode);
@@ -144,7 +144,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
     if (mode === 'text') {
       return 'text';
     }
-    // 'ask' → hold and show the dialog. The plugin claims the paste
+    // 'ask' → hold and show the dialog. The extension claims the paste
     // (preventDefault) so we must replay either the table or the raw text.
     setTableConvert({
       visible: true,
@@ -167,7 +167,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
       dispatchTableNode(ed.view, cap.tableNode);
     } else if (ed && cap.rawText) {
       // "Paste as text": insert the raw clipboard text as a text node at the
-      // current selection (preventDefault was called in the plugin).
+      // current selection (preventDefault was called in the extension).
       ed.chain().focus().insertContent(cap.rawText).run();
     }
     if (choice.remember) {
@@ -279,7 +279,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
   // editor.isActive() are reactive across transactions; bumping a tick on
   // selectionUpdate is the minimal signal. Skipping would leave the toolbar
   // stale until next keystroke. The same tick recomputes the slash-menu state
-  // (storage is written here, not in a ProseMirror plugin — no extra dep).
+  // (storage is written here, not in a ProseMirror extension — no extra dep).
   //
   // dismissedFromRef: after Esc closes the menu, the `/` + filter text is
   // left in the doc; without this guard, the next transaction (e.g. cursor

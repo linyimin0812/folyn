@@ -3,7 +3,7 @@
  *
  * Verifies: register → "Open: <title>" command appears; dispose removes the
  * command; `window: false` tools are skipped with a warning; dispose also
- * closes open tool windows for the plugin (via the store's closeAllForPlugin).
+ * closes open tool windows for the extension (via the store's closeAllForExtension).
  *
  * Doesn't exercise the WebviewWindow itself — that path is Tauri-only and
  * integration-tested manually. The adapter's contract is: register a command
@@ -12,12 +12,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@folyn/extension-host';
-import { registerPluginTools } from './toolAdapter';
+import type { ExtensionManifest } from '@folyn/extension-host';
+import { registerExtensionTools } from './toolAdapter';
 import { getCommands, clearCommands } from '@/services/commandRegistry';
 import { useToolWindowStore } from '@/store/toolWindowStore';
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'tool-test',
     name: 'Tool Test',
@@ -51,11 +51,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginTools', () => {
+describe('registerExtensionTools', () => {
   it('registers an "Open: <title>" command per tool (window: true)', () => {
-    registerPluginTools(manifest());
+    registerExtensionTools(manifest());
     const cmds = getCommands().filter((c) =>
-      c.id.startsWith('plugin.openTool.tool-test.'),
+      c.id.startsWith('extension.openTool.tool-test.'),
     );
     expect(cmds).toHaveLength(1);
     expect(cmds[0].title).toBe('Open: Hello Tool');
@@ -64,7 +64,7 @@ describe('registerPluginTools', () => {
 
   it('skips tools with window: false and warns', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    registerPluginTools(
+    registerExtensionTools(
       manifest({
         contributes: {
           tools: [
@@ -79,30 +79,30 @@ describe('registerPluginTools', () => {
       }),
     );
     const cmds = getCommands().filter((c) =>
-      c.id.startsWith('plugin.openTool.tool-test.'),
+      c.id.startsWith('extension.openTool.tool-test.'),
     );
     expect(cmds).toHaveLength(0);
     expect(warnSpy).toHaveBeenCalled();
   });
 
   it('returns an empty disposable when no tools are contributed', async () => {
-    const d = registerPluginTools(manifest({ contributes: {} }));
-    expect(getCommands().filter((c) => c.id.startsWith('plugin.openTool.')).length).toBe(0);
+    const d = registerExtensionTools(manifest({ contributes: {} }));
+    expect(getCommands().filter((c) => c.id.startsWith('extension.openTool.')).length).toBe(0);
     await d.dispose();
   });
 
   it('dispose unregisters the command', async () => {
-    const d = registerPluginTools(manifest());
-    expect(getCommands().some((c) => c.id === 'plugin.openTool.tool-test.hello')).toBe(true);
+    const d = registerExtensionTools(manifest());
+    expect(getCommands().some((c) => c.id === 'extension.openTool.tool-test.hello')).toBe(true);
     await d.dispose();
-    expect(getCommands().some((c) => c.id === 'plugin.openTool.tool-test.hello')).toBe(false);
+    expect(getCommands().some((c) => c.id === 'extension.openTool.tool-test.hello')).toBe(false);
   });
 
-  it('dispose cascades to closeAllForPlugin on the tool window store', async () => {
+  it('dispose cascades to closeAllForExtension on the tool window store', async () => {
     const closeSpy = vi
-      .spyOn(useToolWindowStore.getState(), 'closeAllForPlugin')
+      .spyOn(useToolWindowStore.getState(), 'closeAllForExtension')
       .mockResolvedValue(undefined);
-    const d = registerPluginTools(manifest());
+    const d = registerExtensionTools(manifest());
     await d.dispose();
     expect(closeSpy).toHaveBeenCalledWith('tool-test');
   });
@@ -114,13 +114,13 @@ describe('registerPluginTools', () => {
     // Replace the bound action so the existing getState() returns our spy.
     useToolWindowStore.setState({ open: openSpy } as never);
 
-    registerPluginTools(manifest());
-    const cmd = getCommands().find((c) => c.id === 'plugin.openTool.tool-test.hello');
+    registerExtensionTools(manifest());
+    const cmd = getCommands().find((c) => c.id === 'extension.openTool.tool-test.hello');
     expect(cmd).toBeDefined();
     cmd!.run();
     expect(openSpy).toHaveBeenCalledTimes(1);
-    const [pluginId, tool] = openSpy.mock.calls[0];
-    expect(pluginId).toBe('tool-test');
+    const [extensionId, tool] = openSpy.mock.calls[0];
+    expect(extensionId).toBe('tool-test');
     expect(tool.id).toBe('hello');
     expect(tool.entry).toBe('index.html');
   });

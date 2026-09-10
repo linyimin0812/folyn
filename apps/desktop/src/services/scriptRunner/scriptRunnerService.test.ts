@@ -7,7 +7,7 @@ const mockOnClose = vi.fn();
 const stdoutOn = vi.fn();
 const stderrOn = vi.fn();
 // ponytail: capture Command.create(name, args, options) so a runScript test
-// can assert the runtime's console-codepage encoding reaches the shell plugin.
+// can assert the runtime's console-codepage encoding reaches the shell extension.
 const commandCalls: Array<{ name: string; args: string[]; options: unknown }> = [];
 
 vi.mock('@tauri-apps/plugin-shell', () => ({
@@ -261,7 +261,7 @@ describe('formatResultBlock', () => {
     expect(block).toBe('<!-- Result -->\n> [exit 0]');
   });
 
-  // Regression: the shell plugin emits Windows \r\n split across two payloads
+  // Regression: the shell extension emits Windows \r\n split across two payloads
   // (row\r then \n), so the run buffer carries raw \r. Without normalization
   // each `> ` line would trail a stray CR; this asserts CRLF/CR → LF collapse.
   it('normalizes CRLF and bare CR to LF in the blockquote', () => {

@@ -28,7 +28,7 @@ export function usePetHostBridge(): void {
   // ── Pet icon library reconcile (PRD: settings-pet-tab-and-custom-icon) ──
   // On startup, reconcile the persisted `petIcons` library + active
   // `petIconPath` with the actual files under ~/.folyn/pet-icon/. Lives in
-  // the MAIN window (not PetApp) because the fs plugin calls require ACL
+  // the MAIN window (not PetApp) because the fs extension calls require ACL
   // permissions the main window has but the pet window does not. Wrapped
   // in isTauri + try/catch so non-Tauri / test envs skip it.
   useEffect(() => {
@@ -113,7 +113,7 @@ export function usePetHostBridge(): void {
         opacity?: '25' | '50' | '75' | '100';
         clickThrough?: boolean;
         commandId?: string;
-        pluginId?: string;
+        extensionId?: string;
       }>(
         'pet://menu-action',
         (event) => {
@@ -124,7 +124,7 @@ export function usePetHostBridge(): void {
               event.payload?.opacity,
               event.payload?.clickThrough,
               event.payload?.commandId,
-              event.payload?.pluginId,
+              event.payload?.extensionId,
             );
           }
         },

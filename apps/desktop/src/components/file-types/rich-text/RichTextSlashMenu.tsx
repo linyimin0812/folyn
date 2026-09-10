@@ -18,7 +18,7 @@ import type { SlashCommandState } from './RichTextSlashExtension';
 import { applySlashCommand } from './RichTextSlashExtension';
 
 // ponytail: separate component from the CodeMirror SlashMenu.tsx — that one's
-// `onSelect(plugin: ContainerPlugin)` is typed for markdown-directive plugins
+// `onSelect(extension: ContainerExtension)` is typed for markdown-directive extensions
 // (ContainerRegistry), but Tiptap slash items map to `editor.chain().<cmd>()`
 // calls on native node types. Forcing both into one component would require a
 // generic MenuItem<T> abstraction with two adapters — more indirection than

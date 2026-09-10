@@ -6,7 +6,7 @@
  * module-level {@link markdownCodeRendererRegistry} keyed by `language` + each
  * alias. `MarkdownPreview.tsx` consults {@link getMarkdownCodeRenderer} on
  * each fenced code block; a hit replaces the default `CodeBlockWrapper`, a miss
- * falls through. Builtins (mermaid) register before plugins; first-registered
+ * falls through. Builtins (mermaid) register before extensions; first-registered
  * wins (ponytail: a per-language precedence list is the upgrade path).
  *
  * Mirrors `exportEnhancerAdapter.ts`: entry-ref missing → warn + skip; returns
@@ -14,13 +14,13 @@
  */
 
 import type { ComponentType } from 'react';
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type { MarkdownCodeRendererContribution, MarkdownCodeRendererProps } from '@folyn/extension-host';
-import type { PluginModule } from './contributionAdapters';
-import { withPluginBoundary } from './pluginBoundary';
+import type { ExtensionModule } from './contributionAdapters';
+import { withExtensionBoundary } from './extensionBoundary';
 
 interface RegisteredRenderer {
-  pluginId: string;
+  extensionId: string;
   canonical: string;
   component: ComponentType<MarkdownCodeRendererProps>;
 }
@@ -29,21 +29,21 @@ const renderers = new Map<string, RegisteredRenderer>();
 
 /** Register a renderer for a language (and optional aliases). First-registered-wins. */
 export function registerMarkdownCodeRenderer(
-  pluginId: string,
+  extensionId: string,
   language: string,
   canonical: string,
   component: ComponentType<MarkdownCodeRendererProps>,
 ): { dispose: () => void } {
   if (!renderers.has(language)) {
-    renderers.set(language, { pluginId, canonical, component });
+    renderers.set(language, { extensionId, canonical, component });
   }
-  return { dispose: () => unregisterMarkdownCodeRenderer(language, pluginId) };
+  return { dispose: () => unregisterMarkdownCodeRenderer(language, extensionId) };
 }
 
-/** Remove a renderer (only if it still belongs to this plugin). */
-export function unregisterMarkdownCodeRenderer(language: string, pluginId: string): void {
+/** Remove a renderer (only if it still belongs to this extension). */
+export function unregisterMarkdownCodeRenderer(language: string, extensionId: string): void {
   const existing = renderers.get(language);
-  if (existing?.pluginId === pluginId) renderers.delete(language);
+  if (existing?.extensionId === extensionId) renderers.delete(language);
 }
 
 /** Look up a renderer by fence language or alias. */
@@ -70,9 +70,9 @@ export function listMarkdownCodeRendererLanguages(): Array<{ name: string; label
   return Array.from(renderers.keys(), (key) => ({ name: key, label: key }));
 }
 
-export function registerPluginMarkdownCodeRenderers(
-  manifest: PluginManifest,
-  module: PluginModule,
+export function registerExtensionMarkdownCodeRenderers(
+  manifest: ExtensionManifest,
+  module: ExtensionModule,
 ): Disposable {
   const contributions: MarkdownCodeRendererContribution[] = manifest.contributes?.markdownCodeRenderers ?? [];
   if (contributions.length === 0) return { dispose: () => {} };
@@ -82,7 +82,7 @@ export function registerPluginMarkdownCodeRenderers(
     const component = module.markdownCodeRenderers?.[c.component];
     if (!component) {
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" markdown-code-renderer "${c.language}" has no component for entry-ref "${c.component}" — skipped`,
+        `[extension-host] extension "${manifest.id}" markdown-code-renderer "${c.language}" has no component for entry-ref "${c.component}" — skipped`,
       );
       continue;
     }
@@ -90,7 +90,7 @@ export function registerPluginMarkdownCodeRenderers(
     // this fenced-block surface and never white-screens the markdown preview.
     // Per-`<pre>` instance isolation: each createElement(wrapped) call gets
     // its own boundary, so one broken block doesn't kill its siblings.
-    const wrapped = withPluginBoundary(component, manifest.id, `code-renderer:${c.language}`);
+    const wrapped = withExtensionBoundary(component, manifest.id, `code-renderer:${c.language}`);
     const keys = [c.language, ...(c.aliases ?? [])];
     for (const key of keys) {
       if (renderers.has(key)) continue; // first-registered wins

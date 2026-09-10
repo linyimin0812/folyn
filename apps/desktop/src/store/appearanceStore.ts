@@ -55,7 +55,7 @@ export const PERSIST_KEYS_APPEARANCE = [
   // row works regardless.
   'enableSchedulePanel',
   // ponytail: translation page flag. Default true so the ActivityBar icon
-  // shows on first launch; user can hide it from Plugins settings.
+  // shows on first launch; user can hide it from Extensions settings.
   'enableTranslationPanel',
   'enabledAtWiki',
   'enabledAtClips',

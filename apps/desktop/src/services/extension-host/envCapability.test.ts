@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ponytail: mock the two host stores with a tiny zustand-like surface so
-// `buildPluginEnv` can subscribe + read without pulling react graphs into
+// `buildExtensionEnv` can subscribe + read without pulling react graphs into
 // the test bundle. Each mock exposes `getState()`, `subscribe(listener)`,
 // and `__emit(newState)` to drive test transitions.
 
@@ -73,7 +73,7 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
-import { buildPluginEnv, disposePluginEnv } from './envCapability';
+import { buildExtensionEnv, disposeExtensionEnv } from './envCapability';
 
 beforeEach(() => {
   appearanceMock.__emit({ theme: 'light' });
@@ -81,9 +81,9 @@ beforeEach(() => {
   matchMediaDark = false;
 });
 
-describe('buildPluginEnv', () => {
+describe('buildExtensionEnv', () => {
   it('reads current theme + locale', () => {
-    const env = buildPluginEnv();
+    const env = buildExtensionEnv();
     expect(env.theme).toBe('light');
     expect(env.locale).toBe('en');
   });
@@ -91,12 +91,12 @@ describe('buildPluginEnv', () => {
   it('resolves system theme via prefers-color-scheme', () => {
     appearanceMock.__emit({ theme: 'system' });
     matchMediaDark = true;
-    const env = buildPluginEnv();
+    const env = buildExtensionEnv();
     expect(env.theme).toBe('dark');
   });
 
   it('pushes theme changes to subscribers', () => {
-    const env = buildPluginEnv();
+    const env = buildExtensionEnv();
     const cb = vi.fn();
     env.onThemeChange(cb);
     appearanceMock.__emit({ theme: 'dark' });
@@ -104,7 +104,7 @@ describe('buildPluginEnv', () => {
   });
 
   it('pushes locale changes to subscribers', () => {
-    const env = buildPluginEnv();
+    const env = buildExtensionEnv();
     const cb = vi.fn();
     env.onLocaleChange(cb);
     localeMock.__emit({ locale: 'zh' });
@@ -112,7 +112,7 @@ describe('buildPluginEnv', () => {
   });
 
   it('does not fire when slice is unchanged', () => {
-    const env = buildPluginEnv();
+    const env = buildExtensionEnv();
     const cb = vi.fn();
     env.onThemeChange(cb);
     // Same theme value — no fire.
@@ -121,7 +121,7 @@ describe('buildPluginEnv', () => {
   });
 
   it('onThemeChange disposable removes the cb', () => {
-    const env = buildPluginEnv();
+    const env = buildExtensionEnv();
     const cb = vi.fn();
     const d = env.onThemeChange(cb);
     d.dispose();
@@ -129,14 +129,14 @@ describe('buildPluginEnv', () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
-  it('disposePluginEnv unsubscribes from host stores', () => {
-    const env = buildPluginEnv();
+  it('disposeExtensionEnv unsubscribes from host stores', () => {
+    const env = buildExtensionEnv();
     const themeCb = vi.fn();
     const localeCb = vi.fn();
     env.onThemeChange(themeCb);
     env.onLocaleChange(localeCb);
-    disposePluginEnv(env);
-    // After dispose, store changes do not reach plugin cbs.
+    disposeExtensionEnv(env);
+    // After dispose, store changes do not reach extension cbs.
     appearanceMock.__emit({ theme: 'dark' });
     localeMock.__emit({ locale: 'zh' });
     expect(themeCb).not.toHaveBeenCalled();

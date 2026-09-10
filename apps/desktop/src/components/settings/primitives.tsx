@@ -25,7 +25,7 @@ export const NAV_GROUPS: { labelKey: string; items: { id: SettingsTab; icon: Rea
     { id: 'templates', icon: <FileText size={14} />, nameKey: 'settings:tabs.templates' },
     { id: 'pet', icon: <PawPrint size={14} />, nameKey: 'settings:tabs.pet' },
     { id: 'notifications', icon: <Bell size={14} />, nameKey: 'settings:tabs.notifications' },
-    { id: 'plugins', icon: <Puzzle size={14} />, nameKey: 'settings:tabs.plugins' },
+    { id: 'extensions', icon: <Puzzle size={14} />, nameKey: 'settings:tabs.extensions' },
     { id: 'storage', icon: <CloudCog size={14} />, nameKey: 'settings:tabs.storage' },
   ]},
   { labelKey: 'settings:groups.ai', items: [

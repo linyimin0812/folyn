@@ -127,17 +127,17 @@ describe('createGrapesConfig', () => {
     expect(names).toEqual(['桌面', '平板', '手机']);
   });
 
-  it('#13 plugins array includes the grapesjs-blocks-basic plugin reference', () => {
+  it('#13 extensions array includes the grapesjs-blocks-basic extension reference', () => {
     const cfg = createGrapesConfig(makeOpts());
-    const plugins = cfg.plugins as unknown[];
-    expect(Array.isArray(plugins)).toBe(true);
-    expect(plugins).toContain(grapesjsBlocksBasic);
+    const extensions = cfg.extensions as unknown[];
+    expect(Array.isArray(extensions)).toBe(true);
+    expect(extensions).toContain(grapesjsBlocksBasic);
   });
 
-  it('#14 pluginsOpts for blocks-basic has flexGrid:true and category:"基础"', () => {
+  it('#14 extensionsOpts for blocks-basic has flexGrid:true and category:"基础"', () => {
     const cfg = createGrapesConfig(makeOpts());
-    const opts = cfg.pluginsOpts as Record<string, { flexGrid: boolean; category: string }>;
-    // Plugin options are keyed by the plugin reference coerced to string.
+    const opts = cfg.extensionsOpts as Record<string, { flexGrid: boolean; category: string }>;
+    // Extension options are keyed by the extension reference coerced to string.
     const key = String(grapesjsBlocksBasic as unknown);
     const found = opts[key];
     expect(found).toBeDefined();

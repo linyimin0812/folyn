@@ -57,11 +57,11 @@ import { isTauri } from '@/utils/platform';
  * is routed by `routePetMenuAction` in the MAIN window, which sets
  * `currentPage='settings'` + `settingsTab='ai'` and focuses main.
  *
- * `open-plugin-tool` is dispatched by the pet-panel search when the user
- * picks an installed plugin result — the MAIN window resolves the plugin's
- * registered `plugin.openTool.<pluginId>.<toolId>` command and opens its
- * tool window (popup); plugins without a window tool fall back to the
- * Plugins settings tab.
+ * `open-extension-tool` is dispatched by the pet-panel search when the user
+ * picks an installed extension result — the MAIN window resolves the extension's
+ * registered `extension.openTool.<extensionId>.<toolId>` command and opens its
+ * tool window (popup); extensions without a window tool fall back to the
+ * Extensions settings tab.
  */
 export type PetMenuAction =
   | 'show-main'
@@ -78,13 +78,13 @@ export type PetMenuAction =
   | 'open-ai-settings'
   | 'open-cli-settings'
   | 'run-command'
-  | 'open-plugins-settings'
-  | 'open-plugin-tool';
+  | 'open-extensions-settings'
+  | 'open-extension-tool';
 
 /** Payload for `pet://menu-action` events. `set-pet-size` carries the size
  *  level, `set-pet-opacity` the opacity level, `toggle-pet-click-through`
  *  the next bool, `run-command` the command id to run in the main window,
- *  `open-plugin-tool` the plugin id whose tool window should open; all other
+ *  `open-extension-tool` the extension id whose tool window should open; all other
  *  actions use only `action`. */
 export interface PetMenuActionPayload {
   action: PetMenuAction;
@@ -92,7 +92,7 @@ export interface PetMenuActionPayload {
   opacity?: '25' | '50' | '75' | '100';
   clickThrough?: boolean;
   commandId?: string;
-  pluginId?: string;
+  extensionId?: string;
 }
 
 /**
@@ -123,8 +123,8 @@ export const PET_LAUNCHER_ACTIONS: readonly PetMenuAction[] = [
   'toggle-theme',
   'open-ai-settings',
   'run-command',
-  'open-plugins-settings',
-  'open-plugin-tool',
+  'open-extensions-settings',
+  'open-extension-tool',
 ] as const;
 
 export const PET_MENU_ACTIONS: readonly PetMenuAction[] = [

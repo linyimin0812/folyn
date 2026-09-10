@@ -10,7 +10,7 @@
 // MarkdownPreview. MathJax's SVG output is pure <svg>/<path> markup with no
 // CSS positioning, so it renders correctly inside the foreignObject. Install
 // a fake `window.katex` whose renderToString returns MathJax SVG; markmap-lib
-// keeps its markdown-it math plugin but the node content now lands as SVG.
+// keeps its markdown-it math extension but the node content now lands as SVG.
 // Always render inline (display:false): display math's block wrapper
 // (`margin:1em 0`) trips the same WebKit foreignObject bug.
 // Module side effects run once (ESM cache); safe to import from both the

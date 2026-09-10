@@ -1,11 +1,11 @@
 /**
- * Host RPC bridge for sandbox-tier plugins.
+ * Host RPC bridge for sandbox-tier extensions.
  *
- * This is the host-mediation boundary: sandboxed iframe plugins (origin
- * `folyn-plugin://localhost`, `sandbox="allow-scripts"` without
+ * This is the host-mediation boundary: sandboxed iframe extensions (origin
+ * `folyn-extension://localhost`, `sandbox="allow-scripts"` without
  * `allow-same-origin`) NEVER get raw Tauri APIs. Every privileged operation
  * goes through a postMessage RPC that this bridge validates against the
- * plugin's declared permissions before executing.
+ * extension's declared permissions before executing.
  *
  * Message protocol:
  *   iframe → host: { type: 'request',     id, method, params }
@@ -15,17 +15,17 @@
  *   iframe → host: { type: 'invoke-result', id, result?, error? }
  */
 
-import type { PluginAiStreamEvent, PluginManifest, PluginPermissions } from '@folyn/extension-host';
+import type { ExtensionAiStreamEvent, ExtensionManifest, ExtensionPermissions } from '@folyn/extension-host';
 import type { CliStreamEvent } from '@folyn/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
 
 // ── Pure capability-checking helpers (exported for unit testing) ─────────────
 
 /**
- * Check whether a relative path (sent by the plugin in an RPC request) falls
+ * Check whether a relative path (sent by the extension in an RPC request) falls
  * within the declared `permissions.fs.scope` patterns.
  *
- * Scope entries are glob patterns relative to the plugin's root dir:
+ * Scope entries are glob patterns relative to the extension's root dir:
  *   - `data/**`   → matches `data/foo.txt`, `data/sub/foo.txt`
  *   - `config/*`  → matches `config/settings.json` (single segment after /)
  *   - `vault:...` → special token (NOT a path pattern; skipped here)
@@ -109,8 +109,8 @@ function extractOrigin(url: string): string | null {
   }
 }
 
-/** Map host CliStreamEvent → plugin-visible event (drop tool/file_change). */
-function mapSandboxEvent(e: CliStreamEvent): PluginAiStreamEvent | null {
+/** Map host CliStreamEvent → extension-visible event (drop tool/file_change). */
+function mapSandboxEvent(e: CliStreamEvent): ExtensionAiStreamEvent | null {
   switch (e.type) {
     case 'text':
     case 'thinking':
@@ -124,7 +124,7 @@ function mapSandboxEvent(e: CliStreamEvent): PluginAiStreamEvent | null {
 
 /**
  * Resolve the host's `theme` value (which may be `'system'`) to a concrete
- * `'light' | 'dark'` for sandbox plugins. MatchMedia is available in the
+ * `'light' | 'dark'` for sandbox extensions. MatchMedia is available in the
  * host webview where the RpcBridge runs.
  */
 function resolveSystemTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
@@ -166,8 +166,8 @@ export function normalizeHeaders(
  * Check whether the manifest grants a specific capability. Used by the bridge
  * to gate methods that require a boolean permission flag.
  */
-export function hasPermission(manifest: PluginManifest, capability: string): boolean {
-  const perms: PluginPermissions | undefined = manifest.permissions;
+export function hasPermission(manifest: ExtensionManifest, capability: string): boolean {
+  const perms: ExtensionPermissions | undefined = manifest.permissions;
   if (!perms) return false;
   switch (capability) {
     case 'clipboard':
@@ -227,11 +227,11 @@ export interface InvokeResultMessage {
 export interface AiStreamMessage {
   type: 'ai-stream';
   id: string;
-  event: PluginAiStreamEvent;
+  event: ExtensionAiStreamEvent;
 }
 
 /** Env state push from host to iframe. Fired when the host's theme or locale
- * changes while a sandbox plugin is active. Plugin listens for these in
+ * changes while a sandbox extension is active. Extension listens for these in
  * addition to calling `env:get` to seed initial values. */
 export interface EnvEventMessage {
   type: 'env-event';
@@ -239,7 +239,7 @@ export interface EnvEventMessage {
   value: string;
 }
 
-type PluginMessage =
+type ExtensionMessage =
   | RpcRequest
   | RpcResponse
   | LifecycleMessage
@@ -251,21 +251,21 @@ type PluginMessage =
 // ── RpcBridge ────────────────────────────────────────────────────────────────
 
 export interface RpcBridgeOptions {
-  pluginId: string;
-  manifest: PluginManifest;
+  extensionId: string;
+  manifest: ExtensionManifest;
   /** Returns the iframe's contentWindow (may be null before load). */
   targetWindow: () => Window | null;
   /** Called for messages the bridge doesn't handle (e.g. custom events). */
-  onUnhandled?: (msg: PluginMessage) => void;
+  onUnhandled?: (msg: ExtensionMessage) => void;
   /**
    * Optional injectable path resolver for tests. In production this uses
    * Tauri's homeDir + join. Returns an absolute path string.
    */
-  resolvePluginPath?: (relativePath: string) => Promise<string>;
+  resolveExtensionPath?: (relativePath: string) => Promise<string>;
 }
 
 /**
- * Manages the postMessage RPC channel between the host and a sandboxed plugin
+ * Manages the postMessage RPC channel between the host and a sandboxed extension
  * iframe. Enforces capability scoping on every privileged call.
  *
  * The bridge is NOT a React component — it is a plain object so it can be
@@ -291,7 +291,7 @@ export class RpcBridge {
   async handleMessage(data: unknown, source: Window | null): Promise<void> {
     if (this.disposed) return;
     if (!data || typeof data !== 'object') return;
-    const msg = data as PluginMessage;
+    const msg = data as ExtensionMessage;
     if (typeof msg.type !== 'string') return;
 
     // Verify the message came from our iframe. Sandboxed iframes without
@@ -316,7 +316,7 @@ export class RpcBridge {
     this.send({ type: 'lifecycle', event });
   }
 
-  /** Invoke a command handler inside the plugin iframe. Resolves when the
+  /** Invoke a command handler inside the extension iframe. Resolves when the
    *  iframe returns an `invoke-result`. */
   invokeCommand(command: string, params?: unknown): Promise<unknown> {
     const id = crypto.randomUUID();
@@ -327,7 +327,7 @@ export class RpcBridge {
       setTimeout(() => {
         if (this.pendingInvokes.has(id)) {
           this.pendingInvokes.delete(id);
-          reject(new Error(`plugin command timed out: ${command}`));
+          reject(new Error(`extension command timed out: ${command}`));
         }
       }, 30_000);
     });
@@ -355,11 +355,11 @@ export class RpcBridge {
 
   /**
    * Subscribe to host theme + locale stores; on change, push an `env-event`
-   * message to the iframe so sandbox plugins can react mid-session. Stores
+   * message to the iframe so sandbox extensions can react mid-session. Stores
    * are imported dynamically so the bridge module stays unit-testable without
    * the full desktop store graph at module load. Subscriptions are torn down
    * in `dispose()`. Ponytail: one subscription per store, fan-out in
-   * `sendEnvEvent` for any plugin that's still active.
+   * `sendEnvEvent` for any extension that's still active.
    */
   private attachEnvSubscriptions(): void {
     void Promise.all([
@@ -394,7 +394,7 @@ export class RpcBridge {
     window.addEventListener('message', this.listener);
   }
 
-  private send(msg: PluginMessage): void {
+  private send(msg: ExtensionMessage): void {
     const target = this.opts.targetWindow();
     if (!target) return;
     // `*` target because the sandboxed iframe has an opaque origin; we verify
@@ -420,13 +420,13 @@ export class RpcBridge {
   private async handleRequest(req: RpcRequest): Promise<void> {
     // Streaming methods push `ai-stream` messages keyed by req.id during
     // their execution; the final `response` terminates the stream.
-    const stream = (event: PluginAiStreamEvent) => {
+    const stream = (event: ExtensionAiStreamEvent) => {
       this.send({ type: 'ai-stream', id: req.id, event });
     };
     try {
-      const result = await dispatchPluginRpc(
+      const result = await dispatchExtensionRpc(
         this.opts.manifest,
-        this.opts.pluginId,
+        this.opts.extensionId,
         req.method,
         req.params,
         (p) => this.resolvePath(p),
@@ -438,55 +438,55 @@ export class RpcBridge {
     }
   }
 
-  /** Resolve a plugin-relative path to an absolute filesystem path. */
+  /** Resolve a extension-relative path to an absolute filesystem path. */
   private async resolvePath(relativePath: string): Promise<string> {
-    if (this.opts.resolvePluginPath) {
-      return this.opts.resolvePluginPath(relativePath);
+    if (this.opts.resolveExtensionPath) {
+      return this.opts.resolveExtensionPath(relativePath);
     }
     const { homeDir, join } = await import('@tauri-apps/api/path');
     const home = await homeDir();
-    return join(home, '.folyn', 'plugins', this.opts.pluginId, relativePath);
+    return join(home, '.folyn', 'extensions', this.opts.extensionId, relativePath);
   }
 }
 
 // ── Shared free-function dispatcher ──────────────────────────────────────────
 //
-// `dispatchPluginRpc` is the canonical host-side RPC method table. It is
+// `dispatchExtensionRpc` is the canonical host-side RPC method table. It is
 // called from two transports:
 //   1. `RpcBridge.dispatch` — iframe sandbox path (postMessage).
 //   2. `toolWindowRpcListener` — fetch-RPC path for tool windows (POST
-//      `folyn-plugin://localhost/<id>/rpc`, see plugin_commands.rs).
+//      `folyn-extension://localhost/<id>/rpc`, see extension_commands.rs).
 //
 // Keeping the table in one place ensures both transports enforce the same
 // permission checks and resolve paths the same way.
 
 /**
  * Dispatch an RPC method to the matching host capability, gated by the
- * plugin's declared `permissions`.
+ * extension's declared `permissions`.
  *
- * @param manifest      The plugin manifest (source of permission declarations).
- * @param pluginId      The plugin id (used for path resolution + logging).
+ * @param manifest      The extension manifest (source of permission declarations).
+ * @param extensionId      The extension id (used for path resolution + logging).
  * @param method        RPC method name (e.g. `vault:insert-content`).
  * @param params        Method params object.
- * @param resolvePath   Resolves a plugin-relative path to an absolute path.
- *                      Both transports use `~/.folyn/plugins/<pluginId>/<rel>`.
+ * @param resolvePath   Resolves a extension-relative path to an absolute path.
+ *                      Both transports use `~/.folyn/extensions/<extensionId>/<rel>`.
  * @param stream        Streaming-event callback (sandbox iframe transport
- *                      only). Pushed once per `PluginAiStreamEvent` during a
+ *                      only). Pushed once per `ExtensionAiStreamEvent` during a
  *                      long-running `ai:chat` call. Tool-window fetch transport
  *                      passes `undefined` → `ai:chat` rejects.
  */
-export async function dispatchPluginRpc(
-  manifest: PluginManifest,
-  pluginId: string,
+export async function dispatchExtensionRpc(
+  manifest: ExtensionManifest,
+  extensionId: string,
   method: string,
   params: unknown,
   resolvePath: (relativePath: string) => Promise<string>,
-  stream?: (event: PluginAiStreamEvent) => void,
+  stream?: (event: ExtensionAiStreamEvent) => void,
 ): Promise<unknown> {
   const perms = manifest.permissions;
 
   switch (method) {
-    // ── fs (scoped to plugin data dir) ──
+    // ── fs (scoped to extension data dir) ──
     case 'fs:read': {
       const { path } = (params ?? {}) as { path?: string };
       if (typeof path !== 'string') throw new Error('fs:read requires { path }');
@@ -525,9 +525,9 @@ export async function dispatchPluginRpc(
 
     // ── http (origin allowlist) ──
     //
-    // Routed through the Rust `plugin_http_fetch` command rather than a
+    // Routed through the Rust `extension_http_fetch` command rather than a
     // host-webview `fetch()`. The host webview's CSP `connect-src` does not
-    // include plugin-declared origins, so a direct `fetch()` is blocked in
+    // include extension-declared origins, so a direct `fetch()` is blocked in
     // release (dev does not inject CSP, masking the bug). The JS-side
     // `isOriginAllowed` fast-fails before the IPC hop; the Rust command
     // re-checks against the on-disk `manifest.json` `permissions.http.origins`
@@ -540,8 +540,8 @@ export async function dispatchPluginRpc(
       }
       const { invoke } = await import('@tauri-apps/api/core');
       const resp = await invoke<{ status: number; headers: Record<string, string>; body: string }>(
-        'plugin_http_fetch',
-        { pluginId, url, method: typeof init?.method === 'string' ? init.method : undefined, headers: normalizeHeaders(init?.headers), body: typeof init?.body === 'string' ? init.body : undefined },
+        'extension_http_fetch',
+        { extensionId, url, method: typeof init?.method === 'string' ? init.method : undefined, headers: normalizeHeaders(init?.headers), body: typeof init?.body === 'string' ? init.body : undefined },
       );
       return { status: resp.status, headers: resp.headers, body: resp.body };
     }
@@ -612,7 +612,7 @@ export async function dispatchPluginRpc(
       if (!vaultRoot) throw new Error('vault:read-binary: no active vault');
       const { join } = await import('@tauri-apps/api/path');
       const { readFile } = await import('@tauri-apps/plugin-fs');
-      // Restrict to the active vault root so a sandbox plugin can't escape.
+      // Restrict to the active vault root so a sandbox extension can't escape.
       const abs = await join(vaultRoot, tab.path);
       return new Uint8Array(await readFile(abs));
     }
@@ -639,7 +639,7 @@ export async function dispatchPluginRpc(
       if (typeof toolId !== 'string') throw new Error('window:open requires { toolId }');
       // Tool windows are opened by the host's toolWindowStore when the user
       // runs the corresponding "Open: <tool>" command. The RPC method exists
-      // so plugins can request their own tool window programmatically; MVP
+      // so extensions can request their own tool window programmatically; MVP
       // returns a stub because the actual open is a host-side concern.
       return { opened: true, toolId };
     }
@@ -655,7 +655,7 @@ export async function dispatchPluginRpc(
       return { theme, locale };
     }
 
-    // ── ai (sandbox streaming over postMessage; trusted uses PluginContext.ai) ──
+    // ── ai (sandbox streaming over postMessage; trusted uses ExtensionContext.ai) ──
     case 'ai:chat': {
       if (!perms?.ai?.chat) {
         throw new Error('ai:chat denied: permissions.ai.chat not granted');

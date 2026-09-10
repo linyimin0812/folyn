@@ -99,9 +99,9 @@ export async function openFile(filePath: string, name: string): Promise<void> {
 
   const existing = get().tabs.find((t) => t.id === tabId);
   if (existing) {
-    // Re-detect file type: a newly installed plugin may now handle this
-    // extension (e.g. plantuml plugin for .puml files created before the
-    // plugin was installed).
+    // Re-detect file type: a newly installed extension may now handle this
+    // extension (e.g. plantuml extension for .puml files created before the
+    // extension was installed).
     const correctFileType = detectFileType(filePath);
     const needsFileTypeUpdate = existing.fileType !== correctFileType;
 

@@ -94,7 +94,7 @@ export function PetPanelApp() {
   // single left-click on the pet drops the user into "ask" mode without an
   // extra tab switch.
   const [tab, setTab] = useState<PetPanelTab>('chat');
-  // Unified search (files / commands / plugins) — the input sits above the
+  // Unified search (files / commands / extensions) — the input sits above the
   // tabs; while a query is non-empty the body shows the results instead of
   // the active tab.
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,7 +198,7 @@ export function PetPanelApp() {
           providerSettings?: Record<string, ProviderSettings>;
           customerProviders?: Record<string, CustomProviderDef>;
           modelsByProvider?: Record<string, Model[]>;
-          pluginPair?: { provider: string; model: string } | null;
+          extensionPair?: { provider: string; model: string } | null;
         }>('pet://providers-updated', (event) => {
           const p = event.payload ?? {};
           if (p.providerSettings) {
@@ -216,8 +216,8 @@ export function PetPanelApp() {
               modelsByProvider: p.modelsByProvider,
             });
           }
-          if (p.pluginPair !== undefined) {
-            useAiConfigStore.setState({ pluginPair: p.pluginPair });
+          if (p.extensionPair !== undefined) {
+            useAiConfigStore.setState({ extensionPair: p.extensionPair });
           }
         });
         // Request the current snapshot (the initial emit was missed).
@@ -647,7 +647,7 @@ export function PetPanelApp() {
         onPointerDown={headerPointerDown}
         role="banner"
       >
-        {/* Search row above the tabs — filters files / commands / plugins. */}
+        {/* Search row above the tabs — filters files / commands / extensions. */}
         <div className="pet-panel-search-row" onPointerDown={suppressDrag}>
           <div className="pet-panel-search-field">
             <input

@@ -9,7 +9,7 @@
  */
 
 import type { Disposable } from './Disposable';
-import type { PluginManifest, PluginAiCapability, PluginEnv, PluginHttpCapability } from './types';
+import type { ExtensionManifest, ExtensionAiCapability, ExtensionEnv, ExtensionHttpCapability } from './types';
 import type { ExportService } from './export-service';
 
 // ── Extension entry (doc §4.1) ──────────────────────────────────────────────
@@ -34,13 +34,8 @@ export interface ExtensionLoader {
 }
 
 // ── Manifest (doc §4.2) ────────────────────────────────────────────────────
-
-/**
- * Extension manifest. Same shape as the existing {@link PluginManifest}; the
- * runtime adds nothing here yet. Aliased so the new surface is named for the
- * new model without duplicating the schema.
- */
-export type ExtensionManifest = PluginManifest;
+// The manifest schema lives in `./types` (`ExtensionManifest`); the runtime
+// adds nothing here yet.
 
 // ── Logger (doc §6) ─────────────────────────────────────────────────────────
 
@@ -141,7 +136,7 @@ export interface ExtensionContext {
 //
 // The capability boundary. P0 fixes the interface; concrete capability
 // objects are injected by the host (Phase 2 wires real vault/files/editor/ai/
-// terminal/export). Loaders receive `api` and forward it to the plugin
+// terminal/export). Loaders receive `api` and forward it to the extension
 // module's lifecycle hook.
 
 export interface VaultApi {
@@ -190,10 +185,10 @@ export interface ExtensionStorageApi {
 }
 
 // AI / network(http) / env capabilities — real types (the existing
-// PluginAi/PluginHttp/PluginEnv surfaces the host wires in createExtensionApi).
-export type AiApi = PluginAiCapability;
-export type NetworkApi = PluginHttpCapability;
-export type EnvApi = PluginEnv;
+// ExtensionAi/ExtensionHttp/ExtensionEnv surfaces the host wires in createExtensionApi).
+export type AiApi = ExtensionAiCapability;
+export type NetworkApi = ExtensionHttpCapability;
+export type EnvApi = ExtensionEnv;
 export interface TerminalApi {
   /** Open the terminal dock (creates a session if none exists). */
   open(): void;

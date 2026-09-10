@@ -1,26 +1,26 @@
 /**
- * Tests for the trusted-tier PluginLoader's TOFU gate + hot-unload behavior.
+ * Tests for the trusted-tier ExtensionLoader's TOFU gate + hot-unload behavior.
  *
  * The real `import()` and Tauri `invoke` calls are mocked so the loader can
- * be exercised without a running Tauri backend or a real plugin on disk.
+ * be exercised without a running Tauri backend or a real extension on disk.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ComponentType } from 'react';
-import type { PluginManifest } from "@folyn/extension-host";
+import type { ExtensionManifest } from "@folyn/extension-host";
 import { ExtensionHost } from "@folyn/extension-host";
 import {
   trustedLoader,
   setModuleResolver,
-  fetchPluginRecord,
-  readPluginFile,
+  fetchExtensionRecord,
+  readExtensionFile,
   sha256Hex,
 } from './trustedLoader';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 import { getAllHandlers, getHandlerByExtension } from '@/components/file-types/registry';
 import { HandlerRegistry } from '@/components/file-types/HandlerRegistry';
-import { ContainerRegistry } from '@folyn/container-plugins';
+import { ContainerRegistry } from '@folyn/container-extensions';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
 
@@ -28,8 +28,8 @@ import { useEditorStore } from '@/store/editorStore';
 
 // We mock the Tauri invoke calls at the function level. The trusted loader
 // dynamically imports `@tauri-apps/api/core`, which is aliased to a mock in
-// the vitest workspace config. We override `fetchPluginRecord` /
-// `readPluginFile` via module mocking.
+// the vitest workspace config. We override `fetchExtensionRecord` /
+// `readExtensionFile` via module mocking.
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
@@ -38,8 +38,8 @@ vi.mock('@tauri-apps/api/core', () => ({
 // The loader's Tauri wrappers are exported and used internally — but they
 // dynamic-import `@tauri-apps/api/core`. To control them, we spy on the
 // exported functions. Since they're real functions that call invoke(), we
-// mock invoke() and let the real wrappers run. But fetchPluginRecord /
-// readPluginFile / grantCapabilities are exported, so we can also just
+// mock invoke() and let the real wrappers run. But fetchExtensionRecord /
+// readExtensionFile / grantCapabilities are exported, so we can also just
 // override the invoke mock's return per call.
 
 import { invoke as mockInvoke } from '@tauri-apps/api/core';
@@ -63,7 +63,7 @@ export function activate() {}
 export function deactivate() {}
 `;
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'demo-trusted',
     name: 'Demo Trusted',
@@ -81,8 +81,8 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-/** A fake PluginModule the resolver returns. */
-function fakeModule(overrides: Partial<PluginModule> = {}): PluginModule {
+/** A fake ExtensionModule the resolver returns. */
+function fakeModule(overrides: Partial<ExtensionModule> = {}): ExtensionModule {
   return {
     handlers: {
       default: {
@@ -146,13 +146,13 @@ function setupInvoke(opts: {
     const fullIntegrity = { 'index.js': integrity['index.js'] ?? hash, ...integrity };
     (mockInvoke as unknown as ReturnType<typeof vi.fn>).mockImplementation(
       async (cmd: string, args?: { id?: string; path?: string }) => {
-        if (cmd === 'get_plugin_record') {
+        if (cmd === 'get_extension_record') {
           return { id: args?.id, trusted: opts.trusted, integrity: fullIntegrity };
         }
-        if (cmd === 'read_plugin_file') {
+        if (cmd === 'read_extension_file') {
           return code;
         }
-        if (cmd === 'grant_plugin_capabilities') {
+        if (cmd === 'grant_extension_capabilities') {
           return undefined;
         }
         throw new Error(`unexpected invoke: ${cmd}`);
@@ -184,11 +184,11 @@ describe('trustedLoader / TOFU gate', () => {
     // Override: no integrity entry for index.js
     (mockInvoke as unknown as ReturnType<typeof vi.fn>).mockImplementation(
       async (cmd: string) => {
-        if (cmd === 'get_plugin_record') {
+        if (cmd === 'get_extension_record') {
           return { id: 'demo-trusted', trusted: true, integrity: {} };
         }
-        if (cmd === 'read_plugin_file') return PLUGIN_CODE;
-        if (cmd === 'grant_plugin_capabilities') return undefined;
+        if (cmd === 'read_extension_file') return PLUGIN_CODE;
+        if (cmd === 'grant_extension_capabilities') return undefined;
         throw new Error(`unexpected: ${cmd}`);
       },
     );
@@ -202,8 +202,8 @@ describe('trustedLoader / TOFU gate', () => {
     const mod = fakeModule();
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
 
-    const plugin = await trustedLoader.load(manifest());
-    expect(plugin).toBeDefined();
+    const extension = await trustedLoader.load(manifest());
+    expect(extension).toBeDefined();
   });
 
   it('does not call import() when TOFU gate fails (trusted=false)', async () => {
@@ -237,7 +237,7 @@ describe('trustedLoader / contribution adapters', () => {
     await host.activate('demo-trusted');
 
     // Command registered
-    expect(getCommand('plugin.demo-trusted.greet')).toBeDefined();
+    expect(getCommand('extension.demo-trusted.greet')).toBeDefined();
 
     // File-type handler registered
     const handler = getHandlerByExtension('.x');
@@ -261,14 +261,14 @@ describe('trustedLoader / contribution adapters', () => {
     await host.deactivate('demo-trusted');
 
     // Command removed
-    expect(getCommand('plugin.demo-trusted.greet')).toBeUndefined();
+    expect(getCommand('extension.demo-trusted.greet')).toBeUndefined();
     // File-type removed
     expect(getHandlerByExtension('.x')).toBeUndefined();
     // Container removed
     expect(ContainerRegistry.getInstance().get('my-block')).toBeUndefined();
   });
 
-  it('calls plugin activate/deactivate hooks', async () => {
+  it('calls extension activate/deactivate hooks', async () => {
     await setupInvoke({ trusted: true });
     const mod = fakeModule();
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
@@ -294,12 +294,12 @@ describe('trustedLoader / contribution adapters', () => {
 
     // File-type skipped (no handlers), but command/container/feature still work
     expect(getHandlerByExtension('.x')).toBeUndefined();
-    expect(getCommand('plugin.demo-trusted.greet')).toBeDefined();
+    expect(getCommand('extension.demo-trusted.greet')).toBeDefined();
   });
 });
 
 describe('trustedLoader / feature contribution', () => {
-  it('registers a plugin feature panel on activate; unregisters + falls back to files on deactivate', async () => {
+  it('registers a extension feature panel on activate; unregisters + falls back to files on deactivate', async () => {
     await setupInvoke({ trusted: true });
     const PanelComp = (() => null) as unknown as ComponentType;
     const mod = fakeModule({ features: { 'my-panel': PanelComp } });
@@ -328,7 +328,7 @@ describe('trustedLoader / feature contribution', () => {
     const panels = useFeaturePanelStore.getState().panels;
     expect(panels.some((p) => p.id === 'my-panel')).toBe(true);
 
-    // Simulate user activating the plugin panel (editorStore is the source of
+    // Simulate user activating the extension panel (editorStore is the source of
     // truth; the registerBuiltinPanels mirror is NOT wired here, so set both).
     useEditorStore.setState({ activePanel: 'my-panel' });
     useFeaturePanelStore.getState().setActive('my-panel');
@@ -439,7 +439,7 @@ describe('trustedLoader / sha256Hex', () => {
   });
 
   it('produces 64-char lowercase hex', async () => {
-    const h = await sha256Hex('plugin code');
+    const h = await sha256Hex('extension code');
     expect(h).toMatch(/^[0-9a-f]{64}$/);
   });
 });

@@ -6,7 +6,7 @@
  * `module.activate(api, ctx)`.
  *
  * Slots without a real impl yet (vault/files/editor/terminal/storage/events)
- * are operational no-ops so the api is never `undefined` — a plugin that
+ * are operational no-ops so the api is never `undefined` — a extension that
  * touches them gets a defined throw/empty, not a crash on `undefined`.
  */
 
@@ -28,10 +28,10 @@ import type {
 import type { ExtensionApiHandle } from '@folyn/extension-host';
 import { exportService, exporterRegistry } from '../export/exporterRegistry';
 import { registerFileTypeHandler, resolveDefault } from '@/components/file-types/registry';
-import { buildPluginAi } from './aiCapability';
-import { buildPluginEnv, disposePluginEnv } from './envCapability';
-import { buildPluginHttp } from './httpCapability';
-import type { PluginAiCapability, PluginEnv, PluginHttpCapability } from 'folyn-extension-sdk';
+import { buildExtensionAi } from './aiCapability';
+import { buildExtensionEnv, disposeExtensionEnv } from './envCapability';
+import { buildExtensionHttp } from './httpCapability';
+import type { ExtensionAiCapability, ExtensionEnv, ExtensionHttpCapability } from 'folyn-extension-sdk';
 import type { Disposable as Disp } from 'folyn-extension-sdk';
 import { useVaultStore } from '@/store/vaultStore';
 import { storageClient } from '@/utils/storageClient';
@@ -59,7 +59,7 @@ function createEventsApi(): EventApi {
 }
 
 /** Resolve a vault-relative path against the active vault root, rejecting
- * traversal (`..`) so an extension can't escape the vault (doc §29 — plugins
+ * traversal (`..`) so an extension can't escape the vault (doc §29 — extensions
  * never get other vaults' physical paths). */
 async function resolveVaultPath(relPath: string): Promise<string> {
   if (/(^|\/|\\)\.\.(\/|\\|$)/.test(relPath)) {
@@ -106,7 +106,7 @@ function createVaultApi(): VaultApi {
   };
 }
 
-/** Build a real ExtensionStorageApi namespaced per extension id (so plugins
+/** Build a real ExtensionStorageApi namespaced per extension id (so extensions
  * can't collide on keys). Backed by the shared storageClient (per-vault JSON). */
 function createStorageApi(manifest: ExtensionManifest): ExtensionStorageApi {
   const ns = `ext:${manifest.id}:`;
@@ -121,7 +121,7 @@ function createStorageApi(manifest: ExtensionManifest): ExtensionStorageApi {
 }
 
 /** Build a real FileApi (open routes through the shared editorIoService.openFile
- * so plugins can't bypass the host's tab/permission chokepoint). */
+ * so extensions can't bypass the host's tab/permission chokepoint). */
 function createFilesApi(): FileApi {
   return {
     async open(path) {
@@ -152,7 +152,7 @@ function createTerminalApi(): TerminalApi {
 }
 
 /** Build a real EditorApi backed by the active CodeMirror view (via the
- * global editor handle registry). Plugins get high-level selection ops,
+ * global editor handle registry). Extensions get high-level selection ops,
  * never the internal view (doc §15). */
 function createEditorApi(): EditorApi {
   return {
@@ -191,9 +191,9 @@ const noopCommands = {
  * as a disposable so ExtensionHost reaps it on deactivate.
  */
 export function createExtensionApi(manifest: ExtensionManifest): ExtensionApiHandle {
-  const ai: PluginAiCapability = buildPluginAi(manifest);
-  const network: PluginHttpCapability = buildPluginHttp(manifest);
-  const env: PluginEnv = buildPluginEnv();
+  const ai: ExtensionAiCapability = buildExtensionAi(manifest);
+  const network: ExtensionHttpCapability = buildExtensionHttp(manifest);
+  const env: ExtensionEnv = buildExtensionEnv();
 
   const fileTypes: FileTypeRegistryApi = {
     register: (provider, ownerExtensionId) =>
@@ -232,6 +232,6 @@ export function createExtensionApi(manifest: ExtensionManifest): ExtensionApiHan
 
   return {
     api,
-    dispose: { dispose: () => disposePluginEnv(env) },
+    dispose: { dispose: () => disposeExtensionEnv(env) },
   };
 }

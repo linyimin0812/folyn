@@ -11,18 +11,18 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { LanguageDescription } from '@codemirror/language';
-import type { PluginManifest } from '@folyn/extension-host';
+import type { ExtensionManifest } from '@folyn/extension-host';
 import {
-  registerPluginEditorLanguages,
+  registerExtensionEditorLanguages,
   registerEditorLanguage,
   unregisterEditorLanguage,
   getEditorLanguage,
   listEditorLanguages,
   clearEditorLanguages,
 } from './editorLanguageAdapter';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'lang-test',
     name: 'Lang Test',
@@ -38,12 +38,12 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-function fakeModule(): PluginModule {
+function fakeModule(): ExtensionModule {
   return {
     editorLanguages: {
       plantumlLanguage: () => ({ /* LanguageSupport stub */ }),
     },
-  } as unknown as PluginModule;
+  } as unknown as ExtensionModule;
 }
 
 beforeEach(() => {
@@ -55,16 +55,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginEditorLanguages', () => {
+describe('registerExtensionEditorLanguages', () => {
   it('registers language resolvable by id + aliases', () => {
-    registerPluginEditorLanguages(manifest(), fakeModule());
+    registerExtensionEditorLanguages(manifest(), fakeModule());
     expect(getEditorLanguage('plantuml')).toBeDefined();
     expect(getEditorLanguage('puml')?.canonical).toBe('plantuml');
     expect(getEditorLanguage('pu')?.canonical).toBe('plantuml');
   });
 
   it('exposes declared file extensions for standalone-file matching', () => {
-    registerPluginEditorLanguages(manifest(), fakeModule());
+    registerExtensionEditorLanguages(manifest(), fakeModule());
     expect(getEditorLanguage('plantuml')?.extensions).toEqual(['puml', 'pu', 'plantuml']);
     const listed = listEditorLanguages();
     expect(listed).toHaveLength(1);
@@ -76,8 +76,8 @@ describe('registerPluginEditorLanguages', () => {
   });
 
   it('unions extensions across alias keys of the same canonical language', () => {
-    registerEditorLanguage('plugin-a', 'plantuml', 'plantuml', () => ({ /* a */ }), ['puml', 'plantuml']);
-    registerEditorLanguage('plugin-a', 'pu', 'plantuml', () => ({ /* a */ }), ['pu']);
+    registerEditorLanguage('extension-a', 'plantuml', 'plantuml', () => ({ /* a */ }), ['puml', 'plantuml']);
+    registerEditorLanguage('extension-a', 'pu', 'plantuml', () => ({ /* a */ }), ['pu']);
     expect(listEditorLanguages()[0].extensions.sort()).toEqual(['plantuml', 'pu', 'puml']);
   });
 
@@ -107,7 +107,7 @@ describe('registerPluginEditorLanguages', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const mod = fakeModule();
     mod.editorLanguages = {}; // no plantumlLanguage
-    registerPluginEditorLanguages(manifest(), mod);
+    registerExtensionEditorLanguages(manifest(), mod);
     expect(getEditorLanguage('plantuml')).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
@@ -115,12 +115,12 @@ describe('registerPluginEditorLanguages', () => {
 
   it('returns no-op disposable when no editorLanguages declared', () => {
     expect(() =>
-      registerPluginEditorLanguages(manifest({ contributes: {} }), fakeModule()).dispose(),
+      registerExtensionEditorLanguages(manifest({ contributes: {} }), fakeModule()).dispose(),
     ).not.toThrow();
   });
 
   it('dispose unregisters all keys', () => {
-    const d = registerPluginEditorLanguages(manifest(), fakeModule());
+    const d = registerExtensionEditorLanguages(manifest(), fakeModule());
     expect(getEditorLanguage('plantuml')).toBeDefined();
     expect(getEditorLanguage('puml')).toBeDefined();
     d.dispose();
@@ -133,11 +133,11 @@ describe('registerPluginEditorLanguages', () => {
     // ponytail: first-registered-wins; upgrade path is a per-id precedence list.
     const f1 = () => ({ /* a */ });
     const f2 = () => ({ /* b */ });
-    registerEditorLanguage('plugin-a', 'plantuml', 'plantuml', f1);
-    registerEditorLanguage('plugin-b', 'plantuml', 'plantuml', f2);
+    registerEditorLanguage('extension-a', 'plantuml', 'plantuml', f1);
+    registerEditorLanguage('extension-b', 'plantuml', 'plantuml', f2);
     expect(getEditorLanguage('plantuml')?.factory).toBe(f1);
-    // plugin-b's write didn't take; its dispose should be a no-op (only plugin-a owns it).
-    unregisterEditorLanguage('plantuml', 'plugin-b');
+    // extension-b's write didn't take; its dispose should be a no-op (only extension-a owns it).
+    unregisterEditorLanguage('plantuml', 'extension-b');
     expect(getEditorLanguage('plantuml')?.factory).toBe(f1);
   });
 });

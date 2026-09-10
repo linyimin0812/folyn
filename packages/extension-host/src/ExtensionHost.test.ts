@@ -7,15 +7,15 @@ import type {
   Extension,
   ExtensionApi,
   ExtensionContext,
-  PluginManifest,
-  PluginTier,
+  ExtensionManifest,
+  ExtensionTier,
 } from 'folyn-extension-sdk';
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
-    id: 'demo-plugin',
+    id: 'demo-extension',
     name: 'Demo',
     version: '0.1.0',
     tier: 'trusted',
@@ -25,7 +25,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
 }
 
 /** A fake loader returning `ext` for tier `tier` (extensions carry no manifest). */
-function fakeLoader(ext: Extension, tier: PluginTier = 'trusted') {
+function fakeLoader(ext: Extension, tier: ExtensionTier = 'trusted') {
   return { tier, load: async () => ext };
 }
 
@@ -34,7 +34,7 @@ const noopApi = {} as ExtensionApi;
 
 function makeRuntime(extension: Extension): ExtensionRuntime {
   const baseCtx: Omit<ExtensionContext, 'signal' | 'addDisposable'> = {
-    extensionId: 'demo-plugin',
+    extensionId: 'demo-extension',
     extensionPath: 'index.js',
     vault: { name: 'default', path: 'default' },
     ui: { dialogs: { async info() {}, async confirm() { return false; } }, notifications: { show() {} } },
@@ -51,7 +51,7 @@ describe('ExtensionHost / manifest validation', () => {
     await expect(host.install(manifest({ id: 'BadId' }))).rejects.toThrow(/kebab/);
   });
 
-  it('rejects sandbox plugin without html', async () => {
+  it('rejects sandbox extension without html', async () => {
     const host = new ExtensionHost();
     await expect(host.install(manifest({ tier: 'sandbox' }))).rejects.toThrow(/html/);
   });
@@ -67,7 +67,7 @@ describe('ExtensionHost / permissions.ai validation', () => {
     const host = new ExtensionHost();
     await expect(
       host.install(manifest({ permissions: { ai: { chat: true, agents: ['wiki', 'clips'] } } })),
-    ).resolves.toBe('demo-plugin');
+    ).resolves.toBe('demo-extension');
   });
 
   it('rejects non-boolean chat', async () => {
@@ -99,58 +99,58 @@ describe('ExtensionHost / lifecycle', () => {
     const host = new ExtensionHost();
     const activate = vi.fn();
     const deactivate = vi.fn();
-    const plugin: Extension = { activate, deactivate };
-    host.registerLoader(fakeLoader(plugin));
+    const extension: Extension = { activate, deactivate };
+    host.registerLoader(fakeLoader(extension));
 
     await host.install(manifest());
-    expect(host.get('demo-plugin')?.state).toBe('validated');
+    expect(host.get('demo-extension')?.state).toBe('validated');
 
-    await host.activate('demo-plugin');
+    await host.activate('demo-extension');
     expect(activate).toHaveBeenCalledTimes(1);
-    expect(host.get('demo-plugin')?.state).toBe('active');
+    expect(host.get('demo-extension')?.state).toBe('active');
 
-    await host.deactivate('demo-plugin');
+    await host.deactivate('demo-extension');
     expect(deactivate).toHaveBeenCalledTimes(1);
-    expect(host.get('demo-plugin')?.state).toBe('validated');
+    expect(host.get('demo-extension')?.state).toBe('validated');
 
-    await host.uninstall('demo-plugin');
-    expect(host.get('demo-plugin')).toBeUndefined();
+    await host.uninstall('demo-extension');
+    expect(host.get('demo-extension')).toBeUndefined();
   });
 
   it('activate is idempotent', async () => {
     const host = new ExtensionHost();
     const activate = vi.fn();
-    const plugin: Extension = { activate };
-    host.registerLoader(fakeLoader(plugin));
+    const extension: Extension = { activate };
+    host.registerLoader(fakeLoader(extension));
     await host.install(manifest());
-    await host.activate('demo-plugin');
-    await host.activate('demo-plugin');
+    await host.activate('demo-extension');
+    await host.activate('demo-extension');
     expect(activate).toHaveBeenCalledTimes(1);
   });
 
   it('deactivate is a no-op when not active', async () => {
     const host = new ExtensionHost();
     const deactivate = vi.fn();
-    const plugin: Extension = { deactivate };
-    host.registerLoader(fakeLoader(plugin));
+    const extension: Extension = { deactivate };
+    host.registerLoader(fakeLoader(extension));
     await host.install(manifest());
-    await host.deactivate('demo-plugin');
+    await host.deactivate('demo-extension');
     expect(deactivate).not.toHaveBeenCalled();
   });
 
   it('reaps disposables on deactivate (LIFO)', async () => {
     const host = new ExtensionHost();
     const disposed: string[] = [];
-    const plugin: Extension = {
+    const extension: Extension = {
       activate: (_api, ctx) => {
         ctx.addDisposable({ dispose: () => { disposed.push('a'); } });
         ctx.addDisposable({ dispose: () => { disposed.push('b'); } });
       },
     };
-    host.registerLoader(fakeLoader(plugin));
+    host.registerLoader(fakeLoader(extension));
     await host.install(manifest());
-    await host.activate('demo-plugin');
-    await host.deactivate('demo-plugin');
+    await host.activate('demo-extension');
+    await host.deactivate('demo-extension');
     // LIFO: last-registered disposed first.
     expect(disposed).toEqual(['b', 'a']);
   });
@@ -158,8 +158,8 @@ describe('ExtensionHost / lifecycle', () => {
   it('activate throws when no loader for tier', async () => {
     const host = new ExtensionHost();
     await host.install(manifest());
-    await expect(host.activate('demo-plugin')).rejects.toThrow(/loader/);
-    expect(host.get('demo-plugin')?.state).toBe('failed');
+    await expect(host.activate('demo-extension')).rejects.toThrow(/loader/);
+    expect(host.get('demo-extension')?.state).toBe('failed');
   });
 
   it('install duplicate id throws', async () => {
@@ -168,38 +168,38 @@ describe('ExtensionHost / lifecycle', () => {
     await expect(host.install(manifest())).rejects.toThrow(/already installed/);
   });
 
-  it('deactivate still reaps disposables when plugin.deactivate throws', async () => {
+  it('deactivate still reaps disposables when extension.deactivate throws', async () => {
     const host = new ExtensionHost();
     const disposed: string[] = [];
-    const plugin: Extension = {
+    const extension: Extension = {
       activate: (_api, ctx) => { ctx.addDisposable({ dispose: () => { disposed.push('x'); } }); },
       deactivate: () => { throw new Error('boom'); },
     };
-    host.registerLoader(fakeLoader(plugin));
+    host.registerLoader(fakeLoader(extension));
     await host.install(manifest());
-    await host.activate('demo-plugin');
-    await expect(host.deactivate('demo-plugin')).resolves.toBeUndefined();
+    await host.activate('demo-extension');
+    await expect(host.deactivate('demo-extension')).resolves.toBeUndefined();
     expect(disposed).toEqual(['x']);
-    expect(host.get('demo-plugin')?.state).toBe('failed');
+    expect(host.get('demo-extension')?.state).toBe('failed');
   });
 
   it('failed activate reaps staged disposables (transactional rollback) + marks failed', async () => {
     // Regression (doc §59): disposables pushed during activate() must be
-    // rolled back so a half-wired plugin is fully inert.
+    // rolled back so a half-wired extension is fully inert.
     const host = new ExtensionHost();
     const disposed: string[] = [];
-    const plugin: Extension = {
+    const extension: Extension = {
       activate: (_api, ctx) => {
         ctx.addDisposable({ dispose: () => { disposed.push('a'); } });
         ctx.addDisposable({ dispose: () => { disposed.push('b'); } });
         throw new Error('boom');
       },
     };
-    host.registerLoader(fakeLoader(plugin));
+    host.registerLoader(fakeLoader(extension));
     await host.install(manifest());
-    await expect(host.activate('demo-plugin')).rejects.toThrow('boom');
-    expect(host.get('demo-plugin')?.state).toBe('failed');
-    expect(host.get('demo-plugin')?.extension).toBeUndefined();
+    await expect(host.activate('demo-extension')).rejects.toThrow('boom');
+    expect(host.get('demo-extension')?.state).toBe('failed');
+    expect(host.get('demo-extension')?.extension).toBeUndefined();
     // LIFO rollback: 'b' disposed before 'a'.
     expect(disposed).toEqual(['b', 'a']);
   });
@@ -207,13 +207,13 @@ describe('ExtensionHost / lifecycle', () => {
   it('reload destroys the runtime and re-activates', async () => {
     const host = new ExtensionHost();
     let count = 0;
-    const plugin: Extension = { activate: () => { count++; } };
-    host.registerLoader(fakeLoader(plugin));
+    const extension: Extension = { activate: () => { count++; } };
+    host.registerLoader(fakeLoader(extension));
     await host.install(manifest());
-    await host.activate('demo-plugin');
-    await host.reload('demo-plugin');
+    await host.activate('demo-extension');
+    await host.reload('demo-extension');
     expect(count).toBe(2);
-    expect(host.get('demo-plugin')?.state).toBe('active');
+    expect(host.get('demo-extension')?.state).toBe('active');
   });
 });
 

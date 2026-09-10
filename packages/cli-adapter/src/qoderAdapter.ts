@@ -140,7 +140,7 @@ export function buildQoderShellCommand(
     : `exec ${cliCmd}`;
 }
 
-/** Tauri shell plugin child shape (subset we use). */
+/** Tauri shell extension child shape (subset we use). */
 interface ShellChild {
   kill(): Promise<void>;
 }
@@ -175,7 +175,7 @@ export interface QoderAdapterOptions {
  * one-shot.
  *
  * listSkills / listCommands inherit `BaseCliAdapter`'s `[]` default — qoder
- * CLI's `skills`/`plugins` subcommands exist but are not wired here (Out of
+ * CLI's `skills`/`extensions` subcommands exist but are not wired here (Out of
  * Scope, see prd.md). */
 export class QoderAdapter extends BaseCliAdapter {
   readonly id: string;

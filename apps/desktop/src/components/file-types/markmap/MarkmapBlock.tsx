@@ -4,12 +4,12 @@
 //
 // Sizing: MarkmapCanvas defers render until its container has a real size, and
 // percentage heights don't resolve in normal document flow — so the block is
-// wrapped in a fixed-height box (mirrors the 420px box FilePreviewPlugin uses
+// wrapped in a fixed-height box (mirrors the 420px box FilePreviewExtension uses
 // for embedded previews). `data-markmap-code` lets the export pipeline locate
 // the block after stabilization to inline its foreignObject <img> srcs.
 
 import { useEffect, useState } from 'react';
-import { useVaultContext } from '@folyn/container-plugins';
+import { useVaultContext } from '@folyn/container-extensions';
 import { resolveAssetBase } from '../previewPath';
 import { MarkmapCanvas } from './MarkmapCanvas';
 

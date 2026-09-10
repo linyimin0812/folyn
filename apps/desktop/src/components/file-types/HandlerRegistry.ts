@@ -11,10 +11,10 @@ import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/extension-host';
  * cannot run under jsdom. Tests drive this class directly.
  *
  * Ownership: every registration carries an `ownerExtensionId` (default
- * {@link FOLYN_CORE_OWNER}) so a plugin reload/deactivate can bulk-remove its
+ * {@link FOLYN_CORE_OWNER}) so a extension reload/deactivate can bulk-remove its
  * handlers via {@link removeByOwner}. `register` returns a disposable that
  * removes the handler only if it is still the same instance (the
- * plugin-uninstall safe path: a late `dispose()` after a re-registration must
+ * extension-uninstall safe path: a late `dispose()` after a re-registration must
  * not evict the newer handler).
  *
  * Resolution (doc §25): each extension maps to a candidate list keyed by

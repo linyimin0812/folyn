@@ -44,7 +44,7 @@ export async function routePetMenuAction(
   opacity?: '25' | '50' | '75' | '100',
   clickThrough?: boolean,
   commandId?: string,
-  pluginId?: string,
+  extensionId?: string,
 ): Promise<void> {
   switch (action) {
     case 'show-main':
@@ -188,24 +188,24 @@ export async function routePetMenuAction(
       }
       await focusMain();
       break;
-    case 'open-plugins-settings':
-      // Pet-panel search → open the Plugins settings tab in the main window.
+    case 'open-extensions-settings':
+      // Pet-panel search → open the Extensions settings tab in the main window.
       useNavStore.getState().setCurrentPage('settings');
-      useNavStore.getState().setSettingsTab('plugins');
+      useNavStore.getState().setSettingsTab('extensions');
       await focusMain();
       break;
-    case 'open-plugin-tool':
-      // Pet-panel search → open a plugin's tool window (popup). The panel is a
-      // separate realm whose command registry lacks plugin commands (plugins
-      // are activated in the main window), so it sends the plugin id and the
+    case 'open-extension-tool':
+      // Pet-panel search → open a extension's tool window (popup). The panel is a
+      // separate realm whose command registry lacks extension commands (extensions
+      // are activated in the main window), so it sends the extension id and the
       // MAIN window resolves the registered "Open: <tool>" command. No
       // focusMain on success — the newly created tool window comes to front
-      // on its own. Plugins without a window tool fall back to the Plugins
+      // on its own. Extensions without a window tool fall back to the Extensions
       // settings tab (the previous behavior).
-      if (pluginId) {
+      if (extensionId) {
         const { getCommands, runCommand } = await import('@/services/commandRegistry');
         const toolCmd = getCommands().find((c) =>
-          c.id.startsWith(`plugin.openTool.${pluginId}.`),
+          c.id.startsWith(`extension.openTool.${extensionId}.`),
         );
         if (toolCmd) {
           await runCommand(toolCmd.id);
@@ -213,7 +213,7 @@ export async function routePetMenuAction(
         }
       }
       useNavStore.getState().setCurrentPage('settings');
-      useNavStore.getState().setSettingsTab('plugins');
+      useNavStore.getState().setSettingsTab('extensions');
       await focusMain();
       break;
   }

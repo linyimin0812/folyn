@@ -1,11 +1,11 @@
 /**
  * Owned registry contract — the base every contribution registry implements.
  *
- * Every registration carries an `ownerExtensionId` so a plugin reload /
+ * Every registration carries an `ownerExtensionId` so a extension reload /
  * deactivate can bulk-remove everything it contributed without holding the
  * individual disposables (doc §34, §58). `register` returns a `Disposable`
  * that removes the value only if it is still the same instance (the
- * plugin-uninstall safe path: a late dispose after a re-registration must not
+ * extension-uninstall safe path: a late dispose after a re-registration must not
  * evict the newer value).
  *
  * Concrete registries (`commandRegistry`, `HandlerRegistry`,
@@ -34,7 +34,7 @@ interface Entry<T> {
 /**
  * Generic owned-registry helper. Concrete registries pass an `idFor` accessor
  * (values don't share one key name — `Command.id`, `FileTypeHandler.id`,
- * `ContainerPlugin.name`) and may layer their own specialized methods on top.
+ * `ContainerExtension.name`) and may layer their own specialized methods on top.
  */
 export class OwnedRegistry<T> implements Registry<T> {
   private readonly byId = new Map<string, Entry<T>>();

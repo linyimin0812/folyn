@@ -9,27 +9,27 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@folyn/extension-host';
+import type { ExtensionManifest } from '@folyn/extension-host';
 import {
-  registerTrustedPluginCommands,
-  registerPluginFileTypes,
-  registerPluginContainers,
+  registerTrustedExtensionCommands,
+  registerExtensionFileTypes,
+  registerExtensionContainers,
 } from './contributionAdapters';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 import { getHandlerByExtension, getAllHandlers } from '@/components/file-types/registry';
-import { ContainerRegistry } from '@folyn/container-plugins';
+import { ContainerRegistry } from '@folyn/container-extensions';
 
-// `registerPluginContainers` resolves `.svg` file-path icons via the
-// `readPluginFile` Tauri wrapper (which dynamic-imports `@tauri-apps/api/core`
-// and calls `invoke('read_plugin_file', ...)`). Mock the invoke at the module
+// `registerExtensionContainers` resolves `.svg` file-path icons via the
+// `readExtensionFile` Tauri wrapper (which dynamic-imports `@tauri-apps/api/core`
+// and calls `invoke('read_extension_file', ...)`). Mock the invoke at the module
 // boundary so the real wrapper runs but hits a fake backend.
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }));
 import { invoke as mockInvoke } from '@tauri-apps/api/core';
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'adapter-test',
     name: 'Adapter Test',
@@ -48,7 +48,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-function fakeModule(): PluginModule {
+function fakeModule(): ExtensionModule {
   return {
     handlers: {
       default: {
@@ -85,51 +85,51 @@ async function resetFileRegistry(): Promise<void> {
   reset?.();
 }
 
-describe('registerTrustedPluginCommands', () => {
+describe('registerTrustedExtensionCommands', () => {
   it('registers commands in-process (run calls the handler directly)', async () => {
     const handler = vi.fn(async () => {});
     const mod = fakeModule();
     mod.commands = { greet: handler };
-    registerTrustedPluginCommands(manifest(), mod);
+    registerTrustedExtensionCommands(manifest(), mod);
 
-    const cmd = getCommand('plugin.adapter-test.greet');
+    const cmd = getCommand('extension.adapter-test.greet');
     expect(cmd).toBeDefined();
     await cmd!.run();
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
   it('dispose removes the command', () => {
-    const d = registerTrustedPluginCommands(manifest(), fakeModule());
-    expect(getCommand('plugin.adapter-test.greet')).toBeDefined();
+    const d = registerTrustedExtensionCommands(manifest(), fakeModule());
+    expect(getCommand('extension.adapter-test.greet')).toBeDefined();
     d.dispose();
-    expect(getCommand('plugin.adapter-test.greet')).toBeUndefined();
+    expect(getCommand('extension.adapter-test.greet')).toBeUndefined();
   });
 
   it('skips commands with missing entry-ref', () => {
     const mod = fakeModule();
     mod.commands = {}; // no 'greet' handler
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    registerTrustedPluginCommands(manifest(), mod);
-    expect(getCommand('plugin.adapter-test.greet')).toBeUndefined();
+    registerTrustedExtensionCommands(manifest(), mod);
+    expect(getCommand('extension.adapter-test.greet')).toBeUndefined();
     warn.mockRestore();
   });
 
   it('returns no-op disposable when no commands declared', () => {
     const m = manifest({ contributes: undefined });
-    expect(() => registerTrustedPluginCommands(m, fakeModule()).dispose()).not.toThrow();
+    expect(() => registerTrustedExtensionCommands(m, fakeModule()).dispose()).not.toThrow();
   });
 });
 
-describe('registerPluginFileTypes', () => {
+describe('registerExtensionFileTypes', () => {
   it('registers the handler for the declared extension', () => {
-    registerPluginFileTypes(manifest(), fakeModule());
+    registerExtensionFileTypes(manifest(), fakeModule());
     const h = getHandlerByExtension('.adt');
     expect(h).toBeDefined();
     expect(h?.id).toBe('adt');
   });
 
   it('dispose removes the handler', () => {
-    const d = registerPluginFileTypes(manifest(), fakeModule());
+    const d = registerExtensionFileTypes(manifest(), fakeModule());
     expect(getHandlerByExtension('.adt')).toBeDefined();
     d.dispose();
     expect(getHandlerByExtension('.adt')).toBeUndefined();
@@ -139,15 +139,15 @@ describe('registerPluginFileTypes', () => {
     const mod = fakeModule();
     mod.handlers = undefined;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    registerPluginFileTypes(manifest(), mod);
+    registerExtensionFileTypes(manifest(), mod);
     expect(getHandlerByExtension('.adt')).toBeUndefined();
     warn.mockRestore();
   });
 
   it('late-dispose does not remove a re-registered handler', () => {
-    const d1 = registerPluginFileTypes(manifest(), fakeModule());
+    const d1 = registerExtensionFileTypes(manifest(), fakeModule());
     // Re-register (simulating re-activation)
-    registerPluginFileTypes(manifest(), fakeModule());
+    registerExtensionFileTypes(manifest(), fakeModule());
     // Dispose the first registration — should NOT remove the handler because
     // the registry's disposable contract only removes if it's still the same
     // instance.
@@ -156,16 +156,16 @@ describe('registerPluginFileTypes', () => {
   });
 });
 
-describe('registerPluginContainers', () => {
+describe('registerExtensionContainers', () => {
   it('registers the container directive', async () => {
-    await registerPluginContainers(manifest(), fakeModule());
+    await registerExtensionContainers(manifest(), fakeModule());
     const cr = ContainerRegistry.getInstance();
     expect(cr.get('adt-block')).toBeDefined();
     expect(cr.get('adt-block')?.label).toBe('ADT');
   });
 
   it('dispose unregisters the container', async () => {
-    const d = await registerPluginContainers(manifest(), fakeModule());
+    const d = await registerExtensionContainers(manifest(), fakeModule());
     const cr = ContainerRegistry.getInstance();
     expect(cr.get('adt-block')).toBeDefined();
     await d.dispose();
@@ -176,16 +176,16 @@ describe('registerPluginContainers', () => {
     const mod = fakeModule();
     mod.containers = undefined;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await registerPluginContainers(manifest(), mod);
+    await registerExtensionContainers(manifest(), mod);
     expect(ContainerRegistry.getInstance().get('adt-block')).toBeUndefined();
     warn.mockRestore();
   });
 
-  it('resolves a `.svg` file-path icon via read_plugin_file and stores the SVG string', async () => {
+  it('resolves a `.svg` file-path icon via read_extension_file and stores the SVG string', async () => {
     const svgStr = '<svg width="16" height="16"><rect/></svg>';
     mockInvoke.mockReset();
     mockInvoke.mockImplementation((cmd: string, _args: unknown) => {
-      if (cmd === 'read_plugin_file') return Promise.resolve(svgStr);
+      if (cmd === 'read_extension_file') return Promise.resolve(svgStr);
       return Promise.reject(new Error(`unexpected invoke: ${cmd}`));
     });
     const m = manifest({
@@ -195,17 +195,17 @@ describe('registerPluginContainers', () => {
         ],
       },
     });
-    await registerPluginContainers(m, fakeModule());
+    await registerExtensionContainers(m, fakeModule());
     const reg = ContainerRegistry.getInstance().get('svg-icon-block');
     expect(reg).toBeDefined();
     expect(reg?.icon).toBe(svgStr);
-    expect(mockInvoke).toHaveBeenCalledWith('read_plugin_file', {
+    expect(mockInvoke).toHaveBeenCalledWith('read_extension_file', {
       id: 'adapter-test',
       path: 'assets/icon.svg',
     });
   });
 
-  it('falls back to empty icon when read_plugin_file rejects (no throw, no literal path)', async () => {
+  it('falls back to empty icon when read_extension_file rejects (no throw, no literal path)', async () => {
     mockInvoke.mockReset();
     mockInvoke.mockRejectedValue(new Error('not found'));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -216,14 +216,14 @@ describe('registerPluginContainers', () => {
         ],
       },
     });
-    await expect(registerPluginContainers(m, fakeModule())).resolves.toBeDefined();
+    await expect(registerExtensionContainers(m, fakeModule())).resolves.toBeDefined();
     const reg = ContainerRegistry.getInstance().get('missing-svg-block');
     expect(reg).toBeDefined();
     expect(reg?.icon).toBe('');
     warn.mockRestore();
   });
 
-  it('passes inline-SVG and emoji icons through unchanged (no read_plugin_file call)', async () => {
+  it('passes inline-SVG and emoji icons through unchanged (no read_extension_file call)', async () => {
     mockInvoke.mockReset();
     mockInvoke.mockImplementation((cmd: string) => Promise.reject(new Error(`unexpected: ${cmd}`)));
     const m = manifest({
@@ -234,7 +234,7 @@ describe('registerPluginContainers', () => {
         ],
       },
     });
-    await registerPluginContainers(m, fakeModule());
+    await registerExtensionContainers(m, fakeModule());
     expect(ContainerRegistry.getInstance().get('inline-svg-block')?.icon).toBe('<svg/>');
     expect(ContainerRegistry.getInstance().get('emoji-block')?.icon).toBe('📦');
     expect(mockInvoke).not.toHaveBeenCalled();

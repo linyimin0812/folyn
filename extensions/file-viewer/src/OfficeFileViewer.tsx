@@ -5,7 +5,7 @@
  * postMessage and renders it with @file-viewer/react. All renderers are
  * bundled locally (esbuild/vite inlines every @file-viewer/renderer-* dep) and
  * run with full Worker/WASM support because this frame has a real
- * `folyn-plugin://` origin.
+ * `folyn-extension://` origin.
  */
 import { useEffect, useMemo, useState } from 'react';
 import FileViewer from '@file-viewer/react';

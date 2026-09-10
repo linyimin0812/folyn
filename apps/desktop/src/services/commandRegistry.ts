@@ -3,7 +3,7 @@
  *
  * A command is a single executable item surfaced in the palette. The registry
  * is the single source of truth and the future extension point for additional
- * command sources (custom commands, plugin commands).
+ * command sources (custom commands, extension commands).
  *
  * Static commands (actions + panels/modes) are registered once at app start via
  * {@link registerBuiltinCommands}. File commands are NOT registered here — they
@@ -56,7 +56,7 @@ export type CommandDisposable = { dispose(): Promise<void> | void };
 /** Register a command owned by `ownerExtensionId` (use {@link FOLYN_CORE_OWNER}
  * for Folyn's own commands). A later registration with the same id replaces
  * the prior one. Returns a disposable that removes the command only if it is
- * still the same instance (plugin-uninstall safe path). */
+ * still the same instance (extension-uninstall safe path). */
 export function registerCommand(cmd: Command, ownerExtensionId: string = FOLYN_CORE_OWNER): CommandDisposable {
   return registry.register(cmd, ownerExtensionId);
 }

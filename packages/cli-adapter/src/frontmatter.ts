@@ -39,7 +39,7 @@ export function parseMarkdownFrontmatter(text: string): ParsedFrontmatter {
  *  `key = 'value'` lines at the top level (before any `[section]`); that is
  *  all command `.toml` files need (`description`, `prompt`). Bare values are
  *  returned verbatim.
- *  ponytail: not a full TOML parser — the only plugin .toml commands on disk
+ *  ponytail: not a full TOML parser — the only extension .toml commands on disk
  *  (ponytail) use top-level quoted strings. Add a real parser if tables /
  *  array-of-tables ever need surfacing. */
 export function parseTomlTopLevel(text: string): Record<string, string> {

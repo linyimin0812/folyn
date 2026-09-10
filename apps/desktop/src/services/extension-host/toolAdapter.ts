@@ -1,27 +1,27 @@
 /**
  * Tool contribution adapter.
  *
- * Wires a plugin's `contributes.tools[]` declarations into the command
+ * Wires a extension's `contributes.tools[]` declarations into the command
  * registry: each tool becomes an "Open: <title>" command in ⌘P. Running
- * the command opens a Tauri WebviewWindow loading the plugin's HTML entry
- * via the `folyn-plugin://localhost/<pluginId>/<entry>` URL (the existing
+ * the command opens a Tauri WebviewWindow loading the extension's HTML entry
+ * via the `folyn-extension://localhost/<extensionId>/<entry>` URL (the existing
  * URI scheme handler serves the bytes).
  *
  * Tier-agnostic — works for both sandbox and trusted tiers. The window's
- * origin is `folyn-plugin://localhost` on macOS/Linux and
- * `http://folyn-plugin.localhost` on Windows; in both cases the WebviewWindow
+ * origin is `folyn-extension://localhost` on macOS/Linux and
+ * `http://folyn-extension.localhost` on Windows; in both cases the WebviewWindow
  * is isolated from the main app's origin.
  *
- * Dispose unregisters the commands AND closes all of this plugin's open tool
- * windows so plugin deactivate reaps both the registration and the UI.
+ * Dispose unregisters the commands AND closes all of this extension's open tool
+ * windows so extension deactivate reaps both the registration and the UI.
  */
 
-import type { Disposable, PluginManifest } from '@folyn/extension-host';
+import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
 import type { ToolContribution } from '@folyn/extension-host';
 import { registerCommand } from '@/services/commandRegistry';
 import { useToolWindowStore } from '@/store/toolWindowStore';
 
-export function registerPluginTools(manifest: PluginManifest): Disposable {
+export function registerExtensionTools(manifest: ExtensionManifest): Disposable {
   const tools: ToolContribution[] = manifest.contributes?.tools ?? [];
   if (tools.length === 0) return { dispose: async () => {} };
 
@@ -31,18 +31,18 @@ export function registerPluginTools(manifest: PluginManifest): Disposable {
       // MVP: only `window: true` is implemented. Inline panels (`window: false`)
       // require a separate host slot — deferred to a follow-up task.
       console.warn(
-        `[plugin-host] plugin "${manifest.id}" tool "${tool.id}" has window: false — inline panels not supported yet, skipped`,
+        `[extension-host] extension "${manifest.id}" tool "${tool.id}" has window: false — inline panels not supported yet, skipped`,
       );
       continue;
     }
-    const fullId = `plugin.openTool.${manifest.id}.${tool.id}`;
+    const fullId = `extension.openTool.${manifest.id}.${tool.id}`;
     const title = tool.title ?? `${manifest.id}/${tool.id}`;
     const d = registerCommand({
       id: fullId,
       title: `Open: ${title}`,
       category: 'action',
       icon: tool.icon,
-      keywords: ['plugin', 'tool', 'open', manifest.id, tool.id],
+      keywords: ['extension', 'tool', 'open', manifest.id, tool.id],
       run: () => {
         void useToolWindowStore.getState().open(manifest.id, tool);
       },
@@ -53,7 +53,7 @@ export function registerPluginTools(manifest: PluginManifest): Disposable {
   return {
     dispose: async () => {
       for (const d of disposables) d.dispose();
-      await useToolWindowStore.getState().closeAllForPlugin(manifest.id);
+      await useToolWindowStore.getState().closeAllForExtension(manifest.id);
     },
   };
 }

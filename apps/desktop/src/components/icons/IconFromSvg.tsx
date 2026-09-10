@@ -1,7 +1,7 @@
 /**
- * Render a raw inline SVG string (e.g. from a plugin manifest's `icon` field)
+ * Render a raw inline SVG string (e.g. from a extension manifest's `icon` field)
  * at a normalized size. Mirrors `ThemeIcon.normalizeSvg` size injection, but
- * without theme coupling — plugin authors may pass any `<svg>...</svg>` string.
+ * without theme coupling — extension authors may pass any `<svg>...</svg>` string.
  *
  * Used by `featureAdapter.ts` to render `FeatureContribution.icon` into the
  * activity bar. Strings that don't start with `<svg` are treated as

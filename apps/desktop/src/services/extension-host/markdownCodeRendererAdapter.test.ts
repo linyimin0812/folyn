@@ -11,17 +11,17 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createElement } from 'react';
-import type { PluginManifest } from '@folyn/extension-host';
+import type { ExtensionManifest } from '@folyn/extension-host';
 import {
-  registerPluginMarkdownCodeRenderers,
+  registerExtensionMarkdownCodeRenderers,
   registerMarkdownCodeRenderer,
   unregisterMarkdownCodeRenderer,
   getMarkdownCodeRenderer,
   clearMarkdownCodeRenderers,
 } from './markdownCodeRendererAdapter';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'renderer-test',
     name: 'Renderer Test',
@@ -37,12 +37,12 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-function fakeModule(): PluginModule {
+function fakeModule(): ExtensionModule {
   return {
     markdownCodeRenderers: {
       PlantUmlMarkdownBlock: () => createElement('div'),
     },
-  } as unknown as PluginModule;
+  } as unknown as ExtensionModule;
 }
 
 beforeEach(() => {
@@ -54,9 +54,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginMarkdownCodeRenderers', () => {
+describe('registerExtensionMarkdownCodeRenderers', () => {
   it('registers renderer resolvable by language + aliases', () => {
-    registerPluginMarkdownCodeRenderers(manifest(), fakeModule());
+    registerExtensionMarkdownCodeRenderers(manifest(), fakeModule());
     expect(getMarkdownCodeRenderer('plantuml')).toBeDefined();
     expect(getMarkdownCodeRenderer('puml')?.canonical).toBe('plantuml');
     expect(getMarkdownCodeRenderer('pu')?.canonical).toBe('plantuml');
@@ -66,7 +66,7 @@ describe('registerPluginMarkdownCodeRenderers', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const mod = fakeModule();
     mod.markdownCodeRenderers = {}; // no PlantUmlMarkdownBlock
-    registerPluginMarkdownCodeRenderers(manifest(), mod);
+    registerExtensionMarkdownCodeRenderers(manifest(), mod);
     expect(getMarkdownCodeRenderer('plantuml')).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
@@ -74,12 +74,12 @@ describe('registerPluginMarkdownCodeRenderers', () => {
 
   it('returns no-op disposable when no markdownCodeRenderers declared', () => {
     expect(() =>
-      registerPluginMarkdownCodeRenderers(manifest({ contributes: {} }), fakeModule()).dispose(),
+      registerExtensionMarkdownCodeRenderers(manifest({ contributes: {} }), fakeModule()).dispose(),
     ).not.toThrow();
   });
 
   it('dispose unregisters all keys', () => {
-    const d = registerPluginMarkdownCodeRenderers(manifest(), fakeModule());
+    const d = registerExtensionMarkdownCodeRenderers(manifest(), fakeModule());
     expect(getMarkdownCodeRenderer('plantuml')).toBeDefined();
     expect(getMarkdownCodeRenderer('puml')).toBeDefined();
     d.dispose();
@@ -92,11 +92,11 @@ describe('registerPluginMarkdownCodeRenderers', () => {
     // ponytail: first-registered-wins; upgrade path is a per-language precedence list.
     const c1 = () => createElement('a');
     const c2 = () => createElement('b');
-    registerMarkdownCodeRenderer('plugin-a', 'plantuml', 'plantuml', c1);
-    registerMarkdownCodeRenderer('plugin-b', 'plantuml', 'plantuml', c2);
+    registerMarkdownCodeRenderer('extension-a', 'plantuml', 'plantuml', c1);
+    registerMarkdownCodeRenderer('extension-b', 'plantuml', 'plantuml', c2);
     expect(getMarkdownCodeRenderer('plantuml')?.component).toBe(c1);
-    // plugin-b's write didn't take; its dispose should be a no-op (only plugin-a owns it).
-    unregisterMarkdownCodeRenderer('plantuml', 'plugin-b');
+    // extension-b's write didn't take; its dispose should be a no-op (only extension-a owns it).
+    unregisterMarkdownCodeRenderer('plantuml', 'extension-b');
     expect(getMarkdownCodeRenderer('plantuml')?.component).toBe(c1);
   });
 });

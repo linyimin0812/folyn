@@ -96,15 +96,15 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'scriptRuntimes',
   // Per-caller (provider, model) pairs for non-AiPanel chat callers that
   // have no session to hang the pair on. pet/bubble moved to their own
-  // session stores in Phase 2; voice/plugin stay here.
+  // session stores in Phase 2; voice/extension stay here.
   // ponytail: fields are nullable + optional on the persisted blob so legacy
   // blobs hydrate without migration; first use post-upgrade picks a pair.
   'voicePair',
-  'pluginPair',
+  'extensionPair',
 ] as const;
 
 /** A (provider, model) pair used by non-AiPanel chat callers (pet, bubble,
- *  voice, plugin RPC). Null until the user picks a pair in each caller's
+ *  voice, extension RPC). Null until the user picks a pair in each caller's
  *  settings page. */
 export interface ProviderModelPair {
   provider: ChatProvider;
@@ -131,7 +131,7 @@ export interface ResolvedPairConfig {
 }
 
 /** Resolve a (provider, model) pair into the connection params a caller needs
- *  to invoke runRigChat. Used by pet / bubble / voice / plugin RPC send paths
+ *  to invoke runRigChat. Used by pet / bubble / voice / extension RPC send paths
  *  so they don't reimplement the providerSettings lookup. Returns null when
  *  the pair is null OR the provider's slot is missing OR a key-requiring
  *  provider has no apiKey (caller surfaces the empty state).
@@ -187,7 +187,7 @@ export function firstEnabledPair(
  *  Session-based callers use this (or its per-store sibling
  *  `resolvePairForPetSession` / `resolvePairForBtSession`) instead of
  *  resolvePairConfig directly so the pair-source is encapsulated.
- *  voice/plugin RPC keeps resolvePairConfig(pair, state). */
+ *  voice/extension RPC keeps resolvePairConfig(pair, state). */
 export function resolvePairForSession(
   sessionId: string,
 ): ResolvedPairConfig | null {
@@ -207,7 +207,7 @@ export interface AiConfigState {
    *  ('wiki' | 'clips' | 'analyze' | 'schedule'). When a feature's
    *  entry is absent or empty, the feature falls back to `cliAdapter` (global).
    *  This keeps existing users' behavior unchanged until they explicitly pick
-   *  a per-feature adapter in the Plugins settings page. */
+   *  a per-feature adapter in the Extensions settings page. */
   featureCliAdapter: Record<string, string>;
   chatProvider: ChatProvider;
   chatModel: string;
@@ -230,10 +230,10 @@ export interface AiConfigState {
   // Per-caller (provider, model) pairs. Null until the user picks one in
   // each caller's settings page. AiPanel / pet / bubble use session-scoped
   // pair fields (see aiStore.AiSession / petChatStore.PetChatSession /
-  // bubbleTemplateChatStore.BtSession) — NOT these globals. voice/plugin
+  // bubbleTemplateChatStore.BtSession) — NOT these globals. voice/extension
   // have no session to hang a pair on, so they stay here.
   voicePair: ProviderModelPair | null;
-  pluginPair: ProviderModelPair | null;
+  extensionPair: ProviderModelPair | null;
 
   setCliAdapter: (v: string) => void;
   setCliPath: (v: string) => void;
@@ -284,7 +284,7 @@ export interface AiConfigState {
   /** Set the (provider, model) pair for a non-AiPanel chat caller.
    *  Pass null to clear. Persists via the settings:all blob. */
   setVoicePair: (pair: ProviderModelPair | null) => void;
-  setPluginPair: (pair: ProviderModelPair | null) => void;
+  setExtensionPair: (pair: ProviderModelPair | null) => void;
 
   /** Returns provider ids that have a non-empty apiKey (or don't require one). */
   configuredProviderIds: () => string[];
@@ -371,7 +371,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   manualModels: {},
   scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES,
   voicePair: null,
-  pluginPair: null,
+  extensionPair: null,
 
   setCliAdapter: (v) => {
     set((s) => {
@@ -626,7 +626,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   },
 
   setVoicePair: (pair) => { set({ voicePair: pair }); persist(); },
-  setPluginPair: (pair) => { set({ pluginPair: pair }); persist(); },
+  setExtensionPair: (pair) => { set({ extensionPair: pair }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
@@ -668,7 +668,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     // Phase 2 — they live on petChatStore/bubbleTemplateChatStore sessions
     // now; any leftover persisted values are silently dropped here.
     patch.voicePair = isProviderModelPair(blob.voicePair) ? blob.voicePair : null;
-    patch.pluginPair = isProviderModelPair(blob.pluginPair) ? blob.pluginPair : null;
+    patch.extensionPair = isProviderModelPair(blob.extensionPair) ? blob.extensionPair : null;
 
     if (Object.keys(patch).length > 0) set(patch);
   },
@@ -795,13 +795,13 @@ export function startProvidersBroadcast(): () => void {
     if (stopped) return;
     try {
       const { emit } = await import('@tauri-apps/api/event');
-      const { providerSettings, customerProviders, pluginPair } = useAiConfigStore.getState();
+      const { providerSettings, customerProviders, extensionPair } = useAiConfigStore.getState();
       const { modelsByProvider } = useModelRegistryStore.getState();
       await emit('pet://providers-updated', {
         providerSettings,
         customerProviders,
         modelsByProvider,
-        pluginPair,
+        extensionPair,
       });
     } catch {
       // Non-tauri (tests) or emit failed — non-fatal.
@@ -812,16 +812,16 @@ export function startProvidersBroadcast(): () => void {
   void emit();
   let prevSettings = useAiConfigStore.getState().providerSettings;
   let prevCustomers = useAiConfigStore.getState().customerProviders;
-  let prevPluginPair = useAiConfigStore.getState().pluginPair;
+  let prevExtensionPair = useAiConfigStore.getState().extensionPair;
   const unsubConfig = useAiConfigStore.subscribe((state) => {
     if (
       state.providerSettings !== prevSettings ||
       state.customerProviders !== prevCustomers ||
-      state.pluginPair !== prevPluginPair
+      state.extensionPair !== prevExtensionPair
     ) {
       prevSettings = state.providerSettings;
       prevCustomers = state.customerProviders;
-      prevPluginPair = state.pluginPair;
+      prevExtensionPair = state.extensionPair;
       void emit();
     }
   });

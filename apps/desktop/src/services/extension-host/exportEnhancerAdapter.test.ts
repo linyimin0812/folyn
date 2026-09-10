@@ -9,17 +9,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { PluginManifest } from '@folyn/extension-host';
+import type { ExtensionManifest } from '@folyn/extension-host';
 import {
-  registerPluginExportEnhancers,
+  registerExtensionExportEnhancers,
   getEnhancer,
   registerEnhancer,
   unregisterEnhancer,
   clearExportEnhancers,
 } from './exportEnhancerAdapter';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'enhancer-test',
     name: 'Enhancer Test',
@@ -36,7 +36,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-function fakeModule(): PluginModule {
+function fakeModule(): ExtensionModule {
   return {
     exportEnhancers: {
       'enhance-quote': async () => {},
@@ -54,9 +54,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginExportEnhancers', () => {
+describe('registerExtensionExportEnhancers', () => {
   it('registers enhancers resolvable by name', () => {
-    registerPluginExportEnhancers(manifest(), fakeModule());
+    registerExtensionExportEnhancers(manifest(), fakeModule());
     expect(getEnhancer('quote')).toBeTypeOf('function');
     expect(getEnhancer('canvas')).toBeTypeOf('function');
   });
@@ -65,7 +65,7 @@ describe('registerPluginExportEnhancers', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const mod = fakeModule();
     mod.exportEnhancers = { 'enhance-quote': async () => {} }; // no enhance-canvas
-    registerPluginExportEnhancers(manifest(), mod);
+    registerExtensionExportEnhancers(manifest(), mod);
     expect(getEnhancer('quote')).toBeTypeOf('function');
     expect(getEnhancer('canvas')).toBeUndefined();
     expect(warn).toHaveBeenCalled();
@@ -74,12 +74,12 @@ describe('registerPluginExportEnhancers', () => {
 
   it('returns no-op disposable when no exportEnhancers declared', () => {
     expect(() =>
-      registerPluginExportEnhancers(manifest({ contributes: {} }), fakeModule()).dispose(),
+      registerExtensionExportEnhancers(manifest({ contributes: {} }), fakeModule()).dispose(),
     ).not.toThrow();
   });
 
   it('dispose unregisters all enhancers', () => {
-    const d = registerPluginExportEnhancers(manifest(), fakeModule());
+    const d = registerExtensionExportEnhancers(manifest(), fakeModule());
     expect(getEnhancer('quote')).toBeTypeOf('function');
     expect(getEnhancer('canvas')).toBeTypeOf('function');
     d.dispose();
@@ -88,14 +88,14 @@ describe('registerPluginExportEnhancers', () => {
   });
 
   it('last-registered-wins for a colliding key (ponytail)', () => {
-    // ponytail: last-registered-wins; upgrade path is a per-plugin precedence list.
+    // ponytail: last-registered-wins; upgrade path is a per-extension precedence list.
     const h1 = vi.fn();
     const h2 = vi.fn();
-    registerEnhancer('plugin-a', 'quote', h1);
-    registerEnhancer('plugin-b', 'quote', h2);
+    registerEnhancer('extension-a', 'quote', h1);
+    registerEnhancer('extension-b', 'quote', h2);
     expect(getEnhancer('quote')).toBe(h2);
-    unregisterEnhancer('quote', 'plugin-b');
-    // After plugin-b unregisters, plugin-a is NOT restored (last-wins is not
+    unregisterEnhancer('quote', 'extension-b');
+    // After extension-b unregisters, extension-a is NOT restored (last-wins is not
     // a stack — the slot is just cleared). This is the documented ceiling.
     expect(getEnhancer('quote')).toBeUndefined();
   });

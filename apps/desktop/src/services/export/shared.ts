@@ -14,10 +14,10 @@ import { resolveBasePath } from '@/utils/pathResolver';
 export type HtmlImageMode = 'inline' | 'upload';
 
 /**
- * Resolve a vault-relative path the same way FilePreviewPlugin does, so
+ * Resolve a vault-relative path the same way FilePreviewExtension does, so
  * per-type enhancers can re-read source files by the same path the preview
  * used. ponytail: duplicated 5-line resolveVaultPath from
- * FilePreviewPlugin.tsx — two packages, different build graphs, sharing it
+ * FilePreviewExtension.tsx — two packages, different build graphs, sharing it
  * isn't worth a new dep.
  */
 export function resolveVaultPath(src: string, filePath: string): string {
@@ -158,7 +158,7 @@ export { assetUrlToFilePath };
  * Tauri asset URLs are NOT inlined via fetch: the app's connect-src CSP does
  * not allow the `asset:` scheme (only img-src does), so `fetch('asset://…')`
  * rejects and the image silently stays as an asset URL that won't load outside
- * the app. Read the file directly through the fs plugin instead.
+ * the app. Read the file directly through the fs extension instead.
  */
 export async function inlineContainerImages(container: HTMLElement): Promise<void> {
   const imgs = Array.from(container.querySelectorAll('img'));
@@ -368,7 +368,7 @@ export async function renderFilePreviewToSvg(
 ): Promise<string> {
   const fileName = filePath.split('/').pop() ?? '';
   if (!fileName) return '';
-  // src is resolved by FilePreviewPlugin relative to filePath's directory,
+  // src is resolved by FilePreviewExtension relative to filePath's directory,
   // so "./filename" + the file's own path resolves back to itself.
   const syntheticMd = `:::file-preview{src="./${fileName}"}\n:::\n`;
   const { renderMarkdownToHtmlViaDom } = await import('../exportService');

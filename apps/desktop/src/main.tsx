@@ -4,25 +4,25 @@ import * as ReactDOMFull from 'react-dom';
 import './i18n';
 import App from './App';
 
-// Expose the host's React instance globally so trusted-tier plugins (import()'d
+// Expose the host's React instance globally so trusted-tier extensions (import()'d
 // into this realm via a blob URL) can share it via `window.React`. A blob URL
-// can't resolve `import 'react'`, and bundling React into every plugin would
+// can't resolve `import 'react'`, and bundling React into every extension would
 // break hooks (two React instances → "Invalid hook call"). This is the
-// established-but-missing pattern the example plugins already assume
+// established-but-missing pattern the example extensions already assume
 // (`markdown-todo` / `ai-chat-demo` `_loadReact` read `window.React`). Set
-// before `createRoot` so plugins activate against the live instance.
+// before `createRoot` so extensions activate against the live instance.
 // `window.ReactDOM` exposes the full react-dom API (createPortal/flushSync/…)
-// for plugins that render inline; main.tsx itself still uses the client import
+// for extensions that render inline; main.tsx itself still uses the client import
 // above for `createRoot` (the modern entrypoint).
 window.React = React;
 window.ReactDOM = ReactDOMFull;
 
-// Expose the host's @codemirror/language instance so trusted-tier blob plugins
-// (e.g. folyn-plugin-plantuml) can share it via `window.codemirrorLanguage`.
+// Expose the host's @codemirror/language instance so trusted-tier blob extensions
+// (e.g. folyn-extension-plantuml) can share it via `window.codemirrorLanguage`.
 // Same reason as React above: a blob URL can't resolve `import '@codemirror/language'`,
-// and bundling it into the plugin would produce a second module instance whose
+// and bundling it into the extension would produce a second module instance whose
 // `LanguageSupport` extension the host's `EditorState` won't reliably apply
-// (module-instance mismatch). Set before plugin import() so plugins resolve the
+// (module-instance mismatch). Set before extension import() so extensions resolve the
 // live instance.
 // ponytail: local cast — `declare global` in vite-env.d.ts (a script-level file)
 // doesn't merge onto Window, and making that file a module breaks the ambient

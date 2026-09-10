@@ -381,7 +381,7 @@ describe('handlePaste', () => {
 
 describe('saveBlobs', () => {
   describe('fs strategy (default)', () => {
-    it('writes each blob to <workingDir>/attachments/<id>-<name>.<ext> via plugin-fs', async () => {
+    it('writes each blob to <workingDir>/attachments/<id>-<name>.<ext> via extension-fs', async () => {
       const atts: PendingAttachment[] = [
         { id: 'id1', name: 'pic.png', type: 'image', blob: makeImageBlob(4, 'image/png') },
         { id: 'id2', name: 'note.md', type: 'file', blob: makeBlob('hi', 'text/markdown') },
@@ -436,7 +436,7 @@ describe('saveBlobs', () => {
       ).rejects.toThrow(/Tauri/);
     });
 
-    it('writes large blobs through the fs plugin (no argv/E2BIG path)', async () => {
+    it('writes large blobs through the fs extension (no argv/E2BIG path)', async () => {
       // Regression: the old shell strategy embedded the whole base64 payload
       // in a `claude-cli` command-line argument, so sizeable images failed
       // with "Argument list too long (os error 7)". The fs path receives the

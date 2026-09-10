@@ -159,7 +159,7 @@ function PetExternalApiBlock() {
 
   // ponytail: no-cors fetch — we only need to fire the request, the pet
   // bubble is the visual feedback. Opaque response is fine. Avoids adding
-  // CORS support to the tiny_http server or a Tauri HTTP plugin.
+  // CORS support to the tiny_http server or a Tauri HTTP extension.
   const handleTest = useCallback(async () => {
     if (!port) return;
     setTesting(true);

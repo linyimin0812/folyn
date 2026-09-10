@@ -15,8 +15,8 @@ import { all as allLowlightGrammars } from 'lowlight';
 import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import { ContainerRegistry, registerBuiltinPlugins } from '@folyn/container-plugins';
-import type { ContainerProps } from '@folyn/container-plugins';
+import { ContainerRegistry, registerBuiltinExtensions } from '@folyn/container-extensions';
+import type { ContainerProps } from '@folyn/container-extensions';
 import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdown/renderMarkdown';
 
 import * as dbmlExporter from './export/dbml';
@@ -30,11 +30,11 @@ import { inlineContainerImages } from './export/shared';
 import { renderMarkmapSvg } from './export/markmapShared';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
 import type { EnhanceCtx } from './export/dbml';
-import { getEnhancer } from './plugin-host/exportEnhancerAdapter';
+import { getEnhancer } from './extension-host/exportEnhancerAdapter';
 import type { ExporterContext } from '@folyn/extension-host';
 
-// Ensure built-in plugins are registered once
-registerBuiltinPlugins();
+// Ensure built-in extensions are registered once
+registerBuiltinExtensions();
 
 export type ExportFormat = 'markdown' | 'html';
 
@@ -55,20 +55,20 @@ export function buildExportComponentMap(): Record<string, React.ComponentType<an
   const registry = ContainerRegistry.getInstance();
   const componentMap: Record<string, React.ComponentType<any>> = {};
 
-  for (const plugin of registry.getAll()) {
-    const PluginComponent = plugin.component;
-    componentMap[plugin.name] = function DirectiveWrapper(props: any) {
+  for (const extension of registry.getAll()) {
+    const ExtensionComponent = extension.component;
+    componentMap[extension.name] = function DirectiveWrapper(props: any) {
       const { children, node, ...rest } = props;
       const nodeProperties = node?.properties ?? {};
       const mergedAttributes = { ...nodeProperties, ...rest };
       const containerProps: ContainerProps = {
         children,
         attributes: mergedAttributes,
-        name: plugin.name,
+        name: extension.name,
       };
       // Tag the wrapper with data-container so the export DOM walk can locate
-      // rendered containers by directive name and apply plugin enhancers.
-      return createElement('div', { 'data-container': plugin.name }, createElement(PluginComponent, containerProps));
+      // rendered containers by directive name and apply extension enhancers.
+      return createElement('div', { 'data-container': extension.name }, createElement(ExtensionComponent, containerProps));
     };
   }
 
@@ -148,7 +148,7 @@ export const DARK_THEME_VARS = `
  * Concatenate all CSS rules currently loaded in the document. Cross-origin
  * sheets throw on cssRules access and are skipped. Used so exported HTML
  * renders identically to the in-app preview (Tailwind utilities, container-
- * plugin classes, file-type Preview styles all rely on this).
+ * extension classes, file-type Preview styles all rely on this).
  */
 export function collectAppCss(): string {
   const rules: string[] = [];
@@ -273,7 +273,7 @@ export async function renderMarkdownToHtmlViaDom(
   // so the export captures the post-processed DOM.
   await processFilePreviews(container, filePath, vaultRoot);
 
-  // Apply plugin-contributed export enhancers to [data-container] blocks
+  // Apply extension-contributed export enhancers to [data-container] blocks
   // (post-process rendered container DOM into self-contained export form).
   await applyContainerEnhancers(container, { filePath, vaultRoot });
 
@@ -388,14 +388,14 @@ async function processFilePreviews(
       await fn(body, { src, filePath, vaultRoot }).catch(() => {});
       return;
     }
-    // Fallback: consult the plugin export-enhancer registry (keyed by ext
+    // Fallback: consult the extension export-enhancer registry (keyed by ext
     // without dot). Unifies container-name and file-extension enhancers onto
-    // one surface. Plugin handler receives ExporterContext (no src — it can
+    // one surface. Extension handler receives ExporterContext (no src — it can
     // read data-file-preview-src from the parent block if needed).
-    const pluginEnhancer = getEnhancer(ext);
-    if (pluginEnhancer) {
+    const extensionEnhancer = getEnhancer(ext);
+    if (extensionEnhancer) {
       const ctx: ExporterContext = { filePath, vaultRoot };
-      await pluginEnhancer(body, ctx).catch(() => {});
+      await extensionEnhancer(body, ctx).catch(() => {});
       return;
     }
     // .markmap and other types: keep in-DOM content if it has an SVG; else
@@ -414,7 +414,7 @@ async function processFilePreviews(
 
 /**
  * Walk each `[data-container]` element in the rendered export DOM and apply
- * any matching plugin export enhancer (keyed by the container directive name).
+ * any matching extension export enhancer (keyed by the container directive name).
  * The enhancer runs host-realm on a real HTMLElement after the in-DOM render
  * has settled; it mutates the body in place to be self-contained for export.
  *
@@ -425,7 +425,7 @@ async function processFilePreviews(
  * stripped first (same as processFilePreviews).
  *
  * ponytail: enhancer failures are swallowed best-effort (`.catch(() => {})`)
- * — a broken enhancer should not abort the whole export. If multiple plugins
+ * — a broken enhancer should not abort the whole export. If multiple extensions
  * register for the same key, last-registered-wins (see exportEnhancerAdapter).
  *
  * Extracted as an exported pure function so the walk is unit-testable in
@@ -631,7 +631,7 @@ export const RESIZABLE_MEDIA_OVERRIDE = `
  *
  * ponytail: one delegated click listener covers every <img> in the doc —
  * smaller than per-image handlers and works for images rendered dynamically
- * (e.g. container-plugin output). The lightbox overlay element is created
+ * (e.g. container-extension output). The lightbox overlay element is created
  * lazily on first open and reused thereafter.
  */
 export const IMAGE_LIGHTBOX_SCRIPT = `

@@ -1,5 +1,5 @@
 // Pet-panel unified search results — the panel search box (above the tabs)
-// searches three sources: vault files, registered commands, and plugins
+// searches three sources: vault files, registered commands, and extensions
 // (on-disk third-party + built-in panels like translation/wiki/clips).
 // Rendered in the panel body while the query is non-empty.
 //
@@ -8,12 +8,12 @@
 //    (the main window's existing jump router opens it — same as PetInbox).
 //  - Command → `pet://menu-action { action:'run-command', commandId }` — the
 //    main window's routePetMenuAction runs it via the command registry.
-//  - Plugin (third-party) → `pet://menu-action { action:'open-plugin-tool',
-//    pluginId }` — the main window opens the plugin's tool window (popup).
-//  - Plugin (built-in panel) → host panel tries in-panel activation first
+//  - Extension (third-party) → `pet://menu-action { action:'open-extension-tool',
+//    extensionId }` — the main window opens the extension's tool window (popup).
+//  - Extension (built-in panel) → host panel tries in-panel activation first
 //    (e.g. switch to the translation tab); otherwise `run-command: panel.<name>`
 //    routes to the main window. Built-ins without such a command fall back
-//    to open-plugin-tool (Plugins settings tab).
+//    to open-extension-tool (Extensions settings tab).
 
 import {
   forwardRef,
@@ -27,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenMarkdownFiles } from '@/services/fileCommands';
 import { getCommands } from '@/services/commandRegistry';
-import { usePluginStore } from '@/store/pluginStore';
+import { useExtensionStore } from '@/store/extensionStore';
 import { isTauri } from '@/utils/platform';
 
 /** Max results per group — bounds DOM size for large vaults. */
@@ -59,11 +59,11 @@ export interface PetPanelSearchResultsHandle {
   activate(): void;
 }
 
-/** One flattened search hit, in render order (files → commands → plugins). */
+/** One flattened search hit, in render order (files → commands → extensions). */
 type SearchItem =
   | { kind: 'file'; path: string }
   | { kind: 'command'; commandId: string }
-  | { kind: 'plugin'; pluginId: string; builtin: boolean };
+  | { kind: 'extension'; extensionId: string; builtin: boolean };
 
 export const PetPanelSearchResults = forwardRef<
   PetPanelSearchResultsHandle,
@@ -71,13 +71,13 @@ export const PetPanelSearchResults = forwardRef<
 >(function PetPanelSearchResults({ query, onDone, onActivateBuiltin }, ref) {
   const { t } = useTranslation();
   const fileTree = useVaultStore((s) => s.fileTree);
-  // ponytail: read plugin rows from the store (includes built-in panels
+  // ponytail: read extension rows from the store (includes built-in panels
   // like translation/wiki/clips/analyze/schedule) instead of invoking
-  // `list_plugins` directly — that command returns only on-disk third-party
-  // plugins and skips BUILTIN_PANEL_DEFS, so searches for "翻译" never hit
+  // `list_extensions` directly — that command returns only on-disk third-party
+  // extensions and skips BUILTIN_PANEL_DEFS, so searches for "翻译" never hit
   // the translation panel.
-  const rows = usePluginStore((s) => s.rows);
-  const refreshRows = usePluginStore((s) => s.refresh);
+  const rows = useExtensionStore((s) => s.rows);
+  const refreshRows = useExtensionStore((s) => s.refresh);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Vault files (the panel receives the tree via `pet://file-tree-updated`).
@@ -88,9 +88,9 @@ export const PetPanelSearchResults = forwardRef<
     [],
   );
 
-  // Installed + built-in plugins — refreshed once on mount (the panel window
+  // Installed + built-in extensions — refreshed once on mount (the panel window
   // lives as long as the app, and installs happen in the main window's
-  // settings; `plugin://installed` listeners in App.tsx call refresh too).
+  // settings; `extension://installed` listeners in App.tsx call refresh too).
   useEffect(() => {
     void refreshRows();
   }, [refreshRows]);
@@ -106,7 +106,7 @@ export const PetPanelSearchResults = forwardRef<
         .filter((c) => matches(q, c.title, ...(c.keywords ?? [])))
         .slice(0, MAX_PER_GROUP)
     : [];
-  const pluginHits = q
+  const extensionHits = q
     ? rows
         .filter((r) => {
           // Built-in rows carry nameKey/descKey (i18n labels); third-party
@@ -118,7 +118,7 @@ export const PetPanelSearchResults = forwardRef<
         })
         .slice(0, MAX_PER_GROUP)
     : [];
-  const total = fileHits.length + commandHits.length + pluginHits.length;
+  const total = fileHits.length + commandHits.length + extensionHits.length;
 
   // Flattened hit list in render order — index maps 1:1 onto the DOM buttons
   // (`data-search-index`), so ArrowUp/ArrowDown/Enter can drive the UI.
@@ -126,13 +126,13 @@ export const PetPanelSearchResults = forwardRef<
     () => [
       ...fileHits.map((f): SearchItem => ({ kind: 'file', path: f.path })),
       ...commandHits.map((c): SearchItem => ({ kind: 'command', commandId: c.id })),
-      ...pluginHits.map((p): SearchItem => ({
-        kind: 'plugin',
-        pluginId: p.entry.id,
+      ...extensionHits.map((p): SearchItem => ({
+        kind: 'extension',
+        extensionId: p.entry.id,
         builtin: !!p.builtin,
       })),
     ],
-    [fileHits, commandHits, pluginHits],
+    [fileHits, commandHits, extensionHits],
   );
 
   // A new query starts with the first result highlighted.
@@ -140,7 +140,7 @@ export const PetPanelSearchResults = forwardRef<
     setActiveIndex(0);
   }, [query]);
 
-  // Keep the highlight in range if the hit list shrinks (e.g. plugins load
+  // Keep the highlight in range if the hit list shrinks (e.g. extensions load
   // asynchronously and the mount snapshot is incomplete).
   useEffect(() => {
     setActiveIndex((i) => Math.min(i, Math.max(items.length - 1, 0)));
@@ -160,7 +160,7 @@ export const PetPanelSearchResults = forwardRef<
         await emitNavigateFile(item.path);
       } else if (item.kind === 'command') {
         await emitRunCommand(item.commandId);
-      } else if (item.kind === 'plugin') {
+      } else if (item.kind === 'extension') {
         if (item.builtin) {
           // Built-in panel hit: let the host panel try in-panel activation
           // first (e.g. switch to the translation tab). The host clears the
@@ -168,19 +168,19 @@ export const PetPanelSearchResults = forwardRef<
           // hides the whole pet panel, which would mask the tab switch.
           // Otherwise route to the main window via `run-command: panel.<name>`.
           // Built-ins without such a command (schedule) fall back to
-          // open-plugin-tool which opens the Plugins settings tab.
-          if (onActivateBuiltin?.(item.pluginId)) {
+          // open-extension-tool which opens the Extensions settings tab.
+          if (onActivateBuiltin?.(item.extensionId)) {
             return;
           }
           const { getCommands } = await import('@/services/commandRegistry');
-          const cmdId = `panel.${item.pluginId.replace(/^builtin:/, '')}`;
+          const cmdId = `panel.${item.extensionId.replace(/^builtin:/, '')}`;
           if (getCommands().some((c) => c.id === cmdId)) {
             await emitRunCommand(cmdId);
           } else {
-            await emitOpenPluginTool(item.pluginId);
+            await emitOpenExtensionTool(item.extensionId);
           }
         } else {
-          await emitOpenPluginTool(item.pluginId);
+          await emitOpenExtensionTool(item.extensionId);
         }
       }
       onDone();
@@ -254,12 +254,12 @@ export const PetPanelSearchResults = forwardRef<
           })}
         </section>
       )}
-      {pluginHits.length > 0 && (
+      {extensionHits.length > 0 && (
         <section className="pet-panel-search-group">
           <div className="pet-panel-search-group-label">
-            {t('pet:search.plugins')}
+            {t('pet:search.extensions')}
           </div>
-          {pluginHits.map((p, i) => {
+          {extensionHits.map((p, i) => {
             const index = fileHits.length + commandHits.length + i;
             const title = p.nameKey ? t(p.nameKey) : p.entry.name;
             const sub = p.builtin
@@ -274,8 +274,8 @@ export const PetPanelSearchResults = forwardRef<
               role="option"
               aria-selected={index === activeIndex}
               onClick={() => activateItem({
-                kind: 'plugin',
-                pluginId: p.entry.id,
+                kind: 'extension',
+                extensionId: p.entry.id,
                 builtin: !!p.builtin,
               })}
             >
@@ -316,12 +316,12 @@ async function emitRunCommand(commandId: string): Promise<void> {
   }
 }
 
-/** Open a plugin's tool window (popup) in the main window. */
-async function emitOpenPluginTool(pluginId: string): Promise<void> {
+/** Open a extension's tool window (popup) in the main window. */
+async function emitOpenExtensionTool(extensionId: string): Promise<void> {
   if (!isTauri()) return;
   try {
     const { emit } = await import('@tauri-apps/api/event');
-    await emit('pet://menu-action', { action: 'open-plugin-tool', pluginId });
+    await emit('pet://menu-action', { action: 'open-extension-tool', extensionId });
   } catch {
     // Non-fatal.
   }

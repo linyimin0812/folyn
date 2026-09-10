@@ -38,25 +38,25 @@ import { useSearchStore } from './store/searchStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { startPetChatSessionsHost } from './store/petChatSessions';
-import { registerBuiltinPlugins } from '@folyn/container-plugins';
+import { registerBuiltinExtensions } from '@folyn/container-extensions';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { registerBuiltinCodeContributions } from './services/registerBuiltinCodeContributions';
-import { registerErrorDemoPlugin } from './services/registerErrorDemoPlugin';
+import { registerErrorDemoExtension } from './services/registerErrorDemoExtension';
 import { registerBuiltinExporters } from './services/export/exporterRegistry';
 import { isTauri } from "@/utils/platform";
 import { useLocaleStore } from '@/store/localeStore';
 import { extensionHost } from "@folyn/extension-host";
 import type { ToolExtensionUIContext } from '@folyn/extension-host';
-import { createExtensionApi } from './services/plugin-host/createExtensionApi';
+import { createExtensionApi } from './services/extension-host/createExtensionApi';
 import { workspaceApi } from './services/workspaceRegistry';
-import { sandboxLoader } from './services/plugin-host/sandboxLoader';
-import { trustedLoader } from './services/plugin-host/trustedLoader';
-import { attachToolWindowRpcListener } from './services/plugin-host/toolWindowRpcListener';
+import { sandboxLoader } from './services/extension-host/sandboxLoader';
+import { trustedLoader } from './services/extension-host/trustedLoader';
+import { attachToolWindowRpcListener } from './services/extension-host/toolWindowRpcListener';
 
-registerBuiltinPlugins();
+registerBuiltinExtensions();
 registerBuiltinCodeContributions();
-registerErrorDemoPlugin();
+registerErrorDemoExtension();
 registerBuiltinExporters();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.
@@ -64,11 +64,11 @@ registerBuiltinCommands();
 // Register the 5 built-in sidebar panels (files/wiki/clips/analyze/calendar)
 // into featurePanelStore + wire visibility/active-panel sync. ActivityBar and
 // Sidebar are data-driven off the store; this must run before they mount.
-// (Plugin panels arrive later via featureAdapter — PR3.)
+// (Extension panels arrive later via featureAdapter — PR3.)
 registerBuiltinPanels();
 
-// ponytail: register plugin loaders ONCE at module top-level, NOT inside the
-// plugin-host useEffect. React StrictMode (dev) mounts effects twice; both
+// ponytail: register extension loaders ONCE at module top-level, NOT inside the
+// extension-host useEffect. React StrictMode (dev) mounts effects twice; both
 // mounts share the SAME `sandboxLoader`/`trustedLoader` module singletons, so
 // mount #1's cleanup disposing its `registerLoader` handle wipes the entry
 // mount #2 registered (dispose checks `loaders.get(tier) === loader` — true
@@ -306,26 +306,26 @@ export default function App() {
     })();
   }, [focusMode, currentPage]);
 
-  // ── Plugin host: register loaders + sync on install/approve/uninstall ──
-  // The sandbox loader is the untrusted-tier PluginLoader (sandboxed iframe +
-  // host RPC). The trusted loader is the in-process PluginLoader (blob-URL
-  // `import()` + TOFU gate). Sandbox plugins auto-activate on install (their
-  // commands appear immediately). Trusted plugins do NOT auto-activate on
-  // install — they require `approve_plugin` (the explicit TOFU-pin consent,
-  // surfaced as the `plugin://approved` event) before activation. This is the
-  // PR3 acceptance: "trusted-tier plugins require explicit approval before
+  // ── Extension host: register loaders + sync on install/approve/uninstall ──
+  // The sandbox loader is the untrusted-tier ExtensionLoader (sandboxed iframe +
+  // host RPC). The trusted loader is the in-process ExtensionLoader (blob-URL
+  // `import()` + TOFU gate). Sandbox extensions auto-activate on install (their
+  // commands appear immediately). Trusted extensions do NOT auto-activate on
+  // install — they require `approve_extension` (the explicit TOFU-pin consent,
+  // surfaced as the `extension://approved` event) before activation. This is the
+  // PR3 acceptance: "trusted-tier extensions require explicit approval before
   // loading". Failures are logged and never crash the main app.
   useEffect(() => {
     if (!isTauri()) return;
     let uninstalled: (() => void) | null = null;
     let cancelled = false;
 
-    /** Read a plugin manifest from ~/.folyn/plugins/<id>/manifest.json */
-    async function readPluginManifest(id: string): Promise<Record<string, unknown>> {
+    /** Read a extension manifest from ~/.folyn/extensions/<id>/manifest.json */
+    async function readExtensionManifest(id: string): Promise<Record<string, unknown>> {
       const { homeDir, join } = await import('@tauri-apps/api/path');
       const { readTextFile } = await import('@tauri-apps/plugin-fs');
       const home = await homeDir();
-      const manifestPath = await join(home, '.folyn', 'plugins', id, 'manifest.json');
+      const manifestPath = await join(home, '.folyn', 'extensions', id, 'manifest.json');
       return JSON.parse(await readTextFile(manifestPath)) as Record<string, unknown>;
     }
 
@@ -333,74 +333,74 @@ export default function App() {
       // Loaders are registered at module top-level (see file header) — they
       // are app-lifetime singletons, not per-effect disposables.
 
-      // Hydrate from disk: query the Rust side for installed plugins and
+      // Hydrate from disk: query the Rust side for installed extensions and
       // install + activate each one in the in-memory host.
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const entries = await invoke<
           Array<{ id: string; name: string; version: string; tier: string; trusted: boolean }>
-        >('list_plugins');
+        >('list_extensions');
         for (const entry of entries) {
           if (cancelled) break;
           try {
-            const manifest = await readPluginManifest(entry.id);
+            const manifest = await readExtensionManifest(entry.id);
             await extensionHost.install(manifest as never);
-            // Activate sandbox plugins so their commands appear immediately.
-            // Trusted plugins activate only after approval (plugin://approved).
+            // Activate sandbox extensions so their commands appear immediately.
+            // Trusted extensions activate only after approval (extension://approved).
             if (manifest.tier === 'sandbox') {
               await extensionHost.activate(manifest.id as string).catch((err: unknown) => {
-                console.warn(`[App] failed to activate plugin ${entry.id}:`, err);
+                console.warn(`[App] failed to activate extension ${entry.id}:`, err);
               });
             } else if (manifest.tier === 'trusted' && entry.trusted) {
-              // Already-approved trusted plugin (hydrated from a prior
+              // Already-approved trusted extension (hydrated from a prior
               // session) — activate it now.
               await extensionHost.activate(manifest.id as string).catch((err: unknown) => {
-                console.warn(`[App] failed to activate trusted plugin ${entry.id}:`, err);
+                console.warn(`[App] failed to activate trusted extension ${entry.id}:`, err);
               });
             }
           } catch (err: unknown) {
-            console.warn(`[App] failed to hydrate plugin ${entry.id}:`, err);
+            console.warn(`[App] failed to hydrate extension ${entry.id}:`, err);
           }
         }
       } catch (err: unknown) {
-        console.warn('[App] plugin hydration failed:', err);
+        console.warn('[App] extension hydration failed:', err);
       }
 
       // Listen for live install/approve/uninstall events.
       const { listen } = await import('@tauri-apps/api/event');
-      const unInstall = await listen<{ id: string }>('plugin://installed', async (event) => {
+      const unInstall = await listen<{ id: string }>('extension://installed', async (event) => {
         try {
-          const manifest = await readPluginManifest(event.payload.id);
+          const manifest = await readExtensionManifest(event.payload.id);
           await extensionHost.install(manifest as never);
           // Sandbox: activate immediately. Trusted: wait for approval.
           if (manifest.tier === 'sandbox') {
             await extensionHost.activate(manifest.id as string).catch(() => {});
           }
         } catch (err: unknown) {
-          console.warn(`[App] failed to install plugin on event:`, err);
+          console.warn(`[App] failed to install extension on event:`, err);
         }
       });
-      const unApprove = await listen<{ id: string }>('plugin://approved', async (event) => {
+      const unApprove = await listen<{ id: string }>('extension://approved', async (event) => {
         try {
-          // The plugin was already installed on the `plugin://installed`
+          // The extension was already installed on the `extension://installed`
           // event; just activate it now that the user has approved.
           await extensionHost.activate(event.payload.id).catch((err: unknown) => {
-            console.warn(`[App] failed to activate approved plugin ${event.payload.id}:`, err);
+            console.warn(`[App] failed to activate approved extension ${event.payload.id}:`, err);
           });
         } catch (err: unknown) {
-          console.warn(`[App] failed to approve plugin on event:`, err);
+          console.warn(`[App] failed to approve extension on event:`, err);
         }
       });
-      const unUninstall = await listen<{ id: string }>('plugin://uninstalled', async (event) => {
+      const unUninstall = await listen<{ id: string }>('extension://uninstalled', async (event) => {
         try {
           await extensionHost.uninstall(event.payload.id);
         } catch (err: unknown) {
-          console.warn(`[App] failed to uninstall plugin on event:`, err);
+          console.warn(`[App] failed to uninstall extension on event:`, err);
         }
       });
 
-      // Fetch-RPC listener: routes `folyn-plugin://.../rpc` POSTs from tool
-      // windows back through the shared `dispatchPluginRpc` so the same
+      // Fetch-RPC listener: routes `folyn-extension://.../rpc` POSTs from tool
+      // windows back through the shared `dispatchExtensionRpc` so the same
       // permission checks / path resolution apply as the iframe bridge.
       const unRpc = await attachToolWindowRpcListener();
 
@@ -427,7 +427,7 @@ export default function App() {
 
   // ── Voice input: global toggle hotkey ──
   // Registers the persisted voice hotkey on mount and listens for
-  // `voice://hotkey-toggle` events from the `tauri-plugin-global-shortcut`
+  // `voice://hotkey-toggle` events from the `tauri-extension-global-shortcut`
   // handler in `lib.rs`. Toggle semantics (mirrors openless `qa_hotkey.rs`):
   // each press flips the state — idle → start, recording → stop → transcribe
   // → polish → insert. Other phases are ignored by the guards already in

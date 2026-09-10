@@ -1,10 +1,10 @@
 /**
- * Host environment (theme + locale) capability for trusted-tier plugins.
+ * Host environment (theme + locale) capability for trusted-tier extensions.
  *
- * Mirrors the `buildPluginAi` pattern: reads current state from the host's
- * `appearanceStore` + `localeStore`, exposes a `PluginEnv` surface, and
- * subscribes to store changes to fan out to plugin-registered callbacks.
- * Plugins bring their own i18n bundles — only the locale identifier is
+ * Mirrors the `buildExtensionAi` pattern: reads current state from the host's
+ * `appearanceStore` + `localeStore`, exposes a `ExtensionEnv` surface, and
+ * subscribes to store changes to fan out to extension-registered callbacks.
+ * Extensions bring their own i18n bundles — only the locale identifier is
  * surfaced; host's `t()` is NOT exposed.
  *
  * ponytail: no new subscription path. Both stores are zustand; the raw
@@ -12,28 +12,28 @@
  * the relevant slice.
  */
 
-import type { PluginEnv, PluginTheme } from '@folyn/extension-host';
+import type { ExtensionEnv, ExtensionTheme } from '@folyn/extension-host';
 import { disposable } from '@folyn/extension-host';
 import { useAppearanceStore, type Theme } from '@/store/appearanceStore';
 import { useLocaleStore } from '@/store/localeStore';
 
 /** Resolve 'system' → 'light'|'dark' via the OS media query. MatchMedia is
- * available in the main webview and in trusted-plugin blob-URL contexts
+ * available in the main webview and in trusted-extension blob-URL contexts
  * (same realm). */
-function resolveSystemTheme(theme: Theme): PluginTheme {
+function resolveSystemTheme(theme: Theme): ExtensionTheme {
   if (theme === 'system') {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   return theme;
 }
 
-/** Per-env teardown carried in a WeakMap so the `PluginEnv` surface stays
+/** Per-env teardown carried in a WeakMap so the `ExtensionEnv` surface stays
  * plain (no internal methods leak). Keyed by env identity; drops when the
  * env is GC'd. */
-const pluginEnvTeardowns = new WeakMap<PluginEnv, () => void>();
+const extensionEnvTeardowns = new WeakMap<ExtensionEnv, () => void>();
 
-export function buildPluginEnv(): PluginEnv {
-  const themeCbs = new Set<(t: PluginTheme) => void>();
+export function buildExtensionEnv(): ExtensionEnv {
+  const themeCbs = new Set<(t: ExtensionTheme) => void>();
   const localeCbs = new Set<(l: string) => void>();
 
   const unsubscribeTheme = useAppearanceStore.subscribe((state, prev) => {
@@ -46,14 +46,14 @@ export function buildPluginEnv(): PluginEnv {
     for (const cb of localeCbs) cb(state.locale);
   });
 
-  const env: PluginEnv = {
-    get theme(): PluginTheme {
+  const env: ExtensionEnv = {
+    get theme(): ExtensionTheme {
       return resolveSystemTheme(useAppearanceStore.getState().theme);
     },
     get locale(): string {
       return useLocaleStore.getState().locale;
     },
-    onThemeChange(cb: (t: PluginTheme) => void) {
+    onThemeChange(cb: (t: ExtensionTheme) => void) {
       themeCbs.add(cb);
       return disposable(() => {
         themeCbs.delete(cb);
@@ -67,7 +67,7 @@ export function buildPluginEnv(): PluginEnv {
     },
   };
 
-  pluginEnvTeardowns.set(env, () => {
+  extensionEnvTeardowns.set(env, () => {
     unsubscribeTheme();
     unsubscribeLocale();
     themeCbs.clear();
@@ -77,15 +77,15 @@ export function buildPluginEnv(): PluginEnv {
 }
 
 /**
- * Tear down the host-side store subscriptions owned by a `PluginEnv` produced
- * by `buildPluginEnv`. The trusted loader calls this on plugin deactivate so
- * the store listeners (held in the env closure) are released. Plugin-owned
+ * Tear down the host-side store subscriptions owned by a `ExtensionEnv` produced
+ * by `buildExtensionEnv`. The trusted loader calls this on extension deactivate so
+ * the store listeners (held in the env closure) are released. Extension-owned
  * `on*Change` disposables are reaped separately via `ctx.addDisposable`.
  */
-export function disposePluginEnv(env: PluginEnv): void {
-  const teardown = pluginEnvTeardowns.get(env);
+export function disposeExtensionEnv(env: ExtensionEnv): void {
+  const teardown = extensionEnvTeardowns.get(env);
   if (teardown) {
-    pluginEnvTeardowns.delete(env);
+    extensionEnvTeardowns.delete(env);
     teardown();
   }
 }

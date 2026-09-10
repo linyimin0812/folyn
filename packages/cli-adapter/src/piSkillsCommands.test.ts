@@ -105,7 +105,7 @@ describe('PiAdapter.listSkills', () => {
     const skills = await a.listSkills();
     const s = skills.find((x) => x.name === 'pkgskill');
     expect(s).toBeDefined();
-    expect(s!.source).toBe('plugin');
+    expect(s!.source).toBe('extension');
   });
 });
 

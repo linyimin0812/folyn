@@ -119,7 +119,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // pt-2 px-8 pb-[80vh] padding (the 80vh bottom space lets outline heading
     // clicks park the last heading at the top of the viewport).
     // Previously a hardcoded list of built-in ids gated this — that forced
-    // every plugin file-type to either inherit markdown's 80vh bottom pad
+    // every extension file-type to either inherit markdown's 80vh bottom pad
     // (broken) or edit host source to be added to the list.
     const fullBleed = activeTab.fileType !== 'markdown';
 

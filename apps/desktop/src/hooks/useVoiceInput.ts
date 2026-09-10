@@ -113,7 +113,7 @@ function showVoiceOrbWindow(): void {
  *  src-tauri/src/errors.rs), so a bare `String(err)` on the rejection yields
  *  `[object Object]` and hides the real cause (e.g. "WinRT 语音识别启动失败:
  *  ..."). Prefer `detail`, then `message`/`Error`, then `String(err)` as the
- *  last resort. Mirrors `AiPanel#errorMessage` / `pluginStore`'s inline
+ *  last resort. Mirrors `AiPanel#errorMessage` / `extensionStore`'s inline
  *  `detail ?? e` extraction. */
 function commandErrorMessage(err: unknown): string {
   if (typeof err === 'string') return err;

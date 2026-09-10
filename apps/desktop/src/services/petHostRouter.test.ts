@@ -135,17 +135,17 @@ describe('routePetMenuAction', () => {
     expect(showMock).toHaveBeenCalledTimes(1);
   });
 
-  it('open-plugin-tool runs the plugin openTool command without focusing main', async () => {
+  it('open-extension-tool runs the extension openTool command without focusing main', async () => {
     const { registerCommand } = await import('@/services/commandRegistry');
     const run = vi.fn(async () => undefined);
     const dispose = registerCommand({
-      id: 'plugin.openTool.string-unescaper.unescaper',
+      id: 'extension.openTool.string-unescaper.unescaper',
       title: 'Open: String Unescaper',
       category: 'action',
       run,
     });
     await routePetMenuAction(
-      'open-plugin-tool',
+      'open-extension-tool',
       undefined,
       undefined,
       undefined,
@@ -158,18 +158,18 @@ describe('routePetMenuAction', () => {
     dispose.dispose();
   });
 
-  it('open-plugin-tool without a registered tool falls back to Plugins settings + focusMain', async () => {
+  it('open-extension-tool without a registered tool falls back to Extensions settings + focusMain', async () => {
     useNavStore.setState({ currentPage: 'editor', settingsTab: 'appearance' });
     await routePetMenuAction(
-      'open-plugin-tool',
+      'open-extension-tool',
       undefined,
       undefined,
       undefined,
       undefined,
-      'no-tool-plugin',
+      'no-tool-extension',
     );
     expect(useNavStore.getState().currentPage).toBe('settings');
-    expect(useNavStore.getState().settingsTab).toBe('plugins');
+    expect(useNavStore.getState().settingsTab).toBe('extensions');
     expect(showMock).toHaveBeenCalledTimes(1);
   });
 });

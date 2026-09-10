@@ -1,7 +1,7 @@
 /**
- * Plugin runtime contracts — the typed shapes a plugin's ESM bundle exports
+ * Extension runtime contracts — the typed shapes a extension's ESM bundle exports
  * and the host-side handler/container interfaces. Moved into the SDK so
- * external plugin authors can typecheck their bundles against `folyn-extension-sdk`
+ * external extension authors can typecheck their bundles against `folyn-extension-sdk`
  * without importing host internals.
  *
  * React appears as a peer type only (`ComponentType`, `ReactNode`); type-only
@@ -33,7 +33,7 @@ export type {
 } from './presentation';
 
 // ── Container contracts ────────────────────────────────────────────────────
-// (Moved from packages/container-plugins/src/ContainerPlugin.ts — that file
+// (Moved from packages/container-extensions/src/ContainerExtension.ts — that file
 // now re-exports from here.)
 
 /** Props passed to every container component */
@@ -46,15 +46,15 @@ export interface ContainerProps {
   name?: string;
 }
 
-/** Category for organizing plugins in the slash menu */
+/** Category for organizing extensions in the slash menu */
 export type ContainerCategory = 'layout' | 'media' | 'ai' | 'data' | 'custom';
 
 /**
- * Interface that all container plugins must implement.
- * Registered plugins appear in the `/` slash command menu
+ * Interface that all container extensions must implement.
+ * Registered extensions appear in the `/` slash command menu
  * and render inside the preview pane.
  */
-export interface ContainerPlugin {
+export interface ContainerExtension {
   /** Unique name matching the directive (e.g. "callout") */
   name: string;
   /** Emoji or icon for the slash menu */
@@ -71,15 +71,15 @@ export interface ContainerPlugin {
   description?: string;
 }
 
-// ── PluginModule export contract ────────────────────────────────────────────
-// (Moved from apps/desktop/src/services/plugin-host/contributionAdapters.ts.)
+// ── ExtensionModule export contract ────────────────────────────────────────────
+// (Moved from apps/desktop/src/services/extension-host/contributionAdapters.ts.)
 //
-// The resolved exports of a plugin's ESM bundle. All maps are optional — a
-// plugin may contribute only commands, only file-types, etc. Entry-ref keys
+// The resolved exports of a extension's ESM bundle. All maps are optional — a
+// extension may contribute only commands, only file-types, etc. Entry-ref keys
 // match the strings declared in the manifest's `contributes.*[].handler` /
 // `component` / `run` / `entry` fields.
 
-/** Context passed to an exporter function (`PluginModule.exporters[entryRef]`). */
+/** Context passed to an exporter function (`ExtensionModule.exporters[entryRef]`). */
 export interface ExporterContext {
   /** Vault-relative path of the active document being exported. */
   filePath: string;
@@ -124,14 +124,14 @@ export type EditorLanguageFactory = () => unknown;
  */
 export type HighlightGrammarFn = (hljs: unknown) => unknown;
 
-export interface PluginModule {
+export interface ExtensionModule {
   /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
   handlers?: Record<string, FileTypeHandler>;
   /** Entry-ref → React component. Keys match `contributes.containers[].component`. */
   containers?: Record<string, ComponentType<ContainerProps>>;
   /**
    * Entry-ref → React component. Keys match `contributes.features[].component`.
-   * Used by `registerPluginFeatures` (services/plugin-host/featureAdapter.ts)
+   * Used by `registerExtensionFeatures` (services/extension-host/featureAdapter.ts)
    * to mount trusted-tier sidebar panels.
    */
   features?: Record<string, ComponentType>;

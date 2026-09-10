@@ -35,7 +35,7 @@ export type MathEditKind = 'inline' | 'block';
 export type MathEditHandler = (node: PMNode, pos: number, kind: MathEditKind) => void;
 
 // Re-exported so RichTextEditor can type its onImagePaste ref without a
-// direct dep on RichTextImage (which pulls in the tiptap/pm/state Plugin).
+// direct dep on RichTextImage (which pulls in the tiptap/pm/state Extension).
 export type { ImagePasteHandler } from './RichTextImage';
 
 export interface RichTextExtensionsOptions {
@@ -57,7 +57,7 @@ export interface RichTextExtensionsOptions {
   /**
    * When provided (live editor only), a TSV table detected on plain-text paste
    * routes here so the host can show the TableConvertDialog. Markdown-source
-   * tables convert directly in the plugin (no prompt). Export pipeline omits
+   * tables convert directly in the extension (no prompt). Export pipeline omits
    * it (no live editor, no paste).
    */
   onTablePaste?: TablePasteHandler;

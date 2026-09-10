@@ -35,7 +35,7 @@
     "@file-viewer/react": "^2.1.17",
     "@lezer/highlight": "^1.2.3",
     "@folyn/cli-adapter": "workspace:*",
-    "@folyn/container-plugins": "workspace:*",
+    "@folyn/container-extensions": "workspace:*",
     "@folyn/extension-host": "workspace:*",
     "@folyn/vault-provider": "workspace:*",
     "@radix-ui/react-collapsible": "^1.1.15",

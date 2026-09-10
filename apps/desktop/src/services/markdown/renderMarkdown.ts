@@ -128,7 +128,7 @@ export function transformMathBrackets(md: string): string {
  *
  * ponytail: reuse `findMathSegments` (already code-aware, distinguishes
  * inline vs display) and collect edit ranges, then apply in reverse so
- * indices stay valid. Shorter than a custom remark plugin walking mdast.
+ * indices stay valid. Shorter than a custom remark extension walking mdast.
  *
  * Ceiling: this is a string-level pass, so it can't see mdast structure —
  * if a list item puts inline math on its own indented line (`  $x^2$`), the
@@ -205,11 +205,11 @@ export function findMathSegments(md: string): MathSegment[] {
 // ── Unified pipeline ───────────────────────────────────────────────────────
 
 export interface MathRenderOptions {
-  /** Extra remark plugins to add between remarkMath and remarkRehype
+  /** Extra remark extensions to add between remarkMath and remarkRehype
    *  (e.g. remarkGfm, remarkBreaks, remarkDirective). */
-  remarkPlugins?: PluggableList;
-  /** Extra rehype plugins to add after rehypeMathjax (e.g. rehypeHighlight). */
-  rehypePlugins?: PluggableList;
+  remarkExtensions?: PluggableList;
+  /** Extra rehype extensions to add after rehypeMathjax (e.g. rehypeHighlight). */
+  rehypeExtensions?: PluggableList;
   /** React component overrides for rehype-react. */
   components?: Record<string, React.ComponentType<any>>;
   /** Allow raw HTML in the markdown (uses rehype-raw). Defaults to false. */
@@ -224,11 +224,11 @@ function buildProcessor(opts: MathRenderOptions) {
   const pipeline: any[] = [
     remarkParse,
     remarkMath,
-    ...(opts.remarkPlugins ?? []),
+    ...(opts.remarkExtensions ?? []),
     [remarkRehype, { allowDangerousHtml: opts.allowDangerousHtml ?? false }],
     ...(opts.allowDangerousHtml ? [rehypeRaw] : []),
     rehypeMathjax,
-    ...(opts.rehypePlugins ?? []),
+    ...(opts.rehypeExtensions ?? []),
   ];
   return unified().use(pipeline as PluggableList);
 }

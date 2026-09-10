@@ -64,10 +64,10 @@ describe('grapesJS integration round-trip', () => {
       container,
       storageManager: false,
       panels: { defaults: [] },
-      plugins: [blocksBasic],
-      // Cast: plugin-opts key types only accept string keys; same workaround
+      extensions: [blocksBasic],
+      // Cast: extension-opts key types only accept string keys; same workaround
       // as grapesConfig.ts.
-      pluginsOpts: { [blocksBasic as unknown as string]: { flexGrid: true } },
+      extensionsOpts: { [blocksBasic as unknown as string]: { flexGrid: true } },
     });
   }
 

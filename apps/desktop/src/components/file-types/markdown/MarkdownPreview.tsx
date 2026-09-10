@@ -16,10 +16,10 @@ import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
-import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@folyn/container-plugins';
-import type { ContainerProps } from '@folyn/container-plugins';
+import { ContainerRegistry, registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
+import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
-import { getMarkdownCodeRenderer } from '@/services/plugin-host/markdownCodeRendererAdapter';
+import { getMarkdownCodeRenderer } from '@/services/extension-host/markdownCodeRendererAdapter';
 import { getHandlerByExtension, getHandlerById, getModeComponent } from "@/components/file-types/registry";
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -39,7 +39,7 @@ import { FileIcon } from '@/components/icons/FileIcon';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
 import { getResizedMediaWidth } from './mediaResize';
 /**
- * Rehype plugin: remove <br> nodes inside <code> elements (within <pre> blocks).
+ * Rehype extension: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
  * but can also leak <br> into code blocks, causing extra blank lines in preview.
  */
@@ -60,7 +60,7 @@ function rehypeRemoveCodeBreaks() {
 }
 
 /**
- * Rehype plugin: mark the blockquote that immediately follows a
+ * Rehype extension: mark the blockquote that immediately follows a
  * `<!-- Result -->` HTML comment with the `run-result` class, so the synced
  * run output keeps its monospace alignment (dir table columns etc.) instead
  * of falling back to the proportional body font every blockquote uses.
@@ -91,23 +91,23 @@ function rehypeMarkResultBlock() {
   };
 }
 
-// Ensure built-in plugins are registered once
-registerBuiltinPlugins();
+// Ensure built-in extensions are registered once
+registerBuiltinExtensions();
 registerBuiltinCodeContributions();
 
 /**
  * Build a component map from the ContainerRegistry for rehype-react.
  * remark-directive-rehype converts :::name{attrs} into <name ...attrs> hast nodes.
- * We map each registered plugin name to its React component.
+ * We map each registered extension name to its React component.
  */
 function buildComponentMap(): Record<string, React.ComponentType<any>> {
   const registry = ContainerRegistry.getInstance();
   const componentMap: Record<string, React.ComponentType<any>> = {};
 
-  for (const plugin of registry.getAll()) {
-    const PluginComponent = plugin.component;
+  for (const extension of registry.getAll()) {
+    const ExtensionComponent = extension.component;
     // Wrapper that adapts hast element props to ContainerProps
-    componentMap[plugin.name] = function DirectiveWrapper(props: any) {
+    componentMap[extension.name] = function DirectiveWrapper(props: any) {
       const { children, node, ...rest } = props;
       // Merge hast node properties to ensure directive attributes like "type" are preserved
       // (some attributes like "type" may be consumed by rehype as HTML-native props)
@@ -116,18 +116,18 @@ function buildComponentMap(): Record<string, React.ComponentType<any>> {
       const containerProps: ContainerProps = {
         children,
         attributes: mergedAttributes,
-        name: plugin.name,
+        name: extension.name,
       };
       // Tag with data-container so the export DOM walk can locate rendered
-      // containers by directive name and apply plugin enhancers. Transparent
-      // wrapper div — container plugins use inline styles, so an extra plain
+      // containers by directive name and apply extension enhancers. Transparent
+      // wrapper div — container extensions use inline styles, so an extra plain
       // div does not affect their rendering.
-      // ponytail: PanelErrorBoundary isolates plugin render throws so a broken
+      // ponytail: PanelErrorBoundary isolates extension render throws so a broken
       // container doesn't white-screen the whole markdown preview.
       return createElement(
         'div',
-        { 'data-container': plugin.name },
-        createElement(PanelErrorBoundary, { panelId: plugin.name, children: createElement(PluginComponent, containerProps) }),
+        { 'data-container': extension.name },
+        createElement(PanelErrorBoundary, { panelId: extension.name, children: createElement(ExtensionComponent, containerProps) }),
       );
     };
   }
@@ -912,7 +912,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const handler = ext ? getHandlerByExtension(ext) : undefined;
     // ponytail: only fall back to code viewer when no handler matched (unknown
     // ext). A matched handler with no Preview (e.g. rich-text .richtext) returns null
-    // so FilePreviewPlugin shows its "暂无预览" UI instead of dumping the raw
+    // so FilePreviewExtension shows its "暂无预览" UI instead of dumping the raw
     // disk JSON as code.
     const Preview = getModeComponent(handler, 'preview') ?? (handler ? null : getModeComponent(getHandlerById('code'), 'preview'));
     if (!Preview) return null;

@@ -117,7 +117,7 @@ export function buildCodexShellCommand(
     : `exec ${cliCmd}`;
 }
 
-/** Tauri shell plugin child shape (subset we use). */
+/** Tauri shell extension child shape (subset we use). */
 interface ShellChild {
   kill(): Promise<void>;
 }

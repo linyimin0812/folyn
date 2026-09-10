@@ -1,7 +1,7 @@
 /**
  * Custom GrapesJS blocks for the Folyn HTML editor.
  *
- * The `grapesjs-blocks-basic` plugin already ships the basic grid/column/text
+ * The `grapesjs-blocks-basic` extension already ships the basic grid/column/text
  * blocks. The blocks registered here complement it with the higher-level
  * content primitives called out in prd §4.5 (text/heading/button/quote/card/
  * hero/hr/spacing).

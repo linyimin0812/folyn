@@ -63,11 +63,11 @@ describe('registerCustomBlocks', () => {
       container,
       storageManager: false,
       panels: { defaults: [] },
-      plugins: [blocksBasic],
-      // Cast: grapesjs-blocks-basic types its options key as the plugin's
+      extensions: [blocksBasic],
+      // Cast: grapesjs-blocks-basic types its options key as the extension's
       // stringified name; TS rejects a function key. Same workaround as
       // grapesConfig.ts.
-      pluginsOpts: { [blocksBasic as unknown as string]: { flexGrid: true } },
+      extensionsOpts: { [blocksBasic as unknown as string]: { flexGrid: true } },
     });
   }
 
@@ -114,7 +114,7 @@ describe('registerCustomBlocks', () => {
         | string
         | { id?: string; get?: (k: string) => string };
       // GrapesJS wraps categories as Backbone models with `id === '文本'`;
-      // when a category already exists (e.g. from the basic plugin) the same
+      // when a category already exists (e.g. from the basic extension) the same
       // model is reused. Handle string | model-with-.id | model-with-.get().
       const catName =
         typeof category === 'string'
@@ -147,7 +147,7 @@ describe('registerCustomBlocks', () => {
     }
   });
 
-  it('#5 grapesjs-blocks-basic built-in blocks are also present (plugin integration works)', () => {
+  it('#5 grapesjs-blocks-basic built-in blocks are also present (extension integration works)', () => {
     editor = bootEditor();
     registerCustomBlocks(editor);
 

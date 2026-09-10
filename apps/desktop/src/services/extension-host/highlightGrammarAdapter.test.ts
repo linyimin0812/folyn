@@ -5,26 +5,26 @@
  * `hljs.registerLanguage(name, fn)`; the grammar becomes resolvable by name
  * and aliases (declared inside the grammar's `aliases` field, handled by hljs
  * itself); missing entry-ref is skipped with a warning; dispose unregisters;
- * first-registered-wins for collisions; foreign-plugin grammars are not
- * removed by another plugin's deactivate.
+ * first-registered-wins for collisions; foreign-extension grammars are not
+ * removed by another extension's deactivate.
  *
  * Mirrors `editorLanguageAdapter.test.ts`.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import hljs from 'highlight.js';
-import type { PluginManifest } from '@folyn/extension-host';
+import type { ExtensionManifest } from '@folyn/extension-host';
 import {
-  registerPluginHighlightGrammars,
+  registerExtensionHighlightGrammars,
   registerHighlightGrammar,
   unregisterHighlightGrammar,
   getHighlightGrammarOwner,
   clearHighlightGrammars,
 } from './highlightGrammarAdapter';
-import type { PluginModule } from './contributionAdapters';
+import type { ExtensionModule } from './contributionAdapters';
 import type { HighlightGrammarFn } from '@folyn/extension-host';
 
-function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
+function manifest(overrides: Partial<ExtensionManifest> = {}): ExtensionManifest {
   return {
     id: 'grammar-test',
     name: 'Grammar Test',
@@ -40,7 +40,7 @@ function manifest(overrides: Partial<PluginManifest> = {}): PluginManifest {
   };
 }
 
-function fakeModule(): PluginModule {
+function fakeModule(): ExtensionModule {
   const plantumlGrammar: HighlightGrammarFn = (hljs: unknown) => {
     const h = hljs as typeof import('highlight.js');
     return {
@@ -50,7 +50,7 @@ function fakeModule(): PluginModule {
       contains: [h.COMMENT("'", '$')],
     };
   };
-  return { highlightGrammars: { plantumlGrammar } } as unknown as PluginModule;
+  return { highlightGrammars: { plantumlGrammar } } as unknown as ExtensionModule;
 }
 
 beforeEach(() => {
@@ -69,9 +69,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('registerPluginHighlightGrammars', () => {
+describe('registerExtensionHighlightGrammars', () => {
   it('registers grammar resolvable by name + aliases (via hljs)', () => {
-    registerPluginHighlightGrammars(manifest(), fakeModule());
+    registerExtensionHighlightGrammars(manifest(), fakeModule());
     expect(hljs.getLanguage('plantuml')).toBeDefined();
     expect(hljs.getLanguage('puml')).toBeDefined();
     expect(hljs.getLanguage('pu')).toBeDefined();
@@ -82,19 +82,19 @@ describe('registerPluginHighlightGrammars', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const mod = fakeModule();
     mod.highlightGrammars = {};
-    registerPluginHighlightGrammars(manifest(), mod);
+    registerExtensionHighlightGrammars(manifest(), mod);
     expect(hljs.getLanguage('plantuml')).toBeUndefined();
     expect(warn).toHaveBeenCalled();
   });
 
   it('returns no-op disposable when no highlightGrammars declared', () => {
     expect(() =>
-      registerPluginHighlightGrammars(manifest({ contributes: {} }), fakeModule()).dispose(),
+      registerExtensionHighlightGrammars(manifest({ contributes: {} }), fakeModule()).dispose(),
     ).not.toThrow();
   });
 
   it('dispose unregisters the grammar + aliases from hljs', () => {
-    const d = registerPluginHighlightGrammars(manifest(), fakeModule());
+    const d = registerExtensionHighlightGrammars(manifest(), fakeModule());
     expect(hljs.getLanguage('plantuml')).toBeDefined();
     d.dispose();
     expect(hljs.getLanguage('plantuml')).toBeUndefined();
@@ -103,25 +103,25 @@ describe('registerPluginHighlightGrammars', () => {
   });
 
   it('first-registered-wins for a colliding name (ponytail)', () => {
-    const a = registerHighlightGrammar('plugin-a', 'plantuml', fakeModule().highlightGrammars!.plantumlGrammar);
-    expect(getHighlightGrammarOwner('plantuml')).toBe('plugin-a');
-    registerHighlightGrammar('plugin-b', 'plantuml', fakeModule().highlightGrammars!.plantumlGrammar);
-    expect(getHighlightGrammarOwner('plantuml')).toBe('plugin-a');
+    const a = registerHighlightGrammar('extension-a', 'plantuml', fakeModule().highlightGrammars!.plantumlGrammar);
+    expect(getHighlightGrammarOwner('plantuml')).toBe('extension-a');
+    registerHighlightGrammar('extension-b', 'plantuml', fakeModule().highlightGrammars!.plantumlGrammar);
+    expect(getHighlightGrammarOwner('plantuml')).toBe('extension-a');
     a.dispose();
-    // plugin-a's dispose clears the slot; plugin-b's registration was a no-op
-    // so the grammar is gone, not owned by plugin-b.
+    // extension-a's dispose clears the slot; extension-b's registration was a no-op
+    // so the grammar is gone, not owned by extension-b.
     expect(hljs.getLanguage('plantuml')).toBeUndefined();
   });
 
-  it('unregisterHighlightGrammar does not remove a foreign plugin grammar', () => {
-    registerHighlightGrammar('plugin-a', 'plantuml', fakeModule().highlightGrammars!.plantumlGrammar);
-    unregisterHighlightGrammar('plantuml', 'plugin-b');
+  it('unregisterHighlightGrammar does not remove a foreign extension grammar', () => {
+    registerHighlightGrammar('extension-a', 'plantuml', fakeModule().highlightGrammars!.plantumlGrammar);
+    unregisterHighlightGrammar('plantuml', 'extension-b');
     expect(hljs.getLanguage('plantuml')).toBeDefined();
-    expect(getHighlightGrammarOwner('plantuml')).toBe('plugin-a');
+    expect(getHighlightGrammarOwner('plantuml')).toBe('extension-a');
   });
 
   it('highlight produces meta/keyword spans after registration', () => {
-    registerPluginHighlightGrammars(manifest(), fakeModule());
+    registerExtensionHighlightGrammars(manifest(), fakeModule());
     const out = hljs.highlight("participant Alice\n' a comment", { language: 'plantuml' });
     expect(out.value).toContain('hljs-keyword');
     expect(out.value).toContain('hljs-comment');
