@@ -89,12 +89,14 @@ export function OfficeFileViewer(): React.JSX.Element {
     return <div style={{ padding: 24, color: '#888', fontSize: 13 }}>加载中…</div>;
   }
   return (
-    <FileViewer
-      key={theme}
-      data-viewer-theme={theme}
-      file={file}
-      options={options}
-      style={{ height: '100%', width: '100%' }}
-    />
+    <div style={{ height: '100%', width: '100%', overflowY: 'auto', overflowX: 'hidden', background: 'var(--bg-panel, #fff)' }}>
+      <FileViewer
+        key={theme}
+        data-viewer-theme={theme}
+        file={file}
+        options={options}
+        style={{ height: '100%', width: '100%' }}
+      />
+    </div>
   );
 }
