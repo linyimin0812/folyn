@@ -28,6 +28,11 @@ export default defineConfig({
       renderers: ['archive', 'email', 'eda', 'geo', 'model', 'drawing', 'mindmap', 'ebook', 'image', 'data', 'cad', 'media'],
       copyAssets: true,
       inject: false,
+      // The plugin's renderer-oriented manualChunks create cross-chunk cycles
+      // in this standalone build (TDZ: "Cannot access 'X' before
+      // initialization" in file-viewer-word-*.js). Let Rollup chunk itself —
+      // dynamic imports in the preset still split the renderers.
+      chunkStrategy: 'none',
     }),
   ],
   build: {
