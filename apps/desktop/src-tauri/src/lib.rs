@@ -1121,7 +1121,6 @@ pub fn run() {
             plugin_lifecycle::approve_plugin,
             plugin_lifecycle::get_plugin_record,
             plugin_lifecycle::read_plugin_file,
-            plugin_lifecycle::grant_plugin_capabilities,
             plugin_lifecycle::verify_plugin_signature_cmd,
             plugin_fetch::plugin_http_fetch,
             plugin_fetch::fetch_url,

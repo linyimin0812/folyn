@@ -102,10 +102,13 @@ export const trustedLoader: ExtensionLoader = {
     const mod = await importModule(blobUrl);
     const module = normalizeModule(mod);
 
-    // Best-effort capability grant (Rust). Non-fatal — main window caps apply.
-    void grantCapabilities(manifest.id).catch((err: unknown) => {
-      console.warn(`[plugin-host] grant_plugin_capabilities failed for "${manifest.id}" (non-fatal):`, err);
-    });
+    // NOTE: no `grant_plugin_capabilities` call. The Rust `add_capability`
+    // grant is documented as additive/redundant (trusted plugins run in the
+    // main webview, which already has `fs:scope: [{"path":"**"}]` and the rest
+    // of `capabilities/default.json`), and its scoped-permission entry format
+    // corrupts the runtime ACL — every later fs permission check then fails
+    // with "error deserializing scope: … EntryRaw". Skipping it keeps the ACL
+    // intact; the plugin is unaffected because the main caps cover the surface.
 
     return {
       activate: async (api: ExtensionApi, ctx: ExtensionContext) => {
@@ -213,12 +216,6 @@ export async function fetchPluginRecord(
 export async function readPluginFile(id: string, path: string): Promise<string> {
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke<string>('read_plugin_file', { id, path });
-}
-
-/** Best-effort scoped capability grant (Rust `grant_plugin_capabilities`). */
-export async function grantCapabilities(id: string): Promise<void> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  await invoke('grant_plugin_capabilities', { id });
 }
 
 // ── SHA-256 (Web Crypto) ─────────────────────────────────────────────────────
