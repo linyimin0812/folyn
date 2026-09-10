@@ -8,7 +8,7 @@
   "main": "dist/index.js",
   "html": "preview.html",
   "icon": "📄",
-  "description": "通用文件查看器（Office / PDF / CAD / 归档 / 媒体等），作为兜底 FileType 扩展",
+  "description": "通用文件查看器（Office / PDF / CAD / 归档 / 媒体等），作为兜底 FileType 扩展。每种文件族一个 provider，各自带图标。",
   "permissions": {
     "fs": { "scope": [] },
     "http": { "origins": [] },
@@ -20,44 +20,24 @@
   },
   "contributes": {
     "fileTypes": [
-      {
-        "id": "office",
-        "handler": "office",
-        "defaultViewMode": "preview",
-        "supportedViewModes": ["preview"],
-        "extensions": [
-          "pdf", "ofd",
-          "docx", "doc", "dot", "docm", "dotx", "dotm", "rtf", "odt",
-          "xlsx", "xls", "xlsm", "xlsb", "xltx", "xlt", "xltm", "ods", "fods", "numbers",
-          "pptx", "pptm", "potx", "potm", "ppsx", "ppsm", "odp",
-          "zip", "zipx", "7z", "rar", "tar", "gz", "gzip", "tgz",
-          "bz2", "bzip2", "tbz", "tbz2", "xz", "txz", "lzma", "zst",
-          "cab", "ar", "cpio", "iso", "xar", "lha", "lzh",
-          "jar", "war", "ear", "apk", "cbz", "cbr",
-          "eml", "msg", "mbox",
-          "olb", "dra", "gds", "oas", "oasis",
-          "dwg", "dxf", "dwf", "dwfx", "xps",
-          "geojson", "kml", "gpx", "shp", "kmz",
-          "glb", "gltf", "obj", "stl", "ply", "fbx", "dae", "3ds", "3mf", "amf",
-          "usd", "usda", "usdc", "usdz", "pcd", "wrl", "vrml",
-          "xyz", "vtk", "vtp", "step", "stp", "iges", "igs", "ifc", "3dm",
-          "xmind",
-          "epub", "umd",
-          "tiff", "tif", "avif", "heic", "heif", "jxl", "psd", "ai", "eps",
-          "mp3", "mpeg", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba",
-          "midi", "mid",
-          "mp4", "webm", "m3u8",
-          "ttf", "otf", "woff", "woff2",
-          "sqlite", "wasm", "parquet", "avro", "webarchive"
-        ]
-      }
+      { "id": "office-document", "handler": "office-document", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["doc", "docx", "dot", "docm", "dotx", "dotm", "rtf", "odt", "ofd"] },
+      { "id": "office-presentation", "handler": "office-presentation", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["ppt", "pptx", "pptm", "pot", "potx", "potm", "ppsx", "ppsm", "odp"] },
+      { "id": "office-spreadsheet", "handler": "office-spreadsheet", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["xls", "xlsx", "xlsm", "xlsb", "xltx", "xlt", "xltm", "ods", "fods", "numbers"] },
+      { "id": "office-pdf", "handler": "office-pdf", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["pdf"] },
+      { "id": "office-archive", "handler": "office-archive", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["zip", "zipx", "7z", "rar", "tar", "gz", "gzip", "tgz", "bz2", "bzip2", "tbz", "tbz2", "xz", "txz", "lzma", "zst", "cab", "ar", "cpio", "iso", "xar", "lha", "lzh", "jar", "war", "ear", "apk", "cbz", "cbr"] },
+      { "id": "office-email", "handler": "office-email", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["eml", "msg", "mbox"] },
+      { "id": "office-cad", "handler": "office-cad", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["dwg", "dxf", "dwf", "dwfx", "xps"] },
+      { "id": "office-3d", "handler": "office-3d", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["glb", "gltf", "obj", "stl", "ply", "fbx", "dae", "3ds", "3mf", "amf", "usd", "usda", "usdc", "usdz", "pcd", "wrl", "vrml", "xyz", "vtk", "vtp", "step", "stp", "iges", "igs", "ifc", "3dm"] },
+      { "id": "office-ebook", "handler": "office-ebook", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["epub", "umd"] },
+      { "id": "office-image", "handler": "office-image", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["tiff", "tif", "avif", "heic", "heif", "jxl", "psd", "ai", "eps"] },
+      { "id": "office-audio", "handler": "office-audio", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["mp3", "mpeg", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "midi", "mid"] },
+      { "id": "office-video", "handler": "office-video", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["mp4", "webm", "m3u8"] },
+      { "id": "office-font", "handler": "office-font", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["ttf", "otf", "woff", "woff2"] },
+      { "id": "office-data", "handler": "office-data", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["sqlite", "wasm", "parquet", "avro", "webarchive"] },
+      { "id": "office-misc", "handler": "office-misc", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["olb", "dra", "gds", "oas", "oasis", "geojson", "kml", "gpx", "shp", "kmz", "xmind"] }
     ]
   },
-  "activation": {
-    "onCommand": "",
-    "onFileType": ["office"],
-    "onLanguage": []
-  },
+  "activation": { "onCommand": "", "onFileType": [], "onLanguage": [] },
   "signature": "",
   "publisherPublicKey": ""
 }

@@ -29,8 +29,9 @@ pptx / xlsx / pdf / dwg 这类依赖 worker/WASM 的 renderer 跑不了。把 re
 ## 结构
 
 ```
-src/manifest.json  插件清单（id / tier / contributes.fileTypes / vault.readBinary）
-src/index.tsx      宿主入口（PluginModule：handlers + activate 捕获 api/extensionId）
+src/manifest.json  插件清单（id / tier / contributes.fileTypes[] 按文件族拆分 / vault.readBinary）
+src/index.tsx      宿主入口（按族注册 provider，每个带自己的 icon；activate 捕获 api/extensionId）
+src/icons.tsx      各文件族的内联 SVG 图标（doc/ppt/xls/pdf/zip/…）— 不依赖应用资源
 src/OfficeFrame.tsx  宿主 iframe 包装（读字节 → postMessage → iframe）
 src/preview.html   iframe 的 HTML 入口（vite 构建进 dist/）
 src/preview.tsx    iframe 入口（收到字节 → FileViewer）
@@ -39,6 +40,9 @@ src/shims/         少量 Node 内置模块浏览器 shim
 build.mjs          宿主 bundle（esbuild）+ iframe bundle（vite）
 vite.config.ts     iframe bundle 配置（root=src/，worker/WASM/代码分割，base './'）
 ```
+
+> 图标也迁到了插件：每种文件族一个 provider、各自带内联 SVG 图标；应用不再内置这些
+> 类型的主题图标（详见 `apps/desktop/.../FileIcon.tsx` 的 `EXT_TO_THEME_ICON`）。
 
 > 源码 `manifest.json` **故意放在 `src/`**：这样扩展根目录没有 `manifest.json`，
 > 在「从文件夹安装」里误选根目录会直接报 `source_path must contain manifest.json`，
