@@ -227,7 +227,7 @@ impl MainWindowFullscreenRestore {
     }
 }
 
-/// The fullscreen mode a plugin tool window is in / was last closed in.
+/// The fullscreen mode a extension tool window is in / was last closed in.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ToolFullscreenMode {
     /// macOS native fullscreen — a separate Space (standard Window menu
@@ -235,17 +235,17 @@ pub enum ToolFullscreenMode {
     /// (see the app-level `on_window_event` handler in lib.rs).
     Native,
     /// macOS simple fullscreen — pre-Lion style, no separate Space (Window
-    /// menu "插件弹窗全屏" ⌘⇧F). Closing it is a plain teardown: there is no
+    /// menu "扩展弹窗全屏" ⌘⇧F). Closing it is a plain teardown: there is no
     /// Space transition, so no black flash.
     Simple,
 }
 
-/// Per-tool fullscreen memory for plugin tool windows (multi-instance).
+/// Per-tool fullscreen memory for extension tool windows (multi-instance).
 ///
 /// Two maps:
 /// - `fullscreen_pref` — keyed by the counter-less tool key
-///   `plugin-tool-<plugin>-<tool>`, records the mode the tool's last
-///   instance was closed in so `open_plugin_tool_window` can restore it on
+///   `extension-tool-<extension>-<tool>`, records the mode the tool's last
+///   instance was closed in so `open_extension_tool_window` can restore it on
 ///   reopen.
 /// - `simple_labels` — the full labels of windows currently in simple
 ///   fullscreen. Simple fullscreen is invisible to
@@ -254,14 +254,14 @@ pub enum ToolFullscreenMode {
 ///   reads this set to know a window needs the simple-fullscreen teardown
 ///   (restore the app-global dock/menu-bar presentation options + the
 ///   windowed frame, then destroy). Only our own Rust code enters/exits
-///   simple fullscreen (the ⌘⇧F menu handler and `open_plugin_tool_window`),
+///   simple fullscreen (the ⌘⇧F menu handler and `open_extension_tool_window`),
 ///   so the set stays accurate.
-pub struct PluginToolWindowState {
+pub struct ExtensionToolWindowState {
     fullscreen_pref: std::sync::Mutex<std::collections::HashMap<String, ToolFullscreenMode>>,
     simple_labels: std::sync::Mutex<std::collections::HashSet<String>>,
 }
 
-impl PluginToolWindowState {
+impl ExtensionToolWindowState {
     pub fn new() -> Self {
         Self {
             fullscreen_pref: std::sync::Mutex::new(std::collections::HashMap::new()),
@@ -314,11 +314,11 @@ impl PluginToolWindowState {
 }
 
 /// Derive the counter-less tool key from a full window label
-/// (`plugin-tool-<plugin>-<tool>-<n>` → `plugin-tool-<plugin>-<tool>`).
+/// (`extension-tool-<extension>-<tool>-<n>` → `extension-tool-<extension>-<tool>`).
 ///
 /// The instance counter is always the last `-`-separated segment and is
 /// purely numeric, so stripping the final `-<digits>` is unambiguous even
-/// when a plugin/tool id itself ends in digits.
+/// when a extension/tool id itself ends in digits.
 pub fn tool_key_from_label(label: &str) -> Option<&str> {
     let idx = label.rfind('-')?;
     let (base, tail) = label.split_at(idx);
@@ -329,18 +329,18 @@ pub fn tool_key_from_label(label: &str) -> Option<&str> {
     Some(base)
 }
 
-/// Open a plugin tool window (multi-instance). Rust-side creation so the
+/// Open a extension tool window (multi-instance). Rust-side creation so the
 /// fullscreen close handling and the per-tool fullscreen memory stay
-/// together: `PluginToolWindowState` (managed in lib.rs) remembers the mode
+/// together: `ExtensionToolWindowState` (managed in lib.rs) remembers the mode
 /// the last instance of this tool was closed in, and we restore that on
 /// reopen. Native fullscreen drops the pinned level first (macOS rejects
 /// native fullscreen on always-on-top windows); simple fullscreen keeps it.
 /// Fullscreen-aware close lives in the app-level `on_window_event` handler
 /// in lib.rs.
 #[tauri::command]
-pub async fn open_plugin_tool_window(
+pub async fn open_extension_tool_window(
     app: tauri::AppHandle,
-    plugin_id: String,
+    extension_id: String,
     tool_id: String,
     entry: String,
     title: String,
@@ -349,12 +349,12 @@ pub async fn open_plugin_tool_window(
     use tauri::WebviewWindowBuilder;
     static COUNTER: AtomicU64 = AtomicU64::new(1);
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let label = format!("plugin-tool-{}-{}-{}", plugin_id, tool_id, n);
-    let tool_key = format!("plugin-tool-{}-{}", plugin_id, tool_id);
-    let url_str = format!("folyn-plugin://localhost/{}/{}", plugin_id, entry);
+    let label = format!("extension-tool-{}-{}-{}", extension_id, tool_id, n);
+    let tool_key = format!("extension-tool-{}-{}", extension_id, tool_id);
+    let url_str = format!("folyn-extension://localhost/{}/{}", extension_id, entry);
     let parsed_url = url_str
         .parse::<tauri::Url>()
-        .map_err(|e| format!("invalid plugin URL '{}': {}", url_str, e))?;
+        .map_err(|e| format!("invalid extension URL '{}': {}", url_str, e))?;
     let win = WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::External(parsed_url))
         .title(title)
         .inner_size(800.0, 600.0)
@@ -363,8 +363,8 @@ pub async fn open_plugin_tool_window(
         .always_on_top(true)
         .resizable(true)
         .build()
-        .map_err(|e| format!("failed to build plugin tool window: {}", e))?;
-    let state = app.state::<PluginToolWindowState>();
+        .map_err(|e| format!("failed to build extension tool window: {}", e))?;
+    let state = app.state::<ExtensionToolWindowState>();
     match state.mode(&tool_key) {
         Some(ToolFullscreenMode::Native) => {
             // Reopen in native fullscreen (closed while in a macOS fullscreen
@@ -375,7 +375,7 @@ pub async fn open_plugin_tool_window(
             let _ = win.set_fullscreen(true);
         }
         Some(ToolFullscreenMode::Simple) => {
-            // Reopen in simple fullscreen (⌘⇧F "插件弹窗全屏", pre-Lion style,
+            // Reopen in simple fullscreen (⌘⇧F "扩展弹窗全屏", pre-Lion style,
             // no separate Space): simple fullscreen accepts always-on-top
             // windows, so the pinned level stays.
             let _ = win.set_simple_fullscreen(true);

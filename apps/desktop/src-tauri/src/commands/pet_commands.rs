@@ -158,7 +158,7 @@ pub async fn toggle_pet_mode(app: tauri::AppHandle) -> Result<bool, AppError> {
     let next = !currently_visible;
     if next {
         // ponytail: on the NSPanel backend, call `panel.show()`
-        // (`orderFrontRegardless`) — BongoCat `plugins/window/src/commands/
+        // (`orderFrontRegardless`) — BongoCat `extensions/window/src/commands/
         // macos.rs:28` SHOW path. Stock `pet.show()` maps to `orderFront:`
         // which respects window-server ordering and may not promote the
         // panel above other apps' frontmost windows — the root cause of

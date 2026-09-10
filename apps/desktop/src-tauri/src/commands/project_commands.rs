@@ -52,7 +52,7 @@ use tauri::Emitter;
 static WATCHER_STOP: AtomicBool = AtomicBool::new(false);
 
 /// Serialized event shape sent to the webview via `app://vault-watcher-event`.
-/// Mirrors the JS `WatchEvent` the old plugin-fs watcher delivered, so the
+/// Mirrors the JS `WatchEvent` the old extension-fs watcher delivered, so the
 /// frontend handler doesn't change.
 #[derive(serde::Serialize, Clone)]
 pub struct WatcherEventPayload {

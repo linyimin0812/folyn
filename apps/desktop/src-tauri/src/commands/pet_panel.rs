@@ -133,7 +133,7 @@ impl Default for PetShortcutState {
 /// pet-panel window. Pass an empty string to unregister without re-binding.
 ///
 /// The accelerator string follows Tauri's accelerator grammar
-/// (e.g. `"Cmd+Shift+Q"`, `"CommandOrControl+Shift+Q"`). The plugin is built
+/// (e.g. `"Cmd+Shift+Q"`, `"CommandOrControl+Shift+Q"`). The extension is built
 /// with a single global handler (see `lib.rs` `tauri_plugin_global_shortcut::Builder`)
 /// that dispatches by HotKey id — the voice HotKey emits `voice://hotkey-*`,
 /// every other registered HotKey (currently just this one) emits
