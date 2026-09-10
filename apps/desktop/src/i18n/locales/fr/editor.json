@@ -19,7 +19,7 @@
       "goToSettings": "Ouvrir les réglages",
       "selectPlaceholder": "Choisir un fournisseur",
       "required": "Veuillez choisir un fournisseur",
-      "openSettings": "Stockage & partage"
+      "openSettings": "Réglages du fournisseur"
     },
     "html": {
       "label": "HTML",

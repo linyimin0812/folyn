@@ -19,7 +19,7 @@
       "goToSettings": "前往设置",
       "selectPlaceholder": "选择服务商",
       "required": "请选择服务商",
-      "openSettings": "存储与分享"
+      "openSettings": "服务商设置"
     },
     "html": {
       "label": "HTML",
