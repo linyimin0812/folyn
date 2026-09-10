@@ -210,7 +210,7 @@ async function fileToBodyFragment(
       html: page,
       css: '',
       canvas: true,
-      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}</body>\n</html>`,
+      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}\n<script>${VT_CANVAS_GESTURE_SCRIPT}</script>\n</body>\n</html>`,
     };
   }
 
@@ -286,7 +286,45 @@ function buildTreeHtml(tree: VaultEntry[], files: ExportableFile[]): string {
 
 const VT_CANVAS_PAGE_CSS = `
 .vt-canvas-page { width: 100%; height: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; }
-.vt-canvas-page svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+.vt-canvas-page svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; transform-origin: center center; transition: transform .08s; }
+`;
+
+/** Gesture zoom for canvas SVGs (plantuml/dbml/drawio/…): wheel to zoom,
+ *  two-finger pinch to zoom, double-click to reset. Works in place on the
+ *  `.vt-canvas-page svg` without opening the lightbox overlay. */
+const VT_CANVAS_GESTURE_SCRIPT = `
+(function () {
+  function attach(page) {
+    var svg = page && page.querySelector('svg');
+    if (!svg) return;
+    var scale = 1, x = 0, y = 0;
+    function apply() { svg.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')'; }
+    function reset() { scale = 1; x = 0; y = 0; apply(); }
+    // Wheel zoom (ctrl+wheel on trackpads = pinch; plain wheel = zoom too).
+    page.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? 0.9 : 1.1;
+      scale = Math.max(0.2, Math.min(8, scale * delta));
+      apply();
+    }, { passive: false });
+    // Two-finger pinch on touch.
+    var pinchDist = 0, pinchScale = 1;
+    page.addEventListener('touchstart', function (e) {
+      if (e.touches.length === 2) { pinchDist = dist(e.touches); pinchScale = scale; e.preventDefault(); }
+    }, { passive: false });
+    page.addEventListener('touchmove', function (e) {
+      if (e.touches.length === 2 && pinchDist) {
+        e.preventDefault();
+        scale = Math.max(0.2, Math.min(8, pinchScale * (dist(e.touches) / pinchDist)));
+        apply();
+      }
+    }, { passive: false });
+    function dist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.hypot(dx, dy); }
+    // Double-click/double-tap resets.
+    page.addEventListener('dblclick', reset);
+  }
+  [].slice.call(document.querySelectorAll('.vt-canvas-page')).forEach(attach);
+})();
 `;
 
 const VAULT_EXPORT_STYLES = `
@@ -429,6 +467,7 @@ function assembleSingleHtml(
 ${docSections}
   </main>
   <script>${VAULT_NAV_SCRIPT}${VT_RESIZER_SCRIPT}</script>
+  <script>${VT_CANVAS_GESTURE_SCRIPT}</script>
   <script>${CODE_INTERACT_SCRIPT}</script>
 </body>
 </html>`;

@@ -713,13 +713,14 @@ export const CANVAS_DOC_STYLES = `
 .vt-svg-doc svg { width: auto !important; height: auto; max-width: 100%; max-height: 90vh; display: block; }
 `;
 
-/** Styles for code-type docs (code/csv/json/txt/…): let the code block fill
- * the page width (override the markdown 800px column) — pre already has
- * overflow-x:auto from HTML_STYLES so long lines scroll horizontally. */
+/** Styles for code-type docs (code/csv/json/txt/…): the code block fills
+ * the content width so its background stays a fixed width regardless of how
+ * long/short the content is — pre already has overflow-x:auto from
+ * HTML_STYLES so long lines scroll inside. */
 export const CODE_DOC_STYLES = `
-.vt-code-doc { width: 100%; display: flex; justify-content: center; }
-.vt-code-doc .code-block-wrapper,
-.vt-code-doc .code-block-inner { max-height: none !important; overflow: visible !important; }
+.vt-code-doc { width: 100%; }
+.vt-code-doc .code-block-wrapper { width: 100% !important; max-width: 100% !important; }
+.vt-code-doc .code-block-inner { width: 100% !important; max-height: none !important; overflow: visible !important; }
 .vt-code-doc .code-block-scroll { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; }
 `;
 
