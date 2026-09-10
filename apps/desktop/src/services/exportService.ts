@@ -674,7 +674,7 @@ export const IMAGE_LIGHTBOX_SCRIPT = `
         if (!t || !t.closest) return;
         var img = t.closest('img');
         if (img && (!overlay || !overlay.contains(img)) && img.src) { e.preventDefault(); openImg(img.src, img.alt); return; }
-        var svg = t.closest('.vt-canvas-doc svg');
+        var svg = t.closest('.vt-canvas-doc svg, .vt-canvas-page svg');
         if (svg && (!overlay || !overlay.contains(svg))) { e.preventDefault(); openSvg(svg); return; }
       });
       document.addEventListener('keydown', function (e) {

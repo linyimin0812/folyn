@@ -81,7 +81,8 @@
       "error": "Export failed",
       "noVault": "No vault open",
       "noTextFiles": "No text files found in this vault",
-      "close": "Close"
+      "close": "Close",
+      "cancel": "Cancel"
     },
     "containerWarning": {
       "title": "⚠️ Compatibility notice",

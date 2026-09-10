@@ -81,7 +81,8 @@
       "error": "导出失败",
       "noVault": "未打开 Vault",
       "noTextFiles": "此 Vault 中没有文本文件",
-      "close": "关闭"
+      "close": "关闭",
+      "cancel": "中断"
     },
     "containerWarning": {
       "title": "⚠️ 兼容性提示",

@@ -151,7 +151,7 @@ async function fileToBodyFragment(
   imageMode: HtmlImageMode,
   provider: StorageProvider | null,
   cfg: ProviderConfig | null,
-): Promise<{ html: string; css: string; standalone?: string }> {
+): Promise<{ html: string; css: string; standalone?: string; canvas?: boolean }> {
   // markdown / clip (clip is a md variant under __clips__) → full render
   if (file.fileType === 'markdown' || file.fileType === 'clip') {
     const content = await readVaultText(file.path);
@@ -182,9 +182,13 @@ async function fileToBodyFragment(
   if (CANVAS_EXPORT_TYPES.has(file.fileType)) {
     const svg = await renderFilePreviewToSvg(file.path, vaultRoot);
     if (!svg) return { html: '', css: '' };
+    // Centered, no-scroll canvas page (fills viewport, SVG scaled to fit).
+    const page = `<div class="vt-canvas-page">${svg}</div>`;
     return {
-      html: `<div class="vt-canvas-doc"><div class="vt-canvas-scroll">${svg}</div></div>`,
+      html: page,
       css: '',
+      canvas: true,
+      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}</body>\n</html>`,
     };
   }
 
@@ -258,6 +262,11 @@ function buildTreeHtml(tree: VaultEntry[], files: ExportableFile[]): string {
 
 /* ───────────────────────── single-file mode ───────────────────────── */
 
+const VT_CANVAS_PAGE_CSS = `
+.vt-canvas-page { width: 100%; height: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; }
+.vt-canvas-page svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+`;
+
 const VAULT_EXPORT_STYLES = `
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
@@ -290,6 +299,11 @@ details > summary::-webkit-details-marker { display: none; }
 .vt-doc-inner { max-width: none; width: 100%; padding: 32px 40px; box-sizing: border-box; }
 .vt-doc pre.vault-code { background: #f8f9fd; border: 1px solid #dde2f0; border-radius: 6px; padding: 16px; overflow: auto; }
 .vt-doc pre.vault-code code { font-family: 'DM Mono', monospace; font-size: 12px; white-space: pre; }
+/* canvas docs: fill viewport + center (both axes) + no scrollbars; the
+ SVG scales to fit (preserving aspect ratio) instead of stretching. */
+.vt-doc-canvas { height: 100vh; overflow: hidden; }
+.vt-doc-canvas.active { display: flex; align-items: center; justify-content: center; }
+${VT_CANVAS_PAGE_CSS}
 `;
 
 const VAULT_NAV_SCRIPT = `
@@ -358,7 +372,7 @@ const VT_RESIZER_SCRIPT = `
 function assembleSingleHtml(
   tree: VaultEntry[],
   files: ExportableFile[],
-  docs: { docId: string; html: string; css: string; standalone?: string }[],
+  docs: { docId: string; html: string; css: string; standalone?: string; canvas?: boolean }[],
   vaultName: string,
   theme: 'light' | 'dark',
   codeThemeCss: string,
@@ -368,7 +382,7 @@ function assembleSingleHtml(
   const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
   const docSections = docs
     .map((d) => d.standalone
-      ? `    <section class="vt-doc vt-doc-fit" data-doc="${d.docId}">${d.html}</section>`
+      ? `    <section class="vt-doc vt-doc-fit${d.canvas ? ' vt-doc-canvas' : ''}" data-doc="${d.docId}">${d.html}</section>`
       : `    <section class="vt-doc" data-doc="${d.docId}"><div class="vt-doc-inner">${d.html}</div></section>`)
     .join('\n');
   // Merge per-doc CSS (markdown renderer scoped styles) — dedupe by string equality.
@@ -518,10 +532,10 @@ function countFilteredFiles(tree: VaultEntry[]): number {
 /** Shared render prep for vault export — reads stores, filters text files,
  * renders each doc to a body fragment. Used by both download (exportVaultToHtml)
  * and cloud upload (uploadVaultSingleToCloud) so the heavy work isn't duplicated. */
-async function prepareVaultExport(opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; onProgress?: (done: number, total: number) => void }): Promise<{
+async function prepareVaultExport(opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; onProgress?: (done: number, total: number) => void; shouldCancel?: () => boolean }): Promise<{
   textTree: VaultEntry[];
   files: ExportableFile[];
-  docs: { docId: string; html: string; css: string; standalone?: string }[];
+  docs: { docId: string; html: string; css: string; standalone?: string; canvas?: boolean }[];
   vaultName: string;
   theme: 'light' | 'dark';
   codeTheme: string;
@@ -557,15 +571,18 @@ async function prepareVaultExport(opts?: { imageMode?: HtmlImageMode; imageProvi
   const total = files.length;
 
   // Render every doc to a body fragment (+ css) up front.
-  const docs: { docId: string; html: string; css: string; standalone?: string }[] = [];
+  const docs: { docId: string; html: string; css: string; standalone?: string; canvas?: boolean }[] = [];
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
     // markdown with container syntax can't be losslessly exported — skip
     // the container warning here (whole-vault export is best-effort) but
     // still render; containers degrade to their static fallback.
     const frag = await fileToBodyFragment(f, vaultRoot, theme, imageMode, provider, cfg);
-    docs.push({ docId: f.docId, html: frag.html, css: frag.css, standalone: frag.standalone });
+    docs.push({ docId: f.docId, html: frag.html, css: frag.css, standalone: frag.standalone, canvas: frag.canvas });
     opts?.onProgress?.(i + 1, total);
+    // Honor a cancel request between docs so the user can abort a long
+    // whole-vault render from the dialog's close button.
+    if (opts?.shouldCancel?.()) throw new Error('CANCELLED');
   }
   return { textTree, files, docs, vaultName, theme, codeTheme, codeThemeCss, filteredCount, total };
 }
@@ -581,7 +598,7 @@ async function prepareVaultExport(opts?: { imageMode?: HtmlImageMode; imageProvi
  */
 export async function exportVaultToHtml(
   mode: VaultExportMode,
-  opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; onProgress?: (done: number, total: number) => void },
+  opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; onProgress?: (done: number, total: number) => void; shouldCancel?: () => boolean },
 ): Promise<VaultExportResult> {
   const { textTree, files, docs, vaultName, theme, codeTheme, codeThemeCss, filteredCount, total } = await prepareVaultExport(opts);
 
@@ -620,6 +637,7 @@ export async function exportVaultToHtml(
     const fileName = safeDocFileName(f.docId, f.name);
     await writeFile(await join(docsDir, fileName), new TextEncoder().encode(pageHtml));
     opts?.onProgress?.(i + 1, total);
+    if (opts?.shouldCancel?.()) throw new Error('CANCELLED');
   }
 
   // index.html — tree links resolve to ./docs/<file>
@@ -634,7 +652,7 @@ export async function exportVaultToHtml(
  * provider (mirrors shareActiveToCloud). Verifies config + html capability,
  * builds the single HTML, uploads via provider.uploadHtml → returns the
  * public URL. Only single mode is supported (folder is multi-file). */
-export async function uploadVaultSingleToCloud(opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; fileProviderId?: string; onProgress?: (done: number, total: number) => void }): Promise<string> {
+export async function uploadVaultSingleToCloud(opts?: { imageMode?: HtmlImageMode; imageProviderId?: string; fileProviderId?: string; onProgress?: (done: number, total: number) => void; shouldCancel?: () => boolean }): Promise<string> {
   const { textTree, files, docs, vaultName, theme, codeThemeCss } = await prepareVaultExport(opts);
   const html = assembleSingleHtml(textTree, files, docs, vaultName, theme, codeThemeCss);
   const store = useStorageConfigStore.getState();

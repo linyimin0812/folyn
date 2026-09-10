@@ -77,7 +77,8 @@
       "error": "エクスポート失敗",
       "noVault": "Vaultが開かれていません",
       "noTextFiles": "このVaultにテキストファイルがありません",
-      "close": "閉じる"
+      "close": "閉じる",
+      "cancel": "キャンセル"
     },
     "containerWarning": {
       "title": "⚠️ 互換性の注意",

@@ -77,7 +77,8 @@
       "error": "Error de exportación",
       "noVault": "No hay vault abierto",
       "noTextFiles": "No hay archivos de texto en este vault",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "cancel": "Cancelar"
     },
     "containerWarning": {
       "title": "⚠️ Aviso de compatibilidad",

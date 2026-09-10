@@ -9,7 +9,7 @@
  * upload target (and resets it to download). Surfaces per-document progress,
  * a final summary, and the uploaded URL (copy + open).
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, ExternalLink, Check, Settings } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
@@ -65,6 +65,9 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
   const [result, setResult] = useState<{ docCount: number; filteredCount: number } | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [urlCopied, setUrlCopied] = useState(false);
+  // Aborts an in-flight whole-vault export. Set true by the close button /
+  // overlay click while exporting; prepareVaultExport checks it between docs.
+  const cancelRef = useRef(false);
 
   const handleExport = useCallback(async () => {
     // If an upload stream is on but its provider isn't picked, flag the
@@ -74,6 +77,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
       return;
     }
     setShowProviderError(false);
+    cancelRef.current = false;
     setPhase('exporting');
     setProgress({ done: 0, total: 0 });
     setError(null);
@@ -81,7 +85,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
     setShareUrl(null);
     try {
       if (output === 'upload') {
-        const url = await uploadVaultSingleToCloud({ imageMode, imageProviderId: imageProviderId ?? undefined, fileProviderId: fileProviderId ?? undefined, onProgress: (done, total) => setProgress({ done, total }) });
+        const url = await uploadVaultSingleToCloud({ imageMode, imageProviderId: imageProviderId ?? undefined, fileProviderId: fileProviderId ?? undefined, onProgress: (done, total) => setProgress({ done, total }), shouldCancel: () => cancelRef.current });
         await navigator.clipboard.writeText(url).catch(() => {});
         setShareUrl(url);
         setPhase('done');
@@ -91,6 +95,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
         imageMode,
         imageProviderId: imageProviderId ?? undefined,
         onProgress: (done, total) => setProgress({ done, total }),
+        shouldCancel: () => cancelRef.current,
       });
       if (r.docCount === 0 && r.mode === 'folder') {
         // user cancelled the folder pick — close silently
@@ -103,6 +108,13 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
       setPhase('done');
     } catch (err) {
       const e = err as Error;
+      // User clicked close during export — abort silently (no error toast).
+      if (e.message === 'CANCELLED') {
+        setPhase('idle');
+        setProgress(null);
+        onClose();
+        return;
+      }
       setError(
         e.message === 'NO_VAULT'
           ? t('editor:export.vault.noVault')
@@ -349,10 +361,14 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
           {phase !== 'done' && phase !== 'error' && (
             <button
               className="btn btn-g btn-sm"
-              onClick={onClose}
-              disabled={phase === 'exporting'}
+              onClick={() => {
+                // During export, close = abort the render (prepareVaultExport
+                // checks the flag between docs and throws CANCELLED).
+                if (phase === 'exporting') cancelRef.current = true;
+                else onClose();
+              }}
             >
-              {t('editor:export.vault.close')}
+              {phase === 'exporting' ? t('editor:export.vault.cancel') : t('editor:export.vault.close')}
             </button>
           )}
           {phase !== 'done' && phase !== 'error' && (
