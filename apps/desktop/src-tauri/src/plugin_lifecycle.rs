@@ -8,7 +8,7 @@
 
 use std::fs;
 
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
 
 use crate::errors::AppError;
 use crate::plugin_commands::{
