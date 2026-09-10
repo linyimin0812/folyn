@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
-import { getHandlerByExtension } from '@/components/file-types/registry';
+import { getHandlerByExtension, listProviders } from '@/components/file-types/registry';
+import { useFileTypePreferenceStore } from './fileTypePreferenceStore';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { persistOpenTabs, flushPersistOpenTabs, flushPersistExternalOpenTabs } from './editorPersistence';
 import { scheduleAutoSave } from './editorAutoSave';
@@ -24,6 +25,12 @@ export function detectFileType(filePath: string): FileType {
     return 'clip';
   }
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  // User preference (Open With, §53) overrides the priority default — but
+  // only if the preferred provider still claims this extension.
+  const preferred = useFileTypePreferenceStore.getState().getPreferredProvider(ext);
+  if (preferred && listProviders(ext).some((p) => p.id === preferred)) {
+    return preferred;
+  }
   const handler = getHandlerByExtension(ext);
   return handler?.id ?? 'code';
 }

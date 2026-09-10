@@ -2,7 +2,7 @@ import type { FileChange } from '@folyn/cli-adapter';
 import { useVaultStore } from '@/store/vaultStore';
 import { useEditorStore, type FileTab } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
-import { getHandlerById } from '@/components/file-types/registry';
+import { getHandlerById, usesShellEditor } from "@/components/file-types/registry";
 // Runtime import of the injection setter. aiStore's dependency on this file is
 // type-only (erased at runtime), so there is no module cycle.
 import { setFileChangeApplier } from '@/store/aiStore';
@@ -64,7 +64,7 @@ export class EditorFileChangeApplier implements FileChangeApplier {
     const { tab, tabId } = resolved;
 
     const handler = getHandlerById(tab.fileType);
-    if (handler?.useCodeMirror) {
+    if (usesShellEditor(handler)) {
       useDiffReviewStore
         .getState()
         .enterDiffReview(change.path, change.oldContent, change.newContent);

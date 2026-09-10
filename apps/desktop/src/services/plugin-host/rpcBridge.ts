@@ -178,6 +178,8 @@ export function hasPermission(manifest: PluginManifest, capability: string): boo
       return perms.window === true;
     case 'vault:read-active':
       return perms.vault?.readActive === true;
+    case 'vault:read-binary':
+      return perms.vault?.readBinary === true;
     case 'vault:insert-content':
       return perms.vault?.insertContent === true;
     default:
@@ -593,6 +595,26 @@ export async function dispatchPluginRpc(
       const activeTab = store.tabs.find((t) => t.id === store.activeTabId);
       if (!activeTab) return null;
       return { path: activeTab.path, content: activeTab.content };
+    }
+    case 'vault:read-binary': {
+      // Binary file read for sandbox File Viewer (doc §29). Returns the
+      // bytes of the active document (vault-relative path) as Uint8Array —
+      // no raw Tauri in the sandbox; structured-cloned over postMessage.
+      if (!hasPermission(manifest, 'vault:read-binary')) {
+        throw new Error('vault:read-binary denied: vault.readBinary not granted');
+      }
+      const { useEditorStore } = await import('@/store/editorStore');
+      const { useVaultStore } = await import('@/store/vaultStore');
+      const editor = useEditorStore.getState();
+      const tab = editor.tabs.find((t) => t.id === editor.activeTabId);
+      if (!tab?.path) throw new Error('vault:read-binary: no active document path');
+      const vaultRoot = useVaultStore.getState().currentVault?.basePath ?? '';
+      if (!vaultRoot) throw new Error('vault:read-binary: no active vault');
+      const { join } = await import('@tauri-apps/api/path');
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      // Restrict to the active vault root so a sandbox plugin can't escape.
+      const abs = await join(vaultRoot, tab.path);
+      return new Uint8Array(await readFile(abs));
     }
     case 'vault:insert-content': {
       const { content } = (params ?? {}) as { content?: string };

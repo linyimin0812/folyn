@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePluginStore } from '@/store/pluginStore';
 
 vi.mock('@folyn/plugin-host', () => ({
-  pluginHost: { get: () => undefined },
+  extensionHost: { get: () => undefined },
 }));
 
 const MANIFEST = {

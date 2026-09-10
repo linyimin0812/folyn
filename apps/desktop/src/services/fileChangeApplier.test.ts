@@ -24,7 +24,14 @@ vi.mock('@/store/diffReviewStore', () => ({
   useDiffReviewStore: { getState: () => diffReviewState },
 }));
 
-vi.mock('@/components/file-types/registry', () => ({ getHandlerById: getHandlerByIdMock }));
+vi.mock('@/components/file-types/registry', () => ({
+  getHandlerById: getHandlerByIdMock,
+  // ponytail: backward-compat — the test's mock handlers use the legacy
+  // useCodeMirror field; fall back to it so existing setups work without
+  // rewriting every mockReturnValue to the new modes[] shape.
+  usesShellEditor: (h: { modes?: Array<{ kind: string }>; useCodeMirror?: boolean } | undefined) =>
+    !!h?.modes?.some((m) => m.kind === 'shell-editor') || h?.useCodeMirror === true,
+}));
 
 // ── aiStore injection slot — drive registration through the real setter ────
 // We mock only the persistence/watcher surface so aiStore loads for real,

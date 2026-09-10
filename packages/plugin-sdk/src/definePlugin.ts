@@ -3,7 +3,7 @@
  * build/test, and a `definePlugin` type-guard for authoring a typed manifest.
  *
  * Runtime-free — safe to ship in the publishable SDK. The host's
- * `PluginHost.validateManifest` delegates here so plugin and host share one
+ * `ExtensionHost.validateManifest` delegates here so plugin and host share one
  * source of truth.
  */
 

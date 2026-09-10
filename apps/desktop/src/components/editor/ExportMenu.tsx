@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { ImageDown, Cloud, Copy, ExternalLink, Check, FolderArchive } from 'lucide-react';
+import { useExport, hasContainerSyntax } from '@/hooks/useExport';
 import { VaultExportDialog } from './VaultExportDialog';
 import { SingleDocExportDialog } from './SingleDocExportDialog';
-import { useExport, hasContainerSyntax } from '@/hooks/useExport';
+import { SourceExportDialog } from './SourceExportDialog';
+import { FormatExportDialog } from './FormatExportDialog';
 import { useEditorStore, detectFileType } from '@/store/editorStore';
+import { useVaultStore } from '@/store/vaultStore';
+import { exportService } from '@/services/export/exporterRegistry';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { useTranslation } from 'react-i18next';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 import { getPluginExportersForFileType } from '@/services/plugin-host/exporterAdapter';
 import { runCommand } from '@/services/commandRegistry';
-import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
-import { getProvider } from '@/services/storage/registry';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
 const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
@@ -31,15 +33,14 @@ export function ExportMenu() {
   const [containerWarning, setContainerWarning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [shareError, setShareError] = useState<string | null>(null);
-  const [urlCopied, setUrlCopied] = useState(false);
   const [vaultExportOpen, setVaultExportOpen] = useState(false);
   const [singleDocExportOpen, setSingleDocExportOpen] = useState(false);
+  const [sourceExportOpen, setSourceExportOpen] = useState(false);
+  const [formatExport, setFormatExport] = useState<{ exporterId: string; formatId: string; label: string; ext: string } | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [urlCopied, setUrlCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { exportSource, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent } = useExport();
-  const activeProvider = useStorageConfigStore((s) => s.activeProvider);
-  const activeCfg = useStorageConfigStore((s) => s.configs[s.activeProvider] ?? null);
-  const shareEnabled = activeCfg ? getProvider(activeProvider).isConfigured(activeCfg) : false;
+  const { getActiveContent } = useExport();
 
   const fileType = useEditorStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -49,6 +50,7 @@ export function ExportMenu() {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
     return tab?.name ?? '';
   });
+  const activeTabPath = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.path ?? '');
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -73,7 +75,9 @@ export function ExportMenu() {
     Promise.resolve(fn()).catch(() => {}).finally(() => setExporting(false));
   }, []);
 
-  const handleSource = useCallback(() => {
+  // Markdown container-syntax gate — pre-flight before opening the source
+  // export dialog (the dialog handles download-vs-upload choice).
+  const checkSourceExport = useCallback(() => {
     if (fileType === 'markdown') {
       const { content } = getActiveContent();
       if (hasContainerSyntax(content)) {
@@ -82,72 +86,24 @@ export function ExportMenu() {
         return;
       }
     }
-    runWithOverlay(() => exportSource());
-  }, [fileType, getActiveContent, exportSource, runWithOverlay]);
+    setOpen(false);
+    setSourceExportOpen(true);
+  }, [fileType, getActiveContent]);
 
   const confirmExportSource = useCallback(() => {
     setContainerWarning(false);
-    runWithOverlay(() => exportSource());
-  }, [exportSource, runWithOverlay]);
+    setSourceExportOpen(true);
+  }, []);
 
-  const handleRichTextHtml = useCallback(() => {
-    runWithOverlay(() => exportRichTextHtml());
-  }, [exportRichTextHtml, runWithOverlay]);
-
-  const handleSvg = useCallback(() => {
-    runWithOverlay(() => exportSvg());
-  }, [exportSvg, runWithOverlay]);
-
-  const handlePng = useCallback(() => {
-    runWithOverlay(() => exportPng());
-  }, [exportPng, runWithOverlay]);
-
-  const handleMarkmap = useCallback(() => {
-    runWithOverlay(() => exportMarkmap());
-  }, [exportMarkmap, runWithOverlay]);
-
-  const handleShareToCloud = useCallback(() => {
-    setOpen(false);
-    setShareError(null);
-    setExporting(true);
-    shareToCloud()
-      .then(async (url) => {
-        await navigator.clipboard.writeText(url).catch(() => {});
-        setShareUrl(url);
-      })
-      .catch((err: Error) => {
-        const msg = err.message === 'STORAGE_NOT_CONFIGURED'
-          ? t('settings:storage.toast.notConfigured')
-          : err.message === 'STORAGE_NO_HTML_CAPABILITY'
-            ? t('settings:storage.toast.notConfigured')
-            : err.message === 'STORAGE_NO_IMAGE_CAPABILITY'
-              ? t('settings:storage.toast.notConfigured')
-              : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
-        setShareError(msg);
-      })
-      .finally(() => setExporting(false));
-  }, [shareToCloud, t]);
-
-  const handleShareBytesToCloud = useCallback(() => {
-    setOpen(false);
-    setShareError(null);
-    setExporting(true);
-    shareBytesToCloud()
-      .then(async (url) => {
-        await navigator.clipboard.writeText(url).catch(() => {});
-        setShareUrl(url);
-      })
-      .catch((err: Error) => {
-        const msg = err.message === 'STORAGE_NOT_CONFIGURED'
-          ? t('settings:storage.toast.notConfigured')
-          : err.message === 'STORAGE_NO_IMAGE_CAPABILITY'
-            ? t('settings:storage.toast.notConfigured')
-            : `${t('settings:storage.toast.uploadFailed')}: ${err.message}`;
-        setShareError(msg);
-      })
-      .finally(() => setExporting(false));
-  }, [shareBytesToCloud, t]);
-
+  // ── Context-driven export menu (doc §80: no per-file-type if/else) ───────
+  // Source item first (per-type label + markdown container-warning gate),
+  // then format exporters from the ExporterRegistry (html/svg/png/markmap),
+  // then share-to-cloud (special — not a file save), then plugin exporters.
+  const exportCtx = {
+    filePath: activeTabPath,
+    vaultRoot: useVaultStore.getState().currentVault?.basePath ?? '',
+    content: getActiveContent().content,
+  };
   const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
   const items: Item[] = [
     {
@@ -155,104 +111,54 @@ export function ExportMenu() {
       icon: <span className="text-base w-6 flex justify-center shrink-0"><FileIcon filename={tabName || `doc.${fileType}`} /></span>,
       label: t(`editor:export.source.${sourceKey}.label`),
       description: t(`editor:export.source.${sourceKey}.description`),
-      run: handleSource,
+      run: () => { setOpen(false); checkSourceExport(); },
     },
   ];
+
+  // Markdown single-doc HTML export — modal target + image-mode picker
+  // (master's richer HTML export path; the registry's markdown.html exporter
+  // is removed to avoid a duplicate HTML entry).
   if (fileType === 'markdown') {
     items.push({
-      key: 'html',
+      key: 'single-doc',
       icon: <span className="text-base w-6 text-center shrink-0">🌐</span>,
       label: t('editor:export.singleDoc.menu'),
       description: t('editor:export.html.description'),
       run: () => { setOpen(false); setSingleDocExportOpen(true); },
     });
-    items.push({
-      key: 'markmap',
-      icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
-      label: t('editor:export.markmap.label'),
-      description: t('editor:export.markmap.description'),
-      run: handleMarkmap,
-    });
-  } else if (fileType === 'rich-text') {
-    items.push({
-      key: 'html',
-      icon: <span className="text-base w-6 text-center shrink-0">🌐</span>,
-      label: t('editor:export.html.label'),
-      description: t('editor:export.html.description'),
-      run: handleRichTextHtml,
-    });
-    if (shareEnabled) {
-      items.push({
-        key: 'share-cloud',
-        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
-        label: t('settings:storage.share.menu'),
-        description: t('settings:storage.description'),
-        run: handleShareToCloud,
-      });
-    }
-  } else if (CANVAS_TYPES.has(fileType)) {
-    items.push(
-      {
-        key: 'svg',
-        icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
-        label: t('editor:export.svg.label'),
-        description: t('editor:export.svg.description'),
-        run: handleSvg,
-      },
-    );
-    // PNG export: only for canvas types whose SVG has no foreignObject.
-    // markmap uses foreignObject for topic text — WebKit taints the
-    // canvas (SecurityError on toBlob) when rasterizing SVG-as-Image with
-    // foreignObject. Skip PNG for markmap; SVG covers the gap.
-    // plantuml + graphviz ship SVG-only for now — PNG can be added later via
-    // the shared svgToPngBlob helper (no foreignObject in their server SVGs).
-    if (fileType !== 'markmap' && fileType !== 'plantuml' && fileType !== 'graphviz' && fileType !== 'mermaid') {
-      items.push({
-        key: 'png',
-        icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
-        label: t('editor:export.png.label'),
-        description: t('editor:export.png.description'),
-        run: handlePng,
-      });
-    }
-    if (shareEnabled) {
-      items.push({
-        key: 'share-cloud',
-        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
-        label: t('settings:storage.share.menu'),
-        description: t('settings:storage.description'),
-        run: handleShareToCloud,
-      });
-    }
-  } else if (fileType === 'image' || fileType === 'svg') {
-    if (shareEnabled) {
-      items.push({
-        key: 'share-image-cloud',
-        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
-        label: t('settings:storage.share.imageMenu'),
-        description: t('settings:storage.share.imageMenuDesc'),
-        run: handleShareBytesToCloud,
-      });
-    }
-  } else {
-    // Source-only file types (clip/code/csv/html/json/office/web/...) — no
-    // specialized rendering. Upload raw bytes; shares the paste-image upload
-    // path so SHA1 object key + content-type mapping are reused.
-    if (shareEnabled) {
-      items.push({
-        key: 'share-file-cloud',
-        icon: <Cloud size={16} className="w-6 flex justify-center shrink-0" />,
-        label: t('settings:storage.share.fileMenu'),
-        description: t('settings:storage.share.fileMenuDesc'),
-        run: handleShareBytesToCloud,
-      });
-    }
   }
 
-  // ponytail: append plugin-contributed exporters matching the active file
-  // type. Surfaces as a menu item that runs the registered command; the
-  // exporterAdapter already pipes the result through `downloadBlob` (native
-  // save dialog). Reuses runWithOverlay for the exporting spinner.
+  // Builtin format exporters (markdown html/markmap, rich-text html, canvas svg/png).
+  for (const d of exportService.getAvailableExporters(exportCtx, fileType)) {
+    if (d.id === 'builtin.source') continue; // already rendered above
+    const exporterId = d.id;
+    // Markdown HTML / markmap keep their i18n labels; canvas svg/png too.
+    const labelKey = d.id === 'markdown.markmap' ? 'editor:export.markmap'
+      : d.format.id === 'html' ? 'editor:export.html'
+      : d.format.id === 'svg' ? 'editor:export.svg'
+      : d.format.id === 'png' ? 'editor:export.png'
+      : null;
+    items.push({
+      key: `export-${exporterId}-${d.format.id}`,
+      icon: d.format.id === 'html'
+        ? <span className="text-base w-6 text-center shrink-0">🌐</span>
+        : <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
+      label: labelKey ? t(`${labelKey}.label`) : d.title,
+      description: labelKey ? t(`${labelKey}.description`) : d.title,
+      run: () => {
+        setOpen(false);
+        setFormatExport({
+          exporterId,
+          formatId: d.format.id,
+          label: d.format.title,
+          ext: d.format.extension,
+        });
+      },
+    });
+  }
+
+  // Plugin-contributed exporters (kept via the adapter for now; will migrate
+  // to ExporterRegistry in a later pass).
   for (const e of getPluginExportersForFileType(fileType)) {
     const commandId = e.commandId;
     items.push({
@@ -264,9 +170,9 @@ export function ExportMenu() {
     });
   }
 
-  // Vault-level export — independent of the active tab's type. Placed last so
-  // the per-file export options stay on top and the whole-vault action sits
-  // at the bottom of the menu.
+  // Vault-level export — independent of the active tab's type. Placed last
+  // so the per-file export options stay on top and the whole-vault action
+  // sits at the bottom of the menu.
   items.push({
     key: 'vault-html',
     icon: <FolderArchive size={16} className="w-6 flex justify-center shrink-0" />,
@@ -386,16 +292,6 @@ export function ExportMenu() {
         </div>
       )}
 
-      {/* Export entire vault — modal mode picker */}
-      {vaultExportOpen && (
-        <VaultExportDialog onClose={() => setVaultExportOpen(false)} />
-      )}
-
-      {/* Export single markdown doc — target + image-mode picker */}
-      {singleDocExportOpen && (
-        <SingleDocExportDialog docName={tabName} onClose={() => setSingleDocExportOpen(false)} />
-      )}
-
       {/* Share error: surface the cause; user closes */}
       {shareError && (
         <div className="dlg-overlay" onClick={() => setShareError(null)}>
@@ -411,6 +307,33 @@ export function ExportMenu() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Export entire vault — modal mode picker */}
+      {vaultExportOpen && (
+        <VaultExportDialog onClose={() => setVaultExportOpen(false)} />
+      )}
+
+      {/* Export single markdown doc — target + image-mode picker */}
+      {singleDocExportOpen && (
+        <SingleDocExportDialog docName={tabName} onClose={() => setSingleDocExportOpen(false)} />
+      )}
+
+      {/* Source-file export — download or upload to a storage provider */}
+      {sourceExportOpen && (
+        <SourceExportDialog docName={tabName} onClose={() => setSourceExportOpen(false)} />
+      )}
+
+      {/* Format export (svg/png/…) — download or upload to a storage provider */}
+      {formatExport && (
+        <FormatExportDialog
+          formatLabel={formatExport.label}
+          docName={tabName}
+          exporterId={formatExport.exporterId}
+          ctx={exportCtx}
+          ext={formatExport.ext}
+          onClose={() => setFormatExport(null)}
+        />
       )}
     </>
   );

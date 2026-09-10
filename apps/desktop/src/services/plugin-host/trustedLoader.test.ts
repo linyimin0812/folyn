@@ -7,8 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ComponentType } from 'react';
-import type { PluginManifest, PluginContext } from '@folyn/plugin-host';
-import { PluginHost } from '@folyn/plugin-host';
+import type { PluginManifest } from "@folyn/plugin-host";
+import { ExtensionHost } from "@folyn/plugin-host";
 import {
   trustedLoader,
   setModuleResolver,
@@ -98,15 +98,6 @@ function fakeModule(overrides: Partial<PluginModule> = {}): PluginModule {
     activate: vi.fn(),
     deactivate: vi.fn(),
     ...overrides,
-  };
-}
-
-function makeContext(host: PluginHost, id: string): PluginContext {
-  const record = host.get(id)!;
-  return {
-    pluginId: id,
-    manifest: record.manifest,
-    addDisposable: (d) => { record.disposables.push(d); },
   };
 }
 
@@ -213,7 +204,6 @@ describe('trustedLoader / TOFU gate', () => {
 
     const plugin = await trustedLoader.load(manifest());
     expect(plugin).toBeDefined();
-    expect(plugin.manifest.id).toBe('demo-trusted');
   });
 
   it('does not call import() when TOFU gate fails (trusted=false)', async () => {
@@ -241,7 +231,7 @@ describe('trustedLoader / contribution adapters', () => {
     const mod = fakeModule();
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(manifest());
     await host.activate('demo-trusted');
@@ -264,7 +254,7 @@ describe('trustedLoader / contribution adapters', () => {
     const mod = fakeModule();
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(manifest());
     await host.activate('demo-trusted');
@@ -283,7 +273,7 @@ describe('trustedLoader / contribution adapters', () => {
     const mod = fakeModule();
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(manifest());
     await host.activate('demo-trusted');
@@ -297,7 +287,7 @@ describe('trustedLoader / contribution adapters', () => {
     const mod = fakeModule({ handlers: undefined }); // no handlers exported
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(manifest());
     await host.activate('demo-trusted');
@@ -329,7 +319,7 @@ describe('trustedLoader / feature contribution', () => {
       },
     });
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(featureManifest);
     await host.activate('demo-trusted');
@@ -389,7 +379,7 @@ describe('trustedLoader / feature contribution', () => {
       builtin: true,
     });
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(featureManifest);
     await host.activate('demo-trusted');
@@ -412,7 +402,7 @@ describe('trustedLoader / hot-unload', () => {
 
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL');
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(manifest());
     await host.activate('demo-trusted');
@@ -428,7 +418,7 @@ describe('trustedLoader / hot-unload', () => {
     const mod = fakeModule();
     setModuleResolver(async () => mod as unknown as Record<string, unknown>);
 
-    const host = new PluginHost();
+    const host = new ExtensionHost();
     host.registerLoader(trustedLoader);
     await host.install(manifest());
 

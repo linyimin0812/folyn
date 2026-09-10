@@ -1,16 +1,18 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 import ErDiagramPreview from './ErDiagramX6';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'dbml',
   extensions: ['dbml'],
   icon: getFileTypeIcon('dbml'),
-  supportedViewModes: ['split', 'edit', 'preview'],
-  defaultViewMode: 'split',
   needsFileContent: true,
-  useCodeMirror: true,
-  Preview: ErDiagramPreview,
+  defaultMode: 'split',
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },
+    { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+    { id: 'preview', kind: 'component', component: ErDiagramPreview },
+  ],
 };
 
 export default handler;

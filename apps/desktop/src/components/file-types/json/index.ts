@@ -1,15 +1,16 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { JsonFileViewerPreview } from './JsonFileViewerPreview';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'json',
   extensions: ['json'],
   icon: getFileTypeIcon('json'),
-  supportedViewModes: ['edit', 'preview'],
   needsFileContent: true,
-  useCodeMirror: true,
-  Preview: JsonFileViewerPreview,
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },
+    { id: 'preview', kind: 'component', component: JsonFileViewerPreview },
+  ],
 };
 
 export default handler;

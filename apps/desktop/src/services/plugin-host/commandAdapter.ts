@@ -46,7 +46,7 @@ export function registerPluginCommands(
       icon: cmd.icon,
       keywords: cmd.keywords,
       run: () => { void bridge.invokeCommand(cmd.id); },
-    });
+    }, manifest.id);
     disposables.push(disposable);
   }
 

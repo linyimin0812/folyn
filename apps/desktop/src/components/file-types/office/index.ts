@@ -1,9 +1,12 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { OfficeFileViewer } from './OfficeFileViewer';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'office',
+  // Fallback File Viewer (doc §24): low priority so a specialized provider
+  // (installed via a plugin) overrides it for any of these extensions.
+  priority: -1000,
   extensions: [
     // PDF / OFD
     'pdf', 'ofd',
@@ -48,10 +51,10 @@ const handler: FileTypeHandler = {
     'sqlite', 'wasm', 'parquet', 'avro', 'webarchive',
   ],
   icon: getFileTypeIcon('office'),
-  supportedViewModes: ['preview'],
   needsFileContent: false,
-  useCodeMirror: false,
-  Preview: OfficeFileViewer,
+  modes: [
+    { id: 'preview', kind: 'component', component: OfficeFileViewer },
+  ],
 };
 
 export default handler;

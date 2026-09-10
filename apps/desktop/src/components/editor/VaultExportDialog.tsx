@@ -19,6 +19,7 @@ import { IconSelect } from '@/components/common/IconSelect';
 import { useNavStore } from '@/store/navStore';
 import { exportVaultToHtml, uploadVaultSingleToCloud, type VaultExportMode } from '@/services/export/vaultExport';
 import type { HtmlImageMode } from '@/services/export/shared';
+import { EXPORT_DIALOG_STYLE } from './ProviderPicker';
 
 interface VaultExportDialogProps {
   onClose: () => void;
@@ -174,7 +175,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
 
   return (
     <div className="dlg-overlay" data-tauri-drag-region={false} onClick={phase === 'exporting' ? undefined : onClose}>
-      <div className="dlg" data-tauri-drag-region={false} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+      <div className="dlg" data-tauri-drag-region={false} onClick={(e) => e.stopPropagation()} style={EXPORT_DIALOG_STYLE}>
         <div className="dlg-hd" onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
           <h3>{t('editor:export.vault.title')}</h3>
         </div>

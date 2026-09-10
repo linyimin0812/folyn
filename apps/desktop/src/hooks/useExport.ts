@@ -343,14 +343,15 @@ ${body}
  * like code/json/html/svg), fall back to `readActiveBytes(path)` for
  * binary types (image/office) where content is empty by design.
  */
-export async function shareActiveBytesToCloud(): Promise<string> {
+export async function shareActiveBytesToCloud(opts?: { fileProviderId?: string }): Promise<string> {
   const { name, content, path } = getActiveDocument();
   const store = useStorageConfigStore.getState();
-  const cfg = store.getActiveConfig();
-  if (!cfg) {
+  const fileId = opts?.fileProviderId ?? store.activeProvider;
+  const cfg = store.configs[fileId] ?? null;
+  if (!cfg || !getProvider(fileId).isConfigured(cfg)) {
     throw new Error('STORAGE_NOT_CONFIGURED');
   }
-  const provider = getProvider(store.activeProvider);
+  const provider = getProvider(fileId);
   if (!provider.capabilities.image) {
     throw new Error('STORAGE_NO_IMAGE_CAPABILITY');
   }
@@ -383,7 +384,7 @@ export function useExport() {
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
   const exportMarkmap = useCallback((onBeforeDialog?: () => void) => exportActiveMarkmapSvg(onBeforeDialog), []);
   const shareToCloud = useCallback(() => shareActiveToCloud(), []);
-  const shareBytesToCloud = useCallback(() => shareActiveBytesToCloud(), []);
+  const shareBytesToCloud = useCallback((opts?: { fileProviderId?: string }) => shareActiveBytesToCloud(opts), []);
   const getActiveContent = useCallback(
     () => {
       const { name, content, path } = getActiveDocument();

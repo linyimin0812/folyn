@@ -167,7 +167,7 @@ function PluginRowCard({ row }: { row: PluginRow }) {
   const uninstall = usePluginStore((s) => s.uninstall);
   const openConsent = usePluginStore((s) => s.openConsent);
   // Built-in rows bind their enable toggle to appearanceStore flags (the
-  // source of truth for panel visibility), not to pluginHost.activate. Grab
+  // source of truth for panel visibility), not to extensionHost.activate. Grab
   // all 3 flag/setter pairs unconditionally — hooks can't be conditional,
   // and these subscriptions are cheap (zustand shallow-equals primitives).
   const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);

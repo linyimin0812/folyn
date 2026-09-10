@@ -20,7 +20,7 @@ import { ContainerRegistry, registerBuiltinPlugins, VaultContext } from '@folyn/
 import type { ContainerProps } from '@folyn/container-plugins';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
 import { getMarkdownCodeRenderer } from '@/services/plugin-host/markdownCodeRendererAdapter';
-import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
+import { getHandlerByExtension, getHandlerById, getModeComponent } from "@/components/file-types/registry";
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { resolveAbsolutePath } from '@/services/externalFileProvider';
@@ -914,7 +914,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // ext). A matched handler with no Preview (e.g. rich-text .richtext) returns null
     // so FilePreviewPlugin shows its "暂无预览" UI instead of dumping the raw
     // disk JSON as code.
-    const Preview = handler?.Preview ?? (handler ? null : getHandlerById('code')?.Preview);
+    const Preview = getModeComponent(handler, 'preview') ?? (handler ? null : getModeComponent(getHandlerById('code'), 'preview'));
     if (!Preview) return null;
     // ponytail: no recursion-depth guard — a markdown file that embeds itself
     // via :::file-preview will stack-overflow. Add a depth counter if it bites.

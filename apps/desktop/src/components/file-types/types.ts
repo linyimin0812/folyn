@@ -6,4 +6,12 @@ export type {
   EditorProps,
   PreviewProps,
   FileTypeHandler,
+  FileTypeProvider,
+  PresentationModeRegistration,
+  PresentationModeId,
+  PresentationModeKind,
+  SplitComposition,
+  
+  FilePresentationContext,
+  IconRef,
 } from 'folyn-plugin-sdk';

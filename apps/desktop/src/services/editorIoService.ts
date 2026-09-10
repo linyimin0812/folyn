@@ -7,7 +7,7 @@ import {
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
-import { getHandlerById } from '@/components/file-types/registry';
+import { getHandlerById, getDefaultMode, usesShellEditor } from "@/components/file-types/registry";
 import { suppressWatcherFor } from '@/utils/fileWatcher';
 import { wikiProvider } from '@/services/wikiProvider';
 import { externalFileProvider } from '@/services/externalFileProvider';
@@ -144,7 +144,7 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     }
     // Auto-switch to appropriate view mode — tab's saved mode takes priority
     const handler = getHandlerById(correctFileType);
-    const targetMode = existing.viewMode ?? handler?.defaultViewMode;
+    const targetMode = existing.viewMode ?? getDefaultMode(handler);
     if (targetMode) {
       set({ viewMode: targetMode });
     }
@@ -168,15 +168,15 @@ export async function openFile(filePath: string, name: string): Promise<void> {
       isDirty: false,
       fileType,
       activity: detectActivity(filePath, fileType),
-      viewMode: handler?.defaultViewMode,
+      viewMode: getDefaultMode(handler),
     };
     set((state) => ({
       tabs: [...state.tabs, newTab],
       activeTabId: newTab.id,
     }));
     // Auto-switch to preview mode for file types that prefer preview
-    if (handler?.defaultViewMode) {
-      set({ viewMode: handler.defaultViewMode });
+    if (getDefaultMode(handler)) {
+      set({ viewMode: getDefaultMode(handler) });
     }
     persistOpenTabs(vaultId, get().tabs, get().activeTabId);
     if (isExternal) {
@@ -461,7 +461,7 @@ export async function checkDiskChanges(): Promise<void> {
     // editors (excalidraw/drawio/markmap/clip) have no diff UI — just reload from
     // disk unconditionally: update content + bump version → WorkArea remounts
     // the editor with fresh initialData.
-    if (isActive && handler?.useCodeMirror) {
+    if (isActive && usesShellEditor(handler)) {
       if (diskContent !== tab.content) {
         useDiffReviewStore
           .getState()

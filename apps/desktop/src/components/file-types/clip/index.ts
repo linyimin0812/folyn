@@ -1,16 +1,16 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { ClipCardView } from './ClipCardView';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'clip',
   extensions: [],
   icon: getFileTypeIcon('clip'),
-  supportedViewModes: ['preview'],
-  defaultViewMode: 'preview',
   needsFileContent: true,
-  useCodeMirror: false,
-  Editor: ClipCardView,
+  defaultMode: 'preview',
+  modes: [
+    { id: 'preview', kind: 'component', component: ClipCardView, via: 'inline' },
+  ],
 };
 
 export default handler;

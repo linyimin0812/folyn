@@ -41,7 +41,7 @@ const FIRST_PLUGIN_ORDER = 100;
 /** Module-level counter so unordered plugin panels land after built-ins in registration order. */
 let nextPluginOrder = FIRST_PLUGIN_ORDER;
 
-function renderIcon(icon: string): ReactNode {
+export function renderIcon(icon: string): ReactNode {
   // ponytail: a raw `<svg>` string is the common case for plugin authors (inline,
   // self-contained). A `ThemeIcon` name (e.g. "folder") is the convenience path
   // for built-in host icons. Both return ReactNode; the activity bar renders it.

@@ -35,7 +35,12 @@ vi.mock('@/store/vaultStore', () => ({
   useVaultStore: { getState: () => ({ activeVaultId: 'v1', readFile: vi.fn(), writeFile: vi.fn(), createDir: vi.fn(), refreshFileTree: vi.fn(), currentVault: null }) },
 }));
 vi.mock('@/store/prefsStore', () => ({ usePrefsStore: { getState: () => ({ dailyNotesDir: '__daily__', dailyNoteDateFormat: 'YYYY-MM-DD' }) } }));
-vi.mock('@/components/file-types/registry', () => ({ getHandlerById: vi.fn(() => ({ id: 'markdown', needsFileContent: true, deserialize: (r: string) => r, serialize: (c: string) => c })) }));
+vi.mock('@/components/file-types/registry', () => ({
+  getHandlerById: vi.fn(() => ({ id: 'markdown', needsFileContent: true, deserialize: (r: string) => r, serialize: (c: string) => c })),
+  getDefaultMode: () => undefined,
+  usesShellEditor: () => false,
+  getSupportedModes: () => [],
+}));
 vi.mock('@/utils/fileWatcher', () => ({ suppressWatcherFor: vi.fn() }));
 vi.mock('@/services/wikiProvider', () => ({ wikiProvider: { readFile: vi.fn(), writeFile: vi.fn() } }));
 vi.mock('@/types/wiki', () => ({ WIKI_PREFIX: 'wiki://' }));

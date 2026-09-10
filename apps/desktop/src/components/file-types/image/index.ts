@@ -1,15 +1,15 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { ImageViewer } from './ImageViewer';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'image',
   extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico'],
   icon: getFileTypeIcon('image'),
-  supportedViewModes: ['preview'],
   needsFileContent: false,
-  useCodeMirror: false,
-  Preview: ImageViewer,
+  modes: [
+    { id: 'preview', kind: 'component', component: ImageViewer },
+  ],
 };
 
 export default handler;

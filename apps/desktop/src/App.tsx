@@ -43,9 +43,13 @@ import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { registerBuiltinCodeContributions } from './services/registerBuiltinCodeContributions';
 import { registerErrorDemoPlugin } from './services/registerErrorDemoPlugin';
+import { registerBuiltinExporters } from './services/export/exporterRegistry';
 import { isTauri } from './utils/platform';
 import { useLocaleStore } from '@/store/localeStore';
-import { pluginHost } from '@folyn/plugin-host';
+import { extensionHost } from "@folyn/plugin-host";
+import type { ToolExtensionUIContext } from '@folyn/plugin-host';
+import { createExtensionApi } from './services/plugin-host/createExtensionApi';
+import { workspaceApi } from './services/workspaceRegistry';
 import { sandboxLoader } from './services/plugin-host/sandboxLoader';
 import { trustedLoader } from './services/plugin-host/trustedLoader';
 import { attachToolWindowRpcListener } from './services/plugin-host/toolWindowRpcListener';
@@ -53,6 +57,7 @@ import { attachToolWindowRpcListener } from './services/plugin-host/toolWindowRp
 registerBuiltinPlugins();
 registerBuiltinCodeContributions();
 registerErrorDemoPlugin();
+registerBuiltinExporters();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.
 registerBuiltinCommands();
@@ -68,11 +73,30 @@ registerBuiltinPanels();
 // mount #1's cleanup disposing its `registerLoader` handle wipes the entry
 // mount #2 registered (dispose checks `loaders.get(tier) === loader` — true
 // for the shared singleton). The result: after StrictMode settles, the
-// loaders map is empty and `pluginHost.activate(id)` throws
+// loaders map is empty and `extensionHost.activate(id)` throws
 // "No loader registered for tier: sandbox". App-lifetime singletons don't
 // need disposal — they live for the whole session.
-pluginHost.registerLoader(sandboxLoader);
-pluginHost.registerLoader(trustedLoader);
+// Phase 2: wire the real capability surface into the new runtime so
+// `module.activate(api, ctx)` gets ai/network/env/export/fileTypes/exporters
+// + `ctx.ui.workspace` instead of `undefined`.
+extensionHost.setHooks({
+  createApi: (record) => createExtensionApi(record.manifest),
+  createContext: (record) => ({
+    extensionId: record.manifest.id,
+    extensionPath: record.manifest.main,
+    manifest: record.manifest,
+    vault: { name: 'default', path: 'default' },
+    ui: {
+      dialogs: { async info() {}, async confirm() { return false; } },
+      notifications: { show() {} },
+      workspace: workspaceApi,
+    } as ToolExtensionUIContext,
+    logger: console,
+  }),
+});
+
+extensionHost.registerLoader(sandboxLoader);
+extensionHost.registerLoader(trustedLoader);
 
 /** Hook to detect mobile viewport */
 function useIsMobile(breakpoint = 768) {
@@ -320,17 +344,17 @@ export default function App() {
           if (cancelled) break;
           try {
             const manifest = await readPluginManifest(entry.id);
-            await pluginHost.install(manifest as never);
+            await extensionHost.install(manifest as never);
             // Activate sandbox plugins so their commands appear immediately.
             // Trusted plugins activate only after approval (plugin://approved).
             if (manifest.tier === 'sandbox') {
-              await pluginHost.activate(manifest.id as string).catch((err: unknown) => {
+              await extensionHost.activate(manifest.id as string).catch((err: unknown) => {
                 console.warn(`[App] failed to activate plugin ${entry.id}:`, err);
               });
             } else if (manifest.tier === 'trusted' && entry.trusted) {
               // Already-approved trusted plugin (hydrated from a prior
               // session) — activate it now.
-              await pluginHost.activate(manifest.id as string).catch((err: unknown) => {
+              await extensionHost.activate(manifest.id as string).catch((err: unknown) => {
                 console.warn(`[App] failed to activate trusted plugin ${entry.id}:`, err);
               });
             }
@@ -347,10 +371,10 @@ export default function App() {
       const unInstall = await listen<{ id: string }>('plugin://installed', async (event) => {
         try {
           const manifest = await readPluginManifest(event.payload.id);
-          await pluginHost.install(manifest as never);
+          await extensionHost.install(manifest as never);
           // Sandbox: activate immediately. Trusted: wait for approval.
           if (manifest.tier === 'sandbox') {
-            await pluginHost.activate(manifest.id as string).catch(() => {});
+            await extensionHost.activate(manifest.id as string).catch(() => {});
           }
         } catch (err: unknown) {
           console.warn(`[App] failed to install plugin on event:`, err);
@@ -360,7 +384,7 @@ export default function App() {
         try {
           // The plugin was already installed on the `plugin://installed`
           // event; just activate it now that the user has approved.
-          await pluginHost.activate(event.payload.id).catch((err: unknown) => {
+          await extensionHost.activate(event.payload.id).catch((err: unknown) => {
             console.warn(`[App] failed to activate approved plugin ${event.payload.id}:`, err);
           });
         } catch (err: unknown) {
@@ -369,7 +393,7 @@ export default function App() {
       });
       const unUninstall = await listen<{ id: string }>('plugin://uninstalled', async (event) => {
         try {
-          await pluginHost.uninstall(event.payload.id);
+          await extensionHost.uninstall(event.payload.id);
         } catch (err: unknown) {
           console.warn(`[App] failed to uninstall plugin on event:`, err);
         }

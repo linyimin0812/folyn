@@ -91,7 +91,7 @@ export function registerPluginExporters(
           console.error(`[plugin-host] exporter "${fullId}" failed:`, err);
         }
       },
-    });
+    }, manifest.id);
     disposables.push(d);
     activeExporters.set(fullId, { pluginId: manifest.id, contrib: exp, commandId: fullId });
     registeredKeys.push(fullId);

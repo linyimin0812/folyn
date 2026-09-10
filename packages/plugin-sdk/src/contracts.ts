@@ -9,83 +9,28 @@
  */
 
 import type { ComponentType, ReactNode } from 'react';
-import type { PluginContext } from './types';
+import type { ExtensionApi, ExtensionContext } from './extension';
+import type { FileTypeHandler } from './presentation';
 
-// ── File-type contracts ────────────────────────────────────────────────────
-// (Moved from apps/desktop/src/components/file-types/types.ts — that file now
-// re-exports from here so existing app consumers are unchanged.)
-
-// Built-in view modes plus an open string tail so plugins can register custom
-// modes (e.g. a canvas plugin's 'canvas' mode). The `(string & {})` tail keeps
-// literal autocomplete for built-ins while allowing any custom id.
-export type ViewMode = 'split' | 'edit' | 'preview' | 'visual' | 'source' | (string & {});
-
-export interface EditorProps {
-  content: string;
-  tabId: string;
-  filePath: string;
-  onChange: (content: string) => void;
-  onSave: () => void;
-}
-
-export interface PreviewProps {
-  content: string;
-  filePath: string;
-  vaultRoot: string;
-  /**
-   * Optional write-back hook for preview components that allow in-place
-   * editing (e.g. the JSON file viewer's left CodeMirror pane). When bound,
-   * edits flow through `editorStore.updateTabContent` so Cmd+S / auto-save
-   * persist the new content to disk. Optional — handlers that don't edit
-   * (csv, office, dbml, markdown) simply omit it.
-   */
-  onChange?: (content: string) => void;
-  /**
-   * Current editor cursor line (1-based). When provided, a split-mode preview
-   * can scroll to the rendered block whose source line matches the cursor.
-   * Only meaningful for previews that understand source-line mapping (e.g.
-   * the built-in Markdown preview). Optional — most previews ignore it.
-   */
-  cursorLine?: number;
-  /**
-   * Pixel y-offset of the cursor line top from the top of the editor
-   * scroll VIEWPORT (excludes scrollTop). Used by split-mode previews
-   * to align the synced block to the same vertical viewport position
-   * as the cursor. Optional.
-   */
-  cursorViewportY?: number;
-  /**
-   * Screen y of the editor scroll DOM top, captured at the same time as
-   * cursorViewportY. Used to compute the offset between the editor and
-   * preview scroll viewports so the synced block aligns to the cursor's
-   * actual screen position. Optional.
-   */
-  editorViewportTop?: number;
-  /** Cursor column (0-based offset within the current line). */
-  cursorCol?: number;
-  /** Length of the line the cursor is on. */
-  lineLength?: number;
-  /**
-   * True when the editor has an active text selection (non-empty range).
-   * Previews should skip cursor-sync scrolling while the user is
-   * selecting — selection drags cause rapid jitter. Optional.
-   */
-  hasSelection?: boolean;
-}
-
-export interface FileTypeHandler {
-  id: string;
-  extensions: string[];
-  icon?: ReactNode;
-  supportedViewModes: ViewMode[];
-  defaultViewMode?: ViewMode;
-  needsFileContent: boolean;
-  useCodeMirror?: boolean;
-  Editor?: ComponentType<EditorProps>;
-  Preview?: ComponentType<PreviewProps>;
-  serialize?: (content: string) => string;
-  deserialize?: (raw: string) => string;
-}
+// ── File-type contracts ──────────────────────────────────────────────────────
+// The file presentation model (FileTypeProvider / PresentationMode /
+// FilePresentationContext / EditorProps / PreviewProps /
+// ViewMode) lives in `./presentation`. Re-exported here so existing
+// `import from 'folyn-plugin-sdk'` consumers are unchanged.
+export type {
+  FileTypeProvider,
+  FileTypeHandler,
+  PresentationModeRegistration,
+  PresentationModeId,
+  PresentationModeKind,
+  SplitComposition,
+  
+  FilePresentationContext,
+  IconRef,
+  EditorProps,
+  PreviewProps,
+  ViewMode,
+} from './presentation';
 
 // ── Container contracts ────────────────────────────────────────────────────
 // (Moved from packages/container-plugins/src/ContainerPlugin.ts — that file
@@ -202,8 +147,9 @@ export interface PluginModule {
   editorLanguages?: Record<string, EditorLanguageFactory>;
   /** Entry-ref → highlight.js grammar factory. Keys match `contributes.highlightGrammars[].entry`. */
   highlightGrammars?: Record<string, HighlightGrammarFn>;
-  /** Optional lifecycle hook; called by the trusted loader on activate. */
-  activate?: (ctx: PluginContext) => void | Promise<void>;
-  /** Optional lifecycle hook; called by the trusted loader on deactivate. */
-  deactivate?: (ctx: PluginContext) => void | Promise<void>;
+  /** Optional lifecycle hook; receives the same (api, ctx) the loader passes
+   * to {@link Extension.activate}. */
+  activate?: (api: ExtensionApi, ctx: ExtensionContext) => void | Promise<void>;
+  /** Optional lifecycle hook; called by the loader on deactivate. */
+  deactivate?: (ctx: ExtensionContext) => void | Promise<void>;
 }

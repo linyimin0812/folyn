@@ -49,8 +49,8 @@ async function defaultResolvePath(
  * (the listener) rejects the RPC in that case.
  */
 async function lookupManifest(pluginId: string): Promise<PluginManifest | undefined> {
-  const { pluginHost } = await import('@folyn/plugin-host');
-  const record = pluginHost.get(pluginId);
+  const { extensionHost } = await import("@folyn/plugin-host");
+  const record = extensionHost.get(pluginId);
   return record?.manifest;
 }
 

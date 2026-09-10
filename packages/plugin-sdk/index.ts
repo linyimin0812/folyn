@@ -2,13 +2,8 @@ export type { Disposable } from './src/Disposable';
 export { disposable } from './src/Disposable';
 export { validateManifest, definePlugin } from './src/definePlugin';
 export type {
-  Plugin,
-  PluginContext,
-  PluginLoader,
   PluginManifest,
   PluginPermissions,
-  PluginRecord,
-  PluginState,
   PluginTier,
   ContributionPoints,
   CommandContribution,
@@ -39,11 +34,74 @@ export type {
   PluginHttpInit,
   PluginHttpResponse,
 } from './src/types';
+export { DisposableStore, combineSignals } from './src/runtime';
+export type { Registry } from './src/registry';
+export { OwnedRegistry, FOLYN_CORE_OWNER } from './src/registry';
+export type {
+  Extension,
+  ExtensionLoader,
+  ExtensionManifest,
+  ExtensionContext,
+  ExtensionUIContext,
+  ToolExtensionUIContext,
+  FileTypeExtensionUIContext,
+  VaultContext,
+  VaultApi,
+  FileApi,
+  EditorApi,
+  WorkspaceContextApi,
+  CommandRegistryApi,
+  CommandContributionApi,
+  CommandContext,
+  EventApi,
+  ExtensionStorageApi,
+  AiApi,
+  NetworkApi,
+  EnvApi,
+  TerminalApi,
+  FileTypeRegistryApi,
+  ExporterRegistryApi,
+  ExtensionApi,
+  ExtensionLogger,
+  DialogApi,
+  NotificationApi,
+  WorkspaceApi,
+  WorkspaceContribution,
+  PresentationApi,
+} from './src/extension';
+export type {
+  ToolbarContext,
+  ToolbarState,
+  ToolbarResolver,
+  WhenContext,
+  FileRef,
+  ResolvedFileType,
+  EditorSelection,
+} from './src/toolbar';
+export type {
+  ExportContext,
+  ExportFormat,
+  ExportOptions,
+  ExportResult,
+  ExporterRegistration,
+  ExporterDescriptor,
+  ExportRequest,
+  ExporterRegistry,
+  ExportService,
+} from './src/export-service';
 export type {
   ViewMode,
   EditorProps,
   PreviewProps,
   FileTypeHandler,
+  FileTypeProvider,
+  PresentationModeRegistration,
+  PresentationModeId,
+  PresentationModeKind,
+  SplitComposition,
+  
+  FilePresentationContext,
+  IconRef,
   ContainerProps,
   ContainerCategory,
   ContainerPlugin,

@@ -59,6 +59,23 @@ export interface PluginEntry {
  */
 export type PluginUiState = 'installed' | 'active' | 'inactive' | 'failed';
 
+/** Map the host's fine-grained {@link ExtensionState} onto the coarse UI state. */
+function toUiState(s: string | undefined): PluginUiState {
+  switch (s) {
+    case 'active':
+      return 'active';
+    case 'failed':
+      return 'failed';
+    case 'validated':
+    case 'disabled':
+    case 'waiting':
+    case 'deactivating':
+      return 'inactive';
+    default: // 'loading' | 'activating' | undefined → treat as installed/pending
+      return 'installed';
+  }
+}
+
 /** Display-facing row: the on-disk entry + the host's runtime state. */
 export interface PluginRow {
   entry: PluginEntry;
@@ -205,8 +222,8 @@ async function fetchRows(): Promise<PluginRow[]> {
   if (!isTauri()) return [];
   const { invoke } = await import('@tauri-apps/api/core');
   const entries = await invoke<PluginEntry[]>('list_plugins');
-  // Lazy-import the pluginHost so this store stays decoupled at module load.
-  const { pluginHost } = await import('@folyn/plugin-host');
+  // Lazy-import the extensionHost so this store stays decoupled at module load.
+  const { extensionHost } = await import("@folyn/plugin-host");
   // Lazy-import appearanceStore to read the built-in panel flags without
   // creating a hard module-cycle (appearanceStore doesn't import pluginStore).
   const { useAppearanceStore } = await import('@/store/appearanceStore');
@@ -239,8 +256,8 @@ async function fetchRows(): Promise<PluginRow[]> {
   // UI gets a ready-to-render SVG string.
   const rows = await Promise.all(
     entries.map(async (entry): Promise<PluginRow> => {
-      const record = pluginHost.get(entry.id);
-      const state: PluginUiState = record?.state ?? 'installed';
+      const record = extensionHost.get(entry.id);
+      const state: PluginUiState = toUiState(record?.state);
       const error = record?.error ? String(record.error) : undefined;
       let icon: string | undefined;
       let description: string | undefined;
@@ -396,8 +413,8 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   activate: async (id) => {
     set({ busy: { ...get().busy, [busyKey(id, 'activate')]: true } });
     try {
-      const { pluginHost } = await import('@folyn/plugin-host');
-      await pluginHost.activate(id);
+      const { extensionHost } = await import("@folyn/plugin-host");
+      await extensionHost.activate(id);
       await get().refresh();
     } catch (err) {
       set({ error: fmtErr(err) });
@@ -412,8 +429,8 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   deactivate: async (id) => {
     set({ busy: { ...get().busy, [busyKey(id, 'deactivate')]: true } });
     try {
-      const { pluginHost } = await import('@folyn/plugin-host');
-      await pluginHost.deactivate(id);
+      const { extensionHost } = await import("@folyn/plugin-host");
+      await extensionHost.deactivate(id);
       await get().refresh();
     } catch (err) {
       set({ error: fmtErr(err) });
@@ -432,7 +449,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('uninstall_plugin', { id });
       // The `plugin://uninstalled` event listener in App.tsx calls
-      // pluginHost.uninstall; refresh to reflect the removal.
+      // extensionHost.uninstall; refresh to reflect the removal.
       await get().refresh();
     } catch (err) {
       set({ error: fmtErr(err) });

@@ -94,14 +94,17 @@ export function registerTrustedPluginCommands(
       continue;
     }
     const fullId = `plugin.${manifest.id}.${cmd.id}`;
-    const d = registerCommand({
-      id: fullId,
-      title: cmd.title,
-      category: 'action',
-      icon: cmd.icon,
-      keywords: cmd.keywords,
-      run: handler,
-    });
+    const d = registerCommand(
+      {
+        id: fullId,
+        title: cmd.title,
+        category: 'action',
+        icon: cmd.icon,
+        keywords: cmd.keywords,
+        run: handler,
+      },
+      manifest.id,
+    );
     disposables.push(d);
   }
   return mergeDisposables(disposables);
@@ -136,30 +139,35 @@ export function registerPluginFileTypes(
     // Ensure the handler's id matches the contribution id (defensive: the
     // plugin author may have set a different id in the handler object).
     const merged: FileTypeHandler = { ...handler, id: ft.id, extensions: ft.extensions };
-    // Wrap the plugin's Editor/Preview in an error boundary at the registration
-    // chokepoint so a render throw is isolated to this file-type surface and
-    // never white-screens the host. Render sites (WorkArea/PreviewPane) render
-    // the already-wrapped component unchanged.
-    if (merged.Editor) {
-      merged.Editor = withPluginBoundary(merged.Editor, manifest.id, `file-type:${ft.id}:editor`);
+    // Wrap the plugin's mode components in an error boundary at the
+    // registration chokepoint so a render throw is isolated to this file-type
+    // surface and never white-screens the host.
+    if (merged.modes) {
+      merged.modes = merged.modes.map((mode) => {
+        if (mode.kind === 'component' && mode.component) {
+          return {
+            ...mode,
+            component: withPluginBoundary(mode.component, manifest.id, `file-type:${ft.id}:${mode.id}`),
+          };
+        }
+        return mode;
+      });
     }
-    if (merged.Preview) {
-      merged.Preview = withPluginBoundary(merged.Preview, manifest.id, `file-type:${ft.id}:preview`);
+    // Merge manifest-declared default mode if the handler doesn't declare one.
+    if (ft.defaultViewMode && !merged.defaultMode) {
+      merged.defaultMode = ft.defaultViewMode as FileTypeHandler['defaultMode'];
     }
-    if (ft.defaultViewMode && !merged.defaultViewMode) {
-      merged.defaultViewMode = ft.defaultViewMode as FileTypeHandler['defaultViewMode'];
-    }
-    // Merge manifest-declared view modes (incl. custom ids) into the handler so
-    // the shell's view-mode switcher surfaces them. Built-in ids stay; custom
-    // ids are appended after the handler's own set.
+    // Merge manifest-declared view modes into the handler's modes so the
+    // shell's mode switcher surfaces them. Only append modes the handler
+    // doesn't already declare.
     if (ft.supportedViewModes?.length) {
-      const have = new Set(merged.supportedViewModes);
-      merged.supportedViewModes = [
-        ...merged.supportedViewModes,
-        ...ft.supportedViewModes.filter((m) => !have.has(m)),
-      ];
+      const have = new Set((merged.modes ?? []).map((m) => m.id));
+      const extras = ft.supportedViewModes
+        .filter((m) => !have.has(m))
+        .map((m) => ({ id: m, kind: 'component' as const, component: undefined }));
+      if (extras.length) merged.modes = [...(merged.modes ?? []), ...extras];
     }
-    const d = registerFileTypeHandler(merged);
+    const d = registerFileTypeHandler(merged, manifest.id);
     disposables.push({ dispose: () => d.dispose() });
   }
   return mergeDisposables(disposables);
@@ -217,7 +225,7 @@ export async function registerPluginContainers(
   if (containers.length === 0) return { dispose: () => {} };
 
   const registry = ContainerRegistry.getInstance();
-  const registeredNames: string[] = [];
+  const disposables: Disposable[] = [];
   const resolved = await Promise.all(
     containers.map(async (c) => ({
       c,
@@ -241,14 +249,9 @@ export async function registerPluginContainers(
       template: c.template,
       description: c.description,
     };
-    registry.register(plugin);
-    registeredNames.push(c.name);
+    // register() now returns a Disposable (owned by manifest.id); no need to
+    // track names manually for cleanup.
+    disposables.push(registry.register(plugin, manifest.id));
   }
-  return {
-    dispose: async () => {
-      for (const name of registeredNames) {
-        registry.unregister(name);
-      }
-    },
-  };
+  return mergeDisposables(disposables);
 }

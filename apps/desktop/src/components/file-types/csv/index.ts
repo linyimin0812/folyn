@@ -1,16 +1,18 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { CsvFileViewerPreview } from './CsvFileViewerPreview';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'csv',
   extensions: ['csv'],
   icon: getFileTypeIcon('csv'),
-  supportedViewModes: ['split', 'edit', 'preview'],
   needsFileContent: true,
-  useCodeMirror: true,
-  Preview: CsvFileViewerPreview,
-  defaultViewMode: 'split'
+  defaultMode: 'split',
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },
+    { id: 'preview', kind: 'component', component: CsvFileViewerPreview },
+    { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+  ],
 };
 
 export default handler;

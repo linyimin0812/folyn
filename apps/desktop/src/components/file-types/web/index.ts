@@ -1,15 +1,15 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { WebViewer } from './WebViewer';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'web',
   extensions: [],
   icon: getFileTypeIcon('web'),
-  supportedViewModes: ['edit'],
   needsFileContent: false,
-  useCodeMirror: false,
-  Editor: WebViewer,
+  modes: [
+    { id: 'edit', kind: 'component', component: WebViewer },
+  ],
 };
 
 export default handler;

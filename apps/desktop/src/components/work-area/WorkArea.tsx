@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
@@ -9,7 +9,9 @@ import { useVaultStore } from '@/store/vaultStore';
 import { isTauri } from '@/utils/platform';
 import type { FolynEditorHandle } from '@/editor/EditorView';
 import { EditorView } from '@codemirror/view';
-import { getHandlerById } from '../file-types/registry';
+import { getHandlerById, getSupportedModes, getDefaultMode, getMode } from '../file-types/registry';
+import type { PreviewProps } from '../file-types/types';
+import { setActiveEditorHandle } from '@/services/editorHandleRegistry';
 import { WikiGraphView } from '../graph/WikiGraphView';
 import { WikiQueryView } from '../wiki/WikiQueryView';
 import { getWebviewLabels } from '../file-types/web/WebViewer';
@@ -51,6 +53,13 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
 
   const editorRef = useRef<FolynEditorHandle>(null);
 
+  // Register the active editor handle so the ExtensionApi's `editor`
+  // capability can query/replace the selection without a direct view ref.
+  useEffect(() => {
+    setActiveEditorHandle(editorRef.current);
+    return () => setActiveEditorHandle(null);
+  }, [activeTabId]);
+
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;
 
@@ -75,13 +84,13 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
     }
 
     if (activeTabId && handler) {
-      const supported = handler.supportedViewModes ?? [];
+      const supported = getSupportedModes(handler);
       if (supported.length > 0 && !supported.includes(viewMode)) {
         // 当前 viewMode 不被该文件类型支持（如从 HTML 的 'visual' 切到 markdown），
         // 重置为该 handler 的默认模式或首个支持模式，避免所有渲染门为 false 导致编辑区空白。
-        setViewMode(handler.defaultViewMode ?? supported[0]);
-      } else if (handler.defaultViewMode && !activeTab?.viewMode && viewMode !== handler.defaultViewMode) {
-        setViewMode(handler.defaultViewMode);
+        setViewMode(getDefaultMode(handler) ?? supported[0]);
+      } else if (getDefaultMode(handler) && !activeTab?.viewMode && viewMode !== getDefaultMode(handler)) {
+        setViewMode(getDefaultMode(handler)!);
       }
     }
   }, [activeTabId, handler, viewMode, setViewMode, activeTab]);
@@ -133,12 +142,32 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
     }
   }, []);
 
-  // Determine what to show
-  const showCodeMirror = handler?.useCodeMirror && (viewMode === 'edit' || viewMode === 'split' || !handler.Preview);
-  const showCustomEditor = handler?.Editor && !handler.useCodeMirror && !(viewMode === 'preview' && handler?.Preview);
-  const isPreviewOnly = handler?.Preview && !handler.useCodeMirror && !handler.Editor;
-  const showPreview = handler?.Preview && (isPreviewOnly || viewMode === 'preview' || viewMode === 'split');
-  const showSplitResizer = handler?.Preview && viewMode === 'split' && (handler.useCodeMirror || !!handler.Editor);
+  // ── Presentation resolution ─────────────────────────────────────────────
+  // Resolve the active mode (provider.modes) for the current viewMode, then
+  // derive what to render. The shell owns the split layout + resizer (doc §13.3);
+  // 'shell-editor' = the host's built-in CodeMirror (EditorPane).
+  const activeMode = handler ? getMode(handler, viewMode) : undefined;
+  const showCodeMirror = activeMode?.kind === 'shell-editor';
+  const showSplit = activeMode?.kind === 'split';
+  const splitParts = showSplit && activeMode?.kind === 'split'
+    ? { left: getMode(handler, activeMode.split!.left), right: getMode(handler, activeMode.split!.right) }
+    : null;
+  // For a 'component' mode: preview-pane (cursor-sync wrapper) vs inline.
+  const componentVia = (m: typeof activeMode): 'preview-pane' | 'inline' | null => {
+    if (!m || m.kind !== 'component') return null;
+    return m.via ?? (m.id === 'preview' ? 'preview-pane' : 'inline');
+  };
+  const inlineMode = componentVia(activeMode) === 'inline' && activeTab?.fileType !== 'web' ? activeMode : null;
+  const previewMode = (showSplit ? splitParts?.right : (componentVia(activeMode) === 'preview-pane' ? activeMode : null));
+  const showPreview = !!previewMode && !!previewMode?.component;
+  // Narrow the loosely-typed mode component to PreviewProps for PreviewPane
+  // (preview components implement PreviewProps at runtime; the SDK keeps the
+  // mode component loosely-typed to avoid a React dep).
+  const PreviewComp = previewMode?.component as unknown as ComponentType<PreviewProps> | undefined;
+  const showSplitResizer = showSplit;
+  // Split editor side: shell-editor (left) for codemirror types.
+  const showCodeMirrorInSplit = showSplit && splitParts?.left?.kind === 'shell-editor';
+  const inlineEditorInSplit = showSplit && splitParts?.left && componentVia(splitParts.left) === 'inline' && activeTab?.fileType !== 'web' ? splitParts.left : null;
 
   // ponytail: when the version-history side panel is open AND a snapshot is
   // selected, swap the entire editor area for the diff view. Single branch
@@ -197,8 +226,9 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
         <VersionHistoryContentView />
       ) : (<>
 
-      {/* CodeMirror editor pane */}
-      {showCodeMirror && (
+      {/* Shell-editor (CodeMirror) pane — either the active edit/source mode,
+          or the left side of a split. */}
+      {(showCodeMirror || showCodeMirrorInSplit) && (
         <EditorPane
           ref={editorRef}
           activeTab={activeTab}
@@ -211,37 +241,37 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           wrapColumn={wrapColumn}
           editorFont={editorFont}
           editorFontSize={editorFontSize}
-          style={handler?.Preview && viewMode === 'split' ? { flexGrow: editorFlex, flexBasis: 0 } : undefined}
+          style={showSplit ? { flexGrow: editorFlex, flexBasis: 0 } : undefined}
         />
       )}
 
-      {/* Custom editor (full area) — e.g. Excalidraw.
-          border-r border-brd mirrors EditorPane's divider so split view shows
-          the same vertical line between editor and preview for custom editors
-          as for CodeMirror-driven file types. */}
-      {showCustomEditor && activeTab && handler?.Editor && activeTab.fileType !== 'web' && (
+      {/* Inline component editor (full area) — e.g. Excalidraw / rich-text,
+          or the left side of a split when the provider's edit mode is a custom
+          component. border-r border-brd mirrors EditorPane's divider. */}
+      {(inlineMode || inlineEditorInSplit) && activeTab && (inlineMode ?? inlineEditorInSplit)?.component && (
         <div
-          className={`flex-1 flex flex-col overflow-hidden editor-${handler.id} ${handler?.Preview && viewMode === 'split' ? 'border-r border-brd' : ''}`}
-          style={handler?.Preview && viewMode === 'split' ? { flexGrow: editorFlex, flexBasis: 0 } : undefined}
+          className={`flex-1 flex flex-col overflow-hidden editor-${handler?.id} ${showSplit ? 'border-r border-brd' : ''}`}
+          style={showSplit ? { flexGrow: editorFlex, flexBasis: 0 } : undefined}
         >
-          <handler.Editor
-            key={`${activeTab.id}-${externalContentVersion}`}
-            content={activeTab.content}
-            tabId={activeTab.id}
-            filePath={activeTab.path}
-            onChange={(content) => updateTabContent(activeTab.id, content)}
-            onSave={() => markTabDirty(activeTab.id, false)}
-          />
+          {(() => {
+            const InlineEditor = (inlineMode ?? inlineEditorInSplit)!.component!;
+            return (
+              <InlineEditor
+                key={`${activeTab.id}-${externalContentVersion}`}
+                content={activeTab.content}
+                tabId={activeTab.id}
+                filePath={activeTab.path}
+                onChange={(content: string) => updateTabContent(activeTab.id, content)}
+                onSave={() => markTabDirty(activeTab.id, false)}
+              />
+            );
+          })()}
         </div>
       )}
 
       {/* Split resizer — sits between editor pane and preview pane.
           ponytail: visible 2px bar via w-[2px] inside a w-[6px] hit area
-          with -mx-[2px] so it overlaps neighbors without shifting layout.
-          z-10 needed because the preview pane (next sibling) has
-          position:relative and would otherwise paint over the resizer's
-          right 2px overlap, making the hit area asymmetric (4px left, 0px
-          right of the visible bar). */}
+          with -mx-[2px] so it overlaps neighbors without shifting layout. */}
       {showSplitResizer && (
         <div
           className="shrink-0 cursor-col-resize -mx-[2px] group relative z-10"
@@ -258,25 +288,26 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
 
       {/* Render only the active web tab - webviews are cached at module level */}
       {activeTab && activeTab.fileType === 'web' && (() => {
-        const webHandler = getHandlerById(activeTab.fileType);
-        return webHandler?.Editor ? (
+        const webMode = getMode(getHandlerById('web'), 'edit');
+        const WebComp = webMode?.kind === 'component' ? webMode.component : undefined;
+        return WebComp ? (
           <div className="flex-1 flex flex-col overflow-hidden editor-web">
-            <webHandler.Editor
+            <WebComp
               content={activeTab.content}
               tabId={activeTab.id}
               filePath={activeTab.path}
-              onChange={(content) => updateTabContent(activeTab.id, content)}
+              onChange={(content: string) => updateTabContent(activeTab.id, content)}
               onSave={() => markTabDirty(activeTab.id, false)}
             />
           </div>
         ) : null;
       })()}
 
-      {/* Preview pane */}
-      {showPreview && activeTab && handler?.Preview && (
+      {/* Preview pane — the preview-mode component (cursor-sync wrapper). */}
+      {showPreview && activeTab && previewMode?.component && (
         <PreviewPane
           activeTab={activeTab}
-          Preview={handler.Preview}
+          Preview={PreviewComp!}
           vaultRoot={vaultRoot}
           viewMode={viewMode}
           previewFlex={previewFlex}

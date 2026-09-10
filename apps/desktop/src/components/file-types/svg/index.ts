@@ -1,16 +1,18 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { SvgPreview } from './SvgPreview';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'svg',
   extensions: ['svg'],
   icon: getFileTypeIcon('svg'),
-  supportedViewModes: ['edit', 'preview', 'split'],
-  defaultViewMode: 'split',
   needsFileContent: true,
-  useCodeMirror: true,
-  Preview: SvgPreview,
+  defaultMode: 'split',
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },
+    { id: 'preview', kind: 'component', component: SvgPreview },
+    { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+  ],
 };
 
 export default handler;

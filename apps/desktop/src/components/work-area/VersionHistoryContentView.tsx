@@ -3,7 +3,9 @@ import { useEditorStore, type FileTab } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { getHandlerById } from '@/components/file-types/registry';
+import { getHandlerById, getMode } from '@/components/file-types/registry';
+import type { ComponentType } from 'react';
+import type { PreviewProps } from '@/components/file-types/types';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
 
@@ -75,15 +77,15 @@ export function VersionHistoryContentView() {
     isDirty: false,
   };
 
-  const showCodeMirror = handler.useCodeMirror && (viewMode === 'edit' || viewMode === 'split' || !handler.Preview);
-  const showCustomEditor = handler.Editor && !handler.useCodeMirror && !(viewMode === 'preview' && handler.Preview);
-  const isPreviewOnly = handler.Preview && !handler.useCodeMirror && !handler.Editor;
-  const showPreview = handler.Preview && (isPreviewOnly || viewMode === 'preview' || viewMode === 'split');
-  // ponytail: split flex — 50/50. No drag-resizer (the live editor's resizer
-  // owns mutable drag state; replicating it for a transient snapshot view is
-  // more abstraction than the feature is worth).
+  const activeMode = handler ? getMode(handler, viewMode) : undefined;
+  const showCodeMirror = (activeMode?.kind === 'shell-editor') || (viewMode === 'split' && getMode(handler, 'edit')?.kind === 'shell-editor');
+  const splitMode = viewMode === 'split' ? getMode(handler, 'preview') : undefined;
+  const inlineMode = activeMode?.kind === 'component' && (activeMode.via ?? (activeMode.id === 'preview' ? 'preview-pane' : 'inline')) === 'inline' && activeTab.fileType !== 'web' ? activeMode : undefined;
+  const previewMode = viewMode === 'split' ? splitMode : (activeMode?.kind === 'component' && (activeMode.via ?? (activeMode.id === 'preview' ? 'preview-pane' : 'inline')) === 'preview-pane' ? activeMode : undefined);
+  const showPreview = !!previewMode && !!previewMode?.component;
+  const inSplit = viewMode === 'split';
   const splitStyle = { flexGrow: 1, flexBasis: 0 } as const;
-  const inSplit = !!handler.Preview && viewMode === 'split' && (handler.useCodeMirror || !!handler.Editor);
+  const PreviewComp = previewMode?.component as unknown as ComponentType<PreviewProps> | undefined;
 
   return (
     <>
@@ -105,26 +107,31 @@ export function VersionHistoryContentView() {
         />
       )}
 
-      {showCustomEditor && handler.Editor && activeTab.fileType !== 'web' && (
+      {inlineMode?.component && activeTab.fileType !== 'web' && (
         <div
-          className={`flex-1 flex flex-col overflow-hidden editor-${handler.id} ${inSplit ? 'border-r border-brd' : ''}`}
+          className={`flex-1 flex flex-col overflow-hidden editor-${handler?.id} ${inSplit ? 'border-r border-brd' : ''}`}
           style={inSplit ? splitStyle : undefined}
         >
-          <handler.Editor
-            key={snapshotTab.id}
-            content={snapshotTab.content}
-            tabId={snapshotTab.id}
-            filePath={snapshotTab.path}
-            onChange={noop}
-            onSave={noop}
-          />
+          {(() => {
+            const InlineEditor = inlineMode.component!;
+            return (
+              <InlineEditor
+                key={snapshotTab.id}
+                content={snapshotTab.content}
+                tabId={snapshotTab.id}
+                filePath={snapshotTab.path}
+                onChange={noop}
+                onSave={noop}
+              />
+            );
+          })()}
         </div>
       )}
 
-      {showPreview && handler.Preview && (
+      {showPreview && PreviewComp && (
         <PreviewPane
           activeTab={snapshotTab}
-          Preview={handler.Preview}
+          Preview={PreviewComp}
           vaultRoot={vaultRoot}
           viewMode={viewMode}
           previewFlex={1}

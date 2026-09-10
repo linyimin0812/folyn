@@ -1,7 +1,7 @@
 /**
- * Trusted-tier PluginLoader.
+ * Trusted-tier ExtensionLoader.
  *
- * Implements the `PluginLoader` interface for `tier: 'trusted'` plugins. On
+ * Implements the `ExtensionLoader` interface for `tier: 'trusted'` plugins. On
  * `load()`, verifies the TOFU trust gate (user-pinned + integrity), fetches
  * the plugin's `manifest.main` ESM bundle, wraps it in a blob URL, and
  * `import()`-s it into the host realm. The module's named exports are then
@@ -39,9 +39,10 @@
 
 import type {
   Disposable,
-  Plugin,
-  PluginContext,
-  PluginLoader,
+  Extension,
+  ExtensionApi,
+  ExtensionContext,
+  ExtensionLoader,
   PluginManifest,
 } from '@folyn/plugin-host';
 import { disposable } from '@folyn/plugin-host';
@@ -60,14 +61,11 @@ import { registerPluginExportEnhancers } from './exportEnhancerAdapter';
 import { registerPluginMarkdownCodeRenderers } from './markdownCodeRendererAdapter';
 import { registerPluginEditorLanguages } from './editorLanguageAdapter';
 import { registerPluginHighlightGrammars } from './highlightGrammarAdapter';
-import { buildPluginAi } from './aiCapability';
-import { buildPluginEnv, disposePluginEnv } from './envCapability';
-import { buildPluginHttp } from './httpCapability';
 
-export const trustedLoader: PluginLoader = {
+export const trustedLoader: ExtensionLoader = {
   tier: 'trusted',
 
-  async load(manifest: PluginManifest): Promise<Plugin> {
+  async load(manifest: PluginManifest): Promise<Extension> {
     // ── TOFU gate ──
     // The gate is enforced here (not just in Rust) so a tampered file is
     // refused before `import()` even runs. `get_plugin_record` returns the
@@ -110,10 +108,9 @@ export const trustedLoader: PluginLoader = {
     });
 
     return {
-      manifest,
-      activate: async (ctx: PluginContext) => {
+      activate: async (api: ExtensionApi, ctx: ExtensionContext) => {
         // Wire contribution adapters. Each returns a Disposable; push them
-        // all into the context so PluginHost reaps them on deactivate.
+        // all into the context so ExtensionHost reaps them on deactivate.
         // `registerPluginContainers` is async (resolves `.svg` file-path icons
         // via read_plugin_file before registering); the other adapters are sync.
         const containerDisp = await registerPluginContainers(manifest, module);
@@ -141,24 +138,15 @@ export const trustedLoader: PluginLoader = {
           }),
         );
 
-        // Call the plugin's own activate hook if present.
-        if (typeof module.activate === 'function') {
-          const ai = buildPluginAi(manifest);
-          const env = buildPluginEnv();
-          const http = buildPluginHttp(manifest);
-          // Tear down env's host-side store subscriptions after the plugin
-          // deactivates. Pushed as a disposable so PluginHost reaps it.
-          ctx.addDisposable({ dispose: () => disposePluginEnv(env) });
-          return module.activate({ ...ctx, ai, env, http });
-        }
+        // Call the plugin's own activate hook if present, forwarding the
+        // capability api + context unchanged.
+        return module.activate?.(api, ctx);
       },
-      deactivate: (ctx: PluginContext) => {
+      deactivate: (ctx: ExtensionContext) => {
         // Call the plugin's own deactivate hook first (while contributions
         // are still registered, so it can do cleanup that references them).
-        if (typeof module.deactivate === 'function') {
-          return module.deactivate(ctx);
-        }
-        // Contribution disposables + blob-URL revoke are reaped by PluginHost
+        return module.deactivate?.(ctx);
+        // Contribution disposables + blob-URL revoke are reaped by ExtensionHost
         // immediately after this call returns.
       },
     };

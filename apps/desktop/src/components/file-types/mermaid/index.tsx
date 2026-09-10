@@ -1,16 +1,18 @@
-import type { FileTypeHandler } from '../types';
+import type { FileTypeProvider } from '../types';
 import { getFileTypeIcon } from '@/components/icons/FileIcon';
 import { MermaidPreview } from './MermaidPreview';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'mermaid',
   extensions: ['mermaid', 'mmd'],
   icon: getFileTypeIcon('mermaid'),
-  supportedViewModes: ['split', 'edit', 'preview'],
-  defaultViewMode: 'split',
   needsFileContent: true,
-  useCodeMirror: true,
-  Preview: MermaidPreview,
+  defaultMode: 'split',
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },
+    { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+    { id: 'preview', kind: 'component', component: MermaidPreview },
+  ],
 };
 
 export default handler;

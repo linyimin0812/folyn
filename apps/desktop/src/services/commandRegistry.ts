@@ -24,6 +24,7 @@ import {
 } from '@/hooks/useExport';
 import { requestNewItem } from './newItemBridge';
 import { requestPlanMyDay } from './planMyDayBridge';
+import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/plugin-host';
 
 export type CommandCategory = 'action' | 'panel-mode' | 'file';
 
@@ -47,37 +48,27 @@ export interface Command {
   run: () => void | Promise<void>;
 }
 
-const registry = new Map<string, Command>();
+const registry = new OwnedRegistry<Command>((c) => c.id);
 
-/** Minimal disposable returned by command registration for plugin cleanup. */
-export interface CommandDisposable {
-  dispose(): void;
+/** Disposable returned by {@link registerCommand}. Alias of the SDK `Disposable`. */
+export type CommandDisposable = { dispose(): Promise<void> | void };
+
+/** Register a command owned by `ownerExtensionId` (use {@link FOLYN_CORE_OWNER}
+ * for Folyn's own commands). A later registration with the same id replaces
+ * the prior one. Returns a disposable that removes the command only if it is
+ * still the same instance (plugin-uninstall safe path). */
+export function registerCommand(cmd: Command, ownerExtensionId: string = FOLYN_CORE_OWNER): CommandDisposable {
+  return registry.register(cmd, ownerExtensionId);
 }
 
-/**
- * Register a command. A later registration with the same id replaces the prior
- * one (allows re-seeding during HMR / tests). Returns a disposable that removes
- * the command only if it is still the same instance (avoids clobbering a
- * re-registered command on late dispose — the plugin-uninstall safe path).
- */
-export function registerCommand(cmd: Command): CommandDisposable {
-  registry.set(cmd.id, cmd);
-  return {
-    dispose: () => {
-      const existing = registry.get(cmd.id);
-      if (existing === cmd) registry.delete(cmd.id);
-    },
-  };
-}
-
-/** Register many commands at once. */
-export function registerCommands(commands: Command[]): void {
-  for (const cmd of commands) registerCommand(cmd);
+/** Register many commands at once for the given owner. */
+export function registerCommands(commands: Command[], ownerExtensionId: string = FOLYN_CORE_OWNER): void {
+  for (const cmd of commands) registerCommand(cmd, ownerExtensionId);
 }
 
 /** Read all currently-registered commands (insertion order). */
 export function getCommands(): Command[] {
-  return Array.from(registry.values());
+  return registry.list();
 }
 
 /** Look up a single command by id. */
@@ -87,7 +78,12 @@ export function getCommand(id: string): Command | undefined {
 
 /** Remove a command by id. Returns true if a command was removed. */
 export function unregisterCommand(id: string): boolean {
-  return registry.delete(id);
+  return registry.remove(id);
+}
+
+/** Remove every command contributed by `ownerExtensionId` (reload/deactivate). */
+export function removeCommandsByOwner(ownerExtensionId: string): void {
+  registry.removeByOwner(ownerExtensionId);
 }
 
 /** Remove all registered commands (test helper). */

@@ -113,7 +113,7 @@ export function registerPluginFileTemplates(manifest: PluginManifest): Disposabl
         await writeTextFile(target, tpl.template);
         await useVaultStore.getState().refreshFileTree();
       },
-    });
+    }, manifest.id);
     disposables.push(d);
   }
 

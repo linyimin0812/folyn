@@ -46,7 +46,7 @@ export function registerPluginTools(manifest: PluginManifest): Disposable {
       run: () => {
         void useToolWindowStore.getState().open(manifest.id, tool);
       },
-    });
+    }, manifest.id);
     disposables.push(d);
   }
 

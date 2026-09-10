@@ -7,10 +7,12 @@ import { useAiStore } from '@/store/aiStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import injectAllIcon from '@/assets/icons/inject_all.svg';
-import { getAllHandlers } from '@/components/file-types/registry';
+import { getAllHandlers, getSupportedModes, listProviders } from "@/components/file-types/registry";
 import { FileIcon } from '@/components/icons/FileIcon';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { runIngest } from '@/services/wikiIngestService';
+import { useFileTypePreferenceStore } from '@/store/fileTypePreferenceStore';
+import { openFile } from '@/services/editorIoService';
 
 export interface ContextMenuData {
   x: number;
@@ -96,7 +98,7 @@ export function ContextMenu({
   const { t } = useTranslation();
   const creatableTypes = useMemo(() => {
     const handlers = getAllHandlers();
-    return handlers.filter((h) => h.supportedViewModes.includes('edit') && h.extensions.length > 0);
+    return handlers.filter((h) => getSupportedModes(h).includes("edit") && h.extensions.length > 0);
   }, []);
   const creatableById = useMemo(
     () => new Map(creatableTypes.map((handler) => [handler.id, handler])),
@@ -273,6 +275,32 @@ export function ContextMenu({
                 <span className="font-bold text-[11px] tracking-[-0.5px] leading-none">AI</span>
                 {t('sidebar:contextMenu.addToChat')}
               </button>
+              {/* Open With (§53) — list providers claiming this extension; >1 surfaces it. */}
+              {(() => {
+                const ext = menu.path.split('.').pop()?.toLowerCase() ?? '';
+                const providers = listProviders(ext);
+                if (providers.length <= 1) return null;
+                const preferred = useFileTypePreferenceStore.getState().getPreferredProvider(ext);
+                return (
+                  <>
+                    <div className="h-px mx-2 my-1 bg-brd" />
+                    {providers.map((p) => (
+                      <button
+                        key={p.id}
+                        className={`flex items-center gap-1.5 w-full py-1.5 px-3.5 text-xs text-left cursor-pointer bg-transparent border-none hover:bg-hov ${preferred === p.id ? 'text-acc' : 'text-t1'}`}
+                        onClick={() => {
+                          useFileTypePreferenceStore.getState().setPreference(ext, p.id);
+                          void openFile(menu.path, menu.name);
+                          onClose();
+                        }}
+                      >
+                        <ThemeIcon name="openFile" size={14} />
+                        {p.id}{preferred === p.id ? ` · ${t('sidebar:contextMenu.default')}` : ''}
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
             </>
           )}
           <div className="h-px mx-2 my-1 bg-brd" />

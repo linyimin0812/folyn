@@ -721,3 +721,104 @@ describe('RpcBridge / env-event push', () => {
     bridge.dispose();
   });
 });
+
+// ── vault:read-binary (sandbox File Viewer capability, doc §29) ─────────────
+
+describe('RpcBridge / vault:read-binary gating', () => {
+  // Hoisted store mocks — the bridge imports these lazily inside the handler.
+  const { editorGetMock, vaultGetMock } = vi.hoisted(() => ({
+    editorGetMock: vi.fn(),
+    vaultGetMock: vi.fn(),
+  }));
+  vi.mock('@/store/editorStore', () => ({ useEditorStore: { getState: editorGetMock } }));
+  vi.mock('@/store/vaultStore', () => ({ useVaultStore: { getState: vaultGetMock } }));
+
+  beforeEach(() => {
+    editorGetMock.mockReset();
+    vaultGetMock.mockReset();
+    fsInternals.reset();
+  });
+
+  it('returns the active document bytes when vault.readBinary is granted', async () => {
+    const manifest = sandboxManifest({
+      permissions: { vault: { readBinary: true } },
+    });
+    editorGetMock.mockReturnValue({
+      tabs: [{ id: 't1', path: 'docs/report.docx' }], activeTabId: 't1',
+    });
+    vaultGetMock.mockReturnValue({ currentVault: { basePath: '/mock/vault' } });
+
+    // Seed the mock fs with bytes at the resolved vault path.
+    const { writeFile } = await import('@tauri-apps/plugin-fs');
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    await writeFile('/mock/vault/docs/report.docx', bytes);
+
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'rb1', method: 'vault:read-binary', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    expect(sent).toHaveLength(1);
+    const resp = sent[0] as { type: string; id: string; result?: Uint8Array; error?: string };
+    expect(resp.type).toBe('response');
+    expect(resp.id).toBe('rb1');
+    expect(resp.error).toBeUndefined();
+    expect(resp.result instanceof Uint8Array).toBe(true);
+    expect(Array.from(resp.result as Uint8Array)).toEqual([1, 2, 3, 4]);
+
+    bridge.dispose();
+  });
+
+  it('denies when vault.readBinary is not granted', async () => {
+    const manifest = sandboxManifest(); // no readBinary
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'rb2', method: 'vault:read-binary', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { type: string; error?: string };
+    expect(resp.error).toMatch(/readBinary not granted/);
+    bridge.dispose();
+  });
+
+  it('throws when no active document path', async () => {
+    const manifest = sandboxManifest({
+      permissions: { vault: { readBinary: true } },
+    });
+    editorGetMock.mockReturnValue({ tabs: [], activeTabId: null });
+    vaultGetMock.mockReturnValue({ currentVault: { basePath: '/mock/vault' } });
+
+    const { target, sent } = fakeTarget();
+    const bridge = new RpcBridge({
+      pluginId: manifest.id,
+      manifest,
+      targetWindow: () => target,
+    });
+
+    await bridge.handleMessage(
+      { type: 'request', id: 'rb3', method: 'vault:read-binary', params: {} },
+      target,
+    );
+    await Promise.resolve();
+
+    const resp = sent[0] as { type: string; error?: string };
+    expect(resp.error).toMatch(/no active document path/);
+    bridge.dispose();
+  });
+});

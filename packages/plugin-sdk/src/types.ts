@@ -20,50 +20,6 @@ import type { Disposable } from './Disposable';
 /** Execution tier — determines loader, isolation, and capability surface. */
 export type PluginTier = 'sandbox' | 'trusted';
 
-/**
- * Runtime plugin object produced by a {@link PluginLoader}. `activate`/
- * `deactivate` are optional; the host guards with optional chaining so a
- * plugin that needs no explicit lifecycle still loads.
- */
-export interface Plugin {
-  readonly manifest: PluginManifest;
-  activate?(ctx: PluginContext): Promise<void> | void;
-  deactivate?(ctx: PluginContext): Promise<void> | void;
-}
-
-/** Host-provided context passed to `activate`/`deactivate`. */
-export interface PluginContext {
-  readonly pluginId: string;
-  readonly manifest: PluginManifest;
-  /** Register a disposable for automatic cleanup. Idempotent. */
-  addDisposable(d: Disposable): void;
-  /**
-   * Host-mediated AI capability. Present when the host wires it (trusted
-   * tier in PR2; sandbox via rpcBridge in PR3). Plugins must declare
-   * `permissions.ai` in manifest; calls throw otherwise. `undefined` on
-   * tiers that do not provide AI access.
-   */
-  readonly ai?: PluginAiCapability;
-  /**
-   * Host environment: resolved theme + current locale. Present on the trusted
-   * tier (wired by `trustedLoader`); sandbox tier reaches the same data via
-   * the `env:get` RPC method + `env-event` push messages. `undefined` only on
-   * tiers that do not expose env.
-   */
-  readonly env?: PluginEnv;
-  /**
-   * Host-mediated HTTP fetch. Routes through the Rust `plugin_http_fetch`
-   * command (reqwest, outside the webview's CSP) so plugins can reach
-   * remote origins without main-window CSP edits. Manifest must declare
-   * `permissions.http.origins`; calls throw `origin not allowed` otherwise.
-   * `undefined` on tiers that do not expose HTTP (sandbox reaches the same
-   * path via the `http:fetch` RPC method).
-   */
-  readonly http?: PluginHttpCapability;
-  // Capability RPC + UI contribution adapters are layered on in PR2 (sandbox)
-  // and PR3 (trusted); kept out of PR1 so the kernel is testable in isolation.
-}
-
 /** Response shape returned by {@link PluginHttpCapability.fetch}. Mirrors the
  * rpcBridge `http:fetch` + Rust `plugin_http_fetch` body: a single string
  * `body` (no streaming, no binary). Add a `fetchBlob` variant when a plugin
@@ -94,30 +50,6 @@ export interface PluginHttpCapability {
   fetch(url: string, init?: PluginHttpInit): Promise<PluginHttpResponse>;
 }
 
-
-/**
- * Strategy that resolves an installed manifest into a runtime {@link Plugin}.
- * One loader per {@link PluginTier}. PR1 tests inject a fake; PR2/PR3 provide
- * the real sandbox-iframe and trusted-`import()` loaders.
- */
-export interface PluginLoader {
-  readonly tier: PluginTier;
-  load(manifest: PluginManifest): Promise<Plugin>;
-}
-
-export type PluginState = 'installed' | 'active' | 'inactive' | 'failed';
-
-/** Internal record held by {@link PluginHost}. */
-export interface PluginRecord {
-  manifest: PluginManifest;
-  state: PluginState;
-  /** Resolved lazily on first activation; cleared on deactivate. */
-  plugin?: Plugin;
-  /** Disposables registered during the current activation. */
-  disposables: Disposable[];
-  /** Last error if `state === 'failed'`, for diagnostics UI. */
-  error?: unknown;
-}
 
 // ── Manifest ───────────────────────────────────────────────────────────────
 
@@ -159,7 +91,7 @@ export interface PluginPermissions {
   clipboard?: boolean;
   dialog?: boolean;
   window?: boolean;
-  vault?: { readActive?: boolean; insertContent?: boolean };
+  vault?: { readActive?: boolean; insertContent?: boolean; readBinary?: boolean };
   /**
    * AI capability grant. Host mediates all AI access (chat_stream + feature
    * agents) through this declaration; undeclared `ai.*` calls throw.

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useEditorStore, type ViewMode } from '@/store/editorStore';
-import { getHandlerById } from '@/components/file-types/registry';
+import { getHandlerById, getSupportedModes } from "@/components/file-types/registry";
+import { toolbarResolver, resolvedFileType } from '@/services/toolbarResolver';
+import type { ToolbarContext } from 'folyn-plugin-sdk';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
@@ -51,10 +53,6 @@ const VIEW_MODE_ICONS: Record<ViewMode, React.ReactNode> = {
   ),
 };
 
-const VIEW_MODES: ViewMode[] = ['split', 'edit', 'preview'];
-
-const HTML_MODES: ViewMode[] = ['preview', 'source', 'visual'];
-
 interface TopbarProps {
   isMobile?: boolean;
   onToggleSidebar?: () => void;
@@ -92,28 +90,27 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const isVersionableActive = isVersionableTab(activeTab);
   const toggleVersionHistory = useEditorViewStateStore((state) => state.toggleVersionHistory);
   const versionHistoryVisible = useEditorViewStateStore((state) => state.versionHistoryVisible);
-  // ponytail: show the view-mode segment when the active file-type's handler
-  // declares more than one supported mode. Previously a hardcoded Set of
-  // built-in ids — that forced every plugin file-type to edit host source to
-  // surface its switcher. The handler already declares supportedViewModes, so
-  // derive from it.
-  const showViewMode = activeTab
-    ? (getHandlerById(activeTab.fileType)?.supportedViewModes.length ?? 0) > 1
-    : false;
-  // ponytail: filter the standard mode order to what the handler actually
-  // supports, so a plugin (or built-in) declaring a subset like
-  // ['edit','preview'] doesn't surface an unsupported 'split' button.
-  const supportedModes = activeTab ? getHandlerById(activeTab.fileType)?.supportedViewModes : undefined;
-  const modes = (supportedModes && supportedModes.length > 0
-    ? supportedModes
-    : activeTab?.fileType === 'html'
-      ? HTML_MODES
-      : VIEW_MODES
-  ) as ViewMode[];
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
-  const showTerminalAction = currentPage === 'editor';
   const terminalOpen = terminalPanelVisible || terminalInRightDock;
+
+  // ── Context-driven toolbar (doc §16–§17) ────────────────────────────────
+  // Resolve the whole toolbar state from a ToolbarContext — no per-file-type
+  // if/else. Modes come straight from the active provider's `modes`.
+  const provider = activeTab ? getHandlerById(activeTab.fileType) : undefined;
+  const providerModes = getSupportedModes(provider);
+  const toolbarCtx: ToolbarContext = {
+    activeFile: activeTab ? { path: activeTab.path, fileType: activeTab.fileType } : null,
+    fileType: resolvedFileType(provider?.id, providerModes),
+    activeMode: viewMode,
+    activeWorkspace: null,
+    selection: null,
+    currentPage,
+  };
+  const toolbarState = toolbarResolver.resolve(toolbarCtx);
+  const showViewMode = toolbarState.modes.length > 1;
+  const modes = toolbarState.modes as ViewMode[];
+  const showTerminalAction = toolbarState.showTerminal;
 
   return (
     <header
@@ -204,7 +201,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
         }} title={currentPage === 'schedule' ? t('topbar:ai.planToday') : t('topbar:ai.panel')}>
           AI
         </button>
-        <ExportMenu />
+        {toolbarState.showExport && <ExportMenu />}
         {isVersionableActive && (
           <button
             className={`tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm transition-all duration-150 hover:bg-hov hover:text-t1 ${
@@ -242,7 +239,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
             }}
           />
         )}
-        <LanguageSwitcher />
+        {toolbarState.showLanguage && <LanguageSwitcher />}
         <button className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 hover:bg-hov hover:text-t1" onClick={toggleTheme} title={t('topbar:theme.toggle')}>
           {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
         </button>

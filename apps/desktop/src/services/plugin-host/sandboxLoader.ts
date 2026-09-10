@@ -1,11 +1,11 @@
 /**
- * Sandbox-tier PluginLoader.
+ * Sandbox-tier ExtensionLoader.
  *
- * Implements the `PluginLoader` interface for `tier: 'sandbox'` plugins. On
+ * Implements the `ExtensionLoader` interface for `tier: 'sandbox'` plugins. On
  * `load()`, creates a hidden `<iframe sandbox="allow-scripts">` (NO
  * `allow-same-origin`) loading from `folyn-plugin://localhost/<id>/<html>`,
- * wires a {@link RpcBridge} for host-mediated capability calls, and returns a
- * `Plugin` object whose `activate`/`deactivate` send lifecycle messages and
+ * wires a {@link RpcBridge} for host-mediated capability calls, and returns an
+ * `Extension` whose `activate`/`deactivate` send lifecycle messages and
  * register contributed commands.
  *
  * Hard constraints (see research/tauri-runtime-loading.md):
@@ -17,16 +17,22 @@
  *   - Plugins get NO raw Tauri capabilities (no `add_capability`).
  */
 
-import type { Plugin, PluginContext, PluginLoader, PluginManifest } from '@folyn/plugin-host';
+import type {
+  Extension,
+  ExtensionApi,
+  ExtensionContext,
+  ExtensionLoader,
+  PluginManifest,
+} from '@folyn/plugin-host';
 import { disposable } from '@folyn/plugin-host';
 import { RpcBridge } from './rpcBridge';
 import { registerPluginCommands } from './commandAdapter';
 import { registerPluginTools } from './toolAdapter';
 
-export const sandboxLoader: PluginLoader = {
+export const sandboxLoader: ExtensionLoader = {
   tier: 'sandbox',
 
-  async load(manifest: PluginManifest): Promise<Plugin> {
+  async load(manifest: PluginManifest): Promise<Extension> {
     const iframe = createPluginIframe(manifest);
     const bridge = new RpcBridge({
       pluginId: manifest.id,
@@ -35,11 +41,10 @@ export const sandboxLoader: PluginLoader = {
     });
 
     return {
-      manifest,
-      activate: (ctx: PluginContext) => {
+      activate: (_api: ExtensionApi, ctx: ExtensionContext) => {
         // Register contributed commands — their `run` dispatches invoke
         // messages to the iframe via the bridge. Push the disposable so
-        // PluginHost reaps it on deactivate.
+        // ExtensionHost reaps it on deactivate.
         const cmdDisposable = registerPluginCommands(manifest, bridge);
         ctx.addDisposable(cmdDisposable);
 
@@ -51,7 +56,7 @@ export const sandboxLoader: PluginLoader = {
 
         // The iframe-destroy disposable: destroying the iframe is the
         // sandbox-tier "unload" path (ES module cache is evicted with the
-        // realm). Push it so PluginHost reaps it after deactivate().
+        // realm). Push it so ExtensionHost reaps it after deactivate().
         ctx.addDisposable(
           disposable(() => {
             bridge.dispose();
@@ -62,7 +67,7 @@ export const sandboxLoader: PluginLoader = {
         // Signal the plugin to activate (it may set up its UI / state).
         bridge.sendLifecycle('activate');
       },
-      deactivate: () => {
+      deactivate: (_ctx: ExtensionContext) => {
         // Tell the plugin it's being deactivated. The iframe itself is
         // destroyed by the disposable reaped immediately after this call.
         bridge.sendLifecycle('deactivate');
