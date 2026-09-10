@@ -1,0 +1,34 @@
+{
+  "name": "@folyn/extension-file-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Folyn Generic File Viewer extension — office / media / archive / dataset preview (fallback FileType extension)",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@file-viewer/core": "^2.1.30",
+    "@file-viewer/react": "^2.1.17",
+    "@file-viewer/preset-office": "^2.1.30",
+    "@file-viewer/renderer-archive": "^2.1.30",
+    "@file-viewer/renderer-data": "^2.1.30",
+    "@file-viewer/renderer-drawing": "^2.1.30",
+    "@file-viewer/renderer-eda": "^2.1.30",
+    "@file-viewer/renderer-email": "^2.1.30",
+    "@file-viewer/renderer-epub": "^2.1.30",
+    "@file-viewer/renderer-geo": "^2.1.30",
+    "@file-viewer/renderer-image": "^2.1.30",
+    "@file-viewer/renderer-mindmap": "^2.1.30",
+    "@file-viewer/renderer-3d": "^2.1.30"
+  },
+  "devDependencies": {
+    "folyn-plugin-sdk": "workspace:*",
+    "@types/react": "^18.3.12",
+    "esbuild": "^0.23.0",
+    "react": "^18.3.1",
+    "typescript": "^5.7.0"
+  }
+}

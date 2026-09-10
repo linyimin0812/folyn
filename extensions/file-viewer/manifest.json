@@ -1,0 +1,59 @@
+{
+  "id": "folyn.file-viewer",
+  "name": "File Viewer",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "html": "",
+  "icon": "📄",
+  "description": "通用文件查看器（Office / PDF / 归档 / 数据集等），作为兜底 FileType 扩展",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false, "readBinary": true },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "fileTypes": [
+      {
+        "id": "office",
+        "handler": "office",
+        "defaultViewMode": "preview",
+        "supportedViewModes": ["preview"],
+        "extensions": [
+          "pdf", "ofd",
+          "docx", "doc", "dot", "docm", "dotx", "dotm", "rtf", "odt",
+          "xlsx", "xls", "xlsm", "xlsb", "xltx", "xlt", "xltm", "ods", "fods", "numbers",
+          "pptx", "pptm", "potx", "potm", "ppsx", "ppsm", "odp",
+          "zip", "zipx", "7z", "rar", "tar", "gz", "gzip", "tgz",
+          "bz2", "bzip2", "tbz", "tbz2", "xz", "txz", "lzma", "zst",
+          "cab", "ar", "cpio", "iso", "xar", "lha", "lzh",
+          "jar", "war", "ear", "apk", "cbz", "cbr",
+          "eml", "msg", "mbox",
+          "olb", "dra", "gds", "oas", "oasis",
+          "geojson", "kml", "gpx", "shp",
+          "glb", "gltf", "obj", "stl", "ply", "fbx", "dae", "3ds", "3mf", "amf",
+          "usd", "usda", "usdc", "usdz", "kmz", "pcd", "wrl", "vrml",
+          "xyz", "vtk", "vtp", "step", "stp", "iges", "igs", "ifc", "3dm",
+          "xmind",
+          "epub", "umd",
+          "tiff", "tif", "avif", "heic", "heif", "jxl",
+          "ttf", "otf", "woff", "woff2", "psd", "ai", "eps",
+          "sqlite", "wasm", "parquet", "avro", "webarchive"
+        ]
+      }
+    ]
+  },
+  "activation": {
+    "onCommand": "",
+    "onFileType": ["office"],
+    "onLanguage": []
+  },
+  "signature": "",
+  "publisherPublicKey": ""
+}

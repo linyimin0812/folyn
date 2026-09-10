@@ -44,7 +44,7 @@ import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { registerBuiltinCodeContributions } from './services/registerBuiltinCodeContributions';
 import { registerErrorDemoPlugin } from './services/registerErrorDemoPlugin';
 import { registerBuiltinExporters } from './services/export/exporterRegistry';
-import { isTauri } from './utils/platform';
+import { isTauri } from "@/utils/platform";
 import { useLocaleStore } from '@/store/localeStore';
 import { extensionHost } from "@folyn/plugin-host";
 import type { ToolExtensionUIContext } from '@folyn/plugin-host';
