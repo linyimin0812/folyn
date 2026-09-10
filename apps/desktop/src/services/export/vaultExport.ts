@@ -75,7 +75,9 @@ function resolvedTheme(): 'light' | 'dark' {
  * empty after filtering are pruned — a tree of only-empty dirs is noise.
  *
  * `__clips__` clip files (.md under __clips__/) detect as 'clip' (text) and
- * are kept; their handler needsFileContent is true.
+ * are kept; their handler needsFileContent is true. SVG files are filtered
+ * out too — an SVG is rendered markup, not a text doc worth a standalone
+ * export page.
  */
 function filterTextTree(entries: VaultEntry[]): VaultEntry[] {
   const walk = (items: VaultEntry[]): VaultEntry[] => {
@@ -89,8 +91,9 @@ function filterTextTree(entries: VaultEntry[]): VaultEntry[] {
         const ft = detectFileType(e.path);
         const handler = getHandlerById(ft);
         // needsFileContent === false ⇒ binary/preview-only (image, office, …)
-        // → filter out. Unknown/code types default to text (kept).
-        if (!handler || handler.needsFileContent !== false) {
+        // → filter out. Unknown/code types default to text (kept). SVG is
+        // excluded here too (rendered markup, not an exportable text doc).
+        if (ft !== 'svg' && (!handler || handler.needsFileContent !== false)) {
           out.push({ ...e });
         }
       }
@@ -183,12 +186,6 @@ async function fileToBodyFragment(
       html: `<div class="vt-canvas-doc"><div class="vt-canvas-scroll">${svg}</div></div>`,
       css: '',
     };
-  }
-
-  // svg file → embed raw SVG (it's already rendered markup)
-  if (file.fileType === 'svg') {
-    const content = await readVaultText(file.path);
-    return { html: `<div class="vt-canvas-doc vt-svg-doc">${content}</div>`, css: '' };
   }
 
   // html file → isolate in an iframe (srcdoc) so its styles don't leak.
@@ -509,7 +506,8 @@ function countFilteredFiles(tree: VaultEntry[]): number {
       if (e.type === 'file') {
         const ft = detectFileType(e.path);
         const handler = getHandlerById(ft);
-        if (handler && handler.needsFileContent === false) n++;
+        // SVG is filtered out too (rendered markup, not a text doc).
+        if (ft === 'svg' || (handler && handler.needsFileContent === false)) n++;
       } else if (e.children) walk(e.children);
     }
   };
