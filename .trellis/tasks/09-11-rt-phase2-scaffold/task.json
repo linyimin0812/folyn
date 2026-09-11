@@ -3,7 +3,7 @@
   "name": "rt-phase2-scaffold",
   "title": "rich-text extension scaffold",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "api",

@@ -1,1 +1,7 @@
 {"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "FileTypeProvider/PresentationMode 契约 + handler 注册规则"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "trusted-tier 扩展与 host React 共享机制（react-shim 等）"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns + review checklist"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "扩展入口类型签名严谨性"}
+{"file": ".trellis/tasks/09-11-migrate-rich-text-type-to-extension/prd.md", "reason": "父任务 PRD：完整决策上下文 + Phase 划分 + 扩展包目标结构"}
+{"file": ".trellis/tasks/09-11-rt-phase1-sdk/prd.md", "reason": "Phase 1 已合并：VaultApi.toAssetUrl/resolvePath + VaultConfigApi 可用"}

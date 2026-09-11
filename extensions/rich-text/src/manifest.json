@@ -1,0 +1,29 @@
+{
+  "id": "folyn-rich-text",
+  "name": "Rich Text",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false, "readBinary": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "fileTemplates": [
+      {
+        "id": "rich-text-new",
+        "label": "Rich Text",
+        "fileName": "untitled.richtext",
+        "template": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"
+      }
+    ]
+  },
+  "activation": { "onCommand": "", "onFileType": [], "onLanguage": [] }
+}

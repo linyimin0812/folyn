@@ -43,8 +43,12 @@ const fileTypeLabelKeys: Record<string, string> = {
   code: 'sidebar:contextMenu.fileType.code',
 };
 
+// ponytail: 'rich-text' removed from NEW_FILE_GROUPS so the builtin handler
+// surfaces in the dynamic "extras" group (where extension file types live)
+// instead of the curated first row. The label key stays — line 177 resolves
+// the label regardless of which group the handler renders in.
 const NEW_FILE_GROUPS: string[][] = [
-  ['markdown', 'rich-text', 'csv', 'json'],
+  ['markdown', 'csv', 'json'],
   ['svg'],
   ['markmap', 'dbml', 'drawio', 'excalidraw'],
 ];
