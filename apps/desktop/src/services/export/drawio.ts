@@ -26,7 +26,7 @@
  * the raw SVG from the img src for standalone .svg / .png export.
  */
 
-import type { EnhanceCtx } from './dbml';
+import type { EnhanceCtx } from './shared';
 
 export async function enhance(body: HTMLElement, _ctx: EnhanceCtx): Promise<void> {
   const iframe = body.querySelector('iframe');

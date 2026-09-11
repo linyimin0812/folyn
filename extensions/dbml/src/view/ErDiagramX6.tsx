@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Edge, Graph } from '@antv/x6';
-import type { PreviewProps } from '../types';
+import type { PreviewProps } from 'folyn-extension-sdk';
 import { parseDbml, type ErSchema, type ErParseError } from './parseDbml';
 import {
   extractDbmlMeta,

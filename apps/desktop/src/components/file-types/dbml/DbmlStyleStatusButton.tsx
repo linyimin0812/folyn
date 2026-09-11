@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { extractDbmlMeta, type DbmlMeta } from './parseDbml';
+import { extractDbmlMeta, type DbmlMeta } from '../dbmlMeta';
 
 // ponytail: read-only status button at the bottom-right of the CodeMirror
 // editor pane for .dbml tabs. Reads the trailing `<!-- dbml:meta -->` block

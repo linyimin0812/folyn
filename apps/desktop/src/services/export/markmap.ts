@@ -6,7 +6,7 @@
 
 import { readFileByRoute } from '@/services/editorIoService';
 import { resolveVaultPath } from './shared';
-import type { EnhanceCtx } from './dbml';
+import type { EnhanceCtx } from './shared';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
 import { renderMarkmapSvg } from './markmapShared';
 

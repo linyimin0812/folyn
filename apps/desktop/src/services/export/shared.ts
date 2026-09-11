@@ -444,3 +444,11 @@ function showExportNotification(message: string) {
     setTimeout(() => document.body.removeChild(toast), 300);
   }, 2500);
 }
+
+/** Context passed to a file-type export enhancer (render the preview into the
+ * exported document body). Mirrors ExporterContext's shape the enhancers need. */
+export interface EnhanceCtx {
+  src: string;
+  filePath: string;
+  vaultRoot: string;
+}
