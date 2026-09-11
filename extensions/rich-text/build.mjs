@@ -19,6 +19,13 @@ const hostAlias = {
   react: shim,
   'react/jsx-runtime': path.join(root, 'src/react-jsx-runtime-shim.js'),
   'react-i18next': path.join(root, 'src/react-i18next-shim.js'),
+  // ponytail: alias react-dom + react-dom/client to host shims too. @tiptap/react
+  // transitively imports react-dom (createPortal/flushSync); without these
+  // aliases esbuild bundles react-dom into the extension, and that bundled
+  // copy's internal imports of react's ReactCurrentBatchConfig hit the
+  // react-shim's public-only API → `undefined is not an object` crash.
+  'react-dom': path.join(root, 'src/react-dom-shim.js'),
+  'react-dom/client': path.join(root, 'src/react-dom-client-shim.js'),
 };
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
