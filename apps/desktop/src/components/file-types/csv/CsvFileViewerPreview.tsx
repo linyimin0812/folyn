@@ -14,7 +14,8 @@ export type Selection =
   | { kind: 'none' }
   | { kind: 'cell'; row: number; col: number }
   | { kind: 'row'; row: number }
-  | { kind: 'all' };
+  | { kind: 'all' }
+  | { kind: 'range'; startRow: number; startCol: number; endRow: number; endCol: number };
 
 export function computeIndexColumnWidth(totalRows: number): number {
   const digits = Math.max(1, String(totalRows || 1).length);
@@ -32,6 +33,11 @@ export function serializeRangeAsTSV(rows: string[][], selection: Selection): str
     minCol = maxCol = selection.col;
   } else if (selection.kind === 'row') {
     minRow = maxRow = selection.row;
+  } else if (selection.kind === 'range') {
+    minRow = Math.min(selection.startRow, selection.endRow);
+    maxRow = Math.max(selection.startRow, selection.endRow);
+    minCol = Math.min(selection.startCol, selection.endCol);
+    maxCol = Math.max(selection.startCol, selection.endCol);
   }
   const out: string[] = [];
   for (let r = minRow; r <= maxRow; r++) {
@@ -99,6 +105,9 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
   const indexWidth = computeIndexColumnWidth(rowCount);
 
   const [selection, setSelection] = useState<Selection>({ kind: 'none' });
+  // ponytail: anchor tracks the last single-cell mousedown WITHOUT shift, so
+  // shift+click extends a rectangular range from anchor to clicked cell.
+  const anchorRef = useRef<{ row: number; col: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -242,13 +251,33 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
                     const v = row[c] ?? '';
                     const isCellSelected =
                       isRowSelected ||
-                      (selection.kind === 'cell' && selection.row === r && selection.col === c);
+                      (selection.kind === 'cell' && selection.row === r && selection.col === c) ||
+                      (selection.kind === 'range' &&
+                        r >= Math.min(selection.startRow, selection.endRow) &&
+                        r <= Math.max(selection.startRow, selection.endRow) &&
+                        c >= Math.min(selection.startCol, selection.endCol) &&
+                        c <= Math.max(selection.startCol, selection.endCol));
                     return (
                       <div
                         key={c}
                         className={`flex items-center px-1 border-r border-brd/50 last:border-r-0 overflow-hidden text-ellipsis whitespace-nowrap cursor-cell ${isCellSelected ? 'bg-accdim/60 text-acc' : ''}`}
                         style={{ height: ROW_HEIGHT }}
-                        onMouseDown={(e) => { e.preventDefault(); setSelection({ kind: 'cell', row: r, col: c }); }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          if (e.shiftKey && anchorRef.current) {
+                            const a = anchorRef.current;
+                            setSelection({
+                              kind: 'range',
+                              startRow: a.row,
+                              startCol: a.col,
+                              endRow: r,
+                              endCol: c,
+                            });
+                          } else {
+                            anchorRef.current = { row: r, col: c };
+                            setSelection({ kind: 'cell', row: r, col: c });
+                          }
+                        }}
                         title={v}
                       >
                         {v}
@@ -263,7 +292,15 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
       </div>
       <div className="flex items-center justify-between px-2 py-[3px] border-t border-brd text-[11px] text-t2 shrink-0">
         <span>共 {rowCount} 行，{colCount} 列</span>
-        <span className="text-t3">{selection.kind === 'none' ? '' : selection.kind === 'all' ? '已全选' : '已选中'}</span>
+        <span className="text-t3">
+          {selection.kind === 'none'
+            ? ''
+            : selection.kind === 'all'
+              ? '已全选'
+              : selection.kind === 'range'
+                ? `已选中 ${Math.abs(selection.endRow - selection.startRow) + 1}×${Math.abs(selection.endCol - selection.startCol) + 1}`
+                : '已选中'}
+        </span>
       </div>
       <style>{`.csv-scroll::-webkit-scrollbar { width: 0; height: 0; }`}</style>
     </div>

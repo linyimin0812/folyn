@@ -75,6 +75,38 @@ describe('serializeRangeAsTSV', () => {
     const ragged = [['a'], ['b', 'c']];
     expect(serializeRangeAsTSV(ragged, { kind: 'all' })).toBe('a\t\nb\tc');
   });
+  it('serializes a rectangular range (2x2 sub-rectangle of a 3x3 grid)', () => {
+    const grid = [
+      ['a', 'b', 'c'],
+      ['d', 'e', 'f'],
+      ['g', 'h', 'i'],
+    ];
+    expect(
+      serializeRangeAsTSV(grid, {
+        kind: 'range',
+        startRow: 0,
+        startCol: 1,
+        endRow: 1,
+        endCol: 2,
+      } as Selection),
+    ).toBe('b\tc\ne\tf');
+  });
+  it('normalizes a reversed range (endRow < startRow) to the same TSV', () => {
+    const grid = [
+      ['a', 'b', 'c'],
+      ['d', 'e', 'f'],
+      ['g', 'h', 'i'],
+    ];
+    expect(
+      serializeRangeAsTSV(grid, {
+        kind: 'range',
+        startRow: 1,
+        startCol: 2,
+        endRow: 0,
+        endCol: 1,
+      } as Selection),
+    ).toBe('b\tc\ne\tf');
+  });
 });
 
 describe('writeClipboardTauriFirst', () => {
@@ -195,5 +227,23 @@ describe('CsvFileViewerPreview', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(setData).toHaveBeenCalledWith('text/plain', 'a\tb\nc\td');
     expect(clipboardManager.writeText).toHaveBeenCalledWith('a\tb\nc\td');
+  });
+  it('extends selection as a rectangular range on shift+click', () => {
+    const { container } = render(
+      <CsvFileViewerPreview content={`a,b,c\nd,e,f\ng,h,i`} filePath="/v/r.csv" vaultRoot="/v" />,
+    );
+    const rows = container.querySelectorAll('.grid.border-b.border-brd\\/50');
+    expect(rows.length).toBe(3);
+    // Data cells in each row: skip the index cell (first child), take the rest.
+    const cell = (rowIdx: number, colIdx: number): HTMLElement =>
+      rows[rowIdx].querySelectorAll('[class*="cursor-cell"]')[colIdx] as HTMLElement;
+    // Plain mousedown on cell (0,0) — sets anchor.
+    fireEvent.mouseDown(cell(0, 0));
+    // Shift+mousedown on cell (1,1) — extends to 2x2 range.
+    fireEvent.mouseDown(cell(1, 1), { shiftKey: true });
+    expect(container.textContent).toContain('已选中 2×2');
+    // The 4 cells in the rectangle (0,0)..(1,1) carry the selected class.
+    const selected = container.querySelectorAll('.bg-accdim\\/60.text-acc');
+    expect(selected.length).toBe(4);
   });
 });
