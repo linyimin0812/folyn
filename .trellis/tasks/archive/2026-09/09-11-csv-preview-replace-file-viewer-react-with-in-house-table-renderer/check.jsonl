@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "Verify the spec was updated: CSV section no longer references @file-viewer/react, pnpm patch convention section reflects removal of @file-viewer__renderer-spreadsheet@2.1.17.patch."}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Test/lint/typecheck/CI standards the rewritten CsvFileViewerPreview.test.tsx must meet — papaparse parsing cases, selection, clipboard serialization, Tauri clipboard mock."}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Verify the status line '共 {rows} 行，{cols} 列' follows the i18n key convention and placement rules."}
