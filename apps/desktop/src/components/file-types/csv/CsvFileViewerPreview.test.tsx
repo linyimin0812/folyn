@@ -123,6 +123,16 @@ describe('CsvFileViewerPreview', () => {
     const wrapper = scrollRoot.firstElementChild as HTMLElement;
     expect(wrapper.style.minWidth).toBe('828px');
   });
+  it('disables rubber-band overscroll on the scroll container', () => {
+    // Regression: flinging past the top/bottom on macOS WKWebView showed a
+    // blank overscroll gap above the sticky header. overscroll-behavior:none
+    // on the scroll container kills the rubber-band.
+    const { container } = render(
+      <CsvFileViewerPreview content={`a,b\n1,2`} filePath="/v/o.csv" vaultRoot="/v" />,
+    );
+    const scrollRoot = container.querySelector('.csv-scroll') as HTMLElement;
+    expect(scrollRoot.style.overscrollBehavior).toBe('none');
+  });
   it('pins the index column with position:sticky left:0 (header + body)', () => {
     const { container } = render(
       <CsvFileViewerPreview content={`a,b\n1,2`} filePath="/v/s.csv" vaultRoot="/v" />,

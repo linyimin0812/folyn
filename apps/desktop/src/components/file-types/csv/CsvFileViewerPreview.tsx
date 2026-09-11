@@ -188,7 +188,10 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto csv-scroll"
-        style={{ scrollbarWidth: 'none' }}
+        // ponytail: overscroll-behavior:none kills the macOS WKWebView
+        // rubber-band gap that flings past the top/bottom boundary (the blank
+        // strip appears above the sticky header while the content is pulled).
+        style={{ scrollbarWidth: 'none', overscrollBehavior: 'none' }}
       >
         <div style={{ height: HEADER_HEIGHT + totalHeight, position: 'relative', minWidth: tableMinWidth }}>
           <div
