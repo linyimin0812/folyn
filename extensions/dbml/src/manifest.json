@@ -8,6 +8,7 @@
   "main": "dist/index.js",
   "html": "dbml-preview.html",
   "icon": "🗄",
+  "id": "folyn-dbml",
   "description": "DBML 数据库建模文件类型：CodeMirror 编辑 + ER 图实时预览（@dbml/core 解析 + @antv/x6 渲染）",
   "permissions": {
     "fs": { "scope": [] },
