@@ -45,6 +45,7 @@ export function DbmlPreview(): React.JSX.Element {
         filePath=""
         vaultRoot=""
         onChange={(next: string) => {
+          console.log('[dbml] iframe posting change (len)', next.length);
           window.parent.postMessage({ type: CHANGE, content: next }, '*');
         }}
       />

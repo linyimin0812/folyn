@@ -42,6 +42,7 @@ export function DbmlFrame({ content, onChange }: PreviewProps): React.JSX.Elemen
       if (d?.type === READY) setReady(true);
       if (d?.type === CHANGE && typeof d.content === 'string') {
         // iframe re-emitted content with an updated meta block (drag layout).
+        console.log('[dbml] host received change (len)', d.content.length);
         onChangeRef.current?.(d.content);
       }
     };
