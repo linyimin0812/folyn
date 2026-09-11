@@ -105,6 +105,12 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
   const indexWidth = computeIndexColumnWidth(rowCount);
 
   const [selection, setSelection] = useState<Selection>({ kind: 'none' });
+  // ponytail: per-column pixel widths; reset to 80px defaults when colCount
+  // changes (different file parsed). Drag the header right border to resize.
+  const [colWidths, setColWidths] = useState<number[]>(() => Array.from({ length: colCount }, () => 80));
+  useEffect(() => {
+    setColWidths(Array.from({ length: colCount }, () => 80));
+  }, [colCount]);
   // ponytail: anchor tracks the last single-cell mousedown WITHOUT shift, so
   // shift+click OR drag-select extends a rectangular range from anchor to the
   // target cell.
@@ -188,14 +194,14 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
     };
   }, []);
 
-  const colTemplate = `var(--idx) repeat(${colCount}, minmax(80px, 1fr))`;
+  const colTemplate = `var(--idx) ${colWidths.map((w) => `${w}px`).join(' ')}`;
   const totalHeight = rowVirtualizer.getTotalSize();
   const virtualRows = rowVirtualizer.getVirtualItems();
   // ponytail: minWidth forces the wrapper to its natural table width so
   // horizontal scroll exposes full-width rows (absolute rows inherit this
   // width via width:100%). Without it the wrapper defaults to viewport
   // width and the scrolled-in area has no grid cells rendered.
-  const tableMinWidth = indexWidth + colCount * 80;
+  const tableMinWidth = indexWidth + colWidths.reduce((a, w) => a + w, 0);
   // ponytail: row 0 is the header (Excel/Numbers "first row as headers").
   // Body virtualizer iterates body indices 0..(rowCount-2) and maps to parsed
   // row r = b + 1. Selection stores PARSED row indices (1..N-1 for body),
@@ -240,6 +246,31 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
     document.addEventListener('mouseup', up);
   }, []);
 
+  // ponytail: column-width resize via header right-border drag. Document-level
+  // mousemove/up installed on mousedown, removed on mouseup. 40px floor
+  // prevents collapse. stopPropagation so the cell's own mousedown/select
+  // doesn't fire.
+  const onColResizeMouseDown = useCallback((e: React.MouseEvent, c: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = colWidths[c] ?? 80;
+    const move = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX;
+      setColWidths((prev) => {
+        const next = [...prev];
+        next[c] = Math.max(40, startW + delta);
+        return next;
+      });
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }, [colWidths]);
+
   return (
     <div
       ref={rootRef}
@@ -270,11 +301,27 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
             {Array.from({ length: colCount }, (_, c) => (
               <div
                 key={c}
-                className="flex items-center justify-center border-r border-brd last:border-r-0 px-1 overflow-hidden text-ellipsis whitespace-nowrap"
+                className="relative flex items-center justify-center border-r border-brd last:border-r-0 px-1 overflow-hidden text-ellipsis whitespace-nowrap"
                 style={{ height: HEADER_HEIGHT }}
                 title={headerRow[c] ?? ''}
               >
                 {headerRow[c] ?? ''}
+                {/* ponytail: 6px drag handle on the right edge of each header
+                cell. right:-3px lets it straddle the cell border so the grab
+                target is centered on the boundary, not just inside the cell. */}
+                <div
+                  data-col-resize={c}
+                  onMouseDown={(e) => onColResizeMouseDown(e, c)}
+                  style={{
+                    position: 'absolute',
+                    right: '-3px',
+                    top: 0,
+                    bottom: 0,
+                    width: '6px',
+                    cursor: 'col-resize',
+                    userSelect: 'none',
+                  }}
+                />
               </div>
             ))}
           </div>

@@ -329,4 +329,31 @@ describe('CsvFileViewerPreview', () => {
     fireEvent.mouseDown(cell(1, 2), { shiftKey: true });
     expect(container.textContent).toContain('已选中 2×3');
   });
+
+  it('initializes colWidths to 80px per column (gridTemplateColumns reflects this)', () => {
+    // 3-col CSV → header grid template = `var(--idx) 80px 80px 80px`.
+    const { container } = render(
+      <CsvFileViewerPreview content={`a,b,c\n1,2,3`} filePath="/v/w.csv" vaultRoot="/v" />,
+    );
+    const headerGrid = container.querySelector('.grid.border-b.border-brd.bg-hov') as HTMLElement;
+    expect(headerGrid).toBeTruthy();
+    expect(headerGrid.style.gridTemplateColumns).toBe('var(--idx) 80px 80px 80px');
+  });
+
+  it('resizes a column on header right-border drag (mousedown → mousemove → mouseup)', () => {
+    const { container } = render(
+      <CsvFileViewerPreview content={`a,b,c\n1,2,3`} filePath="/v/r.csv" vaultRoot="/v" />,
+    );
+    const handles = container.querySelectorAll('[data-col-resize]');
+    expect(handles.length).toBe(3);
+    const handle = handles[0] as HTMLElement;
+    expect(handle.dataset.colResize).toBe('0');
+    // Mousedown on handle for col 0 → installs document mousemove/up.
+    fireEvent.mouseDown(handle, { clientX: 100 });
+    // Move 50px right → col 0 width = 80 + 50 = 130.
+    fireEvent.mouseMove(document, { clientX: 150 });
+    fireEvent.mouseUp(document);
+    const headerGrid = container.querySelector('.grid.border-b.border-brd.bg-hov') as HTMLElement;
+    expect(headerGrid.style.gridTemplateColumns).toBe('var(--idx) 130px 80px 80px');
+  });
 });
