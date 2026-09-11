@@ -601,20 +601,23 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         const local = graph.clientToLocal(e.clientX, e.clientY);
         const np = node.getPosition();
         const ry = local.y - np.y;
+        // Header click → table/enum info popover (always open — shows table
+        // name + fields + indexes, even with no notes).
         const openTable = () => setPopover({ cell: node.id, kind: 'table' });
         if (ry < HEADER_H) {
-          if (data.table && tableHasInfo(data.table)) openTable();
-          else if (data.enum && enumHasInfo(data.enum)) openTable();
+          openTable();
           return;
         }
         const idx = Math.floor((ry - HEADER_H) / ROW_H);
         if (idx < 0) return;
+        // Field/value row click → that row's popover (always open — shows
+        // name + type + note, even with no note).
         if (data.table) {
           const f = data.table.fields[idx];
-          if (f && f.note) setPopover({ cell: node.id, kind: 'field', idx });
+          if (f) setPopover({ cell: node.id, kind: 'field', idx });
         } else if (data.enum) {
           const v = data.enum.values[idx];
-          if (v && v.note) setPopover({ cell: node.id, kind: 'field', idx });
+          if (v) setPopover({ cell: node.id, kind: 'field', idx });
         }
       });
       graph.on('blank:click', () => {
