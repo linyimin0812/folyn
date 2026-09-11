@@ -136,6 +136,34 @@ describe('writeClipboardTauriFirst', () => {
 });
 
 describe('CsvFileViewerPreview', () => {
+  it('renders row 0 as the header and body rows starting from index 1', () => {
+    // ponytail: first row is the header (Excel/Numbers convention). Body
+    // rows are 1..N-1; the index column numbers body rows from 1.
+    const { container } = render(
+      <CsvFileViewerPreview content={`name,age\nalice,30\nbob,25`} filePath="/v/h.csv" vaultRoot="/v" />,
+    );
+    expect(container.textContent).toContain('name');
+    expect(container.textContent).toContain('age');
+    expect(container.textContent).toContain('alice');
+    expect(container.textContent).toContain('30');
+    // Index column shows 1 for the first body row, 2 for the second.
+    const idxCells = container.querySelectorAll('[data-idx-cell]');
+    expect(idxCells.length).toBe(2);
+    expect(idxCells[0].textContent).toBe('1');
+    expect(idxCells[1].textContent).toBe('2');
+  });
+
+  it('body row count is rowCount - 1 for >=1-row CSV', () => {
+    // 3-row CSV → 1 header + 2 body rows.
+    const { container } = render(
+      <CsvFileViewerPreview content={`h1,h2\na,b\nc,d`} filePath="/v/n.csv" vaultRoot="/v" />,
+    );
+    const bodyRows = container.querySelectorAll('.grid.border-b.border-brd\\/50');
+    expect(bodyRows.length).toBe(2);
+    // Status line still shows total row count (includes header).
+    expect(container.textContent).toContain('共 3 行，2 列');
+  });
+
   it('parses content and renders the status line', () => {
     const { container } = render(
       <CsvFileViewerPreview content={`a,b,c\n1,2,3`} filePath="/v/data.csv" vaultRoot="/v" />,
@@ -229,11 +257,12 @@ describe('CsvFileViewerPreview', () => {
     expect(clipboardManager.writeText).toHaveBeenCalledWith('a\tb\nc\td');
   });
   it('extends selection as a rectangular range on shift+click', () => {
+    // 3 parsed rows → header `a,b,c` + 2 body rows (`d,e,f`, `g,h,i`).
     const { container } = render(
       <CsvFileViewerPreview content={`a,b,c\nd,e,f\ng,h,i`} filePath="/v/r.csv" vaultRoot="/v" />,
     );
     const rows = container.querySelectorAll('.grid.border-b.border-brd\\/50');
-    expect(rows.length).toBe(3);
+    expect(rows.length).toBe(2);
     // Data cells in each row: skip the index cell (first child), take the rest.
     const cell = (rowIdx: number, colIdx: number): HTMLElement =>
       rows[rowIdx].querySelectorAll('[class*="cursor-cell"]')[colIdx] as HTMLElement;
@@ -248,10 +277,7 @@ describe('CsvFileViewerPreview', () => {
   });
 
   it('paints a rectangular range via drag-select (mousedown → mousemove → mouseup)', () => {
-    // jsdom's document.elementFromPoint returns null by default; mock it to
-    // return the cell we want to drag onto. The drag handler hit-tests via
-    // elementFromPoint + closest('[data-row][data-col]'), so the returned
-    // element MUST carry those dataset attributes (we return the real cell).
+    // 3 parsed rows → header `a,b,c` + 2 body rows (`d,e,f`, `g,h,i`).
     const { container } = render(
       <CsvFileViewerPreview content={`a,b,c\nd,e,f\ng,h,i`} filePath="/v/d.csv" vaultRoot="/v" />,
     );
@@ -264,26 +290,27 @@ describe('CsvFileViewerPreview', () => {
     // that returns the target cell, so the drag move handler can hit-test.
     // Defined AFTER mousedown so the drag move handler (installed on the
     // document during mousedown) sees the mock when it fires on mousemove.
-    const targetCell = cell(2, 2);
+    const targetCell = cell(1, 2);
     document.elementFromPoint = (() => targetCell) as typeof document.elementFromPoint;
     // Fire a real document-level mousemove — the drag handler installed on
     // mousedown will hit-test via the stubbed elementFromPoint and extend
-    // the range to (2,2).
+    // the range to (1,2).
     fireEvent.mouseMove(document, { clientX: 200, clientY: 200 });
-    expect(container.textContent).toContain('已选中 3×3');
+    expect(container.textContent).toContain('已选中 2×3');
     const selected = container.querySelectorAll('.csv-sel');
-    expect(selected.length).toBe(9);
+    expect(selected.length).toBe(6);
     // Mouseup tears down the listeners; selection stays as the painted range.
     fireEvent.mouseUp(document);
-    expect(container.textContent).toContain('已选中 3×3');
+    expect(container.textContent).toContain('已选中 2×3');
     // Subsequent mousemove (without a fresh mousedown) must NOT mutate the
     // selection — listeners were removed on mouseup.
     fireEvent.mouseMove(document, { clientX: 0, clientY: 0 });
-    expect(container.textContent).toContain('已选中 3×3');
+    expect(container.textContent).toContain('已选中 2×3');
     delete (document as Partial<Document>).elementFromPoint;
   });
 
   it('single-cell click (no drag) leaves a single-cell selection and sets the anchor for a later shift+click', () => {
+    // 3 parsed rows → header `a,b,c` + 2 body rows (`d,e,f`, `g,h,i`).
     const { container } = render(
       <CsvFileViewerPreview content={`a,b,c\nd,e,f\ng,h,i`} filePath="/v/s.csv" vaultRoot="/v" />,
     );
@@ -298,8 +325,8 @@ describe('CsvFileViewerPreview', () => {
     fireEvent.mouseUp(document);
     // Exactly one cell is selected (single-cell, not a range).
     expect(container.querySelectorAll('.csv-sel').length).toBe(1);
-    // Subsequent shift+click on (2,2) extends from the anchor (0,0) → 3x3.
-    fireEvent.mouseDown(cell(2, 2), { shiftKey: true });
-    expect(container.textContent).toContain('已选中 3×3');
+    // Subsequent shift+click on (1,2) extends from the anchor (0,0) → 2x3.
+    fireEvent.mouseDown(cell(1, 2), { shiftKey: true });
+    expect(container.textContent).toContain('已选中 2×3');
   });
 });

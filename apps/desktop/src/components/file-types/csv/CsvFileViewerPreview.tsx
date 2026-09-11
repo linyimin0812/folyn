@@ -119,8 +119,9 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const bodyRowCount = Math.max(0, rowCount - 1);
   const rowVirtualizer = useVirtualizer({
-    count: rowCount,
+    count: bodyRowCount,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: OVERSCAN,
@@ -195,12 +196,11 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
   // width via width:100%). Without it the wrapper defaults to viewport
   // width and the scrolled-in area has no grid cells rendered.
   const tableMinWidth = indexWidth + colCount * 80;
-  const cellsForHeader = useMemo(() => {
-    // Header shows column index 1..N (matches index column showing row numbers).
-    const out: number[] = [];
-    for (let i = 0; i < colCount; i++) out.push(i + 1);
-    return out;
-  }, [colCount]);
+  // ponytail: row 0 is the header (Excel/Numbers "first row as headers").
+  // Body virtualizer iterates body indices 0..(rowCount-2) and maps to parsed
+  // row r = b + 1. Selection stores PARSED row indices (1..N-1 for body),
+  // so serializeRangeAsTSV (which operates on parsed rows) is unchanged.
+  const headerRow = rows[0] ?? [];
 
   // ponytail: begin drag-select from an anchor cell. We install document-
   // level mousemove/mouseup so the drag continues even when the cursor
@@ -267,19 +267,21 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
             >
               #
             </div>
-            {cellsForHeader.map((n) => (
+            {Array.from({ length: colCount }, (_, c) => (
               <div
-                key={n}
+                key={c}
                 className="flex items-center justify-center border-r border-brd last:border-r-0 px-1 overflow-hidden text-ellipsis whitespace-nowrap"
                 style={{ height: HEADER_HEIGHT }}
+                title={headerRow[c] ?? ''}
               >
-                {n}
+                {headerRow[c] ?? ''}
               </div>
             ))}
           </div>
           <div style={{ height: totalHeight, position: 'relative' }}>
             {virtualRows.map((vRow) => {
-              const r = vRow.index;
+              const b = vRow.index;
+              const r = b + 1; // parsed row index (header is row 0)
               const row = rows[r] ?? [];
               const isRowSelected = selection.kind === 'all' || (selection.kind === 'row' && selection.row === r);
               return (
@@ -302,7 +304,7 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
                     style={{ height: ROW_HEIGHT, position: 'sticky', left: 0, zIndex: 2 }}
                     onMouseDown={() => setSelection({ kind: 'row', row: r })}
                   >
-                    {r + 1}
+                    {b + 1}
                   </div>
                   {Array.from({ length: colCount }, (_, c) => {
                     const v = row[c] ?? '';
