@@ -32,6 +32,7 @@ await esbuild.build({
   target: 'es2022',
   jsx: 'automatic',
   alias: hostAlias,
+  loader: { '.svg': 'dataurl' },
   minify: true,
   logLevel: 'warning',
 });
