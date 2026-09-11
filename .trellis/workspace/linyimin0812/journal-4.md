@@ -1105,3 +1105,37 @@ Replaced @file-viewer/react dependency in CsvFileViewerPreview with an in-house 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 202: dbml ER preview positions persist across reopen
+
+**Date**: 2026-09-11
+**Task**: dbml ER preview positions persist across reopen
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed three bugs in the DBML extension's ER preview meta-block write-back pipeline so drag/pan/zoom state round-trips through save→reopen: (1) sql.svg now used as the Settings→Extensions icon via a new build.mjs copy step + manifest.icon path; (2) one-shot seeding guard tightened to 'if (!hasSeededFromMetaRef.current && meta)' so the empty initial content no longer flips the flag and skips seeding when real content arrives; (3) scheduleMetaEmit now reads positions from graphRef.current.getNodes() (captures every rendered card, not just user-dragged ones) and persists pan in meta.view.pan with capture-on-translate + restore-on-first-load. Without (3), non-dragged cards re-entered d3-force on reopen and shifted because the few dragged cards had become fixed anchors; pan was simply never written.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `109eb9f2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

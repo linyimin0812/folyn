@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 201
+- **Total Sessions**: 202
 - **Last Active**: 2026-09-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~1107 | Active |
+| `journal-4.md` | ~1141 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 202 | 2026-09-11 | dbml ER preview positions persist across reopen | `109eb9f2` | `master` |
 | 201 | 2026-09-11 | CSV preview: in-house renderer replacing @file-viewer/react | `83db9f4d`, `7bf2e912`, `90feed9a`, `f0b199dc`, `359e373c`, `edb1a8b6`, `3e12a4c8`, `0d2164f8`, `bc4426aa`, `efbd2734`, `dc9dec83` | `master` |
 | 200 | 2026-09-09 | Vault HTML export: folder naming, docs link fix, ?file= deep-linking, html scrollbar | `027e8e7c` | `master` |
 | 199 | 2026-08-31 | Markdown table preview: content-aware layout via native table-layout:auto | `8544e08a`, `541292ad`, `48f803fe`, `a8ecd68e`, `cbfd1159` | `master` |
