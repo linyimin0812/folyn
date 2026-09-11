@@ -1,0 +1,31 @@
+{
+  "id": "migrate-rich-text-type-to-extension",
+  "name": "migrate-rich-text-type-to-extension",
+  "title": "migrate rich text type to extension",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": "api",
+  "priority": "P2",
+  "creator": "linyimin0812",
+  "assignee": "linyimin0812",
+  "createdAt": "2026-09-11",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "master",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "09-11-rt-phase1-sdk",
+    "09-11-rt-phase2-scaffold",
+    "09-11-rt-phase2-relocate",
+    "09-11-rt-phase2-verify"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

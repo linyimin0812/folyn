@@ -23,6 +23,7 @@ import type {
   FileTypeRegistryApi,
   ExporterRegistryApi,
   VaultApi,
+  VaultConfigApi,
   WorkspaceContextApi,
 } from 'folyn-extension-sdk';
 import type { ExtensionApiHandle } from '@folyn/extension-host';
@@ -34,11 +35,14 @@ import { buildExtensionHttp } from './httpCapability';
 import type { ExtensionAiCapability, ExtensionEnv, ExtensionHttpCapability } from 'folyn-extension-sdk';
 import type { Disposable as Disp } from 'folyn-extension-sdk';
 import { useVaultStore } from '@/store/vaultStore';
+import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { storageClient } from '@/utils/storageClient';
 import { openFile } from '@/services/editorIoService';
 import { getActiveEditorHandle } from '@/services/editorHandleRegistry';
 import { useTerminalStore } from '@/store/terminalStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
+import { isTauri } from '@/utils/platform';
+import { resolveBasePath } from '@/utils/pathResolver';
 import { disposable } from '@folyn/extension-host';
 
 /** A simple per-extension in-memory event bus. */
@@ -74,6 +78,16 @@ async function resolveVaultPath(relPath: string): Promise<string> {
   return resolvePreviewPath(relPath, vaultRoot);
 }
 
+let _convertFileSrc: ((p: string) => string) | null = null;
+// ponytail: pre-warm convertFileSrc on module load (Tauri core is sync once
+// imported, but ESM dynamic import is async). If toAssetUrl is called before
+// the import resolves (very early startup), it falls back to returning the
+// raw path — no crash, just no asset:// translation. Upgrade: block init
+// on the import if a caller ever needs guaranteed sync behavior.
+void import('@tauri-apps/api/core')
+  .then(({ convertFileSrc }) => { _convertFileSrc = convertFileSrc; })
+  .catch(() => {});
+
 /** Build a real VaultApi for a manifest (Tauri-backed, vault-scoped). */
 function createVaultApi(): VaultApi {
   return {
@@ -102,6 +116,23 @@ function createVaultApi(): VaultApi {
       const dir = await dirname(abs);
       if (dir) await mkdir(dir, { recursive: true }).catch(() => {});
       await writeFile(abs, data);
+    },
+    toAssetUrl(fsPath) {
+      if (!isTauri() || !_convertFileSrc) return fsPath;
+      return _convertFileSrc(fsPath);
+    },
+    async resolvePath(path) {
+      if (!isTauri()) return path;
+      return resolveBasePath(path);
+    },
+  };
+}
+
+/** Build a real VaultConfigApi over the host's vault-config store. */
+function createVaultConfigApi(): VaultConfigApi {
+  return {
+    getImagePath() {
+      return useVaultConfigStore.getState().imagePath?.replace(/\/+$/, '') || 'assets/images/';
     },
   };
 }
@@ -212,9 +243,11 @@ export function createExtensionApi(manifest: ExtensionManifest): ExtensionApiHan
   };
 
   const vault = createVaultApi();
+  const vaultConfig = createVaultConfigApi();
   const storage = createStorageApi(manifest);
   const api: ExtensionApi = {
     vault,
+    vaultConfig,
     files: createFilesApi(),
     editor: createEditorApi(),
     workspace: noopWorkspace,

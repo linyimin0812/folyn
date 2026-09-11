@@ -134,6 +134,16 @@ export interface EditorProps {
   filePath: string;
   onChange: (content: string) => void;
   onSave: () => void;
+  /** Vault root path (may contain `~`/`$HOME` — use `api.vault.resolvePath`
+   *  to expand before joining). Optional; shell projects it when known. */
+  vaultRoot?: string;
+  /** Active presentation mode id. Optional; shell projects it. */
+  mode?: PresentationModeId;
+  /** Read-only flag. Optional; `false` for `edit` mode. */
+  readonly?: boolean;
+  /** AbortSignal tied to the tab/extension lifecycle. Optional; a never-
+   *  aborting signal is passed until the host wires per-tab cancellation. */
+  signal?: AbortSignal;
 }
 
 export interface PreviewProps {

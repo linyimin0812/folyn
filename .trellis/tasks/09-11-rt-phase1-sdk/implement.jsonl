@@ -1,0 +1,7 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "FileTypeProvider/PresentationMode/FilePresentationContext 契约 + inline component 渲染规则（含 rich-text 当前架构）"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store 模式（useVaultConfigStore 在 Phase 1 要包装到 SDK API）"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "ExtensionApi 是 SDK 公开 ABI，类型签名必须严谨"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns + review checklist"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "trusted tier 扩展与 host React 共享机制（与 SDK API 边界相关）"}
+{"file": ".trellis/tasks/09-11-migrate-rich-text-type-to-extension/prd.md", "reason": "父任务 PRD：完整决策上下文 + ADR + Phase 1/2 划分 + SDK 接口签名"}

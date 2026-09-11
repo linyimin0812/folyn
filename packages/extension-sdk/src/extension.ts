@@ -139,11 +139,45 @@ export interface ExtensionContext {
 // terminal/export). Loaders receive `api` and forward it to the extension
 // module's lifecycle hook.
 
+/**
+ * Vault-scoped filesystem access. All paths are vault-relative (or, for
+ * {@link toAssetUrl}/{@link resolvePath}, vault-rooted). Extensions never
+ * receive other vaults' physical paths (doc §5.2).
+ */
 export interface VaultApi {
   readText(path: string): Promise<string>;
   readBinary(path: string): Promise<Uint8Array>;
   writeText(path: string, content: string): Promise<void>;
   writeBinary(path: string, data: Uint8Array): Promise<void>;
+  /**
+   * Convert an absolute filesystem path to a loadable URL the webview can
+   * render (Tauri `asset://` via `convertFileSrc`). Non-Tauri runtimes
+   * (jsdom tests) return the input path unchanged. Use for `<img src>` etc.
+   * in custom editors that persist vault-relative asset paths to disk.
+   */
+  toAssetUrl(fsPath: string): string;
+  /**
+   * Resolve a path that may start with `~` or `$HOME` to an absolute
+   * filesystem path (Tauri `homeDir()` lookup, cached on the host side).
+   * Use to expand the vault root before joining with a vault-relative
+   * asset directory (e.g. `imagePath`). Returns the input unchanged on
+   * non-Tauri runtimes.
+   */
+  resolvePath(path: string): Promise<string>;
+}
+
+/**
+ * Read-only access to host-managed vault-level user settings. Lets a
+ * file-type extension (e.g. rich-text image persistence) honor the user's
+ * vault config without a direct store import (doc §5.1).
+ */
+export interface VaultConfigApi {
+  /**
+   * Vault-relative directory where image uploads are persisted
+   * (default `'assets/images/'`, trailing `/` trimmed). The directory may
+   * not exist yet — the caller is responsible for `mkdir({recursive})`.
+   */
+  getImagePath(): string;
 }
 
 export interface FileApi {
@@ -210,6 +244,7 @@ export interface ExporterRegistryApi {
 
 export interface ExtensionApi {
   readonly vault: VaultApi;
+  readonly vaultConfig: VaultConfigApi;
   readonly files: FileApi;
   readonly editor: EditorApi;
   readonly workspace: WorkspaceContextApi;

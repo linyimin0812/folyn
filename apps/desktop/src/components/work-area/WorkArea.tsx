@@ -24,6 +24,12 @@ import { VersionHistoryContentView } from './VersionHistoryContentView';
 import { closeTab as closeTabWithSnapshot, openFile } from '@/services/editorIoService';
 import { WIKI_PREFIX } from '@/types/wiki';
 
+// ponytail: inline `kind: 'component'` editors (Excalidraw / rich-text / web)
+// currently have no per-tab abort lifecycle. A never-aborting signal keeps the
+// FilePresentationContext shape complete for extensions that opt into it;
+// host-owned editors simply ignore it. Upgrade: thread a real per-tab
+// AbortController through EditorStore if a future editor needs cancellation.
+const neverAborts: AbortSignal = new AbortController().signal;
 
 export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const { t } = useTranslation();
@@ -263,6 +269,10 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
                 filePath={activeTab.path}
                 onChange={(content: string) => updateTabContent(activeTab.id, content)}
                 onSave={() => markTabDirty(activeTab.id, false)}
+                vaultRoot={vaultRoot}
+                mode={viewMode}
+                readonly={false}
+                signal={neverAborts}
               />
             );
           })()}
