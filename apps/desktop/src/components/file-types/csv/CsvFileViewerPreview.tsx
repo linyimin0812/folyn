@@ -181,10 +181,6 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
       style={{ '--idx': `${indexWidth}px`, fontSize: FONT_SIZE } as React.CSSProperties}
       tabIndex={0}
     >
-      <div className="flex items-center justify-between px-2 py-[3px] border-b border-brd text-[11px] text-t2 shrink-0">
-        <span>共 {rowCount} 行，{colCount} 列</span>
-        <span className="text-t3">{selection.kind === 'none' ? '' : selection.kind === 'all' ? '已全选' : '已选中'}</span>
-      </div>
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto csv-scroll"
@@ -264,6 +260,10 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
             })}
           </div>
         </div>
+      </div>
+      <div className="flex items-center justify-between px-2 py-[3px] border-t border-brd text-[11px] text-t2 shrink-0">
+        <span>共 {rowCount} 行，{colCount} 列</span>
+        <span className="text-t3">{selection.kind === 'none' ? '' : selection.kind === 'all' ? '已全选' : '已选中'}</span>
       </div>
       <style>{`.csv-scroll::-webkit-scrollbar { width: 0; height: 0; }`}</style>
     </div>
