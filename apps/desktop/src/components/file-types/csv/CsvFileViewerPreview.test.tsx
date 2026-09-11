@@ -243,7 +243,63 @@ describe('CsvFileViewerPreview', () => {
     fireEvent.mouseDown(cell(1, 1), { shiftKey: true });
     expect(container.textContent).toContain('已选中 2×2');
     // The 4 cells in the rectangle (0,0)..(1,1) carry the selected class.
-    const selected = container.querySelectorAll('.bg-accdim\\/60.text-acc');
+    const selected = container.querySelectorAll('.csv-sel');
     expect(selected.length).toBe(4);
+  });
+
+  it('paints a rectangular range via drag-select (mousedown → mousemove → mouseup)', () => {
+    // jsdom's document.elementFromPoint returns null by default; mock it to
+    // return the cell we want to drag onto. The drag handler hit-tests via
+    // elementFromPoint + closest('[data-row][data-col]'), so the returned
+    // element MUST carry those dataset attributes (we return the real cell).
+    const { container } = render(
+      <CsvFileViewerPreview content={`a,b,c\nd,e,f\ng,h,i`} filePath="/v/d.csv" vaultRoot="/v" />,
+    );
+    const rows = container.querySelectorAll('.grid.border-b.border-brd\\/50');
+    const cell = (rowIdx: number, colIdx: number): HTMLElement =>
+      rows[rowIdx].querySelectorAll('[data-row][data-col]')[colIdx] as HTMLElement;
+    // Mousedown on (0,0) sets the anchor and installs document mousemove/up.
+    fireEvent.mouseDown(cell(0, 0));
+    // jsdom doesn't implement document.elementFromPoint — install a stub
+    // that returns the target cell, so the drag move handler can hit-test.
+    // Defined AFTER mousedown so the drag move handler (installed on the
+    // document during mousedown) sees the mock when it fires on mousemove.
+    const targetCell = cell(2, 2);
+    document.elementFromPoint = (() => targetCell) as typeof document.elementFromPoint;
+    // Fire a real document-level mousemove — the drag handler installed on
+    // mousedown will hit-test via the stubbed elementFromPoint and extend
+    // the range to (2,2).
+    fireEvent.mouseMove(document, { clientX: 200, clientY: 200 });
+    expect(container.textContent).toContain('已选中 3×3');
+    const selected = container.querySelectorAll('.csv-sel');
+    expect(selected.length).toBe(9);
+    // Mouseup tears down the listeners; selection stays as the painted range.
+    fireEvent.mouseUp(document);
+    expect(container.textContent).toContain('已选中 3×3');
+    // Subsequent mousemove (without a fresh mousedown) must NOT mutate the
+    // selection — listeners were removed on mouseup.
+    fireEvent.mouseMove(document, { clientX: 0, clientY: 0 });
+    expect(container.textContent).toContain('已选中 3×3');
+    delete (document as Partial<Document>).elementFromPoint;
+  });
+
+  it('single-cell click (no drag) leaves a single-cell selection and sets the anchor for a later shift+click', () => {
+    const { container } = render(
+      <CsvFileViewerPreview content={`a,b,c\nd,e,f\ng,h,i`} filePath="/v/s.csv" vaultRoot="/v" />,
+    );
+    const rows = container.querySelectorAll('.grid.border-b.border-brd\\/50');
+    const cell = (rowIdx: number, colIdx: number): HTMLElement =>
+      rows[rowIdx].querySelectorAll('[data-row][data-col]')[colIdx] as HTMLElement;
+    // Plain click on (0,0) — no shift, no drag. elementFromPoint is never
+    // consulted because the drag move handler only fires on mousemove while
+    // the button is held; a mousedown+mouseup with no intervening mousemove
+    // leaves the selection as a single cell.
+    fireEvent.mouseDown(cell(0, 0));
+    fireEvent.mouseUp(document);
+    // Exactly one cell is selected (single-cell, not a range).
+    expect(container.querySelectorAll('.csv-sel').length).toBe(1);
+    // Subsequent shift+click on (2,2) extends from the anchor (0,0) → 3x3.
+    fireEvent.mouseDown(cell(2, 2), { shiftKey: true });
+    expect(container.textContent).toContain('已选中 3×3');
   });
 });

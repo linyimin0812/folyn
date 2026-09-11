@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import Papa from 'papaparse';
 import type { PreviewProps } from '../types';
@@ -106,8 +106,16 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
 
   const [selection, setSelection] = useState<Selection>({ kind: 'none' });
   // ponytail: anchor tracks the last single-cell mousedown WITHOUT shift, so
-  // shift+click extends a rectangular range from anchor to clicked cell.
+  // shift+click OR drag-select extends a rectangular range from anchor to the
+  // target cell.
   const anchorRef = useRef<{ row: number; col: number } | null>(null);
+  // Drag-select state. Listeners are installed on mousedown and removed on
+  // mouseup; `move` extends the range from anchor to the cell under the
+  // cursor (hit-tested via elementFromPoint + closest('[data-row]')).
+  const dragRef = useRef<{ move: ((e: MouseEvent) => void) | null; up: (() => void) | null }>({
+    move: null,
+    up: null,
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +176,17 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
     return () => document.removeEventListener('keydown', onKeyDown, true);
   }, []);
 
+  // ponytail: tear down any in-flight drag listeners on unmount so a
+  // mid-drag unmount doesn't leak document-level mousemove/mouseup.
+  useEffect(() => {
+    return () => {
+      if (dragRef.current.move) document.removeEventListener('mousemove', dragRef.current.move);
+      if (dragRef.current.up) document.removeEventListener('mouseup', dragRef.current.up);
+      dragRef.current.move = null;
+      dragRef.current.up = null;
+    };
+  }, []);
+
   const colTemplate = `var(--idx) repeat(${colCount}, minmax(80px, 1fr))`;
   const totalHeight = rowVirtualizer.getTotalSize();
   const virtualRows = rowVirtualizer.getVirtualItems();
@@ -182,6 +201,44 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
     for (let i = 0; i < colCount; i++) out.push(i + 1);
     return out;
   }, [colCount]);
+
+  // ponytail: begin drag-select from an anchor cell. We install document-
+  // level mousemove/mouseup so the drag continues even when the cursor
+  // leaves the original cell (or even the root). On mousemove we hit-test
+  // via elementFromPoint + closest('[data-row][data-col]') — the data
+  // attributes are on each data cell. On mouseup we tear down the listeners.
+  // Single-cell mousedown (no drag beyond the anchor) leaves the selection
+  // as `kind:'cell'`, so the anchor stays set for a subsequent shift+click.
+  const beginDrag = useCallback((anchor: { row: number; col: number }) => {
+    if (dragRef.current.move || dragRef.current.up) return;
+    const move = (e: MouseEvent) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      if (!el) return;
+      const cell = el.closest('[data-row][data-col]') as HTMLElement | null;
+      if (!cell) return;
+      const row = Number(cell.dataset.row);
+      const col = Number(cell.dataset.col);
+      if (Number.isNaN(row) || Number.isNaN(col)) return;
+      if (row === anchor.row && col === anchor.col) return;
+      setSelection({
+        kind: 'range',
+        startRow: anchor.row,
+        startCol: anchor.col,
+        endRow: row,
+        endCol: col,
+      });
+    };
+    const up = () => {
+      if (dragRef.current.move) document.removeEventListener('mousemove', dragRef.current.move);
+      if (dragRef.current.up) document.removeEventListener('mouseup', dragRef.current.up);
+      dragRef.current.move = null;
+      dragRef.current.up = null;
+    };
+    dragRef.current.move = move;
+    dragRef.current.up = up;
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  }, []);
 
   return (
     <div
@@ -241,9 +298,9 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
                   <div
                     data-idx-cell
                     data-sticky-idx
-                    className={`flex items-center justify-center border-r border-brd cursor-pointer select-none ${isRowSelected ? 'bg-accdim text-acc' : 'bg-hov text-t2'}`}
+                    className={`flex items-center justify-center border-r border-brd cursor-pointer select-none ${isRowSelected ? 'csv-sel' : 'bg-hov text-t2'}`}
                     style={{ height: ROW_HEIGHT, position: 'sticky', left: 0, zIndex: 2 }}
-                    onMouseDown={(e) => { e.preventDefault(); setSelection({ kind: 'row', row: r }); }}
+                    onMouseDown={() => setSelection({ kind: 'row', row: r })}
                   >
                     {r + 1}
                   </div>
@@ -260,10 +317,19 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
                     return (
                       <div
                         key={c}
-                        className={`flex items-center px-1 border-r border-brd/50 last:border-r-0 overflow-hidden text-ellipsis whitespace-nowrap cursor-cell ${isCellSelected ? 'bg-accdim/60 text-acc' : ''}`}
+                        data-row={r}
+                        data-col={c}
+                        className={`flex items-center px-1 border-r border-brd/50 last:border-r-0 overflow-hidden text-ellipsis whitespace-nowrap cursor-cell select-none ${isCellSelected ? 'csv-sel' : ''}`}
                         style={{ height: ROW_HEIGHT }}
                         onMouseDown={(e) => {
-                          e.preventDefault();
+                          // ponytail: do NOT preventDefault — calling it
+                          // blocks the root div (tabIndex=0) from receiving
+                          // focus on mousedown, so the document-level copy
+                          // listener sees event.target outside the root and
+                          // bails early (Cmd+C silently no-ops). select-none
+                          // on the cell already prevents native text drag-
+                          // selection, which is what preventDefault was
+                          // guarding against.
                           if (e.shiftKey && anchorRef.current) {
                             const a = anchorRef.current;
                             setSelection({
@@ -276,6 +342,7 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
                           } else {
                             anchorRef.current = { row: r, col: c };
                             setSelection({ kind: 'cell', row: r, col: c });
+                            beginDrag({ row: r, col: c });
                           }
                         }}
                         title={v}
@@ -302,7 +369,11 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
                 : '已选中'}
         </span>
       </div>
-      <style>{`.csv-scroll::-webkit-scrollbar { width: 0; height: 0; }`}</style>
+      <style>{`
+.csv-scroll::-webkit-scrollbar { width: 0; height: 0; }
+.csv-preview-root .csv-sel { background: rgba(58, 110, 240, 0.18); }
+[data-theme="dark"] .csv-preview-root .csv-sel { background: rgba(91, 138, 245, 0.22); }
+`}</style>
     </div>
   );
 }
