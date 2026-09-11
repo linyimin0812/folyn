@@ -13,12 +13,9 @@ import {
   Download,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { useVaultStore } from '@/store/vaultStore';
-import { useVaultConfigStore } from '@/store/vaultConfigStore';
-import { resolveBasePath } from '@/utils/pathResolver';
-import { isTauri } from '@/utils/platform';
-import { extractImgSrcFromHtml } from '@/services/clipboardFiles';
+import { extractImgSrcFromHtml } from './utils/clipboardFiles';
+import { getApi } from './api';
+import { useVaultRoot } from './vaultRootContext';
 import {
   resolveVaultRelativePath,
   isLoadableUrlScheme,
@@ -94,21 +91,24 @@ async function sha1Hex(bytes: Uint8Array): Promise<string> {
 /**
  * Write raw image bytes to the vault under the configured `imagePath`
  * (default `assets/images/`), hash-named for dedup. Returns the vault-relative
- * path to store in the Image node's `src`. Tauri-only — callers gate on
- * `isTauri()`; the jsdom test ceiling means this is exercised in-app, not
- * unit-tested (the pure resolution is split into `resolveVaultRelativePath`).
+ * path to store in the Image node's `src`. Tauri-only — the jsdom test ceiling
+ * means this is exercised in-app, not unit-tested (the pure resolution is
+ * split into `resolveVaultRelativePath`). `vaultRoot` is threaded in from the
+ * active editor (EditorProps.vaultRoot) since the SDK api exposes path
+ * resolution but not the vault root itself.
  */
 export async function persistImageBytes(
   bytes: Uint8Array,
   ext: string,
+  vaultRoot: string,
 ): Promise<string> {
   const hash = await sha1Hex(bytes);
   const safeExt = ext.replace(/^\.+/, '').toLowerCase() || 'png';
-  const imagePath =
-    useVaultConfigStore.getState().imagePath?.replace(/\/+$/, '') || 'assets/images';
+  const api = getApi();
+  const imagePath = api.vaultConfig.getImagePath().replace(/\/+$/, '') || 'assets/images';
   const relPath = `${imagePath}/${hash}.${safeExt}`;
-  const vaultRoot = useVaultStore.getState().currentVault?.basePath ?? '';
-  const resolvedRoot = await resolveBasePath(vaultRoot);
+  const resolvedRoot = vaultRoot ? await api.vault.resolvePath(vaultRoot) : '';
+  if (!resolvedRoot) throw new Error('no vault root');
   const { join, dirname } = await import('@tauri-apps/api/path');
   const abs = await join(resolvedRoot, relPath);
   const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
@@ -122,20 +122,27 @@ export async function persistImageBytes(
 }
 
 /** Persist a pasted/dropped File; thin wrapper over persistImageBytes. */
-async function persistImageFile(file: File): Promise<string> {
+async function persistImageFile(file: File, vaultRoot: string): Promise<string> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  return persistImageBytes(bytes, extFromImageFile(file));
+  return persistImageBytes(bytes, extFromImageFile(file), vaultRoot);
 }
 
+// ponytail: vaultRoot for the fallback direct-persist path (used when no
+// onImagePaste host hook is provided — export pipeline / tests). The live
+// editor always provides onImagePaste (routes to ImagePasteDialog), so this
+// path is inert in production. Kept so the export pipeline can build the
+// extension stack without a live editor. vaultRoot='' → persistImageBytes
+// throws 'no vault root' → caught by the try/catch below; no crash.
 async function insertImagesAt(
   view: EditorView,
   files: File[],
   pos: number,
+  vaultRoot = '',
 ): Promise<void> {
   let at = pos;
   for (const f of files) {
     try {
-      const relPath = await persistImageFile(f);
+      const relPath = await persistImageFile(f, vaultRoot);
       const node = view.state.schema.nodes.image.create({ src: relPath });
       view.dispatch(view.state.tr.insert(at, node));
       at += node.nodeSize;
@@ -271,7 +278,7 @@ function RichTextImageView({
   const caption = (node.attrs.caption as string | null) ?? null;
   const captionOn = caption != null;
   const editable = !!editor?.isEditable;
-  const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
+  const vaultRoot = useVaultRoot();
   const [resolvedRoot, setResolvedRoot] = useState('');
   const [naturalWidth, setNaturalWidth] = useState(0);
   useEffect(() => {
@@ -280,7 +287,7 @@ function RichTextImageView({
       setResolvedRoot('');
       return;
     }
-    resolveBasePath(vaultRoot)
+    getApi().vault.resolvePath(vaultRoot)
       .then((r) => {
         if (!cancelled) setResolvedRoot(r);
       })
@@ -295,7 +302,10 @@ function RichTextImageView({
     if (!resolvedRoot) return '';
     const abs = resolveVaultRelativePath(src, resolvedRoot);
     if (!abs) return '';
-    return isTauri() ? convertFileSrc(abs) : abs;
+    // ponytail: api.vault.toAssetUrl wraps Tauri convertFileSrc; the SDK impl
+    // returns the raw path when not in Tauri, so the isTauri() guard the host
+    // used is folded into the api. Extension only runs in Tauri anyway.
+    return getApi().vault.toAssetUrl(abs);
   }, [src, resolvedRoot]);
 
   // --- Phase 1 drag-to-resize (unchanged logic) -------------------------
@@ -423,9 +433,10 @@ function RichTextImageView({
 
   // --- Phase 3 download ---------------------------------------------------
   const downloadImage = useCallback(async () => {
-    if (!isTauri() || !src) return;
-    // ponytail: URL-scheme download deferred — vault-asset path covers the
-    // dominant case. URL srcs (http/data) would need fetch/blob/base64-decode.
+    // ponytail: extension only runs in Tauri; the isTauri() guard the host
+    // used is unnecessary. URL-scheme download deferred — vault-asset path
+    // covers the dominant case. URL srcs (http/data) would need fetch/blob.
+    if (!src) return;
     if (isLoadableUrlScheme(src)) return;
     const abs = resolveVaultRelativePath(src, resolvedRoot);
     if (!abs) return;

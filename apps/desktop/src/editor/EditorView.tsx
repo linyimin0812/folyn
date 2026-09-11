@@ -27,7 +27,7 @@ import { folynHighlighting } from './highlightStyle';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
 import { listEditorLanguages } from '@/services/extension-host/editorLanguageAdapter';
 import { extractImgSrcFromHtml } from '@/services/clipboardFiles';
-import { detectMarkdownTable, markdownTableToMarkdown, detectTsvTable, tsvTableToMarkdown, detectCsvTable, csvTableToMarkdown } from '@/components/file-types/rich-text/markdownTable';
+import { detectMarkdownTable, markdownTableToMarkdown, detectTsvTable, tsvTableToMarkdown, detectCsvTable, csvTableToMarkdown } from '@folyn/extension-rich-text/src/markdownTable';
 import { TableConvertDialog, type TableConvertChoice } from '@/components/editor/TableConvertDialog';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 registerBuiltinCodeContributions();

@@ -1,5 +1,6 @@
 import type { Extensions } from '@tiptap/react';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { generateHTML } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -37,6 +38,13 @@ export type MathEditHandler = (node: PMNode, pos: number, kind: MathEditKind) =>
 // Re-exported so RichTextEditor can type its onImagePaste ref without a
 // direct dep on RichTextImage (which pulls in the tiptap/pm/state Extension).
 export type { ImagePasteHandler } from './RichTextImage';
+
+// ponytail: re-export generateHTML so the host's services/export/richtext.ts
+// can render the doc to HTML WITHOUT a direct @tiptap/react dep (Phase 3
+// removed @tiptap/* from apps/desktop/package.json — only the extension
+// depends on tiptap now). Same instance the extension uses, so the schema
+// matches the live editor exactly.
+export { generateHTML };
 
 export interface RichTextExtensionsOptions {
   /**

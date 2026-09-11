@@ -37,7 +37,6 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   yml: 'yaml',
   sql: 'sql',
   csv: 'spreadsheet',
-  dbml: 'sql',
   png: 'image',
   jpg: 'image',
   jpeg: 'image',
@@ -64,7 +63,6 @@ const EXT_TO_THEME_ICON: Record<string, string> = {
   graphviz: 'graphviz',
   mmd: 'mermaid',
   mermaid: 'mermaid',
-  richtext: 'richtext',
 };
 
 const HANDLER_TO_THEME_ICON: Record<string, string> = {
@@ -80,7 +78,6 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   graphviz: 'graphviz',
   mermaid: 'mermaid',
   code: 'javaScript',
-  'rich-text': 'richtext',
   svg: 'svg',
 };
 

@@ -1,16 +1,46 @@
+import { generateHTML } from '@tiptap/react';
 import katex from 'katex';
-// ponytail: Vite `?inline` returns the raw CSS text (not a <link>), so the
-// standalone export can embed KaTeX's layout rules without a CDN stylesheet
-// or an extra network dependency. Font files stay external (CDN below) —
-// KaTeX falls back to system serif glyphs if fonts can't load.
-import katexCss from 'katex/dist/katex.min.css?inline';
-// ponytail: rich-text relocated to @folyn/extension-rich-text (Phase 3).
-// generateHTML + getRichTextExtensions + richTextLowlight all re-exported
-// from the extension so the host no longer needs @tiptap/* as a direct dep.
-import { generateHTML, getRichTextExtensions, richTextLowlight } from '@folyn/extension-rich-text/src/richTextExtensions';
-import { deserializeToContent, emptyDoc, isLoadableUrlScheme } from '@folyn/extension-rich-text/src/richTextContent';
-import { readImageAsDataUrl, escapeHtml } from './shared';
-import { resolveBasePath } from '@/utils/pathResolver';
+// ponytail: esbuild `loader: { '.css': 'text' }` in build.mjs returns the raw
+// CSS text as a string, so the standalone export can embed KaTeX's layout
+// rules without a CDN stylesheet or an extra network dependency. Font files
+// stay external (CDN below) — KaTeX falls back to system serif glyphs if
+// fonts can't load. (Host's vite build uses `?inline`; esbuild doesn't
+// understand query suffixes, so the bare import + text loader is the
+// extension-side equivalent.)
+import katexCss from 'katex/dist/katex.min.css';
+import { getRichTextExtensions, richTextLowlight } from '../richTextExtensions';
+import { deserializeToContent, emptyDoc, isLoadableUrlScheme } from '../richTextContent';
+import { getApi } from '../api';
+
+// ponytail: inlined from host services/export/shared.ts (escapeHtml +
+// readImageAsDataUrl). Two small pure/Tauri-fs helpers; copying them avoids
+// a host-side import that would pull the host's export-shared module (with
+// its own host-store deps) into the extension bundle.
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function readImageAsDataUrl(filePath: string): Promise<string> {
+  try {
+    const { readFile } = await import('@tauri-apps/plugin-fs');
+    const bytes = await readFile(filePath);
+    const ext = filePath.split('.').pop()?.toLowerCase() ?? 'png';
+    const mimeMap: Record<string, string> = {
+      png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+    };
+    const mime = mimeMap[ext] || 'image/png';
+    const binary = Array.from(bytes).map((b) => String.fromCharCode(b)).join('');
+    const base64 = btoa(binary);
+    return `data:${mime};base64,${base64}`;
+  } catch {
+    return '';
+  }
+}
 
 // ponytail: hand-rolled CSS mirroring the editor's Tailwind classes. The
 // editor styles via `[&_.ProseMirror_…]` arbitrary variants on a wrapper
@@ -85,7 +115,7 @@ pre code .hljs-strong { font-weight: bold; }
 const KATEX_FONT_CDN_BASE = 'https://cdn.jsdelivr.net/npm/katex@0.16.47/dist';
 
 function katexCssForExport(): string {
-  return katexCss.replace(/url\((fonts\/[^)]+)\)/g, (_m, p: string) => `url(${KATEX_FONT_CDN_BASE}/${p})`);
+  return katexCss.replace(/url\((fonts\/[^)]+)\)/g, (_m: string, p: string) => `url(${KATEX_FONT_CDN_BASE}/${p})`);
 }
 
 /**
@@ -163,7 +193,7 @@ async function inlineRichTextImages(html: string, vaultRoot: string): Promise<st
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const imgs = Array.from(doc.querySelectorAll('img'));
   if (imgs.length === 0) return html;
-  const resolvedRoot = vaultRoot ? await resolveBasePath(vaultRoot) : '';
+  const resolvedRoot = vaultRoot ? await getApi().vault.resolvePath(vaultRoot) : '';
   if (!resolvedRoot) return doc.body.innerHTML;
   const { join } = await import('@tauri-apps/api/path');
   await Promise.all(

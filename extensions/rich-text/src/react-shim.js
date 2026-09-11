@@ -29,4 +29,6 @@ export const {
   memo,
   lazy,
   startTransition,
+  version,
+  createRef,
 } = React;

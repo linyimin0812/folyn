@@ -31,6 +31,20 @@ window.ReactDOM = ReactDOMFull;
 import * as cmLanguage from '@codemirror/language';
 (window as unknown as { codemirrorLanguage: typeof cmLanguage }).codemirrorLanguage = cmLanguage;
 
+// ponytail: expose the host's react-i18next instance so trusted-tier blob
+// extensions (e.g. @folyn/extension-rich-text) can share the SAME initialized
+// i18next via window.reactI18next (mirrors the React shim pattern above).
+// Without this, the extension would bundle its own react-i18next singleton —
+// useTranslation would return the key verbatim (no translations load).
+import * as reactI18next from 'react-i18next';
+(window as unknown as { reactI18next: typeof reactI18next }).reactI18next = reactI18next;
+
+// ponytail: KaTeX CSS used to be imported by the rich-text editor inside the
+// builtin handler dir. With rich-text relocated to an extension (esbuild-built,
+// no Vite CSS pipeline), import the stylesheet here so the host's single CSS
+// bundle carries it — the rich-text NodeViews render in the host React tree.
+import 'katex/dist/katex.min.css';
+
 import { PetApp } from './components/pet/PetApp';
 import { PetPanelApp } from './components/pet/PetPanelApp';
 import { PetBubbleApp } from './components/pet/PetBubbleApp';

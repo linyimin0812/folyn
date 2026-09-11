@@ -31,8 +31,8 @@ import {
   ChevronDown,
   Sigma,
 } from 'lucide-react';
-import { isTauri } from '@/utils/platform';
 import { persistImageBytes } from './RichTextImage';
+import { useVaultRoot } from './vaultRootContext';
 import { TableSizeGrid } from './TableSizeGrid';
 
 // ponytail: icon-only buttons with title= attributes — no visible text, so
@@ -186,11 +186,11 @@ export function RichTextToolbar({ editor, zoom, onZoomChange, onInsertMath }: Ri
   // a vault-relative-src Image node. Paste/drop now route through
   // ImagePasteDialog (RichTextEditor.tsx); this button keeps the hash-named
   // direct-persist path (dedup-friendly, no rename prompt).
-  // isTauri() gate: no-op outside Tauri (browser dev) — paste/drop still work.
-  // Image-by-URL entry is covered by the paste extension's bare-URL detection
-  // (RichTextImage.tsx), so no separate URL modal here.
+  // ponytail: extension only runs in Tauri; the isTauri() guard the host used
+  // is unnecessary. Image-by-URL entry is covered by the paste extension's
+  // bare-URL detection (RichTextImage.tsx), so no separate URL modal here.
+  const vaultRoot = useVaultRoot();
   const pickImageFile = async () => {
-    if (!isTauri()) return;
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
       const picked = await open({
@@ -203,7 +203,7 @@ export function RichTextToolbar({ editor, zoom, onZoomChange, onInsertMath }: Ri
       const { readFile } = await import('@tauri-apps/plugin-fs');
       const bytes = new Uint8Array(await readFile(picked as string));
       const ext = (picked as string).toLowerCase().match(/\.([^.]+)$/)?.[1] ?? 'png';
-      const relPath = await persistImageBytes(bytes, ext);
+      const relPath = await persistImageBytes(bytes, ext, vaultRoot);
       editor.chain().focus().setImage({ src: relPath }).run();
     } catch (err) {
       console.warn('[rich-text] image pick failed:', err);

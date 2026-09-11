@@ -16,12 +16,31 @@
     "ai": { "chat": false, "agents": [], "edit": false }
   },
   "contributes": {
+    "fileTypes": [
+      {
+        "id": "rich-text",
+        "handler": "rich-text",
+        "defaultViewMode": "edit",
+        "supportedViewModes": ["edit"],
+        "extensions": ["richtext"]
+      }
+    ],
     "fileTemplates": [
       {
         "id": "rich-text-new",
         "label": "Rich Text",
         "fileName": "untitled.richtext",
         "template": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}"
+      }
+    ],
+    "exporters": [
+      {
+        "id": "rich-text-html",
+        "format": "html",
+        "label": "Rich Text → HTML",
+        "fileExtension": "html",
+        "fileType": "rich-text",
+        "run": "richtextHtml"
       }
     ]
   },

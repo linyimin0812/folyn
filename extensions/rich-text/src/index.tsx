@@ -1,34 +1,44 @@
 /**
- * Host-realm entry for the rich-text extension (trusted tier). Phase 2 stub:
- * the module exports a `rich-text` handler with StubEditor as a placeholder
- * edit-mode component. Phase 3 swaps StubEditor for RichTextEditor.
+ * Host-realm entry for the rich-text extension (trusted tier). Phase 3:
+ * swaps the Phase 2 StubEditor for the real RichTextEditor (moved from
+ * apps/desktop/src/components/file-types/rich-text/) + registers the
+ * rich-text → HTML exporter. The manifest declares `contributes.fileTypes`
+ * (overwriting the builtin rich-text handler by id) + `contributes.exporters`
+ * (rich-text-html). `activate` wires the SDK api + extensionId so the
+ * editor + exporter can reach vault/storage/vaultConfig capabilities.
  *
- * ponytail: Phase 2 manifest omits `contributes.fileTypes` — the handler is
- * NOT registered (registerExtensionFileTypes early-returns on empty
- * contributes.fileTypes). Reason: OwnedRegistry.register overwrites by id,
- * so an extension handler with id `rich-text` would clobber the builtin
- * handler that activates later at boot. Deferring handler registration to
- * Phase 3 (where we also delete builtin) keeps builtin authoritative for
- * editing — no Phase 2 regression. The `handlers` map is dead code until
- * Phase 3 adds `contributes.fileTypes` to the manifest.
+ * ponytail: no iframe bundle — rich-text renders inline in the host React
+ * tree (tiptap NodeViews share the host React instance via window.React).
+ * No tailwind/postcss in the extension build; the host's tailwind.config.js
+ * content array includes `extensions/rich-text/src/**` so the host's single
+ * CSS bundle covers the editor's classes. KaTeX CSS is imported in the
+ * host's main.tsx so it lands in the same global stylesheet.
  */
-import type { ExtensionModule, FileTypeProvider, ExtensionApi, ExtensionContext } from 'folyn-extension-sdk';
+import type { ExtensionModule, FileTypeProvider, ExtensionApi, ExtensionContext, ExporterHandler } from 'folyn-extension-sdk';
 import { setApi, setExtensionId } from './api';
-
-function StubEditor() {
-  return <div className="p-4 text-t2">rich-text extension loaded (stub)</div>;
-}
+import { RichTextEditor } from './RichTextEditor';
+import { richTextToHtmlBlob } from './exporters/richtextHtml';
 
 const provider: FileTypeProvider = {
   id: 'rich-text',
   extensions: ['richtext'],
   needsFileContent: true,
   defaultMode: 'edit',
-  modes: [{ id: 'edit', kind: 'component', component: StubEditor }],
+  modes: [{ id: 'edit', kind: 'component', component: RichTextEditor }],
+};
+
+// ponytail: the exporter handler signature is (content, ctx) => Blob | string.
+// richTextToHtmlBlob(content, name, vaultRoot) returns a Blob; derive `name`
+// from ctx.filePath (base name without extension). ctx.vaultRoot threads
+// through so the exporter can inline vault-relative image srcs as base64.
+const richtextHtmlExporter: ExporterHandler = async (content, ctx) => {
+  const name = ctx.filePath.split('/').pop()?.replace(/\.[^.]+$/, '') || 'export';
+  return richTextToHtmlBlob(content, name, ctx.vaultRoot);
 };
 
 const module: ExtensionModule = {
   handlers: { 'rich-text': provider },
+  exporters: { richtextHtml: richtextHtmlExporter },
   activate(api: ExtensionApi, ctx: ExtensionContext) {
     setApi(api);
     setExtensionId(ctx.extensionId);

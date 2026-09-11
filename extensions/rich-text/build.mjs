@@ -5,15 +5,20 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
-// ponytail: Phase 2 stub — host bundle only. No vite iframe bundle (rich-text
-// renders inline in the host React tree via NodeView; no separate origin).
-// No tailwind/postcss — StubEditor uses host CSS classes (text-t2, p-4) that
-// resolve via the host stylesheet. Phase 3 adds vite/tailwind when
-// RichTextEditor + its own styles move in.
+// ponytail: Phase 3 — host bundle only (rich-text renders inline in the host
+// React tree via NodeView; no separate origin like dbml's iframe). React +
+// react-i18next are aliased to shims reading window.React / window.reactI18next
+// (one instance shared with the host — the established pattern for trusted-
+// tier blob extensions). Tailwind/PostCSS are NOT built here: the host's
+// tailwind.config.js content array includes `extensions/rich-text/src/**`
+// so the host's single CSS bundle covers the editor's classes. KaTeX CSS
+// is imported in the host's main.tsx. esbuild `.css: 'text'` loader inlines
+// the katex CSS string for the standalone HTML exporter (richtextHtml.ts).
 const shim = path.join(root, 'src/react-shim.js');
 const hostAlias = {
   react: shim,
   'react/jsx-runtime': path.join(root, 'src/react-jsx-runtime-shim.js'),
+  'react-i18next': path.join(root, 'src/react-i18next-shim.js'),
 };
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
@@ -27,6 +32,10 @@ await esbuild.build({
   target: 'es2022',
   jsx: 'automatic',
   alias: hostAlias,
+  // ponytail: .css → text string. richtextHtml.ts imports katex.min.css for
+  // the standalone HTML export; the text loader returns the raw CSS so the
+  // exporter can inline it into the <style> tag of the exported file.
+  loader: { '.css': 'text', '.svg': 'dataurl' },
   minify: true,
   logLevel: 'warning',
 });

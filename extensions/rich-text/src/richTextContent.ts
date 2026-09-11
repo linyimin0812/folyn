@@ -1,5 +1,16 @@
 import type { JSONContent } from '@tiptap/react';
-import { isExternalPath } from '@/utils/isExternalPath';
+
+// ponytail: inlined isExternalPath (host utils/isExternalPath.ts) so the
+// extension is self-contained. True for absolute (`/…`, `C:\…`) and
+// home-relative (`~/…`, `$HOME/…`) paths — used to pass external image srcs
+// through resolveVaultRelativePath unchanged.
+function isExternalPath(p: string): boolean {
+  if (!p) return false;
+  if (p.startsWith('/')) return true;
+  if (p.startsWith('~') || p.startsWith('$HOME')) return true;
+  if (/^[A-Za-z]:[\\/]/.test(p)) return true;
+  return false;
+}
 
 // ponytail: disk format = tiptap native JSON string. serialize/deserialize
 // are identity on the string layer, but split out as pure functions so

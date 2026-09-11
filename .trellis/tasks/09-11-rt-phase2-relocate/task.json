@@ -3,7 +3,7 @@
   "name": "rt-phase2-relocate",
   "title": "rich-text migration phase 2 relocate",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "api",

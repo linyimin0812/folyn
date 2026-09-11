@@ -12,7 +12,7 @@ import {
   Paintbrush,
   Eraser,
 } from 'lucide-react';
-import type { EditorProps } from '../types';
+import type { EditorProps } from 'folyn-extension-sdk';
 import {
   deserializeToContent,
   emptyDoc,
@@ -31,21 +31,20 @@ import { RichTextSlashMenu } from './RichTextSlashMenu';
 import { RichTextMathModal } from './RichTextMathModal';
 import { TableControlsOverlay, domCellToPos } from './TableControlsOverlay';
 import { TableMenu, type TableMenuItem } from './TableMenu';
-import { ImagePasteDialog, type ImageSaveConfig } from '@/components/editor/ImagePasteDialog';
-import { TableConvertDialog, type TableConvertChoice } from '@/components/editor/TableConvertDialog';
-import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { ImagePasteDialog, type ImageSaveConfig } from './dialogs/ImagePasteDialog';
+import { TableConvertDialog, type TableConvertChoice } from './dialogs/TableConvertDialog';
 import { dispatchTableNode, type TablePasteHandler } from './markdownTablePaste';
-import { useVaultStore } from '@/store/vaultStore';
-import { resolveBasePath } from '@/utils/pathResolver';
 import {
   getStrategy,
   fileToBase64,
   convertImageFormat,
-} from '@/utils/imageUploader';
-// KaTeX layout/font rules for rendered math nodes. Plain CSS import injects
-// into the app bundle (Vite); the standalone HTML export inlines the same
-// rules via services/export/richtext.ts.
-import 'katex/dist/katex.min.css';
+} from './utils/imageUploader';
+import { getApi } from './api';
+import { VaultRootContext } from './vaultRootContext';
+// ponytail: KaTeX CSS is bundled by the host (apps/desktop/src/main.tsx) into
+// the global stylesheet. The extension renders host-realm, so the host CSS
+// covers .katex layout. The standalone HTML export inlines the same rules via
+// exporters/richtextHtml.ts (esbuild .css:'text' loader).
 
 // ponytail: anti-write-back-loop guard — drawio loadedXml + loadedXmlRef
 // pattern, adapted for tiptap (no iframe). User edits update the ref ONLY
@@ -65,7 +64,7 @@ import 'katex/dist/katex.min.css';
 // and remounts — also fine, the effect is a no-op on a fresh mount (ref
 // initialized from content).
 
-export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
+export function RichTextEditor({ content, onChange, filePath, vaultRoot = '' }: EditorProps) {
   const { t } = useTranslation();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -102,7 +101,9 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
   const [imagePasteFile, setImagePasteFile] = useState<File | null>(null);
   const [imagePastePreviewUrl, setImagePastePreviewUrl] = useState('');
   const [imagePastePos, setImagePastePos] = useState(0);
-  const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
+  // ponytail: vaultRoot is projected by WorkArea (EditorProps.vaultRoot). Phase 1
+  // added it to EditorProps; the shell threads it from useVaultStore so the
+  // extension never touches the host store directly.
   // ponytail: dialog UI is single-image; multi-file paste keeps only the
   // first. Ceiling noted; add a queue loop if batch upload becomes common.
   const onImagePasteRef = useRef<ImagePasteHandler>(() => {});
@@ -121,8 +122,25 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
   // and, when 'ask', open the TableConvertDialog. On resolve we dispatch the
   // native table node or replay the raw text. Markdown-source tables convert
   // directly in the extension (no prompt), mirroring the .md editor rule.
-  const tablePasteMode = useEditorPrefsStore((s) => s.tablePasteMode);
-  const setTablePasteMode = useEditorPrefsStore((s) => s.setTablePasteMode);
+  // ponytail: SDK storage is async (per-extension namespaced); the host's
+  // sync Zustand store is replaced with a local-state mirror loaded in a
+  // useEffect. Default 'ask' so the dialog shows on first paste before the
+  // async load resolves (no flash of wrong behavior — 'ask' is the safe
+  // middle choice).
+  const [tablePasteMode, setTablePasteMode] = useState<'ask' | 'convert' | 'text'>('ask');
+  useEffect(() => {
+    let cancelled = false;
+    getApi().storage.get('tablePasteMode').then((v) => {
+      if (cancelled) return;
+      if (v === 'convert' || v === 'text' || v === 'ask') setTablePasteMode(v);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  const persistTablePasteMode = useRef<(v: 'ask' | 'convert' | 'text') => void>(() => {});
+  persistTablePasteMode.current = (v) => {
+    setTablePasteMode(v);
+    void getApi().storage.set('tablePasteMode', v).catch(() => {});
+  };
   const tablePasteModeRef = useRef(tablePasteMode);
   tablePasteModeRef.current = tablePasteMode;
   const [tableConvert, setTableConvert] = useState<{
@@ -171,7 +189,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
       ed.chain().focus().insertContent(cap.rawText).run();
     }
     if (choice.remember) {
-      setTablePasteMode(choice.convert ? 'convert' : 'text');
+      persistTablePasteMode.current(choice.convert ? 'convert' : 'text');
     }
     setTableConvert({ visible: false, summary: '', tableNode: null, rawText: '', editor: null });
   };
@@ -224,7 +242,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
         const fullPath = `${config.directory}/${config.fileName}.${config.format}`.replace(/^\.\//, '');
         if (fullPath.startsWith('/')) {
           // Absolute directory — strip the vault root to make vault-relative.
-          const resolvedRoot = await resolveBasePath(vaultRoot);
+          const resolvedRoot = await getApi().vault.resolvePath(vaultRoot);
           if (resolvedRoot && fullPath.startsWith(resolvedRoot + '/')) {
             src = fullPath.slice(resolvedRoot.length + 1);
           } else {
@@ -513,6 +531,7 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
   }, [editor]);
 
   return (
+    <VaultRootContext.Provider value={vaultRoot}>
     <div className="w-full h-full flex flex-col overflow-hidden bg-panel">
       {/* ponytail: math node chrome. KaTeX CSS handles the .katex layout;
           these rules center block math and add a click-to-edit affordance
@@ -661,5 +680,6 @@ export function RichTextEditor({ content, onChange, filePath }: EditorProps) {
         onResolve={resolveTableConvert}
       />
     </div>
+    </VaultRootContext.Provider>
   );
 }
