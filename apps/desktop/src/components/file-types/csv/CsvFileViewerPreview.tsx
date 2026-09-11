@@ -162,6 +162,11 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
   const colTemplate = `var(--idx) repeat(${colCount}, minmax(80px, 1fr))`;
   const totalHeight = rowVirtualizer.getTotalSize();
   const virtualRows = rowVirtualizer.getVirtualItems();
+  // ponytail: minWidth forces the wrapper to its natural table width so
+  // horizontal scroll exposes full-width rows (absolute rows inherit this
+  // width via width:100%). Without it the wrapper defaults to viewport
+  // width and the scrolled-in area has no grid cells rendered.
+  const tableMinWidth = indexWidth + colCount * 80;
   const cellsForHeader = useMemo(() => {
     // Header shows column index 1..N (matches index column showing row numbers).
     const out: number[] = [];
@@ -185,12 +190,18 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
         className="flex-1 overflow-auto csv-scroll"
         style={{ scrollbarWidth: 'none' }}
       >
-        <div style={{ height: HEADER_HEIGHT + totalHeight, position: 'relative' }}>
+        <div style={{ height: HEADER_HEIGHT + totalHeight, position: 'relative', minWidth: tableMinWidth }}>
           <div
             className="grid border-b border-brd bg-hov text-t2 font-medium"
             style={{ display: 'grid', gridTemplateColumns: colTemplate, height: HEADER_HEIGHT, position: 'sticky', top: 0, zIndex: 1 }}
           >
-            <div className="flex items-center justify-center border-r border-brd" style={{ height: HEADER_HEIGHT }}>#</div>
+            <div
+              className="flex items-center justify-center border-r border-brd bg-hov"
+              style={{ height: HEADER_HEIGHT, position: 'sticky', left: 0, zIndex: 2 }}
+              data-sticky-idx
+            >
+              #
+            </div>
             {cellsForHeader.map((n) => (
               <div
                 key={n}
@@ -221,8 +232,9 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
                 >
                   <div
                     data-idx-cell
+                    data-sticky-idx
                     className={`flex items-center justify-center border-r border-brd cursor-pointer select-none ${isRowSelected ? 'bg-accdim text-acc' : 'bg-hov text-t2'}`}
-                    style={{ height: ROW_HEIGHT }}
+                    style={{ height: ROW_HEIGHT, position: 'sticky', left: 0, zIndex: 2 }}
                     onMouseDown={(e) => { e.preventDefault(); setSelection({ kind: 'row', row: r }); }}
                   >
                     {r + 1}

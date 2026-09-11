@@ -111,6 +111,32 @@ describe('CsvFileViewerPreview', () => {
     expect(container.textContent).toContain('共 2 行，3 列');
     expect(container.textContent).toContain('a');
   });
+  it('sets the table min-width so horizontal scroll exposes full-width rows', () => {
+    // 10 cols × 80px + indexWidth(28 for ≤99 rows) = 828px. The wrapper div
+    // (the second child of the scroll container) must carry this minWidth so
+    // absolute rows inherit the natural table width instead of the viewport.
+    const { container } = render(
+      <CsvFileViewerPreview content={`h1,h2,h3,h4,h5,h6,h7,h8,h9,h10\n1,2,3,4,5,6,7,8,9,10`} filePath="/v/wide.csv" vaultRoot="/v" />,
+    );
+    const scrollRoot = container.querySelector('.csv-scroll') as HTMLElement;
+    expect(scrollRoot).toBeTruthy();
+    const wrapper = scrollRoot.firstElementChild as HTMLElement;
+    expect(wrapper.style.minWidth).toBe('828px');
+  });
+  it('pins the index column with position:sticky left:0 (header + body)', () => {
+    const { container } = render(
+      <CsvFileViewerPreview content={`a,b\n1,2`} filePath="/v/s.csv" vaultRoot="/v" />,
+    );
+    const stickyIdx = container.querySelectorAll('[data-sticky-idx]');
+    // header `#` cell + at least one body index cell
+    expect(stickyIdx.length).toBeGreaterThanOrEqual(2);
+    for (const cell of Array.from(stickyIdx)) {
+      const style = (cell as HTMLElement).style;
+      expect(style.position).toBe('sticky');
+      expect(style.left).toBe('0px');
+      expect(style.zIndex).toBe('2');
+    }
+  });
   it('handles empty content (0 rows, 0 cols)', () => {
     const { container } = render(
       <CsvFileViewerPreview content="" filePath="/v/empty.csv" vaultRoot="/v" />,
