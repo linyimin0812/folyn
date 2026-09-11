@@ -24,7 +24,10 @@ export function DbmlPreview(): React.JSX.Element {
       const d = ev.data as { type?: string; content?: string; theme?: 'light' | 'dark' } | null;
       if (!d || d.type !== OPEN) return;
       if (typeof d.content === 'string') setContent(d.content);
-      if (d.theme) setTheme(d.theme);
+      if (d.theme) {
+        setTheme(d.theme);
+        document.documentElement.dataset.theme = d.theme;
+      }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);

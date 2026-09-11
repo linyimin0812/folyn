@@ -17,6 +17,11 @@ export default defineConfig({
   root: srcRoot,
   base: './',
   plugins: [react()],
+  css: {
+    // Load tailwind/autoprefixer from the extension's postcss config at the
+    // package root (vite root is src/, so it isn't auto-discovered).
+    postcss: { configPath: path.join(extRoot, 'postcss.config.js') },
+  },
   build: {
     outDir,
     emptyOutDir: false, // keep the esbuild-produced host index.js

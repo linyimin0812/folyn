@@ -7,6 +7,29 @@
     <style>
       html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
       #root { height: 100%; width: 100%; }
+
+      /* Folyn theme tokens (subset used by ErDiagramX6) — the iframe is a
+         separate origin and has no access to the app's index.css, so the
+         tokens the X6 nodes / Tailwind classes reference must be defined
+         here. Light/dark keyed by [data-theme] on <html>, set by the React
+         root from the host-posted theme. */
+      :root {
+        --font-ui: 'Sora', 'PingFang SC', system-ui, sans-serif;
+      }
+      [data-theme="light"] {
+        color-scheme: light;
+        --bg: #f0f2f8; --panel: #fff; --surf: #f8f9fd; --surf2: #eef0f8;
+        --hov: #e8ecf8; --act: #dde3f5; --brd: #dde2f0; --brd2: #c8d0e8;
+        --t1: #1a2040; --t2: #4a5580; --t3: #8892b0; --t4: #c0c8e0;
+        --acc: #3a6ef0; --acc2: #6a3af0; --accdim: #dce8ff;
+      }
+      [data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #0b0d14; --panel: #0f1219; --surf: #13161f; --surf2: #181c28;
+        --hov: #1b1f2e; --act: #1e2438; --brd: #1c2136; --brd2: #252d4a;
+        --t1: #e2e8f8; --t2: #9aa5c0; --t3: #6b7a96; --t4: #3a4560;
+        --acc: #5b8af5; --acc2: #7c5bf5; --accdim: #131d42;
+      }
     </style>
   </head>
   <body>

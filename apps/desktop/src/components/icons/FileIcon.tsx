@@ -4,7 +4,7 @@ import chromeIcon from '@/assets/chrome.svg';
 import wikiGraphIcon from '@/assets/icons/wiki_graph.svg';
 import wikiQueryIcon from '@/assets/icons/wiki_query.svg';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
-import { isBinaryExtension } from '@/components/file-types/binaryExtensions';
+import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
 
 interface FileIconProps {
   filename: string;
@@ -150,10 +150,11 @@ export function FileIcon({ filename, isDir, fileType }: FileIconProps) {
   // recognized as a fallback — use the neutral documentation icon instead.
   if (handler && handler.id !== 'code' && handler?.icon) return <>{handler.icon}</>;
 
-  // No provider claims this extension. A known binary format → the `unknown`
-  // icon (it would open as an unsupported view); an unmapped text-ish ext →
-  // the neutral documentation icon (it opens in the text editor).
-  return <ThemeIcon name={isBinaryExtension(ext) ? 'unknown' : 'documentation'} />;
+  // No provider claims this extension. A known binary format OR a text format
+  // that needs a dedicated viewer → the `unknown` icon (it opens as an
+  // unsupported view); an unmapped text-ish ext → the neutral documentation
+  // icon (it opens in the text editor).
+  return <ThemeIcon name={(isBinaryExtension(ext) || isExtensionRequired(ext)) ? 'unknown' : 'documentation'} />;
 }
 
 export function getFileTypeIcon(handlerId: string): React.ReactElement {
