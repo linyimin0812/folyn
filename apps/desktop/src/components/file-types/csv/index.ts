@@ -10,8 +10,8 @@ const handler: FileTypeProvider = {
   defaultMode: 'split',
   modes: [
     { id: 'edit', kind: 'shell-editor' },
-    { id: 'preview', kind: 'component', component: CsvFileViewerPreview },
     { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+    { id: 'preview', kind: 'component', component: CsvFileViewerPreview },
   ],
 };
 
