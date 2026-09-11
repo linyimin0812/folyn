@@ -1,6 +1,6 @@
 import esbuild from 'esbuild';
 import { build as viteBuild } from 'vite';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +21,11 @@ const hostAlias = {
 };
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
+
+// Copy sql.svg as a standalone asset so manifest.icon can point at it —
+// the host bundle inlines sql.svg via esbuild's dataurl loader, but the
+// settings page reads the manifest icon path separately via read_extension_file.
+await copyFile(path.join(root, 'src/icons/sql.svg'), path.join(root, 'dist/sql.svg'));
 
 // 1. Host bundle.
 await esbuild.build({

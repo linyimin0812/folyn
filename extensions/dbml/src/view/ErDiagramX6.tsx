@@ -292,6 +292,11 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   const lastCompletedDbmlRef = useRef<string | null>(null);
   const hasSeededFromMetaRef = useRef(false);
   const restoreZoomRef = useRef<number | null>(null);
+  // ponytail: persisted graph pan (translate offset). Captured on the
+  // `translate` event, written to meta.view.pan when non-zero, restored on
+  // reopen after the zoomTo/zoomToFit call so the viewport lands where the
+  // user left it. Cleared after first-load apply (one-shot, like restoreZoomRef).
+  const panRef = useRef<{ x: number; y: number } | null>(null);
 
   // ponytail: popover state for native-SVG cards. The old react-shape
   // TableCardNode/EnumCardNode owned their own popover state (open on click,
@@ -328,12 +333,27 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
     metaEmitTimerRef.current = window.setTimeout(() => {
       metaEmitTimerRef.current = null;
       const meta: DbmlMeta = { positions: {} };
-      for (const [name, p] of manualPositionsRef.current.entries()) {
-        meta.positions[name] = { x: Math.round(p.x), y: Math.round(p.y) };
+      // ponytail: read live graph positions instead of manualPositionsRef —
+      // manualPositionsRef only captures user-dragged cards, so cards placed
+      // by the initial d3-force layout (never dragged) would be missing from
+      // the emitted meta and re-enter d3-force on reopen, landing at different
+      // positions. Reading the graph captures every rendered card.
+      const graph = graphRef.current;
+      if (graph) {
+        for (const node of graph.getNodes()) {
+          const data = node.getData() as { table?: { name: string }; enum?: { name: string } } | undefined;
+          const name = data?.table?.name ?? data?.enum?.name;
+          if (!name) continue;
+          const pos = node.getPosition();
+          meta.positions[name] = { x: Math.round(pos.x), y: Math.round(pos.y) };
+        }
       }
-      const view: { zoomPct?: number; showGrid?: boolean } = {};
+      const view: { zoomPct?: number; showGrid?: boolean; pan?: { x: number; y: number } } = {};
       if (zoomPct !== 100) view.zoomPct = zoomPct;
       if (showGrid) view.showGrid = true;
+      if (panRef.current && (panRef.current.x !== 0 || panRef.current.y !== 0)) {
+        view.pan = { x: Math.round(panRef.current.x), y: Math.round(panRef.current.y) };
+      }
       if (Object.keys(view).length > 0) meta.view = view;
       const { dbml, meta: currentMeta } = extractDbmlMeta(contentRef.current);
       if (JSON.stringify(currentMeta) === JSON.stringify(meta)) return;
@@ -561,7 +581,17 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       graph.on('scale', ({ sx }: { sx: number }) => setZoomPct(Math.round(sx * 100)));
       // Pan/resize: force a re-render so an open popover tracks its card.
       // (scale already re-renders via setZoomPct above.)
-      graph.on('translate', () => setTick((t) => t + 1));
+      // ponytail: also capture the translate offset into panRef and schedule
+      // a meta emit so pan persists across save/reopen. The no-op guard
+      // inside scheduleMetaEmit suppresses redundant emits when pan is (0,0)
+      // or unchanged. Ceiling: panning fires many events; the 500ms debounce
+      // collapses them into one emit after the user stops.
+      graph.on('translate', () => {
+        const tr = graph.translate();
+        panRef.current = { x: tr.x, y: tr.y };
+        setTick((t) => t + 1);
+        scheduleMetaEmitRef.current?.();
+      });
       graph.on('resize', () => setTick((t) => t + 1));
       // Close any open popover when a node is dragged (its screen position
       // is changing under it). Uses popoverRef so the handler — bound once at
@@ -668,24 +698,25 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
     const src = content ?? '';
     const { dbml, meta } = extractDbmlMeta(src);
     if (dbml === lastCompletedDbmlRef.current) return;
-    if (!hasSeededFromMetaRef.current) {
+    if (!hasSeededFromMetaRef.current && meta) {
       hasSeededFromMetaRef.current = true;
-      if (meta) {
-        manualPositionsRef.current = new Map(
-          Object.entries(meta.positions).map(([name, p]) => [name, { x: p.x, y: p.y } as Point]),
-        );
-        if (meta.view?.showGrid) setShowGrid(true);
-        if (meta.view?.zoomPct) {
-          const z = meta.view.zoomPct;
-          // ponytail: clamp saved zoom to a sane range — the pre-zoomTo
-          // bug multiplied saved values by ~1.85 each reopen (85 → 185 →
-          // 336 → …), so out-of-range saved values are corrupted, not intent.
-          const safe = z >= 25 && z <= 200 ? z : null;
-          if (safe != null) {
-            setZoomPct(safe);
-            restoreZoomRef.current = safe;
-          }
+      manualPositionsRef.current = new Map(
+        Object.entries(meta.positions).map(([name, p]) => [name, { x: p.x, y: p.y } as Point]),
+      );
+      if (meta.view?.showGrid) setShowGrid(true);
+      if (meta.view?.zoomPct) {
+        const z = meta.view.zoomPct;
+        // ponytail: clamp saved zoom to a sane range — the pre-zoomTo
+        // bug multiplied saved values by ~1.85 each reopen (85 → 185 →
+        // 336 → …), so out-of-range saved values are corrupted, not intent.
+        const safe = z >= 25 && z <= 200 ? z : null;
+        if (safe != null) {
+          setZoomPct(safe);
+          restoreZoomRef.current = safe;
         }
+      }
+      if (meta.view?.pan) {
+        panRef.current = { x: meta.view.pan.x, y: meta.view.pan.y };
       }
     }
     let cancelled = false;
@@ -857,16 +888,26 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
     // centered. Subsequent re-parses (content edits) leave pan/zoom alone.
     // ponytail: if the source meta carried a saved zoomPct, restore it
     // instead of zoomToFit — preserves the user's saved zoom level across
-    // file reopens.
+    // file reopens. Same for saved pan (translate offset): applied AFTER
+    // zoom so the translate lands in the post-zoom coordinate space.
     if (firstLoadRef.current) {
       firstLoadRef.current = false;
       const saved = restoreZoomRef.current;
       restoreZoomRef.current = null;
+      const savedPan = panRef.current;
+      panRef.current = null;
       requestAnimationFrame(() => {
         // ponytail: zoomTo is the ABSOLUTE scale setter (zoom(factor) is a
         // relative delta — saved 85% via zoom(0.85) would land at 185%).
         if (saved != null) graph.zoomTo(saved / 100);
         else graph.zoomToFit({ padding: 40 });
+        // ponytail: apply saved pan after zoom. X6 v3 graph.translate(tx,ty)
+        // is the absolute setter; the translate event re-fills panRef, so
+        // when there was no saved pan we clear the auto-fit translate back
+        // to null to keep the no-pan round-trip stable (fresh file writes
+        // no meta).
+        if (savedPan) graph.translate(savedPan.x, savedPan.y);
+        else panRef.current = null;
       });
     }
   }, [state, graphReady]);

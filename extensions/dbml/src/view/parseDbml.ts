@@ -94,11 +94,12 @@ async function loadParser(): Promise<DbmlModule> {
 //     values we serialize here.
 export interface DbmlNodePosition { x: number; y: number; }
 export interface DbmlViewStyle {
-  // ponytail: defaults (zoomPct=100, showGrid=false) are omitted from the
-  // emitted JSON so a freshly-opened diagram with no adjustments writes no
-  // meta block. Round-trip stable for the common case.
+  // ponytail: defaults (zoomPct=100, showGrid=false, pan={0,0}) are omitted
+  // from the emitted JSON so a freshly-opened diagram with no adjustments
+  // writes no meta block. Round-trip stable for the common case.
   zoomPct?: number;
   showGrid?: boolean;
+  pan?: { x: number; y: number };
 }
 export interface DbmlMeta {
   positions: Record<string, DbmlNodePosition>;
