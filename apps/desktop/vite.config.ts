@@ -1,6 +1,5 @@
 import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { fileViewerRenderers } from '@file-viewer/vite-plugin';
 import path from 'node:path';
 
 const host = process.env.TAURI_DEV_HOST;
@@ -10,18 +9,6 @@ export default defineConfig(() => {
   return {
     plugins: [
       react(),
-      // The app renders only CSV in-app (office/pdf/archive/cad/… viewing
-      // moved to the standalone file-viewer extension, which bundles those
-      // renderers + their WASM/workers itself). Keep ONLY the spreadsheet
-      // renderer here so CSV preview works; copyAssets copies just the small
-      // xlsx sheet worker. No preset — preset-office would pull RTFJS /
-      // heic2any / maplibre / pdf.worker / libarchive.wasm / … (~12MB) the app
-      // no longer uses.
-      fileViewerRenderers({
-        renderers: ['spreadsheet'],
-        copyAssets: true,
-        inject: false,
-      }),
     ],
     resolve: {
       alias: {

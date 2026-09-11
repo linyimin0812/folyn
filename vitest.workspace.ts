@@ -36,10 +36,6 @@ export default defineWorkspace([
     resolve: {
       alias: {
         '@': path.resolve(root, 'apps/desktop/src'),
-        // CsvFileViewerPreview dynamically imports `virtual:file-viewer-renderers`
-        // (provided by @file-viewer/vite-plugin in the app's vite.config.ts).
-        // Point it at a tiny fixture in tests so the import resolves.
-        'virtual:file-viewer-renderers': path.resolve(root, 'test/fixtures/file-viewer-renderers.ts'),
         ...tauriAlias,
       },
     },

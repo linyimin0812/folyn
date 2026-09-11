@@ -25,10 +25,9 @@ window.ReactDOM = ReactDOMFull;
 // (module-instance mismatch). Set before extension import() so extensions resolve the
 // live instance.
 // ponytail: local cast — `declare global` in vite-env.d.ts (a script-level file)
-// doesn't merge onto Window, and making that file a module breaks the ambient
-// `declare module 'virtual:file-viewer-renderers'`. A local cast is the smallest
-// diff that typechecks. React/ReactDOM on window work via the UMD
-// `export as namespace` globals from @types/react(-dom), not via vite-env.d.ts.
+// doesn't merge onto Window. A local cast is the smallest diff that typechecks.
+// React/ReactDOM on window work via the UMD `export as namespace` globals from
+// @types/react(-dom), not via vite-env.d.ts.
 import * as cmLanguage from '@codemirror/language';
 (window as unknown as { codemirrorLanguage: typeof cmLanguage }).codemirrorLanguage = cmLanguage;
 

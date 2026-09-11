@@ -289,63 +289,68 @@ Reference: `src/components/file-types/html/grapesTheme.css`
 
 ---
 
-## FileViewer Spreadsheet Preview (CSV / XLSX / ODS)
+## CSV Preview (in-house, `.csv` only)
 
-CSV, XLSX, ODS previews use `@file-viewer/react` with `@file-viewer/preset-office`. The spreadsheet renderer (`@file-viewer/renderer-spreadsheet`) internally renders via `e-virt-table` — a **canvas-based** virtual table, not an HTML `<table>`.
+`.csv` preview is rendered by an in-house React component (`apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`) — no third-party renderer. It uses `papaparse` (already a direct dep) for parsing and `@tanstack/react-virtual` for row windowing.
 
-### Gotcha: CSS overrides on `table/th/td` are dead code
+### Scope: `.csv` only — XLSX / ODS / Office live in `extensions/file-viewer`
 
-> **Warning**: The spreadsheet renderer does NOT produce an HTML `<table>` element. The cells are drawn on a `<canvas>` by `e-virt-table`. CSS selectors like `.csv-preview-container table { width: 100% }` or `.csv-preview-container td { ... }` match nothing and have zero effect.
+XLSX / ODS / PDF / Word / PPT / OFD / RTF / ODT previews are handled by the **standalone `extensions/file-viewer` extension** (iframe-hosted `OfficeFileViewer.tsx`), which keeps its own copy of `@file-viewer/react` + `@file-viewer/preset-office` + the renderer-* packages. The desktop app does NOT depend on `@file-viewer/*` anymore — that suite was ~12MB of dead weight once CSV moved in-house.
 
-If you need to change column-width behavior for CSV/XLSX/ODS, CSS cannot do it. The column widths are computed in JS by the renderer's `buildColumns` (in `dist/spreadsheet/view.js`) and `e-virt-table`'s init logic (in `e-virt-table/dist/index.es.js`).
+### Visual conventions (mirror the previous spreadsheet renderer)
 
-### Width-fill is hardcoded off; `FileViewerSpreadsheetOptions` has no toggle
+To preserve behavior parity with the previous `@file-viewer/react` + `e-virt-table` renderer, the in-house component implements:
+- **Density**: `rowHeight=22`, `headerHeight=22`, `fontSize=12` (Excel-like).
+- **Index/row-number column**: fixed left, width auto-scales by total-row digit count, clamped to `[28, 80]` px via `computeIndexColumnWidth()`.
+- **Data column width-fill**: data columns use `minmax(80px, 1fr)` in a CSS grid template, distributing remaining container width evenly across all data columns (the previous renderer needed a `pnpm patch` to set `widthFillDisable: false`; the in-house component does this by construction).
+- **Hidden scrollbar track**: `scrollbar-width: none` + `::-webkit-scrollbar { width: 0; height: 0; }` on the scroll container (scroll still works, no visible gutter).
 
-The renderer explicitly sets `widthFillDisable: true` on every column (data columns AND the index/row-number column) inside `buildColumns`. This disables `e-virt-table`'s built-in "distribute remaining container width across columns" logic (which fires in `init()` when `resizeNum > 0`). `FileViewerSpreadsheetOptions` only exposes `worker`, `workerUrl`, `workerAutoThreshold`, `resizableColumns`, `resizableRows` — no width-fill switch.
+### Selection model
 
-Result: tables render at their measured content width, left-aligned, with empty space on the right when the container is wider than the content.
+- **Single cell**: click a data cell → `{ kind: 'cell', row, col }`.
+- **Whole row**: click the index column → `{ kind: 'row', row }`.
+- **Whole table**: `Cmd/Ctrl+A` when focus is inside the pane → `{ kind: 'all' }`.
+- No rectangular drag selection (intentional — out of MVP scope).
 
-### Convention: Use `pnpm patch` to enable width-fill for spreadsheet family
+### Clipboard routing (macOS WKWebView workaround)
 
-When width-fill is required for CSV/XLSX/ODS previews, patch the renderer via `pnpm patch`:
+WKWebView's `navigator.clipboard.writeText` fails inside Tauri, and the macOS Edit menu's `Cmd+C` accelerator preempts the webview `keydown` handler. The component installs a **document-level `copy` event listener** (not `keydown` — the menu dispatches a native `copy` event, not a `keydown`):
 
-```bash
-pnpm patch @file-viewer/renderer-spreadsheet@2.1.17
-# edit dist/spreadsheet/view.js in the temp dir
-pnpm patch-commit <temp-dir>
+```ts
+document.addEventListener('copy', (event) => {
+  // Only intercept when focus is inside the pane and there's a programmatic
+  // selection (DOM text selections fall through to native copy).
+  if (!root.contains(event.target) && !root.contains(document.activeElement)) return;
+  if (window.getSelection()?.toString()) return; // native text selection → fall through
+  if (selection.kind === 'none') return;
+  const text = serializeRangeAsTSV(rows, selection);
+  event.preventDefault();
+  if (event.clipboardData) event.clipboardData.setData('text/plain', text);
+  void writeClipboardTauriFirst(text);
+});
 ```
 
-**The minimal patch**: change line 267 (the data-column branch of `buildColumns`) from `widthFillDisable: true` to `widthFillDisable: false`. Leave line 246 (the `INDEX_COLUMN_KEY` column) as `true` — the row-number column must keep its fixed width.
+`writeClipboardTauriFirst` is a three-step fallback chain: `@tauri-apps/plugin-clipboard-manager.writeText` → `navigator.clipboard.writeText` → hidden textarea + `document.execCommand('copy')`. The Tauri path is gated on `globalThis.__TAURI_INTERNALS__` (matches the established Tauri-runtime check pattern).
 
-After the patch, `e-virt-table`'s init() auto-distributes extra container width across data columns on every render and on every container resize. No DOM hack, no instance capture. The patch file lives at `patches/@file-viewer__renderer-spreadsheet@2.1.17.patch` in the repo root and is auto-applied by `pnpm install` via `package.json`'s `pnpm.patchedDependencies` block.
+### No pnpm patch needed
 
-### Scope: only the spreadsheet family is affected
+The previous renderer required `patches/@file-viewer__renderer-spreadsheet@2.1.17.patch` plus a `pnpm.overrides` entry to enable width-fill and auto-size the index column. The in-house component does both by construction (CSS grid template + `computeIndexColumnWidth`), so the patch, the override, and the `@file-viewer/renderer-spreadsheet@2.1.17` pin are all gone from `package.json`.
 
-Other FileViewer renderers already fill the container and need no patch:
-- **PDF** (`@file-viewer/renderer-pdf`): scale-based zoom, fit-page.
-- **Word** (`@file-viewer/renderer-word`): HTML pages with `width: 100% !important`.
-- **Presentation** (`@file-viewer/renderer-presentation`): slide HTML, fills container.
-- **OFD** (`@file-viewer/renderer-ofd`): page-based, similar to PDF.
+### Parsing contract
 
-### Risks
+- `papaparse` with `dynamicTyping: false` (all cells render as text — matches the previous renderer).
+- No `header: true` — the first row is data, not a header (the previous renderer also had no header concept; the index column on the left serves as the row label).
+- papaparse strips UTF-8 BOM natively, so the previous `\uFEFF` BOM-prepend workaround (needed for SheetJS) is deleted.
+- Ragged rows (mismatched column counts) are handled by papaparse default: missing trailing fields → empty strings.
 
-- Upgrading `@file-viewer/renderer-spreadsheet` may break the patch (line numbers shift, field names change). Pin the version (no `^`) in `package.json` while the patch is in use.
-- `e-virt-table` internal API changes (`widthFillDisable` field renamed, `resizeAllColumn` logic changed) would silently re-disable width-fill. Re-verify after any `e-virt-table` version bump.
+### Out of scope
 
-### Convention: Index/row-number column auto-width by digit count
+- Non-UTF-8 encodings (GBK / Big5 / Shift_JIS) — papaparse is UTF-8-only; non-UTF-8 CSV will mojibake.
+- Column width / row height drag-resize.
+- Rectangular drag selection.
+- Keyboard arrow-key selection extension.
 
-The renderer hardcodes `INDEX_COLUMN_WIDTH = 68` and applies it as `width = minWidth = maxWidth` on the `__index` column. For small files (single-digit rows) this is too wide and wastes data-column space. Patch `buildColumns` to compute width from `ws.meta.totalRows` digit count:
-
-```js
-export const computeIndexColumnWidth = (totalRows = 0) => {
-    const digits = Math.max(1, String(totalRows || 1).length);
-    return Math.min(80, Math.max(28, 16 + digits * 9));
-};
-```
-
-Call it inside `buildColumns(ws)` with `ws.meta?.totalRows`. Keep `width = minWidth = maxWidth` (column stays non-resizable) and keep `widthFillDisable: true` (index column does not participate in width-fill distribution — only data columns do).
-
-Reference: `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`, `patches/@file-viewer__renderer-spreadsheet@2.1.17.patch`
+Reference: `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`, `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.test.tsx`
 
 ---
 

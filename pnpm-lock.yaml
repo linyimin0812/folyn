@@ -4,13 +4,7 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@file-viewer/renderer-spreadsheet': 2.1.17
-
 patchedDependencies:
-  '@file-viewer/renderer-spreadsheet@2.1.17':
-    hash: vojbpxmhlfiq2ltapp4u4uut5u
-    path: patches/@file-viewer__renderer-spreadsheet@2.1.17.patch
   e-virt-table@1.4.2:
     hash: 4qsgisplhrk7qnejqmvcprfx4e
     path: patches/e-virt-table@1.4.2.patch
@@ -89,15 +83,6 @@ importers:
       '@excalidraw/excalidraw':
         specifier: ^0.18.1
         version: 0.18.1(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@file-viewer/preset-all':
-        specifier: 2.1.17
-        version: 2.1.17
-      '@file-viewer/preset-office':
-        specifier: ^2.1.30
-        version: 2.1.30
-      '@file-viewer/react':
-        specifier: ^2.1.17
-        version: 2.1.17(react@18.3.1)
       '@folyn/cli-adapter':
         specifier: workspace:*
         version: link:../../packages/cli-adapter
@@ -122,6 +107,9 @@ importers:
       '@replit/codemirror-minimap':
         specifier: ^0.5.2
         version: 0.5.2(@codemirror/language@6.12.3)(@codemirror/lint@6.9.5)(@codemirror/state@6.6.0)(@codemirror/view@6.41.0)(@lezer/common@1.5.2)(@lezer/highlight@1.2.3)
+      '@tanstack/react-virtual':
+        specifier: ^3.14.11
+        version: 3.14.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
@@ -315,9 +303,6 @@ importers:
         specifier: ^5.0.0
         version: 5.0.12(@types/react@18.3.28)(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
     devDependencies:
-      '@file-viewer/vite-plugin':
-        specifier: ^2.1.17
-        version: 2.1.17(vite@6.4.2(@types/node@22.19.17)(jiti@1.21.7)(sass@1.51.0)(terser@5.46.1)(yaml@2.9.0))
       '@tauri-apps/cli':
         specifier: ^2.2.0
         version: 2.10.1
@@ -1274,9 +1259,6 @@ packages:
   '@file-viewer/pptx@2.1.30':
     resolution: {integrity: sha512-uhQzWgkB+TJjqoljPXXFQG6LwVQ1V8n69WnmApicD6/7PacRJnMWvvIsaUKsRTFjviV1uAftt6soN0YACsnMfQ==}
 
-  '@file-viewer/preset-all@2.1.17':
-    resolution: {integrity: sha512-FhZfkVvCotA1Xg3tvwwA65T/EexnarFvTcLpZHAnonKA2CENq88SmFuY/F0fRAO6QAR0BOXlb8LBEVM72OzEOA==}
-
   '@file-viewer/preset-office@2.1.30':
     resolution: {integrity: sha512-T3OewZi9OBT+gOoja/C2IA42b1zgrhkpCOSSfvAbQmxS4ukQDphSqeK2W/jBw88D3nF02eiFYMo+llpcE4aBHA==}
 
@@ -1330,14 +1312,8 @@ packages:
   '@file-viewer/renderer-presentation@2.1.30':
     resolution: {integrity: sha512-eoFSvfjo9vBqQRV+tV/uz0ZZ6sV5gkqX3XT6WS5vH0IxsqgPwmsoZ0oIATYjODZNkST5MtfSwJd98lsa72qvDw==}
 
-  '@file-viewer/renderer-spreadsheet@2.1.17':
-    resolution: {integrity: sha512-G8pwMMR6KG84QwaAkGKV0pX5Y9XyHlSUViSDoS5W2L2aVG3f4A2YDJM2UOIVII05zbcq256BWd05/w9Zl8MclQ==}
-
-  '@file-viewer/renderer-text@2.1.30':
-    resolution: {integrity: sha512-G4PxqP7PaQNZso6pVafFOIEijVjaaPpKhDGNm4t9tu+a6ScFv8upi3obEuTuN+AIOAsGaXL5QhWvC0/xJxjZ8Q==}
-
-  '@file-viewer/renderer-typst@2.1.30':
-    resolution: {integrity: sha512-NI1RLYiqMyt2oIJxggYyQ/YJML9Ju2DOo7djiJQS2ZoXqph8NVc1TUAGp0dTjBEtgM1safkZeEphzBsIHBHUFw==}
+  '@file-viewer/renderer-spreadsheet@2.1.30':
+    resolution: {integrity: sha512-PYk27ATlBykH5Iej/DD0ubBNoPKI07h/UOyOO3Qaglgn3jcgz4hrUoBTxUs4vJq21XOV7VtUBaIap038oj/OvQ==}
 
   '@file-viewer/renderer-word@2.1.30':
     resolution: {integrity: sha512-Q/8DFnwB7Zgyppx6Lz/xG9yybEuGd9EHKetpnAN/VCJoL3zosUqxcK+rsvuMfc0ROHWi7EUPknC4sLVj498U5g==}
@@ -1528,23 +1504,6 @@ packages:
     resolution: {integrity: sha512-JnEug2IVXafUecM9/WCQgH8mJRliaEq0Uxu3Mxt0Zk82n1MrSd25iA0Boo7e7t9qVwRPxQLGFxWoyPIrAeTy4w==}
     engines: {node: '>=20'}
 
-  '@myriaddreamin/typst-ts-renderer@0.7.0':
-    resolution: {integrity: sha512-3sXIGxZn9MufPrPn6251DeuLf2FIEILYNzY5lX0XOJmaIYqgvQ3qpfqkCjgQD+splBvt5R1N3BuuNFrZKsHhMw==}
-
-  '@myriaddreamin/typst-ts-web-compiler@0.7.0':
-    resolution: {integrity: sha512-nMwMcfOBy5pABPDuVM7/u8425SxhPUM+OJe6daqqgVOT3+neCTz4JKwx2L8XasfEHTNvd0cUI07LR9q5ADo7Gw==}
-
-  '@myriaddreamin/typst.ts@0.7.0':
-    resolution: {integrity: sha512-JtO5Td/1QesH1IBKAZtbayFNK8u2sl3iz18Y67uYqBEdcXiu3z+wpZcDDKlmVJvAcCgSjHTnuk6ZLfkYclrGGQ==}
-    peerDependencies:
-      '@myriaddreamin/typst-ts-renderer': ^0.7.0
-      '@myriaddreamin/typst-ts-web-compiler': ^0.7.0
-    peerDependenciesMeta:
-      '@myriaddreamin/typst-ts-renderer':
-        optional: true
-      '@myriaddreamin/typst-ts-web-compiler':
-        optional: true
-
   '@napi-rs/canvas-android-arm64@0.1.100':
     resolution: {integrity: sha512-hjhCKhntPv9+t4ckHymdx0phYNcVW+GKQR6Lzw2zE+pOVjOplSmtx9nNNknTjbEDLcuLZqA1y8ufKg1XfgftzQ==}
     engines: {node: '>= 10'}
@@ -1642,10 +1601,6 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
-
-  '@profoundlogic/hogan@3.0.4':
-    resolution: {integrity: sha512-pmNVGuooS30Mm7YbZd5T7E5zYVO6D5Ct91sn4T39mUvMUc3sCGridcnhAufL1/Bz2QzAtzEn0agNrdk3+5yWzw==}
-    hasBin: true
 
   '@radix-ui/primitive@1.0.0':
     resolution: {integrity: sha512-3e7rn8FDMin4CgeL7Z/49smCA3rFYY3Ha2rUQ7HRWFadS5iCRw08ZgVT1LaNTCNqgvrUiyczLflrVrF0SRQtNA==}
@@ -2178,6 +2133,15 @@ packages:
     resolution: {integrity: sha512-lWMnixq/QzxyhTV6NjQJ4SFo1J6PvOX8vUx5Wb4bBPsEb+8xZ89Bz6kOXpfXj9ak9AHTQVQzlgzBEc1SyM27xQ==}
     cpu: [x64]
     os: [win32]
+
+  '@tanstack/react-virtual@3.14.11':
+    resolution: {integrity: sha512-SStWf8bYdTgAquYqG4Pi2+d1XimQKoCIJ94H3jsm0D6UA0yqffvWuvUzrrQ4idewFWq8BSPpahnmLVosJIAs6g==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/virtual-core@3.17.9':
+    resolution: {integrity: sha512-M8Bzy7CCMvUjRiuoHVH9mRjyUVczRs8v8RcUEphLFGc445ZP4KQ15Y1sLqhQqJi/HgGJrxfCHnEnIX0x9mVrBg==}
 
   '@tauri-apps/api@2.11.0':
     resolution: {integrity: sha512-7CinYODhky9lmO23xHnUFv0Xt43fbtWMyxZcLcRBlFkcgXKuEirBvHpmtJ89YMhyeGcq20Wuc47Fa4XjyniywA==}
@@ -2764,9 +2728,6 @@ packages:
   '@xterm/xterm@5.5.0':
     resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
-  abbrev@1.1.1:
-    resolution: {integrity: sha512-nne9/IiQ/hzIhY6pdDnbBtz7DjPTKrY00P/zvPSm5pOFkl6xuGrGnXn/VtTNNfNtAfZ9/1RtehkszU9qcTii0Q==}
-
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
     engines: {node: '>=0.4.0'}
@@ -3345,14 +3306,6 @@ packages:
   didyoumean@1.2.2:
     resolution: {integrity: sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==}
 
-  diff2html@3.4.56:
-    resolution: {integrity: sha512-u9gfn+BlbHcyO7vItCIC4z49LJDUt31tODzOfAuJ5R1E7IdlRL6KjugcB9zOpejD+XiR+dDZbsnHSQ3g6A/u8A==}
-    engines: {node: '>=12'}
-
-  diff@8.0.4:
-    resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
-    engines: {node: '>=0.3.1'}
-
   diff@9.0.0:
     resolution: {integrity: sha512-svtcdpS8CgJyqAjEQIXdb3OjhFVVYjzGAPO8WGCmRbrml64SPw/jJD4GoE98aR7r25A0XcgrK3F02yw9R/vhQw==}
     engines: {node: '>=0.3.1'}
@@ -3764,9 +3717,6 @@ packages:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
 
-  idb@7.1.1:
-    resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
-
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
 
@@ -4123,11 +4073,6 @@ packages:
     engines: {node: '>= 20'}
     hasBin: true
 
-  marked@18.0.6:
-    resolution: {integrity: sha512-MrV5puXBfuiy6wl6DLaq3BtIJQAJToAd5zt/ZKhRfGRAuFPALE7/4Y7jnxRQoEgK/pBgurGqLyAuRgZ2xOjr6w==}
-    engines: {node: '>= 20'}
-    hasBin: true
-
   markmap-common@0.18.9:
     resolution: {integrity: sha512-MV2HQO7IGIm3jWEJXSG8vmdpqf4WIDXcEyAEN52lrWR1qD53Zg5l81JwjXoZ2l0rY5mofKYqUFlmdM2fqTGMVg==}
 
@@ -4399,10 +4344,6 @@ packages:
 
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
-
-  nopt@1.0.10:
-    resolution: {integrity: sha512-NWmpvLSqUrgrAC9HCuxEvb+PSloHpqVu+FqcO4eeF2h5qYRhA7ev6KvelyQAKtegUbC6RypJnlEOhd8vloNKYg==}
-    hasBin: true
 
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
@@ -6273,39 +6214,13 @@ snapshots:
       tinycolor2: 1.6.0
       utif: 3.1.0
 
-  '@file-viewer/preset-all@2.1.17':
-    dependencies:
-      '@file-viewer/core': 2.1.30
-      '@file-viewer/renderer-3d': 2.1.30
-      '@file-viewer/renderer-archive': 2.1.30
-      '@file-viewer/renderer-cad': 2.1.30(three@0.184.0)
-      '@file-viewer/renderer-data': 2.1.30
-      '@file-viewer/renderer-drawing': 2.1.30
-      '@file-viewer/renderer-eda': 2.1.30
-      '@file-viewer/renderer-email': 2.1.30
-      '@file-viewer/renderer-epub': 2.1.30
-      '@file-viewer/renderer-geo': 2.1.30
-      '@file-viewer/renderer-image': 2.1.30
-      '@file-viewer/renderer-media': 2.1.30
-      '@file-viewer/renderer-mindmap': 2.1.30
-      '@file-viewer/renderer-ofd': 2.1.30
-      '@file-viewer/renderer-pdf': 2.1.30
-      '@file-viewer/renderer-presentation': 2.1.30
-      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=vojbpxmhlfiq2ltapp4u4uut5u)
-      '@file-viewer/renderer-text': 2.1.30
-      '@file-viewer/renderer-typst': 2.1.30
-      '@file-viewer/renderer-word': 2.1.30
-    transitivePeerDependencies:
-      - geotiff
-      - three
-
   '@file-viewer/preset-office@2.1.30':
     dependencies:
       '@file-viewer/core': 2.1.30
       '@file-viewer/renderer-ofd': 2.1.30
       '@file-viewer/renderer-pdf': 2.1.30
       '@file-viewer/renderer-presentation': 2.1.30
-      '@file-viewer/renderer-spreadsheet': 2.1.17(patch_hash=vojbpxmhlfiq2ltapp4u4uut5u)
+      '@file-viewer/renderer-spreadsheet': 2.1.30
       '@file-viewer/renderer-word': 2.1.30
 
   '@file-viewer/react@2.1.17(react@18.3.1)':
@@ -6412,28 +6327,14 @@ snapshots:
       '@file-viewer/core': 2.1.30
       '@file-viewer/pptx': 2.1.30
 
-  '@file-viewer/renderer-spreadsheet@2.1.17(patch_hash=vojbpxmhlfiq2ltapp4u4uut5u)':
+  '@file-viewer/renderer-spreadsheet@2.1.30':
     dependencies:
       '@file-viewer/core': 2.1.30
+      '@xmldom/xmldom': 0.9.10
       e-virt-table: 1.4.2(patch_hash=4qsgisplhrk7qnejqmvcprfx4e)
+      jszip: 3.10.1
       styled-exceljs: 0.21.1
       tinycolor2: 1.6.0
-
-  '@file-viewer/renderer-text@2.1.30':
-    dependencies:
-      '@file-viewer/core': 2.1.30
-      diff2html: 3.4.56
-      highlight.js: 11.11.1
-      marked: 18.0.6
-      mermaid: 11.15.0
-      pako: 2.1.0
-
-  '@file-viewer/renderer-typst@2.1.30':
-    dependencies:
-      '@file-viewer/core': 2.1.30
-      '@myriaddreamin/typst-ts-renderer': 0.7.0
-      '@myriaddreamin/typst-ts-web-compiler': 0.7.0
-      '@myriaddreamin/typst.ts': 0.7.0(@myriaddreamin/typst-ts-renderer@0.7.0)(@myriaddreamin/typst-ts-web-compiler@0.7.0)
 
   '@file-viewer/renderer-word@2.1.30':
     dependencies:
@@ -6687,17 +6588,6 @@ snapshots:
 
   '@mlightcad/libredwg-web@0.7.7': {}
 
-  '@myriaddreamin/typst-ts-renderer@0.7.0': {}
-
-  '@myriaddreamin/typst-ts-web-compiler@0.7.0': {}
-
-  '@myriaddreamin/typst.ts@0.7.0(@myriaddreamin/typst-ts-renderer@0.7.0)(@myriaddreamin/typst-ts-web-compiler@0.7.0)':
-    dependencies:
-      idb: 7.1.1
-    optionalDependencies:
-      '@myriaddreamin/typst-ts-renderer': 0.7.0
-      '@myriaddreamin/typst-ts-web-compiler': 0.7.0
-
   '@napi-rs/canvas-android-arm64@0.1.100':
     optional: true
 
@@ -6772,10 +6662,6 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
-
-  '@profoundlogic/hogan@3.0.4':
-    dependencies:
-      nopt: 1.0.10
 
   '@radix-ui/primitive@1.0.0':
     dependencies:
@@ -7232,6 +7118,14 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
+
+  '@tanstack/react-virtual@3.14.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/virtual-core': 3.17.9
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  '@tanstack/virtual-core@3.17.9': {}
 
   '@tauri-apps/api@2.11.0': {}
 
@@ -7862,8 +7756,6 @@ snapshots:
 
   '@xterm/xterm@5.5.0': {}
 
-  abbrev@1.1.1: {}
-
   acorn@8.16.0:
     optional: true
 
@@ -8476,15 +8368,6 @@ snapshots:
 
   didyoumean@1.2.2: {}
 
-  diff2html@3.4.56:
-    dependencies:
-      '@profoundlogic/hogan': 3.0.4
-      diff: 8.0.4
-    optionalDependencies:
-      highlight.js: 11.11.1
-
-  diff@8.0.4: {}
-
   diff@9.0.0: {}
 
   dingbat-to-unicode@1.0.1: {}
@@ -9045,8 +8928,6 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
-  idb@7.1.1: {}
-
   ieee754@1.2.1: {}
 
   image-blob-reduce@3.0.1:
@@ -9383,8 +9264,6 @@ snapshots:
   markdown-table@3.0.4: {}
 
   marked@16.4.2: {}
-
-  marked@18.0.6: {}
 
   markmap-common@0.18.9:
     dependencies:
@@ -9927,10 +9806,6 @@ snapshots:
     optional: true
 
   node-releases@2.0.37: {}
-
-  nopt@1.0.10:
-    dependencies:
-      abbrev: 1.1.1
 
   normalize-path@3.0.0: {}
 
