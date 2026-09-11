@@ -1061,3 +1061,47 @@ Improved vault HTML export (single + folder): folder mode now creates a <vaultNa
 ### Next Steps
 
 - None - task complete
+
+
+## Session 201: CSV preview: in-house renderer replacing @file-viewer/react
+
+**Date**: 2026-09-11
+**Task**: CSV preview: in-house renderer replacing @file-viewer/react
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Replaced @file-viewer/react dependency in CsvFileViewerPreview with an in-house papaparse + @tanstack/react-virtual renderer. Iterated on user feedback to fix horizontal-scroll style loss (min-width on wrapper), pin the index column sticky-left, kill macOS WKWebView rubber-band overscroll (overscroll-behavior:none), move the status bar to the bottom, add Excel-like semi-transparent selection color, add shift+click + drag-select for rectangular ranges, render row 0 as the sticky header, bold the header, add per-column drag-to-resize via a 6px handle on header right borders, and reorder view modes to [edit, split, preview]. Also removed the @file-viewer/vite-plugin + preset-all + preset-office deps from apps/desktop and the pnpm patch + override on @file-viewer/renderer-spreadsheet (extensions/file-viewer keeps its own preset-office dep). Identified bundle bloat sources for a follow-up: entry chunk 8.3MB (Excalidraw + mermaid + mathjax all statically imported), @dbml/core 15MB ANTLR4 parser (already lazy) — none of which is file-viewer.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `83db9f4d` | (see git log) |
+| `7bf2e912` | (see git log) |
+| `90feed9a` | (see git log) |
+| `f0b199dc` | (see git log) |
+| `359e373c` | (see git log) |
+| `edb1a8b6` | (see git log) |
+| `3e12a4c8` | (see git log) |
+| `0d2164f8` | (see git log) |
+| `bc4426aa` | (see git log) |
+| `efbd2734` | (see git log) |
+| `dc9dec83` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
