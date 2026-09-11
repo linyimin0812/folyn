@@ -3,7 +3,7 @@ import { useVaultStore } from './vaultStore';
 import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension, listProviders } from '@/components/file-types/registry';
-import { isBinaryExtension } from '@/components/file-types/binaryExtensions';
+import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
 import { useFileTypePreferenceStore } from './fileTypePreferenceStore';
 import { WIKI_PREFIX } from '@/types/wiki';
 import { persistOpenTabs, flushPersistOpenTabs, flushPersistExternalOpenTabs } from './editorPersistence';
@@ -36,8 +36,10 @@ export function detectFileType(filePath: string): FileType {
   if (handler) return handler.id;
   // No app builtin or installed extension claims this extension. A known
   // non-text format → unsupported view (don't dump binary bytes as text);
+  // a text format that needs a dedicated viewer (e.g. .dbml) → unsupported;
   // anything else → the generic code/text editor.
-  return isBinaryExtension(ext) ? 'unsupported' : 'code';
+  if (isBinaryExtension(ext) || isExtensionRequired(ext)) return 'unsupported';
+  return 'code';
 }
 
 export interface FileTab {

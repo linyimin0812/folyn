@@ -13,7 +13,7 @@
 
 import { useVaultStore } from '@/store/vaultStore';
 import { resolveVaultPath } from './shared';
-import type { EnhanceCtx } from './dbml';
+import type { EnhanceCtx } from './shared';
 
 const QUICKCHART_ENDPOINT = 'https://quickchart.io/graphviz';
 

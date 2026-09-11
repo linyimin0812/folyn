@@ -19,17 +19,15 @@ import { ContainerRegistry, registerBuiltinExtensions } from '@folyn/container-e
 import type { ContainerProps } from '@folyn/container-extensions';
 import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdown/renderMarkdown';
 
-import * as dbmlExporter from './export/dbml';
 import * as excalidrawExporter from './export/excalidraw';
 import * as drawioExporter from './export/drawio';
 import * as markmapExporter from './export/markmap';
 import * as plantumlExporter from './export/plantuml';
 import * as graphvizExporter from './export/graphviz';
 import * as mermaidExporter from './export/mermaid';
-import { inlineContainerImages } from './export/shared';
+import { inlineContainerImages, type EnhanceCtx } from './export/shared';
 import { renderMarkmapSvg } from './export/markmapShared';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
-import type { EnhanceCtx } from './export/dbml';
 import { getEnhancer } from './extension-host/exportEnhancerAdapter';
 import type { ExporterContext } from '@folyn/extension-host';
 
@@ -316,7 +314,6 @@ export async function renderMarkdownToHtmlViaDom(
 type EnhanceFn = (body: HTMLElement, ctx: EnhanceCtx) => Promise<void>;
 
 const REGISTRY: Record<string, EnhanceFn> = {
-  dbml: dbmlExporter.enhance,
   excalidraw: excalidrawExporter.enhance,
   drawio: drawioExporter.enhance,
   markmap: markmapExporter.enhance,
@@ -378,11 +375,8 @@ async function processFilePreviews(
     const name = block.getAttribute('data-file-preview-name') || '';
     const ext = name.toLowerCase().match(/\.([^.]+)$/)?.[1] || '';
 
-    // dbml blocks also match via the x6-graph-svg-viewport class (in case
-    // x6 mounted but the name attr is missing).
-    const fn = ext === 'dbml' && body.querySelector('.x6-graph-svg-viewport')
-      ? REGISTRY['dbml']
-      : REGISTRY[ext];
+    // Enhancer keyed by the preview block's file extension.
+    const fn = REGISTRY[ext];
 
     if (fn) {
       await fn(body, { src, filePath, vaultRoot }).catch(() => {});

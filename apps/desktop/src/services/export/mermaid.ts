@@ -11,7 +11,7 @@
 import mermaid from 'mermaid';
 import { useVaultStore } from '@/store/vaultStore';
 import { resolveVaultPath } from './shared';
-import type { EnhanceCtx } from './dbml';
+import type { EnhanceCtx } from './shared';
 
 mermaid.initialize({
   startOnLoad: false,

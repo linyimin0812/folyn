@@ -13,7 +13,7 @@
 import { useVaultStore } from '@/store/vaultStore';
 import { resolveVaultPath } from './shared';
 import { encodePlantUml } from '@folyn/container-extensions';
-import type { EnhanceCtx } from './dbml';
+import type { EnhanceCtx } from './shared';
 
 const PLANTUML_SERVER = 'https://www.plantuml.com/plantuml/svg/';
 

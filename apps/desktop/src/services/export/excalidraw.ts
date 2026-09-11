@@ -7,7 +7,7 @@
 
 import { useVaultStore } from '@/store/vaultStore';
 import { resolveVaultPath } from './shared';
-import type { EnhanceCtx } from './dbml';
+import type { EnhanceCtx } from './shared';
 
 export async function enhance(body: HTMLElement, ctx: EnhanceCtx): Promise<void> {
   const { src, filePath } = ctx;

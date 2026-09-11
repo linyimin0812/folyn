@@ -48,7 +48,21 @@ export const BINARY_EXTENSIONS: ReadonlySet<string> = new Set([
   'sqlite', 'wasm', 'parquet', 'avro', 'webarchive',
 ]);
 
+/** Text-format extensions that need a dedicated extension to render — without
+ * one, show "unsupported" (not the raw-text code editor), because the file is
+ * a domain language whose source view is meaningless without its viewer
+ * (e.g. .dbml ER diagrams). Mirrors BINARY_EXTENSIONS for text types. */
+export const EXTENSION_REQUIRED_EXTENSIONS: ReadonlySet<string> = new Set([
+  'dbml',
+]);
+
 /** True when `ext` (no dot, lowercased) is a known non-text format. */
 export function isBinaryExtension(ext: string): boolean {
   return BINARY_EXTENSIONS.has(ext.toLowerCase());
+}
+
+/** True when `ext` is a text format that still needs a dedicated extension
+ * (no builtin handler) — shown as unsupported when none is installed. */
+export function isExtensionRequired(ext: string): boolean {
+  return EXTENSION_REQUIRED_EXTENSIONS.has(ext.toLowerCase());
 }

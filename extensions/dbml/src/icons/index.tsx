@@ -1,0 +1,1 @@
+export { DbmlIcon } from './DbmlIcon';
