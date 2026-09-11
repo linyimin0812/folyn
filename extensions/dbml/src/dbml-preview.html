@@ -8,6 +8,13 @@
       html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
       #root { height: 100%; width: 100%; }
 
+      /* X6 SVG nodes contain <text>; without this, dragging a card selects
+         the text (blue highlight). The app relies on its global CSS / X6's
+         own stylesheet; the iframe has neither, so disable selection on the
+         graph + its descendants. */
+      .x6-graph, .x6-graph * { user-select: none; -webkit-user-select: none; }
+      .x6-graph text { pointer-events: none; }
+
       /* Folyn theme tokens (subset used by ErDiagramX6) — the iframe is a
          separate origin and has no access to the app's index.css, so the
          tokens the X6 nodes / Tailwind classes reference must be defined
