@@ -257,7 +257,7 @@ export function CsvFileViewerPreview({ content }: PreviewProps) {
       >
         <div style={{ height: HEADER_HEIGHT + totalHeight, position: 'relative', minWidth: tableMinWidth }}>
           <div
-            className="grid border-b border-brd bg-hov text-t2 font-medium"
+            className="grid border-b border-brd bg-hov text-t2 font-bold"
             style={{ display: 'grid', gridTemplateColumns: colTemplate, height: HEADER_HEIGHT, position: 'sticky', top: 0, zIndex: 1 }}
           >
             <div
