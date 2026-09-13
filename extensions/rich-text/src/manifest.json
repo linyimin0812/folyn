@@ -6,6 +6,7 @@
   "folyn": ">=0.1.0",
   "tier": "trusted",
   "main": "dist/index.js",
+  "icon": "richtext.svg",
   "permissions": {
     "fs": { "scope": [] },
     "http": { "origins": [] },

@@ -1,5 +1,5 @@
 import esbuild from 'esbuild';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,6 +39,11 @@ const hostAlias = {
 };
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
+
+// ponytail: Copy richtext.svg as a standalone asset so manifest.icon can point
+// at it — the host bundle inlines richtext.svg via esbuild's dataurl loader, but
+// the settings page reads the manifest icon path separately via read_extension_file.
+await copyFile(path.join(root, 'src/icons/richtext.svg'), path.join(root, 'dist/richtext.svg'));
 
 await esbuild.build({
   entryPoints: [path.join(root, 'src/index.tsx')],
