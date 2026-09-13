@@ -18,10 +18,12 @@ import type { ExtensionModule, FileTypeProvider, ExtensionApi, ExtensionContext,
 import { setApi, setExtensionId } from './api';
 import { RichTextEditor } from './RichTextEditor';
 import { richTextToHtmlBlob } from './exporters/richtextHtml';
+import { RichTextIcon } from './icons';
 
 const provider: FileTypeProvider = {
   id: 'rich-text',
   extensions: ['richtext'],
+  icon: <RichTextIcon />,
   needsFileContent: true,
   defaultMode: 'edit',
   modes: [{ id: 'edit', kind: 'component', component: RichTextEditor }],
