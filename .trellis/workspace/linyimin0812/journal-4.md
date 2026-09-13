@@ -1178,3 +1178,37 @@ Migrated the rich-text (.richtext) tiptap editor from builtin handler to trusted
 ### Next Steps
 
 - None - task complete
+
+
+## Session 204: rich-text extension: wire settings page icon via manifest.icon
+
+**Date**: 2026-09-13
+**Task**: rich-text extension: wire settings page icon via manifest.icon
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Wired the rich-text extension's Settings → Extensions display-card icon to use richtext.svg, mirroring the dbml pattern. The manifest top-level icon field is resolved by the host via read_extension_file relative to the extension's dist/ dir, so the SVG must ship as a standalone file (separate from the inlined data URL used by the file-tree RichTextIcon component). Changes: (1) added 'icon': 'richtext.svg' to extensions/rich-text/src/manifest.json; (2) updated extensions/rich-text/build.mjs to copyFile src/icons/richtext.svg → dist/richtext.svg (mirroring extensions/dbml/build.mjs:28). The SVG source already existed at extensions/rich-text/src/icons/richtext.svg (copied in the previous session). No host source changes; no build-config changes beyond the copyFile. Verified: dist/richtext.svg ships, installed copy at ~/.folyn/extensions/folyn-rich-text/richtext.svg.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8065915a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
