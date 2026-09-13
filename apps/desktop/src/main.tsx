@@ -39,6 +39,20 @@ import * as cmLanguage from '@codemirror/language';
 import * as reactI18next from 'react-i18next';
 (window as unknown as { reactI18next: typeof reactI18next }).reactI18next = reactI18next;
 
+// ponytail: expose the host's lucide-react instance so trusted-tier blob
+// extensions (e.g. @folyn/extension-rich-text) can share it via
+// window.lucideReact. esbuild bundles lucide-react itself when aliasing is
+// absent, but its tree-shaking mangles the namespace re-export pattern in
+// lucide-react/dist/esm/lucide-react.mjs (`export { index as icons };
+// export { default as Bold } from './icons/bold.mjs'; ...`) — the named
+// imports resolve to undefined or to the per-icon __iconNode SVG-data
+// array instead of the React Component, so <b.icon /> renders the array's
+// indices as text ("0,1,2,3"). Sharing the host's already-initialized
+// instance (mirrors the React/ReactDOM/react-i18next pattern above) avoids
+// the bundler bug entirely.
+import * as lucideReact from 'lucide-react';
+(window as unknown as { lucideReact: typeof lucideReact }).lucideReact = lucideReact;
+
 // ponytail: KaTeX CSS used to be imported by the rich-text editor inside the
 // builtin handler dir. With rich-text relocated to an extension (esbuild-built,
 // no Vite CSS pipeline), import the stylesheet here so the host's single CSS

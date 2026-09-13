@@ -26,6 +26,16 @@ const hostAlias = {
   // react-shim's public-only API → `undefined is not an object` crash.
   'react-dom': path.join(root, 'src/react-dom-shim.js'),
   'react-dom/client': path.join(root, 'src/react-dom-client-shim.js'),
+  // ponytail: alias lucide-react to a shim reading window.lucideReact (one
+  // instance shared with the host — mirrors the React/react-dom/react-i18next
+  // pattern). esbuild's tree-shaking mangles lucide-react's namespace
+  // re-export pattern (`export { index as icons }; export { default as Bold }
+  // from './icons/bold.mjs'; ...`) — named imports resolve to undefined or
+  // to the per-icon __iconNode SVG-data array, making <b.icon /> render the
+  // array's indices as text ("0,1,2,3"). The shim enumerates every named
+  // icon the extension imports; add to src/react-lucide-shim.js when a new
+  // icon is imported (build throws "X is not exported" if you miss one).
+  'lucide-react': path.join(root, 'src/react-lucide-shim.js'),
 };
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
