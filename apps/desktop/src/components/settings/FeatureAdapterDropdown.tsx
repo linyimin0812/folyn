@@ -32,7 +32,6 @@ const ADAPTER_ICON: Record<string, string> = {
 };
 
 const BUILTIN_ROW_TO_FEATURE: Record<string, string> = {
-  'builtin:wiki': 'wiki',
   'builtin:schedule': 'schedule',
 };
 

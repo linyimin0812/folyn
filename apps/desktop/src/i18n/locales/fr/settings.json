@@ -56,10 +56,6 @@
         "label": "Afficher les fichiers cachés",
         "description": "Afficher dotfiles et dossiers cachés dans l'arborescence"
       },
-      "wiki": {
-        "label": "Panneau Wiki",
-        "description": "Afficher l'entrée Wiki dans la barre latérale"
-      },
       "schedule": {
         "label": "Panneau Schedule",
         "description": "Entrée de la fonctionnalité Schedule (Plan My Day)"
@@ -128,9 +124,9 @@
       "label": "Taille de police"
     },
     "tabSize": {
-      "label": "Taille de tabulation",
       "2": "2 espaces",
-      "4": "4 espaces"
+      "4": "4 espaces",
+      "label": "Taille de tabulation"
     },
     "showLineNumbers": {
       "label": "Afficher les numéros de ligne",

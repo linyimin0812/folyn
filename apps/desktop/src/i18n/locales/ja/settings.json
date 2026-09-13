@@ -56,10 +56,6 @@
         "label": "隠しファイルを表示",
         "description": "ドットファイルと隠しフォルダをファイルツリーに表示"
       },
-      "wiki": {
-        "label": "Wikiパネル",
-        "description": "サイドバーにWikiエントリを表示"
-      },
       "schedule": {
         "label": "スケジュールパネル",
         "description": "スケジュール（Plan My Day）機能のエントリ"
@@ -128,9 +124,9 @@
       "label": "フォントサイズ"
     },
     "tabSize": {
-      "label": "タブ幅",
       "2": "2スペース",
-      "4": "4スペース"
+      "4": "4スペース",
+      "label": "タブ幅"
     },
     "showLineNumbers": {
       "label": "行番号を表示",

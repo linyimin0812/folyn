@@ -346,9 +346,6 @@ export const useVaultStore = create<VaultState>()(
             }
             // Save AI sessions for current vault before activeVaultId changes
             await useAiStore.getState().switchVaultSessions(config.id);
-            // ponytail: mirror aiStore pattern for wiki query session per-vault swap
-            const { useWikiQueryStore } = await import('./wikiQueryStore');
-            await useWikiQueryStore.getState().switchVaultSessions(config.id);
 
             await stopVaultWatcher();
             await get().manager.switchVault(config);
@@ -444,7 +441,6 @@ export const useVaultStore = create<VaultState>()(
 
         migrateSpecialDirs: async () => {
           const pairs: { from: string; to: string }[] = [
-            { from: 'folyn-wiki', to: '__wiki__' },
             { from: 'reports', to: '__reports__' },
           ];
           // Only migrate the daily dir if the user is still on the old default.

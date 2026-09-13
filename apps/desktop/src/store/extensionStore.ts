@@ -20,7 +20,6 @@
 
 import { create } from 'zustand';
 import { isTauri } from '@/utils/platform';
-import wikiSvgText from '@/assets/icons/wiki.svg?raw';
 import scheduleSvgText from '@/assets/icons/schedule.svg?raw';
 import translationSvgText from '@/assets/icons/translation.svg?raw';
 
@@ -86,7 +85,7 @@ export interface ExtensionRow {
   icon?: string;
   /** One-line description from the manifest. */
   description?: string;
-  /** True for built-in panels surfaced as extensions (Wiki/Schedule/Translation).
+  /** True for built-in panels surfaced as extensions (Schedule/Translation).
    * These rows have no on-disk entry — the toggle binds to appearanceStore
    * flags, and uninstall is hidden. */
   builtin?: boolean;
@@ -100,7 +99,7 @@ export interface ExtensionRow {
   iconDark?: string;
 }
 
-/** Static definitions for the 4 built-in panel "extensions". The flag/setter
+/** Static definitions for the built-in panel "extensions". The flag/setter
  * are bound in the UI via appearanceStore, not here, to keep the store
  * decoupled from appearanceStore's hook shape.
  *
@@ -111,7 +110,6 @@ export interface ExtensionRow {
 export const BUILTIN_PANEL_DEFS = [
   { id: 'builtin:translation', nameKey: 'settings:appearance.panels.translation.label', descKey: 'settings:appearance.panels.translation.description', flag: 'enableTranslationPanel' as const },
   { id: 'builtin:schedule', nameKey: 'settings:appearance.panels.schedule.label', descKey: 'settings:appearance.panels.schedule.description', flag: 'enableSchedulePanel' as const },
-  { id: 'builtin:wiki', nameKey: 'settings:appearance.panels.wiki.label', descKey: 'settings:appearance.panels.wiki.description', flag: 'enableWikiPanel' as const },
 ] as const;
 
 /** Consent-prompt modal state. */
@@ -237,8 +235,7 @@ async function fetchRows(): Promise<ExtensionRow[]> {
     builtin: true,
     nameKey: def.nameKey,
     descKey: def.descKey,
-    icon: def.id === 'builtin:wiki' ? wikiSvgText
-      : def.id === 'builtin:schedule' ? scheduleSvgText
+    icon: def.id === 'builtin:schedule' ? scheduleSvgText
       : def.id === 'builtin:translation' ? translationSvgText
       : undefined,
   }));

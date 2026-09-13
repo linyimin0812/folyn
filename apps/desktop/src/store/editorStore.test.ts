@@ -72,14 +72,6 @@ describe('detectFileType', () => {
 });
 
 describe('detectActivity', () => {
-  it('routes wiki-graph to the wiki panel', () => {
-    expect(detectActivity('wiki-graph', 'markdown')).toBe('wiki');
-  });
-
-  it('routes wiki:// paths to the wiki panel', () => {
-    expect(detectActivity('wiki://entities/react.md', 'markdown')).toBe('wiki');
-  });
-
   it('routes daily notes to the calendar panel', () => {
     expect(detectActivity('__daily__/2026-01-01.md', 'markdown')).toBe('calendar');
   });
@@ -101,7 +93,6 @@ describe('rewriteTabPrefixes', () => {
         { id: 't1', name: 'foo.md', path: 'drafts/tech/foo.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
         { id: 't2', name: 'bar.md', path: 'reports/2026-01-01.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
         { id: 't3', name: 'note.md', path: 'notes/note.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
-        { id: 't4', name: 'react.md', path: 'wiki://entities/react.md', content: '', isDirty: false, fileType: 'markdown', activity: 'wiki' },
       ],
       activeTabId: 't1',
     });
@@ -117,7 +108,6 @@ describe('rewriteTabPrefixes', () => {
     expect(tabs[1].path).toBe('__reports__/2026-01-01.md');
     expect(tabs[1].name).toBe('2026-01-01.md');
     expect(tabs[2].path).toBe('notes/note.md');
-    expect(tabs[3].path).toBe('wiki://entities/react.md');
   });
 
   it('handles exact-match paths (no trailing slash)', () => {

@@ -40,7 +40,6 @@
     "unpin": "Desfijar",
     "pin": "Fijar",
     "addToChat": "Añadir archivo al chat",
-    "ingestToWiki": "Ingestar al Wiki",
     "rename": "Renombrar",
     "delete": "Eliminar",
     "move": "Mover a...",
@@ -82,9 +81,6 @@
     ],
     "title": "{{month}} de {{year}}",
     "hasNote": "{{date}} (con nota)"
-  },
-  "wikiTree": {
-    "empty": "El Wiki está vacío. Ingesta archivos desde el panel de IA para construir la base de conocimientos."
   },
   "clips": {
     "title": "Recortes",

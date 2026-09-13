@@ -40,7 +40,6 @@
     "unpin": "Unpin",
     "pin": "Pin",
     "addToChat": "Add file to chat",
-    "ingestToWiki": "Ingest to Wiki",
     "rename": "Rename",
     "delete": "Delete",
     "move": "Move to...",
@@ -82,32 +81,6 @@
     ],
     "title": "{{month}} {{year}}",
     "hasNote": "{{date}} (has note)"
-  },
-  "wikiTree": {
-    "empty": "Wiki is empty. Ingest files from the AI panel to build the knowledge base.",
-    "addSourceFiles": "Add source files to ingest",
-    "pickConfirm": "Ingest",
-    "pickCancel": "Cancel",
-    "pickSearch": "Search filename",
-    "pickEmpty": "No markdown files in vault",
-    "pickLoading": "Reading vault…",
-    "ingestAll": "Ingest all markdown",
-    "stopIngest": "Stop ingest",
-    "reviewsEmpty": "No pending reviews.",
-    "runLint": "Run lint",
-    "selectAll": "Select all",
-    "acceptSelected": "Accept selected",
-    "dismissSelected": "Dismiss selected",
-    "filterByCheck": "Filter",
-    "filterAll": "All",
-    "closeIngestPanel": "Close",
-    "showIngestPanel": "Show ingest progress",
-    "toggleDir": "Toggle directory",
-    "locateActive": "Locate active file",
-    "subTab": {
-      "files": "Files",
-      "reviews": "Reviews"
-    }
   },
   "clips": {
     "title": "Clips",

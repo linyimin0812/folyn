@@ -8,7 +8,6 @@ import { StatusBar } from './components/shell/StatusBar';
 import { ToastHost } from './components/shell/ToastHost';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
 import { CommandPalette } from './components/shell/CommandPalette';
-import { useWikiStore } from '@/store/wikiStore';
 
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
@@ -236,14 +235,7 @@ export default function App() {
       await useVaultStore.getState().initVault();
 
       await loadAiSessionsForVault();
-      // ponytail: load the active vault's saved wiki query session (mirror aiStore boot pattern)
-      const { useWikiQueryStore } = await import('./store/wikiQueryStore');
-      await useWikiQueryStore.getState().loadForCurrentVault();
       await editorIoService.restoreOpenTabs();
-
-      useWikiStore.getState().initWiki().catch((err) => {
-        console.warn('[App] Wiki init failed:', err);
-      });
 
       const { fileTree } = useVaultStore.getState();
       const { tabs } = useEditorStore.getState();

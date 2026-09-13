@@ -6,7 +6,6 @@ import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { getHandlerById } from '@/components/file-types/registry';
 import { isExternalPath } from '@/utils/isExternalPath';
-import { WIKI_PREFIX } from '@/types/wiki';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { readRawContent } from '@/services/editorIoService';
 import {
@@ -24,7 +23,6 @@ export function isVersionableTab(tab: FileTab | undefined): tab is FileTab {
   if (!tab) return false;
   if (tab.fileType === 'web') return false;
   if (isExternalPath(tab.path)) return false;
-  if (tab.path.startsWith(WIKI_PREFIX)) return false;
   const handler = getHandlerById(tab.fileType);
   return !!handler?.needsFileContent;
 }

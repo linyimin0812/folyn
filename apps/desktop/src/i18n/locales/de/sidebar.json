@@ -40,7 +40,6 @@
     "unpin": "Lösen",
     "pin": "Anheften",
     "addToChat": "Datei zum Chat hinzufügen",
-    "ingestToWiki": "Ins Wiki übernehmen",
     "rename": "Umbenennen",
     "delete": "Löschen",
     "move": "Verschieben nach...",
@@ -82,9 +81,6 @@
     ],
     "title": "{{month}} {{year}}",
     "hasNote": "{{date}} (hat Notiz)"
-  },
-  "wikiTree": {
-    "empty": "Wiki ist leer. Übernehme Dateien aus dem KI-Panel, um die Wissensbasis aufzubauen."
   },
   "clips": {
     "title": "Ausschnitte",

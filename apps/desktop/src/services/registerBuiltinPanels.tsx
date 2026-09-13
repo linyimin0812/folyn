@@ -1,5 +1,5 @@
 /**
- * Register the 2 built-in sidebar panels (files/wiki)
+ * Register the built-in files sidebar panel
  * into {@link useFeaturePanelStore} and wire the visibility + active-panel sync
  * that makes the data-driven ActivityBar/Sidebar behave identically to the
  * pre-PR2 hardcoded version.
@@ -24,18 +24,12 @@
  * - Startup: if editorStore.activePanel isn't a registered+visible panel
  *   (e.g. a persisted extension panel id whose extension hasn't loaded yet, or an
  *   uninstalled extension), re-route to 'files'.
- * - Enable-flag toggle: if the active panel's flag flips to false (e.g.
- *   enableWikiPanel off while wiki is active), re-route to 'files'. Replaces
- *   the 4 hardcoded conditionals that lived in App.tsx pre-PR2.
  */
 
 import type { ReactNode } from 'react';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
-import { useAppearanceStore } from '@/store/appearanceStore';
 import { FilesPanel } from '@/components/sidebar/FilesPanel';
-import { WikiFileTree } from '@/components/sidebar/WikiFileTree';
-import { WikiIcon as WikiIconComponent } from '@/components/icons/WikiIcon';
 
 // ── Built-in icons (reuse the exact SVGs from the pre-PR2 ActivityBar) ──────────
 const FilesIcon: ReactNode = (
@@ -43,7 +37,6 @@ const FilesIcon: ReactNode = (
     <path d="M3 7V17a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
   </svg>
 );
-const WikiIcon: ReactNode = <WikiIconComponent size={14} />;
 
 let wired = false;
 
@@ -52,22 +45,9 @@ export function registerBuiltinPanels(): () => void {
   wired = true;
 
   const fps = useFeaturePanelStore.getState();
-  const ap = useAppearanceStore.getState();
-
-  // ponytail: order for Wiki is its enabledAt timestamp
-  // (Date.now() of the false→true transition). Files stays at 0 so it's
-  // always first. When enabledAt is undefined (panel disabled, or pre-
-  // migration old user with no recorded timestamp), fall back to the
-  // base order 10 — sort still stable, just not time-ordered.
-  const orderFor = (id: 'wiki', base: number) => {
-    const ts = id === 'wiki' ? ap.enabledAtWiki : undefined;
-    return ts ?? base;
-  };
 
   // ── Register the built-ins ──
-  // files is always visible; wiki binds visibility to its appearanceStore
-  // enable flag (captured at registration time; the subscription below keeps
-  // it in sync if hydration or a settings toggle changes the flag later).
+  // files is always visible.
   fps.register({
     id: 'files',
     title: '文件',
@@ -76,41 +56,6 @@ export function registerBuiltinPanels(): () => void {
     order: 0,
     visible: true,
     builtin: true,
-  });
-  fps.register({
-    id: 'wiki',
-    title: 'Wiki',
-    icon: WikiIcon,
-    component: WikiFileTree,
-    order: orderFor('wiki', 10),
-    visible: ap.enableWikiPanel,
-    builtin: true,
-  });
-
-  // ── appearanceStore enable flags → featurePanelStore visibility + order ──
-  // On any appearanceStore change, for the flag-bound panel:
-  // - if the flag changed, push the new visibility to the store
-  // - if the flag flipped to true, also refresh the panel's order from the
-  //   (just-updated) enabledAt timestamp so it lands at the end of the
-  //   ActivityBar, matching the "I just turned this on" mental model
-  // - if the just-hidden panel was the active one, re-route to 'files'
-  //   (the editorStore→featurePanelStore mirror subscription below propagates it)
-  const unsubAppearance = useAppearanceStore.subscribe((state, prev) => {
-    const checks: Array<[string, boolean, boolean, number | undefined, number | undefined]> = [
-      ['wiki', state.enableWikiPanel, prev.enableWikiPanel, state.enabledAtWiki, prev.enabledAtWiki],
-    ];
-    for (const [id, cur, prevFlag, curTs, prevTs] of checks) {
-      if (cur === prevFlag && curTs === prevTs) continue;
-      const store = useFeaturePanelStore.getState();
-      store.setVisible(id, cur);
-      if (cur) {
-        // order: enabledAt if we have one, else keep current (initial base)
-        store.setOrder(id, curTs ?? 10);
-      }
-      if (!cur && useEditorStore.getState().activePanel === id) {
-        useEditorStore.getState().setActivePanel('files');
-      }
-    }
   });
 
   // ── editorStore.activePanel → featurePanelStore.activePanelId (mirror) ──
@@ -144,11 +89,10 @@ export function registerBuiltinPanels(): () => void {
   // call still covers the case where a future change persists activePanel.
   mirrorActive(useEditorStore.getState().activePanel);
 
-  // Dispose: tears down the two subscriptions and resets the `wired` guard so
+  // Dispose: tears down the subscription and resets the `wired` guard so
   // tests can re-invoke `registerBuiltinPanels`. Production never calls this
   // — the panels/subscriptions live for the app session.
   return () => {
-    unsubAppearance();
     unsubEditor();
     wired = false;
   };

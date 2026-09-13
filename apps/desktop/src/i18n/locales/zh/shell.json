@@ -17,12 +17,7 @@
       "preview": "预览模式"
     },
     "lineCol": "Ln {{line}}, Col {{col}}",
-    "wordCount": "{{count}} 字",
-    "wiki": {
-      "ingesting": "摄入中",
-      "linting": "Lint 中",
-      "querying": "查询中"
-    }
+    "wordCount": "{{count}} 字"
   },
   "commandPalette": {
     "placeholder": "搜索命令或文件…",
@@ -59,7 +54,6 @@
   },
   "workArea": {
     "empty": {
-      "wiki": "暂无 Wiki 页面",
       "calendar": "暂无日记",
       "files": "暂无打开的文件"
     },

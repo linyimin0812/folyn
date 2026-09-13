@@ -215,13 +215,6 @@ export function registerBuiltinCommands(): void {
       run: () => gotoPanel('files'),
     },
     {
-      id: 'panel.wiki',
-      title: 'Go to Wiki',
-      category: 'panel-mode',
-      enabled: () => appearance().enableWikiPanel,
-      run: () => gotoPanel('wiki'),
-    },
-    {
       id: 'panel.settings',
       title: 'Open Settings',
       category: 'panel-mode',
@@ -235,50 +228,6 @@ export function registerBuiltinCommands(): void {
       keywords: ['translate', 'language'],
       enabled: () => appearance().enableTranslationPanel,
       run: () => nav().setCurrentPage('translation'),
-    },
-
-    // ── Wiki ingest ──
-    {
-      id: 'wiki.ingestCurrentFile',
-      title: 'Wiki: Ingest Current File',
-      category: 'action',
-      keywords: ['wiki', 'ingest', 'import', 'knowledge'],
-      enabled: () => {
-        if (!appearance().enableWikiPanel) return false;
-        const s = useEditorStore.getState();
-        if (!s.activeTabId) return false;
-        const tab = s.tabs.find((t) => t.id === s.activeTabId);
-        return !!tab && !tab.path.startsWith('__wiki__/');
-      },
-      run: () => {
-        const s = useEditorStore.getState();
-        const tab = s.tabs.find((t) => t.id === s.activeTabId);
-        if (!tab) return;
-        void import('@/services/wikiIngestService').then((m) => m.runIngest([tab.path])).catch(console.error);
-      },
-    },
-
-    {
-      id: 'wiki.newQuery',
-      title: 'Wiki: New Query',
-      category: 'panel-mode',
-      keywords: ['wiki', 'query', 'ask', 'search'],
-      enabled: () => appearance().enableWikiPanel,
-      run: () => {
-        useEditorStore.setState({ activePanel: 'wiki' });
-        void editorIoService.openFile('wiki-query', 'Wiki Query');
-      },
-    },
-    {
-      id: 'wiki.openGraph',
-      title: 'Wiki: Open Graph',
-      category: 'panel-mode',
-      keywords: ['wiki', 'graph', 'network', 'visualize'],
-      enabled: () => appearance().enableWikiPanel,
-      run: () => {
-        useEditorStore.setState({ activePanel: 'wiki' });
-        void editorIoService.openFile('wiki-graph', 'Wiki Graph');
-      },
     },
 
     // ── Editor view modes ──

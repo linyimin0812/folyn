@@ -5,7 +5,6 @@ import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension, listProviders } from '@/components/file-types/registry';
 import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
 import { useFileTypePreferenceStore } from './fileTypePreferenceStore';
-import { WIKI_PREFIX } from '@/types/wiki';
 import { persistOpenTabs, flushPersistOpenTabs, flushPersistExternalOpenTabs } from './editorPersistence';
 import { scheduleAutoSave } from './editorAutoSave';
 import { saveFile as saveFileIo } from '@/services/editorIoService';
@@ -17,9 +16,6 @@ export type { ViewMode };
 export type FileType = string;
 
 export function detectFileType(filePath: string): FileType {
-  // Wiki virtual tabs use dedicated icons in the tab bar.
-  if (filePath === 'wiki-graph') return 'wiki-graph';
-  if (filePath === 'wiki-query') return 'wiki-query';
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   // User preference (Open With, §53) overrides the priority default — but
   // only if the preferred provider still claims this extension.
@@ -56,9 +52,6 @@ export interface FileTab {
 
 /** Determine which activity panel a tab belongs to based on its path and file type */
 export function detectActivity(filePath: string, _fileType: FileType): ActivityPanel {
-  if (filePath === 'wiki-graph' || filePath === 'wiki-query') return 'wiki';
-  if (filePath.startsWith(WIKI_PREFIX)) return 'wiki';
-
   // Check daily notes directory
   const dailyDir = usePrefsStore.getState().dailyNotesDir || '__daily__';
   if (filePath.startsWith(`${dailyDir}/`)) return 'calendar';
@@ -223,7 +216,7 @@ export const useEditorStore = create<EditorState>()(
         if (mapping.length === 0) return;
         set((state) => {
           const rewritten = state.tabs.map((tab) => {
-            if (tab.fileType === 'web' || tab.path.startsWith(WIKI_PREFIX)) return tab;
+            if (tab.fileType === 'web') return tab;
             for (const { from, to } of mapping) {
               if (tab.path === from || tab.path.startsWith(`${from}/`)) {
                 const suffix = tab.path === from ? '' : tab.path.slice(from.length);

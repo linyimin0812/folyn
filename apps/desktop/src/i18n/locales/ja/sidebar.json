@@ -40,7 +40,6 @@
     "unpin": "ピン解除",
     "pin": "ピン留め",
     "addToChat": "チャットにファイルを追加",
-    "ingestToWiki": "Wikiに取り込み",
     "rename": "名前変更",
     "delete": "削除",
     "move": "移動先...",
@@ -82,32 +81,6 @@
     ],
     "title": "{{year}}年{{month}}月",
     "hasNote": "{{date}}（ノートあり）"
-  },
-  "wikiTree": {
-    "empty": "Wikiは空です。AIパネルからファイルを取り込んでナレッジベースを構築してください。",
-    "addSourceFiles": "インジェストするソースファイルを追加",
-    "pickConfirm": "取り込む",
-    "pickCancel": "キャンセル",
-    "pickSearch": "ファイル名で検索",
-    "pickEmpty": "Vault に markdown がありません",
-    "pickLoading": "Vault を読み込み中…",
-    "ingestAll": "全マークダウンを取り込む",
-    "stopIngest": "取り込みを中止",
-    "reviewsEmpty": "保留中の review はありません。",
-    "runLint": "lint を実行",
-    "selectAll": "すべて選択",
-    "acceptSelected": "選択を承認",
-    "dismissSelected": "選択を却下",
-    "filterByCheck": "フィルター",
-    "filterAll": "すべて",
-    "closeIngestPanel": "閉じる",
-    "showIngestPanel": "取り込み進捗を表示",
-    "toggleDir": "ディレクトリを切り替え",
-    "locateActive": "現在のファイルを表示",
-    "subTab": {
-      "files": "ファイル",
-      "reviews": "Review"
-    }
   },
   "clips": {
     "title": "クリップ",

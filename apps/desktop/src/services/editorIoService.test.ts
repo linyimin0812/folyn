@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock the editor-layer dependencies the service routes through. The service
 // reads/writes editorStore via getState/setState and chains out to vaultStore,
-// watcher, wikiProvider, persistence — stub them all so we can assert routing
-// without touching real Tauri FS / wiki ingestion.
+// watcher, persistence — stub them all so we can assert routing
+// without touching real Tauri FS.
 
 const { editorState, setStateMock } = vi.hoisted(() => {
   const editorState = {
@@ -42,8 +42,6 @@ vi.mock('@/components/file-types/registry', () => ({
   getSupportedModes: () => [],
 }));
 vi.mock('@/utils/fileWatcher', () => ({ suppressWatcherFor: vi.fn() }));
-vi.mock('@/services/wikiProvider', () => ({ wikiProvider: { readFile: vi.fn(), writeFile: vi.fn() } }));
-vi.mock('@/types/wiki', () => ({ WIKI_PREFIX: 'wiki://' }));
 vi.mock('@/store/editorAutoSave', () => ({ scheduleAutoSave: vi.fn(), flushAllAutoSaves: vi.fn() }));
 vi.mock('@/store/editorPersistence', () => ({ persistOpenTabs: vi.fn(), flushPersistOpenTabs: vi.fn(), loadPersistedOpenTabs: vi.fn(async () => null), persistExternalOpenTabs: vi.fn(), flushPersistExternalOpenTabs: vi.fn(), loadExternalOpenTabs: vi.fn(async () => null) }));
 vi.mock('@/utils/platform', () => ({ isTauri: () => true }));
@@ -93,7 +91,7 @@ describe('editorIoService — signatures exist', () => {
 describe('editorIoService.saveOpenTabs', () => {
   it('is a no-op when there is no active vault id', async () => {
     // ponytail: ceiling — full IO path (read/write file via Tauri FS, watcher
-    // suppression, wiki ingestion, persistence round-trip) can't be exercised
+    // suppression, persistence round-trip) can't be exercised
     // in jsdom. We assert the early-return guard and the flushAutoSaves
     // delegation to flushAllAutoSaves; the on-disk behavior is covered by the
     // existing editorStore integration surface and will be re-asserted in PR2

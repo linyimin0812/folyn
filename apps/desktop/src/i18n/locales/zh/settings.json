@@ -56,10 +56,6 @@
         "label": "显示隐藏文件",
         "description": "在文件树中显示以 . 开头的隐藏文件和文件夹"
       },
-      "wiki": {
-        "label": "Wiki 面板",
-        "description": "在侧栏显示 Wiki 知识库入口"
-      },
       "schedule": {
         "label": "日程面板",
         "description": "日程（Plan My Day）相关功能入口"
@@ -128,9 +124,9 @@
       "label": "字体大小"
     },
     "tabSize": {
-      "label": "Tab 大小",
       "2": "2 空格",
-      "4": "4 空格"
+      "4": "4 空格",
+      "label": "Tab 大小"
     },
     "showLineNumbers": {
       "label": "显示行号",

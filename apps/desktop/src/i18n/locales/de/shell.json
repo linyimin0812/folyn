@@ -16,12 +16,7 @@
       "preview": "Vorschaumodus"
     },
     "lineCol": "Z. {{line}}, Sp. {{col}}",
-    "wordCount": "{{count}} Wörter",
-    "wiki": {
-      "ingesting": "Ingesting",
-      "linting": "Linting",
-      "querying": "Querying"
-    }
+    "wordCount": "{{count}} Wörter"
   },
   "commandPalette": {
     "placeholder": "Befehle oder Dateien suchen…",
@@ -58,7 +53,6 @@
   },
   "workArea": {
     "empty": {
-      "wiki": "Keine Wiki-Seiten",
       "calendar": "Keine Tagebucheinträge",
       "files": "Keine offenen Dateien"
     },

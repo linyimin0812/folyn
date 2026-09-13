@@ -43,9 +43,6 @@ export interface ChatMessageListProps {
    *    list-level block (matches the pet).
    *  - `'none'`: neither. */
   streamingIndicator?: 'dots' | 'cursor' | 'none';
-  /** AiPanel wiki-mode "保存到 Wiki" button on assistant msgs with content.
-   *  The pet chat omits this. */
-  onSaveToWiki?: (msg: CliMessage) => void;
   /** Save-to-vault button on assistant msgs with content. Opens an in-app
    *  vault path picker (consumer-supplied) — the consumer renders the picker
    *  and writes `msg.content` to the chosen path. */
@@ -300,7 +297,6 @@ function DefaultMessageRow({
   showCopy,
   onCopy,
   streamingIndicator,
-  onSaveToWiki,
   onSaveToFile,
   showSaveImageButton,
   onPathClick,
@@ -318,7 +314,6 @@ function DefaultMessageRow({
   showCopy?: boolean;
   onCopy?: (msg: CliMessage) => void;
   streamingIndicator: 'dots' | 'cursor' | 'none';
-  onSaveToWiki?: (msg: CliMessage) => void;
   onSaveToFile?: (msg: CliMessage) => void;
   showSaveImageButton?: boolean;
   onPathClick?: (path: string, line?: number, col?: number) => void;
@@ -357,8 +352,8 @@ function DefaultMessageRow({
   }
 
   // ── Assistant bubble: flat soft card; pair tag sits OUTSIDE the bubble
-  //    as a small meta line above it; copy / wiki actions on hover. ──
-  const hasActions = Boolean(msg.content) && (showCopy || onSaveToWiki || onSaveToFile || onEnterMultiSelect);
+  //    as a small meta line above it; copy / save actions on hover. ──
+  const hasActions = Boolean(msg.content) && (showCopy || onSaveToFile || onEnterMultiSelect);
   const selected = selectedIds?.has(msg.id) ?? false;
   return (
     <div className="chat-msg-row">
@@ -401,15 +396,6 @@ function DefaultMessageRow({
             {msg.content && onEnterMultiSelect && !multiSelectMode && (
               <MultiSelectTriggerButton onClick={onEnterMultiSelect} />
             )}
-            {msg.content && onSaveToWiki && (
-              <button
-                type="button"
-                className="py-0.5 px-2.5 border border-acc rounded-full bg-transparent text-acc text-[11px] cursor-pointer hover:bg-accdim transition-colors"
-                onClick={() => onSaveToWiki(msg)}
-              >
-                保存到 Wiki
-              </button>
-            )}
             {msg.content && showCopy && <CopyButton msg={msg} onCopy={onCopy} />}
             {msg.content && onSaveToFile && <SaveButton msg={msg} onSave={onSaveToFile} />}
           </div>
@@ -433,7 +419,6 @@ export function ChatMessageList({
   showCopy,
   onCopy,
   streamingIndicator = 'dots',
-  onSaveToWiki,
   onSaveToFile,
   showSaveImageButton,
   onPathClick,
@@ -506,7 +491,6 @@ export function ChatMessageList({
             showCopy={showCopy}
             onCopy={onCopy}
             streamingIndicator={streamingIndicator}
-            onSaveToWiki={onSaveToWiki}
             onSaveToFile={onSaveToFile}
             showSaveImageButton={showSaveImageButton}
             onPathClick={onPathClick}

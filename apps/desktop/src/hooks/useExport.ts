@@ -31,7 +31,6 @@ import { resolveAssetBase } from '@/components/file-types/previewPath';
 import { getHandlerById } from '@/components/file-types/registry';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { isExternalPath } from '@/utils/isExternalPath';
-import { WIKI_PREFIX } from '@/types/wiki';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
 import type { ProviderConfig } from '@/services/storage/types';
@@ -75,18 +74,10 @@ export function exportActiveMarkdown(onBeforeDialog?: () => void): void {
 
 /** Read raw bytes for a binary (needsFileContent=false) tab. Routes by path
  *  shape — external paths go through externalFileProvider, vault paths
- *  through the vault manager's byte-preserving read. Wiki paths never hit
- *  this branch (wiki is text-only). */
+ *  through the vault manager's byte-preserving read. */
 async function readActiveBytes(path: string): Promise<Uint8Array> {
   if (isExternalPath(path)) {
     return externalFileProvider.readFileBytes(path);
-  }
-  if (path.startsWith(WIKI_PREFIX)) {
-    // ponytail: wiki is text-only; office/binary types never open from wiki.
-    // If we ever get here, UTF-8 round-trip is acceptable.
-    const { wikiProvider } = await import('@/services/wikiProvider');
-    const text = await wikiProvider.readFile(path.slice(WIKI_PREFIX.length));
-    return new TextEncoder().encode(text);
   }
   return useVaultStore.getState().manager.readFileBytes(path);
 }

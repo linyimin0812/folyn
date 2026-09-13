@@ -28,7 +28,7 @@ export function DeepResearchDialog({ initialTopic = '', onConfirm, onCancel }: D
             style={{ resize: 'vertical', fontFamily: 'inherit' }}
           />
           <p className="text-[11px] text-t4 mt-1 mb-0">
-            AI 将根据此主题搜索网络，并将结果自动摄入到 Wiki。
+            AI 将根据此主题搜索网络，并整理研究结果。
           </p>
         </div>
         <div className="dlg-footer">

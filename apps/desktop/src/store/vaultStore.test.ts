@@ -643,13 +643,11 @@ describe('useVaultStore.migrateSpecialDirs', () => {
 
   it('renames legacy built-in dirs to __name__ form', async () => {
     manager.tree.push(
-      { path: 'folyn-wiki', name: 'folyn-wiki', type: 'dir' },
       { path: 'reports', name: 'reports', type: 'dir' },
     );
     const renamed = await useVaultStore.getState().migrateSpecialDirs();
     const pairs = renamed.map((r) => r.from);
-    expect(pairs).toEqual(['folyn-wiki', 'reports']);
-    expect(manager.rename).toHaveBeenCalledWith('folyn-wiki', '__wiki__');
+    expect(pairs).toEqual(['reports']);
     expect(manager.rename).toHaveBeenCalledWith('reports', '__reports__');
   });
 

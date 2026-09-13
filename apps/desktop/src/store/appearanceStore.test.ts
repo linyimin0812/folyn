@@ -22,9 +22,8 @@ function resetAppearanceDefaults() {
     showAiPanel: true,
     showStatusBar: true,
     showHiddenFiles: true,
-    enableWikiPanel: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__reports__\n__daily__\n__schedule__\n__attachments__\n__study__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__reports__\n__daily__\n__schedule__\n__attachments__\n__study__',
     linkOpenMode: 'external',
     vaultName: 'my-vault',
   });
@@ -90,22 +89,6 @@ describe('useAppearanceStore setters', () => {
     expect(payload.showAiPanel).toBe(false);
     setSpy.mockRestore();
   });
-
-  it('setEnableWikiPanel stamps enabledAt on false→true, clears on true→false', () => {
-    vi.setSystemTime(new Date('2026-08-18T00:00:00Z'));
-    useAppearanceStore.setState({ enableWikiPanel: false, enabledAtWiki: undefined });
-    useAppearanceStore.getState().setEnableWikiPanel(true);
-    expect(useAppearanceStore.getState().enableWikiPanel).toBe(true);
-    expect(useAppearanceStore.getState().enabledAtWiki).toBe(Date.parse('2026-08-18T00:00:00Z'));
-    // Toggling true→true is idempotent (no timestamp refresh)
-    vi.setSystemTime(new Date('2026-08-18T01:00:00Z'));
-    useAppearanceStore.getState().setEnableWikiPanel(true);
-    expect(useAppearanceStore.getState().enabledAtWiki).toBe(Date.parse('2026-08-18T00:00:00Z'));
-    // Toggling true→false clears
-    useAppearanceStore.getState().setEnableWikiPanel(false);
-    expect(useAppearanceStore.getState().enableWikiPanel).toBe(false);
-    expect(useAppearanceStore.getState().enabledAtWiki).toBeUndefined();
-  });
 });
 
 describe('useAppearanceStore.hydrate', () => {
@@ -130,10 +113,10 @@ describe('useAppearanceStore.hydrate', () => {
   });
 
   it('backfills excludePatterns with built-in dirs', () => {
-    useAppearanceStore.getState().hydrate({ excludePatterns: 'node_modules\n__wiki__' });
+    useAppearanceStore.getState().hydrate({ excludePatterns: 'node_modules\n__reports__' });
     const lines = useAppearanceStore.getState().excludePatterns.split('\n');
     expect(lines).toContain('node_modules');
-    expect(lines).toContain('__wiki__');
+    expect(lines).toContain('__reports__');
     expect(lines).toContain('__schedule__');
   });
 
@@ -152,7 +135,6 @@ describe('useAppearanceStore.hydrate', () => {
 
 describe('backfillBuiltinExcludePatterns', () => {
   const BUILTIN_DIRS = [
-    '__wiki__',
     '__reports__',
     '__daily__',
     '__schedule__',
@@ -166,10 +148,10 @@ describe('backfillBuiltinExcludePatterns', () => {
   });
 
   it('preserves user-defined custom patterns without duplicating them', () => {
-    const result = backfillBuiltinExcludePatterns('node_modules\n__wiki__');
+    const result = backfillBuiltinExcludePatterns('node_modules\n__reports__');
     const lines = result.split('\n');
     expect(lines).toContain('node_modules');
-    expect(lines).toContain('__wiki__');
+    expect(lines).toContain('__reports__');
     for (const d of BUILTIN_DIRS) {
       expect(lines).toContain(d);
     }

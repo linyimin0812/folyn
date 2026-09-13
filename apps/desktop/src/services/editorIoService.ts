@@ -9,10 +9,8 @@ import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { getHandlerById, getDefaultMode, usesShellEditor } from "@/components/file-types/registry";
 import { suppressWatcherFor } from '@/utils/fileWatcher';
-import { wikiProvider } from '@/services/wikiProvider';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { isExternalPath } from '@/utils/isExternalPath';
-import { WIKI_PREFIX } from '@/types/wiki';
 import {
   flushAllAutoSaves,
 } from '@/store/editorAutoSave';
@@ -52,14 +50,11 @@ function formatDailyDate(date: Date, format: string): string {
 }
 
 /** Resolve which provider reads a path's content. External (absolute / home-
- *  relative) paths go to `externalFileProvider`; wiki-prefixed paths go to
- *  `wikiProvider`; everything else is vault-relative → `vaultStore`. */
+ *  relative) paths go to `externalFileProvider`; everything else is
+ *  vault-relative → `vaultStore`. */
 export async function readRawContent(filePath: string): Promise<string> {
   if (isExternalPath(filePath)) {
     return externalFileProvider.readFile(filePath);
-  }
-  if (filePath.startsWith(WIKI_PREFIX)) {
-    return wikiProvider.readFile(filePath.slice(WIKI_PREFIX.length));
   }
   return useVaultStore.getState().readFile(filePath);
 }
@@ -67,17 +62,13 @@ export async function readRawContent(filePath: string): Promise<string> {
 /** Public alias used by file-type handlers that read files outside the
  *  editorStore content flow (e.g. embedded excalidraw preview, the markdown
  *  `:::file-preview` readFile callback). Routes by path shape exactly like
- *  `openFile` does so an external / wiki path resolves correctly. */
+ *  `openFile` does so an external path resolves correctly. */
 export const readFileByRoute = readRawContent;
 
 /** Resolve which provider writes a path's content (mirror of readRawContent). */
 async function writeRawContent(filePath: string, content: string): Promise<void> {
   if (isExternalPath(filePath)) {
     await externalFileProvider.writeFile(filePath, content);
-    return;
-  }
-  if (filePath.startsWith(WIKI_PREFIX)) {
-    await wikiProvider.writeFile(filePath.slice(WIKI_PREFIX.length), content);
     return;
   }
   await useVaultStore.getState().writeFile(filePath, content);
@@ -91,9 +82,6 @@ export async function openFile(filePath: string, name: string): Promise<void> {
   // it never collides with a vault tab (whose id is `${vaultId}:${relPath}`)
   // and so `switchVault`'s `tabs: []` clear can be narrowed to keep them.
   const isExternal = isExternalPath(filePath);
-  // ponytail: virtual paths route to in-app views (wiki-graph, wiki-query) via
-  // WorkArea's path check — no backing file, so skip readRawContent for them.
-  const isVirtualPath = filePath === 'wiki-graph' || filePath === 'wiki-query';
   const vaultId = isExternal ? 'ext' : (useVaultStore.getState().activeVaultId || '');
   const tabId = isExternal ? `ext:${filePath}` : `${vaultId}:${filePath}`;
 
@@ -110,7 +98,7 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     const needsActivityUpdate = existing.activity !== correctActivity;
 
     // If existing tab has empty content but the file type needs content, reload it
-    if (!isVirtualPath && !existing.content && getHandlerById(correctFileType)?.needsFileContent) {
+    if (!existing.content && getHandlerById(correctFileType)?.needsFileContent) {
       try {
         const handler = getHandlerById(correctFileType);
         const raw = await readRawContent(filePath);
@@ -155,7 +143,7 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     const fileType = detectFileType(filePath);
     const handler = getHandlerById(fileType);
     let content = '';
-    if (!isVirtualPath && handler?.needsFileContent) {
+    if (handler?.needsFileContent) {
       const raw = await readRawContent(filePath);
       content = handler.deserialize ? handler.deserialize(raw) : raw;
       console.log(`[EditorStore] openFile: ${filePath} type=${fileType} content=${content.length} chars`);
@@ -295,7 +283,6 @@ export function closeTab(tabId: string): void {
  * Snapshot `tab`'s on-disk content if it is a Versionable File under the
  * active vault. Skips:
  *   - external tabs (`isExternalPath(tab.path)`) — no vault id bound
- *   - wiki tabs (`wiki://` prefix) — no on-disk path under the vault
  *   - `web` tabs — no on-disk file content (URL-only)
  *   - non-content handlers (`needsFileContent !== true`) — image/office
  *     previews have no editor-buffer state worth snapshotting
@@ -303,11 +290,11 @@ export function closeTab(tabId: string): void {
  *
  * The "versionable" predicate mirrors `checkDiskChanges`'s filter
  * (`fileType !== 'web' && handler.needsFileContent`) — same gate, same
- * scope per PRD §7. PRD §scope-list ("web" included) is intentional but
+ * scope per PRD §2. PRD §scope-list ("web" included) is intentional but
  * `web` has no on-disk content, so the practical predicate excludes it.
  */
 async function maybeSnapshotVersion(tab: FileTab): Promise<void> {
-  if (isExternalPath(tab.path) || tab.path.startsWith(WIKI_PREFIX)) return;
+  if (isExternalPath(tab.path)) return;
   if (tab.fileType === 'web') return;
   const handler = getHandlerById(tab.fileType);
   if (!handler?.needsFileContent) return;

@@ -16,12 +16,7 @@
       "preview": "プレビューモード"
     },
     "lineCol": "{{line}}行 {{col}}列",
-    "wordCount": "{{count}}語",
-    "wiki": {
-      "ingesting": "インジェスト中",
-      "linting": "Lint中",
-      "querying": "クエリ中"
-    }
+    "wordCount": "{{count}}語"
   },
   "commandPalette": {
     "placeholder": "コマンドやファイルを検索…",
@@ -58,7 +53,6 @@
   },
   "workArea": {
     "empty": {
-      "wiki": "Wiki ページなし",
       "calendar": "日記なし",
       "files": "開いているファイルなし"
     },

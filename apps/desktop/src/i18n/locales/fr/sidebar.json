@@ -40,7 +40,6 @@
     "unpin": "Détacher",
     "pin": "Épingler",
     "addToChat": "Ajouter le fichier au chat",
-    "ingestToWiki": "Ingérer dans le Wiki",
     "rename": "Renommer",
     "delete": "Supprimer",
     "move": "Déplacer vers...",
@@ -82,9 +81,6 @@
     ],
     "title": "{{month}} {{year}}",
     "hasNote": "{{date}} (a une note)"
-  },
-  "wikiTree": {
-    "empty": "Le Wiki est vide. Ingérez des fichiers depuis le panneau IA pour construire la base de connaissances."
   },
   "clips": {
     "title": "Captures",

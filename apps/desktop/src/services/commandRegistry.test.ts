@@ -184,7 +184,6 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.export-html',
       'action.open-global-search',
       'action.plan-my-day',
-      'wiki.ingestCurrentFile',
       'action.toggle-focus-mode',
     ]);
   });
@@ -196,10 +195,8 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       .map((c) => c.id);
     expect(ids).toEqual([
       'panel.files',
-      'panel.wiki',
       'panel.settings',
-      'wiki.newQuery',
-      'wiki.openGraph',
+      'panel.translation',
       'mode.split',
       'mode.edit',
       'mode.preview',
@@ -252,25 +249,10 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     expect(toggleFocusModeMock).toHaveBeenCalledTimes(1);
   });
 
-  it('panel.wiki sets active panel to wiki', async () => {
-    registerBuiltinCommands();
-    await runCommand('panel.wiki');
-    expect(setCurrentPageMock).toHaveBeenCalledWith('editor');
-    expect(setActivePanelMock).toHaveBeenCalledWith('wiki');
-  });
-
   it('panel.settings opens settings page', async () => {
     registerBuiltinCommands();
     await runCommand('panel.settings');
     expect(setCurrentPageMock).toHaveBeenCalledWith('settings');
-  });
-
-  it('hides disabled panel commands when enabled() returns false', () => {
-    registerBuiltinCommands();
-    const wiki = getCommand('panel.wiki');
-    expect(wiki?.enabled).toBeDefined();
-    // Default mock has enableWikiPanel: true → visible.
-    expect(wiki?.enabled?.()).toBe(true);
   });
 });
 

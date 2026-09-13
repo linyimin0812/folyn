@@ -17,12 +17,7 @@
       "preview": "Preview mode"
     },
     "lineCol": "Ln {{line}}, Col {{col}}",
-    "wordCount": "{{count}} words",
-    "wiki": {
-      "ingesting": "Ingesting",
-      "linting": "Linting",
-      "querying": "Querying"
-    }
+    "wordCount": "{{count}} words"
   },
   "commandPalette": {
     "placeholder": "Search commands or files…",
@@ -59,7 +54,6 @@
   },
   "workArea": {
     "empty": {
-      "wiki": "No Wiki pages",
       "calendar": "No journal entries",
       "files": "No open files"
     },

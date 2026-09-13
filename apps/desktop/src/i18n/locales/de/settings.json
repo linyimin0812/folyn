@@ -56,10 +56,6 @@
         "label": "Versteckte Dateien anzeigen",
         "description": "Dotfiles und versteckte Ordner im Dateibaum anzeigen"
       },
-      "wiki": {
-        "label": "Wiki-Panel",
-        "description": "Wiki-Eintrag in der Seitenleiste anzeigen"
-      },
       "schedule": {
         "label": "Plan-Panel",
         "description": "Eintrag der Schedule-Funktion (Plan My Day)"
@@ -128,9 +124,9 @@
       "label": "Schriftgröße"
     },
     "tabSize": {
-      "label": "Tab-Größe",
       "2": "2 Leerzeichen",
-      "4": "4 Leerzeichen"
+      "4": "4 Leerzeichen",
+      "label": "Tab-Größe"
     },
     "showLineNumbers": {
       "label": "Zeilennummern anzeigen",

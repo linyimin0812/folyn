@@ -40,7 +40,6 @@
     "unpin": "取消置顶",
     "pin": "置顶",
     "addToChat": "添加文件到对话",
-    "ingestToWiki": "摄入到 Wiki",
     "rename": "重命名",
     "delete": "删除",
     "move": "移动到...",
@@ -82,32 +81,6 @@
     ],
     "title": "{{year}} 年 {{month}} 月",
     "hasNote": "{{date}} (有笔记)"
-  },
-  "wikiTree": {
-    "empty": "Wiki 为空。在 AI 面板中摄入文件开始构建知识库。",
-    "addSourceFiles": "添加源文件进行摄入",
-    "pickConfirm": "摄入",
-    "pickCancel": "取消",
-    "pickSearch": "搜索文件名",
-    "pickEmpty": "Vault 中没有 markdown 文件",
-    "pickLoading": "读取 vault…",
-    "ingestAll": "摄入全部 markdown",
-    "stopIngest": "终止摄入",
-    "reviewsEmpty": "暂无待处理 review。",
-    "runLint": "运行 lint",
-    "selectAll": "全选",
-    "acceptSelected": "批量接受",
-    "dismissSelected": "批量忽略",
-    "filterByCheck": "筛选",
-    "filterAll": "全部",
-    "closeIngestPanel": "关闭",
-    "showIngestPanel": "显示摄入进度",
-    "toggleDir": "展开/收起目录",
-    "locateActive": "定位到当前文件",
-    "subTab": {
-      "files": "文件",
-      "reviews": "Review"
-    }
   },
   "clips": {
     "title": "Clips",

@@ -1,8 +1,6 @@
 import React from 'react';
 import { ThemeIcon, hasIcon } from './ThemeIcon';
 import chromeIcon from '@/assets/chrome.svg';
-import wikiGraphIcon from '@/assets/icons/wiki_graph.svg';
-import wikiQueryIcon from '@/assets/icons/wiki_query.svg';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
 import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
 
@@ -110,12 +108,6 @@ export function FileIcon({ filename, isDir, fileType }: FileIconProps) {
   // Browser/web tabs share the Chrome icon in the open-files tab bar.
   if (fileType === 'web') {
     return <img src={chromeIcon} alt="" width={S} height={S} className="shrink-0" />;
-  }
-  if (fileType === 'wiki-graph') {
-    return <img src={wikiGraphIcon} alt="" width={S} height={S} className="shrink-0" />;
-  }
-  if (fileType === 'wiki-query') {
-    return <img src={wikiQueryIcon} alt="" width={S} height={S} className="shrink-0" />;
   }
 
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';

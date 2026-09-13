@@ -170,10 +170,8 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   // source of truth for panel visibility), not to extensionHost.activate. Grab
   // all flag/setter pairs unconditionally — hooks can't be conditional,
   // and these subscriptions are cheap (zustand shallow-equals primitives).
-  const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
   const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
-  const setEnableWikiPanel = useAppearanceStore((s) => s.setEnableWikiPanel);
   const setEnableSchedulePanel = useAppearanceStore((s) => s.setEnableSchedulePanel);
   const setEnableTranslationPanel = useAppearanceStore((s) => s.setEnableTranslationPanel);
   // Render errors captured by PanelErrorBoundary for this extension's surfaces.
@@ -194,8 +192,7 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   // needed (their trust boundary is the iframe sandbox, not a pin).
   const needsApproval = !builtin && entry.tier === 'trusted' && !entry.trusted;
   const isActive = builtin
-    ? (entry.id === 'builtin:wiki' ? enableWikiPanel
-        : entry.id === 'builtin:schedule' ? enableSchedulePanel
+    ? (entry.id === 'builtin:schedule' ? enableSchedulePanel
         : entry.id === 'builtin:translation' ? enableTranslationPanel
         : false)
     : state === 'active';
@@ -282,8 +279,7 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
               value={toggleValue}
               onChange={(v) => {
                 if (builtin) {
-                  if (entry.id === 'builtin:wiki') setEnableWikiPanel(v);
-                  else if (entry.id === 'builtin:schedule') setEnableSchedulePanel(v);
+                  if (entry.id === 'builtin:schedule') setEnableSchedulePanel(v);
                   else if (entry.id === 'builtin:translation') setEnableTranslationPanel(v);
                   return;
                 }

@@ -1,6 +1,5 @@
 import { useRef, useState, useCallback, useEffect, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
@@ -12,8 +11,6 @@ import { EditorView } from '@codemirror/view';
 import { getHandlerById, getSupportedModes, getDefaultMode, getMode } from '../file-types/registry';
 import type { PreviewProps } from '../file-types/types';
 import { setActiveEditorHandle } from '@/services/editorHandleRegistry';
-import { WikiGraphView } from '../graph/WikiGraphView';
-import { WikiQueryView } from '../wiki/WikiQueryView';
 import { getWebviewLabels } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
@@ -21,8 +18,7 @@ import { PreviewPane } from './PreviewPane';
 import { DailyDigest } from '../editor/DailyDigest';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
-import { closeTab as closeTabWithSnapshot, openFile } from '@/services/editorIoService';
-import { WIKI_PREFIX } from '@/types/wiki';
+import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 // ponytail: inline `kind: 'component'` editors (Excalidraw / rich-text / web)
 // currently have no per-tab abort lifecycle. A never-aborting signal keeps the
@@ -186,16 +182,6 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
     && versionHistorySelectedKey !== null
     && isVersionableTab(activeTab);
 
-  // ponytail: floating "Back to graph" pill — shown only when the user has
-  // navigated from the wiki graph view into a wiki page (activeTab.path starts
-  // with WIKI_PREFIX) and a `wiki-graph` virtual tab still exists. Clicking it
-  // re-activates that tab via the idempotent openFile path. Skipped: full
-  // editor back/forward history stack — bigger feature, one-shot is enough.
-  const hasGraphTab = tabs.some((t) => t.path === 'wiki-graph');
-  const showBackToGraph = !!activeTab
-    && activeTab.path.startsWith(WIKI_PREFIX)
-    && hasGraphTab;
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
       {/* File tabs — hidden in focus mode so only the editor/preview shows */}
@@ -216,13 +202,9 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           if TabBar ever gets horizontal padding. */}
       <div className="flex-1 flex overflow-hidden" ref={splitContainerRef}>
 
-      {activeTab && activeTab.path === 'wiki-graph' ? (
-        <WikiGraphView />
-      ) : activeTab && activeTab.path === 'wiki-query' ? (
-        <WikiQueryView />
-      ) : tabs.length === 0 ? (
+      {tabs.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
-          {t(`shell:workArea.empty.${activePanel === 'wiki' ? 'wiki' : activePanel === 'calendar' ? 'calendar' : 'files'}`)}
+          {t(`shell:workArea.empty.${activePanel === 'calendar' ? 'calendar' : 'files'}`)}
         </div>
       ) : showVersionHistoryDiff ? (
         // ponytail: editor area swapped for the version-history content view.
@@ -350,18 +332,6 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           integration. Visibility gated by useEditorViewStateStore; the panel
           itself no-ops when the active tab is not a Versionable File. */}
       <VersionHistoryPanel activeTab={activeTab} />
-
-      {showBackToGraph && (
-        <button
-          type="button"
-          className="absolute top-11 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 py-1 px-2.5 rounded-md bg-panel border border-brd text-t2 text-[length:calc(var(--ui-font-size)-2px)] shadow-sm hover:bg-hov hover:text-t1 transition-colors"
-          onClick={() => { void openFile('wiki-graph', 'Wiki Graph'); }}
-          title={t('wiki:graph.backToGraph')}
-        >
-          <ArrowLeft size={13} className="shrink-0" />
-          {t('wiki:graph.backToGraph')}
-        </button>
-      )}
     </div>
   );
 }

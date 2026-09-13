@@ -4,8 +4,7 @@ import scheduleSvgText from '@/assets/icons/schedule.svg?raw';
 
 /** Schedule (工作日程) page icon. Inactive state uses the SVG's native
  * colors (no substitution). Active state rewrites fill+stroke to the
- * resolved `--acc` so the icon turns blue when selected, matching the
- * Wiki panel button.
+ * resolved `--acc` so the icon turns blue when selected.
  *
  * The SVG is base64-encoded into a data-URI <img> — inline SVG via
  * dangerouslySetInnerHTML is unreliable in the Tauri webview, so we

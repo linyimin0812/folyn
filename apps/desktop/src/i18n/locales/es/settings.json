@@ -56,10 +56,6 @@
         "label": "Mostrar archivos ocultos",
         "description": "Mostrar dotfiles y carpetas ocultas en el árbol"
       },
-      "wiki": {
-        "label": "Panel Wiki",
-        "description": "Mostrar entrada Wiki en la barra lateral"
-      },
       "schedule": {
         "label": "Panel de Agenda",
         "description": "Entrada de la función Schedule (Plan My Day)"
@@ -128,9 +124,9 @@
       "label": "Tamaño de fuente"
     },
     "tabSize": {
-      "label": "Tamaño de tabulación",
       "2": "2 espacios",
-      "4": "4 espacios"
+      "4": "4 espacios",
+      "label": "Tamaño de tabulación"
     },
     "showLineNumbers": {
       "label": "Mostrar números de línea",

@@ -2,9 +2,7 @@
  * Tests for the PR2 built-in panel registration + visibility/active sync.
  *
  * Covers the contract that `registerBuiltinPanels` fulfills:
- * - 3 built-in panels registered with correct ids + order.
- * - Visibility bound to appearanceStore enable flags at registration time.
- * - appearanceStore flag toggle → setVisible + active-panel-fallback.
+ * - 1 built-in panel registered with correct id + order.
  * - editorStore.activePanel → featurePanelStore.activePanelId mirror.
  * - Persisted-invalid-id fallback (active points at an unregistered panel →
  *   re-route to 'files').
@@ -19,9 +17,7 @@ import { useAppearanceStore } from '@/store/appearanceStore';
 function resetStores() {
   useFeaturePanelStore.setState({ panels: [], activePanelId: null });
   useEditorStore.setState({ activePanel: 'files', activeTabId: null, tabs: [] });
-  useAppearanceStore.setState({
-    enableWikiPanel: true,
-  });
+  useAppearanceStore.setState({});
 }
 
 beforeEach(() => {
@@ -33,88 +29,57 @@ afterEach(() => {
 });
 
 describe('registerBuiltinPanels: built-in registration', () => {
-  it('registers exactly the 2 built-in panels', () => {
+  it('registers exactly the 1 built-in panel', () => {
     const dispose = registerBuiltinPanels();
     const ids = useFeaturePanelStore.getState().panels.map((p) => p.id);
-    expect(ids).toEqual(['files', 'wiki']);
+    expect(ids).toEqual(['files']);
     dispose();
   });
 
-  it('assigns the spec-mandated order values (0/10)', () => {
+  it('assigns the spec-mandated order value (0)', () => {
     const dispose = registerBuiltinPanels();
     const byId = Object.fromEntries(
       useFeaturePanelStore.getState().panels.map((p) => [p.id, p.order]),
     );
     expect(byId).toEqual({
       files: 0,
-      wiki: 10,
     });
     dispose();
   });
 
-  it('marks all 2 as builtin', () => {
+  it('marks the panel as builtin', () => {
     const dispose = registerBuiltinPanels();
     const allBuiltin = useFeaturePanelStore
       .getState()
-      .panels.filter((p) => p.id === 'files' || p.id === 'wiki')
+      .panels.filter((p) => p.id === 'files')
       .every((p) => p.builtin === true);
     expect(allBuiltin).toBe(true);
     dispose();
   });
 
-  it('files is always visible; others bind to appearance flags at registration', () => {
-    useAppearanceStore.setState({
-      enableWikiPanel: false,
-    });
+  it('files is always visible', () => {
     const dispose = registerBuiltinPanels();
     const visible = Object.fromEntries(
       useFeaturePanelStore.getState().panels.map((p) => [p.id, p.visible]),
     );
     expect(visible.files).toBe(true);
-    expect(visible.wiki).toBe(false);
     dispose();
   });
 
   it('is idempotent — a second call is a no-op (wired guard)', () => {
     const dispose1 = registerBuiltinPanels();
     const dispose2 = registerBuiltinPanels(); // no-op, returns disposer that does nothing
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(1);
     dispose2();
     // The second dispose is a no-op — panels still present until dispose1.
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(1);
     dispose1();
-  });
-});
-
-describe('registerBuiltinPanels: appearance flag → visibility sync', () => {
-  it('toggling enableWikiPanel to false hides wiki in the store', () => {
-    const dispose = registerBuiltinPanels();
-    useAppearanceStore.setState({ enableWikiPanel: false });
-    const wiki = useFeaturePanelStore.getState().panels.find((p) => p.id === 'wiki');
-    expect(wiki?.visible).toBe(false);
-    dispose();
-  });
-});
-
-describe('registerBuiltinPanels: active-panel fallback', () => {
-  it('falls back to files when the active panel becomes invisible', () => {
-    const dispose = registerBuiltinPanels();
-    useEditorStore.getState().setActivePanel('wiki');
-    // mirror fires → activePanelId becomes 'wiki'
-    expect(useFeaturePanelStore.getState().activePanelId).toBe('wiki');
-    // hide wiki → fallback to files
-    useAppearanceStore.setState({ enableWikiPanel: false });
-    expect(useEditorStore.getState().activePanel).toBe('files');
-    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
-    dispose();
   });
 });
 
 describe('registerBuiltinPanels: active-panel mirror + persisted-invalid fallback', () => {
   it('mirrors editorStore.activePanel → featurePanelStore.activePanelId', () => {
     const dispose = registerBuiltinPanels();
-    useEditorStore.getState().setActivePanel('wiki');
-    expect(useFeaturePanelStore.getState().activePanelId).toBe('wiki');
     useEditorStore.getState().setActivePanel('files');
     expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
     dispose();
@@ -133,17 +98,8 @@ describe('registerBuiltinPanels: active-panel mirror + persisted-invalid fallbac
   });
 
   it('initial sync picks up editorStore.activePanel when it is a registered visible panel', () => {
-    useEditorStore.setState({ activePanel: 'wiki' });
+    useEditorStore.setState({ activePanel: 'files' });
     const dispose = registerBuiltinPanels();
-    expect(useFeaturePanelStore.getState().activePanelId).toBe('wiki');
-    dispose();
-  });
-
-  it('initial sync falls back when editorStore.activePanel is registered but invisible', () => {
-    useAppearanceStore.setState({ enableWikiPanel: false });
-    useEditorStore.setState({ activePanel: 'wiki' });
-    const dispose = registerBuiltinPanels();
-    expect(useEditorStore.getState().activePanel).toBe('files');
     expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
     dispose();
   });

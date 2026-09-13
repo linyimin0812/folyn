@@ -56,10 +56,6 @@
         "label": "Show hidden files",
         "description": "Show dotfiles and hidden folders in the file tree"
       },
-      "wiki": {
-        "label": "Wiki panel",
-        "description": "Show Wiki entry in the sidebar"
-      },
       "schedule": {
         "label": "Schedule panel",
         "description": "Schedule (Plan My Day) feature entry"
@@ -128,9 +124,9 @@
       "label": "Font size"
     },
     "tabSize": {
-      "label": "Tab size",
       "2": "2 spaces",
-      "4": "4 spaces"
+      "4": "4 spaces",
+      "label": "Tab size"
     },
     "showLineNumbers": {
       "label": "Show line numbers",

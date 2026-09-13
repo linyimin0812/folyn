@@ -350,7 +350,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   font-size: 11px; line-height: 1.5; color: var(--t3);
 }
 
-/* Bubble actions (copy / save-to-wiki) — revealed on row hover, always
+/* Bubble actions (copy / save) — revealed on row hover, always
  * visible on touch (no hover) and while focus is inside the actions. */
 .chat-msg-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-top: 4px; opacity: 0; transition: opacity .15s ease; }
 .chat-msg-row:hover .chat-msg-actions, .chat-msg-actions:focus-within { opacity: 1; }
@@ -733,11 +733,6 @@ mjx-container svg {
 .cm-diff-accept:hover { color: #16a34a; }
 .cm-diff-reject { color: #ef4444; cursor: pointer; font-weight: bold; }
 .cm-diff-reject:hover { color: #dc2626; }
-
-/* ── Wiki spinners (use consolidated spin keyframe) ── */
-.wiki-btn-spinner { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--t4); border-top-color: var(--acc); animation: spin .6s linear infinite; flex-shrink: 0; }
-.wiki-activity-pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--acc); animation: streaming-pulse 1.2s ease-in-out infinite; }
-.wiki-activity-spinner { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--t4); border-top-color: var(--acc); animation: spin .6s linear infinite; flex-shrink: 0; margin-top: 2px; }
 
 /* ── Settings Select ── */
 .settings-select {

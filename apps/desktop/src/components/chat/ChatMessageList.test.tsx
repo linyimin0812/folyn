@@ -194,20 +194,6 @@ describe('ChatMessageList', () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it('onSaveToWiki renders the wiki button on assistant-with-content', () => {
-    const onSaveToWiki = vi.fn();
-    const messages: CliMessage[] = [
-      mkMsg({ id: 'u1', role: 'user', content: 'hi' }),
-      mkMsg({ id: 'a1', role: 'assistant', content: 'wiki me' }),
-    ];
-    render(<ChatMessageList messages={messages} streaming={false} onSaveToWiki={onSaveToWiki} />);
-    const btn = screen.getByText('保存到 Wiki');
-    expect(btn).toBeTruthy();
-    fireEvent.click(btn);
-    expect(onSaveToWiki).toHaveBeenCalledTimes(1);
-    expect(onCreateMockArg(onSaveToWiki, 0)?.id).toBe('a1');
-  });
-
   it('renderMessage, when provided, replaces the default row', () => {
     const messages: CliMessage[] = [mkMsg({ id: 'a1', role: 'assistant', content: 'orig' })];
     render(
