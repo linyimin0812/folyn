@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Generate release notes from git commits between the previous tag and TAG.
 
-Sections: New Features (feat:) and Fixed (fix:). Commits are first deduped by
-normalized description (case-insensitive). If ANTHROPIC_API_KEY is set, similar
-commits are then fuzzy-merged via Claude (Opus 4.7, adaptive thinking).
-
-Non-conventional commits are skipped — add a feat:/fix: prefix to include them.
+Sections: New Features and Fixed. Any "<scope>:" commit is included except
+chore/merge/revert/test/docs/style/refactor/perf/build/ci. Commits containing
+"fix" route to Fixed; others to New Features. Deduped by full subject
+(case-insensitive); similar commits fuzzy-merged via LLM if configured.
 """
 import os
 import re
@@ -28,21 +27,23 @@ except subprocess.CalledProcessError:
 range_spec = f"{PREV}..{TAG}" if PREV else TAG
 log = run("git", "log", range_spec, "--pretty=format:%s")
 
-TYPE_RE = re.compile(r"^(feat|fix)(\([^)]+\))?!?:\s*(.+)$", re.IGNORECASE)
+SKIP_RE = re.compile(r"^(chore|merge|revert|test|docs|style|refactor|perf|build|ci)(\([^)]+\))?!?:", re.IGNORECASE)
+SUBJECT_RE = re.compile(r"^([^:]+?)!?:\s*(.+)$")
 
 feats: "OrderedDict[str, str]" = OrderedDict()
 fixes: "OrderedDict[str, str]" = OrderedDict()
 for subject in (s.strip() for s in log.splitlines() if s.strip()):
-    m = TYPE_RE.match(subject)
+    if SKIP_RE.match(subject):
+        continue
+    m = SUBJECT_RE.match(subject)
     if not m:
         continue
-    typ = m.group(1).lower()
-    desc = m.group(3).strip()
-    key = desc.lower()
-    if typ == "feat":
-        feats.setdefault(key, desc)
-    elif typ == "fix":
-        fixes.setdefault(key, desc)
+    key = subject.lower()
+    # ponytail: route by "fix" substring anywhere in subject — misroutes fix commits whose wording omits "fix"; tighten to per-scope rules if miscategorization shows up
+    if "fix" in key:
+        fixes.setdefault(key, subject)
+    else:
+        feats.setdefault(key, subject)
 
 
 def merge_with_llm(title: str, items: list) -> list:
