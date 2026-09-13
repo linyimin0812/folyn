@@ -486,7 +486,6 @@ Extension → register Exporter
 - Git
 - Calendar
 - Wiki
-- Project Analysis
 
 能力：
 

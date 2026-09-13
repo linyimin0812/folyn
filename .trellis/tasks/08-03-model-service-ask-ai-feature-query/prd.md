@@ -14,7 +14,7 @@
   - `CAPABILITY_PILL` 只渲染了 4 类（vision/reasoning/web-search/function-call），structured-output 注释说明"intentionally skipped"（`capabilityIcons.tsx:7-9`）。
   - embedding/rerank 模型在 `models-catalog.json` 里以 id 字符串形式存在（如 line 257, 3174），但从未作为聊天模型出现在此页能力列表里。
 - `Model.capabilities` 字段来源：`ownerMap`（`useModelRegistryStore`），无任何 setter / 写路径。要写回需要新增 store action。
-- 既有"AI 查询补元数据"模板：`apps/desktop/src/services/planMyDayService.ts:304-336`。形态：`createAdapter(aiConfig.cliAdapter)` → `adapter.start(...)` → `collectTextFromStream(...)` → `adapter.send(prompt)` → `extractJsonObject(text)` → `JSON.parse` → apply or throw friendly error。同类还有 clipService / wikiQueryService / githubAnalysisService。
+- 既有"AI 查询补元数据"模板：`apps/desktop/src/services/planMyDayService.ts:304-336`。形态：`createAdapter(aiConfig.cliAdapter)` → `adapter.start(...)` → `collectTextFromStream(...)` → `adapter.send(prompt)` → `extractJsonObject(text)` → `JSON.parse` → apply or throw friendly error。同类还有 wikiQueryService / githubAnalysisService。
 - i18n：react-i18next，`settings:` 命名空间，zh/en 各一份（`apps/desktop/src/i18n/locales/{zh,en}/settings.json`）。
 - AI 调用入口：`@folyn/cli-adapter` 的 `createAdapter`，使用 `aiConfig.cliAdapter` + `aiConfig.cliPath`。
 

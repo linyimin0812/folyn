@@ -26,7 +26,7 @@
 - **Intégration IA profonde** — Adaptateurs intégrés pour six agents CLI : Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Basculez librement entre les fournisseurs de modèles, sans verrouillage.
 - **Assistant animal de bureau** — Un compagnon résident sur le bureau qui pousse les rappels de calendrier et les notifications de changement de tâche ; un clic ouvre un chat avec le LLM.
 - **Terminal intégré** — Ouvrez un terminal dans Folyn et laissez Claude Code / Codex / autres agents CLI lire et écrire le document courant — pas de changement de fenêtre.
-- **Système de extensions** — Architecture microkernel + SDK extension. Traduction, calendrier, Wiki, Clips et analyse de projet sont fournis en tant que extensions ; extensions tierces prises en charge.
+- **Système de extensions** — Architecture microkernel + SDK extension. Traduction, calendrier et Wiki sont fournis en tant que extensions ; extensions tierces prises en charge.
 - **Saisie vocale** — Synthèse vocale en texte avec polissage automatique, collée directement au curseur (actuellement macOS uniquement).
 
 ## For Users
@@ -112,8 +112,6 @@ Architecture microkernel + SDK extension ; le cœur reste léger et les fonction
 - **Traduction** — Traitement de contenu multilingue
 - **Calendrier** — Paramètres de tâches / notifications / pomodoro de concentration / tableau de tâches
 - **Base de connaissances Wiki** — Organiser et lier les entrées de connaissance en Wiki, construire un réseau de connaissances navigable
-- **Clips** — Capturer le contenu web et résumer automatiquement les pages
-- **Analyse de projet** — Analyser des projets GitHub, produire des rapports HTML
 
 Extensions tierces prises en charge ; voir `docs/extensions.html`.
 

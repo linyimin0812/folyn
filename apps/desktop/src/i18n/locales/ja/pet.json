@@ -25,19 +25,10 @@
   },
   "launcher": {
     "dailyNote": "今日のノート",
-    "clipFromUrl": "URLからクリップ",
     "globalSearch": "グローバル検索",
     "commandPalette": "コマンドパレット",
     "showMain": "メインウィンドウを表示",
-    "toggleTheme": "テーマ切り替え",
-    "clip": {
-      "emptyUrl": "URLを入力してください",
-      "running": "クリップ中...",
-      "saved": "保存しました: {{name}}",
-      "failed": "クリップ失敗",
-      "submit": "クリップ",
-      "collapse": "折りたたむ"
-    }
+    "toggleTheme": "テーマ切り替え"
   },
   "bubble": {
     "closeAria": "閉じる"

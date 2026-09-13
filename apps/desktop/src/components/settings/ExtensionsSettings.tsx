@@ -168,16 +168,12 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   const openConsent = useExtensionStore((s) => s.openConsent);
   // Built-in rows bind their enable toggle to appearanceStore flags (the
   // source of truth for panel visibility), not to extensionHost.activate. Grab
-  // all 3 flag/setter pairs unconditionally — hooks can't be conditional,
+  // all flag/setter pairs unconditionally — hooks can't be conditional,
   // and these subscriptions are cheap (zustand shallow-equals primitives).
   const enableWikiPanel = useAppearanceStore((s) => s.enableWikiPanel);
-  const enableClipsPanel = useAppearanceStore((s) => s.enableClipsPanel);
-  const enableAnalyzePanel = useAppearanceStore((s) => s.enableAnalyzePanel);
   const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const setEnableWikiPanel = useAppearanceStore((s) => s.setEnableWikiPanel);
-  const setEnableClipsPanel = useAppearanceStore((s) => s.setEnableClipsPanel);
-  const setEnableAnalyzePanel = useAppearanceStore((s) => s.setEnableAnalyzePanel);
   const setEnableSchedulePanel = useAppearanceStore((s) => s.setEnableSchedulePanel);
   const setEnableTranslationPanel = useAppearanceStore((s) => s.setEnableTranslationPanel);
   // Render errors captured by PanelErrorBoundary for this extension's surfaces.
@@ -199,8 +195,6 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   const needsApproval = !builtin && entry.tier === 'trusted' && !entry.trusted;
   const isActive = builtin
     ? (entry.id === 'builtin:wiki' ? enableWikiPanel
-        : entry.id === 'builtin:clips' ? enableClipsPanel
-        : entry.id === 'builtin:analyze' ? enableAnalyzePanel
         : entry.id === 'builtin:schedule' ? enableSchedulePanel
         : entry.id === 'builtin:translation' ? enableTranslationPanel
         : false)
@@ -289,8 +283,6 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
               onChange={(v) => {
                 if (builtin) {
                   if (entry.id === 'builtin:wiki') setEnableWikiPanel(v);
-                  else if (entry.id === 'builtin:clips') setEnableClipsPanel(v);
-                  else if (entry.id === 'builtin:analyze') setEnableAnalyzePanel(v);
                   else if (entry.id === 'builtin:schedule') setEnableSchedulePanel(v);
                   else if (entry.id === 'builtin:translation') setEnableTranslationPanel(v);
                   return;

@@ -23,7 +23,7 @@ export function extractJsonObject(aiText: string): string | null {
 
 /**
  * Collect all text output from a CLI adapter stream until 'done' or 'error'.
- * Shared between wikiIngestService and clipService.
+ * Shared by wikiIngestService.
  *
  * @param adapter - The CLI adapter to listen on
  * @param onChunk - Optional callback fired for each text chunk (simple string)

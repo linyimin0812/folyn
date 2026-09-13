@@ -71,7 +71,15 @@
     }
   },
   "calendar": {
-    "weekdays": ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
+    "weekdays": [
+      "So",
+      "Mo",
+      "Di",
+      "Mi",
+      "Do",
+      "Fr",
+      "Sa"
+    ],
     "title": "{{month}} {{year}}",
     "hasNote": "{{date}} (hat Notiz)"
   },
@@ -153,51 +161,6 @@
       "removeTagMiddle": "\" entfernen von ",
       "removeTagSuffix": "?",
       "removeTagHint": "Dieser Ausschnitt hat {{count}} weitere Tag(s); die Datei wird nicht gelöscht."
-    }
-  },
-  "analysis": {
-    "title": "Projektanalyse",
-    "delete": "Löschen",
-    "viewDetails": "Klick für Details",
-    "analyzing": "Analysiert",
-    "newAnalysis": "Neue Analyse",
-    "uncategorized": "Unkategorisiert",
-    "empty": "Noch keine Analyseberichte. Auf + klicken zum Starten.",
-    "loading": "Laden...",
-    "deleteConfirm": {
-      "titleDelete": "Löschen bestätigen",
-      "titleRemoveTag": "Tag entfernen",
-      "deletePrefix": "Analysebericht löschen ",
-      "deleteSuffix": "?",
-      "removeTagPrefix": "Tag \"",
-      "removeTagMiddle": "\" entfernen von ",
-      "removeTagSuffix": "?",
-      "removeTagHint": "Dieser Bericht hat {{count}} weitere Tag(s); die Datei wird nicht gelöscht."
-    },
-    "dedup": {
-      "title": "Für dieses Projekt existiert bereits ein Analysebericht",
-      "regenerate": "Neu generieren"
-    },
-    "tagPlaceholderEmpty": "Tag eingeben und Enter drücken...",
-    "tagPlaceholderMore": "Mehr hinzufügen...",
-    "confirmation": {
-      "success": "Analyse abgeschlossen — {{repo}}",
-      "previewLabel": "Berichtsvorschau",
-      "htmlSize": "HTML {{kb}} KB · {{count}} Tag(s)",
-      "tagsLabel": "Tags (bearbeitbar)"
-    },
-    "dialog": {
-      "title": "Neue Projektanalyse",
-      "urlLabel": "GitHub-Repository-URL",
-      "urlPlaceholder": "https://github.com/owner/repo",
-      "langLabel": "Berichtssprache",
-      "langZh": "中文",
-      "langEn": "English",
-      "langAuto": "Automatisch erkennen",
-      "start": "Analyse starten",
-      "progressDefault": "Wird vorbereitet...",
-      "hide": "Ausblenden",
-      "patience": "Die Analyse kann einige Minuten dauern; bitte warten."
     }
   },
   "panelError": {

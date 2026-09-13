@@ -58,10 +58,8 @@
   },
   "workArea": {
     "empty": {
-      "clips": "Aucun clip",
       "wiki": "Aucune page Wiki",
       "calendar": "Aucune entrée de journal",
-      "analyze": "Aucun rapport d'analyse",
       "files": "Aucun fichier ouvert"
     },
     "unsupported": {

@@ -16,7 +16,7 @@
 
 ### Summary
 
-Added 4 boolean settings (enableWikiPanel/enableClipsPanel/enableAnalyzePanel/enableDailyPanel, default true) that hide the corresponding ActivityBar buttons when disabled. Disabling Daily also disables ⌘D; disabling the active panel falls activePanel back to 'files'. Touched settingsStore, ActivityBar, SettingsPage appearance tab, and App.tsx. 243 tests pass.
+Added 4 boolean settings (enableWikiPanel/enableAnalyzePanel/enableDailyPanel, default true) that hide the corresponding ActivityBar buttons when disabled. Disabling Daily also disables ⌘D; disabling the active panel falls activePanel back to 'files'. Touched settingsStore, ActivityBar, SettingsPage appearance tab, and App.tsx. 243 tests pass.
 
 ### Main Changes
 
@@ -76,40 +76,6 @@ Completed the GrapesJS HTML visual editor migration. Phase 4: deleted the legacy
 - None - task complete
 
 
-## Session 3: Web Link Clipper: Duplicate Detection + Batch Clipping
-
-**Date**: 2026-06-27
-**Task**: Web Link Clipper: Duplicate Detection + Batch Clipping
-**Package**: api
-**Branch**: `master`
-
-### Summary
-
-Expanded the Web Link Clipper with duplicate URL detection and batch clipping. Added normalizeUrl (lowercase host, strip fragment/trailing slash, keep query) wired into clipStore findClipByUrl/clipUrls; extended duplicate checks to all four entry points (ClipsPanel single input, /clip + /clip! force modifier, WebViewer clip-this-page confirm dialog, batch loop) with a consistent open-existing default and force-overwrite path. Built sequential batch clipping (Approach A) in ClipsPanel's BatchClipView: skip+global-force toggle, fail-soft per-URL, mid-batch cancel, configurable inter-URL delay, no auto-open, and a __clips__/batch-<date>.md summary export. saveClip skipAutoOpen and clipUrl {force} are backward-compatible options; batch helpers extracted to clipBatchHelpers.ts. 271 tests + tsc + build green.
-
-### Main Changes
-
-(Add details)
-
-### Git Commits
-
-| Hash | Message |
-|------|---------|
-| `445dc45` | (see git log) |
-
-### Testing
-
-- [OK] (Add test results)
-
-### Status
-
-[OK] **Completed**
-
-### Next Steps
-
-- None - task complete
-
-
 ## Session 4: Test Coverage: stores, services, hooks, packages
 
 **Date**: 2026-06-27
@@ -119,7 +85,7 @@ Expanded the Web Link Clipper with duplicate URL detection and batch clipping. A
 
 ### Summary
 
-Closed the remaining AC gaps for 06-25-add-test-coverage-across-project via 3 parallel trellis-implement agents. Added 13 unit test files (194 new tests, 271 -> 465 total): 5 stores (vaultStore, aiStore, wikiStore, wikiGraphStore, analysisStore), 2 services (clipService, graphDataBuilder), 2 hooks (useExport, useTheme as pure store interactions, no React render), and 4 package tests (cli-adapter registry+baseAdapter, container-plugins ContainerPlugin contract, vault-provider registry). No production code changed. Full suite + tsc + build green.
+Closed the remaining AC gaps for 06-25-add-test-coverage-across-project via 3 parallel trellis-implement agents. Added 13 unit test files (194 new tests, 271 -> 465 total): 5 stores (vaultStore, aiStore, wikiStore, wikiGraphStore, analysisStore), 2 services (graphDataBuilder + one other), 2 hooks (useExport, useTheme as pure store interactions, no React render), and 4 package tests (cli-adapter registry+baseAdapter, container-plugins ContainerPlugin contract, vault-provider registry). No production code changed. Full suite + tsc + build green.
 
 ### Main Changes
 
@@ -153,7 +119,7 @@ Closed the remaining AC gaps for 06-25-add-test-coverage-across-project via 3 pa
 
 ### Summary
 
-Verified and archived 06-26-rename-special-dirs-with-prefix-suffix-and-hide-from-file-panel. The work was already committed in 2a6ffe1 (rename built-in dirs wiki/clips/reports/daily to __name__ form, hide from file panel, auto-migrate on vault switch, rewrite open tab paths, backfill excludePatterns + dailyNotesDir). All 8 AC verified against code: default excludePatterns contains the four __*__ dirs; backfill appends patterns + rewrites dailyNotesDir; migrateSpecialDirs renames old dirs and skips on conflict; editorStore.rewriteTabPrefixes rewrites open tabs; tsc + 465 tests green. Task had remained in_progress only because it was never run through finish-work.
+Verified and archived 06-26-rename-special-dirs-with-prefix-suffix-and-hide-from-file-panel. The work was already committed in 2a6ffe1 (rename built-in dirs wiki/reports/daily to __name__ form, hide from file panel, auto-migrate on vault switch, rewrite open tab paths, backfill excludePatterns + dailyNotesDir). All 8 AC verified against code: default excludePatterns contains the __*__ dirs; backfill appends patterns + rewrites dailyNotesDir; migrateSpecialDirs renames old dirs and skips on conflict; editorStore.rewriteTabPrefixes rewrites open tabs; tsc + 465 tests green. Task had remained in_progress only because it was never run through finish-work.
 
 ### Main Changes
 
@@ -255,7 +221,7 @@ Built a unified command palette (Cmd+P) for Folyn via 3 PRs. PR1: built-in subse
 
 ### Summary
 
-Added the 'AI 规划今日' feature to the Schedule workbench. Pattern B (JSON advisor): planMyDayService gathers today's events + last-7-days unfinished tasks, calls the AI (reusing clipService's adapter-call pattern), parses a structured plan JSON; PlanMyDayPreview renders proposed blocks on ScheduleView's timeline (dashed/translucent, per-item accept + drag-tweak, 15min snap); applyPlan creates new tasks (id-diff) then scheduleTask then addEvent, fail-soft. action.plan-my-day ⌘P command + ScheduleSidebar button. Time unit = hour-floating (9.5==09:30) throughout. Check fixed a duplicate-title new-task id-resolution bug (consumed-id set + regression test). 588 tests + tsc + build green. No new runtime dep. Skipped /trellis:finish-work to preserve the user's in-use .dev/worktree/bold-beacon; archived + journaled manually.
+Added the 'AI 规划今日' feature to the Schedule workbench. Pattern B (JSON advisor): planMyDayService gathers today's events + last-7-days unfinished tasks, calls the AI (reusing the established adapter-call pattern), parses a structured plan JSON; PlanMyDayPreview renders proposed blocks on ScheduleView's timeline (dashed/translucent, per-item accept + drag-tweak, 15min snap); applyPlan creates new tasks (id-diff) then scheduleTask then addEvent, fail-soft. action.plan-my-day ⌘P command + ScheduleSidebar button. Time unit = hour-floating (9.5==09:30) throughout. Check fixed a duplicate-title new-task id-resolution bug (consumed-id set + regression test). 588 tests + tsc + build green. No new runtime dep. Skipped /trellis:finish-work to preserve the user's in-use .dev/worktree/bold-beacon; archived + journaled manually.
 
 ### Main Changes
 
@@ -289,7 +255,7 @@ Added the 'AI 规划今日' feature to the Schedule workbench. Pattern B (JSON a
 
 ### Summary
 
-Refactored 5 feature agents (study/clips/wiki/schedule/analyze) into per-vault __{feature}__/.claude/ structure with CLAUDE.md (context) + agents/<feature>.md (contract) split. Feature code moved into apps/desktop/src/features/. daily→schedule rename with --add-dir <vault> for cross-vault diary access. wikiIngest/Lint/Query services refactored to call new wiki feature agent (4 actions: ingest/generate/lint/query). Sidebar hides all 5 __xxx__/ dirs. Captured architecture in new spec feature-agents.md. 776 tests pass, typecheck clean.
+Refactored 4 feature agents (study/wiki/schedule/analyze) into per-vault __{feature}__/.claude/ structure with CLAUDE.md (context) + agents/<feature>.md (contract) split. Feature code moved into apps/desktop/src/features/. daily→schedule rename with --add-dir <vault> for cross-vault diary access. wikiIngest/Lint/Query services refactored to call new wiki feature agent (4 actions: ingest/generate/lint/query). Sidebar hides all 4 __xxx__/ dirs. Captured architecture in new spec feature-agents.md. 776 tests pass, typecheck clean.
 
 ### Main Changes
 
@@ -323,7 +289,7 @@ Refactored 5 feature agents (study/clips/wiki/schedule/analyze) into per-vault _
 
 ### Summary
 
-Moved study/analyze/clips/schedule/wiki (incl .claude) from apps/desktop/src/ into apps/desktop/src/features/. Updated 31 files / 91 imports @/{feature}/ -> @/features/{feature}/. tsc + vitest (776 tests) green. Refactor landed in commit 599d73d alongside the per-vault agent restructure.
+Moved study/analyze/schedule/wiki (incl .claude) from apps/desktop/src/ into apps/desktop/src/features/. Updated 31 files / 91 imports @/{feature}/ -> @/features/{feature}/. tsc + vitest (776 tests) green. Refactor landed in commit 599d73d alongside the per-vault agent restructure.
 
 ### Main Changes
 
@@ -348,74 +314,6 @@ Moved study/analyze/clips/schedule/wiki (incl .claude) from apps/desktop/src/ in
 - None - task complete
 
 
-## Session 11: Clips: article-to-infographic
-
-**Date**: 2026-07-02
-**Task**: Clips: article-to-infographic
-**Package**: api
-**Branch**: `master`
-
-### Summary
-
-Added article-to-infographic for clips: extended clips agent with infographic mode (9 block types, pure JSON), clipService.generateInfographic writes ## 信息图 section (byte-preserving replace), shared clipParse util, InfographicView + 9 BlockViews + unknown-type fallback, ClipCardView generate/regenerate/corrupt/error UI with per-clip error scoping. trellis-check fixed a cross-clip error-leak bug. 823 tests green.
-
-### Main Changes
-
-(Add details)
-
-### Git Commits
-
-| Hash | Message |
-|------|---------|
-| `1953940` | (see git log) |
-
-### Testing
-
-- [OK] (Add test results)
-
-### Status
-
-[OK] **Completed**
-
-### Next Steps
-
-- None - task complete
-
-
-## Session 12: Clips: fetch via curl.md service
-
-**Date**: 2026-07-02
-**Task**: Clips: fetch via curl.md service
-**Package**: api
-**Branch**: `master`
-
-### Summary
-
-clips now fetches pages via curl.md (https://curl.md/<encoded-url> HTML→Markdown service) instead of WebFetching the raw page. clipService.generateClip constructs the curl.md URL + updates prompt; clips.md agent workflow step 1 + failure fallback updated. Zero new deps, agent tools line unchanged. 827 tests green.
-
-### Main Changes
-
-(Add details)
-
-### Git Commits
-
-| Hash | Message |
-|------|---------|
-| `dd231f3` | (see git log) |
-
-### Testing
-
-- [OK] (Add test results)
-
-### Status
-
-[OK] **Completed**
-
-### Next Steps
-
-- None - task complete
-
-
 ## Session 13: fix feature agent fallback --agents inline delivery
 
 **Date**: 2026-07-02
@@ -425,7 +323,7 @@ clips now fetches pages via curl.md (https://curl.md/<encoded-url> HTML→Markdo
 
 ### Summary
 
-Fixed all 5 feature agents (study/clips/wiki/schedule/analyze) losing contract when vault seed failed. getFeatureAgentSendOptions and runFeatureAgent now inline-deliver canonical agent definition via --agents flag on the agentFileExists=false fallback path, parsing frontmatter (description/tools) + body into CliAgentDefinition. Aligns implementation with feature-agents.md spec Validation Matrix. clips infographic now renders blocks instead of JSON when vault isn't seeded. 45+32 tests pass, typecheck clean.
+Fixed all 4 feature agents (study/wiki/schedule/analyze) losing contract when vault seed failed. getFeatureAgentSendOptions and runFeatureAgent now inline-deliver canonical agent definition via --agents flag on the agentFileExists=false fallback path, parsing frontmatter (description/tools) + body into CliAgentDefinition. Aligns implementation with feature-agents.md spec Validation Matrix. 45+32 tests pass, typecheck clean.
 
 ### Main Changes
 
@@ -459,7 +357,7 @@ Fixed all 5 feature agents (study/clips/wiki/schedule/analyze) losing contract w
 
 ### Summary
 
-Trimmed runtime prompt builders (study/scheduleLink, clipService card metadata, wikiQueryService, DailyDigest) to emit only runtime params. Static contract stays in canonical .claude/agents/<feature>.md as single source. Infographic prompt left as reference correct pattern. feature-agents.md spec gained new 'Runtime Prompt = Params Only' convention. Cross-checked every dropped rule exists in agent .md — no contract lost.
+Trimmed runtime prompt builders (study/scheduleLink, card metadata, wikiQueryService, DailyDigest) to emit only runtime params. Static contract stays in canonical .claude/agents/<feature>.md as single source. feature-agents.md spec gained new 'Runtime Prompt = Params Only' convention. Cross-checked every dropped rule exists in agent .md — no contract lost.
 
 ### Main Changes
 
@@ -470,77 +368,6 @@ Trimmed runtime prompt builders (study/scheduleLink, clipService card metadata, 
 | Hash | Message |
 |------|---------|
 | `fbf5098` | (see git log) |
-
-### Testing
-
-- [OK] (Add test results)
-
-### Status
-
-[OK] **Completed**
-
-### Next Steps
-
-- None - task complete
-
-
-## Session 15: Redesign CLIPS infographic as editorial poster with dark mode
-
-**Date**: 2026-07-02
-**Task**: Redesign CLIPS infographic as editorial poster with dark mode
-**Package**: api
-**Branch**: `master`
-
-### Summary
-
-Redesigned CLIPS infographic from card-stack to editorial poster. Content enrichment: saveClip stores full page markdown in ## 正文; generateClip chains card-metadata + infographic agent calls to auto-generate infographic at clip time. Renderer: rewrote InfographicView as 3-region editorial poster (masthead + 3-col body + footer) matching reference HTML, with serif display + mono eyebrows + oklch palette. Scope reduction: completely removed PNG export (deleted InfographicExport.ts, html-to-image dep, forwardRef, posterRef, export button); removed inline chrome (label, 重新生成 button, re-clip hint, errors); moved infographic before 摘要 in card view. Dark mode: added C_LIGHT/C_DARK palettes swapped via PaletteContext, useThemeState uses useSyncExternalStore to work around Zustand v5 SSR snapshot quirk.
-
-### Main Changes
-
-(Add details)
-
-### Git Commits
-
-| Hash | Message |
-|------|---------|
-| `d6f01ae` | (see git log) |
-| `015472c` | (see git log) |
-| `6b4495d` | (see git log) |
-| `9c42349` | (see git log) |
-
-### Testing
-
-- [OK] (Add test results)
-
-### Status
-
-[OK] **Completed**
-
-### Next Steps
-
-- None - task complete
-
-
-## Session 16: Clips: infographic full width
-
-**Date**: 2026-07-02
-**Task**: Clips: infographic full width
-**Package**: api
-**Branch**: `master`
-
-### Summary
-
-Dropped max-w-[960px] cap (and mx-auto) on infographic poster-container so it fills the clip card content width. Card padding and block layouts unchanged. 102 clip tests green. NOTE: pre-existing wikiQueryService test failure from another session's commit fbf5098 (prompt trimmed to params-only but test still expects [[wiki://path]]) — unrelated, left for that window.
-
-### Main Changes
-
-(Add details)
-
-### Git Commits
-
-| Hash | Message |
-|------|---------|
-| `80b7d3f` | (see git log) |
 
 ### Testing
 
@@ -632,7 +459,7 @@ Study add-topic moved from inline sidebar input to a modal dialog. New StudyAddT
 
 ### Summary
 
-Topic delete button now uses <ThemeIcon name="delete" size={12}> instead of an inline trash svg, matching ClipsPanel/AnalysisPanel. Delete behavior unchanged. 853 tests green.
+Topic delete button now uses <ThemeIcon name="delete" size={12}> instead of an inline trash svg, matching the AnalysisPanel. Delete behavior unchanged. 853 tests green.
 
 ### Main Changes
 

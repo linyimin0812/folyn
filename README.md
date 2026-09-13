@@ -26,7 +26,7 @@
 - **Deep AI integration** — Built-in adapters for six CLI agents: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Switch freely across model vendors, no vendor lock-in.
 - **Desktop pet assistant** — A resident desktop companion that pushes schedule reminders and task-change notifications; click to bring up a chat with the LLM.
 - **In-app terminal** — Open a terminal inside Folyn and let Claude Code / Codex / other CLI agents read and write the current document — no window switching.
-- **Extension system** — Microkernel + extension SDK architecture. Translation, schedule, Wiki, Clips, and project analysis ship as extensions; third-party extensions supported.
+- **Extension system** — Microkernel + extension SDK architecture. Translation, schedule, and Wiki ship as extensions; third-party extensions supported.
 - **Voice input** — Speech-to-text with automatic polish, pasted straight to the cursor (currently macOS only).
 
 ## For Users
@@ -112,8 +112,6 @@ Microkernel + extension SDK architecture; the core stays lean and features load 
 - **Translation** — Multilingual content processing
 - **Schedule** — Task settings / notifications / focus pomodoro / task board
 - **Wiki knowledge base** — Organize and link knowledge entries as a Wiki, building a navigable knowledge network
-- **Clips** — Capture web content and auto-summarize pages
-- **Project analysis** — Analyze GitHub projects, output HTML analysis reports
 
 Third-party extension extensions supported; see `docs/extensions.html`.
 

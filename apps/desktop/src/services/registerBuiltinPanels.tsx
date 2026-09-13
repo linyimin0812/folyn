@@ -1,5 +1,5 @@
 /**
- * Register the 4 built-in sidebar panels (files/wiki/clips/analyze)
+ * Register the 2 built-in sidebar panels (files/wiki)
  * into {@link useFeaturePanelStore} and wire the visibility + active-panel sync
  * that makes the data-driven ActivityBar/Sidebar behave identically to the
  * pre-PR2 hardcoded version.
@@ -35,10 +35,6 @@ import { useEditorStore } from '@/store/editorStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { FilesPanel } from '@/components/sidebar/FilesPanel';
 import { WikiFileTree } from '@/components/sidebar/WikiFileTree';
-import { ClipsPanel } from '@/components/sidebar/ClipsPanel';
-import { AnalysisPanel } from '@/components/sidebar/AnalysisPanel';
-import { AnalyzeIcon as AnalyzeIconComponent } from '@/components/icons/AnalyzeIcon';
-import { ClipsIcon as ClipsIconComponent } from '@/components/icons/ClipsIcon';
 import { WikiIcon as WikiIconComponent } from '@/components/icons/WikiIcon';
 
 // ── Built-in icons (reuse the exact SVGs from the pre-PR2 ActivityBar) ──────────
@@ -48,8 +44,6 @@ const FilesIcon: ReactNode = (
   </svg>
 );
 const WikiIcon: ReactNode = <WikiIconComponent size={14} />;
-const ClipsIcon: ReactNode = <ClipsIconComponent size={14} />;
-const AnalyzeIcon: ReactNode = <AnalyzeIconComponent size={14} />;
 
 let wired = false;
 
@@ -60,20 +54,20 @@ export function registerBuiltinPanels(): () => void {
   const fps = useFeaturePanelStore.getState();
   const ap = useAppearanceStore.getState();
 
-  // ponytail: order for Wiki/Clips/Analyze is their enabledAt timestamp
+  // ponytail: order for Wiki is its enabledAt timestamp
   // (Date.now() of the false→true transition). Files stays at 0 so it's
   // always first. When enabledAt is undefined (panel disabled, or pre-
   // migration old user with no recorded timestamp), fall back to the
-  // base order 10/20/30 — sort still stable, just not time-ordered.
-  const orderFor = (id: 'wiki' | 'clips' | 'analyze', base: number) => {
-    const ts = id === 'wiki' ? ap.enabledAtWiki : id === 'clips' ? ap.enabledAtClips : ap.enabledAtAnalyze;
+  // base order 10 — sort still stable, just not time-ordered.
+  const orderFor = (id: 'wiki', base: number) => {
+    const ts = id === 'wiki' ? ap.enabledAtWiki : undefined;
     return ts ?? base;
   };
 
-  // ── Register the 5 built-ins ──
-  // files is always visible; the other 4 bind visibility to their appearanceStore
+  // ── Register the built-ins ──
+  // files is always visible; wiki binds visibility to its appearanceStore
   // enable flag (captured at registration time; the subscription below keeps
-  // them in sync if hydration or a settings toggle changes a flag later).
+  // it in sync if hydration or a settings toggle changes the flag later).
   fps.register({
     id: 'files',
     title: '文件',
@@ -92,27 +86,9 @@ export function registerBuiltinPanels(): () => void {
     visible: ap.enableWikiPanel,
     builtin: true,
   });
-  fps.register({
-    id: 'clips',
-    title: 'Clips',
-    icon: ClipsIcon,
-    component: ClipsPanel,
-    order: orderFor('clips', 20),
-    visible: ap.enableClipsPanel,
-    builtin: true,
-  });
-  fps.register({
-    id: 'analyze',
-    title: '项目分析',
-    icon: AnalyzeIcon,
-    component: AnalysisPanel,
-    order: orderFor('analyze', 30),
-    visible: ap.enableAnalyzePanel,
-    builtin: true,
-  });
 
   // ── appearanceStore enable flags → featurePanelStore visibility + order ──
-  // On any appearanceStore change, for each of the 3 flag-bound panels:
+  // On any appearanceStore change, for the flag-bound panel:
   // - if the flag changed, push the new visibility to the store
   // - if the flag flipped to true, also refresh the panel's order from the
   //   (just-updated) enabledAt timestamp so it lands at the end of the
@@ -122,8 +98,6 @@ export function registerBuiltinPanels(): () => void {
   const unsubAppearance = useAppearanceStore.subscribe((state, prev) => {
     const checks: Array<[string, boolean, boolean, number | undefined, number | undefined]> = [
       ['wiki', state.enableWikiPanel, prev.enableWikiPanel, state.enabledAtWiki, prev.enabledAtWiki],
-      ['clips', state.enableClipsPanel, prev.enableClipsPanel, state.enabledAtClips, prev.enabledAtClips],
-      ['analyze', state.enableAnalyzePanel, prev.enableAnalyzePanel, state.enabledAtAnalyze, prev.enabledAtAnalyze],
     ];
     for (const [id, cur, prevFlag, curTs, prevTs] of checks) {
       if (cur === prevFlag && curTs === prevTs) continue;
@@ -131,8 +105,7 @@ export function registerBuiltinPanels(): () => void {
       store.setVisible(id, cur);
       if (cur) {
         // order: enabledAt if we have one, else keep current (initial base)
-        const base = id === 'wiki' ? 10 : id === 'clips' ? 20 : 30;
-        store.setOrder(id, curTs ?? base);
+        store.setOrder(id, curTs ?? 10);
       }
       if (!cur && useEditorStore.getState().activePanel === id) {
         useEditorStore.getState().setActivePanel('files');

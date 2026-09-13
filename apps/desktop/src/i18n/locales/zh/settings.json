@@ -60,14 +60,6 @@
         "label": "Wiki 面板",
         "description": "在侧栏显示 Wiki 知识库入口"
       },
-      "clips": {
-        "label": "Clips 面板",
-        "description": "在侧栏显示网页剪藏入口"
-      },
-      "analyze": {
-        "label": "项目分析面板",
-        "description": "在侧栏显示项目分析入口"
-      },
       "schedule": {
         "label": "日程面板",
         "description": "日程（Plan My Day）相关功能入口"
@@ -676,7 +668,7 @@
     "fileTypeSupport": {
       "label": "文件类型支持",
       "description": "通过 HandlerRegistry 统一注册，Folyn 可预览与编辑 15+ 种文件类型。",
-      "items": "Markdown · 代码 · CSV · JSON · HTML · 图片 · DBML (ER 图) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · 思维导图 (markmap) · Office 文档 · 剪贴板片段"
+      "items": "Markdown · 代码 · CSV · JSON · HTML · 图片 · DBML (ER 图) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · 思维导图 (markmap) · Office 文档"
     },
     "techStack": {
       "label": "技术栈",

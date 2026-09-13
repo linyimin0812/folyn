@@ -18,7 +18,6 @@
  *   page (schedule) — mirrors the pre-PR2 `!onPage && ...` gate.
  * - Page-nav button: `active` when `currentPage === 'schedule'`.
  */
-
 import { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
@@ -33,8 +32,8 @@ import { TranslationIcon } from '@/components/icons/TranslationIcon';
 
 /**
  * Active panel id. Widened to `string` in PR2 — extension panels contribute
- * arbitrary ids (the old `'files'|'wiki'|'clips'|'analyze'|'calendar'` union
- * is no longer adequate). The 5 built-in ids remain reserved.
+ * arbitrary ids (the old `'files'|'wiki'|'calendar'` union
+ * is no longer adequate). The built-in ids remain reserved.
  */
 export type ActivityPanel = string;
 
@@ -66,7 +65,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   // change (no infinite loop on the empty path: EMPTY_PANELS constant).
   // Files is the first entry (order=0); we slice it off and render it at the
   // very top of the bar, then Schedule, then the rest of the panels
-  // (Wiki/Clips/Analyze when enabled, plus any extension panels).
+  // (Wiki when enabled, plus any extension panels).
   const visiblePanels = useVisiblePanels();
   const [filesPanel, ...restPanels] = visiblePanels;
 

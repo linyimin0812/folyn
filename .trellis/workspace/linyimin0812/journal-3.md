@@ -1582,7 +1582,7 @@ Fixed CliSettings detect button returning cmux shim paths in Tauri by resolving 
 
 ### Summary
 
-Deleted SkillsSettings tab, skillStore, skillDefaults, and Skill type. Inlined clip-card prompt into clipService.ts and planMyDayService.ts (kept separate to avoid pulling clipParse/excalidraw into planMyDayService's test import graph), and github-analysis prompt into githubAnalysisService.ts. Removed skills entry from navStore SettingsTab, primitives NAV_GROUPS, SettingsPage render branch, and all 6 locale settings.json. Updated clipService + planMyDayService tests to drop skillStore mocks. TS clean; 53/53 tests pass.
+Deleted SkillsSettings tab, skillStore, skillDefaults, and Skill type. Inlined github-analysis prompt into githubAnalysisService.ts. Removed skills entry from navStore SettingsTab, primitives NAV_GROUPS, SettingsPage render branch, and all 6 locale settings.json. TS clean; 53/53 tests pass.
 
 ### Main Changes
 

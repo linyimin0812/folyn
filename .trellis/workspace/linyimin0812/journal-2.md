@@ -229,16 +229,16 @@ Surfaced recording → transcribing → polishing → inserting phases on the vo
 - None - task complete
 
 
-## Session 65: Remove Chat/Wiki/Clip tabs from AI Panel
+## Session 65: Remove Chat/Wiki tabs from AI Panel
 
 **Date**: 2026-07-18
-**Task**: Remove Chat/Wiki/Clip tabs from AI Panel
+**Task**: Remove Chat/Wiki tabs from AI Panel
 **Package**: api
 **Branch**: `master`
 
 ### Summary
 
-Stripped AiPanel tab bar + chatMode state machine + /clip slash branch + wiki/clip render branches; deleted 6 sub-components (WikiToolbar/ClipToolbar/WikiActivityLog/ReviewItemList/IngestDialog/DeepResearchDialog); dropped 3 mode.ai-* commands from commandRegistry; updated aiStore/featureAgentService tests. Sidebar wiki/clip entries untouched. tsc -b clean, 76 tests pass.
+Stripped AiPanel tab bar + chatMode state machine + wiki render branches; deleted 5 sub-components (WikiToolbar/WikiActivityLog/ReviewItemList/IngestDialog/DeepResearchDialog); dropped mode.ai-* commands from commandRegistry; updated aiStore/featureAgentService tests. Sidebar wiki entries untouched. tsc -b clean, 76 tests pass.
 
 ### Main Changes
 
@@ -1672,7 +1672,7 @@ Internationalized the Git panel dialog and fixed several follow-up issues: modal
 
 ### Summary
 
-Clone GitHub vault 后自动把 BUILTIN_EXCLUDE_DIRS (__wiki__/__clips__/等) 追加到 .gitignore；GitPanel 改动行若匹配 excludePatterns 显示「加入 .gitignore」按钮。新增 utils/excludePattern.ts 纯函数 (patternToRegExp/matchesAnyPattern/findMatchedPattern/mergeGitignoreEntries) + 17 单测，gitService.ensureGitignoreEntries 薄壳。tsc + 测试通过。
+Clone GitHub vault 后自动把 BUILTIN_EXCLUDE_DIRS (__wiki__ 等) 追加到 .gitignore；GitPanel 改动行若匹配 excludePatterns 显示「加入 .gitignore」按钮。新增 utils/excludePattern.ts 纯函数 (patternToRegExp/matchesAnyPattern/findMatchedPattern/mergeGitignoreEntries) + 17 单测，gitService.ensureGitignoreEntries 薄壳。tsc + 测试通过。
 
 ### Main Changes
 

@@ -73,7 +73,7 @@
     },
     "plugins": {
       "title": "Sistema de plugins",
-      "desc": "Arquitectura micronúcleo + SDK de plugins. Traducción, agenda, Wiki, clips y análisis de proyectos vienen como plugins; extensiones de terceros soportadas.",
+      "desc": "Arquitectura micronúcleo + SDK de plugins. Traducción, agenda y Wiki vienen como plugins; extensiones de terceros soportadas.",
       "tags": {"ext": "extensiones de terceros"}
     },
     "voice": {
@@ -212,9 +212,7 @@
       "arch": {"k": "Arquitectura", "v": "Micronúcleo + SDK de plugins; el núcleo se mantiene ligero, las funciones se cargan por demanda vía plugins y desarrolladores de terceros pueden ampliar."},
       "translate": {"k": "Traducción", "v": "Plugin de traducción integrado para procesar contenido multilingüe."},
       "schedule": {"k": "Agenda", "v": "<ul><li>Configuración de tareas y recordatorios</li><li>Temporizador pomodoro de enfoque</li><li>Tablero de tareas</li></ul>"},
-      "wiki": {"k": "Base de conocimiento Wiki", "v": "Organiza y enlaza entradas de conocimiento al estilo wiki, construyendo una red por la que puedes navegar."},
-      "clips": {"k": "Clips", "v": "Captura contenido web y genera automáticamente una página de resumen, ideal para guardar y repasar rápido."},
-      "project": {"k": "Análisis de proyecto", "v": "Analiza proyectos de GitHub y emite un informe en formato HTML."}
+      "wiki": {"k": "Base de conocimiento Wiki", "v": "Organiza y enlaza entradas de conocimiento al estilo wiki, construyendo una red por la que puedes navegar."}
     },
     "shots": {
       "cap1": "Mercado / gestión de plugins",

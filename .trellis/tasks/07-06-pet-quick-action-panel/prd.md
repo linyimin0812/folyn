@@ -27,15 +27,14 @@ opening the full main window.
   `@folyn/cli-adapter`'s `CliAdapter` (`packages/cli-adapter/src/types.ts:99`,
   `baseAdapter.ts:11-16`): `start({cliPath, workingDir})` →
   `send(prompt, CliSendOptions)` → `onEvent(CliStreamEvent)`. Services like
-  `clipService`, `wikiIngestService`, `planMyDayService` each create their own
+  `wikiIngestService`, `planMyDayService` each create their own
   adapter via `CliAdapterRegistry.getInstance().create(settings.cliAdapter)`
   and stream independently. `services/aiStreamUtils.ts` exports
   `collectTextFromStream` + `StreamEvent` for reuse. → pet-panel can self-host
   a chat with its own adapter + store, no `aiStore`, no vault.
 * Folyn capabilities ranked "quick-action-able": New Note
   (`requestNewItem('file')`), Daily Note (`editorStore.openDailyNote`),
-  Global Search (`searchStore.openPanel`), Clip from URL
-  (`clipService.saveClipFromUrl`), Command Palette
+  Global Search (`searchStore.openPanel`), Command Palette
   (`commandPaletteStore.toggle`), Show Main (`focusMain`), Toggle Theme
   (`settingsStore.toggleTheme`), Disable Pet (`toggle_pet_mode`).
 * Positioning/clamp reference: `petPosition.ts` (`clampPetPosition`,
@@ -52,12 +51,12 @@ opening the full main window.
 * **Chat scope (Q3):** Independent persistent session — own store, persisted
   across restarts, separate from `aiStore`/main AI, no vault grounding.
   Self-created `CliAdapter`, reuses `aiStreamUtils`.
-* **Launcher set (Q4):** 8 MVP buttons — New Note, Daily Note, Clip from URL,
+* **Launcher set (Q4):** 7 MVP buttons — New Note, Daily Note,
   Global Search, Command Palette, Show Main, Toggle Theme, Disable Pet.
   Dropped: Toggle AI (redundant w/ embedded chat), Plan My Day (niche, via
   palette).
 * **Expansion (Q5):** MVP includes explicit close + Esc + click-pet-toggle,
-  open left/up to stay on-screen, fullscreen guard, clip-URL inline input,
+  open left/up to stay on-screen, fullscreen guard,
   unconfigured-AI guidance. Out of Scope: plugin-driven buttons, chat→vault,
   Pin/remember-tab, stream-interrupt resume.
 
@@ -78,18 +77,17 @@ keeps the native menu for muscle-memory + dev/power-user access.
   panel stays fully on-screen (clamp using `pet_get_work_area`).
 * **R4 Fullscreen guard:** Do not show the panel while the main window is
   fullscreen (reuse `pet_cursor_probe.main_fullscreen`).
-* **R5 Launcher grid:** 8 buttons (Q4 set). Each button dispatches its action
+* **R5 Launcher grid:** 7 buttons (Q4 set). Each button dispatches its action
   via the existing `pet://menu-action` channel (extend `PetMenuAction` for
-  new actions: daily-note, global-search, clip-from-url, command-palette,
+  new actions: daily-note, global-search, command-palette,
   toggle-theme) + `focusMain()` where the action opens the main window. New
   Note / Daily Note / Global Search / Command Palette / Show Main / Toggle
-  Theme → focus main; Clip from URL → inline URL input in the panel, calls
-  `saveClipFromUrl`, shows success/failure inline; Disable Pet →
+  Theme → focus main; Disable Pet →
   `toggle_pet_mode` + hide panel.
 * **R6 Chat:** Embedded chat with its own persisted session (Q3). Self-created
   `CliAdapter` (no `aiStore`), streaming via `aiStreamUtils`; messages
   persisted across app restarts in a separate `petChatStore`. No vault
-  grounding (no file mentions, no wiki/clip mode).
+  grounding (no file mentions, no wiki mode).
 * **R7 Unconfigured-AI state:** If no AI provider/key is configured, the chat
   area shows a guidance CTA (link to settings) instead of erroring.
 * **R8 Dismiss:** Close button (×), `Esc`, and clicking the pet again toggle
@@ -102,9 +100,7 @@ keeps the native menu for muscle-memory + dev/power-user access.
 * [ ] Second left-click on the pet (or × / Esc) hides the panel.
 * [ ] Panel opens fully on-screen even when pet is at bottom-right corner.
 * [ ] Panel does not open while main window is fullscreen.
-* [ ] All 8 launcher buttons trigger their intended capability; Clip-from-URL
-      accepts a URL in-panel and produces a clip file with success/failure
-      feedback.
+* [ ] All 7 launcher buttons trigger their intended capability.
 * [ ] Chat: send a message → streamed response appears; messages survive
       app restart.
 * [ ] With no AI provider configured, chat shows guidance CTA, no crash.
@@ -132,8 +128,8 @@ keeps the native menu for muscle-memory + dev/power-user access.
   `pet_ctx_menu_action` / `PetMenuAction` for the 5 new actions; pet left-click
   handler flips from `openPetContextMenu` to `pet_panel_show` + positioning.
 * **Frontend route:** `main.tsx` adds `#/pet-panel` → mount `PetPanelApp`.
-* **`PetPanelApp`:** launcher grid (`PetLauncher`) + chat (`PetChat`) +
-  clip-URL inline form; close button + Esc listener; reads pet position +
+* **`PetPanelApp`:** launcher grid (`PetLauncher`) + chat (`PetChat`);
+  close button + Esc listener; reads pet position +
   work area to self-clamp (reuse `clampPetPosition` logic generalized).
 * **`PetChat`:** owns a `CliAdapter` from `CliAdapterRegistry`, `start()`,
   `send()` with plain `CliSendOptions` (no vault system prompt), `onEvent` →
@@ -144,12 +140,12 @@ keeps the native menu for muscle-memory + dev/power-user access.
   `aiStore`.
 * **Reuse seams:** `pet://menu-action` event, `focusMain()`,
   `clampPetPosition`, `pet_get_work_area`, `pet_cursor_probe`,
-  `CliAdapterRegistry`, `aiStreamUtils`, `clipService.saveClipFromUrl`.
+  `CliAdapterRegistry`, `aiStreamUtils`.
 
 ## Out of Scope
 
-* Plugin/config-driven launcher buttons (hardcoded 8 for now)
-* Chat grounding in vault (wiki/clip mode) — stays vault-free
+* Plugin/config-driven launcher buttons (hardcoded 7 for now)
+* Chat grounding in vault (wiki mode) — stays vault-free
 * Pin / "keep open" / remember-last-tab
 * Stream-interrupt resume (close mid-stream discards in-flight; persisted
   messages retained)
@@ -163,9 +159,8 @@ keeps the native menu for muscle-memory + dev/power-user access.
   route in `main.tsx`; pet left-click → show+position+clamp, Esc/×/second-click
   → hide; fullscreen guard. Extend `PetMenuAction` + Rust mapping for 5 new
   actions. Update contract test.
-* **PR2 — Launcher grid + clip-URL:** `PetPanelApp` shell + `PetLauncher` (8
-  buttons) wired to `pet://menu-action` + `focusMain()`; inline Clip-from-URL
-  form calling `saveClipFromUrl` with feedback; positioning/clamp on open.
+* **PR2 — Launcher grid:** `PetPanelApp` shell + `PetLauncher` (7
+  buttons) wired to `pet://menu-action` + `focusMain()`; positioning/clamp on open.
 * **PR3 — Pet chat:** `petChatStore` (persisted) + `PetChat` component using
   `CliAdapter` + `aiStreamUtils`; unconfigured-AI guidance CTA.
 * **PR4 — Polish + spec:** AC sweep, `tauri-window-patterns.md` update,

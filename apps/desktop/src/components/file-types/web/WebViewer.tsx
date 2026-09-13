@@ -106,13 +106,6 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   const loadingLabelRef = useRef<string | null>(null);
   const [status, setStatus] = useState<WebviewStatus>('loading');
 
-  // Check if this web tab was opened from a clip card
-  const clipPath = useEditorStore((s) => {
-    const tab = s.tabs.find((t) => t.id === tabId);
-    return tab?.clipPath ?? null;
-  });
-  const backToClip = useEditorStore((s) => s.backToClip);
-
   // Track active tab to hide/show webview
   const activeTabId = useEditorStore((s) => s.activeTabId);
   const isActive = activeTabId === tabId;
@@ -201,14 +194,6 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   }, [clearLoadTimeout]);
 
 
-
-  const handleBackToClip = useCallback(async () => {
-    if (!clipPath) return;
-    // Hide the webview immediately before switching back to clip
-    const cached = webviewCache.get(tabId);
-    if (cached) await hideWebviewLabel(cached.label);
-    backToClip(tabId);
-  }, [clipPath, tabId, backToClip]);
 
   // Move the native webview off-screen so HTML overlays (e.g. the duplicate
   // clip confirm dialog) are visible. Restored via syncPosition().
@@ -440,15 +425,6 @@ export function WebViewer({ filePath, tabId }: EditorProps) {
   return (
     <div className="web-viewer-container flex-1 flex flex-col bg-surf overflow-hidden relative">
       <div className="web-viewer-bar flex items-center gap-1.5 py-1 px-2 bg-panel border-b border-brd shrink-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {clipPath && (
-          <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="返回卡片" onClick={handleBackToClip}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="2" y="3" width="12" height="10" rx="1.5" />
-              <line x1="5" y1="6.5" x2="11" y2="6.5" />
-              <line x1="5" y1="9" x2="9" y2="9" />
-            </svg>
-          </button>
-        )}
         {isTauri() && webviewLabelRef.current && (
           <>
             <button className="web-viewer-nav-btn flex items-center justify-center w-[26px] h-[26px] border-none rounded-[5px] bg-transparent text-t2 cursor-pointer shrink-0 transition-all duration-150 hover:bg-hov hover:text-t1" title="后退" onClick={() => navigate('back')}>

@@ -31,9 +31,8 @@ function resetAllDefaults() {
   useAppearanceStore.setState({
     theme: 'light', fontFamily: 'Sora', fontSize: 14, lineHeight: 1.7, showAiPanel: true,
     showStatusBar: true, showHiddenFiles: true, enableWikiPanel: true,
-    enableClipsPanel: true, enableAnalyzePanel: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__reports__\n__daily__\n__schedule__',
     linkOpenMode: 'external', vaultName: 'my-vault',
   }, false);
   useEditorPrefsStore.setState({
@@ -122,8 +121,6 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
       showStatusBar: false,
       showHiddenFiles: false,
       enableWikiPanel: false,
-      enableClipsPanel: false,
-      enableAnalyzePanel: false,
       excludePatterns: 'node_modules\n__wiki__',
       linkOpenMode: 'internal',
       vaultName: 'legacy-vault',
@@ -179,7 +176,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(useAppearanceStore.getState().linkOpenMode).toBe('internal');
     expect(useAppearanceStore.getState().vaultName).toBe('legacy-vault');
     // backfill applied
-    expect(useAppearanceStore.getState().excludePatterns.split('\n')).toContain('__analyze__');
+    expect(useAppearanceStore.getState().excludePatterns.split('\n')).toContain('__schedule__');
 
     // Editor prefs
     expect(useEditorPrefsStore.getState().editorFont).toBe('JetBrains Mono');
@@ -248,7 +245,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     // appearanceStore: backfill appended every missing built-in dir.
     const excludeLines = useAppearanceStore.getState().excludePatterns.split('\n');
     expect(excludeLines).toContain('__schedule__');
-    expect(excludeLines).toContain('__analyze__');
+    expect(excludeLines).toContain('__wiki__');
     expect(useAppearanceStore.getState().vaultName).toBe('old-vault');
 
     // prefsStore: dailyNotesDir migrated; togglePetPanel backfilled.

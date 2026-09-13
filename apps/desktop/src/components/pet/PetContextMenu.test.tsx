@@ -17,8 +17,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 // tray's action set.
 //
 // PR1 of the pet-quick-action-panel task extends the contract: the union
-// now also includes the 5 launcher-only actions dispatched by the pet-panel
-// launcher grid (daily-note, global-search, clip-from-url,
+// now also includes the 4 launcher-only actions dispatched by the pet-panel
+// launcher grid (daily-note, global-search,
 // command-palette, toggle-theme). The right-click HTML menu surfaces the
 // first six (`PET_NATIVE_MENU_ACTIONS`: show-main, hide-pet, set-pet-size,
 // set-pet-opacity, toggle-pet-click-through, exit-app); the launcher
@@ -64,7 +64,6 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
     expect(PET_LAUNCHER_ACTIONS).toEqual([
       'daily-note',
       'global-search',
-      'clip-from-url',
       'command-palette',
       'toggle-theme',
       'open-ai-settings',
@@ -84,7 +83,6 @@ describe('PetContextMenu (HTML menu window + launcher contract)', () => {
       'exit-app',
       'daily-note',
       'global-search',
-      'clip-from-url',
       'command-palette',
       'toggle-theme',
       'open-ai-settings',

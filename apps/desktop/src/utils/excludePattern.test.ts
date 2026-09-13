@@ -27,7 +27,7 @@ describe('excludePattern: patternToRegExp', () => {
 
 describe('excludePattern: matchesAnyPattern', () => {
   it('matches literal patterns by equality', () => {
-    expect(matchesAnyPattern('__wiki__', ['__clips__', '__wiki__'])).toBe(true);
+    expect(matchesAnyPattern('__wiki__', ['__reports__', '__wiki__'])).toBe(true);
     expect(matchesAnyPattern('foo', ['__wiki__'])).toBe(false);
   });
 
@@ -44,7 +44,7 @@ describe('excludePattern: findMatchedPattern', () => {
 
   it('matches a path segment under a subdirectory', () => {
     expect(findMatchedPattern('__wiki__/sub/foo.md', ['__wiki__'])).toBe('__wiki__');
-    expect(findMatchedPattern('a/__clips__/b/c.md', ['__clips__'])).toBe('__clips__');
+    expect(findMatchedPattern('a/__reports__/b/c.md', ['__reports__'])).toBe('__reports__');
   });
 
   it('matches wildcard patterns against each segment', () => {
@@ -64,19 +64,19 @@ describe('excludePattern: findMatchedPattern', () => {
 
 describe('excludePattern: mergeGitignoreEntries', () => {
   it('appends all entries when .gitignore is empty', () => {
-    const r = mergeGitignoreEntries('', ['__wiki__', '__clips__']);
+    const r = mergeGitignoreEntries('', ['__wiki__', '__reports__']);
     expect(r.changed).toBe(true);
-    expect(r.content).toBe('__wiki__\n__clips__\n');
+    expect(r.content).toBe('__wiki__\n__reports__\n');
   });
 
   it('preserves existing entries and only appends missing ones', () => {
-    const r = mergeGitignoreEntries('__wiki__\n# comment\n', ['__wiki__', '__clips__']);
+    const r = mergeGitignoreEntries('__wiki__\n# comment\n', ['__wiki__', '__reports__']);
     expect(r.changed).toBe(true);
-    expect(r.content).toBe('__wiki__\n# comment\n__clips__\n');
+    expect(r.content).toBe('__wiki__\n# comment\n__reports__\n');
   });
 
   it('returns changed=false when all entries are already present', () => {
-    const existing = '__wiki__\n__clips__\n';
+    const existing = '__wiki__\n__reports__\n';
     const r = mergeGitignoreEntries(existing, ['__wiki__']);
     expect(r.changed).toBe(false);
     expect(r.content).toBe(existing);
@@ -100,8 +100,8 @@ describe('excludePattern: mergeGitignoreEntries', () => {
   });
 
   it('ignores blank and comment-only entries in input', () => {
-    const r = mergeGitignoreEntries('__wiki__\n', ['', '  ', '# note', '__clips__']);
+    const r = mergeGitignoreEntries('__wiki__\n', ['', '  ', '# note', '__reports__']);
     expect(r.changed).toBe(true);
-    expect(r.content).toBe('__wiki__\n__clips__\n');
+    expect(r.content).toBe('__wiki__\n__reports__\n');
   });
 });

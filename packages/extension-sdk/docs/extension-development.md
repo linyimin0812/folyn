@@ -430,7 +430,7 @@ adapts it into the matching app registry when the plugin activates.
 ```
 
 - `id` is the panel's local id; it must NOT collide with the reserved
-  built-in ids (`files`, `wiki`, `clips`, `analyze`, `calendar`). A collision
+  built-in ids (`files`, `wiki`, `calendar`). A collision
   (with a built-in or an already-registered plugin panel) is logged and the
   second registration is refused.
 - `panel` is `left` / `right` / `bottom`. **MVP implements `left` only** —
@@ -446,7 +446,7 @@ adapts it into the matching app registry when the plugin activates.
 - `title` is the tooltip + accessibility label. Defaults to
   `<pluginId>/<id>` if absent.
 - `order` is optional. Built-ins occupy slots 0 (files), 10 (wiki), 20
-  (clips), 30 (analyze), 40 (calendar). A plugin panel that omits `order` is
+  (clips), 40 (calendar). A plugin panel that omits `order` is
   assigned the next-after-builtin slot (≥100) by registration order. The
   activity bar renders panels sorted by `(order, registration seq)`.
 - `badge` is optional (`string | number`). When present it renders as a small

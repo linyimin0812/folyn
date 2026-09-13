@@ -74,10 +74,8 @@ function resolvedTheme(): 'light' | 'dark' {
  * (image / office / preview-only) are dropped. Directories that become
  * empty after filtering are pruned — a tree of only-empty dirs is noise.
  *
- * `__clips__` clip files (.md under __clips__/) detect as 'clip' (text) and
- * are kept; their handler needsFileContent is true. SVG files are filtered
- * out too — an SVG is rendered markup, not a text doc worth a standalone
- * export page.
+ * SVG files are filtered out too — an SVG is rendered markup, not a text doc
+ * worth a standalone export page.
  */
 function filterTextTree(entries: VaultEntry[]): VaultEntry[] {
   const walk = (items: VaultEntry[]): VaultEntry[] => {
@@ -174,8 +172,8 @@ async function fileToBodyFragment(
   provider: StorageProvider | null,
   cfg: ProviderConfig | null,
 ): Promise<{ html: string; css: string; standalone?: string; canvas?: boolean }> {
-  // markdown / clip (clip is a md variant under __clips__) → full render
-  if (file.fileType === 'markdown' || file.fileType === 'clip') {
+  // markdown → full render
+  if (file.fileType === 'markdown') {
     const content = await readVaultText(file.path);
     // upload mode needs the provider: render without the DOM inline pass so
     // asset:// srcs survive, then upload each and rewrite to the public URL.

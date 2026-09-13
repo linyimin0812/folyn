@@ -400,8 +400,8 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 ]
 ```
 
-- `id` 是 panel 的本地 id；不得与保留的内置 id（`files` / `wiki` / `clips` /
-  `analyze` / `calendar`）冲突。冲突（与内置 id 或已注册的插件 panel）会打
+- `id` 是 panel 的本地 id；不得与保留的内置 id（`files` / `wiki` /
+  `calendar`）冲突。冲突（与内置 id 或已注册的插件 panel）会打
   warning 并拒绝第二次注册。
 - `panel` 取 `left` / `right` / `bottom`。**MVP 仅实现 `left`**——`right` 和
   `bottom` 会打 warning 并跳过（right/bottom shell slot 是后续任务）。
@@ -412,7 +412,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   `ThemeIcon` 名（解析 host 的 `assets/icons/*.svg`）。内联 SVG 是插件作者
   的自包含路径。
 - `title` 是 tooltip + 无障碍标签。缺省时为 `<pluginId>/<id>`。
-- `order` 可选。内置 id 占用 0（files）、10（wiki）、20（clips）、30（analyze）、
+- `order` 可选。内置 id 占用 0（files）、10（wiki）、20（clips）、
   40（calendar）。未声明 `order` 的插件 panel 按注册顺序分配内置之后的槽位
   （≥100）。Activity bar 按 `(order, 注册顺序)` 排序渲染。
 - `badge` 可选（`string | number`）。存在时在 activity bar 图标上渲染一个小的

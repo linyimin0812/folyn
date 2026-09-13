@@ -4,8 +4,8 @@
  * wrapper down to the active panel component (registered via
  * {@link useFeaturePanelStore}).
  *
- * Built-in panels that don't care about these values (WikiFileTree, ClipsPanel,
- * AnalysisPanel) simply ignore them. The files panel
+ * Built-in panels that don't care about these values (WikiFileTree)
+ * simply ignore them. The files panel
  * ({@link FilesPanel}) consumes both: width drives `isCompact`, and
  * `onFileSelect` fires after a file click on mobile to close the sidebar
  * overlay.

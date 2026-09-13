@@ -190,7 +190,7 @@ PetChat uses it with no `@mention` layer.
 
 - The helper follows the same no-store-import rule as shared components: grep-verify
   `grep -nE "from '@/store/(vaultStore|editorStore|aiStore)'" apps/desktop/src/components/chat/*.ts` is empty.
-- Vault-coupled features that have no vault-free form (file-tree `@mention`, wiki/clip
+- Vault-coupled features that have no vault-free form (file-tree `@mention`, wiki
   toolbars) stay in the consumer wrapper — do NOT try to abstract them into the helper
   with an optional vault dependency; that re-couples the secondary window.
 - A consumer may pass its own `workingDir` to a side-effectful helper (`saveBlobs(atts, workingDir, ...)`)

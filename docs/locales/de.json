@@ -73,7 +73,7 @@
     },
     "plugins": {
       "title": "Plugin-System",
-      "desc": "Mikrokernel- + Plugin-SDK-Architektur. Übersetzung, Kalender, Wiki, Clips, Projektanalyse kommen als Plugins; Drittanbieter-Erweiterungen unterstützt.",
+      "desc": "Mikrokernel- + Plugin-SDK-Architektur. Übersetzung, Kalender und Wiki kommen als Plugins; Drittanbieter-Erweiterungen unterstützt.",
       "tags": {"ext": "Drittanbieter-Erweiterungen"}
     },
     "voice": {
@@ -212,9 +212,7 @@
       "arch": {"k": "Architektur", "v": "Mikrokernel- + Plugin-SDK; der Kern bleibt leicht, Funktionen laden je nach Bedarf als Plugin, Drittanbieter können erweitern."},
       "translate": {"k": "Übersetzung", "v": "Eingebautes Übersetzungs-Plugin hilft bei mehrsprachigen Inhalten."},
       "schedule": {"k": "Kalender", "v": "<ul><li>Aufgaben und Erinnerungen einstellen</li><li>Pomodoro-Fokus-Timer</li><li>Aufgaben-Board</li></ul>"},
-      "wiki": {"k": "Wiki-Wissensbasis", "v": "Organisiere und verlinke Wissenseinträge im Wiki-Stil und ba ein Netz, durch das du springen kannst."},
-      "clips": {"k": "Clips", "v": "Web-Inhalte erfassen und automatisch eine Zusammenfassungsseite erstellen — schnell speichern und ansehen."},
-      "project": {"k": "Projektanalyse", "v": "GitHub-Projekte analysieren und einen HTML-Analysebericht ausgeben."}
+      "wiki": {"k": "Wiki-Wissensbasis", "v": "Organisiere und verlinke Wissenseinträge im Wiki-Stil und ba ein Netz, durch das du springen kannst."}
     },
     "shots": {
       "cap1": "Plugin-Markt / Verwaltung",

@@ -73,7 +73,7 @@
     },
     "plugins": {
       "title": "Système de plugins",
-      "desc": "Architecture micro-noyau + SDK plugins. Traduction, agenda, Wiki, clips, analyse de projet en plugins ; extensions tierces prises en charge.",
+      "desc": "Architecture micro-noyau + SDK plugins. Traduction, agenda et Wiki en plugins ; extensions tierces prises en charge.",
       "tags": {"ext": "extensions tierces"}
     },
     "voice": {
@@ -212,9 +212,7 @@
       "arch": {"k": "Architecture", "v": "Micro-noyau + SDK plugins ; le noyau reste léger, les fonctionnalités se chargent à la demande en plugins et les développeurs tiers peuvent étendre."},
       "translate": {"k": "Traduction", "v": "Plugin de traduction intégré pour traiter le contenu multilingue."},
       "schedule": {"k": "Agenda", "v": "<ul><li>Configuration des tâches et rappels</li><li>Minuteur pomodoro de concentration</li><li>Tableau de tâches</li></ul>"},
-      "wiki": {"k": "Base de connaissances Wiki", "v": "Organisez et reliez les entrées de connaissance façon wiki, construisant un réseau où l'on peut naviguer."},
-      "clips": {"k": "Clips", "v": "Capturez le contenu web et générez automatiquement une page de résumé — pour sauver et réviser vite."},
-      "project": {"k": "Analyse de projet", "v": "Analysez des projets GitHub et produisez un rapport d'analyse HTML."}
+      "wiki": {"k": "Base de connaissances Wiki", "v": "Organisez et reliez les entrées de connaissance façon wiki, construisant un réseau où l'on peut naviguer."}
     },
     "shots": {
       "cap1": "Marché / gestion des plugins",

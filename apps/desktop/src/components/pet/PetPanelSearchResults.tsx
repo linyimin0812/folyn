@@ -1,6 +1,6 @@
 // Pet-panel unified search results — the panel search box (above the tabs)
 // searches three sources: vault files, registered commands, and extensions
-// (on-disk third-party + built-in panels like translation/wiki/clips).
+// (on-disk third-party + built-in panels like translation/wiki).
 // Rendered in the panel body while the query is non-empty.
 //
 // Cross-window routing (the panel is a separate JS realm):
@@ -72,7 +72,7 @@ export const PetPanelSearchResults = forwardRef<
   const { t } = useTranslation();
   const fileTree = useVaultStore((s) => s.fileTree);
   // ponytail: read extension rows from the store (includes built-in panels
-  // like translation/wiki/clips/analyze/schedule) instead of invoking
+  // like translation/wiki/analyze/schedule) instead of invoking
   // `list_extensions` directly — that command returns only on-disk third-party
   // extensions and skips BUILTIN_PANEL_DEFS, so searches for "翻译" never hit
   // the translation panel.

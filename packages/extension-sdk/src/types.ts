@@ -281,7 +281,7 @@ export interface FeatureContribution {
   icon: string;
   /** Panel title (shown in the activity bar tooltip + accessibility label). */
   title?: string;
-  /** Sort key within the activity bar. Built-ins: files=0, wiki=10, clips=20, analyze=30, calendar=40. */
+  /** Sort key within the activity bar. Built-ins: files=0, wiki=10, analyze=30, calendar=40. */
   order?: number;
   /** Optional badge rendered as a small text dot when present. */
   badge?: string | number;

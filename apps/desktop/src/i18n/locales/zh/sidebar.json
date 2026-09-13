@@ -186,51 +186,6 @@
       "removeTagHint": "该剪藏还有其他 {{count}} 个标签，文件不会被删除。"
     }
   },
-  "analysis": {
-    "title": "项目分析",
-    "delete": "删除",
-    "viewDetails": "点击查看详情",
-    "analyzing": "分析中",
-    "newAnalysis": "新建分析",
-    "uncategorized": "未分类",
-    "empty": "暂无分析报告。点击右上角 + 按钮开始分析。",
-    "loading": "加载中...",
-    "deleteConfirm": {
-      "titleDelete": "确认删除",
-      "titleRemoveTag": "移除标签",
-      "deletePrefix": "确定要删除分析报告 ",
-      "deleteSuffix": " 吗？",
-      "removeTagPrefix": "确定要从 ",
-      "removeTagMiddle": " 中移除标签「",
-      "removeTagSuffix": "」吗？",
-      "removeTagHint": "该报告还有其他 {{count}} 个标签，文件不会被删除。"
-    },
-    "dedup": {
-      "title": "该项目已有分析报告",
-      "regenerate": "重新生成"
-    },
-    "tagPlaceholderEmpty": "输入标签后按回车添加...",
-    "tagPlaceholderMore": "添加更多...",
-    "confirmation": {
-      "success": "分析完成 — {{repo}}",
-      "previewLabel": "报告预览",
-      "htmlSize": "HTML {{kb}} KB · {{count}} 个标签",
-      "tagsLabel": "标签（可编辑）"
-    },
-    "dialog": {
-      "title": "新建项目分析",
-      "urlLabel": "GitHub 仓库链接",
-      "urlPlaceholder": "https://github.com/owner/repo",
-      "langLabel": "报告语言",
-      "langZh": "中文",
-      "langEn": "English",
-      "langAuto": "自动检测",
-      "start": "开始分析",
-      "progressDefault": "准备中...",
-      "hide": "隐藏",
-      "patience": "分析过程可能需要几分钟，请耐心等待"
-    }
-  },
   "panelError": {
     "failed": "面板加载失败"
   },

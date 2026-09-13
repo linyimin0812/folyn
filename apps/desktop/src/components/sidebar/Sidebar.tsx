@@ -6,7 +6,7 @@
  * Instead the active panel id is read from {@link useFeaturePanelStore} (which
  * mirrors `editorStore.activePanel`), and the registered `PanelEntry.
  * component` is rendered inside {@link PanelErrorBoundary}. Built-in panels
- * (files/wiki/clips/analyze/calendar) are registered by
+ * (files/wiki/calendar) are registered by
  * `registerBuiltinPanels`; extension panels arrive via `featureAdapter` (PR3).
  *
  * Shell-owned state stays here: sidebar width, collapse, resize-in-progress.

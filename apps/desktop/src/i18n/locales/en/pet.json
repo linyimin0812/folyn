@@ -25,19 +25,10 @@
   },
   "launcher": {
     "dailyNote": "Today's note",
-    "clipFromUrl": "Clip from URL",
     "globalSearch": "Global search",
     "commandPalette": "Command palette",
     "showMain": "Show main window",
-    "toggleTheme": "Toggle theme",
-    "clip": {
-      "emptyUrl": "Please enter a URL",
-      "running": "Clipping...",
-      "saved": "Saved: {{name}}",
-      "failed": "Clip failed",
-      "submit": "Clip",
-      "collapse": "Collapse"
-    }
+    "toggleTheme": "Toggle theme"
   },
   "bubble": {
     "closeAria": "Close"

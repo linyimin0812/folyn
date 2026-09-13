@@ -185,7 +185,7 @@ describe('useAiConfigStore.featureCliAdapter', () => {
   it('getFeatureAdapter returns the override when set', () => {
     useAiConfigStore.setState({ cliAdapter: 'claude', featureCliAdapter: { wiki: 'pi' } });
     expect(getFeatureAdapter('wiki')).toBe('pi');
-    expect(getFeatureAdapter('clips')).toBe('claude');
+    expect(getFeatureAdapter('schedule')).toBe('claude');
   });
 
   it('getFeatureCliPath resolves per-feature adapter binary path (not global cliPath)', () => {
@@ -196,7 +196,7 @@ describe('useAiConfigStore.featureCliAdapter', () => {
       featureCliAdapter: { wiki: 'pi' },
     });
     expect(getFeatureCliPath('wiki')).toBe('/usr/local/bin/pi');
-    expect(getFeatureCliPath('clips')).toBe('/usr/local/bin/claude');
+    expect(getFeatureCliPath('schedule')).toBe('/usr/local/bin/claude');
   });
 
   it('getFeatureCliPath falls back to adapter id when cliPaths has no entry', () => {
@@ -211,13 +211,12 @@ describe('useAiConfigStore.featureCliAdapter', () => {
 
   it('hydrate applies featureCliAdapter blob (string values only)', () => {
     useAiConfigStore.getState().hydrate({
-      featureCliAdapter: { wiki: 'pi', clips: 'claude', bogus: 42, analyze: '' },
+      featureCliAdapter: { wiki: 'pi', bogus: 42, schedule: '' },
     });
     const map = useAiConfigStore.getState().featureCliAdapter;
     expect(map.wiki).toBe('pi');
-    expect(map.clips).toBe('claude');
     expect(map.bogus).toBeUndefined(); // non-string dropped
-    expect(map.analyze).toBeUndefined(); // empty string dropped
+    expect(map.schedule).toBeUndefined(); // empty string dropped
   });
 });
 

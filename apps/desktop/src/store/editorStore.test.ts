@@ -54,10 +54,6 @@ describe('closeTab persistence', () => {
 });
 
 describe('detectFileType', () => {
-  it('detects clip files by __clips__/ prefix', () => {
-    expect(detectFileType('__clips__/tech/foo.md')).toBe('clip');
-  });
-
   it('falls back to "code" for unknown text-ish extensions', () => {
     // '.zzz' is not registered and not a known binary format → generic code editor.
     expect(detectFileType('weird.zzz')).toBe('code');
@@ -80,17 +76,8 @@ describe('detectActivity', () => {
     expect(detectActivity('wiki-graph', 'markdown')).toBe('wiki');
   });
 
-  it('routes clip files to the clips panel', () => {
-    expect(detectActivity('__clips__/tech/foo.md', 'clip')).toBe('clips');
-    expect(detectActivity('__clips__/x.md', 'code')).toBe('clips');
-  });
-
   it('routes wiki:// paths to the wiki panel', () => {
     expect(detectActivity('wiki://entities/react.md', 'markdown')).toBe('wiki');
-  });
-
-  it('routes __reports__/ to the analyze panel', () => {
-    expect(detectActivity('__reports__/2026-01-01.md', 'markdown')).toBe('analyze');
   });
 
   it('routes daily notes to the calendar panel', () => {
@@ -111,8 +98,8 @@ describe('rewriteTabPrefixes', () => {
   it('rewrites tab paths whose prefix was renamed', () => {
     useEditorStore.setState({
       tabs: [
-        { id: 't1', name: 'foo.md', path: 'clips/tech/foo.md', content: '', isDirty: false, fileType: 'clip', activity: 'clips' },
-        { id: 't2', name: 'bar.md', path: 'reports/2026-01-01.md', content: '', isDirty: false, fileType: 'markdown', activity: 'analyze' },
+        { id: 't1', name: 'foo.md', path: 'drafts/tech/foo.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+        { id: 't2', name: 'bar.md', path: 'reports/2026-01-01.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
         { id: 't3', name: 'note.md', path: 'notes/note.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
         { id: 't4', name: 'react.md', path: 'wiki://entities/react.md', content: '', isDirty: false, fileType: 'markdown', activity: 'wiki' },
       ],
@@ -120,12 +107,12 @@ describe('rewriteTabPrefixes', () => {
     });
 
     useEditorStore.getState().rewriteTabPrefixes([
-      { from: 'clips', to: '__clips__' },
+      { from: 'drafts', to: '__drafts__' },
       { from: 'reports', to: '__reports__' },
     ]);
 
     const tabs = useEditorStore.getState().tabs;
-    expect(tabs[0].path).toBe('__clips__/tech/foo.md');
+    expect(tabs[0].path).toBe('__drafts__/tech/foo.md');
     expect(tabs[0].name).toBe('foo.md');
     expect(tabs[1].path).toBe('__reports__/2026-01-01.md');
     expect(tabs[1].name).toBe('2026-01-01.md');
@@ -136,13 +123,13 @@ describe('rewriteTabPrefixes', () => {
   it('handles exact-match paths (no trailing slash)', () => {
     useEditorStore.setState({
       tabs: [
-        { id: 't1', name: 'clips', path: 'clips', content: '', isDirty: false, fileType: 'code', activity: 'files' },
+        { id: 't1', name: 'drafts', path: 'drafts', content: '', isDirty: false, fileType: 'code', activity: 'files' },
       ],
       activeTabId: 't1',
     });
 
-    useEditorStore.getState().rewriteTabPrefixes([{ from: 'clips', to: '__clips__' }]);
-    expect(useEditorStore.getState().tabs[0].path).toBe('__clips__');
+    useEditorStore.getState().rewriteTabPrefixes([{ from: 'drafts', to: '__drafts__' }]);
+    expect(useEditorStore.getState().tabs[0].path).toBe('__drafts__');
   });
 
   it('updates the tab name when a file is renamed', () => {
@@ -162,13 +149,13 @@ describe('rewriteTabPrefixes', () => {
   it('is a no-op when mapping is empty', () => {
     useEditorStore.setState({
       tabs: [
-        { id: 't1', name: 'foo.md', path: 'clips/tech/foo.md', content: '', isDirty: false, fileType: 'clip', activity: 'clips' },
+        { id: 't1', name: 'foo.md', path: 'drafts/tech/foo.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
       ],
       activeTabId: 't1',
     });
 
     useEditorStore.getState().rewriteTabPrefixes([]);
-    expect(useEditorStore.getState().tabs[0].path).toBe('clips/tech/foo.md');
+    expect(useEditorStore.getState().tabs[0].path).toBe('drafts/tech/foo.md');
   });
 });
 

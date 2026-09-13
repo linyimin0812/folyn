@@ -25,19 +25,10 @@
   },
   "launcher": {
     "dailyNote": "Note du jour",
-    "clipFromUrl": "Capturer depuis une URL",
     "globalSearch": "Recherche globale",
     "commandPalette": "Palette de commandes",
     "showMain": "Afficher la fenêtre principale",
-    "toggleTheme": "Basculer le thème",
-    "clip": {
-      "emptyUrl": "Saisir une URL",
-      "running": "Capture en cours...",
-      "saved": "Enregistré : {{name}}",
-      "failed": "Échec de la capture",
-      "submit": "Capturer",
-      "collapse": "Réduire"
-    }
+    "toggleTheme": "Basculer le thème"
   },
   "bubble": {
     "closeAria": "Fermer"

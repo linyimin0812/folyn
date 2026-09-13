@@ -31,12 +31,7 @@ apps/desktop/src/
 │   │                    #   no-store-import rule for secondary-window isolation.
 │   ├── editor/          # Editor toolbar and overlays (SlashMenu, ExportMenu, DiffToolbar,
 │   │                    #   ImagePasteDialog, CodeBlockLangMenu, DailyDigest)
-│   ├── file-types/      # File type handler registry (markdown, code, image, pdf, web). The
-│   │                    #   `clip/` subfolder holds the clip card editor: `ClipCardView`
-│   │                    #   (frontmatter + 摘要/要点/信息图 renderer) and `InfographicView`
-│   │                    #   (poster-style block renderer with 9 block types + unknown
-│   │                    #   fallback). See `features/clips/clipParse.ts` for the shared
-│   │                    #   `{ version, blocks: InfographicBlock[] }` schema and parsers.
+│   ├── file-types/      # File type handler registry (markdown, code, image, pdf, web).
 │   ├── graph/           # Wiki link graph visualization (D3 force-directed)
 │   ├── icons/           # Reusable SVG icon components (ThemeIcon)
 │   ├── outline/         # Document heading outline panel
@@ -66,13 +61,13 @@ apps/desktop/src/
                         #   inside TerminalHost — focus mode drops the dock)
 │
 ├── editor/              # CodeMirror extensions, themes, and setup
-├── features/            # Feature modules — one folder per feature (analyze, clips,
-│                        #   schedule, wiki). Each owns its domain logic AND its
+├── features/            # Feature modules — one folder per feature (schedule,
+│                        #   wiki). Each owns its domain logic AND its
 │                        #   canonical .claude/ (CLAUDE.md + agents/<feature>.md)
 ├── hooks/               # Custom React hooks (useTheme, useExport)
 ├── services/            # Cross-feature business logic services (exportService, wikiProvider,
 │                        #   wikiIngestService, wikiQueryService, wikiLintService,
-│                        #   featureAgentService, clipService, githubAnalysisService,
+│                        #   featureAgentService,
 │                        #   graphDataBuilder)
 ├── store/               # Zustand 5 stores (one per domain)
 ├── types/               # Shared TypeScript types (wiki.ts)
@@ -84,13 +79,13 @@ apps/desktop/src/
 ## Module Organization
 
 - **Feature folders** under `components/` — each folder owns one UI feature area with a main component plus helper subcomponents (e.g., `sidebar/Sidebar.tsx` + `FileTreeItem.tsx` + `SidebarActions.tsx` + `SidebarResizer.tsx`)
-- **Feature modules** under `features/` — one folder per feature (`analyze`, `clips`, `schedule`, `wiki`). Each owns its domain logic (e.g. `clips/clipParse.ts` — shared clip-markdown parsers and the infographic `{ version, blocks: Block[] }` schema with 9 block types: hero/stat/keypoints/timeline/steps/comparison/quote/tags/source; `schedule/` columns/dnd/dailyScan/layout/markdown/types) AND its canonical agent definition (`.claude/CLAUDE.md` + `.claude/agents/<feature>.md`). See `feature-agents.md` for the agent architecture contract.
+- **Feature modules** under `features/` — one folder per feature (`schedule`, `wiki`). Each owns its domain logic (e.g. `schedule/` columns/dnd/dailyScan/layout/markdown/types) AND its canonical agent definition (`.claude/CLAUDE.md` + `.claude/agents/<feature>.md`). See `feature-agents.md` for the agent architecture contract.
 
-  > **Note**: `features/analyze` currently holds only its canonical `.claude/`; its bespoke service logic lives in `services/` (consumed via `featureAgentService`). `features/wiki` similarly delegates most domain logic to `services/` (`wikiIngestService`, `wikiLintService`, `wikiQueryService`, etc.) — the `features/<name>/` folder is the canonical-agent home and clip/schedule parsers; heavier domain logic for analyze/wiki is service-layer, not feature-folder. See `directory-structure.md` services list and `feature-agents.md`.
-- **Stores** are flat in `store/`, one file per domain. The authoritative store registry and per-store responsibilities live in `state-management.md` ("Store Categories" table) — do not duplicate the list here. As of writing there are ~30 stores spanning navigation, appearance, editor (split into `editorStore` + `editorPrefsStore` + `editorAutoSave` + `editorPersistence` + `editorViewState`), vault/vaultConfig, ai (split into `aiStore` + `aiConfigStore` + `aiFileChangeActions` + `aiSessionPersistence`), wiki (split into `wikiStore` + `wikiGraphStore` + `wikiQueryStore`), pet (split into `petStore` + `petChatSessions`), schedule, clips, analysis, plugin, terminal, voice, translation, search, modelRegistry, bubbleTemplateChat, browser, locale, toast, toolWindow, featurePanel, commandPalette, diffReview. See `state-management.md` for the god-store split history and the `settingsStore` → 8 cohesive stores migration.
+  > **Note**: `features/wiki` delegates most domain logic to `services/` (`wikiIngestService`, `wikiLintService`, `wikiQueryService`, etc.) — the `features/<name>/` folder is the canonical-agent home and schedule parsers; heavier domain logic for wiki is service-layer, not feature-folder. See `directory-structure.md` services list and `feature-agents.md`.
+- **Stores** are flat in `store/`, one file per domain. The authoritative store registry and per-store responsibilities live in `state-management.md` ("Store Categories" table) — do not duplicate the list here. As of writing there are ~30 stores spanning navigation, appearance, editor (split into `editorStore` + `editorPrefsStore` + `editorAutoSave` + `editorPersistence` + `editorViewState`), vault/vaultConfig, ai (split into `aiStore` + `aiConfigStore` + `aiFileChangeActions` + `aiSessionPersistence`), wiki (split into `wikiStore` + `wikiGraphStore` + `wikiQueryStore`), pet (split into `petStore` + `petChatSessions`), schedule, plugin, terminal, voice, translation, search, modelRegistry, bubbleTemplateChat, browser, locale, toast, toolWindow, featurePanel, commandPalette, diffReview. See `state-management.md` for the god-store split history and the `settingsStore` → 8 cohesive stores migration.
 - **Store helpers** co-located when logic grows: `editorAutoSave.ts`, `editorPersistence.ts`, `editorViewState.ts`, `aiFileChangeActions.ts`, `aiSessionPersistence.ts`
 - **Services** are flat in `services/` — cross-feature business logic. A service file is NOT required to end in `Service`/`Provider`; the following suffixes are all legitimate forms (verified against the live codebase, not a naming violation):
-  - `<domain>Service.ts` / `<domain>Provider.ts` — the canonical domain service / provider (e.g. `featureAgentService`, `clipService`, `wikiProvider`, `githubAnalysisService`). Domain logic with a clear lifecycle.
+  - `<domain>Service.ts` / `<domain>Provider.ts` — the canonical domain service / provider (e.g. `featureAgentService`, `wikiProvider`). Domain logic with a clear lifecycle.
   - `register*.ts(x)` — app-startup registrars that inject built-ins into a store/registry at boot (e.g. `registerBuiltinPanels`, `registerBuiltinCodeContributions`, `registerErrorDemoPlugin`). `.tsx` when the registered entry carries JSX (icon components).
   - `<domain>Builder.ts` — a single `build<Thing>()` entry over pure data shaping (e.g. `graphDataBuilder`).
   - `<domain>Writer.ts` / `<domain>Search.ts` / `<domain>Lint.ts` — domain workers (write/search/lint), named by verb not by `Service`. See the wiki domain: `wikiPageWriter`, `wikiSearch`, `wikiStagingWriter`, `wikiStructuralLint` coexist with `wikiIngestService` / `wikiLintService` / `wikiQueryService` — a style split, NOT a violation.

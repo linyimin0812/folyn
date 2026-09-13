@@ -2,7 +2,7 @@
  * Tests for the PR2 built-in panel registration + visibility/active sync.
  *
  * Covers the contract that `registerBuiltinPanels` fulfills:
- * - 4 built-in panels registered with correct ids + order.
+ * - 3 built-in panels registered with correct ids + order.
  * - Visibility bound to appearanceStore enable flags at registration time.
  * - appearanceStore flag toggle → setVisible + active-panel-fallback.
  * - editorStore.activePanel → featurePanelStore.activePanelId mirror.
@@ -21,8 +21,6 @@ function resetStores() {
   useEditorStore.setState({ activePanel: 'files', activeTabId: null, tabs: [] });
   useAppearanceStore.setState({
     enableWikiPanel: true,
-    enableClipsPanel: true,
-    enableAnalyzePanel: true,
   });
 }
 
@@ -35,14 +33,14 @@ afterEach(() => {
 });
 
 describe('registerBuiltinPanels: built-in registration', () => {
-  it('registers exactly the 4 built-in panels', () => {
+  it('registers exactly the 2 built-in panels', () => {
     const dispose = registerBuiltinPanels();
     const ids = useFeaturePanelStore.getState().panels.map((p) => p.id);
-    expect(ids).toEqual(['files', 'wiki', 'clips', 'analyze']);
+    expect(ids).toEqual(['files', 'wiki']);
     dispose();
   });
 
-  it('assigns the spec-mandated order values (0/10/20/30)', () => {
+  it('assigns the spec-mandated order values (0/10)', () => {
     const dispose = registerBuiltinPanels();
     const byId = Object.fromEntries(
       useFeaturePanelStore.getState().panels.map((p) => [p.id, p.order]),
@@ -50,17 +48,15 @@ describe('registerBuiltinPanels: built-in registration', () => {
     expect(byId).toEqual({
       files: 0,
       wiki: 10,
-      clips: 20,
-      analyze: 30,
     });
     dispose();
   });
 
-  it('marks all 4 as builtin', () => {
+  it('marks all 2 as builtin', () => {
     const dispose = registerBuiltinPanels();
     const allBuiltin = useFeaturePanelStore
       .getState()
-      .panels.filter((p) => p.id === 'files' || p.id === 'wiki' || p.id === 'clips' || p.id === 'analyze')
+      .panels.filter((p) => p.id === 'files' || p.id === 'wiki')
       .every((p) => p.builtin === true);
     expect(allBuiltin).toBe(true);
     dispose();
@@ -69,8 +65,6 @@ describe('registerBuiltinPanels: built-in registration', () => {
   it('files is always visible; others bind to appearance flags at registration', () => {
     useAppearanceStore.setState({
       enableWikiPanel: false,
-      enableClipsPanel: true,
-      enableAnalyzePanel: false,
     });
     const dispose = registerBuiltinPanels();
     const visible = Object.fromEntries(
@@ -78,18 +72,16 @@ describe('registerBuiltinPanels: built-in registration', () => {
     );
     expect(visible.files).toBe(true);
     expect(visible.wiki).toBe(false);
-    expect(visible.clips).toBe(true);
-    expect(visible.analyze).toBe(false);
     dispose();
   });
 
   it('is idempotent — a second call is a no-op (wired guard)', () => {
     const dispose1 = registerBuiltinPanels();
     const dispose2 = registerBuiltinPanels(); // no-op, returns disposer that does nothing
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(4);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
     dispose2();
     // The second dispose is a no-op — panels still present until dispose1.
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(4);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
     dispose1();
   });
 });
@@ -100,19 +92,6 @@ describe('registerBuiltinPanels: appearance flag → visibility sync', () => {
     useAppearanceStore.setState({ enableWikiPanel: false });
     const wiki = useFeaturePanelStore.getState().panels.find((p) => p.id === 'wiki');
     expect(wiki?.visible).toBe(false);
-    dispose();
-  });
-
-  it('toggling enableClipsPanel to true shows clips', () => {
-    useAppearanceStore.setState({ enableClipsPanel: false });
-    const dispose = registerBuiltinPanels();
-    expect(
-      useFeaturePanelStore.getState().panels.find((p) => p.id === 'clips')?.visible,
-    ).toBe(false);
-    useAppearanceStore.setState({ enableClipsPanel: true });
-    expect(
-      useFeaturePanelStore.getState().panels.find((p) => p.id === 'clips')?.visible,
-    ).toBe(true);
     dispose();
   });
 });
@@ -129,25 +108,15 @@ describe('registerBuiltinPanels: active-panel fallback', () => {
     expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
     dispose();
   });
-
-  it('does not fall back when a non-active panel becomes invisible', () => {
-    const dispose = registerBuiltinPanels();
-    useEditorStore.getState().setActivePanel('wiki');
-    // hiding clips (not active) does not change the active panel
-    useAppearanceStore.setState({ enableClipsPanel: false });
-    expect(useEditorStore.getState().activePanel).toBe('wiki');
-    expect(useFeaturePanelStore.getState().activePanelId).toBe('wiki');
-    dispose();
-  });
 });
 
 describe('registerBuiltinPanels: active-panel mirror + persisted-invalid fallback', () => {
   it('mirrors editorStore.activePanel → featurePanelStore.activePanelId', () => {
     const dispose = registerBuiltinPanels();
-    useEditorStore.getState().setActivePanel('analyze');
-    expect(useFeaturePanelStore.getState().activePanelId).toBe('analyze');
     useEditorStore.getState().setActivePanel('wiki');
     expect(useFeaturePanelStore.getState().activePanelId).toBe('wiki');
+    useEditorStore.getState().setActivePanel('files');
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
     dispose();
   });
 

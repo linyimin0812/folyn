@@ -25,19 +25,10 @@
   },
   "launcher": {
     "dailyNote": "Heutige Notiz",
-    "clipFromUrl": "Aus URL ausschneiden",
     "globalSearch": "Globale Suche",
     "commandPalette": "Befehlspalette",
     "showMain": "Hauptfenster anzeigen",
-    "toggleTheme": "Design wechseln",
-    "clip": {
-      "emptyUrl": "URL eingeben",
-      "running": "Ausschneiden...",
-      "saved": "Gespeichert: {{name}}",
-      "failed": "Ausschneiden fehlgeschlagen",
-      "submit": "Ausschneiden",
-      "collapse": "Einklappen"
-    }
+    "toggleTheme": "Design wechseln"
   },
   "bubble": {
     "closeAria": "Schließen"

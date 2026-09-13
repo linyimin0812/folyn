@@ -1,6 +1,6 @@
 // Feature agent 框架：canonical agent 文件播种 + getFeatureAgentSendOptions。
 //
-// 设计见 `.trellis/tasks/07-01-refactor-wiki-clips-schedule-project-analysis-to-per-vault-claude-agents/prd.md`：
+// 设计见 `.trellis/tasks/07-01-refactor-wiki-schedule-project-analysis-to-per-vault-claude-agents/prd.md`：
 // - 每 feature 独立子目录 `<vault>/__{feature}__/.claude/`（含 CLAUDE.md + agents/<feature>.md）。
 // - canonical 源文件按功能就近放 `apps/desktop/src/<feature>/.claude/{CLAUDE.md,agents/<feature>.md}`，经 `?raw` import。
 // - vault 切换/启动/lazy-seed 时把 canonical 文件拷贝到 `<vault>/__{feature}__/.claude/`，**always-overwrite**（canonical 是 single source of truth，不保留 vault 副本的用户手改）。
@@ -10,17 +10,13 @@
 
 import type { CliAgentDefinition, CliSendOptions } from '@folyn/cli-adapter';
 import type { VaultManager } from '@folyn/vault-provider';
-import analyzeAgentDoc from '@/features/analyze/.claude/agents/analyze.md?raw';
-import analyzeClaudeDoc from '@/features/analyze/.claude/CLAUDE.md?raw';
-import clipsAgentDoc from '@/features/clips/.claude/agents/clips.md?raw';
-import clipsClaudeDoc from '@/features/clips/.claude/CLAUDE.md?raw';
 import scheduleAgentDoc from '@/features/schedule/.claude/agents/schedule.md?raw';
 import scheduleClaudeDoc from '@/features/schedule/.claude/CLAUDE.md?raw';
 import wikiAgentDoc from '@/features/wiki/.claude/agents/wiki.md?raw';
 import wikiClaudeDoc from '@/features/wiki/.claude/CLAUDE.md?raw';
 import { resolveBasePath } from '@/utils/pathResolver';
 
-/** Feature 子目录名前缀/后缀（双下划线包裹，与现有 `__clips__` / `__wiki__` / `__daily__` 约定一致）。 */
+/** Feature 子目录名前缀/后缀（双下划线包裹，与现有 `__wiki__` / `__daily__` 约定一致）。 */
 function featureDir(feature: string): string {
   return `__${feature}__`;
 }
@@ -71,11 +67,9 @@ export interface FeatureAgentEntry {
 
 /**
  * Feature agent 注册表。新增 feature 时在此登记 canonical 文件。
- * - analyze/clips/schedule/wiki 走 bespoke 流程（getFeatureAgentSendOptions 仅给 adapter.send 提供 options）。
+ * - schedule/wiki 走 bespoke 流程（getFeatureAgentSendOptions 仅给 adapter.send 提供 options）。
  */
 export const FEATURE_AGENTS: FeatureAgentEntry[] = [
-  { feature: 'analyze', file: 'analyze.md', doc: analyzeAgentDoc, claudeDoc: analyzeClaudeDoc },
-  { feature: 'clips', file: 'clips.md', doc: clipsAgentDoc, claudeDoc: clipsClaudeDoc },
   { feature: 'schedule', file: 'schedule.md', doc: scheduleAgentDoc, claudeDoc: scheduleClaudeDoc, addVaultDir: true },
   { feature: 'wiki', file: 'wiki.md', doc: wikiAgentDoc, claudeDoc: wikiClaudeDoc },
 ];
@@ -90,7 +84,7 @@ export function getFeatureAgentEntry(feature: string): FeatureAgentEntry | undef
  * canonical 形如：
  * ```
  * ---
- * name: clips
+ * name: wiki
  * description: ...
  * tools: WebFetch, WebSearch, Read
  * ---
@@ -309,7 +303,7 @@ export async function isAgentAvailable(feature: string): Promise<boolean> {
 }
 
 /**
- * 给 bespoke feature service（analyze/clips/schedule/wiki）用的轻量辅助：返回 `adapter.send`
+ * 给 bespoke feature service（schedule/wiki）用的轻量辅助：返回 `adapter.send`
  * 的 options 片段。这些 feature 不走 aiStore 会话，保留各自 collectTextFromStream /
  * setDigest 结果处理；只把 send 从无 options 升级为 feature-agent 模式。
  *

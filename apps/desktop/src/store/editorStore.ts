@@ -10,7 +10,6 @@ import { persistOpenTabs, flushPersistOpenTabs, flushPersistExternalOpenTabs } f
 import { scheduleAutoSave } from './editorAutoSave';
 import { saveFile as saveFileIo } from '@/services/editorIoService';
 import { useEditorPrefsStore } from './editorPrefsStore';
-import { wikiProvider } from '@/services/wikiProvider';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
 import type { ViewMode } from '@/components/file-types/types';
 export type { ViewMode };
@@ -21,10 +20,6 @@ export function detectFileType(filePath: string): FileType {
   // Wiki virtual tabs use dedicated icons in the tab bar.
   if (filePath === 'wiki-graph') return 'wiki-graph';
   if (filePath === 'wiki-query') return 'wiki-query';
-  // Detect clip files by path prefix
-  if (filePath.startsWith('__clips__/') && filePath.endsWith('.md')) {
-    return 'clip';
-  }
   const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
   // User preference (Open With, §53) overrides the priority default — but
   // only if the preferred provider still claims this extension.
@@ -51,8 +46,6 @@ export interface FileTab {
   fileType: FileType;
   /** Which activity panel this tab belongs to */
   activity: ActivityPanel;
-  /** Original clip file path (set when web tab was opened from a clip card) */
-  clipPath?: string;
   /** Saved cursor line (1-based) for this tab */
   cursorLine?: number;
   /** Saved cursor column (1-based) for this tab */
@@ -62,11 +55,9 @@ export interface FileTab {
 }
 
 /** Determine which activity panel a tab belongs to based on its path and file type */
-export function detectActivity(filePath: string, fileType: FileType): ActivityPanel {
+export function detectActivity(filePath: string, _fileType: FileType): ActivityPanel {
   if (filePath === 'wiki-graph' || filePath === 'wiki-query') return 'wiki';
-  if (fileType === 'clip' || filePath.startsWith('__clips__/')) return 'clips';
   if (filePath.startsWith(WIKI_PREFIX)) return 'wiki';
-  if (filePath.startsWith('__reports__/')) return 'analyze';
 
   // Check daily notes directory
   const dailyDir = usePrefsStore.getState().dailyNotesDir || '__daily__';
@@ -98,11 +89,7 @@ interface EditorState {
 
   /** Open a web URL in a new tab */
   openWebTab: (url: string, title?: string) => void;
-  /** Open a web URL from a clip card (converts clip tab to web tab, adds back-to-clip button) */
-  openWebFromClip: (tabId: string, url: string, clipPath: string, title?: string) => void;
-  /** Convert a web tab back to its original clip card */
-  backToClip: (tabId: string) => Promise<void>;
-  /** Rewrite open tab paths after a directory rename (e.g. clips/ → __clips__/) */
+  /** Rewrite open tab paths after a directory rename (e.g. legacy prefix → managed prefix) */
   rewriteTabPrefixes: (mapping: { from: string; to: string }[]) => void;
 }
 
@@ -230,42 +217,6 @@ export const useEditorStore = create<EditorState>()(
         // next launch (same path as file tabs).
         const vaultId = useVaultStore.getState().activeVaultId;
         if (vaultId) persistOpenTabs(vaultId, get().tabs, newTab.id);
-      },
-
-      openWebFromClip: (tabId, url, clipPath, title) => {
-        const displayName = title || (() => { try { return new URL(url).hostname; } catch { return url; } })();
-        set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.id === tabId
-              ? { ...tab, path: url, name: displayName, content: '', fileType: 'web' as FileType, isDirty: false, clipPath, activity: 'clips' as ActivityPanel }
-              : tab,
-          ),
-        }));
-      },
-
-      backToClip: async (tabId) => {
-        const tab = get().tabs.find((t) => t.id === tabId);
-        if (!tab?.clipPath) return;
-        const clipPath = tab.clipPath;
-        const fileName = clipPath.split('/').pop() || clipPath;
-        // Read clip file content
-        let content = '';
-        try {
-          if (clipPath.startsWith(WIKI_PREFIX)) {
-            content = await wikiProvider.readFile(clipPath.slice(WIKI_PREFIX.length));
-          } else {
-            content = await useVaultStore.getState().readFile(clipPath);
-          }
-        } catch (err) {
-          console.error('[EditorStore] backToClip: failed to read clip file:', err);
-        }
-        set((state) => ({
-          tabs: state.tabs.map((t) =>
-            t.id === tabId
-              ? { ...t, path: clipPath, name: fileName, content, fileType: 'clip' as FileType, isDirty: false, clipPath: undefined, activity: 'clips' as ActivityPanel }
-              : t,
-          ),
-        }));
       },
 
       rewriteTabPrefixes: (mapping) => {

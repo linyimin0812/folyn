@@ -71,7 +71,15 @@
     }
   },
   "calendar": {
-    "weekdays": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+    "weekdays": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ],
     "title": "{{month}} {{year}}",
     "hasNote": "{{date}} (a une note)"
   },
@@ -153,51 +161,6 @@
       "removeTagMiddle": " » de ",
       "removeTagSuffix": " ?",
       "removeTagHint": "Cette capture a {{count}} autre(s) tag(s) ; le fichier ne sera pas supprimé."
-    }
-  },
-  "analysis": {
-    "title": "Analyse de projet",
-    "delete": "Supprimer",
-    "viewDetails": "Clic pour détails",
-    "analyzing": "Analyse en cours",
-    "newAnalysis": "Nouvelle analyse",
-    "uncategorized": "Non catégorisé",
-    "empty": "Aucun rapport d'analyse pour le moment. Cliquez sur le bouton + pour démarrer.",
-    "loading": "Chargement...",
-    "deleteConfirm": {
-      "titleDelete": "Confirmer la suppression",
-      "titleRemoveTag": "Retirer le tag",
-      "deletePrefix": "Supprimer le rapport d'analyse ",
-      "deleteSuffix": " ?",
-      "removeTagPrefix": "Retirer le tag « ",
-      "removeTagMiddle": " » de ",
-      "removeTagSuffix": " ?",
-      "removeTagHint": "Ce rapport a {{count}} autre(s) tag(s) ; le fichier ne sera pas supprimé."
-    },
-    "dedup": {
-      "title": "Un rapport d'analyse existe déjà pour ce projet",
-      "regenerate": "Régénérer"
-    },
-    "tagPlaceholderEmpty": "Saisir un tag et appuyer sur Entrée...",
-    "tagPlaceholderMore": "Ajouter plus...",
-    "confirmation": {
-      "success": "Analyse terminée — {{repo}}",
-      "previewLabel": "Aperçu du rapport",
-      "htmlSize": "HTML {{kb}} Ko · {{count}} tag(s)",
-      "tagsLabel": "Tags (éditable)"
-    },
-    "dialog": {
-      "title": "Nouvelle analyse de projet",
-      "urlLabel": "URL du dépôt GitHub",
-      "urlPlaceholder": "https://github.com/owner/repo",
-      "langLabel": "Langue du rapport",
-      "langZh": "中文",
-      "langEn": "English",
-      "langAuto": "Détection auto",
-      "start": "Démarrer l'analyse",
-      "progressDefault": "Préparation...",
-      "hide": "Masquer",
-      "patience": "L'analyse peut prendre plusieurs minutes ; patientez."
     }
   },
   "panelError": {

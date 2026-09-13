@@ -45,8 +45,8 @@ import { isTauri } from '@/utils/platform';
  * `set-pet-opacity` carries `{ opacity: '25'|'50'|'75'|'100' }`, and
  * `toggle-pet-click-through` carries `{ clickThrough: boolean }`.
  *
- * The remaining five launcher-only actions (`daily-note`, `global-search`,
- * `clip-from-url`, `command-palette`, `toggle-theme`) are dispatched by the
+ * The remaining four launcher-only actions (`daily-note`, `global-search`,
+ * `command-palette`, `toggle-theme`) are dispatched by the
  * pet-panel launcher grid via the same `pet://menu-action` event channel —
  * they are NOT in the right-click menu, but the action strings stay in this
  * union so the contract test (covers the full set) keeps passing.
@@ -72,7 +72,6 @@ export type PetMenuAction =
   | 'exit-app'
   | 'daily-note'
   | 'global-search'
-  | 'clip-from-url'
   | 'command-palette'
   | 'toggle-theme'
   | 'open-ai-settings'
@@ -118,7 +117,6 @@ export const PET_NATIVE_MENU_ACTIONS: readonly PetMenuAction[] = [
 export const PET_LAUNCHER_ACTIONS: readonly PetMenuAction[] = [
   'daily-note',
   'global-search',
-  'clip-from-url',
   'command-palette',
   'toggle-theme',
   'open-ai-settings',

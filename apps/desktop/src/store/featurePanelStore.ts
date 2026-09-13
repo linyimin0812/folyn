@@ -1,12 +1,12 @@
 /**
  * Feature panel state (the data-driven sidebar/activity-bar registry).
  *
- * Each entry (`PanelEntry`) is a sidebar panel — one of the 5 built-ins
- * (files/wiki/clips/analyze/calendar, registered in PR2) or a extension panel
+ * Each entry (`PanelEntry`) is a sidebar panel — one of the 3 built-ins
+ * (files/wiki/calendar, registered in PR2) or a extension panel
  * registered via `featureAdapter.ts`. The store is reactive so `ActivityBar`
  * and `Sidebar` re-render when extensions activate/deactivate at runtime.
  *
- * Built-in ids reserved: `files`, `wiki`, `clips`, `analyze`, `calendar`.
+ * Built-in ids reserved: `files`, `wiki`, `calendar`.
  * Registering an existing id is refused with a console.warn (collision guard).
  *
  * State management conventions (see .trellis/spec/desktop/frontend/state-
@@ -27,7 +27,7 @@ export interface PanelEntry {
   icon: ReactNode;
   /** The React component rendered inside `PanelErrorBoundary` when active. */
   component: ComponentType;
-  /** Sort key. Built-ins: files=0, wiki=10, clips=20, analyze=30, calendar=40. */
+  /** Sort key. Built-ins: files=0, wiki=10, calendar=40. */
   order: number;
   /** Optional badge shown as a small text dot. */
   badge?: string | number;
@@ -50,7 +50,7 @@ interface FeaturePanelState {
   /** Toggle a panel's visibility (used by appearanceStore enable-flags in PR2). */
   setVisible: (id: string, visible: boolean) => void;
   /** Update a panel's sort key. Used by registerBuiltinPanels to re-sort
-   *  Wiki/Clips/Analyze by enable timestamp when their flag flips on. */
+   *  Wiki by enable timestamp when its flag flips on. */
   setOrder: (id: string, order: number) => void;
 }
 

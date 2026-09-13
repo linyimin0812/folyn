@@ -66,7 +66,7 @@ describe('ExtensionHost / permissions.ai validation', () => {
   it('accepts chat boolean + agents string[]', async () => {
     const host = new ExtensionHost();
     await expect(
-      host.install(manifest({ permissions: { ai: { chat: true, agents: ['wiki', 'clips'] } } })),
+      host.install(manifest({ permissions: { ai: { chat: true, agents: ['wiki', 'analyze'] } } })),
     ).resolves.toBe('demo-extension');
   });
 

@@ -54,8 +54,6 @@ vi.mock('@/store/appearanceStore', () => ({
     getState: () => ({
       toggleTheme: toggleThemeMock,
       enableWikiPanel: true,
-      enableClipsPanel: true,
-      enableAnalyzePanel: true,
       showAiPanel: true,
     }),
   },
@@ -198,9 +196,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       .map((c) => c.id);
     expect(ids).toEqual([
       'panel.files',
-      'panel.clips',
       'panel.wiki',
-      'panel.analyze',
       'panel.settings',
       'wiki.newQuery',
       'wiki.openGraph',

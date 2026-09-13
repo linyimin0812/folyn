@@ -26,7 +26,7 @@
 - **Tiefe KI-Integration** — Eingebaute Adapter für sechs CLI-Agenten: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Frei zwischen Modellanbietern wechseln, kein Vendor-Lock-in.
 - **Desktop-Begleiter-Assistent** — Ein auf dem Desktop residierender Begleiter, der Kalendererinnerungen und Aufgabenänderungen pushst; ein Klick öffnet einen Chat mit dem LLM.
 - **Internes Terminal** — Öffnen Sie ein Terminal in Folyn und lassen Sie Claude Code / Codex / andere CLI-Agenten das aktuelle Dokument lesen und schreiben — kein Fensterwechsel.
-- **Extension-System** — Microkernel- + Extension-SDK-Architektur. Übersetzung, Kalender, Wiki, Clips und Projektanalyse werden als Extensions mitgeliefert; Drittanbieter-Erweiterungen unterstützt.
+- **Extension-System** — Microkernel- + Extension-SDK-Architektur. Übersetzung, Kalender und Wiki werden als Extensions mitgeliefert; Drittanbieter-Erweiterungen unterstützt.
 - **Spracheingabe** — Sprache-zu-Text mit automatischer Nachbearbeitung, direkt am Cursor eingefügt (aktuell nur macOS).
 
 ## For Users
@@ -112,8 +112,6 @@ Microkernel- + Extension-SDK-Architektur; der Kern bleibt schlank, Funktionen we
 - **Übersetzung** — Mehrsprachige Inhaltsverarbeitung
 - **Kalender** — Aufgabeneinstellungen / Benachrichtigungen / Fokus-Pomodoro / Aufgaben-Board
 - **Wiki-Wissensbasis** — Wissenseinträge als Wiki organisieren und verlinken, ein navigierbares Wissensnetz aufbauen
-- **Clips** — Web-Inhalte erfassen und Seiten automatisch zusammenfassen
-- **Projektanalyse** — GitHub-Projekte analysieren, HTML-Berichte ausgeben
 
 Drittanbieter-Extension-Erweiterungen unterstützt; siehe `docs/extensions.html`.
 

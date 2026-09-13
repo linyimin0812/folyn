@@ -23,10 +23,8 @@ function resetAppearanceDefaults() {
     showStatusBar: true,
     showHiddenFiles: true,
     enableWikiPanel: true,
-    enableClipsPanel: true,
-    enableAnalyzePanel: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__clips__\n__reports__\n__daily__\n__schedule__\n__analyze__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__reports__\n__daily__\n__schedule__\n__attachments__\n__study__',
     linkOpenMode: 'external',
     vaultName: 'my-vault',
   });
@@ -137,7 +135,6 @@ describe('useAppearanceStore.hydrate', () => {
     expect(lines).toContain('node_modules');
     expect(lines).toContain('__wiki__');
     expect(lines).toContain('__schedule__');
-    expect(lines).toContain('__analyze__');
   });
 
   it('applies theme + font side effects', () => {
@@ -156,11 +153,11 @@ describe('useAppearanceStore.hydrate', () => {
 describe('backfillBuiltinExcludePatterns', () => {
   const BUILTIN_DIRS = [
     '__wiki__',
-    '__clips__',
     '__reports__',
     '__daily__',
     '__schedule__',
-    '__analyze__',
+    '__attachments__',
+    '__study__',
   ];
 
   it('leaves an already-complete persisted value unchanged (no duplication)', () => {

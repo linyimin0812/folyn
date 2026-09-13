@@ -60,14 +60,6 @@
         "label": "Wiki panel",
         "description": "Show Wiki entry in the sidebar"
       },
-      "clips": {
-        "label": "Clips panel",
-        "description": "Show web-clips entry in the sidebar"
-      },
-      "analyze": {
-        "label": "Project analysis panel",
-        "description": "Show project-analysis entry in the sidebar"
-      },
       "schedule": {
         "label": "Schedule panel",
         "description": "Schedule (Plan My Day) feature entry"
@@ -676,7 +668,7 @@
     "fileTypeSupport": {
       "label": "File type support",
       "description": "Registered through HandlerRegistry, Folyn can preview and edit 15+ file types.",
-      "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (ER diagram) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Office docs · Clipboard clips"
+      "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (ER diagram) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Office docs"
     },
     "techStack": {
       "label": "Tech stack",

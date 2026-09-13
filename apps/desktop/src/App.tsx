@@ -61,7 +61,7 @@ registerBuiltinExporters();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.
 registerBuiltinCommands();
-// Register the 5 built-in sidebar panels (files/wiki/clips/analyze/calendar)
+// Register the 3 built-in sidebar panels (files/wiki/calendar)
 // into featurePanelStore + wire visibility/active-panel sync. ActivityBar and
 // Sidebar are data-driven off the store; this must run before they mount.
 // (Extension panels arrive later via featureAdapter — PR3.)

@@ -23,7 +23,7 @@ all AI consumers stay unchanged.
 ## What I already know
 
 - `packages/cli-adapter/src/claudeAdapter.ts` — current adapter spawns `claude` via `@tauri-apps/plugin-shell`, runs `--permission-mode bypassPermissions` (line ~64), parses NDJSON, and does **post-hoc** file diffing (lines ~210–292). The hooks approach **replaces** both: drop `bypassPermissions`, replace post-hoc diff with a PreToolUse hook.
-- `BaseCliAdapter` contract (`start/send/stop/onEvent` + `CliStreamEvent`) — keep; consumers (AiPanel, clipService, wikiIngestService, githubAnalysisService, DailyDigest, WebViewer) unchanged.
+- `BaseCliAdapter` contract (`start/send/stop/onEvent` + `CliStreamEvent`) — keep; consumers (AiPanel, wikiIngestService, githubAnalysisService, DailyDigest, WebViewer) unchanged.
 - Folyn = Tauri 2 (Rust backend `apps/desktop/src-tauri`) + React 18 renderer. Renderer holds Zustand state (`vaultStore`, `editorStore`, etc.); Rust owns Tauri commands + process spawn. `invoke` is renderer→Rust only.
 - `apps/desktop/src-tauri/Cargo.toml` currently has **no** HTTP server deps.
 - `tauri-plugin-http` is a CLIENT plugin — cannot host a server.

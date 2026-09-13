@@ -71,7 +71,15 @@
     }
   },
   "calendar": {
-    "weekdays": ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+    "weekdays": [
+      "Dom",
+      "Lun",
+      "Mar",
+      "Mié",
+      "Jue",
+      "Vie",
+      "Sáb"
+    ],
     "title": "{{month}} de {{year}}",
     "hasNote": "{{date}} (con nota)"
   },
@@ -153,51 +161,6 @@
       "removeTagMiddle": "\" de ",
       "removeTagSuffix": "?",
       "removeTagHint": "Este recorte tiene otras {{count}} etiqueta(s); el archivo no se eliminará."
-    }
-  },
-  "analysis": {
-    "title": "Análisis de proyecto",
-    "delete": "Eliminar",
-    "viewDetails": "Haz clic para detalles",
-    "analyzing": "Analizando",
-    "newAnalysis": "Nuevo análisis",
-    "uncategorized": "Sin categorizar",
-    "empty": "Sin informes de análisis todavía. Haz clic en el botón + para empezar.",
-    "loading": "Cargando...",
-    "deleteConfirm": {
-      "titleDelete": "Confirmar eliminación",
-      "titleRemoveTag": "Quitar etiqueta",
-      "deletePrefix": "Eliminar informe de análisis ",
-      "deleteSuffix": "?",
-      "removeTagPrefix": "Quitar etiqueta \"",
-      "removeTagMiddle": "\" de ",
-      "removeTagSuffix": "?",
-      "removeTagHint": "Este informe tiene otras {{count}} etiqueta(s); el archivo no se eliminará."
-    },
-    "dedup": {
-      "title": "Ya existe un informe de análisis para este proyecto",
-      "regenerate": "Regenerar"
-    },
-    "tagPlaceholderEmpty": "Escribe una etiqueta y pulsa Enter...",
-    "tagPlaceholderMore": "Añadir más...",
-    "confirmation": {
-      "success": "Análisis completado — {{repo}}",
-      "previewLabel": "Vista previa del informe",
-      "htmlSize": "HTML {{kb}} KB · {{count}} etiqueta(s)",
-      "tagsLabel": "Etiquetas (editable)"
-    },
-    "dialog": {
-      "title": "Nuevo análisis de proyecto",
-      "urlLabel": "URL del repositorio de GitHub",
-      "urlPlaceholder": "https://github.com/owner/repo",
-      "langLabel": "Idioma del informe",
-      "langZh": "中文",
-      "langEn": "English",
-      "langAuto": "Detección automática",
-      "start": "Iniciar análisis",
-      "progressDefault": "Preparando...",
-      "hide": "Ocultar",
-      "patience": "El análisis puede tardar varios minutos; por favor espera."
     }
   },
   "panelError": {

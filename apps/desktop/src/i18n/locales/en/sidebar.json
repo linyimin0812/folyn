@@ -186,51 +186,6 @@
       "removeTagHint": "This clip has {{count}} other tag(s); the file will not be deleted."
     }
   },
-  "analysis": {
-    "title": "Project analysis",
-    "delete": "Delete",
-    "viewDetails": "Click for details",
-    "analyzing": "Analyzing",
-    "newAnalysis": "New analysis",
-    "uncategorized": "Uncategorized",
-    "empty": "No analysis reports yet. Click the + button to start.",
-    "loading": "Loading...",
-    "deleteConfirm": {
-      "titleDelete": "Confirm delete",
-      "titleRemoveTag": "Remove tag",
-      "deletePrefix": "Delete analysis report ",
-      "deleteSuffix": "?",
-      "removeTagPrefix": "Remove tag \"",
-      "removeTagMiddle": "\" from ",
-      "removeTagSuffix": "?",
-      "removeTagHint": "This report has {{count}} other tag(s); the file will not be deleted."
-    },
-    "dedup": {
-      "title": "An analysis report already exists for this project",
-      "regenerate": "Regenerate"
-    },
-    "tagPlaceholderEmpty": "Type a tag and press Enter...",
-    "tagPlaceholderMore": "Add more...",
-    "confirmation": {
-      "success": "Analysis complete — {{repo}}",
-      "previewLabel": "Report preview",
-      "htmlSize": "HTML {{kb}} KB · {{count}} tag(s)",
-      "tagsLabel": "Tags (editable)"
-    },
-    "dialog": {
-      "title": "New project analysis",
-      "urlLabel": "GitHub repository URL",
-      "urlPlaceholder": "https://github.com/owner/repo",
-      "langLabel": "Report language",
-      "langZh": "中文",
-      "langEn": "English",
-      "langAuto": "Auto-detect",
-      "start": "Start analysis",
-      "progressDefault": "Preparing...",
-      "hide": "Hide",
-      "patience": "Analysis may take a few minutes; please wait."
-    }
-  },
   "panelError": {
     "failed": "Panel failed to load"
   },

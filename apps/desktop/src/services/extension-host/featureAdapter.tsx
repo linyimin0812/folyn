@@ -13,7 +13,7 @@
  * - **Left panel only** (Decision Q2). `panel: 'right'|'bottom'` is warned +
  *   skipped; right/bottom shell slots are a follow-up task.
  * - **icon required** (Decision Q3/Q4). Missing/empty `icon` is warned + skipped.
- * - **id collision guard**: built-in ids (files/wiki/clips/analyze/calendar)
+ * - **id collision guard**: built-in ids (files/wiki/calendar)
  *   are reserved; a extension declaring them is refused. A second extension (or
  *   the same extension re-registering) hitting an already-registered id is also
  *   refused by the store's own guard.
@@ -33,7 +33,7 @@ import { useEditorStore } from '@/store/editorStore';
 import type { ExtensionModule } from './contributionAdapters';
 
 /** Reserved built-in ids; extensions may not register these. */
-const BUILTIN_IDS = new Set(['files', 'wiki', 'clips', 'analyze', 'calendar']);
+const BUILTIN_IDS = new Set(['files', 'wiki', 'calendar']);
 
 /** Starting `order` slot for extension panels that don't declare `order`. */
 const FIRST_PLUGIN_ORDER = 100;

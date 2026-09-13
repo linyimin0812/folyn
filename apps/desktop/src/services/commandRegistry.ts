@@ -215,27 +215,11 @@ export function registerBuiltinCommands(): void {
       run: () => gotoPanel('files'),
     },
     {
-      id: 'panel.clips',
-      title: 'Go to Clips',
-      category: 'panel-mode',
-      keywords: ['bookmark', 'clip'],
-      enabled: () => appearance().enableClipsPanel,
-      run: () => gotoPanel('clips'),
-    },
-    {
       id: 'panel.wiki',
       title: 'Go to Wiki',
       category: 'panel-mode',
       enabled: () => appearance().enableWikiPanel,
       run: () => gotoPanel('wiki'),
-    },
-    {
-      id: 'panel.analyze',
-      title: 'Go to Analyze',
-      category: 'panel-mode',
-      keywords: ['analysis', 'project'],
-      enabled: () => appearance().enableAnalyzePanel,
-      run: () => gotoPanel('analyze'),
     },
     {
       id: 'panel.settings',

@@ -60,14 +60,6 @@
         "label": "Wikiパネル",
         "description": "サイドバーにWikiエントリを表示"
       },
-      "clips": {
-        "label": "クリップパネル",
-        "description": "サイドバーにWebクリップエントリを表示"
-      },
-      "analyze": {
-        "label": "プロジェクト分析パネル",
-        "description": "サイドバーにプロジェクト分析エントリを表示"
-      },
       "schedule": {
         "label": "スケジュールパネル",
         "description": "スケジュール（Plan My Day）機能のエントリ"
@@ -676,7 +668,7 @@
     "fileTypeSupport": {
       "label": "ファイルタイプ対応",
       "description": "HandlerRegistry に登録され、Folyn は 15 種以上のファイルタイプをプレビュー・編集できます。",
-      "items": "Markdown · コード · CSV · JSON · HTML · 画像 · DBML（ER 図） · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap（markmap） · Office ドキュメント · クリップボードのクリップ"
+      "items": "Markdown · コード · CSV · JSON · HTML · 画像 · DBML（ER 図） · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap（markmap） · Office ドキュメント"
     },
     "techStack": {
       "label": "技術スタック",

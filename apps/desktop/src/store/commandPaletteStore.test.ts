@@ -44,8 +44,6 @@ vi.mock('@/store/appearanceStore', () => ({
     getState: () => ({
       toggleTheme: vi.fn(),
       enableWikiPanel: true,
-      enableClipsPanel: true,
-      enableAnalyzePanel: true,
       showAiPanel: true,
     }),
   },

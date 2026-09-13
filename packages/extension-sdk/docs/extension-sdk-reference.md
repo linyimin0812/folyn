@@ -123,12 +123,12 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 
 | 字段        | 类型                            | 必填 | 说明                                                                         |
 | ----------- | ------------------------------- | ---- | ---------------------------------------------------------------------------- |
-| `id`        | `string`                        | 是   | panel 本地 id（不可与内置 `files`/`wiki`/`clips`/`analyze`/`calendar` 冲突） |
+| `id`        | `string`                        | 是   | panel 本地 id（不可与内置 `files`/`wiki`/`calendar` 冲突） |
 | `panel`     | `'left' \| 'right' \| 'bottom'` | 是   | MVP 仅 `left`；`right`/`bottom` 跳过                                         |
 | `component` | `string`                        | 是   | entry-ref，索引 `module.features`                                            |
 | `icon`      | `string`                        | 是   | 内联 SVG 字符串或 ThemeIcon 名                                               |
 | `title`     | `string`                        | 否   | tooltip；缺省 `pluginId/id`                                                  |
-| `order`     | `number`                        | 否   | 内置 files=0,wiki=10,clips=20,analyze=30,calendar=40；省略 ≥100              |
+| `order`     | `number`                        | 否   | 内置 files=0,wiki=10,clips=20,calendar=40；省略 ≥100              |
 | `badge`     | `string \| number`              | 否   | 角标                                                                         |
 
 ```jsonc

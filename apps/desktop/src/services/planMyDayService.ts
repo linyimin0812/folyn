@@ -2,8 +2,7 @@
 //
 // Pattern B (AI as JSON advisor): gather today's context → call the AI → parse a
 // structured plan JSON → expose an apply function the UI calls after the user
-// accepts per-item. Mirrors clipService's adapter-call + JSON-parse + error-handling
-// shape; reuses scheduleStore actions for apply. No UI here (PR2 wires the button).
+// accepts per-item. Reuses scheduleStore actions for apply. No UI here (PR2 wires the button).
 //
 // NOTE on time units: scheduleStore / schedule/types.ts store `start`/`end`/
 // `scheduledStart`/`scheduledEnd` as **hour floating** (9.5 == 09:30), NOT minutes
@@ -22,10 +21,10 @@ import type { ScheduleEvent, ScheduleTask } from '@/features/schedule/types';
 
 // ponytail: prompt previously lived in services/skillDefaults.ts and was
 // overridable via the Skills settings page. After removing that page the
-// template is inlined here. Kept independent of clipService to avoid pulling
-// clipParse (excalidraw / roughjs) into this module's import graph — the test
-// suite breaks on open-color.json import in this pnpm+node environment.
-const CLIP_CARD_PROMPT = `# Web Clip Card Generation
+// template is inlined here. Kept local to avoid pulling heavy parsers
+// into this module's import graph — the test suite breaks on open-color.json
+// import in this pnpm+node environment.
+const PLAN_PROMPT = `# Web Clip Card Generation
 
 你是一个网页内容分析助手。请按照以下步骤分析网页内容并生成结构化知识卡片。
 
@@ -277,7 +276,7 @@ export function buildPlanPrompt(ctx: PlanContext): string {
 // ── AI call ───────────────────────────────────────────────────────────────────
 
 /**
- * Parse the AI text into a Plan. Extracts the first {...} block (like clipService)
+ * Parse the AI text into a Plan. Extracts the first {...} block
  * and tolerates surrounding prose. Throws a friendly Chinese error on failure.
  */
 export function parsePlan(aiText: string): Plan {
@@ -333,7 +332,7 @@ export function parsePlan(aiText: string): Plan {
 }
 
 /**
- * Call the AI to generate a plan. Mirrors clipService.generateClip: start the
+ * Call the AI to generate a plan: start the
  * adapter, send the prompt, collect the stream, parse JSON, stop the adapter in
  * `finally`. On parse failure throws a friendly error and applies nothing.
  */
@@ -355,7 +354,7 @@ export async function generatePlan(
 
   try {
     const basePrompt = buildPlanPrompt(ctx);
-    const prompt = `${CLIP_CARD_PROMPT}\n\n## Task\n${basePrompt}`;
+    const prompt = `${PLAN_PROMPT}\n\n## Task\n${basePrompt}`;
 
     const textPromise = collectTextFromStream(adapter, onStream, onEvent);
     await adapter.send(prompt);

@@ -644,24 +644,22 @@ describe('useVaultStore.migrateSpecialDirs', () => {
   it('renames legacy built-in dirs to __name__ form', async () => {
     manager.tree.push(
       { path: 'folyn-wiki', name: 'folyn-wiki', type: 'dir' },
-      { path: 'clips', name: 'clips', type: 'dir' },
       { path: 'reports', name: 'reports', type: 'dir' },
     );
     const renamed = await useVaultStore.getState().migrateSpecialDirs();
     const pairs = renamed.map((r) => r.from);
-    expect(pairs).toEqual(['folyn-wiki', 'clips', 'reports']);
+    expect(pairs).toEqual(['folyn-wiki', 'reports']);
     expect(manager.rename).toHaveBeenCalledWith('folyn-wiki', '__wiki__');
-    expect(manager.rename).toHaveBeenCalledWith('clips', '__clips__');
     expect(manager.rename).toHaveBeenCalledWith('reports', '__reports__');
   });
 
   it('skips a rename when the target already exists', async () => {
     manager.tree.push(
-      { path: 'clips', name: 'clips', type: 'dir' },
-      { path: '__clips__', name: '__clips__', type: 'dir' },
+      { path: 'reports', name: 'reports', type: 'dir' },
+      { path: '__reports__', name: '__reports__', type: 'dir' },
     );
     const renamed = await useVaultStore.getState().migrateSpecialDirs();
-    expect(renamed.find((r) => r.from === 'clips')).toBeUndefined();
+    expect(renamed.find((r) => r.from === 'reports')).toBeUndefined();
     expect(manager.rename).not.toHaveBeenCalled();
   });
 

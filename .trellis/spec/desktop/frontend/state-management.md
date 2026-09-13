@@ -86,8 +86,6 @@ by concern over extracting helper files.
 | `petChatSessions` | Pet-panel chat sessions (SEPARATE from main AI panel; own storage, not vault-scoped) |
 | `prefsStore` | Daily notes dir/format, file templates, shortcuts |
 | `scheduleStore` | Schedule tasks + `boardColumns` (kanban columns) |
-| `clipStore` | Clip card list + CRUD for clip files |
-| `analysisStore` | Analysis report list + `ReportMeta` |
 | `wikiStore` | Wiki graph data, ingestion metadata |
 | `wikiQueryStore` | Per-vault wiki query session (sessionId + turns; vault-switch swaps, mirrors `aiStore` pattern) |
 | `wikiGraphStore` | Wiki link graph visualization state |
@@ -102,17 +100,17 @@ by concern over extracting helper files.
 | `voiceStore` | Voice-input settings (polish prompt + behavior toggles) |
 | `browserStore` | Built-in browser panel state (incl. `ImportedPassword`) |
 
-> **Store vs helper — do not confuse them.** A file in `store/` is a **store** only if it calls `create<…>()` and exports a `use…Store` hook (or `getState`/`setState`/`subscribe`). The 7 non-store helpers in `store/` are NOT stores — they are pure functions that operate ON other stores: `aiFileChangeActions`, `aiSessionPersistence`, `clipBatchHelpers`, `editorAutoSave`, `editorPersistence`, `petChatSessions` (host+mirror logic for aiStore/aiConfigStore, no create), `settingsPersistence` (fan-out loader). The earlier count of "~30 stores" counts these helpers by mistake; the real store count is 31. When auditing "store bloat", first exclude these helpers — only `create<>()` files count toward store fragmentation.
+> **Store vs helper — do not confuse them.** A file in `store/` is a **store** only if it calls `create<…>()` and exports a `use…Store` hook (or `getState`/`setState`/`subscribe`). The 7 non-store helpers in `store/` are NOT stores — they are pure functions that operate ON other stores: `aiFileChangeActions`, `aiSessionPersistence`, `editorAutoSave`, `editorPersistence`, `petChatSessions` (host+mirror logic for aiStore/aiConfigStore, no create), `settingsPersistence` (fan-out loader). The earlier count of "~30 stores" counts these helpers by mistake; the real store count is 31. When auditing "store bloat", first exclude these helpers — only `create<>()` files count toward store fragmentation.
 | `settingsPersistence` | **Not a store** — the fan-out loader that reads/writes the `settings:all` blob and calls every store's `hydrate`/`getSlice` (see Persistence) |
 
 > The legacy `settingsStore` god-store was split into the cohesive settings
 > stores above (`navStore`, `appearanceStore`, `editorPrefsStore`,
 > `vaultConfigStore`, `aiConfigStore`, `prefsStore`, `petStore`) +
 > `boardColumns` folded into `scheduleStore` = 8 cohesive stores.
-> The other stores in the table (`clipStore`, `pluginStore`, `terminalStore`,
+> The other stores in the table (`pluginStore`, `terminalStore`,
 > `toastStore`, `voiceStore`, `translationStore`, `browserStore`, `localeStore`,
 > `modelRegistryStore`, `bubbleTemplateChatStore`, `commandPaletteStore`,
-> `diffReviewStore`, `analysisStore`, `wikiQueryStore`, etc.)
+> `diffReviewStore`, `wikiQueryStore`, etc.)
 > were added over time as new feature domains landed — each follows the same
 > one-concern-per-store rule. Do **not** re-merge concerns into one store;
 > open a new store instead.
@@ -365,7 +363,7 @@ When a store exceeds ~400 lines, extract derived logic into sibling helper files
 - `editorStore.ts` → `editorAutoSave.ts` + `editorPersistence.ts` (helpers) + `editorViewState.ts` (**a real store** — per-tab CodeMirror view-state, its own `create<>()`)
 - `aiStore.ts` → `aiFileChangeActions.ts` + `aiSessionPersistence.ts` (both helpers)
 
-Helper files import from the store but are not stores themselves (no `create<>()`). The full helper roster (7): `aiFileChangeActions`, `aiSessionPersistence`, `clipBatchHelpers`, `editorAutoSave`, `editorPersistence`, `petChatSessions`, `settingsPersistence`.
+Helper files import from the store but are not stores themselves (no `create<>()`). The full helper roster (6): `aiFileChangeActions`, `aiSessionPersistence`, `editorAutoSave`, `editorPersistence`, `petChatSessions`, `settingsPersistence`.
 
 ### When is a same-domain multi-file store split legitimate vs fragmentation?
 

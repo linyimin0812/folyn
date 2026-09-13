@@ -60,14 +60,6 @@
         "label": "Wiki-Panel",
         "description": "Wiki-Eintrag in der Seitenleiste anzeigen"
       },
-      "clips": {
-        "label": "Clips-Panel",
-        "description": "Web-Clips-Eintrag in der Seitenleiste anzeigen"
-      },
-      "analyze": {
-        "label": "Projektanalyse-Panel",
-        "description": "Projektanalyse-Eintrag in der Seitenleiste anzeigen"
-      },
       "schedule": {
         "label": "Plan-Panel",
         "description": "Eintrag der Schedule-Funktion (Plan My Day)"
@@ -670,7 +662,7 @@
     "fileTypeSupport": {
       "label": "Dateityp-Unterstützung",
       "description": "Über HandlerRegistry registriert, kann Folyn 15+ Dateitypen anzeigen und bearbeiten.",
-      "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (ER-Diagramm) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Office-Dokumente · Zwischenablage-Clips"
+      "items": "Markdown · Code · CSV · JSON · HTML · Image · DBML (ER-Diagramm) · Mermaid · Graphviz · PlantUML · Drawio · Excalidraw · Mindmap (markmap) · Office-Dokumente"
     },
     "techStack": {
       "label": "Tech-Stack",

@@ -25,19 +25,10 @@
   },
   "launcher": {
     "dailyNote": "Nota de hoy",
-    "clipFromUrl": "Recortar de URL",
     "globalSearch": "Búsqueda global",
     "commandPalette": "Paleta de comandos",
     "showMain": "Mostrar ventana principal",
-    "toggleTheme": "Cambiar tema",
-    "clip": {
-      "emptyUrl": "Introduce una URL",
-      "running": "Recortando...",
-      "saved": "Guardado: {{name}}",
-      "failed": "Recorte fallido",
-      "submit": "Recortar",
-      "collapse": "Contraer"
-    }
+    "toggleTheme": "Cambiar tema"
   },
   "bubble": {
     "closeAria": "Cerrar"

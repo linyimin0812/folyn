@@ -73,7 +73,7 @@
     },
     "plugins": {
       "title": "Plugin system",
-      "desc": "Microkernel + plugin SDK architecture. Translation, schedule, Wiki, clips, project analysis ship as plugins; third-party extensions supported.",
+      "desc": "Microkernel + plugin SDK architecture. Translation, schedule, and Wiki ship as plugins; third-party extensions supported.",
       "tags": {"ext": "third-party extensions"}
     },
     "voice": {
@@ -212,9 +212,7 @@
       "arch": {"k": "Architecture", "v": "Microkernel + plugin SDK; the core stays lightweight, features load on demand via plugins, and third-party developers can extend."},
       "translate": {"k": "Translation", "v": "Built-in translation plugin helps process multilingual content."},
       "schedule": {"k": "Schedule", "v": "<ul><li>Schedule and task setup with reminders</li><li>Focus pomodoro timer</li><li>Task board</li></ul>"},
-      "wiki": {"k": "Wiki knowledge base", "v": "Organize and link knowledge entries wiki-style, building a network you can jump between."},
-      "clips": {"k": "Clips", "v": "Capture web content and auto-summarize it into a digest page for quick save and review."},
-      "project": {"k": "Project analysis", "v": "Analyze GitHub projects and emit an HTML analysis report."}
+      "wiki": {"k": "Wiki knowledge base", "v": "Organize and link knowledge entries wiki-style, building a network you can jump between."}
     },
     "shots": {
       "cap1": "Plugin marketplace / management",

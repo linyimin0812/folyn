@@ -62,7 +62,7 @@ async function prepareGithubVault(config: VaultConfig): Promise<void> {
     token: opts.token,
     branch: opts.branchStrategy,
   });
-  // Sync built-in managed dirs (__wiki__, __clips__, ...) into the cloned
+  // Sync built-in managed dirs (__wiki__, __reports__, ...) into the cloned
   // repo's .gitignore so the auto-created local work dirs don't get pushed
   // back to the user's remote. Append-only; existing .gitignore preserved.
   // ponytail: failure is non-fatal — clone already succeeded; surface as
@@ -109,7 +109,7 @@ interface VaultState {
   // ── File Operations ──
 
   refreshFileTree: () => Promise<void>;
-  /** One-time rename of legacy built-in dir names (folyn-wiki/clips/reports/daily) to __name__ form. Returns the pairs actually renamed. */
+  /** One-time rename of legacy built-in dir names (folyn-wiki/reports/daily) to __name__ form. Returns the pairs actually renamed. */
   migrateSpecialDirs: () => Promise<{ from: string; to: string }[]>;
   readFile: (path: string) => Promise<string>;
   writeFile: (path: string, content: string) => Promise<void>;
@@ -445,7 +445,6 @@ export const useVaultStore = create<VaultState>()(
         migrateSpecialDirs: async () => {
           const pairs: { from: string; to: string }[] = [
             { from: 'folyn-wiki', to: '__wiki__' },
-            { from: 'clips', to: '__clips__' },
             { from: 'reports', to: '__reports__' },
           ];
           // Only migrate the daily dir if the user is still on the old default.

@@ -6,7 +6,7 @@
 
 ## Overview
 
-Folyn ships 4 feature agents (`analyze`, `clips`, `schedule`, `wiki`). Each agent has a **canonical source** in the desktop app's `features/<feature>/.claude/` and is **seeded into the user's vault** at runtime. Agents are invoked by `ClaudeAdapter` with `cwd = <vault>/__<feature>__/` so Claude Code auto-discovers the seeded agent file.
+Folyn ships 2 feature agents (`schedule`, `wiki`). Each agent has a **canonical source** in the desktop app's `features/<feature>/.claude/` and is **seeded into the user's vault** at runtime. Agents are invoked by `ClaudeAdapter` with `cwd = <vault>/__<feature>__/` so Claude Code auto-discovers the seeded agent file.
 
 This spec is mandatory when adding a new feature agent or changing the seed/invoke contract.
 
@@ -26,7 +26,7 @@ This spec is mandatory when adding a new feature agent or changing the seed/invo
 // apps/desktop/src/services/featureAgentService.ts
 // Note: `feature` is typed as `string` in the actual codebase (not a literal
 // union), so the registry stays open to future feature keys without churn.
-// The registered features today are analyze/clips/schedule/wiki.
+// The registered features today are schedule/wiki.
 interface FeatureAgentEntry {
   feature: string;              // feature name; also `--agent <name>` and vault file stem
   agentFile: string;            // e.g. 'wiki.md'
@@ -73,7 +73,7 @@ import claudeDoc from '@/features/wiki/.claude/CLAUDE.md?raw';
   agents/<feature>.md    # seeded always-overwrite (same — canonical re-applied each seed)
 ```
 
-The `__<feature>__/` directory doubles as the feature's **content directory** (e.g. `__wiki__/` holds wiki agent working files). The 4 registered `__xxx__/` dirs (`__analyze__`, `__clips__`, `__schedule__`, `__wiki__`) are hidden from the sidebar file tree via `appearanceStore` `BUILTIN_EXCLUDE_DIRS` (the default `excludePatterns`).
+The `__<feature>__/` directory doubles as the feature's **content directory** (e.g. `__wiki__/` holds wiki agent working files). The 2 registered `__xxx__/` dirs (`__schedule__`, `__wiki__`) are hidden from the sidebar file tree via `appearanceStore` `BUILTIN_EXCLUDE_DIRS` (the default `excludePatterns`).
 
 > **Residual**: `__study__` is still in `BUILTIN_EXCLUDE_DIRS` / `DEFAULT_EXCLUDE_PATTERNS` even though the `study` feature agent was removed (commit `11f5bf0d`). The pattern is kept so existing user vaults with leftover `__study__/` content stay hidden; it does NOT imply a registered study agent. Do not add a study `FeatureAgentEntry` without first removing this residual note.
 
@@ -81,8 +81,6 @@ The `__<feature>__/` directory doubles as the feature's **content directory** (e
 
 | Feature | cwd | `--agent` | `--add-dir` | `bare` |
 |---------|-----|-----------|-------------|--------|
-| analyze | `<vault>/__analyze__` | `analyze` | — | `false` |
-| clips | `<vault>/__clips__` | `clips` | — | `false` |
 | schedule | `<vault>/__schedule__` | `schedule` | `<vault>` | `false` |
 | wiki | `<vault>/__wiki__` | `wiki` | — | `false` |
 
@@ -144,9 +142,9 @@ await manager.writeFile(`${dir}/CLAUDE.md`, entry.claudeDoc);
 | `schedule` send-options include `addDir` | `featureAgentService.test.ts` | `getFeatureAgentSendOptions('schedule')` returns `{ agent: 'schedule', bare: false, addDir: [<vault basePath>] }` |
 | Non-schedule features omit `addDir` | `featureAgentService.test.ts` | `getFeatureAgentSendOptions('wiki')` returns `{ agent: 'wiki', bare: false }` (no `addDir`) |
 | Canonical agent .md contract | `features/wiki/wikiAgent.test.ts` | Asserts action names, output format lines present in the `?raw`-imported wiki agent doc |
-| `appearanceStore` hides all `__xxx__/` | `appearanceStore.test.ts` | Default `excludePatterns` / `BUILTIN_EXCLUDE_DIRS` includes `__analyze__`, `__clips__`, `__schedule__`, `__wiki__` (and residual `__study__`) |
+| `appearanceStore` hides all `__xxx__/` | `appearanceStore.test.ts` | Default `excludePatterns` / `BUILTIN_EXCLUDE_DIRS` includes `__schedule__`, `__wiki__` (and residual `__study__`) |
 
-> **Note on test coverage**: as of writing, only the `wiki` feature has a `<feature>Agent.test.ts`; `analyze`/`clips`/`schedule` do not yet have canonical-doc contract tests. `featureAgentService.test.ts` is the shared seeding + send-options test for all features. When adding a new feature, add a `features/<feature>/<feature>Agent.test.ts` following the `wiki` shape.
+> **Note on test coverage**: as of writing, only the `wiki` feature has a `<feature>Agent.test.ts`; `schedule` does not yet have a canonical-doc contract test. `featureAgentService.test.ts` is the shared seeding + send-options test for all features. When adding a new feature, add a `features/<feature>/<feature>Agent.test.ts` following the `wiki` shape.
 
 ### 7. Wrong vs Correct
 
@@ -220,7 +218,7 @@ return opts;
 3. Drop meta-instructions ("不要 Edit 改文件", "只输出 ...")
 4. Keep: action name (e.g. `动作：research`), dynamic runtime data (paths, names, selected items, mode markers)
 
-**Reference pattern** (correct): `apps/desktop/src/services/clipService.ts` infographic prompt — only passes `[infographic-mode]` marker + runtime data (title/url/summary/keyPoints), no contract duplication. JSON block schema lives in `clips.md`.
+**Reference pattern** (correct): a feature service's infographic prompt — only passes a `[infographic-mode]` marker + runtime data (title/url/summary/keyPoints), no contract duplication. JSON block schema lives in the feature's agent .md.
 
 **Anti-pattern** (pre-trim, incorrect): a runtime builder used to inline the full format rules:
 ```ts
@@ -244,64 +242,16 @@ return [head, '动作：research'].join('\n');
 
 **Related files**:
 - `apps/desktop/src/services/wikiQueryService.ts` — `buildQueryInstruction` (params + wiki context block)
-- `apps/desktop/src/services/clipService.ts` — card metadata fallback (thin) + infographic (reference pattern)
 - `apps/desktop/src/components/editor/DailyDigest.tsx` — schedule prompt (today + modified docs + recent daily notes)
 
 > **Removed**: the former `features/study/scheduleLink.ts` + `buildStudyInstruction` were deleted with the `study` feature (commit `11f5bf0d`). The params-only pattern now lives in the surviving `buildQueryInstruction` (wiki) and `DailyDigest` (schedule) callers.
 
 ---
 
-## Convention: Clip `## 正文` Storage + Infographic Content Enrichment
-
-**What**: The clips feature stores the full page markdown (fetched via `curl.md` at card-gen time) under a `## 正文` section in the clip file. The infographic is auto-generated at clip time by chaining a second agent call in `[infographic-mode]` right after the card-metadata call; that call receives `## 正文` (and summary/keyPoints) in its runtime prompt and produces 7-9 dense blocks (vs. 2-5 for clips without `## 正文`).
-
-**Why**: Without `## 正文`, the infographic agent only has `## 摘要` (2-4 sentences) + `## 要点` (3-5 bullets) to work with — the resulting poster is content-thin. Storing the full page markdown at clip time makes the infographic offline-safe (no re-fetch needed) and dead-link-safe (the clip survives even if the source URL goes away). The infographic becomes "一图胜千言" — a real poster.
-
-**Clip file section order** (poster-first):
-```
-front-matter
-> **来源**: [<hostname>](<url>)
-## 信息图        ← optional; auto-generated at clip time; ALWAYS written at TOP position
-## 摘要
-## 要点
-## 正文          ← optional; full page markdown from curl.md
-```
-
-**Top-position rule for `## 信息图`**: `saveClip` writes the `## 信息图` section (when an infographic was auto-generated) at the TOP position — right after the `> **来源**` quote line, before `## 摘要`. The poster is the first thing the user sees when opening a clip.
-
-**Order-agnostic parsing**: `parseClipContent` finds `## 信息图` / `## 摘要` / `## 要点` / `## 正文` by heading, not by position — so old clips with `## 信息图` at the end still parse correctly. Never assume section order in the parser.
-
-**Content flow**:
-```
-generateClip
-  ├─ Phase 1: card-metadata agent call (WebFetch curl.md → JSON metadata + pageContent field)
-  └─ Phase 2: chained infographic-mode agent call (passes ## 正文 + summary/keyPoints → 7-9 blocks)
-  ↓ returns { metadata, infographic: InfographicDoc | null }
-saveClip ({ metadata, infographic })
-  → writes ## 信息图 (top) + ## 摘要 + ## 要点 + ## 正文
-  ↓
-InfographicView (renders blocks as unified poster)
-```
-
-**Auto-generation, not on-demand**: there is no manual "重新生成" / "生成信息图" button in the UI. The infographic is generated automatically during `generateClip` (chained agent call). If the chained call fails, `infographic` is `null` and `saveClip` skips writing `## 信息图` — the clip itself still succeeds (best-effort). The user can re-clip to retry.
-
-**Backward compatibility**: existing clips without `## 正文` (or without `## 信息图`) still work — the renderer just shows nothing in the infographic slot. No auto-migration; the user re-clips manually to get the enriched flow.
-
-**Runtime prompt discipline**: the infographic prompt is params-only (reference pattern, see `clipService.runInfographicAgent`). It passes `[infographic-mode]` marker + title/url + `## 摘要` + `## 要点` + (optional) `## 正文`. The 7-9 block minimum, block-type enum, and content-density rules live in `agents/clips.md` (the contract source).
-
-**Related files**:
-- `apps/desktop/src/services/clipService.ts` — `ClipMetadata.pageContent`, `GenerateClipResult`, `generateClip` (chained card + infographic calls), `saveClip` writes `## 信息图` at top + `## 正文`
-- `apps/desktop/src/features/clips/clipParse.ts` — `parseClipContent` (order-agnostic), `serializeInfographicSection`, `writeInfographicSection` (top-position rule)
-- `apps/desktop/src/features/clips/.claude/agents/clips.md` — card mode (`pageContent` field) + infographic mode (`## 正文` input, 7-9 block minimum)
-- `apps/desktop/src/components/file-types/clip/InfographicView.tsx` — unified poster container (single background, hero header, 3-column body, source footer)
-- `apps/desktop/src/components/file-types/clip/ClipCardView.tsx` — renders infographic region BEFORE 摘要, no chrome (just `<InfographicView doc={...} />`)
-
----
-
 ## Reference Files
 
 - `apps/desktop/src/services/featureAgentService.ts` — registry, seed logic, send-options
-- `apps/desktop/src/features/<feature>/.claude/` — canonical CLAUDE.md + agents/*.md for each feature (analyze, clips, schedule, wiki)
+- `apps/desktop/src/features/<feature>/.claude/` — canonical CLAUDE.md + agents/*.md for each feature (schedule, wiki)
 - `packages/cli-adapter/src/claudeAdapter.ts` — `buildClaudeArgs` flag ordering
 - `apps/desktop/src/store/appearanceStore.ts` — `BUILTIN_EXCLUDE_DIRS` default + `backfillBuiltinExcludePatterns`
 

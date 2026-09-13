@@ -107,12 +107,6 @@ describe('routePetMenuAction', () => {
     expect(showMock).toHaveBeenCalledTimes(1);
   });
 
-  it('clip-from-url focuses main as fallback (panel owns the flow)', async () => {
-    await routePetMenuAction('clip-from-url');
-    expect(showMock).toHaveBeenCalledTimes(1);
-    expect(invokeMock).not.toHaveBeenCalled();
-  });
-
   it('command-palette toggles the palette and focuses main', async () => {
     useCommandPaletteStore.setState({ isOpen: false });
     await routePetMenuAction('command-palette');

@@ -10,5 +10,5 @@ Add a button in the left files panel header that hides the sidebar (collapses it
 - Add i18n tip key `sidebar:filesPanel.actions.hideSidebar` (en + zh).
 
 ## Out of scope
-- Other panels (wiki/clips/calendar/analysis) — they don't need a hide button.
+- Other panels (wiki/calendar/analysis) — they don't need a hide button.
 - Persisting collapsed state across reloads (existing behavior already doesn't persist).

@@ -81,7 +81,7 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'cliPath',
   'cliPaths',
   // ponytail: per-feature adapter overrides. Empty {} → fall back to cliAdapter
-  // (global). Feature ids: 'wiki' | 'clips' | 'analyze' | 'schedule'.
+  // (global). Feature ids: 'wiki' | 'schedule'.
   // Unspecified features keep following the global selector — see getFeatureAdapter.
   'featureCliAdapter',
   'chatProvider',
@@ -204,7 +204,7 @@ export interface AiConfigState {
   /** Per-adapter binary path. `cliPath` mirrors `cliPaths[cliAdapter]`. */
   cliPaths: Record<string, string>;
   /** Per-feature CLI adapter override. Keyed by feature id
-   *  ('wiki' | 'clips' | 'analyze' | 'schedule'). When a feature's
+   *  ('wiki' | 'schedule'). When a feature's
    *  entry is absent or empty, the feature falls back to `cliAdapter` (global).
    *  This keeps existing users' behavior unchanged until they explicitly pick
    *  a per-feature adapter in the Extensions settings page. */
@@ -239,7 +239,7 @@ export interface AiConfigState {
   setCliPath: (v: string) => void;
   /** Set the binary path for a SPECIFIC adapter. */
   setCliPathFor: (adapterId: string, path: string) => void;
-  /** Set the CLI adapter for a SPECIFIC feature ('wiki' | 'clips' | ...).
+  /** Set the CLI adapter for a SPECIFIC feature ('wiki' | ...).
    *  Pass an empty string to clear the override and resume following the
    *  global `cliAdapter`. */
   setFeatureCliAdapter: (feature: string, adapterId: string) => void;
@@ -722,7 +722,7 @@ export { getProviderEntry };
 
 /** Resolve the CLI adapter id for a feature. Falls back to the global
  *  `cliAdapter` when the feature has no override (or override is empty).
- *  Feature ids: 'wiki' | 'clips' | 'analyze' | 'schedule'. Callers
+ *  Feature ids: 'wiki' | 'schedule'. Callers
  *  in feature services should always go through this — never read
  *  `cliAdapter` directly — so per-feature overrides take effect without
  *  further code changes. */

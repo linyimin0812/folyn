@@ -222,7 +222,7 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
         <WikiQueryView />
       ) : tabs.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
-          {t(`shell:workArea.empty.${activePanel === 'clips' ? 'clips' : activePanel === 'wiki' ? 'wiki' : activePanel === 'calendar' ? 'calendar' : activePanel === 'analyze' ? 'analyze' : 'files'}`)}
+          {t(`shell:workArea.empty.${activePanel === 'wiki' ? 'wiki' : activePanel === 'calendar' ? 'calendar' : 'files'}`)}
         </div>
       ) : showVersionHistoryDiff ? (
         // ponytail: editor area swapped for the version-history content view.

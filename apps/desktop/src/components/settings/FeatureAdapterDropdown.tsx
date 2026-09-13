@@ -33,8 +33,6 @@ const ADAPTER_ICON: Record<string, string> = {
 
 const BUILTIN_ROW_TO_FEATURE: Record<string, string> = {
   'builtin:wiki': 'wiki',
-  'builtin:clips': 'clips',
-  'builtin:analyze': 'analyze',
   'builtin:schedule': 'schedule',
 };
 

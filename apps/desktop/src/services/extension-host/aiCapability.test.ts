@@ -194,8 +194,8 @@ describe('buildExtensionAi / ai.agent', () => {
   it('rejects when feature not in permissions.ai.agents', async () => {
     const ai = buildExtensionAi(manifest({ permissions: { ai: { agents: ['wiki'] } } }));
     await expect(
-      ai.agent({ feature: 'clips', instruction: 'do', onEvent: vi.fn() }),
-    ).rejects.toThrow(/not authorized for feature "clips"/);
+      ai.agent({ feature: 'schedule', instruction: 'do', onEvent: vi.fn() }),
+    ).rejects.toThrow(/not authorized for feature "schedule"/);
   });
 
   it('rejects when permissions.ai.agents absent', async () => {

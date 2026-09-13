@@ -69,9 +69,9 @@ beforeEach(() => {
 });
 
 describe('FEATURE_AGENTS registry', () => {
-  it('registers exactly 4 features: analyze, clips, schedule, wiki', () => {
+  it('registers exactly 2 features: schedule, wiki', () => {
     const features = FEATURE_AGENTS.map((e) => e.feature).sort();
-    expect(features).toEqual(['analyze', 'clips', 'schedule', 'wiki']);
+    expect(features).toEqual(['schedule', 'wiki']);
   });
 
   it('only schedule has addVaultDir: true (cross-vault __daily__/ access)', () => {
@@ -111,7 +111,7 @@ describe('path helpers', () => {
   });
 
   it('claudeMdPathOf returns __<feature>__/.claude/CLAUDE.md', () => {
-    expect(claudeMdPathOf('analyze')).toBe('__analyze__/.claude/CLAUDE.md');
+    expect(claudeMdPathOf('wiki')).toBe('__wiki__/.claude/CLAUDE.md');
   });
 
   it('path helpers return null for unregistered features', () => {
@@ -121,7 +121,7 @@ describe('path helpers', () => {
   });
 
   it('piContextFilePath returns __<feature>__/AGENTS.md', () => {
-    expect(piContextFilePath('clips')).toBe('__clips__/AGENTS.md');
+    expect(piContextFilePath('wiki')).toBe('__wiki__/AGENTS.md');
   });
 });
 
@@ -131,9 +131,9 @@ describe('seedAgentFiles', () => {
     await seedAgentFiles(manager as never);
 
     const writes = manager.writeFile.mock.calls.map((c) => c[0] as string);
-    // 4 features × (CLAUDE.md + agent .md) = 8 canonical writes (no pi targets;
+    // 2 features × (CLAUDE.md + agent .md) = 4 canonical writes (no pi targets;
     // no entry sets adapterId='pi' in scope A — see featureAgentService.ts).
-    for (const f of ['analyze', 'clips', 'schedule', 'wiki']) {
+    for (const f of ['schedule', 'wiki']) {
       expect(writes).toContain(`__${f}__/.claude/CLAUDE.md`);
       expect(writes).toContain(`__${f}__/.claude/agents/${f}.md`);
     }
@@ -144,8 +144,6 @@ describe('seedAgentFiles', () => {
     await seedAgentFiles(manager as never);
 
     const dirs = manager.createDir.mock.calls.map((c) => c[0] as string);
-    expect(dirs).toContain('__analyze__/.claude/agents');
-    expect(dirs).toContain('__clips__/.claude/agents');
     expect(dirs).toContain('__schedule__/.claude/agents');
     expect(dirs).toContain('__wiki__/.claude/agents');
   });
@@ -168,12 +166,12 @@ describe('seedAgentFiles', () => {
     const manager = vaultState.manager!;
     await seedAgentFiles(manager as never);
 
-    const entry = getFeatureAgentEntry('clips')!;
+    const entry = getFeatureAgentEntry('wiki')!;
     const claudeCall = manager.writeFile.mock.calls.find(
-      (c) => c[0] === '__clips__/.claude/CLAUDE.md',
+      (c) => c[0] === '__wiki__/.claude/CLAUDE.md',
     );
     const agentCall = manager.writeFile.mock.calls.find(
-      (c) => c[0] === '__clips__/.claude/agents/clips.md',
+      (c) => c[0] === '__wiki__/.claude/agents/wiki.md',
     );
     expect(claudeCall?.[1]).toBe(entry.claudeDoc);
     expect(agentCall?.[1]).toBe(entry.doc);
@@ -189,7 +187,7 @@ describe('seedAgentFiles', () => {
     expect(logCall).toBeDefined();
     const content = logCall![1] as string;
     expect(content).toContain('feature-agent seeding diagnostic');
-    // one result line per canonical file (8) — the log lists every write
+    // one result line per canonical file (6) — the log lists every write
     expect(content).toContain('__wiki__/.claude/CLAUDE.md');
     expect(content).toContain('__wiki__/.claude/agents/wiki.md');
   });
@@ -215,10 +213,10 @@ describe('seedAgentFiles', () => {
     expect(wikiClaude?.status).toBe('failed');
     expect(wikiClaude?.error).toContain('read-only vault');
     // other features still seeded
-    const analyzeSeeded = results.some(
-      (r) => r.feature === 'analyze' && r.status === 'seeded',
+    const scheduleSeeded = results.some(
+      (r) => r.feature === 'schedule' && r.status === 'seeded',
     );
-    expect(analyzeSeeded).toBe(true);
+    expect(scheduleSeeded).toBe(true);
   });
 });
 
@@ -297,15 +295,15 @@ describe('getFeatureAgentSendOptions', () => {
   });
 
   it('parseAgentDoc fallback parses frontmatter description + tools, body becomes prompt', async () => {
-    // clips agent .md carries a `--- name/description/tools ---` frontmatter.
+    // wiki agent .md carries a `--- name/description/tools ---` frontmatter.
     // Read-only vault forces the --bare + inline-agent fallback path, which
     // runs parseAgentDoc on the canonical doc.
     vaultState.manager!.writeFile.mockRejectedValue(new Error('read-only vault'));
-    const opts = await getFeatureAgentSendOptions('clips');
-    const def = opts.agents!.clips;
+    const opts = await getFeatureAgentSendOptions('wiki');
+    const def = opts.agents!.wiki;
     expect(def.prompt.length).toBeGreaterThan(0);
     // description/tools are best-effort parsed; assert only if the canonical
-    // doc actually declares them (the clips doc does declare tools).
+    // doc actually declares them (the wiki doc does declare tools).
     if (def.tools) {
       expect(Array.isArray(def.tools)).toBe(true);
       expect(def.tools.length).toBeGreaterThan(0);
