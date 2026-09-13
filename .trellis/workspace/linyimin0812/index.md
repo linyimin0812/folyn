@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-4.md`
-- **Total Sessions**: 202
-- **Last Active**: 2026-09-11
+- **Total Sessions**: 203
+- **Last Active**: 2026-09-13
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-4.md` | ~1141 | Active |
+| `journal-4.md` | ~1180 | Active |
 | `journal-3.md` | ~1962 | Archived |
 | `journal-2.md` | ~1973 | Archived |
 | `journal-1.md` | ~1992 | Archived |
@@ -32,6 +32,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 203 | 2026-09-13 | rich-text extension Phase 3 relocate: fix runtime bugs + wire file-type icon | `7280442a`, `5cae06b7`, `d06430ad`, `1e709b22`, `c8f13bd9`, `fda97243` | `master` |
 | 202 | 2026-09-11 | dbml ER preview positions persist across reopen | `109eb9f2` | `master` |
 | 201 | 2026-09-11 | CSV preview: in-house renderer replacing @file-viewer/react | `83db9f4d`, `7bf2e912`, `90feed9a`, `f0b199dc`, `359e373c`, `edb1a8b6`, `3e12a4c8`, `0d2164f8`, `bc4426aa`, `efbd2734`, `dc9dec83` | `master` |
 | 200 | 2026-09-09 | Vault HTML export: folder naming, docs link fix, ?file= deep-linking, html scrollbar | `027e8e7c` | `master` |

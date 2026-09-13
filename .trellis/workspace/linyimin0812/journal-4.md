@@ -1139,3 +1139,42 @@ Fixed three bugs in the DBML extension's ER preview meta-block write-back pipeli
 ### Next Steps
 
 - None - task complete
+
+
+## Session 203: rich-text extension Phase 3 relocate: fix runtime bugs + wire file-type icon
+
+**Date**: 2026-09-13
+**Task**: rich-text extension Phase 3 relocate: fix runtime bugs + wire file-type icon
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Migrated the rich-text (.richtext) tiptap editor from builtin handler to trusted-tier extension (extensions/rich-text), following the dbml pattern. After the Phase 3 relocate commit (7280442a), two runtime bugs surfaced and were fixed: (1) ReactCurrentBatchConfig crash — react-dom was bundled into the extension, its internal imports of react's ReactCurrentBatchConfig hit the react-shim's public-only API; fixed by aliasing react-dom + react-dom/client to host shims reading window.ReactDOM (5cae06b7). (2) Toolbar showed '0,1,2,3' instead of icons — esbuild's tree-shaking mangled lucide-react's namespace re-export pattern; fixed by exposing window.lucideReact from host and aliasing lucide-react to a shim (d06430ad). A third bug then surfaced: toolbar showed 'ur-0, tc-0' as visible text for buttons whose key was a dynamic expression. Root cause was the react-jsx-runtime-shim.js mapping jsx directly to React.createElement — jsx(type, props, key) treats the 3rd arg as the element KEY, but createElement treats it as the first CHILD. Fixed by wrapping createElement to merge the 3rd-arg key into props (1e709b22). Finally wired the file-type icon: created extensions/rich-text/src/icons/{richtext.svg,RichTextIcon.tsx,index.ts} mirroring dbml, set icon: <RichTextIcon /> on the FileTypeProvider (c8f13bd9); and added 'richtext' to EXTENSION_REQUIRED_EXTENSIONS so .richtext shows the unknown icon when the extension is not installed (fda97243).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7280442a` | (see git log) |
+| `5cae06b7` | (see git log) |
+| `d06430ad` | (see git log) |
+| `1e709b22` | (see git log) |
+| `c8f13bd9` | (see git log) |
+| `fda97243` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
