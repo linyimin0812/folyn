@@ -54,6 +54,7 @@ export const BINARY_EXTENSIONS: ReadonlySet<string> = new Set([
  * (e.g. .dbml ER diagrams). Mirrors BINARY_EXTENSIONS for text types. */
 export const EXTENSION_REQUIRED_EXTENSIONS: ReadonlySet<string> = new Set([
   'dbml',
+  'richtext',
 ]);
 
 /** True when `ext` (no dot, lowercased) is a known non-text format. */
