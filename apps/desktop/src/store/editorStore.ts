@@ -26,10 +26,12 @@ export function detectFileType(filePath: string): FileType {
   const handler = getHandlerByExtension(ext);
   if (handler) return handler.id;
   // No app builtin or installed extension claims this extension. A known
-  // non-text format → unsupported view (don't dump binary bytes as text);
-  // a text format that needs a dedicated viewer (e.g. .dbml) → unsupported;
+  // non-text format (binary) → unsupported preview-only (don't dump binary
+  // bytes as text); a text format that needs a dedicated viewer (e.g. .dbml
+  // without its extension) → unsupported-text (plain-text edit + notice);
   // anything else → the generic code/text editor.
-  if (isBinaryExtension(ext) || isExtensionRequired(ext)) return 'unsupported';
+  if (isBinaryExtension(ext)) return 'unsupported';
+  if (isExtensionRequired(ext)) return 'unsupported-text';
   return 'code';
 }
 

@@ -282,11 +282,16 @@ async function fileToBodyFragment(
   // render a static "unsupported file type" notice instead of garbling raw
   // bytes through the code pipeline. Images never reach here (excluded
   // upstream by filterTextTree via isImageExtension). The notice is also
-  // rendered for any handler with needsFileContent=false that isn't an
-  // image — covers extension-registered preview-only handlers (e.g. a
-  // custom viewer for some binary format) that have no export pipeline.
+  // rendered for `unsupported-text` (text-but-extension-required files:
+  // .dbml/.richtext without the dedicated extension installed) and for any
+  // handler with needsFileContent=false that isn't an image — covers
+  // extension-registered preview-only handlers that have no export pipeline.
   const handler = getHandlerById(file.fileType);
-  if (file.fileType === 'unsupported' || (handler && handler.needsFileContent === false)) {
+  if (
+    file.fileType === 'unsupported' ||
+    file.fileType === 'unsupported-text' ||
+    (handler && handler.needsFileContent === false)
+  ) {
     const title = escapeHtml(i18n.t('editor:export.vault.unsupported.title'));
     const desc = escapeHtml(i18n.t('editor:export.vault.unsupported.desc', { name: file.name }));
     const page = `<div class="vt-unsupported"><div class="vt-unsupported-icon">?</div><div class="vt-unsupported-title">${title}</div><div class="vt-unsupported-desc">${desc}</div></div>`;
