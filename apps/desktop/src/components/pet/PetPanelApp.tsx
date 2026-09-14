@@ -64,9 +64,9 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
  *  - The pet's left-click handler (PetApp.tsx) toggles this window via
  *    `pet_panel_show` / `pet_panel_hide`; this component only owns the
  *    in-panel dismiss paths.
- *  - Header is a drag handle (left-button `onPointerDown` →
- *    `getCurrentWindow().startDragging()`). The close button stops
- *    propagation so it never triggers a drag.
+ *  - Header title bar is the drag handle (left-button `onPointerDown` →
+ *    `getCurrentWindow().startDragging()`); the window-control buttons
+ *    inside it stop propagation so they never trigger a drag.
  *  - The window is `resizable: true` (edges are OS-draggable). Position and
  *    size are persisted to `petStore` (`petPanelX/Y/Width/Height`) via
  *    a periodic poll, and restored on mount — so the panel reappears where
@@ -733,14 +733,43 @@ export function PetPanelApp() {
         onPointerDown={headerPointerDown}
         role="banner"
       >
-        {/* Drag handle — the panel's only visible grab region. The search
-            row and tab row below call `suppressDrag` so their interactive
-            children (input, close, tabs) never start a drag; this bare
-            handle bubbles its pointerdown to the header's
-            `headerPointerDown` → `getCurrentWindow().startDragging()`
-            (a single call — the handle has no onPointerDown of its own). */}
-        <div className="pet-panel-drag-handle" />
-        {/* Search row above the tabs — filters files / commands / extensions. */}
+        {/* Title bar — the panel's drag region and host of the top-right
+            window controls. Bubbles pointerdown to the header's
+            `headerPointerDown` → `getCurrentWindow().startDragging()`;
+            the controls row inside calls `suppressDrag` so the buttons never
+            start a drag. Mirrors a normal OS window/popup title bar. */}
+        <div className="pet-panel-titlebar">
+          <div className="pet-panel-window-controls" onPointerDown={suppressDrag}>
+            <button
+              type="button"
+              className="pet-panel-ctrl"
+              aria-label={t('pet:window.minimize')}
+              title={t('pet:window.minimize')}
+              onClick={() => void minimizePanel()}
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              className="pet-panel-ctrl"
+              aria-label={isMaximized ? t('pet:window.restore') : t('pet:window.fullscreen')}
+              title={isMaximized ? t('pet:window.restore') : t('pet:window.fullscreen')}
+              onClick={() => void toggleFullscreen()}
+            >
+              {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            <button
+              type="button"
+              className="pet-panel-ctrl pet-panel-ctrl-close"
+              aria-label={t('pet:window.close')}
+              title={t('pet:window.close')}
+              onClick={() => void hidePanel()}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+        {/* Search row below the title bar — filters files / commands / extensions. */}
         <div className="pet-panel-search-row" onPointerDown={suppressDrag}>
           <div className="pet-panel-search-field">
             <input
@@ -771,38 +800,6 @@ export function PetPanelApp() {
               }}
               aria-label={t('pet:search.placeholder')}
             />
-          </div>
-          {/* Top-right window controls: minimize / fullscreen / close.
-              `suppressDrag` is inherited from the search row so the buttons
-              never start a drag; each calls `stopPropagation`-free onClick. */}
-          <div className="pet-panel-window-controls">
-            <button
-              type="button"
-              className="pet-panel-ctrl"
-              aria-label={t('pet:window.minimize')}
-              title={t('pet:window.minimize')}
-              onClick={() => void minimizePanel()}
-            >
-              <Minus size={14} />
-            </button>
-            <button
-              type="button"
-              className="pet-panel-ctrl"
-              aria-label={isMaximized ? t('pet:window.restore') : t('pet:window.fullscreen')}
-              title={isMaximized ? t('pet:window.restore') : t('pet:window.fullscreen')}
-              onClick={() => void toggleFullscreen()}
-            >
-              {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            </button>
-            <button
-              type="button"
-              className="pet-panel-ctrl pet-panel-ctrl-close"
-              aria-label={t('pet:window.close')}
-              title={t('pet:window.close')}
-              onClick={() => void hidePanel()}
-            >
-              <X size={14} />
-            </button>
           </div>
         </div>
         {searchQuery.trim() === '' && (
