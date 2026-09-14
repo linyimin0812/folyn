@@ -140,7 +140,7 @@ const markdownMarkmapExporter: ExporterRegistration = {
  * services/extension-host/exporterAdapter.ts). Flows through
  * FormatExportDialog for local/remote target selection. */
 
-const CANVAS_FILE_TYPES = ['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid'];
+const CANVAS_FILE_TYPES = ['excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid'];
 // Canvas types whose SVG can be rasterized to PNG (no foreignObject / server-only SVG).
 const CANVAS_PNG_EXCLUDED = new Set(['markmap', 'plantuml', 'graphviz', 'mermaid']);
 

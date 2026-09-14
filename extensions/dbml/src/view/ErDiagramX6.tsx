@@ -241,7 +241,26 @@ let registered = false;
  * loads only when a .dbml preview is first opened (mirrors parseDbml's
  * dynamic-import of @dbml/core).
  */
-export default function ErDiagramX6({ content, onChange }: PreviewProps) {
+export interface ErDiagramX6Props extends PreviewProps {
+  /** Called once after the x6 Graph is created. The host (iframe parent)
+   * stashes the graph so it can call graph.toSVGAsync() for SVG export. */
+  onGraphReady?: (graph: Graph) => void;
+  /** Fired after a layout commit (graph rebuild + first-load fit/zoom). Host
+   * listens for the corresponding postMessage to know the graph is ready for
+   * SVG extraction. */
+  onRendered?: () => void;
+  /** Fired when parse fails; host forwards the first error message to the
+   * parent so an in-flight export can reject instead of hanging. */
+  onParseError?: (errors: ErParseError[]) => void;
+}
+
+export default function ErDiagramX6({
+  content,
+  onChange,
+  onGraphReady,
+  onRendered,
+  onParseError,
+}: ErDiagramX6Props) {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [graphReady, setGraphReady] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
@@ -376,7 +395,7 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { Graph } = await import('@antv/x6');
+      const { Graph, Export } = await import('@antv/x6');
       if (cancelled) return;
       if (!registered) {
         registered = true;
@@ -542,6 +561,11 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       // letting two field rows (ROW_H=28) align exactly. Visual grid keeps
       // using grid.size=20 for dot spacing when shown.
       (graph as Graph & { getGridSize: () => number }).getGridSize = () => 1;
+      // ponytail: register the Export plugin so graph.toSVGAsync() works —
+      // used by DbmlPreview's 'dbml:export-svg' message handler to ship an
+      // SVG string back to the host for SVG export.
+      graph.use(new Export());
+      onGraphReady?.(graph);
       graph.on('node:change:position', ({ node }) => {
         const data = node.getData() as { table?: { name: string }; enum?: { name: string } } | undefined;
         const id = data?.table?.name ?? data?.enum?.name;
@@ -727,6 +751,7 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
       if (result.errors.length > 0) {
         setState({ kind: 'error', errors: result.errors });
         lastCompletedDbmlRef.current = dbml;
+        onParseError?.(result.errors);
         return;
       }
       const el = containerRef.current;
@@ -910,6 +935,11 @@ export default function ErDiagramX6({ content, onChange }: PreviewProps) {
         else panRef.current = null;
       });
     }
+    // ponytail: signal export readiness after every layout commit. The
+    // export-svg host handler ignores all but the first one it sees after
+    // 'open' (the iframe is fresh per export), so re-firing on subsequent
+    // re-parses is a no-op there.
+    onRendered?.();
   }, [state, graphReady]);
 
   const onZoomIn = useCallback(() => graphRef.current?.zoom(0.1), []);

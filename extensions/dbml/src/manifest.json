@@ -1,5 +1,5 @@
 {
-  "id": "dbml",
+  "id": "folyn-dbml",
   "name": "DBML",
   "version": "0.1.0",
   "author": "Folyn",
@@ -8,7 +8,6 @@
   "main": "dist/index.js",
   "html": "dbml-preview.html",
   "icon": "sql.svg",
-  "id": "folyn-dbml",
   "description": "DBML 数据库建模文件类型：CodeMirror 编辑 + ER 图实时预览（@dbml/core 解析 + @antv/x6 渲染）",
   "permissions": {
     "fs": { "scope": [] },
@@ -27,6 +26,24 @@
         "defaultViewMode": "split",
         "supportedViewModes": ["edit", "split", "preview"],
         "extensions": ["dbml"]
+      }
+    ],
+    "exporters": [
+      {
+        "id": "dbml-svg",
+        "format": "svg",
+        "label": "SVG",
+        "fileExtension": "svg",
+        "fileType": "dbml",
+        "run": "dbmlSvg"
+      },
+      {
+        "id": "dbml-png",
+        "format": "png",
+        "label": "PNG",
+        "fileExtension": "png",
+        "fileType": "dbml",
+        "run": "dbmlPng"
       }
     ]
   },
