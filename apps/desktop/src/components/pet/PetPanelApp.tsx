@@ -141,22 +141,17 @@ export function PetPanelApp() {
   const [isMaximized, setIsMaximized] = useState(false);
   const isMaximizedRef = useRef(false);
   // Pin ("置顶"): when pinned, clicking outside the panel does NOT hide it.
-  // Persisted in petStore (`petPanelPinned`) so the user's stickiness
-  // preference survives a close → reopen + restart. The panel window holds
-  // its own petStore instance, hydrated from the main window's broadcast
-  // on mount (`pet://settings-updated` → hydrateAllStores); reading the
-  // persisted value here initializes the ref so the focus-loss auto-hide
-  // respects it BEFORE the first toggle writes. `isPinnedRef` mirrors state
-  // for the mount-once focus/blur effect to read without re-subscribing.
-  const setPetPanelPinned = usePetStore((s) => s.setPetPanelPinned);
-  const [isPinned, setIsPinned] = useState(() => usePetStore.getState().petPanelPinned);
-  const isPinnedRef = useRef(isPinned);
+  // The focus-loss auto-hide below reads `isPinnedRef` so a mount-once
+  // effect can gate on the latest value without re-subscribing. Ephemeral
+  // — NOT persisted (a stale pin across restarts would surprise the user;
+  // the panel always opens unpinned).
+  const [isPinned, setIsPinned] = useState(false);
+  const isPinnedRef = useRef(false);
   const togglePin = useCallback(() => {
     const next = !isPinnedRef.current;
     isPinnedRef.current = next;
     setIsPinned(next);
-    setPetPanelPinned(next);
-  }, [setPetPanelPinned]);
+  }, []);
   // Tracks whether the panel has actually gained focus since it was shown.
   // Guards the show-time transient blur from `pet_panel_show`'s
   // `set_focus()` (which can emit a spurious focus=false mid-activation):
@@ -426,20 +421,10 @@ export function PetPanelApp() {
             // Secondary windows hydrate from this broadcast (NOT loadSettings —
             // they lack the fs ACL to re-read ~/.folyn/storage). The persist()
             // closure no-ops until `hydrationDone` flips true; flip it now so
-            // the panel's own setters (pin toggle, the 800ms position/size
-            // poll) can persist + broadcast — without this their writes are
-            // skipped and lost on restart (the pin bug). Safe to call
-            // repeatedly — idempotent.
+            // the panel's own setters (the 800ms position/size poll, etc.)
+            // can persist + broadcast — without this their writes are
+            // skipped and lost on restart. Safe to call repeatedly — idempotent.
             markSettingsHydrated();
-            // Sync local pin state if the main window changed it (rare —
-            // the panel owns the toggle, but a settings import/restore on
-            // the main window could flip it). Only update when the value
-            // actually differs to avoid resetting the ref mid-interaction.
-            const persisted = usePetStore.getState().petPanelPinned;
-            if (persisted !== isPinnedRef.current) {
-              isPinnedRef.current = persisted;
-              setIsPinned(persisted);
-            }
           },
         );
       } catch (err) {

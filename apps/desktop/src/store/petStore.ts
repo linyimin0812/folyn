@@ -55,7 +55,6 @@ export const PERSIST_KEYS_PET = [
   'petPanelWidth',
   'petPanelHeight',
   'petPanelSizeVersion',
-  'petPanelPinned',
   'petPosVersion',
   'petIconSource',
   'petIconPath',
@@ -82,10 +81,6 @@ export interface PetState {
   petPanelWidth: number;
   petPanelHeight: number;
   petPanelSizeVersion: number;
-  /** Whether the pet panel is pinned (置顶) — when pinned, clicking outside
-   *  the panel does NOT hide it. Persisted across restarts so the user's
-   *  stickiness preference survives a close → reopen. */
-  petPanelPinned: boolean;
   petPosVersion: number;
   petIconSource: PetIconSource;
   petIconPath: string;
@@ -119,7 +114,6 @@ export interface PetState {
   setPetPanelPosition: (x: number, y: number) => void;
   setPetPanelSize: (width: number, height: number) => void;
   setPetPanelSizeVersion: (version: number) => void;
-  setPetPanelPinned: (pinned: boolean) => void;
   setPetIcon: (source: PetIconSource, path?: string) => void;
   addPetIcon: (path: string) => void;
   removePetIcon: (path: string) => void;
@@ -176,7 +170,6 @@ export const usePetStore = create<PetState>((set, get) => ({
   petPanelWidth: -1,
   petPanelHeight: -1,
   petPanelSizeVersion: 0,
-  petPanelPinned: false,
   petPosVersion: 1,
   petIconSource: 'builtin',
   petIconPath: '',
@@ -202,8 +195,6 @@ export const usePetStore = create<PetState>((set, get) => ({
   setPetPanelSize: (width, height) => { set({ petPanelWidth: width, petPanelHeight: height }); persist(); },
 
   setPetPanelSizeVersion: (version) => { set({ petPanelSizeVersion: version }); persist(); },
-
-  setPetPanelPinned: (pinned) => { set({ petPanelPinned: pinned }); persist(); },
 
   setPetIcon: (source, path) => {
     // When switching to `'builtin'`, clear the path (no file to track). When
@@ -420,12 +411,6 @@ export const usePetStore = create<PetState>((set, get) => ({
     // persisted state from before this feature would otherwise have
     // `undefined`, crashing the `PET_SIZE_TO_PX` lookup).
     if (!isPetSize(saved.petSize)) saved.petSize = PET_SIZE_DEFAULT;
-
-    // Coerce `petPanelPinned` to a boolean (defensive — a persisted state
-    // from before this feature would have `undefined`, which must NOT read
-    // as truthy and pin the panel). Default false (unpinned) on any
-    // non-boolean value.
-    saved.petPanelPinned = saved.petPanelPinned === true;
 
     // Coerce a missing/invalid `petOpacity` to the default (defensive — a
     // persisted state from before this feature would otherwise have
