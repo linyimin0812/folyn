@@ -57,7 +57,7 @@
       "menu": "导出整个 Vault",
       "menuDesc": "整个 Vault → HTML",
       "title": "导出整个 Vault",
-      "hint": "导出所有文本类文件（Markdown、代码、数据等），图片和 Office 文档会被过滤，左侧文件树保留为导航。",
+      "hint": "导出所有文本类文件（Markdown、代码、数据等），不支持的文件类型在页面中显示提示。图片会被过滤，左侧文件树保留为导航。",
       "single": { "label": "单个 HTML 文件", "desc": "一个自包含 .html——文件树+全部文档，点击切换" },
       "folder": { "label": "HTML 文件夹", "desc": "index.html + 每篇文档一个 HTML" },
       "shape": "产物形态",
@@ -77,10 +77,14 @@
       "export": "导出",
       "exporting": "导出中…",
       "progress": "渲染 {{done}}/{{total}}…",
-      "success": "已导出 {{docs}} 篇文档；过滤 {{filtered}} 个二进制文件。",
+      "success": "已导出 {{docs}} 篇文档；过滤 {{filtered}} 个图片文件。",
       "error": "导出失败",
       "noVault": "未打开 Vault",
       "noTextFiles": "此 Vault 中没有文本文件",
+      "unsupported": {
+        "title": "不支持此文件类型",
+        "desc": "“{{name}}”在导出中没有可用的查看器。"
+      },
       "close": "关闭",
       "cancel": "中断"
     },

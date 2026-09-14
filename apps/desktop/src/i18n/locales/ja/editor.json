@@ -53,7 +53,7 @@
       "menu": "Vault全体をエクスポート",
       "menuDesc": "Vault全体 → HTML",
       "title": "Vault全体をエクスポート",
-      "hint": "テキスト形式ファイル（Markdown、コード、データ等）をすべてエクスポート。画像とOffice文書は除外、左のファイルツリーをナビとして保持します。",
+      "hint": "テキスト形式ファイル（Markdown、コード、データ等）をすべてエクスポート。未サポートのファイル種別はページ内に案内を表示。画像は除外、左のファイルツリーをナビとして保持します。",
       "single": { "label": "単一HTMLファイル", "desc": "1つのself-contained .html—ツリー+全ドキュメント、クリックで切替" },
       "folder": { "label": "HTMLフォルダ", "desc": "index.html + ドキュメントごとに1つのHTML" },
       "shape": "形態",
@@ -73,10 +73,14 @@
       "export": "エクスポート",
       "exporting": "エクスポート中…",
       "progress": "レンダリング {{done}}/{{total}}…",
-      "success": "{{docs}}件のドキュメントをエクスポート、{{filtered}}個のバイナリファイルを除外。",
+      "success": "{{docs}}件のドキュメントをエクスポート、{{filtered}}個の画像ファイルを除外。",
       "error": "エクスポート失敗",
       "noVault": "Vaultが開かれていません",
       "noTextFiles": "このVaultにテキストファイルがありません",
+      "unsupported": {
+        "title": "サポート対象外のファイル形式",
+        "desc": "このエクスポートでは「{{name}}」に利用可能なビューアがありません。"
+      },
       "close": "閉じる",
       "cancel": "キャンセル"
     },

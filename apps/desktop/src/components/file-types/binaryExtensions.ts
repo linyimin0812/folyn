@@ -67,3 +67,21 @@ export function isBinaryExtension(ext: string): boolean {
 export function isExtensionRequired(ext: string): boolean {
   return EXTENSION_REQUIRED_EXTENSIONS.has(ext.toLowerCase());
 }
+
+/** Image extensions — both web-image formats handled by the `image` / `svg`
+ * builtin handlers and the binary image formats in BINARY_EXTENSIONS that
+ * have no builtin viewer. Used by vault export to exclude image files
+ * entirely (no export page), in contrast to other unsupported types
+ * (.xlsx, .dbml without extension, …) which render an in-page
+ * "unsupported file type" notice. */
+const IMAGE_EXTENSIONS: ReadonlySet<string> = new Set([
+  // Web image (image handler + svg handler)
+  'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico',
+  // Binary image formats (no builtin viewer — would land in 'unsupported')
+  'tiff', 'tif', 'avif', 'heic', 'heif', 'jxl', 'psd', 'ai', 'eps',
+]);
+
+/** True when `ext` is any image format (web or binary). */
+export function isImageExtension(ext: string): boolean {
+  return IMAGE_EXTENSIONS.has(ext.toLowerCase());
+}

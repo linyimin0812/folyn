@@ -53,7 +53,7 @@
       "menu": "Exportar todo el vault",
       "menuDesc": "Vault completo → HTML",
       "title": "Exportar todo el vault",
-      "hint": "Exporta todos los archivos de texto (Markdown, código, datos…). Las imágenes y documentos de Office se filtran, el árbol de archivos de la izquierda se conserva como navegación.",
+      "hint": "Exporta todos los archivos de texto (Markdown, código, datos…); los tipos no soportados muestran un aviso en la página. Las imágenes se filtran, el árbol de archivos de la izquierda se conserva como navegación.",
       "single": { "label": "Archivo HTML único", "desc": "Un .html autónomo — árbol + todos los documentos, clic para cambiar" },
       "folder": { "label": "Carpeta HTML", "desc": "index.html + un HTML por documento" },
       "shape": "Forma",
@@ -73,10 +73,14 @@
       "export": "Exportar",
       "exporting": "Exportando…",
       "progress": "Renderizando {{done}}/{{total}}…",
-      "success": "{{docs}} documento(s) exportado(s); {{filtered}} archivo(s) binario(s) filtrado(s).",
+      "success": "{{docs}} documento(s) exportado(s); {{filtered}} archivo(s) de imagen filtrado(s).",
       "error": "Error de exportación",
       "noVault": "No hay vault abierto",
       "noTextFiles": "No hay archivos de texto en este vault",
+      "unsupported": {
+        "title": "Tipo de archivo no soportado",
+        "desc": "«{{name}}» no tiene visor disponible en este export."
+      },
       "close": "Cerrar",
       "cancel": "Cancelar"
     },

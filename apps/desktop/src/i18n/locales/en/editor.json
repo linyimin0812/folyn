@@ -57,7 +57,7 @@
       "menu": "Export entire vault",
       "menuDesc": "Whole vault → HTML",
       "title": "Export entire vault",
-      "hint": "Exports all text-type files (markdown, code, data…). Images and office docs are filtered out. The left file tree is preserved as navigation.",
+      "hint": "Exports all text-type files (markdown, code, data…); unsupported types render an in-page notice. Images are filtered out. The left file tree is preserved as navigation.",
       "single": { "label": "Single HTML file", "desc": "One self-contained .html — tree + all docs, click to switch" },
       "folder": { "label": "HTML folder", "desc": "index.html + one HTML per document" },
       "shape": "Shape",
@@ -77,10 +77,14 @@
       "export": "Export",
       "exporting": "Exporting…",
       "progress": "Rendering {{done}}/{{total}}…",
-      "success": "Exported {{docs}} document(s); filtered out {{filtered}} binary file(s).",
+      "success": "Exported {{docs}} document(s); filtered out {{filtered}} image file(s).",
       "error": "Export failed",
       "noVault": "No vault open",
       "noTextFiles": "No text files found in this vault",
+      "unsupported": {
+        "title": "Unsupported file type",
+        "desc": "\"{{name}}\" has no available viewer in this export."
+      },
       "close": "Close",
       "cancel": "Cancel"
     },

@@ -1,7 +1,9 @@
 /**
  * Export an entire vault to HTML — keeps the left file-tree as in-app
  * navigation, renders text-type files (markdown / rich-text / code / data /
- * markup) to HTML, and filters binary types (images, office docs) out.
+ * markup) to HTML, image files (svg/png/.../psd/tiff) are excluded
+ * entirely, and unsupported types (binary office docs, .dbml without
+ * extension, …) render an in-page "unsupported file type" notice.
  *
  * Two product shapes, both driven by the same per-file HTML build:
  *  - 'single' (default): one self-contained HTML file. Left tree + right
@@ -25,7 +27,9 @@ import type { StorageProvider, ProviderConfig } from '@/services/storage/types';
 import type { HtmlImageMode } from '@/services/export/shared';
 import { themeCss } from '@/editor/codeThemes';
 import { detectFileType } from '@/store/editorStore';
+import { isImageExtension } from '@/components/file-types/binaryExtensions';
 import { getHandlerById } from '@/components/file-types/registry';
+import i18n from '@/i18n';
 import {
   renderMarkdownToHtmlViaDom,
   HTML_STYLES,
@@ -72,9 +76,9 @@ function resolvedTheme(): 'light' | 'dark' {
 
 /**
  * Walk the vault tree, keeping the directory skeleton but only retaining
- * text-type files (handler.needsFileContent !== false). Binary types
- * (image / office / preview-only) are dropped. Directories that become
- * empty after filtering are pruned — a tree of only-empty dirs is noise.
+ * text-type files (handler.needsFileContent !== false). Image types are
+ * dropped. Directories that become empty after filtering are pruned — a
+ * tree of only-empty dirs is noise.
  *
  * SVG files are filtered out too — an SVG is rendered markup, not a text doc
  * worth a standalone export page.
@@ -88,14 +92,14 @@ function filterTextTree(entries: VaultEntry[]): VaultEntry[] {
         if (children.length > 0) out.push({ ...e, children });
         // empty dirs after filtering → pruned (no push)
       } else {
-        const ft = detectFileType(e.path);
-        const handler = getHandlerById(ft);
-        // needsFileContent === false ⇒ binary/preview-only (image, office, …)
-        // → filter out. Unknown/code types default to text (kept). SVG is
-        // excluded here too (rendered markup, not an exportable text doc).
-        if (ft !== 'svg' && (!handler || handler.needsFileContent !== false)) {
-          out.push({ ...e });
-        }
+        // Image files (svg/png/.../psd/tiff) are excluded entirely —
+        // rendered markup or binary, neither produces a useful text-doc
+        // page. Everything else is kept: code/text types flow through
+        // the existing code-block export; unsupported types (.xlsx,
+        // .dbml without extension, …) render an in-page "unsupported"
+        // notice (see fileToBodyFragment's 'unsupported' branch).
+        const ext = e.path.split('.').pop()?.toLowerCase() ?? '';
+        if (!isImageExtension(ext)) out.push({ ...e });
       }
     }
     return out;
@@ -247,6 +251,30 @@ async function fileToBodyFragment(
     };
   }
 
+  // Unsupported types (binary office docs, .dbml without extension, …) →
+  // render a static "unsupported file type" notice instead of garbling raw
+  // bytes through the code pipeline. Images never reach here (excluded
+  // upstream by filterTextTree via isImageExtension). The notice is also
+  // rendered for any handler with needsFileContent=false that isn't an
+  // image — covers extension-registered preview-only handlers (e.g. a
+  // custom viewer for some binary format) that have no export pipeline.
+  const handler = getHandlerById(file.fileType);
+  if (file.fileType === 'unsupported' || (handler && handler.needsFileContent === false)) {
+    const title = escapeHtml(i18n.t('editor:vault.unsupported.title'));
+    const desc = escapeHtml(i18n.t('editor:vault.unsupported.desc', { name: file.name }));
+    const page = `<div class="vt-unsupported"><div class="vt-unsupported-icon">?</div><div class="vt-unsupported-title">${title}</div><div class="vt-unsupported-desc">${desc}</div></div>`;
+    const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+    const color = theme === 'dark' ? '#8a92b2' : '#4a5378';
+    const descColor = theme === 'dark' ? '#5b6480' : '#7a83a0';
+    const locale = i18n.language?.split('-')[0] || 'zh';
+    const css = `html,body{margin:0;padding:0;height:100%;background:${bodyBg}}.vt-unsupported{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;padding:24px;text-align:center;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}.vt-unsupported-icon{font-size:40px;font-weight:300;color:${descColor}}.vt-unsupported-title{font-size:14px;font-weight:500;color:${color}}.vt-unsupported-desc{font-size:12px;color:${descColor};max-width:420px;word-break:break-all}`;
+    return {
+      html: page,
+      css: '',
+      standalone: `<!DOCTYPE html>\n<html lang="${locale}" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>${css}</style></head>\n<body>${page}</body>\n</html>`,
+    };
+  }
+
   // code / csv / json / txt / … → render as a highlighted code block via the
   // markdown pipeline (rehype-highlight) so syntax colors are preserved.
   const content = await readVaultText(file.path);
@@ -384,6 +412,10 @@ details > summary::-webkit-details-marker { display: none; }
 .vt-doc-canvas { height: 100vh; overflow: hidden; }
 .vt-doc-canvas.active { display: flex; align-items: center; justify-content: center; }
 ${VT_CANVAS_PAGE_CSS}
+.vt-unsupported { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100vh; gap: 12px; padding: 24px; text-align: center; box-sizing: border-box; }
+.vt-unsupported-icon { font-size: 40px; font-weight: 300; color: var(--t3, #7a83a0); }
+.vt-unsupported-title { font-size: 14px; font-weight: 500; color: var(--t2, #4a5378); }
+.vt-unsupported-desc { font-size: 12px; color: var(--t3, #7a83a0); max-width: 420px; word-break: break-all; }
 `;
 
 const VAULT_NAV_SCRIPT = `
@@ -589,20 +621,18 @@ export interface VaultExportResult {
   mode: VaultExportMode;
   /** Number of documents actually exported. */
   docCount: number;
-  /** Number of files filtered out (binary). */
+  /** Number of files filtered out (image types). */
   filteredCount: number;
 }
 
-/** Count binary files filtered out (for reporting). */
+/** Count image files filtered out (for reporting). */
 function countFilteredFiles(tree: VaultEntry[]): number {
   let n = 0;
   const walk = (items: VaultEntry[]) => {
     for (const e of items) {
       if (e.type === 'file') {
-        const ft = detectFileType(e.path);
-        const handler = getHandlerById(ft);
-        // SVG is filtered out too (rendered markup, not a text doc).
-        if (ft === 'svg' || (handler && handler.needsFileContent === false)) n++;
+        const ext = e.path.split('.').pop()?.toLowerCase() ?? '';
+        if (isImageExtension(ext)) n++;
       } else if (e.children) walk(e.children);
     }
   };
