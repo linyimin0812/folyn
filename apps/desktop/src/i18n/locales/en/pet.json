@@ -56,7 +56,9 @@
     "minimize": "Minimize",
     "fullscreen": "Enter full screen",
     "restore": "Restore",
-    "close": "Close"
+    "close": "Close",
+    "pin": "Pin to keep open",
+    "unpin": "Unpin"
   },
   "inbox": {
     "empty": "No notifications",

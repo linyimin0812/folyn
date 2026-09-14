@@ -56,7 +56,9 @@
     "minimize": "最小化",
     "fullscreen": "全屏",
     "restore": "恢复",
-    "close": "关闭"
+    "close": "关闭",
+    "pin": "置顶",
+    "unpin": "取消置顶"
   },
   "inbox": {
     "empty": "暂无通知",

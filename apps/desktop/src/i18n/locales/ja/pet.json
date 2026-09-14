@@ -56,7 +56,9 @@
     "minimize": "最小化",
     "fullscreen": "全画面表示",
     "restore": "復元",
-    "close": "閉じる"
+    "close": "閉じる",
+    "pin": "ピン留め",
+    "unpin": "ピン留めを解除"
   },
   "inbox": {
     "empty": "通知はありません",

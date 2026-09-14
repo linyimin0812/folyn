@@ -56,7 +56,9 @@
     "minimize": "Minimieren",
     "fullscreen": "Vollbild",
     "restore": "Wiederherstellen",
-    "close": "Schließen"
+    "close": "Schließen",
+    "pin": "Anheften",
+    "unpin": "Lösen"
   },
   "inbox": {
     "empty": "Keine Benachrichtigungen",

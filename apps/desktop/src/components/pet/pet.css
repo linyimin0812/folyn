@@ -319,7 +319,7 @@ html.is-pet-panel-window body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 10px 0;
+  padding: 4px 10px 0;
 }
 .pet-panel-search-field {
   position: relative;
@@ -344,7 +344,11 @@ html.is-pet-panel-window body {
 }
 .pet-panel-search-input:focus {
   background: var(--panel, #ffffff);
-  box-shadow: 0 0 0 2px var(--accglow, rgba(58, 110, 240, 0.12));
+  /* Match the chat input's focus ring: a 1px accent edge + a 3px accent
+   * glow, mirroring ChatInputBox's `focus-within:border-acc
+   * focus-within:shadow-[0_0_0_3px_var(--accglow)]`. Both rings are drawn
+   * via box-shadow (the search input has no border of its own). */
+  box-shadow: 0 0 0 1px var(--acc, #3a6ef0), 0 0 0 3px var(--accglow, rgba(58, 110, 240, 0.12));
 }
 
 /* Tabs + close row (kept as its own row so the search row can sit above). */
@@ -390,6 +394,15 @@ html.is-pet-panel-window body {
 .pet-panel-ctrl:hover {
   background: var(--hov, #eef0f5);
   color: var(--t1, #1f2330);
+}
+/* Pinned control — a filled accent background signals the panel stays open
+ * on outside click (the Pin icon also flips to PinOff). */
+.pet-panel-ctrl.is-active {
+  background: var(--accglow, rgba(58, 110, 240, 0.14));
+  color: var(--acc, #3a6ef0);
+}
+.pet-panel-ctrl.is-active:hover {
+  background: var(--accglow, rgba(58, 110, 240, 0.22));
 }
 /* The close control gets a subtle red wash on hover to match macOS's red
  * traffic-light affordance without bringing in the full red/yellow/green

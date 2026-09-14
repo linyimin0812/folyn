@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { createEvent } from '@testing-library/dom';
 
-// Mock @tauri-apps/api/window so the drag-handle handler + the new
-// maximize/minimize controls can be asserted without native bindings.
-// Mirrors the proven pattern in WindowControls.test.tsx. No mount-time
-// `getCurrentWindow` call exists (the component sets state on button click),
-// so only the click-path accessors are stubbed.
+// Mock @tauri-apps/api/window so the drag-handle handler + the maximize/
+// minimize controls can be asserted without native bindings. Mirrors
+// the proven pattern in WindowControls.test.tsx. No mount-time
+// `getCurrentWindow` call exists (the focus/blur auto-hide subscribes
+// via the event API instead), so only the click-path accessors are stubbed.
 const {
   startDraggingMock,
   minimizeMock,
@@ -180,17 +180,79 @@ describe('PetPanelApp', () => {
   it('fullscreen button calls window.toggleMaximize', async () => {
     const { container } = render(<PetPanelApp />);
     const buttons = container.querySelectorAll('.pet-panel-ctrl');
-    await fireEvent.click(buttons[1]);
+    await fireEvent.click(buttons[2]);
     await waitFor(() => expect(toggleMaximizeMock).toHaveBeenCalledTimes(1));
   });
 
-  it('window controls render in minimize / fullscreen / close order', () => {
+  it('window controls render in minimize / pin / fullscreen / close order', () => {
     const { container } = render(<PetPanelApp />);
     const buttons = Array.from(container.querySelectorAll('.pet-panel-ctrl'));
+    expect(buttons).toHaveLength(4);
     expect(buttons[0].querySelector('svg.lucide-minus')).toBeTruthy();
-    expect(buttons[1].querySelector('svg.lucide-square')).toBeTruthy();
-    expect(buttons[2].classList.contains('pet-panel-ctrl-close')).toBe(true);
-    expect(buttons[2].querySelector('svg.lucide-x')).toBeTruthy();
+    expect(buttons[1].querySelector('svg.lucide-pin')).toBeTruthy();
+    expect(buttons[1].getAttribute('aria-pressed')).toBe('false');
+    expect(buttons[2].querySelector('svg.lucide-square')).toBeTruthy();
+    expect(buttons[3].classList.contains('pet-panel-ctrl-close')).toBe(true);
+    expect(buttons[3].querySelector('svg.lucide-x')).toBeTruthy();
+  });
+
+  // ── Pin control + outside-click auto-hide ──
+  it('pin button toggles the pinned state (icon + aria-pressed)', async () => {
+    const { container } = render(<PetPanelApp />);
+    const pin = Array.from(container.querySelectorAll('.pet-panel-ctrl'))[1];
+    // Starts unpinned: Pin icon, aria-pressed false, no is-active.
+    expect(pin.querySelector('svg.lucide-pin')).toBeTruthy();
+    expect(pin.getAttribute('aria-pressed')).toBe('false');
+    expect(pin.classList.contains('is-active')).toBe(false);
+
+    await fireEvent.click(pin);
+    // Pinned: PinOff icon, aria-pressed true, is-active highlight.
+    expect(pin.querySelector('svg.lucide-pin-off')).toBeTruthy();
+    expect(pin.getAttribute('aria-pressed')).toBe('true');
+    expect(pin.classList.contains('is-active')).toBe(true);
+  });
+
+  it('blur after focus-gained hides the panel when unpinned', async () => {
+    render(<PetPanelApp />);
+    await waitFor(() => expect(eventInternals.getListeners('tauri://blur')).toBeDefined());
+    // Simulate show → focus gained, then user clicks outside → blur.
+    await act(async () => {
+      eventInternals.emitTo('tauri://focus');
+    });
+    invokeMock.mockClear();
+    await act(async () => {
+      eventInternals.emitTo('tauri://blur');
+    });
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide'));
+  });
+
+  it('blur does NOT hide the panel when pinned', async () => {
+    const { container } = render(<PetPanelApp />);
+    await waitFor(() => expect(eventInternals.getListeners('tauri://blur')).toBeDefined());
+    // Pin the panel, then focus gained → blur while pinned.
+    const pin = Array.from(container.querySelectorAll('.pet-panel-ctrl'))[1];
+    await fireEvent.click(pin);
+    await act(async () => {
+      eventInternals.emitTo('tauri://focus');
+    });
+    invokeMock.mockClear();
+    await act(async () => {
+      eventInternals.emitTo('tauri://blur');
+    });
+    // No hide while pinned.
+    expect(invokeMock).not.toHaveBeenCalledWith('pet_panel_hide');
+  });
+
+  it('transient blur before any focus-gained does NOT hide (show-time guard)', async () => {
+    render(<PetPanelApp />);
+    await waitFor(() => expect(eventInternals.getListeners('tauri://blur')).toBeDefined());
+    invokeMock.mockClear();
+    // pet_panel_show's set_focus() can emit a spurious blur before
+    // the real focus-gained — must not hide.
+    await act(async () => {
+      eventInternals.emitTo('tauri://blur');
+    });
+    expect(invokeMock).not.toHaveBeenCalledWith('pet_panel_hide');
   });
 
   // ── Drag handle (Fix 2) ──

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Minus, Square, Copy, X } from 'lucide-react';
+import { Minus, Square, Copy, Pin, PinOff, X } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
@@ -156,6 +156,21 @@ export function PetPanelApp() {
   const [isMaximized, setIsMaximized] = useState(false);
   const isMaximizedRef = useRef(false);
   const isMinimizedRef = useRef(false);
+  // Pin ("置顶"): when pinned, clicking outside the panel does NOT hide it.
+  // The focus-loss auto-hide below reads `isPinnedRef` so a mount-once
+  // effect can gate on the latest value without re-subscribing.
+  const [isPinned, setIsPinned] = useState(false);
+  const isPinnedRef = useRef(false);
+  const togglePin = useCallback(() => {
+    const next = !isPinnedRef.current;
+    isPinnedRef.current = next;
+    setIsPinned(next);
+  }, []);
+  // Tracks whether the panel has actually gained focus since it was shown.
+  // Guards the show-time transient blur from `pet_panel_show`'s
+  // `set_focus()` (which can emit a spurious focus=false mid-activation):
+  // only hide on a focus=false that follows a real focus-gained.
+  const panelFocusedRef = useRef(false);
   const toggleFullscreen = useCallback(async () => {
     if (!isTauri()) return;
     try {
@@ -207,6 +222,10 @@ export function PetPanelApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('pet://panel-fade-out', () => {
+          // Panel just hid — reset the focus gate so the next show's
+          // set_focus() transient blur can't fire a hide before the real
+          // focus-gained arrives.
+          panelFocusedRef.current = false;
           setVisible(false);
         });
       } catch (err) {
@@ -351,8 +370,51 @@ export function PetPanelApp() {
     };
   }, []);
 
-  // (Maximize/minimize state is set on the button handlers above — no
-  // mount-time sync effect. See the `toggleFullscreen` note.)
+  // ── Outside-click auto-hide (popover behavior, unpinned only) ──
+  // When the panel is the key window and the user clicks another app /
+  // the desktop, the panel loses focus → hide. Two guards:
+  //   1. `panelFocusedRef` — only hide on a blur AFTER a real focus-gained.
+  //      `pet_panel_show`'s `set_focus()` can emit a spurious blur
+  //      mid-activation (the old "忽隐忽现" root cause); this ref means the
+  //      transient show-time blur never triggers a hide.
+  //   2. `isPinnedRef` — when the user pinned the panel, outside clicks
+  //      keep it open (the whole point of the pin control).
+  // Internal clicks never cost focus (the panel stays key), so interacting
+  // with the search box / tabs / chat does NOT close the panel.
+  //
+  // ponytail: subscribe to `tauri://focus` + `tauri://blur` via the event
+  // API (`@tauri-apps/api/event`, the shared mock) rather than
+  // `getCurrentWindow().onFocusChanged()`. A mount-time
+  // `getCurrentWindow()` dynamic import desynced Vitest's
+  // `vi.mock('@tauri-apps/api/window')` cache and broke the click-path
+  // minimize/toggleMaximize mocks — the event API is already used by every
+  // other listener here and stays test-stable. These are global events,
+  // but this JS realm IS the pet-panel window, so any focus/blur is ours.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unFocus: (() => void) | undefined;
+    let unBlur: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unFocus = await listen('tauri://focus', () => {
+          panelFocusedRef.current = true;
+        });
+        unBlur = await listen('tauri://blur', () => {
+          if (panelFocusedRef.current && !isPinnedRef.current) {
+            panelFocusedRef.current = false;
+            void hidePanel();
+          }
+        });
+      } catch (err) {
+        console.warn('[pet-panel] focus/blur listener failed:', err);
+      }
+    })();
+    return () => {
+      void unFocus?.();
+      void unBlur?.();
+    };
+  }, [hidePanel]);
 
   // ── Cross-window settings sync ──
   // The panel window holds its own petStore instance; without this listener
@@ -748,6 +810,16 @@ export function PetPanelApp() {
               onClick={() => void minimizePanel()}
             >
               <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              className={`pet-panel-ctrl${isPinned ? ' is-active' : ''}`}
+              aria-label={isPinned ? t('pet:window.unpin') : t('pet:window.pin')}
+              title={isPinned ? t('pet:window.unpin') : t('pet:window.pin')}
+              aria-pressed={isPinned}
+              onClick={() => togglePin()}
+            >
+              {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
             </button>
             <button
               type="button"
