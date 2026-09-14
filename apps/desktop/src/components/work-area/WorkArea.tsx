@@ -15,6 +15,7 @@ import { getWebviewLabels } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
+import { OutlineSidebar } from './OutlineSidebar';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
@@ -53,6 +54,10 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
 
   const editorRef = useRef<FolynEditorHandle>(null);
+  // Preview body div (forwarded ref from PreviewPane) so the outline sidebar —
+  // now a split-level sibling, not inside the preview — can still scroll the
+  // preview to a heading on click.
+  const previewBodyRef = useRef<HTMLDivElement>(null);
 
   // Register the active editor handle so the ExtensionApi's `editor`
   // capability can query/replace the selection without a direct view ref.
@@ -126,7 +131,7 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
     };
   }, []);
 
-  // Scroll editor to a heading (called from PreviewPane outline clicks)
+  // Scroll editor to a heading (called from the outline sidebar)
   const scrollEditorToHeading = useCallback((headingText: string) => {
     const view = editorRef.current?.getView();
     if (!view) return;
@@ -142,6 +147,22 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
       }
     }
   }, []);
+
+  // Outline heading click: scroll the editor (above) + scroll the preview
+  // body to the heading element. The outline is a split-level sibling now,
+  // so the preview body is reached via the ref PreviewPane forwards.
+  const handleOutlineHeadingClick = useCallback((headingText: string) => {
+    scrollEditorToHeading(headingText);
+    const container = previewBodyRef.current;
+    if (container) {
+      const headingId = headingText
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w一-鿿-]/g, '');
+      const target = container.querySelector(`#${CSS.escape(headingId)}`);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [scrollEditorToHeading]);
 
   // ── Presentation resolution ─────────────────────────────────────────────
   // Resolve the active mode (provider.modes) for the current viewMode, then
@@ -297,13 +318,26 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
       {/* Preview pane — the preview-mode component (cursor-sync wrapper). */}
       {showPreview && activeTab && previewMode?.component && (
         <PreviewPane
+          ref={previewBodyRef}
           activeTab={activeTab}
           Preview={PreviewComp!}
           vaultRoot={vaultRoot}
           viewMode={viewMode}
           previewFlex={previewFlex}
-          onScrollToHeading={scrollEditorToHeading}
           onChange={(content) => setContentExternal(activeTab.id, content)}
+        />
+      )}
+
+      {/* Outline (大纲 / TOC) sidebar — markdown only. Sibling of editor +
+          preview at the split level so opening it shrinks BOTH panes
+          proportionally (was: nested inside PreviewPane, which ate only the
+          preview). Always mounted while a markdown preview is showing; the
+          component reads `outlineVisible` itself and eases its width 0 ↔
+          preferred so the whole split layout animates in lockstep. */}
+      {showPreview && activeTab?.fileType === 'markdown' && (
+        <OutlineSidebar
+          content={activeTab.content}
+          onHeadingClick={handleOutlineHeadingClick}
         />
       )}
 

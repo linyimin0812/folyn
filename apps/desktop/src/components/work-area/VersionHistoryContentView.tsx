@@ -26,7 +26,6 @@ import { PreviewPane } from './PreviewPane';
 
 const SNAPSHOT_TAB_PREFIX = 'version-history-snapshot';
 const noop = () => {};
-const noopHeading = (_heading: string) => {};
 
 export function VersionHistoryContentView() {
   const { t } = useTranslation();
@@ -135,7 +134,6 @@ export function VersionHistoryContentView() {
           vaultRoot={vaultRoot}
           viewMode={viewMode}
           previewFlex={1}
-          onScrollToHeading={noopHeading}
         />
       )}
     </>
