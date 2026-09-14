@@ -92,6 +92,12 @@ export interface PresentationModeRegistration {
    * the `preview` id (e.g. clip's card view) set `'inline'` explicitly.
    */
   via?: 'preview-pane' | 'inline';
+  /**
+   * True to keep the mode resolvable (e.g. as a split's left/right pane) but
+   * exclude it from the mode switcher. The shell still resolves it via
+   * `getMode`; `getSupportedModes` filters it out.
+   */
+  hidden?: boolean;
 }
 
 /**

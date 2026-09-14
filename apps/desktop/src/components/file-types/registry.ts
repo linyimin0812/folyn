@@ -69,9 +69,11 @@ export function getAllHandlers(): FileTypeHandler[] {
 // Editor / Preview) migrate to the presentation model without each repeating
 // the derivation.
 
-/** All mode ids a provider offers (order = declaration order). */
+/** All mode ids a provider offers (order = declaration order), excluding
+ * `hidden` modes (those stay resolvable via `getMode` but are filtered from
+ * the mode switcher). */
 export function getSupportedModes(h: FileTypeHandler | undefined): PresentationModeId[] {
-  return h?.modes.map((m) => m.id) ?? [];
+  return h?.modes.filter((m) => !m.hidden).map((m) => m.id) ?? [];
 }
 
 /** Default mode id: declared `defaultMode` else the first mode. */
