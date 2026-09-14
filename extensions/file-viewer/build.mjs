@@ -1,6 +1,6 @@
 import esbuild from 'esbuild';
 import { build as viteBuild } from 'vite';
-import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile, glob, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -67,5 +67,14 @@ await writeFile(
   path.join(root, 'dist/manifest.json'),
   JSON.stringify(manifest, null, 2) + '\n',
 );
+
+// Remove any *.map (source maps) the vite plugin copied from vendored deps.
+// install_extension_zip's BLACKLIST_EXTS hard-rejects .map files (they leak
+// source paths), so a stray dwg-worker.js.map would abort install. ponytail:
+// fs/promises glob (Node 22+) + unlink beats adding a glob dep.
+for await (const mapPath of glob('**/*.map', { cwd: path.join(root, 'dist'), absolute: true })) {
+  await rm(mapPath, { force: true });
+  console.log('removed source map:', path.relative(root, mapPath));
+}
 
 console.log('built dist/ — install the dist/ folder in Folyn → Plugins → Install from folder…');

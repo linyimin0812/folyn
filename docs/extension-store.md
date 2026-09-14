@@ -63,9 +63,9 @@ catalog 是 folyn-extensions 仓库根目录的 `catalog.json`，经 `https://ra
 2. **打包 zip**：把 `dist/` 内容 + `manifest.json` 打成 zip，根目录必须含 `manifest.json`：
    ```sh
    cd extensions/<id>
-   (cd dist && zip -r -X ../<id>-<version>.zip .) && cp src/manifest.json <id>-<version>.zip  # 注意 manifest 要在 zip 根
+   (cd dist && zip -r -X ../<id>-<version>.zip . -x "*.DS_Store" "*.map") && cp src/manifest.json <id>-<version>.zip  # 注意 manifest 要在 zip 根
    ```
-   更稳妥：先组装一个临时目录 `pkg/`（含 `manifest.json` + `dist/` 内容），再 `zip -r -X <id>-<version>.zip pkg/*` 确保 manifest 在根。zip 内不得有 `src/`、`*.ts`、`package*.json` 等（`extract_zip_filtered` 会拒绝）。
+   更稳妥：先组装一个临时目录 `pkg/`（含 `manifest.json` + `dist/` 内容），再 `zip -r -X <id>-<version>.zip pkg/* -x "*.map"` 确保 manifest 在根。zip 内不得有 `src/`、`*.ts`、`*.map`（source map，会被拒）、`package*.json` 等（`extract_zip_filtered` 会拒绝）。
 3. **创建 Release**：在 folyn-extensions 仓库创建 tag `<id>-<version>`（如 `folyn-rich-text-0.1.0`），上传 zip 作为 asset：
    ```sh
    gh release create folyn-rich-text-0.1.0 folyn-rich-text-0.1.0.zip \
