@@ -40,6 +40,10 @@ interface EditorViewState {
   cursorViewportY: number;
   /** Top of the editor scroll viewport in screen coords (for preview alignment). */
   editorViewportTop: number;
+  /** Rendered height of the editor line at the cursor (px). Used to center
+   *  preview blocks on the cursor LINE center, not just its top — coordsAtPos
+   *  gives the line top, so half of this offsets to the line center. */
+  editorLineHeight: number;
   lineLength: number;
   /** True when the editor has an active (non-empty) text selection.
    *  Previews skip cursor-sync while the user is selecting. */
@@ -66,7 +70,7 @@ interface EditorViewState {
 
   setCursorPosition: (line: number, col: number) => void;
   setWordCount: (count: number) => void;
-  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineLength: number) => void;
+  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineLength: number, lineHeight: number) => void;
   setHasSelection: (v: boolean) => void;
   toggleOutline: () => void;
   toggleAiPanel: () => void;
@@ -98,6 +102,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   wordCount: 0,
   cursorViewportY: 0,
   editorViewportTop: 0,
+  editorLineHeight: 0,
   lineLength: 1,
   hasSelection: false,
   outlineVisible: false,
@@ -127,7 +132,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   },
 
   setWordCount: (count) => set({ wordCount: count }),
-  setCursorViewportY: (y, viewportTop, cursorCol, lineLength) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, lineLength }),
+  setCursorViewportY: (y, viewportTop, cursorCol, lineLength, lineHeight) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, lineLength, editorLineHeight: lineHeight }),
   setHasSelection: (v) => set({ hasSelection: v }),
 
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),

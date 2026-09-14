@@ -438,11 +438,11 @@ mjx-container svg {
 .translation-result .md-preview { font-size: var(--ui-font-size); line-height: 1.6; text-align: justify; }
 .translation-result .md-preview > :first-child { margin-top: 0; }
 .translation-result .md-preview > :last-child { margin-bottom: 0; }
-.md-preview h1 { font-size: 28px; font-weight: 700; margin: 8px 0 12px; border-bottom: 1px solid var(--brd); padding-bottom: 8px; }
-.md-preview h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; }
-.md-preview h3 { font-size: 18px; font-weight: 600; margin: 16px 0 8px; }
-.md-preview h4 { font-size: 15px; font-weight: 600; margin: 12px 0 6px; }
-.md-preview h5, .md-preview h6 { font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+.md-preview h1 { font-size: 28px; font-weight: 700; line-height: 1.3; margin: 8px 0 12px; border-bottom: 1px solid var(--brd); padding-bottom: 4px; }
+.md-preview h2 { font-size: 22px; font-weight: 700; line-height: 1.3; margin: 20px 0 10px; }
+.md-preview h3 { font-size: 18px; font-weight: 600; line-height: 1.3; margin: 16px 0 8px; }
+.md-preview h4 { font-size: 15px; font-weight: 600; line-height: 1.3; margin: 12px 0 6px; }
+.md-preview h5, .md-preview h6 { font-size: 13px; font-weight: 600; line-height: 1.3; margin: 10px 0 4px; }
 .md-preview p { margin: 8px 0; }
 .md-preview a { color: var(--acc); text-decoration: none; }
 .md-preview a:hover { text-decoration: underline; }

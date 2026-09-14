@@ -17,6 +17,7 @@ import { jsx, jsxs } from 'react/jsx-runtime';
 import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { codeBlockAlignPoint } from './codeBlockAlign';
+import { blockAlignPoint } from './blockAlignPoint';
 import { ContainerRegistry, registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -28,6 +29,7 @@ import { resolveAbsolutePath } from '@/services/externalFileProvider';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { readFileByRoute } from '@/services/editorIoService';
 import { useEditorStore } from '@/store/editorStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import {
   formatResultBlock,
@@ -787,6 +789,10 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
+  // ponytail: editor line height lets headings center on the cursor LINE
+  // center, not just its top (coordsAtPos gives the line top). Read from
+  // the store directly so no new prop threads through PreviewProps.
+  const editorLineHeight = useEditorViewStateStore((s) => s.editorLineHeight);
 
   // ponytail: cursor-driven preview scroll (split mode only). When the
   // editor cursor moves, scroll the preview so the point in the matched
@@ -854,35 +860,35 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
       alignPoint = codeBlockAlignPoint(srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, padTop);
     } else {
-      // Non-code block: fraction by source-line offset within the block's
-      // (blank-line-terminated) span. Single source line that renders tall
-      // (image, etc.) falls back to cursor-column fraction.
-      let blockLineSpan = 0;
-      for (let i = blockSrcLine - 1; i < srcLines.length; i++) {
-        if (srcLines[i].trim() === '') break;
-        blockLineSpan++;
-      }
-      if (blockLineSpan < 1) blockLineSpan = 1;
-      let intraFrac = 0;
-      if (blockLineSpan > 1) {
-        intraFrac = Math.min(1, Math.max(0, (cursorLine - blockSrcLine) / (blockLineSpan - 1)));
-      } else {
-        const ll = (lineLength ?? 1) || 1;
-        intraFrac = Math.min(1, Math.max(0, (cursorCol ?? 0) / ll));
-      }
-      alignPoint = blockOffset + intraFrac * blockHeight;
+      // Non-code block: headings center on the cursor line (block center,
+      // so the highlight box is symmetric around the cursor instead of
+      // top-aligned with the box hanging below); list items top-align to
+      // the cursor line (one line each, independent — the whole <ul> is
+      // no longer treated as one block); multi-line blocks use a
+      // source-line fraction; a single source line that renders tall
+      // (image, etc.) falls back to a cursor-column fraction.
+      alignPoint = blockAlignPoint(
+        el.tagName, srcLines, blockSrcLine, cursorLine,
+        cursorCol ?? 0, lineLength ?? 1, blockOffset, blockHeight,
+      );
     }
 
-    // cursorScreenY = where the cursor is on screen.
+    // cursorScreenY = where the cursor line top is on screen.
     // After setting scrollTop=desired, the align point appears at
     // screen y = containerRect.top + (alignPoint - desired).
-    // We want that = cursorScreenY.
+    // For headings, align the block CENTER to the cursor LINE center
+    // (cursorScreenY + editorLineHeight/2) so the highlight is symmetric
+    // around the cursor line; coordsAtPos gives the line top, so half the
+    // editor line height offsets to the line center. Other blocks align
+    // to the line top (code rows top-align to the cursor line top).
     const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
-    const desired = Math.max(0, alignPoint - (cursorScreenY - containerRect.top));
+    const isHeading = /^H[1-6]$/.test(el.tagName);
+    const targetY = isHeading ? cursorScreenY + (editorLineHeight ?? 0) / 2 : cursorScreenY;
+    const desired = Math.max(0, alignPoint - (targetY - containerRect.top));
     if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
       scrollContainer.scrollTop = desired;
     }
-  }, [cursorLine, cursorViewportY, editorViewportTop, cursorCol, lineLength, hasSelection]);
+  }, [cursorLine, cursorViewportY, editorViewportTop, cursorCol, lineLength, hasSelection, editorLineHeight]);
 
   // Clean up the active-block marker on unmount.
   useEffect(() => {
