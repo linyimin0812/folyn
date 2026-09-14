@@ -157,6 +157,14 @@ describe('PetPanelApp', () => {
     await waitFor(() => expect(startDraggingMock).toHaveBeenCalledTimes(1));
   });
 
+  it('pointerdown on the drag handle starts a native window drag', async () => {
+    const { container } = render(<PetPanelApp />);
+    const handle = container.querySelector('.pet-panel-drag-handle')!;
+    expect(handle).toBeTruthy();
+    await fireEvent.pointerDown(handle, { button: 0 });
+    await waitFor(() => expect(startDraggingMock).toHaveBeenCalledTimes(1));
+  });
+
   it('pointerdown on the close button does NOT start a drag (stopPropagation)', async () => {
     render(<PetPanelApp />);
     const close = screen.getByLabelText('Close pet panel');

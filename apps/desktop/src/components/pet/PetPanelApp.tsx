@@ -677,6 +677,13 @@ export function PetPanelApp() {
         onPointerDown={headerPointerDown}
         role="banner"
       >
+        {/* Drag handle — the panel's only visible grab region. The search
+            row and tab row below call `suppressDrag` so their interactive
+            children (input, close, tabs) never start a drag; this bare
+            handle bubbles its pointerdown to the header's
+            `headerPointerDown` → `getCurrentWindow().startDragging()`
+            (a single call — the handle has no onPointerDown of its own). */}
+        <div className="pet-panel-drag-handle" />
         {/* Search row above the tabs — filters files / commands / extensions. */}
         <div className="pet-panel-search-row" onPointerDown={suppressDrag}>
           <div className="pet-panel-search-field">

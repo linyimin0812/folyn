@@ -282,18 +282,39 @@ html.is-pet-panel-window body {
   border-bottom: 1px solid var(--brd, #e2e5ee);
   background: var(--panel, #ffffff);
   flex-shrink: 0;
-  /* The header is a drag handle (PetPanelApp.tsx onPointerDown →
-   * startDragging). The grab cursor signals draggability; buttons inside
-   * (close) keep their own cursor via stopPropagation. */
-  cursor: grab;
-  /* ponytail: drag handle must stay non-select so dragging doesn't select
-     the header text; message body (`.pet-panel-body`) is explicitly
-     selectable to allow copy. */
+  /* The header's `onPointerDown` (PetPanelApp.tsx) → startDragging, but
+   * only the top drag-handle row is draggable — the search/tab rows below
+   * call `suppressDrag`, so their padding must NOT show a grab cursor
+   * (it would be misleading: clicking there doesn't move the panel).
+   * `cursor: grab` lives on `.pet-panel-drag-handle` only. */
   user-select: none;
   -webkit-user-select: none;
 }
-.pet-panel-header:active {
+
+/* Visible drag handle at the top of the header — the panel's only grab
+ * region. A subtle centered grip dot signals draggability. Bubbles its
+ * pointerdown to the header's `headerPointerDown` (no onPointerDown of
+ * its own → a single `startDragging()` call). */
+.pet-panel-drag-handle {
+  height: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel, #ffffff);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pet-panel-drag-handle:active {
   cursor: grabbing;
+}
+.pet-panel-drag-handle::after {
+  content: '';
+  width: 24px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--brd, #e2e5ee);
 }
 
 /* Search row above the tabs — input + clear button. The row itself is a
