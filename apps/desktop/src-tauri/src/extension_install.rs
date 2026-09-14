@@ -9,8 +9,9 @@
 //! on-disk registry (`extensions.json`) maintained by `extension_commands`.
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use tauri::Emitter;
 
@@ -19,7 +20,8 @@ use crate::extension_commands::{
     ExtensionEntry, extensions_dir, read_extensions_json, upsert_record, write_extensions_json,
 };
 use crate::extension_security::{
-    compute_integrity, extract_zip_filtered, validate_manifest, verify_extension_signature,
+    compute_integrity, extract_zip_filtered, read_manifest_id_from_zip, validate_manifest,
+    verify_extension_signature,
 };
 
 // ── Recursive directory copy ─────────────────────────────────────────────────
@@ -304,5 +306,94 @@ pub async fn install_extension(
 
     app.emit("extension://installed", &entry)
         .map_err(|e| e.to_string())?;
+    Ok(entry)
+}
+
+/// Install a extension from a GitHub Releases download URL. The extension store
+/// (Settings → Extensions → Store) calls this with a catalog entry's
+/// `downloadUrl` (a `github.com/.../releases/download/<tag>/<id>-<ver>.zip`).
+///
+/// Downloads the zip bytes with `reqwest` (the webview can't fetch a binary
+/// blob — `fetch_url` returns `text()`), writes them to a staging file, then
+/// delegates to {@link install_extension_zip} so the unzip / filter / manifest
+/// validate / integrity / registry / event-emit path is reused verbatim.
+///
+/// SSRF guard: only `github.com` is permitted (Release assets redirect to
+/// `objects.githubusercontent.com`, which reqwest follows via the limited
+/// redirect policy — the host check is on the *initial* URL only). The temp
+/// zip is removed on both success and error paths.
+#[tauri::command]
+pub async fn install_extension_from_url(
+    app: tauri::AppHandle,
+    id: String,
+    url: String,
+) -> Result<ExtensionEntry, AppError> {
+    let parsed = reqwest::Url::parse(&url)
+        .map_err(|e| format!("invalid download url: {e}"))?;
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "download url missing host".to_string())?;
+    if host != "github.com" {
+        return Err(format!("install_extension_from_url denied: host not github.com: {host}").into());
+    }
+
+    let dir = extensions_dir(&app)?;
+    let staging_root = dir.join(".staging");
+    fs::create_dir_all(&staging_root)
+        .map_err(|e| format!("staging root create failed: {e}"))?;
+    // When the caller has only a URL (the "install from URL" path), `id` is
+    // empty and we resolve it from the zip's manifest after download. Use a
+    // placeholder for the staging filename in that case.
+    let id_or_placeholder = if id.is_empty() { "from-url" } else { &id };
+    let temp_zip = staging_root.join(format!("{id_or_placeholder}-dl-{}.zip", unique_staging_suffix()));
+
+    // Closure that always removes the temp zip before mapping the error.
+    let cleanup = |e: AppError| -> AppError {
+        let _ = fs::remove_file(&temp_zip);
+        e
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(120))
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .build()
+        .map_err(|e| format!("reqwest client build failed: {e}"))
+        .map_err(|e| cleanup(e.into()))?;
+    let bytes = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("download failed: {e}"))
+        .map_err(|e| cleanup(e.into()))?
+        .error_for_status()
+        .map_err(|e| format!("download bad status: {e}"))
+        .map_err(|e| cleanup(e.into()))?
+        .bytes()
+        .await
+        .map_err(|e| format!("download body read failed: {e}"))
+        .map_err(|e| cleanup(e.into()))?;
+
+    let mut f = fs::File::create(&temp_zip)
+        .map_err(|e| format!("temp zip create failed: {e}"))
+        .map_err(|e| cleanup(e.into()))?;
+    f.write_all(&bytes)
+        .map_err(|e| format!("temp zip write failed: {e}"))
+        .map_err(|e| cleanup(e.into()))?;
+    drop(f);
+
+    // "Install from URL" path: caller passed an empty id, so the id must be
+    // read from the downloaded zip's manifest (the manifest's id is the
+    // truth — guessing from the filename is unreliable). `install_extension_zip`
+    // then validates this id against the manifest it re-reads during extraction.
+    let id = if id.is_empty() {
+        read_manifest_id_from_zip(&temp_zip).map_err(|e| cleanup(e.into()))?
+    } else {
+        id
+    };
+
+    let entry = install_extension_zip(app, id, temp_zip.to_string_lossy().into_owned())
+        .await
+        .map_err(cleanup)?;
+    let _ = fs::remove_file(&temp_zip);
     Ok(entry)
 }

@@ -32,6 +32,54 @@ function fmtErr(e: unknown): string {
     : String(e);
 }
 
+/** Catalog source: the `folyn-extensions` repo (separate from the app repo).
+ * Served via raw.githubusercontent.com so `fetch_url` (host-allowlisted)
+ * can reach it — the webview can't fetch cross-origin directly. */
+const CATALOG_URL =
+  'https://raw.githubusercontent.com/linyimin0812/folyn-extensions/main/catalog.json';
+
+/** A single entry in the remote extension catalog (store tab). Mirrors the
+ * shape committed to `folyn-extensions/catalog.json`. `icon` uses the same
+ * semantics as `manifest.icon` (inline SVG / emoji / ThemeIcon name) so the
+ * store card reuses `ExtensionIcon`. */
+
+/** A localized text field in the catalog: either a plain string (fallback for
+ * all locales — fine for names that aren't translated, e.g. "DBML") or a
+ * `{ locale: text }` object. Resolved by {@link pickCatalogText} using the
+ * app's current locale → zh (app fallbackLng) → en → first available. */
+export type LocalizedText = string | Record<string, string>;
+
+/** Resolve a catalog text field to a string for the given locale. Falls back
+ * to the app's `fallbackLng` (`zh`), then `en`, then the first available
+ * translation — so a catalog entry that supplies only one locale still
+ * renders. Returns `undefined` only when `field` itself is nullish. */
+export function pickCatalogText(
+  field: LocalizedText | undefined,
+  locale: string,
+): string | undefined {
+  if (field == null) return undefined;
+  if (typeof field === 'string') return field;
+  return field[locale] ?? field.zh ?? field.en ?? Object.values(field)[0];
+}
+
+export interface CatalogEntry {
+  id: string;
+  name: LocalizedText;
+  version: string;
+  description?: LocalizedText;
+  tier: 'sandbox' | 'trusted';
+  author?: string;
+  icon?: string;
+  /** Absolute `github.com/.../releases/download/<tag>/<id>-<ver>.zip` URL.
+   * `install_extension_from_url` (Rust) restricts the host to github.com. */
+  downloadUrl: string;
+}
+
+/** Module-level empty array so a `catalog` selector returning the not-loaded
+ * state stays referentially stable (see state-management.md: selectors must
+ * not mint a fresh `[]` on the empty path or useSyncExternalStore loops). */
+const EMPTY_CATALOG: CatalogEntry[] = [];
+
 /** Mirrors the Rust `ExtensionEntry` shape (extension_commands.rs). */
 export interface ExtensionEntry {
   id: string;
@@ -178,6 +226,27 @@ interface ExtensionState {
   recordRenderError: (extensionId: string, e: { message: string; label: string }) => void;
   /** Clear the render-error log for a extension (Settings "clear" button). */
   clearRenderErrors: (extensionId: string) => void;
+
+  // ── Store (catalog) ──
+  /** Remote catalog entries (store tab). `[]` until `fetchCatalog()` loads. */
+  catalog: CatalogEntry[];
+  /** True while `fetchCatalog()` is in flight. */
+  catalogLoading: boolean;
+  /** Last catalog-load error surfaced to the store tab. */
+  catalogError: string;
+  /** Fetch the remote catalog via `fetch_url` (host-allowlisted to
+   * raw.githubusercontent.com). */
+  fetchCatalog: () => Promise<void>;
+  /** Download + install a catalog entry via `install_extension_from_url`.
+   * The `extension://installed` event listener in App.tsx installs the
+   * manifest into the in-memory host + activates sandbox extensions; this
+   * action then refreshes so the store card flips to "Installed". */
+  installFromUrl: (entry: CatalogEntry) => Promise<void>;
+  /** Download + install a zip from a raw URL (the "install from URL" path —
+   * point-to-point sharing that bypasses the catalog). The id is resolved
+   * from the zip's manifest by the Rust side (empty `id` arg), so the
+   * caller supplies only the URL. Used by the Store tab's URL input. */
+  installFromRawUrl: (url: string) => Promise<void>;
 }
 
 /**
@@ -495,4 +564,87 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
       delete next[extensionId];
       return { renderErrors: next };
     }),
+
+  // ── Store (catalog) ──
+  catalog: EMPTY_CATALOG,
+  catalogLoading: false,
+  catalogError: '',
+
+  fetchCatalog: async () => {
+    if (!isTauri()) return;
+    set({ catalogLoading: true, catalogError: '' });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const resp = await invoke<{ body: string; status: number }>('fetch_url', {
+        url: CATALOG_URL,
+      });
+      if (resp.status !== 200) {
+        throw new Error(`catalog fetch status ${resp.status}`);
+      }
+      const parsed = JSON.parse(resp.body) as { extensions?: CatalogEntry[] };
+      const entries = Array.isArray(parsed.extensions) ? parsed.extensions : [];
+      set({ catalog: entries, catalogLoading: false, catalogError: '' });
+    } catch (err) {
+      set({ catalogLoading: false, catalogError: fmtErr(err) });
+    }
+  },
+
+  installFromUrl: async (entry) => {
+    if (!isTauri()) {
+      set({ error: '桌面端功能，请在 Tauri 环境中使用' });
+      return;
+    }
+    const key = busyKey(entry.id, 'store-install');
+    set({ busy: { ...get().busy, [key]: true }, installing: { id: entry.id, sourcePath: entry.downloadUrl }, error: '' });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('install_extension_from_url', { id: entry.id, url: entry.downloadUrl });
+      // `extension://installed` listener in App.tsx installs the manifest +
+      // activates sandbox extensions; refresh to reflect + flip the card.
+      await get().refresh();
+      set((s) => {
+        const next = { ...s.busy };
+        delete next[key];
+        return { busy: next, installing: false };
+      });
+    } catch (err) {
+      set((s) => {
+        const next = { ...s.busy };
+        delete next[key];
+        return { busy: next, installing: false, error: fmtErr(err) };
+      });
+    }
+  },
+
+  installFromRawUrl: async (url) => {
+    if (!isTauri()) {
+      set({ error: '桌面端功能，请在 Tauri 环境中使用' });
+      return;
+    }
+    // Single busy slot — only one install at a time via the URL path. The id
+    // is unknown until the Rust side reads it from the downloaded manifest,
+    // so derive a placeholder label from the URL's last path segment for the
+    // "installing ({{id}})" affordance.
+    const key = 'raw-url:install';
+    const label = url.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? url;
+    set({ busy: { ...get().busy, [key]: true }, installing: { id: label, sourcePath: url }, error: '' });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      // Empty `id` tells the Rust side to resolve the id from the zip's
+      // manifest (see install_extension_from_url + read_manifest_id_from_zip).
+      await invoke('install_extension_from_url', { id: '', url });
+      await get().refresh();
+      set((s) => {
+        const next = { ...s.busy };
+        delete next[key];
+        return { busy: next, installing: false };
+      });
+    } catch (err) {
+      set((s) => {
+        const next = { ...s.busy };
+        delete next[key];
+        return { busy: next, installing: false, error: fmtErr(err) };
+      });
+    }
+  },
 }));

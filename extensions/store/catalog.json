@@ -1,0 +1,50 @@
+{
+  "$schema": "reference catalog for the Folyn extension store (see docs/extension-store.md). Copy this file to the root of the linyimin0812/folyn-extensions repo and edit per release. name/description may be a plain string (fallback for all locales) or a {locale: text} object; the app resolves by current locale → zh → en → first available.",
+  "extensions": [
+    {
+      "id": "folyn-rich-text",
+      "name": {
+        "zh": "富文本",
+        "en": "Rich Text"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "富文本编辑器：ProseMirror 编辑器 + HTML 导出",
+        "en": "Rich text editor: ProseMirror editor + HTML export"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "<svg t=\"1785810761350\" class=\"icon\" viewBox=\"0 0 1024 1024\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" p-id=\"12437\" width=\"200\" height=\"200\"><path d=\"M921.6 181.76H102.4c-37.717333 0-68.266667 30.549333-68.266667 68.266667v653.824c0 37.717333 30.549333 68.266667 68.266667 68.266666h819.2c37.717333 0 68.266667-30.549333 68.266667-68.266666V250.026667c0-37.717333-30.549333-68.266667-68.266667-68.266667zM173.397333 635.221333l28.672-68.778666 77.482667-185.685334c5.12-12.458667 17.237333-20.650667 30.72-20.992h0.853333a34.133333 34.133333 0 0 1 30.890667 19.456l120.661333 254.464c8.021333 17.066667 0.853333 37.376-16.213333 45.397334-17.066667 8.021333-37.376 0.853333-45.397333-16.213334l-23.210667-49.152h-121.344l-19.968 47.616a34.030933 34.030933 0 0 1-44.714667 18.261334 33.553067 33.553067 0 0 1-18.432-44.373334zM822.613333 822.784H201.386667c-18.773333 0-34.133333-15.36-34.133334-34.133333s15.36-34.133333 34.133334-34.133334h621.226666c18.773333 0 34.133333 15.36 34.133334 34.133334s-15.36 34.133333-34.133334 34.133333z m0-209.237333H563.712c-18.773333 0-34.133333-15.36-34.133333-34.133334s15.36-34.133333 34.133333-34.133333H822.613333c18.773333 0 34.133333 15.36 34.133334 34.133333s-15.36 34.133333-34.133334 34.133334z m0-172.885334H563.712c-18.773333 0-34.133333-15.36-34.133333-34.133333s15.36-34.133333 34.133333-34.133333H822.613333c18.773333 0 34.133333 15.36 34.133334 34.133333s-15.36 34.133333-34.133334 34.133333z\" fill=\"#d4237a\" p-id=\"12438\"></path><path d=\"M313.173333 477.696l-28.330666 67.925333h60.416z\" fill=\"#d4237a\" p-id=\"12439\"></path><path d=\"M853.333333 120.149333H170.666667c-18.773333 0-34.133333-15.36-34.133334-34.133333s15.36-34.133333 34.133334-34.133333h682.666666c18.773333 0 34.133333 15.36 34.133334 34.133333s-15.36 34.133333-34.133334 34.133333z\" fill=\"#d4237a\" p-id=\"12440\"></path></svg>",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/folyn-rich-text-0.1.0/folyn-rich-text-0.1.0.zip"
+    },
+    {
+      "id": "folyn-dbml",
+      "name": "DBML",
+      "version": "0.1.0",
+      "description": {
+        "zh": "DBML 数据库建模：CodeMirror 编辑 + ER 图实时预览",
+        "en": "DBML database modeling: CodeMirror editor + live ER diagram preview"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M8 1.5C4.96243 1.5 2.5 2.44143 2.5 3.60275V12.4343C2.5 13.5956 4.96243 14.537 8 14.537C11.0376 14.537 13.5 13.5956 13.5 12.4343V3.60275C13.5 2.44143 11.0376 1.5 8 1.5Z\" fill=\"#FAF5FF\"/>\n<ellipse cx=\"8\" cy=\"3.60275\" rx=\"5.5\" ry=\"2.10275\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 12.4336C13.5 13.5949 11.0376 14.5363 8 14.5363C4.96243 14.5363 2.5 13.5949 2.5 12.4336\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 9.49045C13.5 10.6518 11.0376 11.5932 8 11.5932C4.96243 11.5932 2.5 10.6518 2.5 9.49045\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 6.54688C13.5 7.70819 11.0376 8.64962 8 8.64962C4.96243 8.64962 2.5 7.70819 2.5 6.54688\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 3.39249V12.5184\" stroke=\"#834DF0\"/>\n<path d=\"M2.5 3.39249V12.5184\" stroke=\"#834DF0\"/>\n</svg>",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/folyn-dbml-0.1.0/folyn-dbml-0.1.0.zip"
+    },
+    {
+      "id": "folyn-file-viewer",
+      "name": {
+        "zh": "文件查看器",
+        "en": "File Viewer"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "通用文件查看器（Office / PDF / CAD / 归档 / 媒体等），兜底 FileType 扩展",
+        "en": "Universal file viewer (Office / PDF / CAD / archive / media), fallback FileType extension"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 40\" x=\"0px\" y=\"0px\" fill=\"#808080\"><title>Folder_12</title><g data-name=\"Layer 14\"><path d=\"M17.1631,7H28a2.0026,2.0026,0,0,0-2-2H16.4959Z\"/><path d=\"M16,16.0781A5.57,5.57,0,0,0,11.1138,19a5.5469,5.5469,0,0,0,9.7729,0A5.5706,5.5706,0,0,0,16,16.0781ZM16,21a2,2,0,1,1,2-2A2.0023,2.0023,0,0,1,16,21Z\"/><path d=\"M28,9H15.7217L13.9482,3.6826A1,1,0,0,0,13,3H4A2.0026,2.0026,0,0,0,2,5V27a2.0026,2.0026,0,0,0,2,2H28a2.0026,2.0026,0,0,0,2-2V11A2.0026,2.0026,0,0,0,28,9ZM22.9141,19.4053a7.55,7.55,0,0,1-13.8281,0,.9973.9973,0,0,1,0-.8105,7.55,7.55,0,0,1,13.8281,0A1.0012,1.0012,0,0,1,22.9141,19.4053Z\"/></g><text x=\"0\" y=\"47\" fill=\"#808080\" font-size=\"5px\" font-weight=\"bold\" font-family=\"'Helvetica Neue', Helvetica, Arial-Unicode, Arial, Sans-serif\">Created by Alwin Aulia</text><text x=\"0\" y=\"52\" fill=\"#808080\" font-size=\"5px\" font-weight=\"bold\" font-family=\"'Helvetica Neue', Helvetica, Arial-Unicode, Arial, Sans-serif\">from the Noun Project</text></svg>",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/folyn-file-viewer-0.1.0/folyn-file-viewer-0.1.0.zip"
+    }
+  ]
+}

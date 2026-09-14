@@ -46,7 +46,11 @@ pub struct HttpResponse {
 /// `fetch()` these directly (CORS / preflight 404 from openrouter), so we
 /// proxy via reqwest. Limited to the catalog refresh use case — adding a
 /// host here means any webview code can GET from it.
-const FETCH_URL_ALLOWED_HOSTS: &[&str] = &["models.dev", "openrouter.ai"];
+///
+/// `raw.githubusercontent.com` serves the extension-store catalog JSON from
+/// the `folyn-extensions` repo (the catalog lives in its own repo, not the
+/// app repo, so the webview cannot reach it via the app's own assets).
+const FETCH_URL_ALLOWED_HOSTS: &[&str] = &["models.dev", "openrouter.ai", "raw.githubusercontent.com"];
 
 /// Shared reqwest implementation used by `extension_http_fetch` (gated by
 /// extension manifest) and `fetch_url` (gated by host allowlist).

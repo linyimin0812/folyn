@@ -31,7 +31,7 @@ import { TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { isTauri } from '@/utils/platform';
-import { useExtensionStore, type ExtensionRow } from '@/store/extensionStore';
+import { useExtensionStore, type ExtensionRow, type CatalogEntry, pickCatalogText } from '@/store/extensionStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { Toggle } from '@/components/settings/primitives';
 import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
@@ -386,6 +386,84 @@ function ConsentModal() {
   );
 }
 
+/** A single catalog entry in the Store tab. Mirrors `ExtensionRowCard`'s
+ * layout (icon + name + version + tier + description) but the action button is
+ * Install / Installed rather than the activate/uninstall pair. Install state is
+ * derived from the installed `rows` (id match) — no extra store field. */
+function StoreEntryCard({ entry }: { entry: CatalogEntry }) {
+  const { t } = useTranslation();
+  const rows = useExtensionStore((s) => s.rows);
+  const installing = useExtensionStore((s) => s.installing);
+  const installFromUrl = useExtensionStore((s) => s.installFromUrl);
+  // Reuse the per-action busy map; store installs use the `store-install` action
+  // suffix (see extensionStore.installFromUrl) so a store install and a manual
+  // uninstall of the same id can't mask each other's busy flag.
+  const busy = useExtensionStore(useShallow((s) => !!s.busy[`${entry.id}:store-install`]));
+  // Any installed row with the same id (trusted/sandbox, any version) counts as
+  // "already installed" — MVP has no version-compare, so the exact version is
+  // not surfaced here.
+  const installedRow = rows.find((r) => r.entry.id === entry.id);
+  const installed = !!installedRow;
+  const isInstallingThis = installing ? installing.id === entry.id : false;
+  // Resolve localized name/description for the current app locale. catalog
+  // fields may be a plain string (no translation needed) or a {locale:text}
+  // object — pickCatalogText falls back zh → en → first available so a
+  // single-locale entry still renders. `i18n.language` mirrors
+  // useLocaleStore.locale (kept in sync by setLocale).
+  const lang = i18n.language;
+  const displayName = pickCatalogText(entry.name, lang) ?? entry.id;
+  const displayDesc = pickCatalogText(entry.description, lang);
+
+  return (
+    <div className="tr-info border border-brd rounded-lg p-3 mb-2 bg-surf">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="flex items-start gap-2 min-w-0">
+          <ExtensionIcon icon={entry.icon} name={displayName} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
+                {displayName}
+              </span>
+              <span className="text-[10px] text-t3 font-mono">{entry.version}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
+                {tierLabel(entry.tier)}
+              </span>
+              {installed && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
+                  {t('settings:extensions.store.installed')}
+                </span>
+              )}
+            </div>
+            {entry.author && (
+              <div className="text-[10px] text-t3 mt-0.5 truncate">{entry.author}</div>
+            )}
+            {displayDesc && (
+              <div className="text-[11px] text-t2 mt-0.5 truncate" title={displayDesc}>
+                {displayDesc}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {installed ? (
+            <span className="text-[11px] text-t3">{t('settings:extensions.store.installed')}</span>
+          ) : (
+            <button
+              className="btn btn-p btn-sm"
+              disabled={busy || !!installing}
+              onClick={() => void installFromUrl(entry)}
+            >
+              {isInstallingThis || busy
+                ? t('settings:extensions.store.installing')
+                : t('settings:extensions.store.install')}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ExtensionsSettings() {
   const { t } = useTranslation();
   const rows = useExtensionStore((s) => s.rows);
@@ -396,8 +474,18 @@ export function ExtensionsSettings() {
   const installFromFolder = useExtensionStore((s) => s.installFromFolder);
   const installFromZip = useExtensionStore((s) => s.installFromZip);
   const clearError = useExtensionStore((s) => s.clearError);
+  // Store (catalog) selectors.
+  const catalog = useExtensionStore((s) => s.catalog);
+  const catalogLoading = useExtensionStore((s) => s.catalogLoading);
+  const catalogError = useExtensionStore((s) => s.catalogError);
+  const fetchCatalog = useExtensionStore((s) => s.fetchCatalog);
+  const installFromRawUrl = useExtensionStore((s) => s.installFromRawUrl);
   const [folderOpen, setFolderOpen] = useState(false);
   const [zipOpen, setZipOpen] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  // Tab is component-local UI state (only this component reads it), so useState
+  // per state-management.md — no store needed.
+  const [tab, setTab] = useState<'installed' | 'store'>('installed');
 
   // Refresh on mount + whenever the tab gains focus (cheap; guards against
   // external mutation). The listener in App.tsx also calls refresh on
@@ -405,6 +493,15 @@ export function ExtensionsSettings() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Lazy-load the catalog when the user switches to the Store tab and it's
+  // not loaded yet (or errored and they switch back to retry). Never refetch
+  // while a load is in flight.
+  useEffect(() => {
+    if (tab === 'store' && !catalogLoading && catalog.length === 0 && !catalogError) {
+      void fetchCatalog();
+    }
+  }, [tab, catalogLoading, catalog.length, catalogError, fetchCatalog]);
 
   const handleInstallFromFolder = useCallback(async () => {
     if (folderOpen) return;
@@ -454,42 +551,117 @@ export function ExtensionsSettings() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-1 mb-3 border-b border-brd2">
         <button
-          className="btn btn-p btn-sm"
-          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
-          onClick={handleInstallFromFolder}
+          className={`px-3 py-1.5 text-[length:calc(var(--ui-font-size)-1px)] font-medium border-b-2 -mb-px ${tab === 'installed' ? 'border-acc text-t1' : 'border-transparent text-t3 hover:text-t2'}`}
+          onClick={() => setTab('installed')}
         >
-          {installing ? t('settings:extensions.installing', { id: installing.id }) : t('settings:extensions.installFromFolder')}
+          {t('settings:extensions.store.tabInstalled')}
         </button>
         <button
-          className="btn btn-p btn-sm"
-          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
-          onClick={handleInstallFromZip}
+          className={`px-3 py-1.5 text-[length:calc(var(--ui-font-size)-1px)] font-medium border-b-2 -mb-px ${tab === 'store' ? 'border-acc text-t1' : 'border-transparent text-t3 hover:text-t2'}`}
+          onClick={() => setTab('store')}
         >
-          {installing ? t('settings:extensions.installing', { id: installing.id }) : t('settings:extensions.installFromZip')}
-        </button>
-        <button className="btn btn-g btn-sm" disabled={refreshing} onClick={() => void refresh()}>
-          {refreshing ? t('settings:extensions.refreshing') : t('settings:extensions.refresh')}
+          {t('settings:extensions.store.tabStore')}
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
-          {error}
-        </div>
+      {tab === 'installed' && (
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              className="btn btn-p btn-sm"
+              disabled={!!installing || folderOpen || zipOpen || !isTauri()}
+              onClick={handleInstallFromFolder}
+            >
+              {installing ? t('settings:extensions.installing', { id: installing.id }) : t('settings:extensions.installFromFolder')}
+            </button>
+            <button
+              className="btn btn-p btn-sm"
+              disabled={!!installing || folderOpen || zipOpen || !isTauri()}
+              onClick={handleInstallFromZip}
+            >
+              {installing ? t('settings:extensions.installing', { id: installing.id }) : t('settings:extensions.installFromZip')}
+            </button>
+            <button className="btn btn-g btn-sm" disabled={refreshing} onClick={() => void refresh()}>
+              {refreshing ? t('settings:extensions.refreshing') : t('settings:extensions.refresh')}
+            </button>
+          </div>
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
+              {error}
+            </div>
+          )}
+
+          {rows.length === 0 ? (
+            <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+              {t('settings:extensions.empty')}
+            </div>
+          ) : (
+            <div>
+              {rows.map((row) => (
+                <ExtensionRowCard key={row.entry.id} row={row} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {rows.length === 0 ? (
-        <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
-          {t('settings:extensions.empty')}
-        </div>
-      ) : (
-        <div>
-          {rows.map((row) => (
-            <ExtensionRowCard key={row.entry.id} row={row} />
-          ))}
-        </div>
+      {tab === 'store' && (
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <button className="btn btn-g btn-sm" disabled={catalogLoading} onClick={() => void fetchCatalog()}>
+              {catalogLoading ? t('settings:extensions.store.refreshing') : t('settings:extensions.store.refresh')}
+            </button>
+          </div>
+
+          {/* Install from URL — point-to-point sharing that bypasses the catalog.
+              Paste a github.com Release zip URL; the id is resolved from the
+              zip's manifest on the Rust side. */}
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              className="flex-1 min-w-0 text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1 placeholder:text-t3 focus:outline-none focus:border-acc"
+              placeholder={t('settings:extensions.store.urlPlaceholder')}
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && urlInput.trim() && !installing) {
+                  void installFromRawUrl(urlInput.trim()).then(() => setUrlInput(''));
+                }
+              }}
+              disabled={!isTauri() || !!installing}
+            />
+            <button
+              className="btn btn-p btn-sm shrink-0"
+              disabled={!isTauri() || !!installing || !urlInput.trim()}
+              onClick={() => {
+                const u = urlInput.trim();
+                if (u) void installFromRawUrl(u).then(() => setUrlInput(''));
+              }}
+            >
+              {installing ? t('settings:extensions.installing', { id: installing.id }) : t('settings:extensions.store.installFromUrl')}
+            </button>
+          </div>
+
+          {(error || catalogError) && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
+              {error || catalogError}
+            </div>
+          )}
+
+          {catalog.length === 0 ? (
+            <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+              {catalogLoading ? t('settings:extensions.store.refreshing') : t('settings:extensions.store.empty')}
+            </div>
+          ) : (
+            <div>
+              {catalog.map((entry) => (
+                <StoreEntryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <ConsentModal />

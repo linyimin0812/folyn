@@ -7,7 +7,7 @@
   "tier": "trusted",
   "main": "dist/index.js",
   "html": "preview.html",
-  "icon": "📄",
+  "icon": "file-viewer.svg",
   "description": "通用文件查看器（Office / PDF / CAD / 归档 / 媒体等），作为兜底 FileType 扩展。每种文件族一个 provider，各自带图标。",
   "permissions": {
     "fs": { "scope": [] },

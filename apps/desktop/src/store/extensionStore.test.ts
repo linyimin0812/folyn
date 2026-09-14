@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveManifestIcon } from './extensionStore';
+import { resolveManifestIcon, pickCatalogText } from './extensionStore';
 
 describe('resolveManifestIcon', () => {
   it('prefers the top-level manifest icon', () => {
@@ -54,5 +54,34 @@ describe('resolveManifestIcon', () => {
   it('returns undefined when no icon is declared anywhere', () => {
     expect(resolveManifestIcon({})).toBeUndefined();
     expect(resolveManifestIcon({ contributes: { commands: [{ icon: '' }] } })).toBeUndefined();
+  });
+});
+
+describe('pickCatalogText', () => {
+  it('returns the plain string as-is (single-locale fallback)', () => {
+    expect(pickCatalogText('DBML', 'en')).toBe('DBML');
+    expect(pickCatalogText('DBML', 'ja')).toBe('DBML');
+  });
+
+  it('returns the exact locale when present', () => {
+    expect(pickCatalogText({ zh: '富文本', en: 'Rich Text' }, 'zh')).toBe('富文本');
+    expect(pickCatalogText({ zh: '富文本', en: 'Rich Text' }, 'en')).toBe('Rich Text');
+  });
+
+  it('falls back to zh (app fallbackLng) when the locale is missing', () => {
+    expect(pickCatalogText({ zh: '富文本', en: 'Rich Text' }, 'ja')).toBe('富文本');
+  });
+
+  it('falls back to en when neither locale nor zh is present', () => {
+    expect(pickCatalogText({ en: 'Rich Text' }, 'ja')).toBe('Rich Text');
+    expect(pickCatalogText({ en: 'Rich Text' }, 'zh')).toBe('Rich Text');
+  });
+
+  it('falls back to the first available when only an unrelated locale is given', () => {
+    expect(pickCatalogText({ es: 'Visor de archivos' }, 'de')).toBe('Visor de archivos');
+  });
+
+  it('returns undefined for nullish input', () => {
+    expect(pickCatalogText(undefined, 'en')).toBeUndefined();
   });
 });

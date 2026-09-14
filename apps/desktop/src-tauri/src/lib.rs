@@ -1113,6 +1113,7 @@ pub fn run() {
             list_models::list_models,
             extension_install::install_extension,
             extension_install::install_extension_zip,
+            extension_install::install_extension_from_url,
             extension_lifecycle::list_extensions,
             extension_lifecycle::uninstall_extension,
             extension_lifecycle::approve_extension,

@@ -534,6 +534,29 @@ pub(crate) fn extract_zip_filtered(zip_path: &Path, staging: &Path) -> Result<(V
     Ok((rejected_slip, rejected_blacklist, skipped_unknown_ext))
 }
 
+/// Read the `id` field from the `manifest.json` entry at the zip root,
+/// without extracting the whole archive. Used by `install_extension_from_url`
+/// when the caller has only a download URL (no id) — the id is the manifest's
+/// truth, so we pull it from the zip rather than guessing from the filename.
+/// Returns `Err` if the zip lacks a root `manifest.json` or the id is missing.
+pub fn read_manifest_id_from_zip(zip_path: &Path) -> Result<String, String> {
+    let file = fs::File::open(zip_path).map_err(|e| format!("failed to open zip: {e}"))?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("failed to read zip: {e}"))?;
+    let mut entry = archive
+        .by_name("manifest.json")
+        .map_err(|_| "zip is missing manifest.json at the root".to_string())?;
+    let mut buf = Vec::with_capacity(8 * 1024);
+    entry
+        .read_to_end(&mut buf)
+        .map_err(|e| format!("manifest.json read failed: {e}"))?;
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&buf).map_err(|e| format!("manifest.json parse failed: {e}"))?;
+    manifest["id"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "manifest.id missing".to_string())
+}
+
 /// Extract the origin (`scheme://host[:port]`) from a URL string.
 ///
 /// `host` includes the port if present. The host is lowercased (RFC 3986 §3.2.2
@@ -1218,6 +1241,26 @@ mod tests {
         assert!(slip.iter().any(|s| s == "link.txt"), "slip: {slip:?}");
         // And it must not have been written to disk.
         assert!(!staging.join("link.txt").exists());
+    }
+
+    #[test]
+    fn read_manifest_id_from_zip_returns_root_manifest_id() {
+        let (_dir, zip_path) = write_zip_to_temp(&[
+            ("manifest.json".to_string(), manifest_json()),
+            ("index.html".to_string(), b"<p>hi</p>".to_vec()),
+        ]);
+        let id = read_manifest_id_from_zip(&zip_path).expect("id from zip");
+        assert_eq!(id, "test-extension");
+    }
+
+    #[test]
+    fn read_manifest_id_from_zip_errors_when_no_root_manifest() {
+        // manifest is in a subdirectory, not the root — by_name("manifest.json")
+        // must not find it.
+        let (_dir, zip_path) = write_zip_to_temp(&[
+            ("sub/manifest.json".to_string(), manifest_json()),
+        ]);
+        assert!(read_manifest_id_from_zip(&zip_path).is_err());
     }
 
 }
