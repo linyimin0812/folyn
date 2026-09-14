@@ -5,8 +5,7 @@
     "toggle": "Cambiar tema"
   },
   "ai": {
-    "panel": "Panel de IA",
-    "planToday": "Plan de IA hoy"
+    "panel": "Panel de IA"
   },
   "tabList": {
     "menu": "Todos los archivos abiertos",

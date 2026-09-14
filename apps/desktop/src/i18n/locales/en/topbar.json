@@ -5,8 +5,7 @@
     "toggle": "Toggle theme"
   },
   "ai": {
-    "panel": "AI panel",
-    "planToday": "AI plan today"
+    "panel": "AI panel"
   },
   "tabList": {
     "menu": "All open files",

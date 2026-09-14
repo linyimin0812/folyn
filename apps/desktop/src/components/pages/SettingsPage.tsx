@@ -28,7 +28,6 @@ const APP_SHORTCUTS: { id: string; keys: string[] }[] = [
   { id: 'focusMode', keys: [PRIMARY_MOD, 'Shift', 'Enter'] },
   { id: 'globalSearch', keys: [PRIMARY_MOD, 'Shift', 'F'] },
   { id: 'commandPalette', keys: [PRIMARY_MOD, 'P'] },
-  { id: 'schedule', keys: [PRIMARY_MOD, 'D'] },
   { id: 'selectAll', keys: [PRIMARY_MOD, 'A'] },
 ];
 

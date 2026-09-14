@@ -69,19 +69,6 @@
       "confirm": "复制"
     }
   },
-  "calendar": {
-    "weekdays": [
-      "日",
-      "一",
-      "二",
-      "三",
-      "四",
-      "五",
-      "六"
-    ],
-    "title": "{{year}} 年 {{month}} 月",
-    "hasNote": "{{date}} (有笔记)"
-  },
   "clips": {
     "title": "Clips",
     "delete": "删除",

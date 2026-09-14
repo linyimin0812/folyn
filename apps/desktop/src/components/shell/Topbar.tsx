@@ -14,7 +14,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { ExportMenu } from '@/components/editor/ExportMenu';
 import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
-import { requestPlanMyDay } from '@/services/planMyDayBridge';
 import { useTranslation } from 'react-i18next';
 import { Sun, Moon, FolderInput, History } from 'lucide-react';
 import { TerminalIcon } from '@/components/icons/TerminalIcon';
@@ -192,13 +191,7 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
           </button>
         )}
 
-        <button className="tb-btn tb-ai-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-xs text-t3 transition-all duration-150 hover:bg-hov hover:text-t1 font-bold tracking-[-0.5px]" onClick={() => {
-          if (currentPage === 'schedule') {
-            requestPlanMyDay();
-          } else {
-            toggleAiPanel();
-          }
-        }} title={currentPage === 'schedule' ? t('topbar:ai.planToday') : t('topbar:ai.panel')}>
+        <button className="tb-btn tb-ai-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-xs text-t3 transition-all duration-150 hover:bg-hov hover:text-t1 font-bold tracking-[-0.5px]" onClick={toggleAiPanel} title={t('topbar:ai.panel')}>
           AI
         </button>
         {toolbarState.showExport && <ExportMenu />}

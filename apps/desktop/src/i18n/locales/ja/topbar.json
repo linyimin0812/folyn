@@ -5,8 +5,7 @@
     "toggle": "テーマ切り替え"
   },
   "ai": {
-    "panel": "AIパネル",
-    "planToday": "AIで今日を計画"
+    "panel": "AIパネル"
   },
   "tabList": {
     "menu": "開いているすべてのファイル",

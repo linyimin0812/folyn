@@ -15,7 +15,6 @@ import { getWebviewLabels } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
-import { DailyDigest } from '../editor/DailyDigest';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
@@ -310,21 +309,6 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
 
       </>)}
       </div>{/* end content area */}
-
-      {activeTab?.fileType === 'markdown' && (
-        <DailyDigest
-          currentFilePath={activeTab.path}
-          onInsertContent={(content) => {
-            const view = editorRef.current?.getView();
-            if (view) {
-              const pos = view.state.doc.length;
-              view.dispatch({
-                changes: { from: pos, insert: content },
-              });
-            }
-          }}
-        />
-      )}
 
       {/* Version-history side panel (PR3). Mounts as an absolute overlay on
           the right edge of the work area so it covers all editor types

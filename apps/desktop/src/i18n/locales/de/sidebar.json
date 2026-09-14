@@ -69,19 +69,6 @@
       "confirm": "Kopieren"
     }
   },
-  "calendar": {
-    "weekdays": [
-      "So",
-      "Mo",
-      "Di",
-      "Mi",
-      "Do",
-      "Fr",
-      "Sa"
-    ],
-    "title": "{{month}} {{year}}",
-    "hasNote": "{{date}} (hat Notiz)"
-  },
   "clips": {
     "title": "Ausschnitte",
     "delete": "Löschen",

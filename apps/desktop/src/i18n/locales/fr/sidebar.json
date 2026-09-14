@@ -69,19 +69,6 @@
       "confirm": "Copier"
     }
   },
-  "calendar": {
-    "weekdays": [
-      "Dim",
-      "Lun",
-      "Mar",
-      "Mer",
-      "Jeu",
-      "Ven",
-      "Sam"
-    ],
-    "title": "{{month}} {{year}}",
-    "hasNote": "{{date}} (a une note)"
-  },
   "clips": {
     "title": "Captures",
     "delete": "Supprimer",

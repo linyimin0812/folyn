@@ -42,7 +42,7 @@ export async function dispatchNotification(payload: PetBubblePayload): Promise<v
   // ponytail: capture every dispatched payload into the inbox regardless of
   // routing (bubble / corner / off) — the inbox is the persistent record of
   // what came in, separate from the ephemeral toast. Single chokepoint so
-  // every trigger source (HTTP, schedule, chat) lands here.
+  // every trigger source (HTTP, chat) lands here.
   usePetStore.getState().addInboxItem(payload);
   const form = usePetStore.getState().notificationForm;
   const { bubble, corner } = decideNotification(form);

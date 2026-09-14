@@ -181,19 +181,6 @@
     "imported": "{{count}} Datei(en) in {{where}} importiert.",
     "allSkipped": "{{count}} Datei(en) übersprungen — nichts importiert."
   },
-  "dailyDigest": {
-    "title": "KI-Tageszusammenfassung",
-    "generate": "Zusammenfassung erstellen",
-    "hint": "Die KI analysiert die heutige Schreibaktivität und erstellt eine Zusammenfassung",
-    "loading": "Zusammenfassung wird erstellt...",
-    "insert": "In Notiz einfügen",
-    "generateFailed": "Erstellung fehlgeschlagen: {{error}}",
-    "today": "Heute: {{date}}",
-    "modifiedSection": "Heute geänderte Dokumente",
-    "modifiedEmpty": "(keine Änderungen)",
-    "recentDailySection": "Aktuelle Tagesnotizen",
-    "recentDailyEmpty": "(keine aktuellen Tagesnotizen)"
-  },
   "diffToolbar": {
     "pendingCount": "{{count}} Änderung(en) offen zur Prüfung",
     "acceptAll": "Alle akzeptieren",

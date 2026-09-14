@@ -5,8 +5,7 @@
     "toggle": "Design wechseln"
   },
   "ai": {
-    "panel": "KI-Panel",
-    "planToday": "KI-Plan für heute"
+    "panel": "KI-Panel"
   },
   "tabList": {
     "menu": "Alle geöffneten Dateien",

@@ -181,19 +181,6 @@
     "imported": "{{count}} 個のファイルを {{where}} にインポートしました。",
     "allSkipped": "{{count}} 個のファイルをスキップしました — インポートなし。"
   },
-  "dailyDigest": {
-    "title": "AIデイリーダジェスト",
-    "generate": "ラジェストを生成",
-    "hint": "AIが今日の執筆アクティビティを分析してラジェストを生成します",
-    "loading": "ラジェスト生成中...",
-    "insert": "ノートに挿入",
-    "generateFailed": "生成失敗: {{error}}",
-    "today": "今日: {{date}}",
-    "modifiedSection": "今日の変更ドキュメント",
-    "modifiedEmpty": "（変更なし）",
-    "recentDailySection": "最近のデイリーノート",
-    "recentDailyEmpty": "（最近のデイリーノートはありません）"
-  },
   "diffToolbar": {
     "pendingCount": "{{count}}件の変更がレビュー待ち",
     "acceptAll": "すべて承認",

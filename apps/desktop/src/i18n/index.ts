@@ -18,8 +18,6 @@ import zhSearch from './locales/zh/search.json';
 import enSearch from './locales/en/search.json';
 import zhAi from './locales/zh/ai.json';
 import enAi from './locales/en/ai.json';
-import zhSchedule from './locales/zh/schedule.json';
-import enSchedule from './locales/en/schedule.json';
 import zhRustErrors from './locales/zh/rustErrors.json';
 import enRustErrors from './locales/en/rustErrors.json';
 import zhPet from './locales/zh/pet.json';
@@ -39,7 +37,6 @@ import jaVault from './locales/ja/vault.json';
 import jaEditor from './locales/ja/editor.json';
 import jaSearch from './locales/ja/search.json';
 import jaAi from './locales/ja/ai.json';
-import jaSchedule from './locales/ja/schedule.json';
 import jaRustErrors from './locales/ja/rustErrors.json';
 import jaPet from './locales/ja/pet.json';
 import jaTerminal from './locales/ja/terminal.json';
@@ -54,7 +51,6 @@ import esVault from './locales/es/vault.json';
 import esEditor from './locales/es/editor.json';
 import esSearch from './locales/es/search.json';
 import esAi from './locales/es/ai.json';
-import esSchedule from './locales/es/schedule.json';
 import esRustErrors from './locales/es/rustErrors.json';
 import esPet from './locales/es/pet.json';
 import esTerminal from './locales/es/terminal.json';
@@ -69,7 +65,6 @@ import deVault from './locales/de/vault.json';
 import deEditor from './locales/de/editor.json';
 import deSearch from './locales/de/search.json';
 import deAi from './locales/de/ai.json';
-import deSchedule from './locales/de/schedule.json';
 import deRustErrors from './locales/de/rustErrors.json';
 import dePet from './locales/de/pet.json';
 import deTerminal from './locales/de/terminal.json';
@@ -84,7 +79,6 @@ import frVault from './locales/fr/vault.json';
 import frEditor from './locales/fr/editor.json';
 import frSearch from './locales/fr/search.json';
 import frAi from './locales/fr/ai.json';
-import frSchedule from './locales/fr/schedule.json';
 import frRustErrors from './locales/fr/rustErrors.json';
 import frPet from './locales/fr/pet.json';
 import frTerminal from './locales/fr/terminal.json';
@@ -136,7 +130,6 @@ export const NAMESPACES = [
   'editor',
   'search',
   'ai',
-  'schedule',
   'rustErrors',
   'pet',
   'terminal',
@@ -156,7 +149,6 @@ void i18n.use(initReactI18next).init({
       editor: zhEditor,
       search: zhSearch,
       ai: zhAi,
-      schedule: zhSchedule,
       rustErrors: zhRustErrors,
       pet: zhPet,
       terminal: zhTerminal,
@@ -173,7 +165,6 @@ void i18n.use(initReactI18next).init({
       editor: enEditor,
       search: enSearch,
       ai: enAi,
-      schedule: enSchedule,
       rustErrors: enRustErrors,
       pet: enPet,
       terminal: enTerminal,
@@ -190,7 +181,6 @@ void i18n.use(initReactI18next).init({
       editor: jaEditor,
       search: jaSearch,
       ai: jaAi,
-      schedule: jaSchedule,
       rustErrors: jaRustErrors,
       pet: jaPet,
       terminal: jaTerminal,
@@ -207,7 +197,6 @@ void i18n.use(initReactI18next).init({
       editor: esEditor,
       search: esSearch,
       ai: esAi,
-      schedule: esSchedule,
       rustErrors: esRustErrors,
       pet: esPet,
       terminal: esTerminal,
@@ -224,7 +213,6 @@ void i18n.use(initReactI18next).init({
       editor: deEditor,
       search: deSearch,
       ai: deAi,
-      schedule: deSchedule,
       rustErrors: deRustErrors,
       pet: dePet,
       terminal: deTerminal,
@@ -241,7 +229,6 @@ void i18n.use(initReactI18next).init({
       editor: frEditor,
       search: frSearch,
       ai: frAi,
-      schedule: frSchedule,
       rustErrors: frRustErrors,
       pet: frPet,
       terminal: frTerminal,

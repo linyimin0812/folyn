@@ -181,19 +181,6 @@
     "imported": "{{count}} fichier(s) importé(s) dans {{where}}.",
     "allSkipped": "{{count}} fichier(s) ignoré(s) — rien importé."
   },
-  "dailyDigest": {
-    "title": "Résumé quotidien IA",
-    "generate": "Générer le résumé",
-    "hint": "L'IA analysera l'activité d'écriture du jour et générera un résumé",
-    "loading": "Génération du résumé...",
-    "insert": "Insérer dans la note",
-    "generateFailed": "Échec de la génération : {{error}}",
-    "today": "Aujourd'hui : {{date}}",
-    "modifiedSection": "Documents modifiés aujourd'hui",
-    "modifiedEmpty": "(aucune modification)",
-    "recentDailySection": "Notes quotidiennes récentes",
-    "recentDailyEmpty": "(aucune note quotidienne récente)"
-  },
   "diffToolbar": {
     "pendingCount": "{{count}} modification(s) en attente de révision",
     "acceptAll": "Tout accepter",

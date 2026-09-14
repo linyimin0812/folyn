@@ -145,16 +145,6 @@
       "description": "Comportamiento por defecto al hacer clic en un enlace",
       "external": "Navegador externo",
       "internal": "Abrir en la app"
-    },
-    "dailyNotes": {
-      "title": "Notas diarias",
-      "description": "Configura el directorio y formato de fecha de las notas diarias",
-      "dir": {
-        "label": "Directorio de notas"
-      },
-      "dateFormat": {
-        "label": "Formato de fecha"
-      }
     }
   },
   "shortcuts": {
@@ -172,7 +162,6 @@
       "strikethrough": "Tachado",
       "code": "Código en línea",
       "link": "Insertar enlace",
-      "dailyNote": "Nota de hoy",
       "togglePetPanel": "Abrir panel de mascota"
     },
     "appItems": {

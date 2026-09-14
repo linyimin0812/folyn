@@ -5,8 +5,7 @@
     "toggle": "Basculer le thème"
   },
   "ai": {
-    "panel": "Panneau IA",
-    "planToday": "Planning IA du jour"
+    "panel": "Panneau IA"
   },
   "tabList": {
     "menu": "Tous les fichiers ouverts",

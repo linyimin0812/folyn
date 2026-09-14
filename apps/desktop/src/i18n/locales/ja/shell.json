@@ -5,7 +5,6 @@
     "close": "パネルを閉じる"
   },
   "nav": {
-    "schedule": "スケジュール (⌘D)",
     "settings": "設定",
     "git": "Git"
   },
@@ -53,7 +52,6 @@
   },
   "workArea": {
     "empty": {
-      "calendar": "日記なし",
       "files": "開いているファイルなし"
     },
     "unsupported": {

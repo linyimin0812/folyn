@@ -24,7 +24,6 @@
     }
   },
   "launcher": {
-    "dailyNote": "Today's note",
     "globalSearch": "Global search",
     "commandPalette": "Command palette",
     "showMain": "Show main window",

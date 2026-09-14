@@ -22,7 +22,7 @@ describe('isExternalPath', () => {
 
   it('treats vault-relative paths as NOT external', () => {
     expect(isExternalPath('notes/a.md')).toBe(false);
-    expect(isExternalPath('__daily__/2026-01-01.md')).toBe(false);
+    expect(isExternalPath('wiki/intro.md')).toBe(false);
     expect(isExternalPath('root.md')).toBe(false);
     expect(isExternalPath('sub/deep/file.txt')).toBe(false);
     expect(isExternalPath('')).toBe(false);

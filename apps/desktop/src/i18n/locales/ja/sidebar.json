@@ -69,19 +69,6 @@
       "confirm": "コピー"
     }
   },
-  "calendar": {
-    "weekdays": [
-      "日",
-      "月",
-      "火",
-      "水",
-      "木",
-      "金",
-      "土"
-    ],
-    "title": "{{year}}年{{month}}月",
-    "hasNote": "{{date}}（ノートあり）"
-  },
   "clips": {
     "title": "クリップ",
     "delete": "削除",

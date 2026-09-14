@@ -24,7 +24,6 @@
     }
   },
   "launcher": {
-    "dailyNote": "Nota de hoy",
     "globalSearch": "Búsqueda global",
     "commandPalette": "Paleta de comandos",
     "showMain": "Mostrar ventana principal",

@@ -6,7 +6,6 @@ import { useVaultConfigStore } from './vaultConfigStore';
 import { useAiConfigStore } from './aiConfigStore';
 import { usePrefsStore, DEFAULT_SHORTCUTS } from './prefsStore';
 import { usePetStore } from './petStore';
-import { useScheduleStore } from './scheduleStore';
 import {
   loadSettings,
   hydrateAllStores,
@@ -32,7 +31,7 @@ function resetAllDefaults() {
     theme: 'light', fontFamily: 'Sora', fontSize: 14, lineHeight: 1.7, showAiPanel: true,
     showStatusBar: true, showHiddenFiles: true, enableWikiPanel: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__reports__\n__daily__\n__schedule__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__wiki__\n__reports__',
     linkOpenMode: 'external', vaultName: 'my-vault',
   }, false);
   useEditorPrefsStore.setState({
@@ -48,7 +47,6 @@ function resetAllDefaults() {
     chatModel: 'claude-sonnet-4-6', chatApiKey: '', chatBaseUrl: '',
   }, false);
   usePrefsStore.setState({
-    dailyNotesDir: '__daily__', dailyNoteDateFormat: 'YYYY-MM-DD',
     fileTemplates: { md: '# {{title}}\n\n' }, shortcuts: [...DEFAULT_SHORTCUTS],
   }, false);
   usePetStore.setState({
@@ -68,7 +66,6 @@ describe('settingsPersistence round-trip', () => {
     useEditorPrefsStore.getState().setTabSize(2);
     useVaultConfigStore.getState().setDocExtension('.org');
     useAiConfigStore.getState().setChatModel('rt-model');
-    usePrefsStore.getState().setDailyNoteDateFormat('DD/MM');
     usePetStore.getState().setPetSize('150');
 
     // Flush the debounced persist.
@@ -82,7 +79,6 @@ describe('settingsPersistence round-trip', () => {
     expect(useEditorPrefsStore.getState().tabSize).toBe(2);
     expect(useVaultConfigStore.getState().docExtension).toBe('.org');
     expect(useAiConfigStore.getState().chatModel).toBe('rt-model');
-    expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('DD/MM');
     expect(usePetStore.getState().petSize).toBe('150');
   });
 
@@ -143,14 +139,8 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
       chatModel: 'gpt-4o',
       chatApiKey: 'sk-legacy',
       chatBaseUrl: 'https://api.legacy',
-      dailyNotesDir: '__daily__',
-      dailyNoteDateFormat: 'MM-DD',
       fileTemplates: { md: '# {{title}}\n' },
       shortcuts: DEFAULT_SHORTCUTS.map((s) => ({ ...s })),
-      boardColumns: [
-        { id: 'todo', name: '待办', color: 'var(--t3)' },
-        { id: 'done', name: '已完成', color: 'var(--green)', isDone: true },
-      ],
       petModeEnabled: true,
       petPositionX: 250,
       petPositionY: 350,
@@ -176,7 +166,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(useAppearanceStore.getState().linkOpenMode).toBe('internal');
     expect(useAppearanceStore.getState().vaultName).toBe('legacy-vault');
     // backfill applied
-    expect(useAppearanceStore.getState().excludePatterns.split('\n')).toContain('__schedule__');
+    expect(useAppearanceStore.getState().excludePatterns.split('\n')).toContain('__reports__');
 
     // Editor prefs
     expect(useEditorPrefsStore.getState().editorFont).toBe('JetBrains Mono');
@@ -196,7 +186,7 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(useAiConfigStore.getState().chatApiKey).toBe('');
 
     // Prefs
-    expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('MM-DD');
+    expect(usePrefsStore.getState().fileTemplates.md).toBe('# {{title}}\n');
 
     // Pet
     // petModeEnabled is deliberately not persisted (default true always wins
@@ -206,10 +196,6 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
     expect(usePetStore.getState().petIconSource).toBe('custom');
     expect(usePetStore.getState().petSize).toBe('150');
     expect(usePetStore.getState().notificationForm).toBe('corner');
-
-    // scheduleStore boardColumns
-    expect(useScheduleStore.getState().boardColumns.length).toBe(2);
-    expect(useScheduleStore.getState().boardColumns[1].isDone).toBe(true);
   });
 
   it('applies every migration to a pre-split blob (old user restart = zero-perception)', () => {
@@ -219,12 +205,8 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
       theme: 'dark',
       excludePatterns: 'node_modules\n.git\n__wiki__', // missing later built-in dirs
       vaultName: 'old-vault',
-      // dailyNotesDir at the pre-__daily__ default → must migrate to __daily__.
-      dailyNotesDir: 'daily',
       // Shortcuts persisted before togglePetPanel was added → backfill appends it.
       shortcuts: DEFAULT_SHORTCUTS.filter((s) => s.id !== 'togglePetPanel').map((s) => ({ ...s })),
-      // boardColumns missing an isDone column → falls back to defaults.
-      boardColumns: [{ id: 'only', name: '只此一列', color: 'var(--t3)' }],
       // Pre-fix positions saved as PHYSICAL px (petPosVersion !== 1) → discard.
       petPosVersion: 0,
       petPositionX: 999,
@@ -244,20 +226,14 @@ describe('settingsPersistence fan-out from legacy settings:all blob', () => {
 
     // appearanceStore: backfill appended every missing built-in dir.
     const excludeLines = useAppearanceStore.getState().excludePatterns.split('\n');
-    expect(excludeLines).toContain('__schedule__');
+    expect(excludeLines).toContain('__reports__');
     expect(excludeLines).toContain('__wiki__');
     expect(useAppearanceStore.getState().vaultName).toBe('old-vault');
 
-    // prefsStore: dailyNotesDir migrated; togglePetPanel backfilled.
-    expect(usePrefsStore.getState().dailyNotesDir).toBe('__daily__');
+    // prefsStore: togglePetPanel backfilled.
     const scIds = usePrefsStore.getState().shortcuts.map((s) => s.id);
     expect(scIds).toContain('togglePetPanel');
     expect(scIds.length).toBe(DEFAULT_SHORTCUTS.length);
-
-    // scheduleStore: invalid boardColumns → DEFAULT_BOARD_COLUMNS with an isDone.
-    const cols = useScheduleStore.getState().boardColumns;
-    expect(cols.length).toBeGreaterThan(1);
-    expect(cols.some((c) => c.isDone)).toBe(true);
 
     // petStore: stale physical-px positions discarded; invalid enums coerced.
     const pet = usePetStore.getState();
@@ -296,10 +272,10 @@ describe('settingsPersistence single writer', () => {
 
   it('changing one appearance field writes only the appearance slice, not every slice', () => {
     // ponytail: per-slice persist closure — a setter in slice X must write
-    // ONLY slice X's file. The old global schedulePersist() looped every
+    // ONLY slice X's file. The old global persist loop wrote every
     // registered slice on every setter, so setVaultName('x') scheduled
-    // storageClient.set for all 9 slices (appearance + prefs + editorPrefs
-    // + pet + voice + vault + schedule + modelRegistry + aiConfig). The
+    // storageClient.set for all slices (appearance + prefs + editorPrefs
+    // + pet + voice + vault + modelRegistry + aiConfig). The
     // bound closure cuts that to one. This test fails if the per-slice
     // persist contract regresses (e.g. someone reverts to a global loop).
     const setSpy = vi.spyOn(storageClient, 'set');

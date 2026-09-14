@@ -59,8 +59,8 @@ fn truncate_startup_log() {
 /// `PetMenuAction` payload the main window expects. Returns `None` for
 /// unknown ids (e.g. separators, which never fire `on_menu_event`).
 ///
-/// The mapping also recognizes the 5 launcher-only actions
-/// (`daily-note`, `global-search`, `clip-from-url`, `command-palette`,
+/// The mapping also recognizes the 4 launcher-only actions
+/// (`global-search`, `clip-from-url`, `command-palette`,
 /// `toggle-theme`) even though they are not in the native right-click menu —
 /// the pet-panel launcher dispatches them via the same `pet://menu-action`
 /// event channel, and the frontend contract test asserts the full set stays
@@ -83,7 +83,6 @@ fn pet_ctx_menu_action(id: &str) -> Option<&'static str> {
         commands::PET_CTX_MENU_EXIT_APP => Some("exit-app"),
         // Launcher-only actions (pet-panel buttons, not native menu items).
         // Recognized here so the action-string contract stays uniform.
-        "pet-ctx-daily-note" => Some("daily-note"),
         "pet-ctx-global-search" => Some("global-search"),
         "pet-ctx-clip-from-url" => Some("clip-from-url"),
         "pet-ctx-command-palette" => Some("command-palette"),

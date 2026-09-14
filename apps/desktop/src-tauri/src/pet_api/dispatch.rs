@@ -34,13 +34,12 @@ pub struct PetNotifyPayload {
 }
 
 /// `target` mirror of the TS `PetBubbleTarget` — flat `{ kind, id }`. The
-/// `tag = "kind"` keeps the JSON shape `{ "kind": "schedule", "id": "..." }`
+/// `tag = "kind"` keeps the JSON shape `{ "kind": "chat", "id": "..." }`
 /// so the existing `routePetBubbleAction` (which switches on `target.kind`)
 /// sees the same fields regardless of source.
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum PetTarget {
-    Schedule { id: String },
     Chat { id: String },
     Task { id: String },
     File { id: String },
@@ -178,7 +177,6 @@ fn parse_target(v: &Value) -> Result<PetTarget, String> {
         return Err("target empty id".into());
     }
     match kind {
-        "schedule" => Ok(PetTarget::Schedule { id: id.into() }),
         "chat" => Ok(PetTarget::Chat { id: id.into() }),
         "task" => Ok(PetTarget::Task { id: id.into() }),
         "file" => Ok(PetTarget::File { id: id.into() }),
@@ -259,14 +257,14 @@ mod tests {
 
     #[test]
     fn valid_notify_with_target_and_title() {
-        let body = r#"{"action":"notify","kind":"reminder","title":"T","text":"x","target":{"kind":"schedule","id":"a/b"}}"#;
+        let body = r#"{"action":"notify","kind":"reminder","title":"T","text":"x","target":{"kind":"chat","id":"a/b"}}"#;
         let out = route_action(body);
         match out {
             DispatchOutcome::Notify(p) => {
                 assert_eq!(p.title.as_deref(), Some("T"));
                 assert_eq!(p.kind, "reminder");
                 match p.target {
-                    Some(PetTarget::Schedule { id }) => assert_eq!(id, "a/b"),
+                    Some(PetTarget::Chat { id }) => assert_eq!(id, "a/b"),
                     other => panic!("wrong target: {:?}", other),
                 }
             }
@@ -319,7 +317,7 @@ mod tests {
 
     #[test]
     fn rejects_target_missing_id() {
-        let body = r#"{"action":"notify","kind":"info","text":"x","target":{"kind":"schedule"}}"#;
+        let body = r#"{"action":"notify","kind":"info","text":"x","target":{"kind":"chat"}}"#;
         assert!(matches!(route_action(body), DispatchOutcome::BadRequest(_)));
     }
 

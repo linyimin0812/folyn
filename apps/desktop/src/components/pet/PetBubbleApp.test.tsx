@@ -50,7 +50,7 @@ const samplePayload: PetBubblePayload = {
   title: '提醒',
   text: '这是一条气泡通知示例',
   kind: 'info',
-  target: { kind: 'schedule', id: 'demo' },
+  target: { kind: 'chat', id: 'demo' },
   actions: [{ id: 'view', label: '查看详情', kind: 'primary' }],
 };
 
@@ -119,7 +119,7 @@ describe('PetBubbleApp', () => {
         expect.objectContaining({
           type: 'action',
           actionId: 'view',
-          target: { kind: 'schedule', id: 'demo' },
+          target: { kind: 'chat', id: 'demo' },
         }),
       ),
     );
@@ -142,7 +142,7 @@ describe('PetBubbleApp', () => {
         'pet://bubble-action',
         expect.objectContaining({
           type: 'navigate',
-          target: { kind: 'schedule', id: 'demo' },
+          target: { kind: 'chat', id: 'demo' },
         }),
       ),
     );

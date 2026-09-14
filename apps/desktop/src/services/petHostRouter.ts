@@ -134,10 +134,6 @@ export async function routePetMenuAction(
     // ── Pet-panel launcher actions (PR1). Dispatched by the pet-panel
     // launcher grid via the same `pet://menu-action` channel. Each action
     // that targets the main editor focuses it so the editor comes forward. ──
-    case 'daily-note':
-      void editorIoService.openDailyNote();
-      await focusMain();
-      break;
     case 'global-search':
       useSearchStore.getState().openPanel();
       await focusMain();
@@ -214,7 +210,7 @@ export async function routePetMenuAction(
 /** Route a `pet://bubble-action` jump. Handles four event types:
  *  - `navigate`: title click with a target → main-window navigation.
  *  - `action`: named action button → caller-defined behavior (the main window
- *    routes by `target.kind` to schedule/chat/file).
+ *    routes by `target.kind` to chat/file).
  *  - `launch`: open an external URL or macOS app via `open_external`. If the
  *    app isn't on the whitelist, the Rust command returns `not_in_whitelist`
  *    and we emit `pet://bubble-authorize-request` so the bubble shows its
@@ -241,10 +237,6 @@ export async function routePetBubbleAction(
     return;
   }
   switch (target.kind) {
-    case 'schedule':
-      useNavStore.getState().setCurrentPage('schedule');
-      await focusMain();
-      break;
     case 'chat':
       useAiStore.getState().switchSession(target.id);
       try {

@@ -5,7 +5,6 @@
     "close": "Panel schließen"
   },
   "nav": {
-    "schedule": "Termine (⌘D)",
     "settings": "Einstellungen",
     "git": "Git"
   },
@@ -53,7 +52,6 @@
   },
   "workArea": {
     "empty": {
-      "calendar": "Keine Tagebucheinträge",
       "files": "Keine offenen Dateien"
     },
     "unsupported": {

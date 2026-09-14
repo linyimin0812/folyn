@@ -23,7 +23,6 @@ import {
   exportActiveHtml,
 } from '@/hooks/useExport';
 import { requestNewItem } from './newItemBridge';
-import { requestPlanMyDay } from './planMyDayBridge';
 import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/extension-host';
 
 export type CommandCategory = 'action' | 'panel-mode' | 'file';
@@ -154,13 +153,6 @@ export function registerBuiltinCommands(): void {
       },
     },
     {
-      id: 'action.open-daily-note',
-      title: 'Open Daily Note',
-      category: 'action',
-      keywords: ['today', 'journal', 'calendar'],
-      run: () => editorIoService.openDailyNote(),
-    },
-    {
       id: 'action.open-external-file',
       title: 'Open External File…',
       category: 'action',
@@ -191,19 +183,6 @@ export function registerBuiltinCommands(): void {
       category: 'action',
       keywords: ['find', 'grep', 'search'],
       run: () => useSearchStore.getState().openPanel(),
-    },
-    {
-      id: 'action.plan-my-day',
-      title: 'AI Plan My Day',
-      category: 'action',
-      keywords: ['ai', 'schedule', 'plan', 'today'],
-      run: () => {
-        // Switch to the schedule workbench, then trigger the plan flow via the
-        // bridge (handles the mount-race where the workbench isn't mounted
-        // yet — the request is replayed on mount).
-        nav().setCurrentPage('schedule');
-        requestPlanMyDay();
-      },
     },
 
     // ── Panels (ActivityBar) ──

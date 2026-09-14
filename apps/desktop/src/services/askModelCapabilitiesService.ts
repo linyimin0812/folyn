@@ -52,7 +52,7 @@ function buildPrompt(modelId: string, providerName: string): string {
 }
 
 export function parseCapabilities(aiText: string): ModelCapabilitiesResult {
-  // ponytail: same extractor as planMyDayService — pull the first {...} out
+  // ponytail: extract the first {...} JSON object out
   // of AI text that may be wrapped in prose or code fences.
   const match = aiText.match(/\{[\s\S]*\}/);
   const jsonStr = match ? match[0] : null;

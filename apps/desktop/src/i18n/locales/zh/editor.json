@@ -188,19 +188,6 @@
     "imported": "已导入 {{count}} 个文件到 {{where}}。",
     "allSkipped": "跳过 {{count}} 个文件 — 未导入任何文件。"
   },
-  "dailyDigest": {
-    "title": "AI Daily Digest",
-    "generate": "生成回顾",
-    "hint": "AI 将分析今日的写作活动并生成回顾",
-    "loading": "正在生成回顾...",
-    "insert": "插入到笔记",
-    "generateFailed": "生成失败: {{error}}",
-    "today": "今日：{{date}}",
-    "modifiedSection": "今日修改文档",
-    "modifiedEmpty": "(无修改记录)",
-    "recentDailySection": "最近日记",
-    "recentDailyEmpty": "(无历史日记)"
-  },
   "diffToolbar": {
     "pendingCount": "{{count}} 处变更待审阅",
     "acceptAll": "全部接受",

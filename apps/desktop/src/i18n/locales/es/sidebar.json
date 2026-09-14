@@ -69,19 +69,6 @@
       "confirm": "Copiar"
     }
   },
-  "calendar": {
-    "weekdays": [
-      "Dom",
-      "Lun",
-      "Mar",
-      "Mié",
-      "Jue",
-      "Vie",
-      "Sáb"
-    ],
-    "title": "{{month}} de {{year}}",
-    "hasNote": "{{date}} (con nota)"
-  },
   "clips": {
     "title": "Recortes",
     "delete": "Eliminar",

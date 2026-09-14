@@ -3,9 +3,8 @@
  *
  * Registry-driven: renders whatever `listAdapters()` returns, writes the
  * selection to `aiConfig.cliAdapter`. This is the user-facing adapter choice
- * for the two chat surfaces; feature agents pick their own adapter at
- * implementation time (see `featureAgentService` `FeatureAgentEntry.adapterId`)
- * and do NOT follow this selector.
+ * for the two chat surfaces. Feature agents pick their own adapter at
+ * implementation time and do NOT follow this selector.
  *
  * Rendered inside the chat input `leadingSlot`, mirroring the input-mode
  * dropdown style. Hidden when only one adapter is registered (no choice to

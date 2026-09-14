@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
-import { usePrefsStore } from './prefsStore';
 import { getHandlerByExtension, listProviders } from '@/components/file-types/registry';
 import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
 import { useFileTypePreferenceStore } from './fileTypePreferenceStore';
@@ -52,11 +51,7 @@ export interface FileTab {
 }
 
 /** Determine which activity panel a tab belongs to based on its path and file type */
-export function detectActivity(filePath: string, _fileType: FileType): ActivityPanel {
-  // Check daily notes directory
-  const dailyDir = usePrefsStore.getState().dailyNotesDir || '__daily__';
-  if (filePath.startsWith(`${dailyDir}/`)) return 'calendar';
-
+export function detectActivity(_filePath: string, _fileType: FileType): ActivityPanel {
   return 'files';
 }
 

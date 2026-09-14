@@ -24,8 +24,6 @@ import zhSearch from './locales/zh/search.json';
 import enSearch from './locales/en/search.json';
 import zhAi from './locales/zh/ai.json';
 import enAi from './locales/en/ai.json';
-import zhSchedule from './locales/zh/schedule.json';
-import enSchedule from './locales/en/schedule.json';
 import zhRustErrors from './locales/zh/rustErrors.json';
 import enRustErrors from './locales/en/rustErrors.json';
 import zhPet from './locales/zh/pet.json';
@@ -43,7 +41,6 @@ const zhBundles = {
   editor: zhEditor,
   search: zhSearch,
   ai: zhAi,
-  schedule: zhSchedule,
   rustErrors: zhRustErrors,
   pet: zhPet,
   markmap: zhMarkmap,
@@ -59,7 +56,6 @@ const enBundles = {
   editor: enEditor,
   search: enSearch,
   ai: enAi,
-  schedule: enSchedule,
   rustErrors: enRustErrors,
   pet: enPet,
   markmap: enMarkmap,

@@ -188,19 +188,6 @@
     "imported": "Imported {{count}} file(s) into {{where}}.",
     "allSkipped": "Skipped {{count}} file(s) — nothing imported."
   },
-  "dailyDigest": {
-    "title": "AI Daily Digest",
-    "generate": "Generate digest",
-    "hint": "AI will analyze today's writing activity and generate a digest",
-    "loading": "Generating digest...",
-    "insert": "Insert into note",
-    "generateFailed": "Generation failed: {{error}}",
-    "today": "Today: {{date}}",
-    "modifiedSection": "Today's modified documents",
-    "modifiedEmpty": "(no modifications)",
-    "recentDailySection": "Recent daily notes",
-    "recentDailyEmpty": "(no recent daily notes)"
-  },
   "diffToolbar": {
     "pendingCount": "{{count}} change(s) pending review",
     "acceptAll": "Accept all",

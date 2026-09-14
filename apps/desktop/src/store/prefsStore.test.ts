@@ -8,8 +8,6 @@ beforeEach(() => {
   markSettingsHydrated();
   vi.useFakeTimers();
   usePrefsStore.setState({
-    dailyNotesDir: '__daily__',
-    dailyNoteDateFormat: 'YYYY-MM-DD',
     fileTemplates: {
       md: '# {{title}}\n\n',
       html: '<!DOCTYPE html>\n<html lang="zh">\n<head>\n  <meta charset="UTF-8">\n  <title>{{title}}</title>\n</head>\n<body>\n  \n</body>\n</html>',
@@ -51,27 +49,9 @@ describe('usePrefsStore setters', () => {
     expect(setSpy).toHaveBeenCalled();
     setSpy.mockRestore();
   });
-
-  it('setDailyNotesDir updates', () => {
-    usePrefsStore.getState().setDailyNotesDir('notes/daily');
-    expect(usePrefsStore.getState().dailyNotesDir).toBe('notes/daily');
-  });
 });
 
 describe('usePrefsStore.hydrate', () => {
-  it('applies scalar fields', () => {
-    usePrefsStore.getState().hydrate({
-      dailyNotesDir: '__daily__',
-      dailyNoteDateFormat: 'DD/MM/YYYY',
-    });
-    expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('DD/MM/YYYY');
-  });
-
-  it('migrates legacy dailyNotesDir "daily" → "__daily__"', () => {
-    usePrefsStore.getState().hydrate({ dailyNotesDir: 'daily' });
-    expect(usePrefsStore.getState().dailyNotesDir).toBe('__daily__');
-  });
-
   it('backfills missing default shortcuts', () => {
     const persisted = DEFAULT_SHORTCUTS
       .filter((s) => s.id !== 'togglePetPanel')
@@ -118,11 +98,6 @@ describe('usePrefsStore.hydrate', () => {
     expect(t.puml).toContain('@startuml');
     expect(t.gv).toContain('digraph');
     expect(t.dbml).toContain('Table users');
-  });
-
-  it('missing fields keep defaults', () => {
-    usePrefsStore.getState().hydrate({ dailyNotesDir: '__daily__' });
-    expect(usePrefsStore.getState().dailyNoteDateFormat).toBe('YYYY-MM-DD');
   });
 });
 

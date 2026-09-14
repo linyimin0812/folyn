@@ -35,7 +35,6 @@ import { useExtensionStore, type ExtensionRow, type CatalogEntry, pickCatalogTex
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { Toggle } from '@/components/settings/primitives';
 import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
-import { FeatureAdapterDropdown } from '@/components/settings/FeatureAdapterDropdown';
 
 /** State badge color per runtime state. */
 function stateBadgeClass(state: ExtensionRow['state']): string {
@@ -170,9 +169,7 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   // source of truth for panel visibility), not to extensionHost.activate. Grab
   // all flag/setter pairs unconditionally — hooks can't be conditional,
   // and these subscriptions are cheap (zustand shallow-equals primitives).
-  const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
-  const setEnableSchedulePanel = useAppearanceStore((s) => s.setEnableSchedulePanel);
   const setEnableTranslationPanel = useAppearanceStore((s) => s.setEnableTranslationPanel);
   // Render errors captured by PanelErrorBoundary for this extension's surfaces.
   // A extension that threw during render is isolated (never crashes the host),
@@ -192,9 +189,7 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   // needed (their trust boundary is the iframe sandbox, not a pin).
   const needsApproval = !builtin && entry.tier === 'trusted' && !entry.trusted;
   const isActive = builtin
-    ? (entry.id === 'builtin:schedule' ? enableSchedulePanel
-        : entry.id === 'builtin:translation' ? enableTranslationPanel
-        : false)
+    ? (entry.id === 'builtin:translation' ? enableTranslationPanel : false)
     : state === 'active';
   const toggleBusy = isActivateBusy || isDeactivateBusy;
   const toggleValue = isActive && !toggleBusy;
@@ -273,14 +268,12 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
               {isApproveBusy ? t('settings:extensions.approving') : t('settings:extensions.approve')}
             </button>
           )}
-          {builtin && <FeatureAdapterDropdown rowId={entry.id} />}
           {(!needsApproval || builtin) && (
             <Toggle
               value={toggleValue}
               onChange={(v) => {
                 if (builtin) {
-                  if (entry.id === 'builtin:schedule') setEnableSchedulePanel(v);
-                  else if (entry.id === 'builtin:translation') setEnableTranslationPanel(v);
+                  if (entry.id === 'builtin:translation') setEnableTranslationPanel(v);
                   return;
                 }
                 if (v && !isActive) void activate(entry.id);

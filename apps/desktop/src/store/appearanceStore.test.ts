@@ -23,7 +23,7 @@ function resetAppearanceDefaults() {
     showStatusBar: true,
     showHiddenFiles: true,
     excludePatterns:
-      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__reports__\n__daily__\n__schedule__\n__attachments__\n__study__',
+      'node_modules\n.git\n.DS_Store\ndist\n.next\n.folyn-tmp\n__reports__\n__attachments__\n__study__',
     linkOpenMode: 'external',
     vaultName: 'my-vault',
   });
@@ -117,7 +117,7 @@ describe('useAppearanceStore.hydrate', () => {
     const lines = useAppearanceStore.getState().excludePatterns.split('\n');
     expect(lines).toContain('node_modules');
     expect(lines).toContain('__reports__');
-    expect(lines).toContain('__schedule__');
+    expect(lines).toContain('__attachments__');
   });
 
   it('applies theme + font side effects', () => {
@@ -136,8 +136,6 @@ describe('useAppearanceStore.hydrate', () => {
 describe('backfillBuiltinExcludePatterns', () => {
   const BUILTIN_DIRS = [
     '__reports__',
-    '__daily__',
-    '__schedule__',
     '__attachments__',
     '__study__',
   ];

@@ -145,16 +145,6 @@
       "description": "点击链接时的默认打开方式",
       "external": "外部浏览器",
       "internal": "应用内打开"
-    },
-    "dailyNotes": {
-      "title": "Daily Notes",
-      "description": "配置每日笔记的存储目录与日期格式",
-      "dir": {
-        "label": "笔记目录"
-      },
-      "dateFormat": {
-        "label": "日期格式"
-      }
     }
   },
   "shortcuts": {
@@ -172,7 +162,6 @@
       "strikethrough": "删除线",
       "code": "行内代码",
       "link": "插入链接",
-      "dailyNote": "今日笔记",
       "togglePetPanel": "唤起桌宠面板"
     },
     "appItems": {

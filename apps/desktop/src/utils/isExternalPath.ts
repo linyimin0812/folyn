@@ -18,7 +18,7 @@ This module is the single predicate that decides which IO route a path takes:
 
 A path is external when it is absolute (Unix `/…` or Windows `C:\…` / `C:/…`)
 or home-relative (`~/…`, `$HOME/…`). Vault-internal paths are plain relative
-segments like `notes/foo.md` or `__daily__/2026-01-01.md`.
+segments like `notes/foo.md` or `wiki/intro.md`.
 */
 
 /** True if `p` is an external (absolute / home-relative) path. */

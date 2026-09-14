@@ -5,8 +5,7 @@
     "toggle": "切换主题"
   },
   "ai": {
-    "panel": "AI 面板",
-    "planToday": "AI 规划今日"
+    "panel": "AI 面板"
   },
   "tabList": {
     "menu": "所有打开的文件",

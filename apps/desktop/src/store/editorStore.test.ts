@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { detectFileType, detectActivity, useEditorStore } from './editorStore';
-import { usePrefsStore } from './prefsStore';
 import { useVaultStore } from './vaultStore';
 import {
   flushPersistOpenTabs,
@@ -21,7 +20,6 @@ vi.mock('./editorPersistence', async (importOriginal) => {
 
 beforeEach(() => {
   useEditorStore.setState({ tabs: [], activeTabId: null });
-  usePrefsStore.setState({ dailyNotesDir: '__daily__' });
 });
 
 // ── closeTab persistence ──────────────────────────────────────────────────
@@ -72,15 +70,6 @@ describe('detectFileType', () => {
 });
 
 describe('detectActivity', () => {
-  it('routes daily notes to the calendar panel', () => {
-    expect(detectActivity('__daily__/2026-01-01.md', 'markdown')).toBe('calendar');
-  });
-
-  it('uses the configured dailyNotesDir', () => {
-    usePrefsStore.setState({ dailyNotesDir: 'journal' });
-    expect(detectActivity('journal/2026-01-01.md', 'markdown')).toBe('calendar');
-  });
-
   it('falls back to the files panel for plain markdown', () => {
     expect(detectActivity('notes/a.md', 'markdown')).toBe('files');
   });

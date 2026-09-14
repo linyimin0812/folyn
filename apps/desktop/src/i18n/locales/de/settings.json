@@ -145,16 +145,6 @@
       "description": "Standardverhalten beim Klick auf einen Link",
       "external": "Externer Browser",
       "internal": "In App öffnen"
-    },
-    "dailyNotes": {
-      "title": "Tagesnotizen",
-      "description": "Speicherverzeichnis und Datumsformat konfigurieren",
-      "dir": {
-        "label": "Notizverzeichnis"
-      },
-      "dateFormat": {
-        "label": "Datumsformat"
-      }
     }
   },
   "shortcuts": {
@@ -172,7 +162,6 @@
       "strikethrough": "Durchgestrichen",
       "code": "Inline-Code",
       "link": "Link einfügen",
-      "dailyNote": "Heutige Notiz",
       "togglePetPanel": "Pet-Panel öffnen"
     },
     "appItems": {

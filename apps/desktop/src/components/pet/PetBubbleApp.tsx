@@ -43,10 +43,10 @@ import { hydrateAllStores } from '@/store/settingsPersistence';
 export type PetBubbleKind = 'info' | 'reminder' | 'message' | 'event';
 
 /** Jump target carried by the bubble. The main-window listener routes by
- *  `kind`: schedule → schedule workbench, chat → pet-panel + session switch,
- *  task/file → open the file. `id` is the entity id (path / sessionId / etc). */
+ *  `kind`: chat → pet-panel + session switch, task/file → open the file.
+ *  `id` is the entity id (path / sessionId / etc). */
 export interface PetBubbleTarget {
-  kind: 'schedule' | 'chat' | 'task' | 'file';
+  kind: 'chat' | 'task' | 'file';
   id: string;
 }
 
@@ -70,9 +70,9 @@ export interface PetBubbleAction {
 }
 
 /** Payload for `pet://bubble-show`. Emitted by trigger sources (currently the
- *  Rust demo menu item; future: schedule reminder, pet-chat new message, task
- *  events, external push). `title` is optional but, when present, is clickable
- *  and jumps to `target`. `actions` are rendered as buttons. `placement`
+ *  Rust demo menu item; future: pet-chat new message, task events, external
+ *  push). `title` is optional but, when present, is clickable and jumps to
+ *  `target`. `actions` are rendered as buttons. `placement`
  *  overrides `petStore.bubblePlacement` for this single notification (PRD
  *  pet-popover-corner, Decision C). */
 export interface PetBubblePayload {

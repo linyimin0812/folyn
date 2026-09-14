@@ -26,7 +26,7 @@ function formatTime(ts: number): string {
 
 /** Fire the same `pet://bubble-action` event the bubble window emits on
  *  title-click. The main-window jump router handles target.kind routing
- *  (schedule / chat / task / file). `launch` payloads route via type
+ *  (chat / task / file). `launch` payloads route via type
  *  'launch' instead. */
 async function fireAction(event: PetBubbleActionEvent) {
   try {

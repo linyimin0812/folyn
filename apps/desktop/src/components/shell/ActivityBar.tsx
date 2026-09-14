@@ -9,14 +9,13 @@
  * then mirrors the new id so the active button + Sidebar follow.
  *
  * The daily / settings page-nav buttons stay hardcoded (Decision Q3:
- * page-nav data-driving is out of scope). Schedule is pinned to the top of
- * the bar (above the data-driven panel list) per the user's layout
- * preference. Settings is pinned to the bottom via a `flex-1` spacer.
+ * page-nav data-driving is out of scope). Settings is pinned to the
+ * bottom via a `flex-1` spacer.
  *
  * Active-state rules:
  * - Panel button: `active` when `activePanel === id` AND not on a page-nav
- *   page (schedule) — mirrors the pre-PR2 `!onPage && ...` gate.
- * - Page-nav button: `active` when `currentPage === 'schedule'`.
+ *   page (translation) — mirrors the pre-PR2 `!onPage && ...` gate.
+ * - Page-nav button: `active` when `currentPage === 'translation'`.
  */
 import { useState } from 'react';
 import { Settings } from 'lucide-react';
@@ -27,7 +26,6 @@ import { useAppearanceStore } from '@/store/appearanceStore';
 import { useTranslation } from 'react-i18next';
 import { GitPanel } from '@/components/git/GitPanel';
 import githubIcon from '@/assets/icons/github.svg';
-import { ScheduleIcon } from '@/components/icons/ScheduleIcon';
 import { TranslationIcon } from '@/components/icons/TranslationIcon';
 
 /**
@@ -49,22 +47,20 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
   const currentPage = useNavStore((s) => s.currentPage);
   const currentVault = useVaultStore((s) => s.currentVault);
-  const enableSchedulePanel = useAppearanceStore((s) => s.enableSchedulePanel);
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const [gitOpen, setGitOpen] = useState(false);
 
   // Git icon only for GitHub-type vaults (clone-backed local git repo).
   const isGithubVault = currentVault?.providerType === 'github';
 
-  const onSchedule = currentPage === 'schedule';
   const onTranslation = currentPage === 'translation';
-  const onPage = onSchedule || onTranslation;
+  const onPage = onTranslation;
 
   // Visible panels sorted by (order, registration seq). The store selector
   // returns a useShallow-stabilized array — re-renders only on real content
   // change (no infinite loop on the empty path: EMPTY_PANELS constant).
   // Files is the first entry (order=0); we slice it off and render it at the
-  // very top of the bar, then Schedule, then any extension panels.
+  // very top of the bar, then any extension panels.
   const visiblePanels = useVisiblePanels();
   const [filesPanel, ...restPanels] = visiblePanels;
 
@@ -103,16 +99,6 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   return (
     <div className="activity-bar">
       {filesPanel && renderPanelButton(filesPanel)}
-
-      {enableSchedulePanel && (
-        <button
-          className={`activity-icon ${onSchedule ? 'active' : ''}`}
-          onClick={() => setCurrentPage('schedule')}
-          title={t('shell:nav.schedule')}
-        >
-          <ScheduleIcon size={14} active={onSchedule} />
-        </button>
-      )}
 
       {enableTranslationPanel && (
         <button

@@ -13,7 +13,7 @@ const samplePayload: PetBubblePayload = {
   title: '提醒',
   text: '这是一条气泡通知示例',
   kind: 'info',
-  target: { kind: 'schedule', id: 'demo' },
+  target: { kind: 'chat', id: 'demo' },
   actions: [{ id: 'view', label: '查看详情', kind: 'primary' }],
 };
 

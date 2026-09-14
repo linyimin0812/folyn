@@ -145,16 +145,6 @@
       "description": "リンククリック時のデフォルト挙動",
       "external": "外部ブラウザ",
       "internal": "アプリ内で開く"
-    },
-    "dailyNotes": {
-      "title": "デイリーノート",
-      "description": "デイリーノートの保存ディレクトリと日付形式を設定",
-      "dir": {
-        "label": "ノートディレクトリ"
-      },
-      "dateFormat": {
-        "label": "日付形式"
-      }
     }
   },
   "shortcuts": {
@@ -172,7 +162,6 @@
       "strikethrough": "取り消し線",
       "code": "インラインコード",
       "link": "リンクを挿入",
-      "dailyNote": "今日のノート",
       "togglePetPanel": "桌宠パネルを開く"
     },
     "appItems": {

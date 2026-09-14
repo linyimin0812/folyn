@@ -24,7 +24,6 @@
     }
   },
   "launcher": {
-    "dailyNote": "今日のノート",
     "globalSearch": "グローバル検索",
     "commandPalette": "コマンドパレット",
     "showMain": "メインウィンドウを表示",

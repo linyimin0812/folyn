@@ -3,7 +3,7 @@ import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useTerminalStore } from '@/store/terminalStore';
 import { TerminalDock } from './TerminalDock';
 
-/** Shared terminal host used by editor and schedule layouts. Wraps children
+/** Shared terminal host used by editor layouts. Wraps children
  *  (the editor area) in a relative container and overlays a single
  *  persistent TerminalDock at the bottom or right edge. The dock-location
  *  switch (bottom <-> right) keeps padding in sync so the editor never

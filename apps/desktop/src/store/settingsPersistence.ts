@@ -18,8 +18,8 @@ export interface PersistSlice {
   keys: readonly string[];
   getState: () => Record<string, unknown>;
   /** Optional: hydrate this store's slice from its persisted data. Stores
-   *  that own migration logic (petStore, prefsStore, appearanceStore,
-   *  scheduleStore.boardColumns) implement this; the loader calls it. */
+   *  that own migration logic (petStore, prefsStore, appearanceStore)
+   *  implement this; the loader calls it. */
   hydrate?: (blob: Record<string, unknown>) => void;
 }
 
@@ -78,7 +78,7 @@ const scheduleBroadcast = debounce(broadcastSettingsImpl, BROADCAST_DELAY);
 // instead of silent data loss. New persisted store? Add its name here.
 const EXPECTED_SLICES = [
   'prefs', 'editorPrefs', 'pet', 'appearance', 'voice',
-  'vault', 'schedule', 'modelRegistry', 'aiConfig', 'storage',
+  'vault', 'modelRegistry', 'aiConfig', 'storage',
   'translation',
 ] as const;
 

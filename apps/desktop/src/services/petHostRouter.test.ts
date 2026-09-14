@@ -92,14 +92,6 @@ describe('routePetMenuAction', () => {
     expect(invokeMock).toHaveBeenCalledWith('exit_app');
   });
 
-  it('daily-note opens the daily note and focuses main', async () => {
-    const spy = vi.spyOn(editorIoService, 'openDailyNote').mockResolvedValue(undefined);
-    await routePetMenuAction('daily-note');
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(showMock).toHaveBeenCalledTimes(1);
-    spy.mockRestore();
-  });
-
   it('global-search opens the search panel and focuses main', async () => {
     useSearchStore.setState({ isOpen: false });
     await routePetMenuAction('global-search');
@@ -175,13 +167,6 @@ describe('routePetBubbleAction', () => {
     await routePetBubbleAction({ type: 'navigate' });
     expect(showSpy).toHaveBeenCalledTimes(1);
     expect(invokeMock).not.toHaveBeenCalled();
-  });
-
-  it('schedule target navigates to the schedule page and focuses main', async () => {
-    useNavStore.setState({ currentPage: 'editor' });
-    await routePetBubbleAction({ type: 'navigate', target: { kind: 'schedule', id: 'x' } });
-    expect(useNavStore.getState().currentPage).toBe('schedule');
-    expect(showSpy).toHaveBeenCalledTimes(1);
   });
 
   it('chat target switches the pet-panel session and invokes pet_panel_show', async () => {

@@ -34,7 +34,6 @@ vi.mock('@/store/editorStore', () => ({
 vi.mock('@/store/vaultStore', () => ({
   useVaultStore: { getState: () => ({ activeVaultId: 'v1', readFile: vi.fn(), writeFile: vi.fn(), createDir: vi.fn(), refreshFileTree: vi.fn(), currentVault: null }) },
 }));
-vi.mock('@/store/prefsStore', () => ({ usePrefsStore: { getState: () => ({ dailyNotesDir: '__daily__', dailyNoteDateFormat: 'YYYY-MM-DD' }) } }));
 vi.mock('@/components/file-types/registry', () => ({
   getHandlerById: vi.fn(() => ({ id: 'markdown', needsFileContent: true, deserialize: (r: string) => r, serialize: (c: string) => c })),
   getDefaultMode: () => undefined,
@@ -56,7 +55,6 @@ vi.mock('@/services/externalFileProvider', () => ({
 
 import {
   openFile,
-  openDailyNote,
   saveFile,
   saveOpenTabs,
   restoreOpenTabs,
@@ -77,9 +75,8 @@ beforeEach(() => {
 });
 
 describe('editorIoService — signatures exist', () => {
-  it('exports the 7 IO functions', () => {
+  it('exports the IO functions', () => {
     expect(typeof openFile).toBe('function');
-    expect(typeof openDailyNote).toBe('function');
     expect(typeof saveFile).toBe('function');
     expect(typeof saveOpenTabs).toBe('function');
     expect(typeof restoreOpenTabs).toBe('function');

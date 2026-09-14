@@ -11,7 +11,6 @@ import { CommandPalette } from './components/shell/CommandPalette';
 
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
-import { ScheduleWorkbenchPage } from './components/schedule/ScheduleWorkbenchPage';
 import { TranslationPanel } from './components/translation/TranslationPanel';
 import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
@@ -139,7 +138,7 @@ export default function App() {
   const setActivePanel = useEditorStore((s) => s.setActivePanel);
   const setCurrentPage = useNavStore((s) => s.setCurrentPage);
 
-  // 切换 activity 面板时同时回到 editor 页（从 schedule 页点面板按钮可返回），
+  // 切换 activity 面板时同时回到 editor 页（从其他页点面板按钮可返回），
   // 并展开侧边栏（若之前被隐藏）。
   const handlePanelChange = useCallback(
     (panel: typeof activePanel) => {
@@ -570,20 +569,6 @@ export default function App() {
       ) {
         e.preventDefault();
         useCommandPaletteStore.getState().toggle();
-      }
-      // Cmd/Ctrl+D — go to the schedule workbench (the ActivityBar tooltip
-      // advertises ⌘D; this binds it so the advertised shortcut actually
-      // works). No-op when the schedule panel is disabled.
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        !e.shiftKey &&
-        !e.altKey &&
-        e.key.toLowerCase() === 'd'
-      ) {
-        if (useAppearanceStore.getState().enableSchedulePanel) {
-          e.preventDefault();
-          useNavStore.getState().setCurrentPage('schedule');
-        }
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -1054,13 +1039,6 @@ export default function App() {
       {currentPage === 'settings' && (
         <div className="body-row flex-1 flex overflow-hidden">
           <SettingsPage />
-        </div>
-      )}
-
-      {currentPage === 'schedule' && (
-        <div className="body-row flex-1 flex overflow-hidden">
-          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
-          <ScheduleWorkbenchPage />
         </div>
       )}
 

@@ -6,7 +6,6 @@ import {
 } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useVaultStore } from '@/store/vaultStore';
-import { usePrefsStore } from '@/store/prefsStore';
 import { getHandlerById, getDefaultMode, usesShellEditor } from "@/components/file-types/registry";
 import { suppressWatcherFor } from '@/utils/fileWatcher';
 import { externalFileProvider } from '@/services/externalFileProvider';
@@ -38,16 +37,6 @@ export const BROWSER_HOME_URL = 'https://www.google.com';
  * Consumers (App init, keyboard shortcuts, fileWatcher) call these functions
  * directly.
  */
-
-function formatDailyDate(date: Date, format: string): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return format
-    .replace('YYYY', String(y))
-    .replace('MM', m)
-    .replace('DD', d);
-}
 
 /** Resolve which provider reads a path's content. External (absolute / home-
  *  relative) paths go to `externalFileProvider`; everything else is
@@ -181,52 +170,6 @@ export async function openFile(filePath: string, name: string): Promise<void> {
 export function openBrowserTab(url: string = BROWSER_HOME_URL): void {
   useEditorStore.getState().openWebTab(url);
   useEditorStore.setState({ activePanel: 'files' });
-}
-
-/** Open (or create) today's daily note. */
-export async function openDailyNote(dateStr?: string): Promise<void> {
-  const prefs = usePrefsStore.getState();
-  const dir = prefs.dailyNotesDir || '__daily__';
-  const fmt = prefs.dailyNoteDateFormat || 'YYYY-MM-DD';
-
-  const date = dateStr ? new Date(dateStr) : new Date();
-  const fileName = formatDailyDate(date, fmt);
-  const filePath = `${dir}/${fileName}.md`;
-  const displayName = `${fileName}.md`;
-
-  const vault = useVaultStore.getState();
-
-  try {
-    await vault.readFile(filePath);
-    await openFile(filePath, displayName);
-    return;
-  } catch {
-    // File doesn't exist, create it
-  }
-
-  try {
-    await vault.createDir(dir);
-  } catch {
-    // Directory may already exist
-  }
-
-  let template = '';
-  try {
-    template = await vault.readFile('_templates/daily.md');
-  } catch {
-    template = `---\ntitle: "${fileName}"\ndate: ${fileName}\ntags: [daily]\n---\n\n# ${fileName}\n\n`;
-  }
-
-  const content = template
-    .replace(/\{\{date\}\}/g, fileName)
-    .replace(/\{\{title\}\}/g, fileName)
-    .replace(/\{\{year\}\}/g, String(date.getFullYear()))
-    .replace(/\{\{month\}\}/g, String(date.getMonth() + 1).padStart(2, '0'))
-    .replace(/\{\{day\}\}/g, String(date.getDate()).padStart(2, '0'));
-
-  await vault.writeFile(filePath, content);
-  await vault.refreshFileTree();
-  await openFile(filePath, displayName);
 }
 
 /** Save the active tab's content to the vault. */
@@ -546,7 +489,7 @@ export async function openExternalFile(): Promise<number> {
  * name/size/type and readable content but NO absolute path (WebView2 security
  * restriction). To get a real path Folyn must enable the Tauri
  * `dragDropEnabled` window flag, but that replaces WebView2's drag-drop handler
- * and breaks ALL in-app HTML5 drag-and-drop (the schedule board, rich-text
+ * and breaks ALL in-app HTML5 drag-and-drop (rich-text
  * table row/col reordering) — a Tauri-documented, hard limitation. So instead
  * we read the dropped `File` content and write it to a per-app import staging
  * dir (`~/.folyn/drops/`), then open that staged file by path. The user gets a

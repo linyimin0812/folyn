@@ -37,17 +37,16 @@ describe('PetLauncher', () => {
 
   it('emits pet://menu-action and hides the panel for main-window actions', async () => {
     render(<PetLauncher />);
-    const btn = screen.getByLabelText('今日日记');
+    const btn = screen.getByLabelText('全局搜索');
     await fireEvent.click(btn);
     await waitFor(() => expect(emitMock).toHaveBeenCalledTimes(1));
-    expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'daily-note' });
+    expect(emitMock).toHaveBeenCalledWith('pet://menu-action', { action: 'global-search' });
     expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide');
   });
 
-  it('emits daily-note / global-search / command-palette / show-main / toggle-theme', async () => {
+  it('emits global-search / command-palette / show-main / toggle-theme', async () => {
     render(<PetLauncher />);
     const cases: Array<[string, string]> = [
-      ['今日日记', 'daily-note'],
       ['全局搜索', 'global-search'],
       ['命令面板', 'command-palette'],
       ['显示主窗', 'show-main'],

@@ -145,16 +145,6 @@
       "description": "Default behavior when clicking a link",
       "external": "External browser",
       "internal": "Open in app"
-    },
-    "dailyNotes": {
-      "title": "Daily Notes",
-      "description": "Configure storage directory and date format for daily notes",
-      "dir": {
-        "label": "Notes directory"
-      },
-      "dateFormat": {
-        "label": "Date format"
-      }
     }
   },
   "shortcuts": {
@@ -172,7 +162,6 @@
       "strikethrough": "Strikethrough",
       "code": "Inline code",
       "link": "Insert link",
-      "dailyNote": "Today's note",
       "togglePetPanel": "Open pet panel"
     },
     "appItems": {

@@ -45,7 +45,7 @@ describe('ActivityBar (data-driven)', () => {
 
     render(<ActivityBar activePanel="a" onPanelChange={() => {}} />);
 
-    // Three panel buttons + 2 page-nav buttons (schedule/settings) = 5.
+    // Three panel buttons + 2 page-nav buttons (translation/settings) = 5.
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(5);
     // First panel button (by DOM order) is the lowest-order panel: 'b'.
@@ -92,9 +92,9 @@ describe('ActivityBar (data-driven)', () => {
     expect(onPanelChange).toHaveBeenCalledWith('b');
   });
 
-  it('renders the schedule/settings page-nav buttons regardless of panels', () => {
+  it('renders the translation/settings page-nav buttons regardless of panels', () => {
     render(<ActivityBar activePanel="files" onPanelChange={() => {}} />);
-    expect(screen.getByTitle('日程工作台 (⌘D)')).toBeTruthy();
+    expect(screen.getByTitle('翻译')).toBeTruthy();
     expect(screen.getByTitle('设置')).toBeTruthy();
   });
 

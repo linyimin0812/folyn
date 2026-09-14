@@ -90,20 +90,14 @@ export function backfillDefaultShortcuts(saved: ShortcutItem[]): ShortcutItem[] 
 }
 
 export const PERSIST_KEYS_PREFS = [
-  'dailyNotesDir',
-  'dailyNoteDateFormat',
   'fileTemplates',
   'shortcuts',
 ] as const;
 
 export interface PrefsState {
-  dailyNotesDir: string;
-  dailyNoteDateFormat: string;
   fileTemplates: Record<string, string>;
   shortcuts: ShortcutItem[];
 
-  setDailyNotesDir: (v: string) => void;
-  setDailyNoteDateFormat: (v: string) => void;
   setFileTemplates: (v: Record<string, string>) => void;
   updateShortcut: (id: string, keys: string[]) => void;
   resetShortcuts: () => void;
@@ -145,13 +139,9 @@ export function backfillDefaultFileTemplates(saved: Record<string, string>): Rec
 }
 
 export const usePrefsStore = create<PrefsState>((set) => ({
-  dailyNotesDir: '__daily__',
-  dailyNoteDateFormat: 'YYYY-MM-DD',
   fileTemplates: { ...DEFAULT_FILE_TEMPLATES },
   shortcuts: [...DEFAULT_SHORTCUTS],
 
-  setDailyNotesDir: (v) => { set({ dailyNotesDir: v }); persist(); },
-  setDailyNoteDateFormat: (v) => { set({ dailyNoteDateFormat: v }); persist(); },
   setFileTemplates: (v) => { set({ fileTemplates: v }); persist(); },
 
   updateShortcut: (id, keys) => {
@@ -168,14 +158,6 @@ export const usePrefsStore = create<PrefsState>((set) => ({
 
   hydrate: (blob) => {
     const patch: Partial<PrefsState> = {};
-    if (blob.dailyNotesDir !== undefined) {
-      // Migrate persisted dailyNotesDir from the old default to the built-in
-      // name. Mirrors the legacy settingsStore hydrate path verbatim.
-      let dir = blob.dailyNotesDir as string;
-      if (dir === 'daily') dir = '__daily__';
-      patch.dailyNotesDir = dir;
-    }
-    if (blob.dailyNoteDateFormat !== undefined) patch.dailyNoteDateFormat = blob.dailyNoteDateFormat as string;
     if (blob.fileTemplates !== undefined) {
       // Backfill: append any DEFAULT_FILE_TEMPLATES entry missing from the
       // persisted map. Existing entries (including user-customized or

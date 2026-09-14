@@ -69,19 +69,6 @@
       "confirm": "Copy"
     }
   },
-  "calendar": {
-    "weekdays": [
-      "Sun",
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat"
-    ],
-    "title": "{{month}} {{year}}",
-    "hasNote": "{{date}} (has note)"
-  },
   "clips": {
     "title": "Clips",
     "delete": "Delete",

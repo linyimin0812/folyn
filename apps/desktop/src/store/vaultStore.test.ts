@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useVaultStore } from './vaultStore';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { useAppearanceStore } from './appearanceStore';
-import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import type { VaultEntry } from '@folyn/vault-provider';
 
@@ -89,9 +88,6 @@ beforeEach(() => {
     showHiddenFiles: false,
     excludePatterns: '',
     vaultName: 'my-vault',
-  });
-  usePrefsStore.setState({
-    dailyNotesDir: '__daily__',
   });
   useVaultStore.setState({
     vaults: [],
@@ -659,17 +655,6 @@ describe('useVaultStore.migrateSpecialDirs', () => {
     const renamed = await useVaultStore.getState().migrateSpecialDirs();
     expect(renamed.find((r) => r.from === 'reports')).toBeUndefined();
     expect(manager.rename).not.toHaveBeenCalled();
-  });
-
-  it('migrates the daily dir only when still on the old default', async () => {
-    manager.tree.push({ path: 'daily', name: 'daily', type: 'dir' });
-    usePrefsStore.setState({ dailyNotesDir: 'daily' });
-    const renamed = await useVaultStore.getState().migrateSpecialDirs();
-    expect(renamed.find((r) => r.from === 'daily')).toBeDefined();
-
-    usePrefsStore.setState({ dailyNotesDir: '__daily__' });
-    const renamed2 = await useVaultStore.getState().migrateSpecialDirs();
-    expect(renamed2.find((r) => r.from === 'daily')).toBeUndefined();
   });
 });
 

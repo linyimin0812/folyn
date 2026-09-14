@@ -72,7 +72,7 @@ export const PetPanelSearchResults = forwardRef<
   const { t } = useTranslation();
   const fileTree = useVaultStore((s) => s.fileTree);
   // ponytail: read extension rows from the store (includes built-in panels
-  // like translation/wiki/analyze/schedule) instead of invoking
+  // like translation/wiki/analyze) instead of invoking
   // `list_extensions` directly — that command returns only on-disk third-party
   // extensions and skips BUILTIN_PANEL_DEFS, so searches for "翻译" never hit
   // the translation panel.
@@ -167,7 +167,7 @@ export const PetPanelSearchResults = forwardRef<
           // search query itself; we must NOT call onDone() here — onDone
           // hides the whole pet panel, which would mask the tab switch.
           // Otherwise route to the main window via `run-command: panel.<name>`.
-          // Built-ins without such a command (schedule) fall back to
+          // Built-ins without such a command fall back to
           // open-extension-tool which opens the Extensions settings tab.
           if (onActivateBuiltin?.(item.extensionId)) {
             return;

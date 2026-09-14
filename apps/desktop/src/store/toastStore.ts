@@ -1,5 +1,5 @@
 // ponytail: ephemeral toast queue. No persistence. FIFO, 1 visible at a time.
-// Reuses .sw-toast CSS (index.css:1100). Auto-dismiss after 3s unless actioned.
+// Reuses .sw-toast CSS. Auto-dismiss after 3s unless actioned.
 
 import { create } from 'zustand';
 

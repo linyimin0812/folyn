@@ -181,19 +181,6 @@
     "imported": "{{count}} archivo(s) importado(s) en {{where}}.",
     "allSkipped": "{{count}} archivo(s) omitido(s) — nada importado."
   },
-  "dailyDigest": {
-    "title": "Resumen diario IA",
-    "generate": "Generar resumen",
-    "hint": "La IA analizará la actividad de escritura de hoy y generará un resumen",
-    "loading": "Generando resumen...",
-    "insert": "Insertar en la nota",
-    "generateFailed": "Generación fallida: {{error}}",
-    "today": "Hoy: {{date}}",
-    "modifiedSection": "Documentos modificados hoy",
-    "modifiedEmpty": "(sin modificaciones)",
-    "recentDailySection": "Notas diarias recientes",
-    "recentDailyEmpty": "(sin notas diarias recientes)"
-  },
   "diffToolbar": {
     "pendingCount": "{{count}} cambio(s) pendiente(s) de revisión",
     "acceptAll": "Aceptar todo",

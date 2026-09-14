@@ -5,7 +5,6 @@
     "close": "Cerrar panel"
   },
   "nav": {
-    "schedule": "Agenda (⌘D)",
     "settings": "Ajustes",
     "git": "Git"
   },
@@ -53,7 +52,6 @@
   },
   "workArea": {
     "empty": {
-      "calendar": "Sin entradas de diario",
       "files": "Sin archivos abiertos"
     },
     "unsupported": {

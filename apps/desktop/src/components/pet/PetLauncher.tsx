@@ -54,11 +54,6 @@ interface LauncherButtonDef {
  *  `pet://menu-action`. */
 const LAUNCHER_BUTTONS: readonly LauncherButtonDef[] = [
   {
-    action: 'daily-note',
-    labelKey: 'pet:launcher.dailyNote',
-    icon: <DailyNoteIcon />,
-  },
-  {
     action: 'global-search',
     labelKey: 'pet:launcher.globalSearch',
     icon: <SearchIcon />,
@@ -116,15 +111,6 @@ export function PetLauncher() {
 // ── Inline SVG icons ───────────────────────────────────────────────────────
 // Kept inline (no icon library) per component-guidelines.md. Each is a simple
 // 16×16 stroke glyph on currentColor so it inherits `--t1`/`--acc`.
-
-function DailyNoteIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2.5" y="3" width="11" height="10" rx="1.5" />
-      <path d="M5 1.5v2M11 1.5v2M5 8h6M5 10.5h4" />
-    </svg>
-  );
-}
 
 function SearchIcon() {
   return (

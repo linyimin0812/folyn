@@ -24,7 +24,6 @@
     }
   },
   "launcher": {
-    "dailyNote": "今日日记",
     "globalSearch": "全局搜索",
     "commandPalette": "命令面板",
     "showMain": "显示主窗",

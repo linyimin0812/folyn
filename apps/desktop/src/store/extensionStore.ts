@@ -20,7 +20,6 @@
 
 import { create } from 'zustand';
 import { isTauri } from '@/utils/platform';
-import scheduleSvgText from '@/assets/icons/schedule.svg?raw';
 import translationSvgText from '@/assets/icons/translation.svg?raw';
 
 // ponytail: Tauri rejects with the serialized AppError {category, detail};
@@ -138,7 +137,7 @@ export interface ExtensionRow {
   icon?: string;
   /** One-line description from the manifest. */
   description?: string;
-  /** True for built-in panels surfaced as extensions (Schedule/Translation).
+  /** True for built-in panels surfaced as extensions (Translation).
    * These rows have no on-disk entry — the toggle binds to appearanceStore
    * flags, and uninstall is hidden. */
   builtin?: boolean;
@@ -162,7 +161,6 @@ export interface ExtensionRow {
  * not feature-priority. */
 export const BUILTIN_PANEL_DEFS = [
   { id: 'builtin:translation', nameKey: 'settings:appearance.panels.translation.label', descKey: 'settings:appearance.panels.translation.description', flag: 'enableTranslationPanel' as const },
-  { id: 'builtin:schedule', nameKey: 'settings:appearance.panels.schedule.label', descKey: 'settings:appearance.panels.schedule.description', flag: 'enableSchedulePanel' as const },
 ] as const;
 
 /** Consent-prompt modal state. */
@@ -310,9 +308,7 @@ async function fetchRows(): Promise<ExtensionRow[]> {
     builtin: true,
     nameKey: def.nameKey,
     descKey: def.descKey,
-    icon: def.id === 'builtin:schedule' ? scheduleSvgText
-      : def.id === 'builtin:translation' ? translationSvgText
-      : undefined,
+    icon: def.id === 'builtin:translation' ? translationSvgText : undefined,
   }));
   // Best-effort: fetch each extension's manifest in parallel to surface
   // `icon` / `description` on the row. A failed read leaves the row with

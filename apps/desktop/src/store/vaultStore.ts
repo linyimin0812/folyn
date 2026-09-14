@@ -7,12 +7,10 @@ import {
 } from '@folyn/vault-provider';
 import { useAppearanceStore } from './appearanceStore';
 import { useVaultConfigStore } from './vaultConfigStore';
-import { usePrefsStore } from './prefsStore';
 import { storageClient } from '@/utils/storageClient';
 import { startVaultWatcher, stopVaultWatcher, suppressWatcherFor } from '@/utils/fileWatcher';
 import { generateShortId as generateId } from '@/utils/idGenerator';
 import { resolveBasePath } from '@/utils/pathResolver';
-import { seedAgentFiles } from '@/services/featureAgentService';
 import { isExternalPath } from '@/utils/isExternalPath';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { cloneRepo, ensureGitignoreEntries, type BranchStrategy } from '@/services/gitService';
@@ -289,8 +287,6 @@ export const useVaultStore = create<VaultState>()(
             // Ensure vault root directory exists before listing files
             await get().manager.createDir('');
             await get().refreshFileTree();
-            // Seed canonical feature agent files into <vault>/.claude/agents/ (write-if-missing).
-            await seedAgentFiles(get().manager);
             // Connection succeeded — now persist the vault
             const newVaults = [...get().vaults, config];
             set({
@@ -357,21 +353,13 @@ export const useVaultStore = create<VaultState>()(
             const pinned = await storageClient.get<string[]>(`vault:pinned:${config.id}`);
             set({ pinnedPaths: pinned || [] });
 
+            // Drop outgoing vault's relative-path tabs (preserve external tabs).
             useEditorStore.setState((state) => ({
               // Preserve vault-independent external tabs across vault switches;
               // drop only the outgoing vault's relative-path tabs.
               tabs: state.tabs.filter((t) => isExternalPath(t.path)),
               activeTabId: null,
             }));
-
-            // Seed canonical feature agent files into <vault>/.claude/agents/ (write-if-missing).
-            // 提前到 manager 连接后、migrateSpecialDirs/refreshFileTree 之前——
-            // 后者若抛错会跳过 seeding。独立 try/catch 确保不阻塞 switchVault。
-            try {
-              await seedAgentFiles(get().manager);
-            } catch (err) {
-              console.warn('[VaultStore] seedAgentFiles failed (call-time fallback will retry):', err);
-            }
 
             const renamedPairs = await get().migrateSpecialDirs();
             await get().refreshFileTree();
@@ -443,11 +431,6 @@ export const useVaultStore = create<VaultState>()(
           const pairs: { from: string; to: string }[] = [
             { from: 'reports', to: '__reports__' },
           ];
-          // Only migrate the daily dir if the user is still on the old default.
-          const dailyNotesDir = usePrefsStore.getState().dailyNotesDir;
-          if (dailyNotesDir === 'daily') {
-            pairs.push({ from: 'daily', to: '__daily__' });
-          }
 
           try {
             const rootEntries = await get().manager.listFiles('', false, true);

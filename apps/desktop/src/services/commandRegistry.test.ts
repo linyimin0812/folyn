@@ -20,24 +20,20 @@ const {
   setCurrentPageMock,
   setActivePanelMock,
   setViewModeMock,
-  openDailyNoteMock,
   openPanelMock,
   exportMarkdownMock,
   exportHtmlMock,
   requestNewItemMock,
-  requestPlanMyDayMock,
   toggleFocusModeMock,
 } = vi.hoisted(() => ({
   toggleThemeMock: vi.fn(),
   setCurrentPageMock: vi.fn(),
   setActivePanelMock: vi.fn(),
   setViewModeMock: vi.fn(),
-  openDailyNoteMock: vi.fn(),
   openPanelMock: vi.fn(),
   exportMarkdownMock: vi.fn(),
   exportHtmlMock: vi.fn(),
   requestNewItemMock: vi.fn(),
-  requestPlanMyDayMock: vi.fn(),
   toggleFocusModeMock: vi.fn(),
 }));
 
@@ -64,7 +60,6 @@ vi.mock('@/store/editorStore', () => ({
     getState: () => ({
       setActivePanel: setActivePanelMock,
       setViewMode: setViewModeMock,
-      openDailyNote: openDailyNoteMock,
     }),
   },
 }));
@@ -92,10 +87,6 @@ vi.mock('./newItemBridge', () => ({
   requestNewItem: requestNewItemMock,
 }));
 
-vi.mock('./planMyDayBridge', () => ({
-  requestPlanMyDay: requestPlanMyDayMock,
-}));
-
 function makeCommand(id: string, run: () => void = vi.fn()): Command {
   return { id, title: id, category: 'action', run };
 }
@@ -106,12 +97,10 @@ beforeEach(() => {
   setCurrentPageMock.mockClear();
   setActivePanelMock.mockClear();
   setViewModeMock.mockClear();
-  openDailyNoteMock.mockClear();
   openPanelMock.mockClear();
   exportMarkdownMock.mockClear();
   exportHtmlMock.mockClear();
   requestNewItemMock.mockClear();
-  requestPlanMyDayMock.mockClear();
   toggleFocusModeMock.mockClear();
 });
 
@@ -178,12 +167,10 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.toggle-theme',
       'action.new-file',
       'action.new-folder',
-      'action.open-daily-note',
       'action.open-external-file',
       'action.export-markdown',
       'action.export-html',
       'action.open-global-search',
-      'action.plan-my-day',
       'action.toggle-focus-mode',
     ]);
   });
@@ -227,13 +214,6 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     registerBuiltinCommands();
     await runCommand('action.open-global-search');
     expect(openPanelMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('action.plan-my-day switches to schedule and requests the plan flow', async () => {
-    registerBuiltinCommands();
-    await runCommand('action.plan-my-day');
-    expect(setCurrentPageMock).toHaveBeenCalledWith('schedule');
-    expect(requestPlanMyDayMock).toHaveBeenCalledTimes(1);
   });
 
   it('mode.preview sets the editor view mode', async () => {
