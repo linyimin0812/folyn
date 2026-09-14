@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { createEvent } from '@testing-library/dom';
+import { usePetStore } from '@/store/petStore';
 
 // Mock @tauri-apps/api/window so the drag-handle handler + the maximize/
 // pin controls can be asserted without native bindings. Mirrors the proven
@@ -54,6 +55,9 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  // Reset the persisted pin flag so the blur-hide tests start unpinned
+  // (the store instance survives across tests in this suite).
+  usePetStore.setState({ petPanelPinned: false });
   invokeMock.mockClear();
   invokeMock.mockResolvedValue(undefined);
   startDraggingMock.mockClear();
@@ -197,6 +201,24 @@ describe('PetPanelApp', () => {
     expect(pin.querySelector('svg.lucide-pin-off')).toBeTruthy();
     expect(pin.getAttribute('aria-pressed')).toBe('true');
     expect(pin.classList.contains('is-active')).toBe(true);
+  });
+
+  it('pin toggle persists to petStore (survives a remount)', async () => {
+    // Reset persisted pin to a known false.
+    usePetStore.setState({ petPanelPinned: false });
+    const { container, unmount } = render(<PetPanelApp />);
+    const pin = Array.from(container.querySelectorAll('.pet-panel-ctrl'))[0];
+    expect(pin.getAttribute('aria-pressed')).toBe('false');
+
+    await fireEvent.click(pin);
+    expect(usePetStore.getState().petPanelPinned).toBe(true);
+
+    // A remount reads the persisted value — still pinned without a click.
+    unmount();
+    const c2 = render(<PetPanelApp />).container;
+    const pin2 = Array.from(c2.querySelectorAll('.pet-panel-ctrl'))[0];
+    expect(pin2.getAttribute('aria-pressed')).toBe('true');
+    expect(pin2.querySelector('svg.lucide-pin-off')).toBeTruthy();
   });
 
   it('blur after focus-gained hides the panel when unpinned', async () => {
