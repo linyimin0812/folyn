@@ -82,7 +82,6 @@ import { listEnterExtension } from './extensions/ListEnterExtension';
 import { listTabExtension } from './extensions/ListTabExtension';
 import { escExitExtension } from './extensions/EscExitExtension';
 import { headingFoldExtension } from './extensions/headingFoldExtension';
-import { headingNumberExtension } from './headingNumber/extension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
 
 /** JSON linter: validates JSON syntax and highlights only the error line */
@@ -433,7 +432,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         ...listTabExtension,
         ...escExitExtension,
         ...headingFoldExtension,
-        ...headingNumberExtension,
         ...mathExtension,
        EditorView.lineWrapping,
        // Wrap selected text with backticks instead of replacing the
