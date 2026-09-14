@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 11
+- **Total Sessions**: 12
 - **Last Active**: 2026-09-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~394 | Active |
+| `journal-1.md` | ~432 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 12 | 2026-09-14 | Vault 导出 unsupported 类型 + dbml SVG exporter + unsupported-text file type | `f30af5c6`, `6f797a98`, `0d03f56a`, `f9980a10`, `92ff86ae` | `master` |
 | 11 | 2026-09-14 | Rich-text HTML export: extension-owned, popup local/remote, scoped vault styling | `e89097a7` | `master` |
 | 10 | 2026-08-02 | 富文本表格编辑优化：网格建表+悬浮加行列+合并拆分+对齐 | `f3944cb` | `brave-bridge` |
 | 9 | 2026-07-29 | Tiptap rich-text editor (.rt) as new file type | `82173e4`, `eaec783`, `2f8fcd3` | `bold-desert` |

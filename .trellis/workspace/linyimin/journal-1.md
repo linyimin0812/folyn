@@ -392,3 +392,41 @@ Made the rich-text extension the single owner of HTML generation; deleted the ho
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: Vault 导出 unsupported 类型 + dbml SVG exporter + unsupported-text file type
+
+**Date**: 2026-09-14
+**Task**: Vault 导出 unsupported 类型 + dbml SVG exporter + unsupported-text file type
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Vault 整库导出时仅排除图片类型;ft='unsupported' 或 handler.needsFileContent=false 的非图片文件渲染为 i18n 本地化的"不支持此文件类型"页(单文件 + folder standalone 两种模式)。dbml 从 CANVAS_EXPORT_TYPES 移除并照 rich-text 模式用 findExporterByFormat('dbml','svg',ctx) 动态发现扩展 manifest 声明的 SVG exporter(原来 renderFilePreviewToSvg 拿不到跨域 iframe 内容导致导出空)。拆分 'unsupported' 类型:binary 仍 preview-only,新增 'unsupported-text'(edit/split/preview,edit 标记 hidden 不出现在 switcher;defaultMode='preview')。SDK 的 PresentationModeRegistration 加 hidden 字段,getSupportedModes 过滤 hidden 模式,但 getMode 仍可解析供 split 使用。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f30af5c6` | (see git log) |
+| `6f797a98` | (see git log) |
+| `0d03f56a` | (see git log) |
+| `f9980a10` | (see git log) |
+| `92ff86ae` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
