@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { usePrefsStore } from './prefsStore';
-import { storageClient } from '@/utils/storageClient';
 import { getHandlerByExtension, listProviders } from '@/components/file-types/registry';
 import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
 import { useFileTypePreferenceStore } from './fileTypePreferenceStore';
@@ -88,8 +87,6 @@ interface EditorState {
   rewriteTabPrefixes: (mapping: { from: string; to: string }[]) => void;
 }
 
-const EDITOR_STORAGE_KEY = 'editor:viewMode';
-
 export const useEditorStore = create<EditorState>()(
     (set, get) => ({
       viewMode: 'split',
@@ -108,7 +105,6 @@ export const useEditorStore = create<EditorState>()(
               )
             : state.tabs,
         }));
-        storageClient.set(EDITOR_STORAGE_KEY, mode);
       },
 
       setActivePanel: (panel) => {
@@ -137,14 +133,20 @@ export const useEditorStore = create<EditorState>()(
           const closedTab = state.tabs.find((t) => t.id === tabId);
           const newTabs = state.tabs.filter((t) => t.id !== tabId);
           let newActiveId = state.activeTabId;
+          let newViewMode = state.viewMode;
           if (state.activeTabId === tabId) {
             // Prefer a tab from the same activity panel
             const sameActivityTab = closedTab
               ? newTabs.find((t) => t.activity === closedTab.activity)
               : undefined;
-            newActiveId = sameActivityTab?.id ?? newTabs[newTabs.length - 1]?.id ?? null;
+            const nextActive = sameActivityTab ?? newTabs[newTabs.length - 1] ?? null;
+            newActiveId = nextActive?.id ?? null;
+            // ponytail: reconcile viewMode to the new active tab's saved mode,
+            // otherwise the closed tab's mode leaks into the new active tab's
+            // UI (mirrors setActiveTab's per-tab restoration).
+            if (nextActive?.viewMode) newViewMode = nextActive.viewMode;
           }
-          return { tabs: newTabs, activeTabId: newActiveId };
+          return { tabs: newTabs, activeTabId: newActiveId, viewMode: newViewMode };
         });
         // Flush immediately (no debounce): a debounced write would be lost if
         // the app quits right after closing, restoring the closed tab on the
@@ -234,11 +236,3 @@ export const useEditorStore = create<EditorState>()(
       },
     }),
 );
-
-/** Load persisted viewMode from backend on startup */
-const VALID_VIEW_MODES: ViewMode[] = ['split', 'edit', 'preview'];
-storageClient.get<string>(EDITOR_STORAGE_KEY).then((saved) => {
-  if (saved && VALID_VIEW_MODES.includes(saved as ViewMode)) {
-    useEditorStore.setState({ viewMode: saved as ViewMode });
-  }
-});
