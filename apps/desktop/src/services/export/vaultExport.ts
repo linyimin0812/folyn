@@ -287,8 +287,8 @@ async function fileToBodyFragment(
   // custom viewer for some binary format) that have no export pipeline.
   const handler = getHandlerById(file.fileType);
   if (file.fileType === 'unsupported' || (handler && handler.needsFileContent === false)) {
-    const title = escapeHtml(i18n.t('editor:vault.unsupported.title'));
-    const desc = escapeHtml(i18n.t('editor:vault.unsupported.desc', { name: file.name }));
+    const title = escapeHtml(i18n.t('editor:export.vault.unsupported.title'));
+    const desc = escapeHtml(i18n.t('editor:export.vault.unsupported.desc', { name: file.name }));
     const page = `<div class="vt-unsupported"><div class="vt-unsupported-icon">?</div><div class="vt-unsupported-title">${title}</div><div class="vt-unsupported-desc">${desc}</div></div>`;
     const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
     const color = theme === 'dark' ? '#8a92b2' : '#4a5378';
