@@ -3,25 +3,22 @@ import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-libra
 import { createEvent } from '@testing-library/dom';
 
 // Mock @tauri-apps/api/window so the drag-handle handler + the maximize/
-// minimize controls can be asserted without native bindings. Mirrors
-// the proven pattern in WindowControls.test.tsx. No mount-time
-// `getCurrentWindow` call exists (the focus/blur auto-hide subscribes
-// via the event API instead), so only the click-path accessors are stubbed.
+// pin controls can be asserted without native bindings. Mirrors the proven
+// pattern in WindowControls.test.tsx. No mount-time `getCurrentWindow`
+// call exists (the focus/blur auto-hide subscribes via the event API
+// instead), so only the click-path accessors are stubbed.
 const {
   startDraggingMock,
-  minimizeMock,
   toggleMaximizeMock,
   isMaximizedMock,
 } = vi.hoisted(() => ({
   startDraggingMock: vi.fn(async () => undefined),
-  minimizeMock: vi.fn(async () => undefined),
   toggleMaximizeMock: vi.fn(async () => undefined),
   isMaximizedMock: vi.fn(async () => false),
 }));
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({
     startDragging: startDraggingMock,
-    minimize: minimizeMock,
     toggleMaximize: toggleMaximizeMock,
     isMaximized: isMaximizedMock,
   }),
@@ -61,8 +58,6 @@ beforeEach(() => {
   invokeMock.mockResolvedValue(undefined);
   startDraggingMock.mockClear();
   startDraggingMock.mockResolvedValue(undefined);
-  minimizeMock.mockClear();
-  minimizeMock.mockResolvedValue(undefined);
   toggleMaximizeMock.mockClear();
   toggleMaximizeMock.mockResolvedValue(undefined);
   isMaximizedMock.mockClear();
@@ -170,36 +165,28 @@ describe('PetPanelApp', () => {
   });
 
   // ── Top-right window controls ──
-  it('minimize button calls window.minimize', async () => {
-    const { container } = render(<PetPanelApp />);
-    const [minimize, _] = container.querySelectorAll('.pet-panel-ctrl');
-    await fireEvent.click(minimize);
-    await waitFor(() => expect(minimizeMock).toHaveBeenCalledTimes(1));
-  });
-
   it('fullscreen button calls window.toggleMaximize', async () => {
     const { container } = render(<PetPanelApp />);
     const buttons = container.querySelectorAll('.pet-panel-ctrl');
-    await fireEvent.click(buttons[2]);
+    await fireEvent.click(buttons[1]);
     await waitFor(() => expect(toggleMaximizeMock).toHaveBeenCalledTimes(1));
   });
 
-  it('window controls render in minimize / pin / fullscreen / close order', () => {
+  it('window controls render in pin / fullscreen / close order', () => {
     const { container } = render(<PetPanelApp />);
     const buttons = Array.from(container.querySelectorAll('.pet-panel-ctrl'));
-    expect(buttons).toHaveLength(4);
-    expect(buttons[0].querySelector('svg.lucide-minus')).toBeTruthy();
-    expect(buttons[1].querySelector('svg.lucide-pin')).toBeTruthy();
-    expect(buttons[1].getAttribute('aria-pressed')).toBe('false');
-    expect(buttons[2].querySelector('svg.lucide-square')).toBeTruthy();
-    expect(buttons[3].classList.contains('pet-panel-ctrl-close')).toBe(true);
-    expect(buttons[3].querySelector('svg.lucide-x')).toBeTruthy();
+    expect(buttons).toHaveLength(3);
+    expect(buttons[0].querySelector('svg.lucide-pin')).toBeTruthy();
+    expect(buttons[0].getAttribute('aria-pressed')).toBe('false');
+    expect(buttons[1].querySelector('svg.lucide-square')).toBeTruthy();
+    expect(buttons[2].classList.contains('pet-panel-ctrl-close')).toBe(true);
+    expect(buttons[2].querySelector('svg.lucide-x')).toBeTruthy();
   });
 
   // ── Pin control + outside-click auto-hide ──
   it('pin button toggles the pinned state (icon + aria-pressed)', async () => {
     const { container } = render(<PetPanelApp />);
-    const pin = Array.from(container.querySelectorAll('.pet-panel-ctrl'))[1];
+    const pin = Array.from(container.querySelectorAll('.pet-panel-ctrl'))[0];
     // Starts unpinned: Pin icon, aria-pressed false, no is-active.
     expect(pin.querySelector('svg.lucide-pin')).toBeTruthy();
     expect(pin.getAttribute('aria-pressed')).toBe('false');
@@ -230,7 +217,7 @@ describe('PetPanelApp', () => {
     const { container } = render(<PetPanelApp />);
     await waitFor(() => expect(eventInternals.getListeners('tauri://blur')).toBeDefined());
     // Pin the panel, then focus gained → blur while pinned.
-    const pin = Array.from(container.querySelectorAll('.pet-panel-ctrl'))[1];
+    const pin = Array.from(container.querySelectorAll('.pet-panel-ctrl'))[0];
     await fireEvent.click(pin);
     await act(async () => {
       eventInternals.emitTo('tauri://focus');

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Minus, Square, Copy, Pin, PinOff, X } from 'lucide-react';
+import { Square, Copy, Pin, PinOff, X } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
@@ -126,21 +126,6 @@ export function PetPanelApp() {
     }
   }, []);
 
-  // Minimize to the Dock (top-right minimize control). `unminimize()` is
-  // re-applied on the next `pet_panel_show` (Rust) so reopening restores it.
-  // Flips `isMinimizedRef` so the 800ms persistence poll skips the Dock
-  // frame (otherwise it would persist the minimized rect and reopen at it).
-  const minimizePanel = useCallback(async () => {
-    if (!isTauri()) return;
-    try {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      await getCurrentWindow().minimize();
-      isMinimizedRef.current = true;
-    } catch (err) {
-      console.warn('[pet-panel] minimize failed:', err);
-    }
-  }, []);
-
   // Toggle the panel between its saved size and the work-area (macOS
   // green-button zoom). `isMaximized` drives the icon toggle and the
   // `isMaximizedRef` mirror gates the 800ms persistence poll below (don't
@@ -155,7 +140,6 @@ export function PetPanelApp() {
   // existing drag test; the extra sync wasn't worth the test fragility.
   const [isMaximized, setIsMaximized] = useState(false);
   const isMaximizedRef = useRef(false);
-  const isMinimizedRef = useRef(false);
   // Pin ("置顶"): when pinned, clicking outside the panel does NOT hide it.
   // The focus-loss auto-hide below reads `isPinnedRef` so a mount-once
   // effect can gate on the latest value without re-subscribing.
@@ -329,10 +313,6 @@ export function PetPanelApp() {
           // otherwise survive a close → reopen. The popup search is
           // ephemeral — clear it every time the panel is shown again.
           setSearchQuery('');
-          // `pet_panel_show` (Rust) runs `unminimize()`, so the panel is
-          // back to a normal frame on every show — clear the minimized flag
-          // so the persistence poll resumes (it was skipped while minimized).
-          isMinimizedRef.current = false;
           setVisible(true);
         });
       } catch (err) {
@@ -714,11 +694,10 @@ export function PetPanelApp() {
 
     const persist = async () => {
       if (cancelled) return;
-      // While maximized or minimized the window frame is the OS-zoomed /
-      // Dock rect — persisting it would clobber the saved default size on
-      // the next open. Skip until the window is back to its normal frame
-      // (the sync effect keeps these refs current via tauri://resize).
-      if (isMaximizedRef.current || isMinimizedRef.current) return;
+      // While maximized the window frame is the OS-zoomed rect — persisting
+      // it would clobber the saved default size on the next open. Skip until
+      // the window is back to its normal frame.
+      if (isMaximizedRef.current) return;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         if (sf === 1) {
@@ -802,15 +781,6 @@ export function PetPanelApp() {
             start a drag. Mirrors a normal OS window/popup title bar. */}
         <div className="pet-panel-titlebar">
           <div className="pet-panel-window-controls" onPointerDown={suppressDrag}>
-            <button
-              type="button"
-              className="pet-panel-ctrl"
-              aria-label={t('pet:window.minimize')}
-              title={t('pet:window.minimize')}
-              onClick={() => void minimizePanel()}
-            >
-              <Minus size={14} />
-            </button>
             <button
               type="button"
               className={`pet-panel-ctrl${isPinned ? ' is-active' : ''}`}

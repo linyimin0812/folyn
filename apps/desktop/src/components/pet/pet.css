@@ -292,7 +292,7 @@ html.is-pet-panel-window body {
 }
 
 /* Title bar — the panel's drag region, hosting the top-right window
- * controls (minimize / fullscreen / close). Bubbles its pointerdown to
+ * controls (pin / fullscreen / close). Bubbles its pointerdown to
  * the header's `headerPointerDown` → startDragging (a single call — the
  * title bar has no onPointerDown of its own); the controls row inside
  * calls `suppressDrag` so the buttons never start a drag. Mirrors a
@@ -369,7 +369,7 @@ html.is-pet-panel-window body {
   gap: 0;
 }
 
-/* Top-right window controls: minimize / fullscreen / close. The row sits
+/* Top-right window controls: pin / fullscreen / close. The row sits
  * in the search row (suppressDrag) so the buttons never start a drag. */
 .pet-panel-window-controls {
   display: flex;
