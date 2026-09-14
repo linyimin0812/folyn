@@ -713,7 +713,7 @@ export const CANVAS_DOC_STYLES = `
  * HTML_STYLES so long lines scroll inside. */
 export const CODE_DOC_STYLES = `
 .vt-code-doc { width: 100%; }
-.vt-code-doc .code-block-wrapper { width: 100% !important; max-width: 100% !important; }
+.vt-code-doc .code-block-wrapper { width: 100% !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; }
 .vt-code-doc .code-block-inner { width: 100% !important; max-height: none !important; overflow: visible !important; }
 .vt-code-doc .code-block-scroll { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; }
 `;
