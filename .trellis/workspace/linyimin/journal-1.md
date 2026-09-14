@@ -358,3 +358,37 @@ Tiptap 富文本编辑器表格 UX 增强。新增 TableSizeGrid（8x8 悬停网
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Rich-text HTML export: extension-owned, popup local/remote, scoped vault styling
+
+**Date**: 2026-09-14
+**Task**: Rich-text HTML export: extension-owned, popup local/remote, scoped vault styling
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Made the rich-text extension the single owner of HTML generation; deleted the host builtin. ExportMenu now routes extension exporters through FormatExportDialog so the local-vs-remote popup is shared. useExport and vaultExport discover exporters dynamically via findExporterByFormat / runExporterByFormat (no hardcoded extension IDs, graceful skip when the extension is unloaded). Fixed vault rich-text styling divergence by extracting the standalone <style> block and scoping it to .rt-doc via scopeCssSelectors — vault rich-text now matches standalone export without bleeding into sidebar or markdown docs.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e89097a7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

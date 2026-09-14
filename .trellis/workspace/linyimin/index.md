@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 10
-- **Last Active**: 2026-08-02
+- **Total Sessions**: 11
+- **Last Active**: 2026-09-14
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~360 | Active |
+| `journal-1.md` | ~394 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 11 | 2026-09-14 | Rich-text HTML export: extension-owned, popup local/remote, scoped vault styling | `e89097a7` | `master` |
 | 10 | 2026-08-02 | 富文本表格编辑优化：网格建表+悬浮加行列+合并拆分+对齐 | `f3944cb` | `brave-bridge` |
 | 9 | 2026-07-29 | Tiptap rich-text editor (.rt) as new file type | `82173e4`, `eaec783`, `2f8fcd3` | `bold-desert` |
 | 8 | 2026-07-22 | 桌宠外部通知 HTTP API | `32da186`, `2c21d73` | `clever-desert` |
