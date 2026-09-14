@@ -31,6 +31,12 @@ vi.mock('@tauri-apps/api/window', () => ({
 vi.mock('@/components/ai/AiPanel', () => ({
   AiPanel: () => <div className="ai-panel">chat</div>,
 }));
+// TranslationPanel pulls in MarkdownPreview → ExcalidrawPreview →
+// @excalidraw, which crashes under jsdom (canvas-less). The pet-panel host
+// test only asserts tab-host behavior, so stub the tab body.
+vi.mock('@/components/translation/TranslationPanel', () => ({
+  TranslationPanel: () => <div className="translation-panel">translation</div>,
+}));
 
 import { PetPanelApp } from './PetPanelApp';
 
@@ -209,5 +215,20 @@ describe('PetPanelApp', () => {
       eventInternals.emitTo('pet://panel-fade-out');
     });
     expect(root.className).not.toContain('is-visible');
+  });
+
+  // ── Shortcut-summon: focus the search box ──
+  // The global-shortcut path (`openPetPanelCentered` in PetApp.tsx) emits
+  // `pet://panel-focus-search` after the panel is shown. The click path
+  // does NOT emit it, so this is shortcut-only behavior.
+  it('pet://panel-focus-search event focuses the search input', async () => {
+    render(<PetPanelApp />);
+    await waitFor(() => expect(eventInternals.getListeners('pet://panel-focus-search')).toBeDefined());
+    const input = screen.getByRole('textbox');
+    expect(document.activeElement).not.toBe(input);
+    await act(async () => {
+      eventInternals.emitTo('pet://panel-focus-search');
+    });
+    expect(document.activeElement).toBe(input);
   });
 });

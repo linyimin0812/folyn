@@ -295,6 +295,15 @@ async function openPetPanelCentered(): Promise<void> {
       { x: Math.round(panelPosLogical.x * winSf), y: Math.round(panelPosLogical.y * winSf) },
       { width: Math.round(size.width * winSf), height: Math.round(size.height * winSf) },
     );
+    // Summoned via the global shortcut → focus the search box so the user
+    // can type immediately (Spotlight/Raycast behavior). Emitted AFTER
+    // `applyPanelFrame`'s `pet://panel-fade-in`; by then `pet_panel_show`
+    // has run `set_focus()` + `makeFirstResponder(wkwebview)`, so the panel
+    // is the key window and the webview is first responder → `.focus()` on
+    // the input receives keystrokes. The click path does NOT emit this —
+    // it leaves the default chat tab's focus alone ("ask mode").
+    const { emit } = await import('@tauri-apps/api/event');
+    await emit('pet://panel-focus-search');
   } catch (err) {
     console.warn('[pet] openPetPanelCentered failed:', err);
   }

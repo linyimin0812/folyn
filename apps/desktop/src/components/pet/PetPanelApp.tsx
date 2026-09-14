@@ -111,6 +111,10 @@ export function PetPanelApp() {
   const setPetPanelSize = usePetStore((s) => s.setPetPanelSize);
   // Imperative keyboard controls for the search results (Arrow/Enter).
   const searchResultsRef = useRef<PetPanelSearchResultsHandle>(null);
+  // Search input element — focused when the panel is summoned via the
+  // global shortcut (`pet://panel-focus-search`), so the user can type
+  // immediately. See the listener below.
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const hidePanel = useCallback(async () => {
     try {
@@ -270,6 +274,32 @@ export function PetPanelApp() {
     })();
     return () => {
       if (unlisten) unlisten();
+    };
+  }, []);
+
+  // ── Shortcut-summon: focus the search box ──
+  // The global-shortcut path (`openPetPanelCentered` in PetApp.tsx) emits
+  // `pet://panel-focus-search` AFTER `pet://panel-fade-in`. By then
+  // `pet_panel_show` has run `set_focus()` + `makeFirstResponder(wkwebview)`,
+  // so the panel is the key window and the webview is first responder —
+  // `.focus()` on the input lands and receives keystrokes immediately
+  // (Spotlight/Raycast behavior). The click path does NOT emit this, so the
+  // default chat tab keeps its existing focus ("ask mode").
+  useEffect(() => {
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen('pet://panel-focus-search', () => {
+          searchInputRef.current?.focus();
+        });
+      } catch (err) {
+        console.warn('[pet-panel] panel-focus-search listener failed:', err);
+      }
+    })();
+    return () => {
+      void unlisten?.();
     };
   }, []);
 
@@ -655,6 +685,7 @@ export function PetPanelApp() {
               type="text"
               placeholder={t('pet:search.placeholder')}
               value={searchQuery}
+              ref={searchInputRef}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
