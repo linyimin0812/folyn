@@ -46,6 +46,11 @@ export interface ExtensionEntry {
   signature?: string;
   /** Optional pinned publisher public key (base64). */
   publisherPublicKey?: string;
+  /** Persisted user-facing activation flag. `false` means the user disabled
+   * the extension in Settings — App.tsx hydrate skips activation on next
+   * launch. In-memory host state is reset on restart, so this field is the
+   * source of truth for "should this extension auto-activate on launch". */
+  enabled: boolean;
 }
 
 /**
@@ -230,6 +235,7 @@ async function fetchRows(): Promise<ExtensionRow[]> {
       tier: 'sandbox',
       trusted: true,
       integrity: {},
+      enabled: true,
     },
     state: appearance[def.flag] ? 'active' : 'inactive',
     builtin: true,
@@ -406,6 +412,11 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
     try {
       const { extensionHost } = await import("@folyn/extension-host");
       await extensionHost.activate(id);
+      // Persist `enabled: true` so the extension re-activates on next launch.
+      if (isTauri()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_extension_enabled', { id, enabled: true });
+      }
       await get().refresh();
     } catch (err) {
       set({ error: fmtErr(err) });
@@ -422,6 +433,11 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
     try {
       const { extensionHost } = await import("@folyn/extension-host");
       await extensionHost.deactivate(id);
+      // Persist `enabled: false` so the extension stays deactivated across restarts.
+      if (isTauri()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_extension_enabled', { id, enabled: false });
+      }
       await get().refresh();
     } catch (err) {
       set({ error: fmtErr(err) });

@@ -1116,6 +1116,7 @@ pub fn run() {
             extension_lifecycle::list_extensions,
             extension_lifecycle::uninstall_extension,
             extension_lifecycle::approve_extension,
+            extension_lifecycle::set_extension_enabled,
             extension_lifecycle::get_extension_record,
             extension_lifecycle::read_extension_file,
             extension_lifecycle::verify_extension_signature_cmd,

@@ -106,6 +106,31 @@ pub async fn read_extension_file(
     fs::read_to_string(&canonical).map_err(|e| AppError::from(e.to_string()))
 }
 
+/// Flip the persisted `enabled` flag on a extension record and emit
+/// `extension://state-changed` so every open Settings tab refreshes. The
+/// in-memory `ExtensionHost` activate/deactivate is driven by the frontend
+/// store; this command only owns the on-disk flag that survives restarts.
+#[tauri::command]
+pub async fn set_extension_enabled(
+    app: tauri::AppHandle,
+    id: String,
+    enabled: bool,
+) -> Result<ExtensionEntry, AppError> {
+    let dir = extensions_dir(&app)?;
+    let mut records = read_extensions_json(&dir)?;
+    let entry = records
+        .iter_mut()
+        .find(|r| r.id == id)
+        .ok_or_else(|| format!("extension not found: {id}"))?;
+    entry.enabled = enabled;
+    let updated = entry.clone();
+    write_extensions_json(&dir, &records)?;
+
+    app.emit("extension://state-changed", &updated)
+        .map_err(|e| e.to_string())?;
+    Ok(updated)
+}
+
 /// Verify an installed extension's optional ed25519 signature against its pinned
 /// publisher key. Reads the manifest from disk, canonicalizes it, and calls
 /// {@link verify_extension_signature}. Returns `Ok(())` when no signature is

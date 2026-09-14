@@ -116,6 +116,22 @@ pub struct ExtensionEntry {
     /// later update with a different key must re-trigger consent.
     #[serde(default, rename = "publisherPublicKey", skip_serializing_if = "Option::is_none")]
     pub publisher_public_key: Option<String>,
+    /// User-facing activation toggle (persists across restarts). `true` on
+    /// install; flipped to `false` by `set_extension_enabled` when the user
+    /// disables the extension in Settings. App.tsx hydrate skips activation
+    /// for entries with `enabled: false` — the in-memory `ExtensionHost`
+    /// state is reset on restart, so without this field every disabled
+    /// extension would re-activate on next launch.
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+/// Serde default for {@link ExtensionEntry::enabled}. Old `extensions.json`
+/// entries written before this field existed deserialize as `true` — preserves
+/// the pre-existing "active on next launch" behavior for already-installed
+/// extensions.
+fn default_enabled() -> bool {
+    true
 }
 
 /// Read `extensions.json` from the extensions dir. Returns an empty vec if the file
@@ -250,6 +266,7 @@ mod tests {
             integrity: HashMap::new(),
             signature: None,
             publisher_public_key: None,
+            enabled: true,
         }
     }
 

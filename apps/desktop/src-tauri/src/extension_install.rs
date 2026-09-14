@@ -192,6 +192,7 @@ pub async fn install_extension_zip(
         integrity,
         signature,
         publisher_public_key,
+        enabled: true,
     };
 
     let records = read_extensions_json(&dir)?;
@@ -294,6 +295,7 @@ pub async fn install_extension(
         integrity,
         signature,
         publisher_public_key,
+        enabled: true,
     };
 
     let records = read_extensions_json(&dir)?;

@@ -330,10 +330,22 @@ export default function App() {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const entries = await invoke<
-          Array<{ id: string; name: string; version: string; tier: string; trusted: boolean }>
+          Array<{ id: string; name: string; version: string; tier: string; trusted: boolean; enabled: boolean }>
         >('list_extensions');
         for (const entry of entries) {
           if (cancelled) break;
+          // ponytail: skip activation when the user disabled the extension in a
+          // prior session — the on-disk `enabled` flag is the only state that
+          // survives restart (host state is in-memory and reset on launch).
+          if (entry.enabled === false) {
+            try {
+              const manifest = await readExtensionManifest(entry.id);
+              await extensionHost.install(manifest as never);
+            } catch (err: unknown) {
+              console.warn(`[App] failed to hydrate disabled extension ${entry.id}:`, err);
+            }
+            continue;
+          }
           try {
             const manifest = await readExtensionManifest(entry.id);
             await extensionHost.install(manifest as never);
@@ -390,6 +402,17 @@ export default function App() {
           console.warn(`[App] failed to uninstall extension on event:`, err);
         }
       });
+      // Persisted enabled-state flips from another tab — refresh so every open
+      // Settings tab reflects the toggle. The activate/deactivate itself runs
+      // in the originating tab; this listener just re-reads the on-disk flag.
+      const unEnabled = await listen<{ id: string }>('extension://state-changed', async () => {
+        try {
+          const { useExtensionStore } = await import('@/store/extensionStore');
+          await useExtensionStore.getState().refresh();
+        } catch (err: unknown) {
+          console.warn(`[App] failed to refresh on extension state change:`, err);
+        }
+      });
 
       // Fetch-RPC listener: routes `folyn-extension://.../rpc` POSTs from tool
       // windows back through the shared `dispatchExtensionRpc` so the same
@@ -400,12 +423,14 @@ export default function App() {
         unInstall();
         unApprove();
         unUninstall();
+        unEnabled();
         unRpc();
       } else {
         uninstalled = () => {
           unInstall();
           unApprove();
           unUninstall();
+          unEnabled();
           unRpc();
         };
       }
