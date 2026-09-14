@@ -4,7 +4,7 @@ import { Square, Copy, Pin, PinOff, X } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
-import { hydrateAllStores } from '@/store/settingsPersistence';
+import { hydrateAllStores, markSettingsHydrated } from '@/store/settingsPersistence';
 import type { Locale } from '@/i18n';
 import {
   clampPanelPosition,
@@ -423,6 +423,14 @@ export function PetPanelApp() {
           (event) => {
             if (!event.payload) return;
             hydrateAllStores(event.payload);
+            // Secondary windows hydrate from this broadcast (NOT loadSettings —
+            // they lack the fs ACL to re-read ~/.folyn/storage). The persist()
+            // closure no-ops until `hydrationDone` flips true; flip it now so
+            // the panel's own setters (pin toggle, the 800ms position/size
+            // poll) can persist + broadcast — without this their writes are
+            // skipped and lost on restart (the pin bug). Safe to call
+            // repeatedly — idempotent.
+            markSettingsHydrated();
             // Sync local pin state if the main window changed it (rare —
             // the panel owns the toggle, but a settings import/restore on
             // the main window could flip it). Only update when the value

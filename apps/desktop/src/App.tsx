@@ -22,7 +22,7 @@ import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
 import { startProvidersBroadcast } from './store/aiConfigStore';
 import { usePetStore } from './store/petStore';
-import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone } from './store/settingsPersistence';
+import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone, hydrateAllStores } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import { getWebviewLabels } from './components/file-types/web/WebViewer';
 import * as editorIoService from './services/editorIoService';
@@ -207,6 +207,37 @@ export default function App() {
       stopPetChat = startPetChatSessionsHost();
     });
     return () => { stop?.(); stopProviders?.(); stopPetChat?.(); };
+  }, []);
+
+  // ── Mirror secondary-window state changes into the main window's stores ──
+  // Secondary Tauri windows (pet-panel's pin toggle, pet-menu, etc.) hold
+  // their own store instances; their setters call `persist()` → broadcast
+  // `pet://settings-updated`. But the main window NEVER hydrated from that
+  // broadcast — it only ANSWERED `pet://settings-request` with its own
+  // (stale) state. So a pin toggle in pet-panel updated pet-panel's store +
+  // broadcast, but the main window's store stayed on the pre-toggle value;
+  // `collectPersistedBlob()` (used by the settings-request reply AND the
+  // on-quit `persistNow()` flush) returned the stale value, and on restart
+  // the pin was lost. Listening here keeps the main window's stores in sync
+  // so its on-quit flush writes the latest secondary-window state to disk.
+  // Other secondary windows already listen on the same channel (PetApp,
+  // PetBubbleApp, etc.); the main window was the missing listener.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    settingsLoadDone.then(() => {
+      if (cancelled) return;
+      void (async () => {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen<Record<string, unknown>>(
+          'pet://settings-updated',
+          (event) => {
+            if (event.payload) hydrateAllStores(event.payload);
+          },
+        );
+      })();
+    });
+    return () => { cancelled = true; unlisten?.(); };
   }, []);
 
   // ── Vault initialization ──
