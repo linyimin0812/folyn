@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "review checklist for new helper and branch"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "verify all 6 locales updated consistently"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "verify IMAGE_EXTENSIONS set composition + isImageExtension placement"}

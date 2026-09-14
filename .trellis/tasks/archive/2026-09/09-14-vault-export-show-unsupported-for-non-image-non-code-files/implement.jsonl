@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "task touches binaryExtensions.ts (file-type classification) and vaultExport's per-fileType dispatch"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "task updates 6 locale editor.json strings"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "forbidden patterns / review checklist for the new fileToBodyFragment branch and helper"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "vault export reuses markdown render pipeline for code blocks; new unsupported branch must stay self-contained"}
