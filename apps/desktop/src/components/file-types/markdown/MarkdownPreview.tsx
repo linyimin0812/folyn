@@ -16,6 +16,7 @@ import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
+import { codeBlockAlignPoint } from './codeBlockAlign';
 import { ContainerRegistry, registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -835,26 +836,42 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop;
     const blockHeight = blockRect.height;
     const blockSrcLine = Number(el.getAttribute('data-source-line'));
-
     const srcLines = contentRef.current.split('\n');
-    let blockLineSpan = 0;
-    for (let i = blockSrcLine - 1; i < srcLines.length; i++) {
-      if (srcLines[i].trim() === '') break;
-      blockLineSpan++;
-    }
-    if (blockLineSpan < 1) blockLineSpan = 1;
 
-    let intraFrac = 0;
-    if (blockLineSpan > 1) {
-      // Multi-line block: fraction by line offset.
-      intraFrac = Math.min(1, Math.max(0, (cursorLine - blockSrcLine) / (blockLineSpan - 1)));
+    // ponytail: fenced code blocks render only the content BETWEEN fences — the
+    // fence lines themselves aren't content rows, and blank lines inside code
+    // are valid content. The old non-blank-line span counter both under-counted
+    // (stopped at the first inner blank → intraFrac clamped to 1 → cursor
+    // pinned to the block bottom, the actual reported misalignment) and skewed
+    // (fences + the <code> 12px padding aren't source rows). So for code blocks,
+    // map the cursor's content row to its exact pixel position (row top aligned
+    // to the editor cursor's line top — coordsAtPos returns the line top)
+    // instead of a fraction of blockHeight. Editor vs preview line heights
+    // need not match: we align one specific row, not a linear pixel scale.
+    let alignPoint: number;
+    if (el.tagName === 'PRE' && el.closest('.code-block-wrapper')) {
+      const codeEl = el.querySelector('code');
+      const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
+      alignPoint = codeBlockAlignPoint(srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, padTop);
     } else {
-      // Single source line that renders tall (code block, image, etc.):
-      // use cursor column fraction within the line.
-      const ll = (lineLength ?? 1) || 1;
-      intraFrac = Math.min(1, Math.max(0, (cursorCol ?? 0) / ll));
+      // Non-code block: fraction by source-line offset within the block's
+      // (blank-line-terminated) span. Single source line that renders tall
+      // (image, etc.) falls back to cursor-column fraction.
+      let blockLineSpan = 0;
+      for (let i = blockSrcLine - 1; i < srcLines.length; i++) {
+        if (srcLines[i].trim() === '') break;
+        blockLineSpan++;
+      }
+      if (blockLineSpan < 1) blockLineSpan = 1;
+      let intraFrac = 0;
+      if (blockLineSpan > 1) {
+        intraFrac = Math.min(1, Math.max(0, (cursorLine - blockSrcLine) / (blockLineSpan - 1)));
+      } else {
+        const ll = (lineLength ?? 1) || 1;
+        intraFrac = Math.min(1, Math.max(0, (cursorCol ?? 0) / ll));
+      }
+      alignPoint = blockOffset + intraFrac * blockHeight;
     }
-    const alignPoint = blockOffset + intraFrac * blockHeight;
 
     // cursorScreenY = where the cursor is on screen.
     // After setting scrollTop=desired, the align point appears at

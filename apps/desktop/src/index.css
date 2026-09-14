@@ -456,6 +456,14 @@ mjx-container svg {
 .code-block-wrapper--empty-html { min-height: 60px; }
 .code-block-empty-html { flex: 1; }
 .code-block-inner { display: flex; max-height: 420px; overflow: hidden; background: var(--surf); }
+/* ponytail: only the code block the cursor is in expands (split-mode alignment);
+   others stay capped so a long block doesn't dominate the preview. A fixed cap
+   breaks alignment — blockHeight would be capped while intraFrac spans the full
+   source lines — so the active block must uncap. cursor-sync-active is set on
+   the inner <pre> by MarkdownPreview's cursor effect. */
+.code-block-wrapper:has(.cursor-sync-active),
+.code-block-wrapper:has(.cursor-sync-active) .code-block-inner { max-height: none; }
+.md-preview > pre.cursor-sync-active { max-height: none; }
 .code-block-scroll { overflow: auto; flex: 1; min-width: 0; }
 .code-block-inner, .md-preview > pre, .code-block-inner pre, .code-block-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; overscroll-behavior: none auto; }
 .code-block-wrapper:hover .code-block-inner, .md-preview > pre:hover, .code-block-wrapper:hover .code-block-inner pre, .code-block-wrapper:hover .code-block-scroll { scrollbar-color: var(--t4) transparent; }
