@@ -5,6 +5,7 @@
  */
 
 import type { ProviderConfig, StorageProvider } from '../storage/types';
+import type { ExporterDescriptor } from 'folyn-extension-sdk';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { resolveBasePath } from '@/utils/pathResolver';
 
@@ -451,4 +452,84 @@ export interface EnhanceCtx {
   src: string;
   filePath: string;
   vaultRoot: string;
+}
+
+/**
+ * Scope a standalone CSS string so its rules only apply inside a `.${scope}`
+ * wrapper. Used when embedding a doc's standalone HTML (rich-text export)
+ * into the vault page: the standalone CSS uses bare `body`/`h1`/`a`/…
+ * selectors that would otherwise bleed into vault chrome (sidebar links,
+ * markdown docs).
+ *
+ * - `:root` and `body` selectors → `.rt-doc` (vars + container styles collapse
+ *   onto the wrapper; vars defined on `.rt-doc` cascade to descendants).
+ * - Every other top-level selector → prefixed with `.rt-doc ` (handles
+ *   comma lists: `td, th` → `.rt-doc td, .rt-doc th`).
+ * - `@font-face` / `@media` / other at-rules → passed through untouched
+ *   (at-rules aren't selector-driven; KaTeX's @font-face CDN refs must stay).
+ *
+ * ponytail: regex `([^{}]+)\{([^{}]*)\}` matches flat rules only. Nested
+ * @media blocks fail to match at the outer level (body has `{` inside), so
+ * the at-rule text passes through verbatim; the regex then matches each
+ * inner rule and scopes it. No full CSS parser — KaTeX CSS + RT_HTML_STYLES
+ * are both well-formed with no surprises.
+ */
+export function scopeCssSelectors(css: string, scope: string): string {
+  return css.replace(/([^{}]+)\{([^{}]*)\}/g, (match, sel: string, body: string) => {
+    const trimmed = sel.trim();
+    if (trimmed.startsWith('@')) return match;
+    const scoped = trimmed
+      .split(',')
+      .map((s) => {
+        const t = s.trim();
+        if (!t) return '';
+        if (t === ':root' || t === 'body') return scope;
+        return `${scope} ${t}`;
+      })
+      .filter(Boolean)
+      .join(', ');
+    const leading = sel.slice(0, sel.length - sel.trimStart().length);
+    return `${leading}${scoped} {${body}}`;
+  });
+}
+
+/**
+ * Find an exporter descriptor by file-type id + format id (e.g. 'html' for
+ * 'rich-text'). Returns `null` when no matching exporter is registered —
+ * callers decide whether to skip, warn, or throw. Used so the host does NOT
+ * hardcode `extension.<id>.<format>` (extensions can be unloaded / swapped).
+ */
+export async function findExporterByFormat(
+  fileTypeId: string,
+  formatId: string,
+  ctx: { filePath: string; vaultRoot: string; content: string },
+): Promise<ExporterDescriptor | null> {
+  const { exportService } = await import('./exporterRegistry');
+  return (
+    exportService
+      .getAvailableExporters(ctx, fileTypeId)
+      .find((d) => d.format.id === formatId) ?? null
+  );
+}
+
+/**
+ * Run an exporter for a given file type + format id, discovering the exporter
+ * id dynamically via the registry. Throws if no matching exporter is
+ * registered — for paths that should surface a clear error. Use
+ * {@link findExporterByFormat} when graceful skip is preferred.
+ */
+export async function runExporterByFormat(
+  fileTypeId: string,
+  formatId: string,
+  ctx: { filePath: string; vaultRoot: string; content: string },
+): Promise<string> {
+  const descriptor = await findExporterByFormat(fileTypeId, formatId, ctx);
+  if (!descriptor) {
+    throw new Error(`No exporter registered for file-type "${fileTypeId}" format "${formatId}"`);
+  }
+  const { exportService } = await import('./exporterRegistry');
+  const result = await exportService.runExporter(descriptor.id, ctx);
+  return typeof result.data === 'string'
+    ? result.data
+    : new TextDecoder().decode(result.data);
 }

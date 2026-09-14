@@ -11,8 +11,6 @@ import { exportService } from '@/services/export/exporterRegistry';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { useTranslation } from 'react-i18next';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
-import { getExtensionExportersForFileType } from '@/services/extension-host/exporterAdapter';
-import { runCommand } from '@/services/commandRegistry';
 
 // File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
 const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
@@ -31,7 +29,6 @@ export function ExportMenu() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [containerWarning, setContainerWarning] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [vaultExportOpen, setVaultExportOpen] = useState(false);
   const [singleDocExportOpen, setSingleDocExportOpen] = useState(false);
@@ -68,12 +65,6 @@ export function ExportMenu() {
       if (open) window.dispatchEvent(new CustomEvent('folyn:overlay-closed'));
     };
   }, [open]);
-
-  const runWithOverlay = useCallback((fn: () => void | Promise<void>) => {
-    setOpen(false);
-    setExporting(true);
-    Promise.resolve(fn()).catch(() => {}).finally(() => setExporting(false));
-  }, []);
 
   // Markdown container-syntax gate — pre-flight before opening the source
   // export dialog (the dialog handles download-vs-upload choice).
@@ -157,18 +148,11 @@ export function ExportMenu() {
     });
   }
 
-  // Extension-contributed exporters (kept via the adapter for now; will migrate
-  // to ExporterRegistry in a later pass).
-  for (const e of getExtensionExportersForFileType(fileType)) {
-    const commandId = e.commandId;
-    items.push({
-      key: `extension-export-${e.extensionId}-${e.contrib.format}`,
-      icon: <ImageDown size={16} className="w-6 flex justify-center shrink-0" />,
-      label: e.contrib.label,
-      description: e.contrib.label,
-      run: () => runWithOverlay(() => runCommand(commandId)),
-    });
-  }
+  // Extension-contributed exporters are registered into `exportService` by
+  // exporterAdapter.ts (manifest's `contributes.exporters` → registry). They
+  // surface in the `getAvailableExporters` loop above and route through
+  // `FormatExportDialog` for local/remote target selection — same path as
+  // builtin format exporters.
 
   // Vault-level export — independent of the active tab's type. Placed last
   // so the per-file export options stay on top and the whole-vault action
@@ -228,19 +212,6 @@ export function ExportMenu() {
             <div className="dlg-ft">
               <button className="btn btn-g btn-sm" onClick={() => setContainerWarning(false)}>{t('editor:export.containerWarning.cancel')}</button>
               <button className="btn btn-p btn-sm" onClick={confirmExportSource}>{t('editor:export.containerWarning.confirm')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Export-in-progress overlay: shown from click until the OS save dialog appears */}
-      {exporting && (
-        <div className="dlg-overlay" style={{ cursor: 'wait' }}>
-          <div className="dlg" style={{ maxWidth: 320, padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-            <span className="inline-block w-5 h-5 rounded-full border-[1.5px] border-brd border-t-acc animate-spin shrink-0" />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>{t('editor:export.processing.title')}</div>
-              <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 4 }}>{t('editor:export.processing.hint')}</div>
             </div>
           </div>
         </div>

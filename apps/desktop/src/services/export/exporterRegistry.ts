@@ -25,7 +25,6 @@ import { downloadBlob, svgToPngBlob, renderFilePreviewToSvg } from './shared';
 import { hasContainerSyntax } from '../exportService';
 import { renderMarkmapSvg } from './markmapShared';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
-import { richTextToHtmlBlob } from './richtext';
 import { getActiveDocument } from '@/hooks/useExport';
 
 // ponytail: one owned registry instance; the ExportService resolves against it.
@@ -136,18 +135,10 @@ const markdownMarkmapExporter: ExporterRegistration = {
   },
 };
 
-/** Rich-text → standalone HTML. */
-const richTextHtmlExporter: ExporterRegistration = {
-  id: 'rich-text.html',
-  title: 'HTML',
-  fileTypes: ['rich-text'],
-  formats: [{ id: 'html', title: 'HTML', extension: 'html', mimeType: 'text/html;charset=utf-8' }],
-  async export(ctx) {
-    const blob = await richTextToHtmlBlob(ctx.content, baseName(), ctx.vaultRoot);
-    const html = await blob.text();
-    return { data: html, mimeType: 'text/html;charset=utf-8', suggestedName: `${baseName()}.html` };
-  },
-};
+/** Rich-text → standalone HTML: registered by the rich-text extension via
+ * `contributes.exporters` (see extensions/rich-text/src/manifest.json +
+ * services/extension-host/exporterAdapter.ts). Flows through
+ * FormatExportDialog for local/remote target selection. */
 
 const CANVAS_FILE_TYPES = ['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid'];
 // Canvas types whose SVG can be rasterized to PNG (no foreignObject / server-only SVG).
@@ -195,7 +186,6 @@ export function registerBuiltinExporters(): void {
   builtinRegistered = true;
   registry.register(sourceExporter, FOLYN_CORE_OWNER);
   registry.register(markdownMarkmapExporter, FOLYN_CORE_OWNER);
-  registry.register(richTextHtmlExporter, FOLYN_CORE_OWNER);
   registry.register(canvasSvgExporter, FOLYN_CORE_OWNER);
   // PNG only for canvas types that rasterize cleanly.
   for (const ft of CANVAS_FILE_TYPES) {

@@ -12,8 +12,9 @@
  *    per document. Closer to the on-disk vault layout.
  *
  * Reuses the single-doc pipeline (@/services/exportService +
- * @/services/export/shared + @/services/export/richtext) so markdown
- * rendering, image inlining, theme vars, and code themes stay identical.
+ * @/services/export/shared) so markdown rendering, image inlining, theme
+ * vars, and code themes stay identical. Rich-text rendering goes through
+ * the extension's registered exporter via exportService.runExporter.
  */
 import type { VaultEntry } from '@folyn/vault-provider';
 import { useVaultStore } from '@/store/vaultStore';
@@ -44,8 +45,9 @@ import {
   escapeHtml,
   renderFilePreviewToSvg,
   uploadImagesToProvider,
+  findExporterByFormat,
+  scopeCssSelectors,
 } from '@/services/export/shared';
-import { richTextToHtmlBlob } from '@/services/export/richtext';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { FileIcon } from '@/components/icons/FileIcon';
@@ -190,12 +192,32 @@ async function fileToBodyFragment(
   }
 
   if (file.fileType === 'rich-text') {
+    // ponytail: discover the rich-text HTML exporter dynamically (extensions
+    // can be unloaded). If the rich-text extension isn't installed, return
+    // empty — same graceful-skip path canvas types use when their preview
+    // isn't available. The vault HTML will simply omit the .richtext entry's
+    // body rather than abort the whole export.
     const content = await readVaultText(file.path);
-    const blob = await richTextToHtmlBlob(content, file.name, vaultRoot);
-    const full = await blob.text();
-    // Extract <body> inner HTML from the standalone doc rich-text built.
-    const match = full.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    return { html: match ? match[1].trim() : full, css: '' };
+    const ctx = { filePath: file.path, vaultRoot, content };
+    const descriptor = await findExporterByFormat('rich-text', 'html', ctx);
+    if (!descriptor) return { html: '', css: '' };
+    const { exportService } = await import('./exporterRegistry');
+    const result = await exportService.runExporter(descriptor.id, ctx);
+    const full = typeof result.data === 'string'
+      ? result.data
+      : new TextDecoder().decode(result.data);
+    // Extract <body> inner and <style> blocks from the standalone doc the
+    // exporter built, then scope the CSS to `.rt-doc` so it doesn't bleed
+    // into vault chrome (sidebar links, other docs). The standalone body
+    // rule (max-width/padding/margin) collapses onto `.rt-doc` so the
+    // rich-text block renders with the same container styling as standalone
+    // export. Wrap body inner in `<div class="rt-doc">` to anchor the scope.
+    const bodyMatch = full.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const bodyInner = bodyMatch ? bodyMatch[1].trim() : full;
+    const styleBlocks = [...full.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)];
+    const rawCss = styleBlocks.map((m) => m[1]).join('\n');
+    const scopedCss = rawCss ? scopeCssSelectors(rawCss, '.rt-doc') : '';
+    return { html: `<div class="rt-doc">${bodyInner}</div>`, css: scopedCss };
   }
 
   // canvas types → render to SVG via the preview pipeline (not source)

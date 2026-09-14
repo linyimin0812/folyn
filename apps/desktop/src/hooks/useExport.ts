@@ -21,11 +21,11 @@ import {
   downloadBlob,
   escapeHtml,
   renderFilePreviewToSvg,
+  runExporterByFormat,
   svgToPngBlob,
   uploadImagesToProvider,
   type HtmlImageMode,
 } from '@/services/export/shared';
-import { richTextToHtmlBlob } from '@/services/export/richtext';
 import { renderMarkmapSvg } from '@/services/export/markmapShared';
 import { resolveAssetBase } from '@/components/file-types/previewPath';
 import { getHandlerById } from '@/components/file-types/registry';
@@ -191,16 +191,6 @@ export async function exportActiveHtml(opts?: { imageMode?: HtmlImageMode; image
   await downloadBlob(blob, name.replace(/\.md$/, '.html'), ['html']);
 }
 
-/** Export a rich-text (.richtext) doc as a standalone HTML file. */
-export async function exportActiveRichTextHtml(onBeforeDialog?: () => void): Promise<void> {
-  const { name, content, vaultRoot } = getActiveDocument();
-  if (!content) return;
-  const blob = await richTextToHtmlBlob(content, name, vaultRoot);
-  onBeforeDialog?.();
-  const baseName = name.replace(/\.[^.]+$/, '');
-  await downloadBlob(blob, `${baseName}.html`, ['html']);
-}
-
 /**
  * Share the active markdown doc as HTML to the configured storage
  * provider. Returns the public URL. Caller writes it to clipboard and
@@ -258,8 +248,9 @@ async function buildShareableHtml(
   const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
 
   if (fileType === 'rich-text') {
-    const blob = await richTextToHtmlBlob(content, name, vaultRoot);
-    return blob.text();
+    // ponytail: discover the rich-text HTML exporter dynamically via the
+    // registry (extensions can be unloaded / swapped — no hardcoded id).
+    return runExporterByFormat('rich-text', 'html', { filePath: path, vaultRoot, content });
   }
 
   if (CANVAS_TYPES.has(fileType)) {
@@ -370,7 +361,6 @@ export async function shareActiveBytesToCloud(opts?: { fileProviderId?: string }
 export function useExport() {
   const exportMarkdown = useCallback((onBeforeDialog?: () => void) => exportActiveMarkdown(onBeforeDialog), []);
   const exportSource = useCallback((onBeforeDialog?: () => void) => exportActiveSource(onBeforeDialog), []);
-  const exportRichTextHtml = useCallback((onBeforeDialog?: () => void) => exportActiveRichTextHtml(onBeforeDialog), []);
   const exportSvg = useCallback((onBeforeDialog?: () => void) => exportActiveSvg(onBeforeDialog), []);
   const exportPng = useCallback((onBeforeDialog?: () => void) => exportActivePng(onBeforeDialog), []);
   const exportMarkmap = useCallback((onBeforeDialog?: () => void) => exportActiveMarkmapSvg(onBeforeDialog), []);
@@ -383,5 +373,5 @@ export function useExport() {
     },
     [],
   );
-  return { exportMarkdown, exportSource, exportRichTextHtml, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent };
+  return { exportMarkdown, exportSource, exportSvg, exportPng, exportMarkmap, shareToCloud, shareBytesToCloud, getActiveContent };
 }

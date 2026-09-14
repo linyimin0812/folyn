@@ -42,31 +42,51 @@ async function readImageAsDataUrl(filePath: string): Promise<string> {
   }
 }
 
-// ponytail: hand-rolled CSS mirroring the editor's Tailwind classes. The
-// editor styles via `[&_.ProseMirror_…]` arbitrary variants on a wrapper
-// that depends on Tailwind + the app's CSS-var theme — neither is available
-// in a standalone HTML file. Inline the rendered subset; keep it small so
-// the exported file opens with zero deps. Upgrade path: extract editor
-// styles to a shared CSS file when a second consumer needs the live theme.
+// ponytail: hand-rolled CSS mirroring the editor's Tailwind wrapper classes
+// (RichTextEditor.tsx `[&_.ProseMirror_…]`) + the light theme CSS-var values
+// from apps/desktop/src/index.css. The editor wrapper depends on Tailwind +
+// the app's CSS-var theme — neither is available in a standalone HTML file.
+// Inline the rendered subset with the actual light palette so the export
+// matches the on-screen preview. Dark theme would require duplicating the
+// `[data-theme="dark"]` overrides; add when an export needs dark mode.
 const RT_HTML_STYLES = `
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; color: #1f2430; line-height: 1.6; }
+/* light theme values from apps/desktop/src/index.css [data-theme="light"] */
+:root {
+  --rt-panel: #fff;
+  --rt-surf2: #eef0f8;
+  --rt-brd: #dde2f0;
+  --rt-brd2: #c8d0e8;
+  --rt-t1: #1a2040;
+  --rt-t3: #8892b0;
+  --rt-acc: #3a6ef0;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--rt-panel);
+  max-width: 760px;
+  margin: 40px auto;
+  /* editor wrapper uses px-8 py-6 (Tailwind: 32px / 24px) */
+  padding: 24px 32px;
+  color: var(--rt-t1);
+  line-height: 1.6;
+}
 h1 { font-size: 1.5rem; font-weight: 700; margin: 0.75rem 0; }
 h2 { font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0; }
-h3 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0; }
+h3 { font-size: 1.125rem; font-weight: 600; margin: 0.5rem 0; }
 p { margin: 0.5rem 0; }
 ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
 ul[data-type="taskList"] { list-style: none; padding-left: 0; }
 ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
 ul[data-type="taskList"] li label { flex-shrink: 0; }
-blockquote { border-left: 2px solid #d0d0d0; padding-left: 1rem; color: #555; margin: 0.5rem 0; }
-pre { background: #f4f4f5; border-radius: 4px; padding: 0.75rem; overflow-x: auto; }
-code { background: #f4f4f5; padding: 0 4px; border-radius: 3px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+blockquote { border-left: 2px solid var(--rt-brd); padding-left: 1rem; color: var(--rt-t3); margin: 0.5rem 0; }
+pre { background: var(--rt-surf2); border-radius: 4px; padding: 0.75rem; overflow-x: auto; }
+code { background: var(--rt-surf2); padding: 0 4px; border-radius: 3px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
 pre code { background: none; padding: 0; }
-hr { border: none; border-top: 1px solid #d0d0d0; margin: 1rem 0; }
-a { color: #3b82f6; text-decoration: underline; }
+hr { border: none; border-top: 1px solid var(--rt-brd); margin: 1rem 0; }
+a { color: var(--rt-acc); text-decoration: underline; }
 table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; }
-th, td { border: 1px solid #d0d0d0; padding: 4px 8px; }
-th { background: #f4f4f5; text-align: left; font-weight: 600; }
+th, td { border: 1px solid var(--rt-brd2); padding: 4px 8px; }
+th { background: var(--rt-surf2); text-align: left; font-weight: 600; }
 /* empty cells keep row height: tiptap serializes an empty cell as
    <td><p></p></td> — an empty <p> has no line box, so the cell (and any
    fully-empty row) collapses. ::after injects a non-breaking space, giving
@@ -74,20 +94,23 @@ th { background: #f4f4f5; text-align: left; font-weight: 600; }
    editor, where contenteditable keeps an editable <br> in empty cells). */
 td:empty::after, th:empty::after,
 td p:empty::after, th p:empty::after { content: "\\00a0"; }
-img { max-width: 100%; height: auto; }
-figure { margin: 0.5rem 0; }
-figure[data-align="left"] { margin-right: auto; }
+/* images centered by default (mirrors .md-preview img { display: block;
+   margin: ... auto } + the editor's figure default alignment). The
+   figure[data-align] rules below override per-image alignment. */
+img { display: block; max-width: 100%; height: auto; margin: 0.5rem auto; }
+figure { margin: 0.5rem auto; }
+figure[data-align="left"] { margin-left: 0; margin-right: auto; }
 figure[data-align="center"] { margin-left: auto; margin-right: auto; }
-figure[data-align="right"] { margin-left: auto; }
-figcaption { text-align: center; font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+figure[data-align="right"] { margin-left: auto; margin-right: 0; }
+figcaption { text-align: center; font-size: 0.85rem; color: var(--rt-t3); margin-top: 0.25rem; }
 /* exported math elements carry only data-type (the NodeView adds
    .tiptap-mathematics-render, which generateHTML never runs) */
 [data-type="inline-math"] { white-space: nowrap; }
 [data-type="block-math"] { display: block; text-align: center; margin: 0.75rem 0; }
 /* ponytail: CodeBlockLowlight decorates tokens as <span class="hljs-…">.
    generateHTML runs the extension's renderHTML, so the export picks up the
-   same token spans as the live editor. Light-only palette mirrors the
-   md-preview light rules — the export body has no dark theme. */
+   same token spans as the live editor. Palette mirrors the .ProseMirror
+   pre code .hljs-* rules in apps/desktop/src/index.css (light values). */
 pre code .hljs-comment, pre code .hljs-quote { color: #940; }
 pre code .hljs-keyword, pre code .hljs-selector-tag { color: #708; }
 pre code .hljs-number, pre code .hljs-literal { color: #164; }
