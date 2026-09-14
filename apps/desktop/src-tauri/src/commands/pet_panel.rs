@@ -26,6 +26,13 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel.show().map_err(|e| e.to_string())?;
+    // If the user minimized the panel to the Dock (via the top-right
+    // minimize control), `show()` alone leaves it collapsed — `unminimize`
+    // restores it so the shortcut/click open path lands a visible window
+    // instead of `show()`-ing a still-minimized one. No-op when not minimized.
+    // Custom command bypasses the ACL, but the matching `allow-unminimize`
+    // is granted in capabilities/pet-panel.json for symmetry with the JS API.
+    panel.unminimize().map_err(|e| e.to_string())?;
     // `set_focus()` activates the Folyn app (`activateIgnoringOtherApps:YES`)
     // so the pet-panel becomes the active app's key window — required for
     // the React Esc keydown listener to fire (otherwise keyboard events go

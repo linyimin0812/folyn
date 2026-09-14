@@ -1,28 +1,29 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { createEvent } from '@testing-library/dom';
 
-// Mock @tauri-apps/api/core invoke — provided via vitest.workspace.ts alias.
-import { invoke } from '@tauri-apps/api/core';
-// The event module is ALSO provided via the workspace alias (shared mock in
-// test/mocks/@tauri-apps/api/event.ts). Do NOT vi.mock it: a per-test vi.mock
-// of the aliased module only intercepts the first dynamic import, while the
-// component registers listeners through several effects. The shared mock
-// captures every channel; tests drive them via `__internals.emitTo`.
-import { __internals as eventInternals } from '@tauri-apps/api/event';
-
-// Mock @tauri-apps/api/window so the drag-handle handler can be asserted
-// without loading the real native bindings. The panel frontend only uses
-// `getCurrentWindow().startDragging()` (drag handle) — the show/hide fade is
-// driven purely by `pet://panel-fade-in` / `pet://panel-fade-out` events (no
-// focus listeners anymore). `vi.hoisted` ensures the spy exists before the
-// hoisted `vi.mock` factory captures it.
-const { startDraggingMock } = vi.hoisted(() => ({
+// Mock @tauri-apps/api/window so the drag-handle handler + the new
+// maximize/minimize controls can be asserted without native bindings.
+// Mirrors the proven pattern in WindowControls.test.tsx. No mount-time
+// `getCurrentWindow` call exists (the component sets state on button click),
+// so only the click-path accessors are stubbed.
+const {
+  startDraggingMock,
+  minimizeMock,
+  toggleMaximizeMock,
+  isMaximizedMock,
+} = vi.hoisted(() => ({
   startDraggingMock: vi.fn(async () => undefined),
+  minimizeMock: vi.fn(async () => undefined),
+  toggleMaximizeMock: vi.fn(async () => undefined),
+  isMaximizedMock: vi.fn(async () => false),
 }));
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({
     startDragging: startDraggingMock,
+    minimize: minimizeMock,
+    toggleMaximize: toggleMaximizeMock,
+    isMaximized: isMaximizedMock,
   }),
 }));
 
@@ -40,13 +41,32 @@ vi.mock('@/components/translation/TranslationPanel', () => ({
 
 import { PetPanelApp } from './PetPanelApp';
 
-const invokeMock = invoke as unknown as import('vitest').Mock;
+// Resolve the aliased core/event mocks AFTER `vi.mock('@tauri-apps/api/window')`
+// is hoisted — importing these statically before the hoisted window mock was
+// what desynced Vitest's mock application and let the real `getCurrentWindow`
+// (reading `window.__TAURI_INTERNALS__.metadata`) run. WindowControls.test.tsx
+// avoids this by importing no Tauri module statically; we follow the same
+// discipline and resolve both lazily in `beforeAll`.
+let invokeMock!: import('vitest').Mock;
+let eventInternals!: { getListeners(c: string): unknown; emitTo(c: string, p?: unknown): void };
+
+beforeAll(async () => {
+  const { invoke } = await import('@tauri-apps/api/core');
+  invokeMock = invoke as unknown as import('vitest').Mock;
+  ({ __internals: eventInternals } = await import('@tauri-apps/api/event'));
+});
 
 beforeEach(() => {
   invokeMock.mockClear();
   invokeMock.mockResolvedValue(undefined);
   startDraggingMock.mockClear();
   startDraggingMock.mockResolvedValue(undefined);
+  minimizeMock.mockClear();
+  minimizeMock.mockResolvedValue(undefined);
+  toggleMaximizeMock.mockClear();
+  toggleMaximizeMock.mockResolvedValue(undefined);
+  isMaximizedMock.mockClear();
+  isMaximizedMock.mockResolvedValue(false);
 });
 
 afterEach(() => {
@@ -138,8 +158,8 @@ describe('PetPanelApp', () => {
   });
 
   it('close button hides the panel via pet_panel_hide', async () => {
-    render(<PetPanelApp />);
-    await fireEvent.click(screen.getByLabelText('Close pet panel'));
+    const { container } = render(<PetPanelApp />);
+    await fireEvent.click(container.querySelector('.pet-panel-ctrl-close')!);
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide'));
   });
 
@@ -147,6 +167,30 @@ describe('PetPanelApp', () => {
     render(<PetPanelApp />);
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide'));
+  });
+
+  // ── Top-right window controls ──
+  it('minimize button calls window.minimize', async () => {
+    const { container } = render(<PetPanelApp />);
+    const [minimize, _] = container.querySelectorAll('.pet-panel-ctrl');
+    await fireEvent.click(minimize);
+    await waitFor(() => expect(minimizeMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('fullscreen button calls window.toggleMaximize', async () => {
+    const { container } = render(<PetPanelApp />);
+    const buttons = container.querySelectorAll('.pet-panel-ctrl');
+    await fireEvent.click(buttons[1]);
+    await waitFor(() => expect(toggleMaximizeMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('window controls render in minimize / fullscreen / close order', () => {
+    const { container } = render(<PetPanelApp />);
+    const buttons = Array.from(container.querySelectorAll('.pet-panel-ctrl'));
+    expect(buttons[0].querySelector('svg.lucide-minus')).toBeTruthy();
+    expect(buttons[1].querySelector('svg.lucide-maximize-2')).toBeTruthy();
+    expect(buttons[2].classList.contains('pet-panel-ctrl-close')).toBe(true);
+    expect(buttons[2].querySelector('svg.lucide-x')).toBeTruthy();
   });
 
   // ── Drag handle (Fix 2) ──
@@ -166,8 +210,8 @@ describe('PetPanelApp', () => {
   });
 
   it('pointerdown on the close button does NOT start a drag (stopPropagation)', async () => {
-    render(<PetPanelApp />);
-    const close = screen.getByLabelText('Close pet panel');
+    const { container } = render(<PetPanelApp />);
+    const close = container.querySelector('.pet-panel-ctrl-close')!;
     await fireEvent.pointerDown(close, { button: 0 });
     // Give the async drag handler a tick in case it tried to fire.
     await Promise.resolve();

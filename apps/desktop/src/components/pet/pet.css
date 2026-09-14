@@ -369,13 +369,19 @@ html.is-pet-panel-window body {
   gap: 0;
 }
 
-.pet-panel-close {
+/* Top-right window controls: minimize / fullscreen / close. The row sits
+ * in the search row (suppressDrag) so the buttons never start a drag. */
+.pet-panel-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.pet-panel-ctrl {
   appearance: none;
   background: transparent;
   border: none;
   color: var(--t2, #5a6275);
-  font-size: 20px;
-  line-height: 1;
   width: 24px;
   height: 24px;
   border-radius: 6px;
@@ -385,9 +391,16 @@ html.is-pet-panel-window body {
   justify-content: center;
   transition: background 0.12s ease, color 0.12s ease;
 }
-.pet-panel-close:hover {
+.pet-panel-ctrl:hover {
   background: var(--hov, #eef0f5);
   color: var(--t1, #1f2330);
+}
+/* The close control gets a subtle red wash on hover to match macOS's red
+ * traffic-light affordance without bringing in the full red/yellow/green
+ * dots (the panel uses line-icon controls for a lighter look). */
+.pet-panel-ctrl.pet-panel-ctrl-close:hover {
+  background: rgba(220, 70, 70, 0.12);
+  color: #d6463c;
 }
 
 .pet-panel-tab {

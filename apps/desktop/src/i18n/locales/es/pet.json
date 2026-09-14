@@ -52,6 +52,12 @@
     "extensions": "Extensions",
     "noResults": "Sin resultados coincidentes"
   },
+  "window": {
+    "minimize": "Minimizar",
+    "fullscreen": "Pantalla completa",
+    "restore": "Restaurar",
+    "close": "Cerrar"
+  },
   "inbox": {
     "empty": "Sin notificaciones",
     "clear": "Limpiar",

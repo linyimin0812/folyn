@@ -52,6 +52,12 @@
     "extensions": "拡張機能",
     "noResults": "一致する結果はありません"
   },
+  "window": {
+    "minimize": "最小化",
+    "fullscreen": "全画面表示",
+    "restore": "復元",
+    "close": "閉じる"
+  },
   "inbox": {
     "empty": "通知はありません",
     "clear": "クリア",

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Minus, Maximize2, Minimize2, X } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
@@ -122,6 +123,49 @@ export function PetPanelApp() {
       await invoke('pet_panel_hide');
     } catch (err) {
       console.warn('[pet-panel] hide failed:', err);
+    }
+  }, []);
+
+  // Minimize to the Dock (top-right minimize control). `unminimize()` is
+  // re-applied on the next `pet_panel_show` (Rust) so reopening restores it.
+  // Flips `isMinimizedRef` so the 800ms persistence poll skips the Dock
+  // frame (otherwise it would persist the minimized rect and reopen at it).
+  const minimizePanel = useCallback(async () => {
+    if (!isTauri()) return;
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().minimize();
+      isMinimizedRef.current = true;
+    } catch (err) {
+      console.warn('[pet-panel] minimize failed:', err);
+    }
+  }, []);
+
+  // Toggle the panel between its saved size and the work-area (macOS
+  // green-button zoom). `isMaximized` drives the icon toggle and the
+  // `isMaximizedRef` mirror gates the 800ms persistence poll below (don't
+  // persist the OS-zoomed frame — it would clobber the saved default size
+  // on next open).
+  //
+  // ponytail: no `onResized` listener / initial `isMaximized()` fetch. The
+  // panel is `decorations:false` — the ONLY maximize path is this button
+  // (no native green dot), so setting state on toggle is sufficient. An
+  // `onResized` listener was tried but a `vi.mock('@tauri-apps/api/window')`
+  // mount-time dynamic import desynced Vitest's mock cache and broke the
+  // existing drag test; the extra sync wasn't worth the test fragility.
+  const [isMaximized, setIsMaximized] = useState(false);
+  const isMaximizedRef = useRef(false);
+  const isMinimizedRef = useRef(false);
+  const toggleFullscreen = useCallback(async () => {
+    if (!isTauri()) return;
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().toggleMaximize();
+      const mx = await getCurrentWindow().isMaximized();
+      isMaximizedRef.current = mx;
+      setIsMaximized(mx);
+    } catch (err) {
+      console.warn('[pet-panel] toggle-maximize failed:', err);
     }
   }, []);
 
@@ -266,6 +310,10 @@ export function PetPanelApp() {
           // otherwise survive a close → reopen. The popup search is
           // ephemeral — clear it every time the panel is shown again.
           setSearchQuery('');
+          // `pet_panel_show` (Rust) runs `unminimize()`, so the panel is
+          // back to a normal frame on every show — clear the minimized flag
+          // so the persistence poll resumes (it was skipped while minimized).
+          isMinimizedRef.current = false;
           setVisible(true);
         });
       } catch (err) {
@@ -302,6 +350,9 @@ export function PetPanelApp() {
       void unlisten?.();
     };
   }, []);
+
+  // (Maximize/minimize state is set on the button handlers above — no
+  // mount-time sync effect. See the `toggleFullscreen` note.)
 
   // ── Cross-window settings sync ──
   // The panel window holds its own petStore instance; without this listener
@@ -601,6 +652,11 @@ export function PetPanelApp() {
 
     const persist = async () => {
       if (cancelled) return;
+      // While maximized or minimized the window frame is the OS-zoomed /
+      // Dock rect — persisting it would clobber the saved default size on
+      // the next open. Skip until the window is back to its normal frame
+      // (the sync effect keeps these refs current via tauri://resize).
+      if (isMaximizedRef.current || isMinimizedRef.current) return;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         if (sf === 1) {
@@ -716,14 +772,38 @@ export function PetPanelApp() {
               aria-label={t('pet:search.placeholder')}
             />
           </div>
-          <button
-            type="button"
-            className="pet-panel-close"
-            aria-label="Close pet panel"
-            onClick={() => void hidePanel()}
-          >
-            ×
-          </button>
+          {/* Top-right window controls: minimize / fullscreen / close.
+              `suppressDrag` is inherited from the search row so the buttons
+              never start a drag; each calls `stopPropagation`-free onClick. */}
+          <div className="pet-panel-window-controls">
+            <button
+              type="button"
+              className="pet-panel-ctrl"
+              aria-label={t('pet:window.minimize')}
+              title={t('pet:window.minimize')}
+              onClick={() => void minimizePanel()}
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              className="pet-panel-ctrl"
+              aria-label={isMaximized ? t('pet:window.restore') : t('pet:window.fullscreen')}
+              title={isMaximized ? t('pet:window.restore') : t('pet:window.fullscreen')}
+              onClick={() => void toggleFullscreen()}
+            >
+              {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            <button
+              type="button"
+              className="pet-panel-ctrl pet-panel-ctrl-close"
+              aria-label={t('pet:window.close')}
+              title={t('pet:window.close')}
+              onClick={() => void hidePanel()}
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
         {searchQuery.trim() === '' && (
           <div className="pet-panel-header-row" onPointerDown={suppressDrag}>
