@@ -188,7 +188,7 @@ describe('PetPanelApp', () => {
     const { container } = render(<PetPanelApp />);
     const buttons = Array.from(container.querySelectorAll('.pet-panel-ctrl'));
     expect(buttons[0].querySelector('svg.lucide-minus')).toBeTruthy();
-    expect(buttons[1].querySelector('svg.lucide-maximize-2')).toBeTruthy();
+    expect(buttons[1].querySelector('svg.lucide-square')).toBeTruthy();
     expect(buttons[2].classList.contains('pet-panel-ctrl-close')).toBe(true);
     expect(buttons[2].querySelector('svg.lucide-x')).toBeTruthy();
   });

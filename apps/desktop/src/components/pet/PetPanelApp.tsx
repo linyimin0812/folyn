@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Minus, Maximize2, Minimize2, X } from 'lucide-react';
+import { Minus, Square, Copy, X } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
@@ -756,7 +756,7 @@ export function PetPanelApp() {
               title={isMaximized ? t('pet:window.restore') : t('pet:window.fullscreen')}
               onClick={() => void toggleFullscreen()}
             >
-              {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              {isMaximized ? <Copy size={13} /> : <Square size={13} />}
             </button>
             <button
               type="button"
