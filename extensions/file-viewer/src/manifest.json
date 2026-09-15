@@ -36,6 +36,5 @@
       { "id": "office-data", "handler": "office-data", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["sqlite", "wasm", "parquet", "avro", "webarchive"] },
       { "id": "office-misc", "handler": "office-misc", "defaultViewMode": "preview", "supportedViewModes": ["preview"], "extensions": ["olb", "dra", "gds", "oas", "oasis", "geojson", "kml", "gpx", "shp", "kmz", "xmind"] }
     ]
-  },
-  "activation": { "onCommand": "", "onFileType": [], "onLanguage": [] }
+  }
 }

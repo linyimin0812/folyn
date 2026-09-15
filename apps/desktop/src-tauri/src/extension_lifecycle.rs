@@ -1,5 +1,5 @@
 //! Extension CRUD lifecycle commands: list / uninstall / approve (TOFU-pin) /
-//! get-record / read-file / grant-capabilities / verify-signature.
+//! get-record / read-file / grant-capabilities.
 //!
 //! All commands operate on the on-disk registry in `~/.folyn/extensions/`
 //! (`extensions.json` + per-extension dirs) maintained by `extension_commands`.
@@ -14,7 +14,6 @@ use crate::errors::AppError;
 use crate::extension_commands::{
     ExtensionEntry, extensions_dir, read_extensions_json, remove_record, write_extensions_json,
 };
-use crate::extension_security::verify_extension_signature;
 
 /// List all installed extensions from `extensions.json`.
 #[tauri::command]
@@ -131,33 +130,3 @@ pub async fn set_extension_enabled(
     Ok(updated)
 }
 
-/// Verify an installed extension's optional ed25519 signature against its pinned
-/// publisher key. Reads the manifest from disk, canonicalizes it, and calls
-/// {@link verify_extension_signature}. Returns `Ok(())` when no signature is
-/// present (MVP: signatures optional). Frontend diagnostics UI can call this
-/// to surface "signature invalid" before the user approves a trusted extension.
-#[tauri::command]
-pub async fn verify_extension_signature_cmd(
-    app: tauri::AppHandle,
-    id: String,
-) -> Result<(), AppError> {
-    let dir = extensions_dir(&app)?;
-    let manifest_path = dir.join(&id).join("manifest.json");
-    let manifest_str = fs::read_to_string(&manifest_path)
-        .map_err(|e| format!("failed to read manifest: {e}"))?;
-    let manifest: serde_json::Value =
-        serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
-    let entry = {
-        let records = read_extensions_json(&dir)?;
-        records
-            .into_iter()
-            .find(|r| r.id == id)
-            .ok_or_else(|| format!("extension not found: {id}"))?
-    };
-    verify_extension_signature(
-        &manifest,
-        entry.signature.as_deref(),
-        entry.publisher_public_key.as_deref(),
-    )
-    .map_err(AppError::from)
-}

@@ -1119,7 +1119,6 @@ pub fn run() {
             extension_lifecycle::set_extension_enabled,
             extension_lifecycle::get_extension_record,
             extension_lifecycle::read_extension_file,
-            extension_lifecycle::verify_extension_signature_cmd,
             extension_fetch::extension_http_fetch,
             extension_fetch::fetch_url,
             extension_rpc::extension_rpc_respond,

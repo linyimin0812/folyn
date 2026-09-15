@@ -10,9 +10,10 @@
  * Tier model (see prd.md ADR-lite):
  * - `sandbox`: untrusted extension hosted in a sandboxed iframe (`folyn-extension://`
  *   origin), talks to the host via a vetted postMessage RPC. No raw Tauri APIs.
- * - `trusted`: TOFU-pinned extension `import()`-ed into the host realm; may
- *   contribute inline React/CodeMirror components and receive scoped Tauri
- *   capability grants via `add_capability`.
+ * - `trusted`: TOFU-pinned extension `import()`-ed into the host realm. No
+ *   per-extension runtime ACL — it shares the main webview's full host
+ *   capability from `capabilities/default.json`; the manifest `permissions`
+ *   block is informational (not enforced) for this tier.
  */
 
 import type { Disposable } from './Disposable';
@@ -68,13 +69,6 @@ export interface ExtensionManifest {
   html?: string;
   permissions?: ExtensionPermissions;
   contributes?: ContributionPoints;
-  activation?: ActivationEvents;
-  /** Optional ed25519 signature over the canonicalized manifest (base64). MVP:
-   * not enforced; verified best-effort on the Rust side. See
-   * docs/extension-development.md "Integrity upgrade path". */
-  signature?: string;
-  /** Optional base64 ed25519 public key paired with `signature`. */
-  publisherPublicKey?: string;
   /** Optional display icon. Inline `<svg>…</svg>` string, `.svg` file path
    * (resolved by host via `read_extension_file`), or emoji/short text. Mirrors
    * `ContainerContribution.icon`. */
@@ -83,7 +77,19 @@ export interface ExtensionManifest {
   description?: string;
 }
 
-// ── Permissions (declarative; host enforces) ───────────────────────────────
+// ── Permissions (declarative; enforced by tier) ────────────────────────────
+//
+// Two-tier enforcement (see extension-development.md “Permissions model”):
+//   - sandbox: HARD boundary. Every privileged call crosses the RPC bridge,
+//     which checks the matching permission before dispatch. Omit a permission
+//     → that call throws. This is the only tier where `permissions` is enforced.
+//   - trusted: INFORMATIONAL only. Trusted extensions run in the main webview
+//     realm, which already has full host capability via capabilities/default.json.
+//     There is no per-extension runtime ACL; the manifest `permissions` block is
+//     not checked for trusted code. The sole boundary on the trusted tier is the
+//     TOFU gate (user-pin + SHA-256 integrity match on `main`). Declare
+//     permissions anyway as documentation + forward-compat if a trusted tier
+//     ever gains enforcement, but do not rely on them to confine trusted code.
 
 export interface ExtensionPermissions {
   fs?: { scope: string[] };
@@ -424,10 +430,4 @@ export interface ContributionPoints {
   editorLanguages?: EditorLanguageContribution[];
   /** highlight.js grammars contributed by extensions (drives ```lang code blocks + CodeFileViewer). */
   highlightGrammars?: HighlightGrammarContribution[];
-}
-
-export interface ActivationEvents {
-  onCommand?: string;
-  onFileType?: string[];
-  onLanguage?: string[];
 }

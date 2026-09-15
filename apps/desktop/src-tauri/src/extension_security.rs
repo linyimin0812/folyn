@@ -1,6 +1,8 @@
-//! Extension trust-boundary primitives: integrity hashing, optional Ed25519
-//! signature verification, manifest validation, zip-slip / zip-bomb defenses,
-//! and sandbox http:fetch origin checks.
+//! Extension trust-boundary primitives: integrity hashing, manifest
+//! validation, zip-slip / zip-bomb defenses, and sandbox http:fetch origin
+//! checks. SHA-256 per-file integrity (computed at install, verified on load
+//! by the trusted loader) is the sole tamper gate; there is no signature
+//! verification.
 //!
 //! Extracted from `extension_commands.rs` so the security-sensitive code lives
 //! apart from install / URI-scheme / RPC business logic. Pure functions where
@@ -148,104 +150,6 @@ pub fn verify_integrity(
     true
 }
 
-// ── Ed25519 signature verification (PR4 scaffolding) ────────────────────────
-//
-// MVP INTEGRITY MODEL: SHA-256 per-file integrity (computed at install, verified
-// on load by the trusted loader) is the *gate*. Ed25519 signatures are OPTIONAL
-// scaffolding: a extension MAY carry `signature` + `publisherPublicKey` (base64)
-// in its manifest/extensions.json. When present, `verify_extension_signature` checks
-// the signature over the canonicalized manifest. When absent, verification is a
-// no-op (Ok(())). This lets a future marketplace require signatures without a
-// breaking change — see `docs/extension-development.md` "Integrity upgrade path".
-//
-// The signature is over the canonicalized manifest JSON (serde_json with sorted
-// keys, no whitespace) — NOT over individual files. Per-file integrity is
-// already covered by SHA-256; the signature proves *publisher identity + manifest
-// authorship*, not byte-for-byte file integrity (a signed manifest with tampered
-// files still fails the SHA-256 check at load).
-
-/// Decode a standard base64 string into bytes. Returns `Err` on malformed input.
-pub fn decode_base64(s: &str) -> Result<Vec<u8>, String> {
-    use base64::Engine;
-    base64::engine::general_purpose::STANDARD
-        .decode(s.trim())
-        .map_err(|e| format!("invalid base64: {e}"))
-}
-
-/// Canonicalize a manifest JSON value for signing: serialize with sorted keys
-/// and no whitespace. The same input always produces the same bytes, so a
-/// publisher can sign the canonical form and any host can re-derive it.
-pub fn canonicalize_manifest(manifest: &serde_json::Value) -> Result<String, String> {
-    serde_json::to_string(manifest).map_err(|e| format!("manifest canonicalize failed: {e}"))
-}
-
-/// Verify an optional ed25519 signature over the canonicalized manifest.
-///
-/// Returns `Ok(())` when:
-///   - `signature` is `None` (MVP: signatures not required; SHA-256 is the gate)
-///   - `signature` + `public_key` are both present AND verify against the
-///     canonicalized manifest bytes
-///
-/// Returns `Err` when:
-///   - only one of `signature` / `public_key` is present (incomplete)
-///   - the signature is malformed, the key is malformed, or verification fails
-///
-/// This is a pure function — no I/O, no app handle — so it is unit-testable
-/// without a running Tauri instance.
-pub fn verify_extension_signature(
-    manifest: &serde_json::Value,
-    signature: Option<&str>,
-    public_key: Option<&str>,
-) -> Result<(), String> {
-    use ed25519_dalek::{Signature, Verifier, VerifyingKey, PUBLIC_KEY_LENGTH};
-
-    let (sig, key) = match (signature, public_key) {
-        (None, None) => return Ok(()), // MVP: no signature = no check
-        (None, Some(_)) => {
-            return Err("publisherPublicKey present but signature missing".into());
-        }
-        (Some(_), None) => {
-            return Err("signature present but publisherPublicKey missing".into());
-        }
-        (Some(s), Some(k)) => (s, k),
-    };
-
-    let sig_bytes = decode_base64(sig)?;
-    let key_bytes = decode_base64(key)?;
-    if sig_bytes.len() != ed25519_dalek::SIGNATURE_LENGTH {
-        return Err(format!(
-            "signature must be {} bytes, got {}",
-            ed25519_dalek::SIGNATURE_LENGTH,
-            sig_bytes.len()
-        ));
-    }
-    if key_bytes.len() != PUBLIC_KEY_LENGTH {
-        return Err(format!(
-            "public key must be {} bytes, got {}",
-            PUBLIC_KEY_LENGTH,
-            key_bytes.len()
-        ));
-    }
-
-    let key_array: [u8; PUBLIC_KEY_LENGTH] = key_bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| "public key length mismatch".to_string())?;
-    let sig_array: [u8; ed25519_dalek::SIGNATURE_LENGTH] = sig_bytes
-        .as_slice()
-        .try_into()
-        .map_err(|_| "signature length mismatch".to_string())?;
-
-    let verifying_key = VerifyingKey::from_bytes(&key_array)
-        .map_err(|e| format!("invalid public key: {e}"))?;
-    let signature = Signature::from_bytes(&sig_array);
-    let message = canonicalize_manifest(manifest)?;
-
-    verifying_key
-        .verify(message.as_bytes(), &signature)
-        .map(|_| ())
-        .map_err(|e| format!("signature verification failed: {e}"))
-}
 
 // ── Manifest validation (pure) ───────────────────────────────────────────────
 
@@ -798,107 +702,6 @@ mod tests {
         assert!(verify_integrity(&stored, &actual));
     }
 
-
-    // ── decode_base64 ──
-
-    #[test]
-    fn decode_base64_valid() {
-        let bytes = decode_base64("aGVsbG8=").unwrap(); // "hello"
-        assert_eq!(bytes, b"hello");
-    }
-
-    #[test]
-    fn decode_base64_rejects_malformed() {
-        assert!(decode_base64("!!!not-base64!!!").is_err());
-    }
-
-    #[test]
-    fn decode_base64_trims_whitespace() {
-        let bytes = decode_base64("  aGVsbG8=  \n").unwrap();
-        assert_eq!(bytes, b"hello");
-    }
-
-
-    // ── canonicalize_manifest ──
-
-    #[test]
-    fn canonicalize_manifest_is_stable() {
-        let m = serde_json::json!({ "id": "x", "version": "1.0.0", "tier": "sandbox" });
-        let a = canonicalize_manifest(&m).unwrap();
-        let b = canonicalize_manifest(&m).unwrap();
-        assert_eq!(a, b);
-    }
-
-
-    // ── verify_extension_signature (ed25519 scaffolding) ──
-
-    #[test]
-    fn signature_absent_returns_ok() {
-        // MVP: no signature = no check. SHA-256 integrity is the gate.
-        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
-        assert!(verify_extension_signature(&m, None, None).is_ok());
-    }
-
-    #[test]
-    fn signature_without_key_is_err() {
-        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
-        assert!(verify_extension_signature(&m, Some("sig"), None).is_err());
-        assert!(verify_extension_signature(&m, None, Some("key")).is_err());
-    }
-
-    #[test]
-    fn signature_malformed_base64_is_err() {
-        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
-        assert!(verify_extension_signature(&m, Some("!!!bad-b64!!!"), Some("aGVsbG8=")).is_err());
-    }
-
-    #[test]
-    fn signature_wrong_length_is_err() {
-        use base64::Engine;
-        let m = serde_json::json!({ "id": "x", "version": "1.0.0" });
-        // 32-byte key but 1-byte signature — both wrong length.
-        let key = base64::engine::general_purpose::STANDARD.encode([0u8; 32]);
-        let sig = base64::engine::general_purpose::STANDARD.encode([0u8; 1]);
-        assert!(verify_extension_signature(&m, Some(&sig), Some(&key)).is_err());
-    }
-
-    #[test]
-    fn signature_valid_key_invalid_signature_is_err() {
-        // Valid-length key + valid-length signature, but the signature does not
-        // actually verify against the canonicalized manifest (it's over the
-        // wrong message).
-        use base64::Engine;
-        use ed25519_dalek::{SigningKey, Signer};
-        use rand::rngs::OsRng;
-        let mut rng = OsRng;
-        let signing_key = SigningKey::generate(&mut rng);
-        let verifying_key = signing_key.verifying_key();
-        let key_bytes = verifying_key.to_bytes();
-        // A signature over the WRONG message — should fail verification.
-        let bad_sig = signing_key.sign(b"not the manifest");
-        let sig_b64 = base64::engine::general_purpose::STANDARD.encode(bad_sig.to_bytes());
-        let key_b64 = base64::engine::general_purpose::STANDARD.encode(key_bytes);
-        let m = serde_json::json!({ "id": "x", "version": "1.0.0", "tier": "trusted" });
-        assert!(verify_extension_signature(&m, Some(&sig_b64), Some(&key_b64)).is_err());
-    }
-
-    #[test]
-    fn signature_valid_verifies_ok() {
-        // End-to-end: sign the canonicalized manifest with a real key, then
-        // verify. Proves the scaffolding wiring is correct.
-        use base64::Engine;
-        use ed25519_dalek::{SigningKey, Signer};
-        use rand::rngs::OsRng;
-        let mut rng = OsRng;
-        let signing_key = SigningKey::generate(&mut rng);
-        let verifying_key = signing_key.verifying_key();
-        let m = serde_json::json!({ "id": "x", "version": "1.0.0", "tier": "trusted" });
-        let canonical = canonicalize_manifest(&m).unwrap();
-        let sig = signing_key.sign(canonical.as_bytes());
-        let sig_b64 = base64::engine::general_purpose::STANDARD.encode(sig.to_bytes());
-        let key_b64 = base64::engine::general_purpose::STANDARD.encode(verifying_key.to_bytes());
-        assert!(verify_extension_signature(&m, Some(&sig_b64), Some(&key_b64)).is_ok());
-    }
 
 
     // ── extract_origin / is_origin_allowed (sandbox http:fetch) ──

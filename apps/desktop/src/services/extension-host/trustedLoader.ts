@@ -8,18 +8,22 @@
  * wired into the app's contribution registries (file-types / containers /
  * commands / features / tools) via the in-process adapters.
  *
- * ## Design reality (READ THIS)
+ * ## Capability model (by design)
  *
- * Trusted extensions run **in the MAIN webview realm**, which already has broad
- * Tauri capabilities from `capabilities/default.json`. The TOFU gate
- * (integrity + user-pin) is the *real* security boundary — once a extension is
- * `import()`-ed, it has full access to the host realm (Zustand stores, the
- * DOM, `@tauri-apps/api` with the main window's caps). This is the VSCode
- * "in-process host = soft consent gate" trade-off (research/
- * vscode-extension-host.md §3), explicitly accepted for the trusted tier:
- * TOFU-pinned = user explicitly trusted = full power. Do NOT pretend
- * `add_capability` (Rust `grant_extension_capabilities`) is a hard sandbox — it
- * is additive/redundant because the main window already has those caps.
+ * Trusted extensions run **in the MAIN webview realm**, which already has
+ * full host Tauri capabilities from `capabilities/default.json`. There is
+ * NO per-extension runtime ACL — `grant_extension_capabilities` /
+ * `add_capability` does not exist and is not wired (the scoped-permission
+ * entry format it would use corrupts Tauri's runtime ACL). The manifest's
+ * `permissions` block is **informational for the trusted tier** — not
+ * enforced at runtime. The TOFU gate (integrity + user-pin) is the *sole*
+ * boundary: once a extension is `import()`-ed, it has full access to the
+ * host realm (Zustand stores, the DOM, `@tauri-apps/api` with the main
+ * window's caps). This is the VSCode "in-process host = soft consent gate"
+ * trade-off (research/vscode-extension-host.md §3), explicitly accepted for
+ * the trusted tier: TOFU-pinned = user explicitly trusted = full power. For
+ * a hard, permission-scoped boundary, use the sandbox tier (iframe + RPC
+ * bridge, where every call is checked against `permissions`).
  *
  * ## Hot unload
  *
@@ -94,13 +98,19 @@ export const trustedLoader: ExtensionLoader = {
     const mod = await importModule(blobUrl);
     const module = normalizeModule(mod);
 
-    // NOTE: no `grant_extension_capabilities` call. The Rust `add_capability`
-    // grant is documented as additive/redundant (trusted extensions run in the
-    // main webview, which already has `fs:scope: [{"path":"**"}]` and the rest
-    // of `capabilities/default.json`), and its scoped-permission entry format
-    // corrupts the runtime ACL — every later fs permission check then fails
-    // with "error deserializing scope: … EntryRaw". Skipping it keeps the ACL
-    // intact; the extension is unaffected because the main caps cover the surface.
+    // ── Capability model (by design, not a gap) ──
+    // Trusted extensions run in the MAIN webview realm, which already has
+    // full host capability via `capabilities/default.json` (`fs:scope: ["**"]`,
+    // `shell:allow-spawn`, dialog, clipboard, ...). There is NO per-extension
+    // runtime ACL — `grant_extension_capabilities` / `add_capability` does not
+    // exist and is not wired. The manifest's `permissions` block is
+    // **informational for the trusted tier**: it is not enforced at runtime
+    // (the extension can reach the host realm's full surface directly). The
+    // SOLE boundary on trusted code is the TOFU gate above (user-pin +
+    // SHA-256 integrity match on `main`). This is the explicit, accepted
+    // trade-off: TOFU-pinned = user explicitly trusted = full power.
+    // For a hard, permission-scoped boundary, use the sandbox tier (iframe +
+    // RPC bridge, where every call is checked against `permissions`).
 
     return {
       activate: async (api: ExtensionApi, ctx: ExtensionContext) => {

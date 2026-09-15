@@ -29,9 +29,15 @@ the manifest. This is the only boundary on trusted code; the system accepts
 that trade-off explicitly (trusted code, once approved, has full host
 capability).
 
-> Unconfirmed: whether `grant_extension_capabilities` was removed by design or
-> simply never wired. Either way it is currently bypassed and must stay so —
-> runtime ACLs for trusted code do not exist; TOFU + integrity is the whole gate.
+> By design, there is no `grant_extension_capabilities` / `add_capability`
+> runtime ACL for the trusted tier. It was never wired (the scoped-permission
+> entry format it would have used corrupts Tauri's runtime ACL), and the
+> model accepts this explicitly: trusted code, once TOFU-approved, has full
+> host capability via `capabilities/default.json`. The manifest's
+> `permissions` block is informational for the trusted tier — it is enforced
+> only for the sandbox tier (every RPC call checked against the manifest).
+> This is a deliberate two-tier trade-off, not a gap to fill: for a hard,
+> permission-scoped boundary, use the sandbox tier.
 
 ## Layers and their boundaries
 
@@ -172,7 +178,20 @@ host-owned singletons, not extension-owned.
   all use `ExtensionModule` + `folyn-extension-sdk` + the `Extension*`
   symbol family. The `plugin`→`extension` rename is complete across these;
   only third-party refs (`@vitejs/plugin-react`, "vite plugin") still say `plugin`.
-- Signature verification (`verify_extension_signature`, ed25519) exists in Rust
-  and is non-fatal (stderr warning only). Its role relative to TOFU + integrity
-  is undecided — document it as opt-in publisher verification, or wire it as a
-  gate, but don't leave it half-on.
+- Signature verification: removed (YAGNI). The ed25519 scaffolding was
+  speculative — no extension ships a signature, and SHA-256 per-file
+  integrity (computed at install, verified on load) is the sole tamper gate.
+  `verify_extension_signature`, `decode_base64`, `canonicalize_manifest`, the
+  `verify_extension_signature_cmd` Tauri command, the manifest
+  `signature`/`publisherPublicKey` fields, and the `ed25519-dalek`/`rand`
+  deps were deleted in one pass. Integrity model: SHA-256 only.
+- Trusted-tier runtime ACL: resolved (by design). There is no
+  `grant_extension_capabilities` / `add_capability` and there is no per-
+  extension runtime ACL for the trusted tier — it was never wired (the
+  scoped-permission entry format corrupts Tauri's runtime ACL), and the model
+  accepts this: a TOFU-approved trusted extension has full host capability via
+  `capabilities/default.json`. The manifest `permissions` block is
+  **informational for the trusted tier**; it is enforced only for the
+  sandbox tier (each RPC call is checked against the manifest). The trusted
+  loader's `NOTE` and the SDK `extension-development.md` “Permissions model”
+  section now document this as the explicit two-tier trade-off, not a gap.

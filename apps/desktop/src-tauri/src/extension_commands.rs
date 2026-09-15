@@ -104,18 +104,6 @@ pub struct ExtensionEntry {
     /// compares it here — the real security boundary for the in-process tier.
     #[serde(default)]
     pub integrity: HashMap<String, String>,
-    /// Optional ed25519 signature (standard base64) over the canonicalized
-    /// manifest JSON. PR4 scaffolding — MVP does NOT require signatures; when
-    /// absent, `verify_extension_signature` returns `Ok(())` and SHA-256
-    /// integrity remains the gate. A future marketplace may require this.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub signature: Option<String>,
-    /// Optional pinned publisher public key (standard base64, ed25519).
-    /// When `signature` is present, this key verifies it. Trust-On-First-Use:
-    /// the first time a extension is approved, its publisher key is pinned; a
-    /// later update with a different key must re-trigger consent.
-    #[serde(default, rename = "publisherPublicKey", skip_serializing_if = "Option::is_none")]
-    pub publisher_public_key: Option<String>,
     /// User-facing activation toggle (persists across restarts). `true` on
     /// install; flipped to `false` by `set_extension_enabled` when the user
     /// disables the extension in Settings. App.tsx hydrate skips activation
@@ -264,8 +252,6 @@ mod tests {
             tier: "sandbox".into(),
             trusted: false,
             integrity: HashMap::new(),
-            signature: None,
-            publisher_public_key: None,
             enabled: true,
         }
     }
@@ -350,45 +336,6 @@ mod tests {
         let json = serde_json::to_string(&entry).unwrap();
         assert!(json.contains("\"trusted\":true"));
         assert!(json.contains("abc123"));
-    }
-
-    // ── ExtensionEntry signature field serde ──
-
-    #[test]
-    fn entry_round_trips_signature_fields() {
-        let mut entry = make_entry("signed", "Signed", "1.0.0");
-        entry.signature = Some("sig-base64".into());
-        entry.publisher_public_key = Some("key-base64".into());
-        let json = serde_json::to_string(&entry).unwrap();
-        // skip_serializing_if = Option::is_none means these only appear when set.
-        assert!(json.contains("\"signature\":\"sig-base64\""));
-        assert!(json.contains("\"publisherPublicKey\":\"key-base64\""));
-        let back: ExtensionEntry = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.signature.as_deref(), Some("sig-base64"));
-        assert_eq!(back.publisher_public_key.as_deref(), Some("key-base64"));
-    }
-
-    #[test]
-    fn entry_omits_signature_when_none() {
-        let entry = make_entry("unsigned", "Unsigned", "1.0.0");
-        let json = serde_json::to_string(&entry).unwrap();
-        assert!(!json.contains("signature"));
-        assert!(!json.contains("publisherPublicKey"));
-    }
-
-    #[test]
-    fn entry_deserializes_without_signature_fields_backwards_compat() {
-        // Pre-PR4 extensions.json entries lack signature/publisherPublicKey.
-        let json = serde_json::json!({
-            "id": "old-extension",
-            "name": "Old",
-            "version": "0.1.0",
-            "tier": "trusted",
-            "trusted": true,
-        });
-        let entry: ExtensionEntry = serde_json::from_value(json).unwrap();
-        assert!(entry.signature.is_none());
-        assert!(entry.publisher_public_key.is_none());
     }
 
     // ── is_valid_extension_id (manifest path safety) ──

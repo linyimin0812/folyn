@@ -19,7 +19,6 @@ development, and packaging. It references the two sample extensions in
 - [Permissions model](#permissions-model)
 - [Lifecycle: activate / deactivate / dispose](#lifecycle-activate--deactivate--dispose)
 - [TOFU approval flow](#tofu-approval-flow)
-- [Integrity upgrade path (ed25519 scaffolding)](#integrity-upgrade-path-ed25519-scaffolding)
 - [Local development](#local-development)
 - [Packaging](#packaging)
 - [Reference: sample extensions](#reference-sample-extensions)
@@ -106,8 +105,6 @@ listen for `env-event` messages to update in place.
 - `sandbox` tier requires `html` (HTML entry loaded into the iframe/window).
 - File integrity: per-file SHA-256 computed at install time; trusted tier
   re-verifies `main`'s hash before `import()`. Tampering → activation refused.
-- Optional ed25519 `signature` + `publisherPublicKey` (MVP: not enforced;
-  scaffolding for future marketplace gate).
 
 ### 5. CSP for sandbox extensions (what HTML/JS can do)
 
@@ -197,7 +194,7 @@ contribution points are available.
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Loader                      | hidden `<iframe sandbox="allow-scripts">` (no `allow-same-origin`), loaded from `folyn-extension://localhost/<id>/<html>` | `import(/* @vite-ignore */ blobUrl)` into the **main webview realm**                                                                      |
 | Isolation                   | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage                                              | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM                                                         |
-| Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; `grant_extension_capabilities` adds scoped Tauri caps (largely redundant — see [Design reality](#permissions-model)) |
+| Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; no per-extension runtime ACL, `permissions` informational (see [Permissions model](#permissions-model))        |
 | Trust gate                  | none (sandbox IS the boundary)                                                                                         | TOFU: user must **批准并授权** before activation                                                                                          |
 | Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`                                    |
 | Hot unload                  | destroy iframe element                                                                                                 | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)`                                                                                     |
@@ -331,19 +328,6 @@ Every extension folder has a `manifest.json` at its root. Full schema:
       },
     ],
   },
-
-  // Optional. Lazy activation triggers. The extension's code is loaded only when
-  // one of these fires (mirrors VSCode activation events).
-  "activation": {
-    "onCommand": "greet", // activate when this command is invoked
-    "onFileType": [".json"], // activate when a file with this extension opens
-    "onLanguage": ["markdown"], // activate when a doc of this language opens
-  },
-
-  // Optional (PR4 scaffolding). ed25519 signature + pinned publisher key.
-  // MVP does NOT require these — see "Integrity upgrade path".
-  "signature": "<base64 ed25519 signature over the canonicalized manifest>",
-  "publisherPublicKey": "<base64 ed25519 public key>",
 }
 ```
 
@@ -865,25 +849,31 @@ the `postMessage` RPC bridge, which checks the manifest's declared
 is no path to raw Tauri. This is the VSCode-extension-host model: isolation
 makes the capability-scoped API enforceable.
 
-### trusted tier — TOFU + design reality (soft boundary)
+### trusted tier — TOFU + full host realm (explicit model)
 
-Trusted extensions run **in the main webview realm**, which already has broad
-Tauri capabilities from `capabilities/default.json` (`fs:scope-home-recursive`,
-`shell:allow-spawn`, etc.). The `grant_extension_capabilities` Rust command
-calls `add_capability` with scoped permissions — but this is **additive /
-redundant**, NOT a confinement. A trusted extension can still call
-`import('@tauri-apps/api/core')` directly with the main window's existing
-caps.
+Trusted extensions run **in the main webview realm**, which already has
+full host Tauri capabilities from `capabilities/default.json` (`fs:scope:
+[{"path":"**"}]`, `shell:allow-spawn`, dialog, clipboard, …). **There is
+no per-extension runtime ACL.** `grant_extension_capabilities` /
+`add_capability` does not exist and is not wired — the scoped-permission
+entry format it would have used corrupts Tauri's runtime ACL (`error
+deserializing scope: … EntryRaw` on every later fs check), so it was never
+connected. The manifest's `permissions` block is **informational for the
+trusted tier**: it is not enforced at runtime, because a trusted extension
+can reach the host realm's full surface directly (e.g.
+`import('@tauri-apps/api/core')` with the main window's caps).
 
-**The real security boundary for the trusted tier is the TOFU gate**
-(integrity + user-pin), NOT `add_capability`. Once you approve a trusted
-extension, it has full power. This is the VSCode "in-process host = soft consent
-gate" trade-off, explicitly accepted for the trusted tier:
+**The sole boundary on trusted code is the TOFU gate** (user-pin +
+SHA-256 integrity match on `main`, verified by the trusted loader before
+`import()`). Once you approve a trusted extension, it has full power. This
+is the VSCode "in-process host = soft consent gate" trade-off, explicitly
+accepted for the trusted tier:
 
 > TOFU-pinned = user explicitly trusted = full power.
 
-Do NOT pretend `grant_extension_capabilities` is a hard sandbox. If you need a
-hard boundary for a third-party extension, use the **sandbox tier**.
+Need a hard, permission-scoped boundary for a third-party extension? Use
+the **sandbox tier** — that's the one where `permissions` is actually
+enforced (every RPC call checked against the manifest).
 
 ---
 
@@ -1102,42 +1092,14 @@ launch (the hydrate loop in `App.tsx` sees `trusted: true` and activates).
 
 ---
 
-## Integrity upgrade path (ed25519 scaffolding)
+## Integrity model
 
-PR3 computes a per-file SHA-256 integrity map at install time and the
-trusted loader verifies `main`'s hash before `import()`. This is the **MVP
-gate** — it proves the bytes on disk match the bytes that were approved
-(tamper detection), but it does NOT prove publisher identity.
-
-PR4 adds **ed25519 signature scaffolding** on top:
-
-- The manifest MAY carry `signature` (base64 ed25519 signature over the
-  canonicalized manifest JSON) and `publisherPublicKey` (base64 ed25519
-  public key).
-- `verify_extension_signature(manifest, signature, publicKey)` is a pure Rust
-  function: returns `Ok(())` when no signature is present (MVP: optional),
-  verifies when present.
-- At install, if a signature is present, it's verified best-effort
-  (non-fatal — logged to stderr; SHA-256 is still the gate).
-- The `verify_extension_signature_cmd` Tauri command lets a future diagnostics
-  UI surface "signature invalid" before approval.
-
-### Migration path to required signatures
-
-When a marketplace launches:
-
-1. Add a config flag (e.g. `requireSignatures: true` in settingsStore).
-2. In `verify_extension_signature`, return `Err` when `signature` is `None`
-   and the flag is on.
-3. Surface "this extension is unsigned" in the consent modal.
-4. Pin publisher keys in a trusted set (config file or hardcoded for MVP);
-   TOFU-pin on first approve (the `publisherPublicKey` is persisted in
-   `extensions.json` so a later update with a different key re-triggers
-   consent).
-
-No breaking change to existing extensions — unsigned extensions keep working
-until the flag flips. The scaffolding is in place; the gate is just
-not yet enforced.
+Per-file SHA-256 integrity (computed at install, verified on load by the
+trusted loader) is the **sole tamper gate**: it proves the bytes on disk
+match the bytes that were approved. There is **no signature verification** —
+ed25519 scaffolding was speculative (no extension shipped a signature) and
+has been removed (YAGNI). Publisher identity is out of scope until a real
+marketplace exists with a concrete need.
 
 ---
 
@@ -1252,9 +1214,8 @@ cd dist-output/
 zip -r ../my-extension-1.0.0.zip manifest.json dist/ assets/
 ```
 
-Future: a `.folyn-extension` archive + marketplace download will land when the
-ed25519 signature chain is enforced. The scaffolding (see "Integrity
-upgrade path" above) is already in place for that.
+Future: a `.folyn-extension` archive + marketplace download will land when a
+real marketplace exists with a concrete publisher-identity need.
 
 ---
 

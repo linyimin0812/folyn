@@ -89,10 +89,6 @@ export interface ExtensionEntry {
   trusted: boolean;
   /** relpath → SHA-256 hex, computed at install time. */
   integrity: Record<string, string>;
-  /** Optional ed25519 signature over the canonicalized manifest (PR4 scaffolding). */
-  signature?: string;
-  /** Optional pinned publisher public key (base64). */
-  publisherPublicKey?: string;
   /** Persisted user-facing activation flag. `false` means the user disabled
    * the extension in Settings — App.tsx hydrate skips activation on next
    * launch. In-memory host state is reset on restart, so this field is the

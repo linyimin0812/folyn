@@ -11,31 +11,31 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const bin = join(here, '..', 'dist', 'index.js');
 
-const dir = await mkdtemp(join(tmpdir(), 'create-folyn-plugin-'));
+const dir = await mkdtemp(join(tmpdir(), 'create-folyn-extension-'));
 try {
   execFileSync(process.execPath, [
-    bin, 'demo-plugin', '--yes',
+    bin, 'demo-extension', '--yes',
     '--author', 'Jane',
     '--version', '1.2.3',
     '--folyn', '>=0.2.0',
-    '--display-name', 'Demo Plugin',
+    '--display-name', 'Demo Extension',
   ], { cwd: dir, stdio: 'pipe' });
 
-  const manifest = JSON.parse(await readFile(join(dir, 'demo-plugin', 'manifest.json'), 'utf8'));
-  assert.equal(manifest.id, 'demo-plugin');
-  assert.equal(manifest.name, 'Demo Plugin');
+  const manifest = JSON.parse(await readFile(join(dir, 'demo-extension', 'manifest.json'), 'utf8'));
+  assert.equal(manifest.id, 'demo-extension');
+  assert.equal(manifest.name, 'Demo Extension');
   assert.equal(manifest.author, 'Jane');
   assert.equal(manifest.version, '1.2.3');
   assert.equal(manifest.folyn, '>=0.2.0');
 
-  const pkg = JSON.parse(await readFile(join(dir, 'demo-plugin', 'package.json'), 'utf8'));
-  assert.equal(pkg.name, 'folyn-plugin-demo-plugin');
+  const pkg = JSON.parse(await readFile(join(dir, 'demo-extension', 'package.json'), 'utf8'));
+  assert.equal(pkg.name, 'folyn-extension-demo-extension');
   assert.equal(pkg.version, '1.2.3');
 
   // ponytail: agent-context docs ship with the template (static, no
   // placeholder substitution). CLAUDE.md is a one-line pointer to AGENTS.md.
-  const agents = await readFile(join(dir, 'demo-plugin', 'AGENTS.md'), 'utf8');
-  const claude = await readFile(join(dir, 'demo-plugin', 'CLAUDE.md'), 'utf8');
+  const agents = await readFile(join(dir, 'demo-extension', 'AGENTS.md'), 'utf8');
+  const claude = await readFile(join(dir, 'demo-extension', 'CLAUDE.md'), 'utf8');
   assert.ok(agents.length > 100, 'AGENTS.md should have real content');
   assert.match(claude, /See AGENTS\.md/, 'CLAUDE.md should point to AGENTS.md');
 

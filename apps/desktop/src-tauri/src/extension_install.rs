@@ -21,7 +21,6 @@ use crate::extension_commands::{
 };
 use crate::extension_security::{
     compute_integrity, extract_zip_filtered, read_manifest_id_from_zip, validate_manifest,
-    verify_extension_signature,
 };
 
 // ── Recursive directory copy ─────────────────────────────────────────────────
@@ -111,10 +110,10 @@ pub async fn install_extension_zip(
             Err(e) => return Err(cleanup(e)),
         };
     if !skipped.is_empty() {
-        // ponytail: stderr diagnostic, not a fatal error — mirrors the
-        // signature-check warning pattern. The diagnostics UI picks up
-        // stderr; surfacing this in the install return type would force an
-        // API shape change for a non-blocking warning.
+        // Non-fatal stderr diagnostic — the diagnostics UI picks up stderr.
+        // Surfacing this in the install return type would force an API shape
+        // change for a non-blocking warning (files with non-allowlisted
+        // extensions are soft-skipped, not copied).
         eprintln!(
             "[extension_commands] install_extension_zip: skipped {n} file(s) with non-allowlisted extensions: {files}",
             n = skipped.len(),
@@ -179,12 +178,6 @@ pub async fn install_extension_zip(
 
     let integrity = compute_integrity(&extension_dir).unwrap_or_default();
 
-    let signature = manifest["signature"].as_str().map(|s| s.to_string());
-    let publisher_public_key = manifest["publisherPublicKey"].as_str().map(|s| s.to_string());
-    if let Err(e) = verify_extension_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
-        eprintln!("[extension_commands] install_extension_zip: signature check warning for {id}: {e}");
-    }
-
     let entry = ExtensionEntry {
         id: id.clone(),
         name: manifest["name"].as_str().unwrap_or(&id).to_string(),
@@ -192,8 +185,6 @@ pub async fn install_extension_zip(
         tier: manifest["tier"].as_str().unwrap_or("sandbox").to_string(),
         trusted: false,
         integrity,
-        signature,
-        publisher_public_key,
         enabled: true,
     };
 
@@ -261,24 +252,6 @@ pub async fn install_extension(
     // `import()` and compares against this.
     let integrity = compute_integrity(&extension_dir).unwrap_or_default();
 
-    // Optional ed25519 signature scaffolding (PR4). The manifest MAY carry
-    // `signature` + `publisherPublicKey` (base64). We persist them onto the
-    // entry so a future load path can require verification; MVP does NOT
-    // enforce — `verify_extension_signature` returns Ok(()) when absent.
-    let signature = manifest["signature"]
-        .as_str()
-        .map(|s| s.to_string());
-    let publisher_public_key = manifest["publisherPublicKey"]
-        .as_str()
-        .map(|s| s.to_string());
-    // Best-effort diagnostic: if a signature is present, verify it now so a
-    // bad signature surfaces at install time rather than at activation. Non-
-    // fatal — we still install (the SHA-256 gate is the real boundary); the
-    // error is logged to stderr for the diagnostics UI to pick up later.
-    if let Err(e) = verify_extension_signature(&manifest, signature.as_deref(), publisher_public_key.as_deref()) {
-        eprintln!("[extension_commands] install_extension: signature check warning for {id}: {e}");
-    }
-
     let entry = ExtensionEntry {
         id: id.clone(),
         name: manifest["name"]
@@ -295,8 +268,6 @@ pub async fn install_extension(
             .to_string(),
         trusted: false,
         integrity,
-        signature,
-        publisher_public_key,
         enabled: true,
     };
 

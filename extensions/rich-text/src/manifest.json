@@ -44,6 +44,5 @@
         "run": "richtextHtml"
       }
     ]
-  },
-  "activation": { "onCommand": "", "onFileType": [], "onLanguage": [] }
+  }
 }

@@ -1,7 +1,7 @@
 {
   "name": "create-folyn-extension",
   "version": "0.1.0",
-  "description": "Scaffold a Folyn plugin from a template. Run: npx create-folyn-extension <name>",
+  "description": "Scaffold a Folyn extension from a template. Run: npx create-folyn-extension <name>",
   "type": "module",
   "bin": {
     "create-folyn-extension": "dist/index.js"

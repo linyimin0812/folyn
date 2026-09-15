@@ -17,7 +17,6 @@ TOFU 审批流程、本地开发、打包。示例插件位于
 - [权限模型](#权限模型)
 - [生命周期：activate / deactivate / dispose](#生命周期activate--deactivate--dispose)
 - [TOFU 审批流程](#tofu-审批流程)
-- [完整性升级路径（ed25519 脚手架）](#完整性升级路径ed25519-脚手架)
 - [本地开发](#本地开发)
 - [打包](#打包)
 - [参考：示例插件](#参考示例插件)
@@ -144,8 +143,6 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 - `sandbox` tier 必须有 `html`（加载进 iframe/窗口的 HTML 入口）。
 - 文件完整性：安装时计算每个文件的 SHA-256；trusted tier 在 `import()` 前再次校验
   `main` 的哈希。被篡改则拒绝激活。
-- 可选 ed25519 `signature` + `publisherPublicKey`（MVP：不强制，未来 marketplace
-  门槛的脚手架）。
 
 ### 5. sandbox 插件的 CSP（HTML/JS 能做什么）
 
@@ -183,7 +180,7 @@ default-src 'none';
 | ----------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Loader            | 隐藏 `<iframe sandbox="allow-scripts">`（无 `allow-same-origin`），从 `folyn-extension://localhost/<id>/<html>` 加载 | `import(/* @vite-ignore */ blobUrl)` 进 **主 webview realm**                                                |
 | 隔离              | 跨 origin opaque origin；无父 DOM、无 Tauri API、无 localStorage                                                  | 无——运行在 host realm；可读 Zustand store、调 Tauri、操作 DOM                                               |
-| 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；`grant_extension_capabilities` 加范围化 Tauri 能力（基本冗余——见 [权限模型](#权限模型)） |
+| 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；无逐插件运行时 ACL，`permissions` 仅供信息（见 [权限模型](#权限模型)）        |
 | 信任门槛          | 无（sandbox 本身就是边界）                                                                                        | TOFU：激活前必须 **批准并授权**                                                                             |
 | 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`      |
 | 热卸载            | 销毁 iframe 元素                                                                                                  | `dispose()` adapter + `URL.revokeObjectURL(blobUrl)`                                                        |
@@ -311,18 +308,6 @@ default-src 'none';
       },
     ],
   },
-
-  // 可选。懒激活触发器。仅当以下之一触发时才加载插件代码（仿 VSCode activation events）。
-  "activation": {
-    "onCommand": "greet", // 此命令被调用时激活
-    "onFileType": [".json"], // 此扩展名的文件打开时激活
-    "onLanguage": ["markdown"], // 此语言的文档打开时激活
-  },
-
-  // 可选（PR4 脚手架）。ed25519 签名 + 固定的 publisher 公钥。
-  // MVP 不强制——见"完整性升级路径"。
-  "signature": "<base64 ed25519 signature over the canonicalized manifest>",
-  "publisherPublicKey": "<base64 ed25519 public key>",
 }
 ```
 
@@ -788,22 +773,26 @@ manifest 声明的 `permissions` 再 dispatch。Sandbox 插件无法绕过——
 原生 Tauri 的路径。这就是 VSCode extension-host 模型：隔离让能力范围化的 API 可
 强制执行。
 
-### trusted tier —— TOFU + 设计现实（软边界）
+### trusted tier —— TOFU + 完整 host realm（明确模型）
 
 Trusted 插件运行在 **主 webview realm**，本身已有 `capabilities/default.json`
-赋予的宽泛 Tauri 能力（`fs:scope-home-recursive`、`shell:allow-spawn` 等）。
-`grant_extension_capabilities` Rust 命令调 `add_capability` 加范围化权限——但这是
-**additive / 冗余**，不是 confinement。Trusted 插件仍可直接 `import('@tauri-apps/api/core')`
-用主窗口已有的能力。
+赋予的完整 Tauri 能力（`fs:scope: [{"path":"**"}]`、`shell:allow-spawn`、dialog、
+clipboard…）。**无逐插件运行时 ACL。** `grant_extension_capabilities` /
+`add_capability` 不存在、未接线——它本该用的范围化权限条目格式会破坏 Tauri
+的运行时 ACL（后续每次 fs 检查都报 `error deserializing scope: … EntryRaw`），
+故从未连接。manifest 的 `permissions` 块**对 trusted tier 仅供信息**：运行时
+不强制，因为 trusted 插件能直接访问 host realm 的完整面（如直接
+`import('@tauri-apps/api/core')` 用主窗口已有能力）。
 
-**Trusted tier 真正的安全边界是 TOFU 门槛**（完整性 + 用户 pin），不是
-`add_capability`。一旦你批准了一个 trusted 插件，它就有完整权限。这是 VSCode
-"in-process host = 软同意门" 的权衡，trusted tier 明确接受：
+**Trusted 代码的唯一边界是 TOFU 门槛**（用户 pin + `main` 的 SHA-256 完整性
+匹配，由 trusted loader 在 `import()` 前校验）。一旦你批准了一个 trusted
+插件，它就有完整权限。这是 VSCode "in-process host = 软同意门" 的权衡，
+trusted tier 明确接受：
 
 > TOFU-pinned = 用户显式信任 = 完整权限。
 
-不要假装 `grant_extension_capabilities` 是硬沙箱。需要硬边界装第三方插件，用
-**sandbox tier**。
+需要给第三方插件硬的、范围化的边界？用 **sandbox tier**——那才是
+`permissions` 真正被强制的 tier（每次 RPC 调用都按 manifest 校验）。
 
 ---
 
@@ -976,33 +965,12 @@ Sandbox 插件安装即自动激活（其边界是 iframe，无需审批）。Tr
 
 ---
 
-## 完整性升级路径（ed25519 脚手架）
+## 完整性模型
 
-PR3 在安装时计算每文件 SHA-256 完整性 map，trusted loader 在 `import()` 前校验
-`main` 的哈希。这是 **MVP 门槛**——证明磁盘上的字节与被批准时一致（篡改检测），
-但不证明 publisher 身份。
-
-PR4 在其上加 **ed25519 签名脚手架**：
-
-- manifest 可携带 `signature`（base64 ed25519 签名，覆盖 canonicalized manifest JSON）
-  和 `publisherPublicKey`（base64 ed25519 公钥）。
-- `verify_extension_signature(manifest, signature, publicKey)` 是纯 Rust 函数：无签名
-  返回 `Ok(())`（MVP：可选），有签名则校验。
-- 安装时若有签名，best-effort 校验（非致命——只打 stderr；SHA-256 仍是门槛）。
-- `verify_extension_signature_cmd` Tauri 命令让未来的诊断 UI 在批准前显示"签名无效"。
-
-### 迁移到强制签名
-
-当 marketplace 上线：
-
-1. 加配置开关（如 `requireSignatures: true`）。
-2. `verify_extension_signature` 在 `signature` 为 `None` 且开关打开时返回 `Err`。
-3. 在同意 modal 中显示"此插件未签名"。
-4. 固定 publisher 公钥到可信集合；首次批准 TOFU-pin（`publisherPublicKey` 持久化
-   到 `extensions.json`，后续更新换 key 会重新触发同意）。
-
-对现有插件无破坏性变更——未签名插件在开关打开前一直可用。脚手架已就位，门槛只是
-尚未强制。
+每文件 SHA-256 完整性（安装时计算，加载时由 trusted loader 校验）是**唯一篡改门槛**：
+证明磁盘上的字节与被批准时一致。**无签名验证**——ed25519 脚手架是推测性的（没有任何
+插件携带过签名），已按 YAGNI 删除。publisher 身份认证超出范围，直到出现真实 marketplace
+产生具体需求。
 
 ---
 
@@ -1055,8 +1023,8 @@ MVP：**未打包的文件夹**。安装命令把包含 `manifest.json` + 资源
 今天分发插件的方式：发文件夹（自己 zip 给用户下载；用户解压到本地路径，通过文件夹
 对话框安装）。
 
-未来：`.folyn-extension` archive（文件夹的 zip）+ marketplace 下载会在签名链强制后上线。
-ed25519 脚手架（见上）已为其就位。
+未来：`.folyn-extension` archive（文件夹的 zip）+ marketplace 下载会在出现真实 marketplace
+产生具体 publisher 身份需求时上线。
 
 ---
 

@@ -33,9 +33,6 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `html`               | `string`                 | sandbox 必填 | sandbox tier 的 HTML 入口                                   |
 | `permissions`        | `ExtensionPermissions`      | 否           | 能力声明                                                    |
 | `contributes`        | `ContributionPoints`     | 否           | 贡献点                                                      |
-| `activation`         | `ActivationEvents`       | 否           | 懒激活触发                                                  |
-| `signature`          | `string`                 | 否           | ed25519 签名（base64），MVP 可选                            |
-| `publisherPublicKey` | `string`                 | 否           | 配对公钥（base64）                                          |
 
 ### permissions 子表
 
@@ -48,14 +45,6 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `window`    | `boolean`                                               | 打开 tool window                  |
 | `vault`     | `{ readActive?: boolean; insertContent?: boolean }`     | 活动文档读写                      |
 | `ai`        | `{ chat?: boolean; agents?: string[]; edit?: boolean }` | AI 能力，详见 §7                  |
-
-### activation 子表
-
-| 字段         | 类型       | 说明             |
-| ------------ | ---------- | ---------------- |
-| `onCommand`  | `string`   | 命令调用时激活   |
-| `onFileType` | `string[]` | 匹配扩展名时激活 |
-| `onLanguage` | `string[]` | 匹配语言时激活   |
 
 ## 3. 贡献点一览
 

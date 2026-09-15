@@ -47,13 +47,6 @@ To ship a zip: `cd dist && zip -r ../<name>-<version>.zip .`
   "html": "",                         // sandbox-tier HTML UI entry; required when tier === 'sandbox'
   "permissions": { /* see Permissions */ },
   "contributes": { /* see Contribution points */ },
-  "activation": {                     // when the host activates this extension
-    "onCommand": "",                  // command id that triggers activation
-    "onFileType": [],                 // file-type ids that trigger activation
-    "onLanguage": []                  // language ids that trigger activation
-  },
-  "signature": "",                    // optional ed25519 sig over canonicalized manifest (base64)
-  "publisherPublicKey": "",           // optional base64 ed25519 pubkey paired with signature
   "icon": "",                         // optional: inline <svg> | .svg path | emoji/short text
   "description": ""                   // optional one-liner shown in Settings → Extensions
 }
@@ -353,7 +346,7 @@ ctx.env.onLocaleChange(cb);                 // returns Disposable
 
 ## Lifecycle
 
-1. Host reads `manifest.json`, checks `tier` + signature/TOFU approval.
+1. Host reads `manifest.json`, checks `tier` + TOFU approval.
 2. Host resolves `activation` — activates on first matching command/fileType/language, or eagerly if `activation` is empty.
 3. Trusted loader: `import()` the bundle, take default export as `ExtensionModule`.
 4. Host calls `module.activate?.(ctx)` if present. Errors here set state `failed`.

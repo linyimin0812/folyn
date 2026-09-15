@@ -18,7 +18,6 @@ export type {
   MarkdownCodeRendererContribution,
   EditorLanguageContribution,
   HighlightGrammarContribution,
-  ActivationEvents,
   ExtensionAiCapability,
   ExtensionAiChatParams,
   ExtensionAiAgentParams,
