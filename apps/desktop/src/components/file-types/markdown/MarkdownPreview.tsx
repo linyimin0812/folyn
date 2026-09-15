@@ -856,6 +856,14 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    // If the cursor landed inside a `::::tabs` block (any tab — visible or
+    // hidden), promote the target up to the `tabs` wrapper so the sticky
+    // branch below holds the whole container in place. Without this, the
+    // nearest visible block is the *active* tab's content paragraph (a
+    // different source line than the cursor's hidden tab), and line
+    // interpolation maps the cursor onto it → drift.
+    const tabsWrap = (target as HTMLElement).closest('[data-container="tabs"]');
+    if (tabsWrap) target = tabsWrap;
     const el = target as HTMLElement;
     const blockChanged = activeBlockRef.current !== el;
     if (blockChanged) {
