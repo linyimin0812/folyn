@@ -402,6 +402,11 @@ export default function App() {
       const { listen } = await import('@tauri-apps/api/event');
       const unInstall = await listen<{ id: string }>('extension://installed', async (event) => {
         try {
+          // Idempotent: boot hydration may have already registered this
+          // extension from `list_extensions`, in which case re-installing
+          // throws "already installed". If it's already known, skip the
+          // install (and any activation — boot handled it) and no-op.
+          if (extensionHost.get(event.payload.id)) return;
           const manifest = await readExtensionManifest(event.payload.id);
           await extensionHost.install(manifest as never);
           // Sandbox: activate immediately. Trusted: wait for approval.
