@@ -23,6 +23,7 @@ export { collapsibleExtension } from './src/extensions/CollapsibleExtension';
 export { cardExtension } from './src/extensions/CardExtension';
 export { gridExtension } from './src/extensions/GridExtension';
 export { buttonExtension } from './src/extensions/ButtonExtension';
+export { marqueeExtension } from './src/extensions/MarqueeExtension';
 
 // Built-in editor language factories (CodeMirror StreamLanguage, hosted by
 // the app — see apps/desktop registerBuiltinCodeContributions).
@@ -42,6 +43,7 @@ import { collapsibleExtension } from './src/extensions/CollapsibleExtension';
 import { cardExtension } from './src/extensions/CardExtension';
 import { gridExtension } from './src/extensions/GridExtension';
 import { buttonExtension } from './src/extensions/ButtonExtension';
+import { marqueeExtension } from './src/extensions/MarqueeExtension';
 
 /** Register all built-in container extensions */
 export function registerBuiltinExtensions(): void {
@@ -59,4 +61,5 @@ export function registerBuiltinExtensions(): void {
   registry.register(cardExtension);
   registry.register(gridExtension);
   registry.register(buttonExtension);
+  registry.register(marqueeExtension);
 }
