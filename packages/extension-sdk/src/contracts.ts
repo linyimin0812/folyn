@@ -124,6 +124,25 @@ export type EditorLanguageFactory = () => unknown;
  */
 export type HighlightGrammarFn = (hljs: unknown) => unknown;
 
+// ── Storage-provider contribution (Settings → Storage & Sharing) ───────────────
+// Lets a trusted extension add a cloud object-storage provider (image hosting
+// + HTML sharing) to the Storage & Sharing settings. The contribution declares
+// metadata + entry-refs into `module.storageProviders`; the host adapter folds
+// them into the same `StorageProviderRegistry` the built-in R2/Qiniu/OSS
+// providers use.
+
+/** Props for a contributed storage provider's config form. The form owns its
+ *  draft state (like the built-in R2/Qiniu/OSS forms) and calls `useTranslation`
+ *  internally — it receives no `t` prop. */
+export interface StorageConfigFormProps {
+  /** Saved config (provider-owned shape) or the contribution's `defaultConfig`. */
+  config: unknown;
+  /** Persist the (possibly typed internally) config for this provider. */
+  onSave: (config: unknown) => Promise<void>;
+  /** Clear the saved config for this provider. */
+  onRemove: () => Promise<void>;
+}
+
 export interface ExtensionModule {
   /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
   handlers?: Record<string, FileTypeHandler>;
@@ -147,6 +166,13 @@ export interface ExtensionModule {
   editorLanguages?: Record<string, EditorLanguageFactory>;
   /** Entry-ref → highlight.js grammar factory. Keys match `contributes.highlightGrammars[].entry`. */
   highlightGrammars?: Record<string, HighlightGrammarFn>;
+  /** Entry-ref → heterogeneous bundle for one contributed storage provider
+   *  (Settings → Storage & Sharing). Keys match the `configForm` / `isConfigured` /
+   *  `uploadImage` / `uploadHtml` entry-refs declared in `contributes.storageProviders[]`.
+   *  ponytail: `unknown` values — the host adapter narrows each entry by role
+   *  (React component / predicate / upload fn); the SDK is React-free at the
+   *  map level, though the form entry resolves to a `ComponentType<StorageConfigFormProps>`. */
+  storageProviders?: Record<string, unknown>;
   /** Optional lifecycle hook; receives the same (api, ctx) the loader passes
    * to {@link Extension.activate}. */
   activate?: (api: ExtensionApi, ctx: ExtensionContext) => void | Promise<void>;

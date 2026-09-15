@@ -5,38 +5,41 @@
  * store caches them in memory after `loadFromDisk()` and persists
  * debounced on every setter.
  *
+ * Configs are opaque (`unknown`) keyed by provider id — each provider
+ * owns its config shape; the host never narrows it. Defaults come from
+ * each provider's `defaultConfig` via the registry, so built-ins and
+ * extension providers are treated the same.
+ *
  * ponytail: one store, registered as a persist slice named 'storage'
  * so settingsPersistence's loadSettings() picks it up. Mark in
  * EXPECTED_SLICES too.
  */
 import { create } from 'zustand';
 import { registerPersistSlice } from '../../store/settingsPersistence';
-import {
-  storageConfigStorage,
-  defaultR2Config,
-  defaultQiniuConfig,
-  defaultOssConfig,
-} from './storageConfigStorage';
-import type { ProviderConfig } from './types';
-import { isR2Config, isQiniuConfig, isOssConfig } from './types';
+import { storageConfigStorage } from './storageConfigStorage';
+import { getAllProviders } from './registry';
+
+// Importing the built-ins registers R2/Qiniu/OSS into the registry at module
+// load, before loadFromDisk() seeds defaults below.
+import './builtinStorageProviders';
 
 export interface StorageConfigState {
-  /** Active provider id ('r2' | 'qiniu' | future ids). */
+  /** Active provider id. */
   activeProvider: string;
-  /** Per-provider config cache (loaded from disk). */
-  configs: Partial<Record<string, ProviderConfig>>;
+  /** Per-provider config cache (loaded from disk; opaque per provider). */
+  configs: Record<string, unknown>;
   loadFromDisk: () => Promise<void>;
   setActiveProvider: (id: string) => void;
-  saveProviderConfig: (cfg: ProviderConfig) => Promise<void>;
+  saveProviderConfig: (id: string, cfg: unknown) => Promise<void>;
   removeProviderConfig: (id: string) => Promise<void>;
-  getActiveConfig: () => ProviderConfig | null;
+  getActiveConfig: () => unknown | null;
 }
 
-const initialConfigs: Partial<Record<string, ProviderConfig>> = {
-  r2: defaultR2Config(),
-  qiniu: defaultQiniuConfig(),
-  oss: defaultOssConfig(),
-};
+function seedDefaults(): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const p of getAllProviders()) out[p.id] = p.defaultConfig;
+  return out;
+}
 
 const persist = registerPersistSlice({
   name: 'storage',
@@ -54,15 +57,12 @@ const persist = registerPersistSlice({
 
 export const useStorageConfigStore = create<StorageConfigState>((set, get) => ({
   activeProvider: 'r2',
-  configs: initialConfigs,
+  configs: seedDefaults(),
 
   async loadFromDisk() {
     const disk = await storageConfigStorage.load();
-    const next: Partial<Record<string, ProviderConfig>> = {
-      r2: disk.r2 ?? defaultR2Config(),
-      qiniu: disk.qiniu ?? defaultQiniuConfig(),
-      oss: disk.oss ?? defaultOssConfig(),
-    };
+    const next: Record<string, unknown> = seedDefaults();
+    for (const [id, cfg] of Object.entries(disk)) next[id] = cfg;
     set({ configs: next });
   },
 
@@ -71,26 +71,22 @@ export const useStorageConfigStore = create<StorageConfigState>((set, get) => ({
     persist();
   },
 
-  async saveProviderConfig(cfg) {
-    await storageConfigStorage.set(cfg);
-    set((s) => ({ configs: { ...s.configs, [cfg.provider]: cfg } }));
+  async saveProviderConfig(id, cfg) {
+    await storageConfigStorage.set(id, cfg);
+    set((s) => ({ configs: { ...s.configs, [id]: cfg } }));
   },
 
   async removeProviderConfig(id) {
     await storageConfigStorage.remove(id);
-    const next: Partial<Record<string, ProviderConfig>> = { ...get().configs };
-    next[id] = id === 'r2' ? defaultR2Config()
-      : id === 'qiniu' ? defaultQiniuConfig()
-      : id === 'oss' ? defaultOssConfig()
-      : undefined;
+    const next: Record<string, unknown> = { ...get().configs };
+    // Reset to the provider's default (or drop if unregistered).
+    const entry = getAllProviders().find((p) => p.id === id);
+    next[id] = entry ? entry.defaultConfig : undefined;
     set({ configs: next });
   },
 
   getActiveConfig() {
     const { configs, activeProvider } = get();
-    const cfg = configs[activeProvider] ?? null;
-    if (!cfg) return null;
-    if (isR2Config(cfg) || isQiniuConfig(cfg) || isOssConfig(cfg)) return cfg;
-    return null;
+    return configs[activeProvider] ?? null;
   },
 }));

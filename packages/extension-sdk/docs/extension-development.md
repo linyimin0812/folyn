@@ -55,6 +55,7 @@ activate; auto-unregistered on deactivate.
 | `exportEnhancers`             | ✗        | ✓        | post-render DOM mutation during HTML/PDF export                      |
 | `markdownCodeRenderers`       | ✗        | ✓        | lang-tagged fenced code block → React renderer                       |
 | `editorLanguages`             | ✗        | ✓        | CodeMirror language extension for fenced source highlighting         |
+| `storageProviders`             | ✗        | ✓        | cloud object-storage provider in Settings → Storage & Sharing       |
 
 ### 3. RPC method table (sandbox tier — host-mediated)
 
@@ -196,7 +197,7 @@ contribution points are available.
 | Isolation                   | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage                                              | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM                                                         |
 | Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; no per-extension runtime ACL, `permissions` informational (see [Permissions model](#permissions-model))        |
 | Trust gate                  | none (sandbox IS the boundary)                                                                                         | TOFU: user must **批准并授权** before activation                                                                                          |
-| Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`                                    |
+| Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`, `storageProviders`                                    |
 | Hot unload                  | destroy iframe element                                                                                                 | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)`                                                                                     |
 | Bundle requirement          | HTML + JS loaded by the iframe via `folyn-extension://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
 
@@ -666,6 +667,59 @@ adapts it into the matching app registry when the extension activates.
   `folyn-extension-sdk/folyn-extension-plantuml/src/codemirror.ts` for the canonical
   pattern — it mirrors the `resolveReact()` approach for `window.React`.
 
+### storageProviders (trusted only)
+
+Adds a cloud object-storage provider to **Settings → Storage & Sharing**
+(image hosting + HTML sharing), alongside the built-in R2 / Qiniu / OSS.
+
+```jsonc
+"storageProviders": [
+  {
+    "id": "smms",
+    "labelKey": "ext.smms.label",
+    "icon": "🖼️",
+    "capabilities": { "image": true, "html": false },
+    "configForm": "form",
+    "isConfigured": "isConfigured",
+    "uploadImage": "uploadImage",
+    "defaultConfig": { "token": "" }
+  }
+]
+```
+
+- `id` is unique across built-ins + extensions. It keys the on-disk config
+  file (`~/.folyn/image-hosts/<id>.json`) and the store entry.
+- `labelKey` is an i18n key the settings selector resolves with the host's
+  `t()`; ship your own bundle (the host does **not** expose its message
+  catalog) and call `useTranslation()` in your form.
+- `icon` is an emoji, inline `<svg>`, `.svg` path, or a host `ThemeIcon`
+  name (the settings UI renders a `ThemeIcon` when the name is known,
+  else the string as text).
+- `capabilities.image` / `capabilities.html` declare which upload paths
+  this provider serves. Declare `image: true` only if you ship an
+  `uploadImage`; `html: true` only if you ship an `uploadHtml`.
+- `configForm` is the **entry-ref** into the module's `storageProviders`
+  map for a React component of shape `ComponentType<StorageConfigFormProps>`
+  — `{ config: unknown; onSave: (cfg) => Promise<void>; onRemove: () =>
+  Promise<void> }`. Own your draft state; narrow the opaque `config` to
+  your own type at the boundary. The host wraps the form in an error
+  boundary so a render throw is isolated.
+- `isConfigured` is the **entry-ref** to a `(config: unknown) => boolean`
+  — whether the saved config is populated enough to attempt an upload.
+  Controls whether the selector shows the provider as configured.
+- `uploadImage` / `uploadHtml` are **entry-refs** to
+  `(bytes, ext, config) => Promise<publicUrl>` and
+  `(html, config) => Promise<publicUrl>`. The config is whatever your
+  form saved (opaque to the host). Since trusted code runs in-realm, you
+  can `fetch()` your cloud API directly with your own signing.
+- `defaultConfig` is seeded into the store when the provider is first
+  selected.
+
+The host routes the settings UI and the image-paste / markdown→HTML share
+flows through one `StorageProviderRegistry`; built-in and extension
+providers are the same kind of thing, so an uninstall cleanly removes your
+entry and its saved config resets to your `defaultConfig`.
+
 ---
 
 ## The ExtensionModule export contract (trusted tier)
@@ -683,6 +737,11 @@ export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': e
 export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
 export const markdownCodeRenderers: Record<string, ComponentType<MarkdownCodeRendererProps>> = { 'PlantUmlMarkdownBlock': PlantUmlBlock };
 export const editorLanguages: Record<string, EditorLanguageFactory> = { 'plantumlLanguage': () => plantumlLanguage() };
+export const storageProviders: Record<string, unknown> = {
+  form: SmmsForm,                 // ComponentType<StorageConfigFormProps>
+  isConfigured: (cfg: unknown) => !!(cfg as { token?: string }).token,
+  uploadImage: async (bytes, ext, cfg) => { /* fetch your API, sign privately */ return url; },
+};
 export function activate(ctx: ExtensionContext) { /* optional */ }
 export function deactivate(ctx: ExtensionContext) { /* optional */ }
 ```

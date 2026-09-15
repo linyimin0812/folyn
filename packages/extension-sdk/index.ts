@@ -18,6 +18,7 @@ export type {
   MarkdownCodeRendererContribution,
   EditorLanguageContribution,
   HighlightGrammarContribution,
+  StorageProviderContribution,
   ExtensionAiCapability,
   ExtensionAiChatParams,
   ExtensionAiAgentParams,
@@ -111,4 +112,5 @@ export type {
   MarkdownCodeRendererProps,
   EditorLanguageFactory,
   HighlightGrammarFn,
+  StorageConfigFormProps,
 } from './src/contracts';

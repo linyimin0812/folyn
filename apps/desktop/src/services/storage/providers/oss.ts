@@ -6,9 +6,8 @@
  *
  * Reference: aliyun-oss-python-sdk `oss2/auth.py` `ProviderAuthV4`.
  */
-import type { ProviderConfig, OssProviderConfig, StorageProvider } from '../types';
+import type { OssProviderConfig, StorageProviderCapabilities } from '../types';
 import { buildOssV4PutRequest, sha1Hex } from '../crypto';
-import { isOssConfig } from '../types';
 import { contentTypeForExt } from '../contentType';
 import { withUploadRetry } from '../retry';
 
@@ -76,18 +75,19 @@ async function putObject(
   });
 }
 
-export class OssProvider implements StorageProvider {
+export class OssProvider {
   readonly id = 'oss';
   readonly labelKey = 'settings:storage.provider.oss.label';
-  readonly icon = '🟧';
-  readonly capabilities = { image: true, html: true };
+  readonly icon = 'aliyun';
+  readonly capabilities: StorageProviderCapabilities = { image: true, html: true };
 
-  isConfigured(config: ProviderConfig | null): config is OssProviderConfig {
-    if (!isOssConfig(config)) return false;
-    return !!(config.accessKeyId && config.accessKeySecret && config.bucket && config.region && config.publicBaseUrl);
+  isConfigured(config: unknown): config is OssProviderConfig {
+    if (!config || (config as OssProviderConfig).provider !== 'oss') return false;
+    const c = config as OssProviderConfig;
+    return !!(c.accessKeyId && c.accessKeySecret && c.bucket && c.region && c.publicBaseUrl);
   }
 
-  async uploadImage(bytes: Uint8Array, ext: string, config: ProviderConfig): Promise<string> {
+  async uploadImage(bytes: Uint8Array, ext: string, config: unknown): Promise<string> {
     const cfg = config as OssProviderConfig;
     const hash = await sha1Hex(bytes);
     const key = joinKey(cfg.imageKeyPrefix || 'images/', `${hash}.${ext}`);
@@ -96,7 +96,7 @@ export class OssProvider implements StorageProvider {
     return publicUrl(cfg, key);
   }
 
-  async uploadHtml(html: string, config: ProviderConfig): Promise<string> {
+  async uploadHtml(html: string, config: unknown): Promise<string> {
     const cfg = config as OssProviderConfig;
     const bytes = new TextEncoder().encode(html);
     const hash = await sha1Hex(bytes);

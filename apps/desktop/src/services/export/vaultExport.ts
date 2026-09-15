@@ -23,7 +23,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
-import type { StorageProvider, ProviderConfig } from '@/services/storage/types';
+import type { StorageProviderEntry } from '@/services/storage/registry';
 import type { HtmlImageMode } from '@/services/export/shared';
 import { themeCss } from '@/editor/codeThemes';
 import { detectFileType } from '@/store/editorStore';
@@ -177,8 +177,8 @@ async function fileToBodyFragment(
   vaultRoot: string,
   theme: 'light' | 'dark',
   imageMode: HtmlImageMode,
-  provider: StorageProvider | null,
-  cfg: ProviderConfig | null,
+  provider: StorageProviderEntry | null,
+  cfg: unknown | null,
 ): Promise<{ html: string; css: string; standalone?: string; canvas?: boolean }> {
   // markdown → full render
   if (file.fileType === 'markdown') {
@@ -801,6 +801,6 @@ export async function uploadVaultSingleToCloud(opts?: { imageMode?: HtmlImageMod
   const cfg = store.configs[fileId] ?? null;
   if (!cfg || !getProvider(fileId).isConfigured(cfg)) throw new Error('STORAGE_NOT_CONFIGURED');
   const provider = getProvider(fileId);
-  if (!provider.capabilities.html) throw new Error('STORAGE_NO_HTML_CAPABILITY');
+  if (!provider.capabilities.html || !provider.uploadHtml) throw new Error('STORAGE_NO_HTML_CAPABILITY');
   return provider.uploadHtml(html, cfg);
 }

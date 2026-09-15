@@ -33,7 +33,6 @@ import { externalFileProvider } from '@/services/externalFileProvider';
 import { isExternalPath } from '@/utils/isExternalPath';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
-import type { ProviderConfig } from '@/services/storage/types';
 
 export type { ExportFormat };
 export { hasContainerSyntax };
@@ -214,7 +213,7 @@ export async function shareActiveToCloud(opts?: { imageMode?: HtmlImageMode; fil
     throw new Error('STORAGE_NOT_CONFIGURED');
   }
   const provider = getProvider(fileId);
-  if (!provider.capabilities.html) {
+  if (!provider.capabilities.html || !provider.uploadHtml) {
     throw new Error('STORAGE_NO_HTML_CAPABILITY');
   }
   // Image upload may use a different provider.
@@ -242,7 +241,7 @@ async function buildShareableHtml(
   vaultRoot: string,
   fileType: string,
   imgProvider: ReturnType<typeof getProvider> | null,
-  imgCfg: ProviderConfig | null,
+  imgCfg: unknown | null,
   imageMode: HtmlImageMode,
 ): Promise<string> {
   const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
@@ -334,7 +333,7 @@ export async function shareActiveBytesToCloud(opts?: { fileProviderId?: string }
     throw new Error('STORAGE_NOT_CONFIGURED');
   }
   const provider = getProvider(fileId);
-  if (!provider.capabilities.image) {
+  if (!provider.capabilities.image || !provider.uploadImage) {
     throw new Error('STORAGE_NO_IMAGE_CAPABILITY');
   }
 

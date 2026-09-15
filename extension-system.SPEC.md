@@ -162,7 +162,7 @@ extraction; no second consumer exists yet).
   (`{ moduleKey?, register(manifest, module): Disposable | Promise<Disposable> }`)
   wires one contribution point. `trustedLoader.activate` folds over registered
   adapters; `normalizeModule` pulls only the `moduleKey`s they declare. A single
-  declarative manifest (`trustedContributions.ts`) registers all 12. Adding a
+  declarative manifest (`trustedContributions.ts`) registers all 13. Adding a
   contribution point = add the adapter + one line in `trustedContributions.ts` —
   `trustedLoader` and `normalizeModule` stay stable folds.
 

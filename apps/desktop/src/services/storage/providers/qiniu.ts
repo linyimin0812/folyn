@@ -10,9 +10,8 @@
  *
  * Reference: https://developer.qiniu.com/kodo/1272/form-upload
  */
-import type { ProviderConfig, QiniuProviderConfig, StorageProvider } from '../types';
+import type { QiniuProviderConfig, StorageProviderCapabilities } from '../types';
 import { buildQiniuUploadToken, sha1Hex } from '../crypto';
-import { isQiniuConfig } from '../types';
 import { contentTypeForExt } from '../contentType';
 import { withUploadRetry } from '../retry';
 
@@ -73,18 +72,19 @@ async function postForm(
   });
 }
 
-export class QiniuProvider implements StorageProvider {
+export class QiniuProvider {
   readonly id = 'qiniu';
   readonly labelKey = 'settings:storage.provider.qiniu.label';
-  readonly icon = '🐄';
-  readonly capabilities = { image: true, html: true };
+  readonly icon = 'qiniu';
+  readonly capabilities: StorageProviderCapabilities = { image: true, html: true };
 
-  isConfigured(config: ProviderConfig | null): config is QiniuProviderConfig {
-    if (!isQiniuConfig(config)) return false;
-    return !!(config.accessKey && config.secretKey && config.bucket && config.publicBaseUrl);
+  isConfigured(config: unknown): config is QiniuProviderConfig {
+    if (!config || (config as QiniuProviderConfig).provider !== 'qiniu') return false;
+    const c = config as QiniuProviderConfig;
+    return !!(c.accessKey && c.secretKey && c.bucket && c.publicBaseUrl);
   }
 
-  async uploadImage(bytes: Uint8Array, ext: string, config: ProviderConfig): Promise<string> {
+  async uploadImage(bytes: Uint8Array, ext: string, config: unknown): Promise<string> {
     const cfg = config as QiniuProviderConfig;
     const hash = await sha1Hex(bytes);
     const key = joinKey(cfg.imageKeyPrefix || 'images/', `${hash}.${ext}`);
@@ -93,7 +93,7 @@ export class QiniuProvider implements StorageProvider {
     return publicUrl(cfg, key);
   }
 
-  async uploadHtml(html: string, config: ProviderConfig): Promise<string> {
+  async uploadHtml(html: string, config: unknown): Promise<string> {
     const cfg = config as QiniuProviderConfig;
     const bytes = new TextEncoder().encode(html);
     const hash = await sha1Hex(bytes);

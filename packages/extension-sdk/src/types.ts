@@ -410,6 +410,38 @@ export interface HighlightGrammarContribution {
   entry: string;
 }
 
+// ── Storage-provider contribution (Settings → Storage & Sharing) ─────────────
+// Adds a cloud object-storage provider (image hosting + HTML sharing) to the
+// Storage & Sharing settings. Trusted-tier only — the sandbox tier cannot
+// return a React component. The host adapter registers each into the same
+// `StorageProviderRegistry` the built-in R2/Qiniu/OSS providers use; the
+// settings UI + upload call sites route through that one registry.
+
+export interface StorageProviderContribution {
+  /** Unique provider id, e.g. `smms`. Globally unique across built-ins + extensions. */
+  id: string;
+  /** i18n key for the provider label shown in the selector. */
+  labelKey: string;
+  /** Emoji, inline `<svg>…</svg>`, `.svg` path, or ThemeIcon name — mirrors `ContainerContribution.icon`. */
+  icon?: string;
+  /** What this provider can upload. */
+  capabilities: { image: boolean; html: boolean };
+  /** Entry ref into `ExtensionModule.storageProviders` — the React config-form
+   *  component (`ComponentType<StorageConfigFormProps>`). */
+  configForm: string;
+  /** Entry ref into `ExtensionModule.storageProviders` — `(config: unknown) => boolean`,
+   *  whether the saved config is populated enough to attempt an upload. */
+  isConfigured: string;
+  /** Entry ref into `ExtensionModule.storageProviders` —
+   *  `(bytes, ext, config) => Promise<publicUrl>`. Required when `capabilities.image`. */
+  uploadImage?: string;
+  /** Entry ref into `ExtensionModule.storageProviders` —
+   *  `(html, config) => Promise<publicUrl>`. Required when `capabilities.html`. */
+  uploadHtml?: string;
+  /** Default config seeded when the provider is first selected. */
+  defaultConfig: Record<string, unknown>;
+}
+
 export interface ContributionPoints {
   commands?: CommandContribution[];
   fileTypes?: FileTypeContribution[];
@@ -430,4 +462,6 @@ export interface ContributionPoints {
   editorLanguages?: EditorLanguageContribution[];
   /** highlight.js grammars contributed by extensions (drives ```lang code blocks + CodeFileViewer). */
   highlightGrammars?: HighlightGrammarContribution[];
+  /** Cloud object-storage providers added to Settings → Storage & Sharing. */
+  storageProviders?: StorageProviderContribution[];
 }

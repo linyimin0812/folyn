@@ -4,7 +4,7 @@
  * pulled via dynamic import by renderFilePreviewToSvg to avoid an ESM cycle).
  */
 
-import type { ProviderConfig, StorageProvider } from '../storage/types';
+import type { StorageProviderEntry } from '../storage/registry';
 import type { ExporterDescriptor } from 'folyn-extension-sdk';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { resolveBasePath } from '@/utils/pathResolver';
@@ -264,9 +264,11 @@ const IMAGE_UPLOAD_CONCURRENCY = 4;
 
 async function uploadAllImages(
   uniqueSrcs: string[],
-  provider: StorageProvider,
-  cfg: ProviderConfig,
+  provider: StorageProviderEntry,
+  cfg: unknown,
 ): Promise<({ original: string; url: string } | null)[]> {
+  if (!provider.uploadImage) throw new Error('STORAGE_NO_IMAGE_CAPABILITY');
+  const uploadImage = provider.uploadImage;
   const out: ({ original: string; url: string } | null)[] = new Array(uniqueSrcs.length).fill(null);
   let cursor = 0;
   const worker = async () => {
@@ -279,7 +281,7 @@ async function uploadAllImages(
       try {
         const bytes = await readFile(absPath);
         const ext = absPath.split('.').pop()?.toLowerCase() ?? 'png';
-        const url = await provider.uploadImage(new Uint8Array(bytes), ext, cfg);
+        const url = await uploadImage(new Uint8Array(bytes), ext, cfg);
         out[i] = { original: src, url };
       } catch {
         // Leave the original asset:// src — a broken img (outside the app)
@@ -293,8 +295,8 @@ async function uploadAllImages(
 
 export async function uploadImagesToProvider(
   html: string,
-  provider: StorageProvider,
-  cfg: ProviderConfig,
+  provider: StorageProviderEntry,
+  cfg: unknown,
 ): Promise<string> {
   const matches = [...html.matchAll(ASSET_URL_SRC_REGEX)];
   if (matches.length === 0) return html;

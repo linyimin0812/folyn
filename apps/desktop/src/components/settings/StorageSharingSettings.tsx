@@ -1,33 +1,23 @@
 /**
- * 存储与分享 settings tab. Configures R2 / 七牛云 / 阿里云 OSS storage
- * provider credentials (shared by image-hosting paste flow and
- * markdown→HTML share flow).
+ * 存储与分享 settings tab. Lists every registered storage provider
+ * (built-in R2/Qiniu/OSS + trusted-extension-contributed providers) and
+ * renders the active provider's own config form — each provider brings its
+ * form via the registry, so built-ins and extensions are the same kind of
+ * thing.
  */
-import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CloudCog, Save, Trash2, Copy } from 'lucide-react';
+import { CloudCog } from 'lucide-react';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getAllProviders } from '@/services/storage/registry';
-import type {
-  ProviderConfig,
-  R2ProviderConfig,
-  QiniuProviderConfig,
-  OssProviderConfig,
-} from '@/services/storage/types';
-import { isR2Config, isQiniuConfig, isOssConfig } from '@/services/storage/types';
-import { ThemeIcon } from '@/components/icons/ThemeIcon';
+import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
 import { IconSelect } from '@/components/common/IconSelect';
 
-const PROVIDER_ICON: Record<string, string> = {
-  r2: 'cloudflare',
-  qiniu: 'qiniu',
-  oss: 'aliyun',
-};
-
-function ProviderIcon({ id, size = 14 }: { id: string; size?: number }) {
-  const name = PROVIDER_ICON[id];
-  if (!name) return null;
-  return <ThemeIcon name={name} size={size} />;
+function ProviderIcon({ icon, size = 14 }: { icon?: string; size?: number }) {
+  if (!icon) return null;
+  if (hasIcon(icon)) return <ThemeIcon name={icon} size={size} />;
+  // Emoji / short text fallback for extension providers that didn't ship a
+  // ThemeIcon name.
+  return <span className="text-[14px] leading-none">{icon}</span>;
 }
 
 export function StorageSharingSettings() {
@@ -39,7 +29,9 @@ export function StorageSharingSettings() {
   const saveProviderConfig = useStorageConfigStore((s) => s.saveProviderConfig);
   const removeProviderConfig = useStorageConfigStore((s) => s.removeProviderConfig);
 
-  const activeCfg = configs[activeProvider] ?? null;
+  const activeEntry = providers.find((p) => p.id === activeProvider) ?? providers[0];
+  const activeCfg = activeEntry ? (configs[activeEntry.id] ?? activeEntry.defaultConfig) : null;
+  const Form = activeEntry?.configForm;
 
   return (
     <div className="mb-8">
@@ -53,383 +45,30 @@ export function StorageSharingSettings() {
       <div className="mb-5">
         <div className="text-[length:calc(var(--ui-font-size)-2.5px)] font-semibold text-t2 mb-[5px]">{t('settings:storage.provider.label')}</div>
         <IconSelect
-          value={activeProvider}
+          value={activeEntry?.id ?? ''}
           onChange={setActiveProvider}
           options={providers.map((p) => {
-            const cfg = configs[p.id] ?? null;
+            const cfg = configs[p.id] ?? p.defaultConfig;
             const configured = p.isConfigured(cfg);
             const suffix = configured ? '' : ` (${t('settings:storage.provider.notConfigured')})`;
             return {
               value: p.id,
               label: t(p.labelKey),
-              icon: <ProviderIcon id={p.id} />,
+              icon: <ProviderIcon icon={p.icon} />,
               suffix,
             };
           })}
         />
       </div>
 
-      {/* Active provider form */}
-      {isR2Config(activeCfg) && (
-        <R2Form
-          cfg={activeCfg}
-          onSave={saveProviderConfig}
-          onRemove={removeProviderConfig}
-          t={t}
+      {/* Active provider form (each provider ships its own) */}
+      {Form && activeEntry && (
+        <Form
+          config={activeCfg}
+          onSave={(cfg) => saveProviderConfig(activeEntry.id, cfg)}
+          onRemove={() => removeProviderConfig(activeEntry.id)}
         />
       )}
-      {isQiniuConfig(activeCfg) && (
-        <QiniuForm
-          cfg={activeCfg}
-          onSave={saveProviderConfig}
-          onRemove={removeProviderConfig}
-          t={t}
-        />
-      )}
-      {isOssConfig(activeCfg) && (
-        <OssForm
-          cfg={activeCfg}
-          onSave={saveProviderConfig}
-          onRemove={removeProviderConfig}
-          t={t}
-        />
-      )}
-
-    </div>
-  );
-}
-
-// ─── Field primitive ─────────────────────────────────────────────────────
-
-function Hint({ i18nKey }: { i18nKey: string }) {
-  const { t } = useTranslation();
-  const text = t(i18nKey);
-  const parts = text.split('\n').filter((s) => s.trim().length > 0);
-  if (parts.length === 0) return null;
-  return (
-    <ul className="text-[11px] text-t3 mt-3 leading-relaxed space-y-1.5">
-      {parts.map((p, i) => (
-        <li key={i} className="flex gap-1.5">
-          <span className="shrink-0 text-t3/70">•</span>
-          <span>{p}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Field({ label, value, onChange, placeholder, type = 'text' }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: 'text' | 'password';
-}) {
-  return (
-    <div className="mb-3">
-      <label className="block text-xs text-t3 mb-1 font-medium">{label}</label>
-      <input
-        type={type}
-        className="w-full py-[6px] px-2.5 border border-brd2 rounded-md bg-surf text-t1 text-[13px] outline-none focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoCapitalize="off"
-        autoComplete="off"
-      />
-    </div>
-  );
-}
-
-// ─── R2 form ─────────────────────────────────────────────────────────────
-
-function R2Form({ cfg, onSave, onRemove, t }: {
-  cfg: R2ProviderConfig;
-  onSave: (cfg: ProviderConfig) => Promise<void>;
-  onRemove: (id: string) => Promise<void>;
-  t: (k: string) => string;
-}) {
-  const [draft, setDraft] = useState<R2ProviderConfig>(cfg);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [copiedCors, setCopiedCors] = useState(false);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const set = (patch: Partial<R2ProviderConfig>) => setDraft((d) => ({ ...d, ...patch }));
-
-  useEffect(() => () => {
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-  }, []);
-
-  return (
-    <div className="p-4 border border-brd2 rounded-lg bg-surf">
-      <div className="flex items-center gap-2 mb-3">
-        <ThemeIcon name="cloudflare" size={16} />
-        <div className="text-[13px] font-semibold text-t1">{t('settings:storage.provider.r2.label')}</div>
-      </div>
-      <Field label={t('settings:storage.r2.accountId')} value={draft.accountId} onChange={(v) => set({ accountId: v })} placeholder="a1b2c3..." />
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.r2.accessKeyId')} value={draft.accessKeyId} onChange={(v) => set({ accessKeyId: v })} />
-        <Field label={t('settings:storage.r2.secretAccessKey')} value={draft.secretAccessKey} onChange={(v) => set({ secretAccessKey: v })} type="password" />
-      </div>
-      <Field label={t('settings:storage.r2.bucket')} value={draft.bucket} onChange={(v) => set({ bucket: v })} />
-      <Field label={t('settings:storage.publicBaseUrl')} value={draft.publicBaseUrl} onChange={(v) => set({ publicBaseUrl: v })} placeholder="https://pub-xxx.r2.dev or https://cdn.example.com" />
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.imageKeyPrefix')} value={draft.imageKeyPrefix} onChange={(v) => set({ imageKeyPrefix: v })} placeholder="images/" />
-        <Field label={t('settings:storage.htmlKeyPrefix')} value={draft.htmlKeyPrefix} onChange={(v) => set({ htmlKeyPrefix: v })} placeholder="html/" />
-      </div>
-      <div className="flex gap-2 mt-3">
-        <button
-          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50"
-          disabled={saving}
-          onClick={async () => {
-            setSaving(true);
-            try {
-              await onSave({
-                ...draft,
-                accountId: draft.accountId.trim(),
-                accessKeyId: draft.accessKeyId.trim(),
-                secretAccessKey: draft.secretAccessKey.trim(),
-                bucket: draft.bucket.trim(),
-                publicBaseUrl: draft.publicBaseUrl.trim(),
-              });
-              setSavedAt(Date.now());
-              if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-              savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
-            } finally { setSaving(false); }
-          }}
-        >
-          <Save size={13} className="inline mr-1" />
-          {t('settings:storage.save')}
-        </button>
-        <button
-          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd"
-          onClick={() => onRemove('r2')}
-        >
-          <Trash2 size={13} className="inline mr-1" />
-          {t('settings:storage.clear')}
-        </button>
-        {savedAt !== null && (
-          <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
-        )}
-      </div>
-      <Hint i18nKey="settings:storage.r2.publicHint" />
-      <button
-        type="button"
-        className="mt-2 inline-flex items-center gap-1 h-[24px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
-        onClick={async () => {
-          const cors = JSON.stringify([
-            {
-              AllowedOrigins: ['tauri://localhost', 'http://tauri.localhost', 'http://localhost:1420'],
-              AllowedMethods: ['PUT', 'POST', 'GET', 'HEAD'],
-              AllowedHeaders: ['authorization', 'content-type', 'x-amz-content-sha256', 'x-amz-date'],
-              ExposeHeaders: ['ETag'],
-              MaxAgeSeconds: 3600,
-            },
-          ], null, 2);
-          try {
-            await navigator.clipboard.writeText(cors);
-            setCopiedCors(true);
-            setTimeout(() => setCopiedCors(false), 1500);
-          } catch {
-            // Non-fatal — the JSON stays selectable for manual copy.
-          }
-        }}
-      >
-        <Copy size={12} />
-        {copiedCors ? `✓ ${t('settings:storage.cors.copied')}` : t('settings:storage.cors.copyButton')}
-      </button>
-    </div>
-  );
-}
-
-// ─── Qiniu form ──────────────────────────────────────────────────────────
-
-function QiniuForm({ cfg, onSave, onRemove, t }: {
-  cfg: QiniuProviderConfig;
-  onSave: (cfg: ProviderConfig) => Promise<void>;
-  onRemove: (id: string) => Promise<void>;
-  t: (k: string) => string;
-}) {
-  const [draft, setDraft] = useState<QiniuProviderConfig>(cfg);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const set = (patch: Partial<QiniuProviderConfig>) => setDraft((d) => ({ ...d, ...patch }));
-
-  useEffect(() => () => {
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-  }, []);
-
-  return (
-    <div className="p-4 border border-brd2 rounded-lg bg-surf">
-      <div className="flex items-center gap-2 mb-3">
-        <ThemeIcon name="qiniu" size={16} />
-        <div className="text-[13px] font-semibold text-t1">{t('settings:storage.provider.qiniu.label')}</div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.qiniu.accessKey')} value={draft.accessKey} onChange={(v) => set({ accessKey: v })} />
-        <Field label={t('settings:storage.qiniu.secretKey')} value={draft.secretKey} onChange={(v) => set({ secretKey: v })} type="password" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.qiniu.bucket')} value={draft.bucket} onChange={(v) => set({ bucket: v })} />
-        <div className="mb-3">
-          <label className="block text-xs text-t3 mb-1 font-medium">{t('settings:storage.qiniu.region')}</label>
-          <select
-            className="settings-select"
-            value={draft.region}
-            onChange={(e) => set({ region: e.target.value as QiniuProviderConfig['region'] })}
-          >
-            <option value="z0">{t('settings:storage.qiniu.regionOption.z0')}</option>
-            <option value="z1">{t('settings:storage.qiniu.regionOption.z1')}</option>
-            <option value="z2">{t('settings:storage.qiniu.regionOption.z2')}</option>
-            <option value="na0">{t('settings:storage.qiniu.regionOption.na0')}</option>
-            <option value="as0">{t('settings:storage.qiniu.regionOption.as0')}</option>
-          </select>
-        </div>
-      </div>
-      <Field label={t('settings:storage.publicBaseUrl')} value={draft.publicBaseUrl} onChange={(v) => set({ publicBaseUrl: v })} placeholder="https://cdn.example.com" />
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.imageKeyPrefix')} value={draft.imageKeyPrefix} onChange={(v) => set({ imageKeyPrefix: v })} placeholder="images/" />
-        <Field label={t('settings:storage.htmlKeyPrefix')} value={draft.htmlKeyPrefix} onChange={(v) => set({ htmlKeyPrefix: v })} placeholder="html/" />
-      </div>
-      <div className="flex gap-2 mt-3">
-        <button
-          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50"
-          disabled={saving}
-          onClick={async () => {
-            setSaving(true);
-            try {
-              await onSave({
-                ...draft,
-                accessKey: draft.accessKey.trim(),
-                secretKey: draft.secretKey.trim(),
-                bucket: draft.bucket.trim(),
-                publicBaseUrl: draft.publicBaseUrl.trim(),
-              });
-              setSavedAt(Date.now());
-              if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-              savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
-            } finally { setSaving(false); }
-          }}
-        >
-          <Save size={13} className="inline mr-1" />
-          {t('settings:storage.save')}
-        </button>
-        <button
-          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd"
-          onClick={() => onRemove('qiniu')}
-        >
-          <Trash2 size={13} className="inline mr-1" />
-          {t('settings:storage.clear')}
-        </button>
-        {savedAt !== null && (
-          <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
-        )}
-      </div>
-      <Hint i18nKey="settings:storage.qiniu.publicHint" />
-    </div>
-  );
-}
-
-// ─── OSS form ──────────────────────────────────────────────────────────
-
-function OssForm({ cfg, onSave, onRemove, t }: {
-  cfg: OssProviderConfig;
-  onSave: (cfg: ProviderConfig) => Promise<void>;
-  onRemove: (id: string) => Promise<void>;
-  t: (k: string) => string;
-}) {
-  const [draft, setDraft] = useState<OssProviderConfig>(cfg);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [copiedCors, setCopiedCors] = useState(false);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const set = (patch: Partial<OssProviderConfig>) => setDraft((d) => ({ ...d, ...patch }));
-
-  useEffect(() => () => {
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-  }, []);
-
-  return (
-    <div className="p-4 border border-brd2 rounded-lg bg-surf">
-      <div className="flex items-center gap-2 mb-3">
-        <ThemeIcon name="aliyun" size={16} />
-        <div className="text-[13px] font-semibold text-t1">{t('settings:storage.provider.oss.label')}</div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.oss.accessKeyId')} value={draft.accessKeyId} onChange={(v) => set({ accessKeyId: v })} />
-        <Field label={t('settings:storage.oss.accessKeySecret')} value={draft.accessKeySecret} onChange={(v) => set({ accessKeySecret: v })} type="password" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.oss.bucket')} value={draft.bucket} onChange={(v) => set({ bucket: v })} />
-        <Field label={t('settings:storage.oss.region')} value={draft.region} onChange={(v) => set({ region: v })} placeholder="cn-hangzhou" />
-      </div>
-      <Field label={t('settings:storage.publicBaseUrl')} value={draft.publicBaseUrl} onChange={(v) => set({ publicBaseUrl: v })} placeholder="https://cdn.example.com or https://bucket.oss-cn-hangzhou.aliyuncs.com" />
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('settings:storage.imageKeyPrefix')} value={draft.imageKeyPrefix} onChange={(v) => set({ imageKeyPrefix: v })} placeholder="images/" />
-        <Field label={t('settings:storage.htmlKeyPrefix')} value={draft.htmlKeyPrefix} onChange={(v) => set({ htmlKeyPrefix: v })} placeholder="html/" />
-      </div>
-      <div className="flex gap-2 mt-3">
-        <button
-          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50"
-          disabled={saving}
-          onClick={async () => {
-            setSaving(true);
-            try {
-              await onSave({
-                ...draft,
-                accessKeyId: draft.accessKeyId.trim(),
-                accessKeySecret: draft.accessKeySecret.trim(),
-                bucket: draft.bucket.trim(),
-                region: draft.region.trim(),
-                publicBaseUrl: draft.publicBaseUrl.trim(),
-              });
-              setSavedAt(Date.now());
-              if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-              savedTimerRef.current = setTimeout(() => setSavedAt(null), 2500);
-            } finally { setSaving(false); }
-          }}
-        >
-          <Save size={13} className="inline mr-1" />
-          {t('settings:storage.save')}
-        </button>
-        <button
-          className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd"
-          onClick={() => onRemove('oss')}
-        >
-          <Trash2 size={13} className="inline mr-1" />
-          {t('settings:storage.clear')}
-        </button>
-        {savedAt !== null && (
-          <span className="self-center text-[11px] text-[var(--green,#22a863)]">✓ {t('settings:storage.toast.saved')}</span>
-        )}
-      </div>
-      <Hint i18nKey="settings:storage.oss.publicHint" />
-      <button
-        type="button"
-        className="mt-2 inline-flex items-center gap-1 h-[24px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
-        onClick={async () => {
-          const cors = JSON.stringify([
-            {
-              AllowedOrigin: ['tauri://localhost', 'http://tauri.localhost', 'http://localhost:1420'],
-              AllowedMethod: ['PUT', 'GET', 'HEAD'],
-              AllowedHeader: ['authorization', 'content-type', 'x-oss-date', 'x-oss-content-sha256'],
-              ExposeHeader: ['ETag'],
-              MaxAgeSeconds: 3600,
-            },
-          ], null, 2);
-          try {
-            await navigator.clipboard.writeText(cors);
-            setCopiedCors(true);
-            setTimeout(() => setCopiedCors(false), 1500);
-          } catch {
-            // Non-fatal — the JSON stays selectable for manual copy.
-          }
-        }}
-      >
-        <Copy size={12} />
-        {copiedCors ? `✓ ${t('settings:storage.cors.copied')}` : t('settings:storage.cors.ossCopyButton')}
-      </button>
     </div>
   );
 }

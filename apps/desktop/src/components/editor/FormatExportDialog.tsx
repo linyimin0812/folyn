@@ -69,7 +69,7 @@ export function FormatExportDialog({
           throw new Error('STORAGE_NOT_CONFIGURED');
         }
         const provider = getProvider(fileId);
-        if (!provider.capabilities.image) {
+        if (!provider.capabilities.image || !provider.uploadImage) {
           throw new Error('STORAGE_NO_IMAGE_CAPABILITY');
         }
         const bytes = new Uint8Array(await blob.arrayBuffer());

@@ -82,7 +82,6 @@ class LocalFileStrategy implements ImageUploadStrategy {
 
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider } from '@/services/storage/registry';
-import { isR2Config } from '@/services/storage/types';
 
 class R2Strategy implements ImageUploadStrategy {
   readonly name: UploadTarget = 'r2';
@@ -95,17 +94,16 @@ class R2Strategy implements ImageUploadStrategy {
 
   async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
     const cfg = useStorageConfigStore.getState().configs.r2 ?? null;
-    if (!isR2Config(cfg)) throw new Error('R2 not configured');
+    const upload = getProvider('r2').uploadImage;
+    if (!getProvider('r2').isConfigured(cfg) || !upload) throw new Error('R2 not configured');
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
     const ext = config.format === 'jpeg' ? 'jpg' : config.format;
-    const url = await getProvider('r2').uploadImage(bytes, ext, cfg);
+    const url = await upload(bytes, ext, cfg);
     return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
   }
 }
 
 // ─── Qiniu Strategy (delegates to storage layer) ──────────────────────
-
-import { isQiniuConfig } from '@/services/storage/types';
 
 class QiniuStrategy implements ImageUploadStrategy {
   readonly name: UploadTarget = 'qiniu';
@@ -118,17 +116,16 @@ class QiniuStrategy implements ImageUploadStrategy {
 
   async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
     const cfg = useStorageConfigStore.getState().configs.qiniu ?? null;
-    if (!isQiniuConfig(cfg)) throw new Error('Qiniu not configured');
+    const upload = getProvider('qiniu').uploadImage;
+    if (!getProvider('qiniu').isConfigured(cfg) || !upload) throw new Error('Qiniu not configured');
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
     const ext = config.format === 'jpeg' ? 'jpg' : config.format;
-    const url = await getProvider('qiniu').uploadImage(bytes, ext, cfg);
+    const url = await upload(bytes, ext, cfg);
     return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
   }
 }
 
 // ─── OSS Strategy (delegates to storage layer) ────────────────────────
-
-import { isOssConfig } from '@/services/storage/types';
 
 class OssStrategy implements ImageUploadStrategy {
   readonly name: UploadTarget = 'oss';
@@ -141,10 +138,11 @@ class OssStrategy implements ImageUploadStrategy {
 
   async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
     const cfg = useStorageConfigStore.getState().configs.oss ?? null;
-    if (!isOssConfig(cfg)) throw new Error('OSS not configured');
+    const upload = getProvider('oss').uploadImage;
+    if (!getProvider('oss').isConfigured(cfg) || !upload) throw new Error('OSS not configured');
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
     const ext = config.format === 'jpeg' ? 'jpg' : config.format;
-    const url = await getProvider('oss').uploadImage(bytes, ext, cfg);
+    const url = await upload(bytes, ext, cfg);
     return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
   }
 }

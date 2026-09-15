@@ -6,9 +6,8 @@
  *
  * Reference: https://developers.cloudflare.com/r2/api/s3/api/
  */
-import type { ProviderConfig, R2ProviderConfig, StorageProvider } from '../types';
+import type { R2ProviderConfig, StorageProviderCapabilities } from '../types';
 import { buildSigV4PutRequest, sha1Hex } from '../crypto';
-import { isR2Config } from '../types';
 import { contentTypeForExt } from '../contentType';
 import { withUploadRetry } from '../retry';
 
@@ -69,18 +68,19 @@ async function putObject(
   });
 }
 
-export class R2Provider implements StorageProvider {
+export class R2Provider {
   readonly id = 'r2';
   readonly labelKey = 'settings:storage.provider.r2.label';
-  readonly icon = '☁️';
-  readonly capabilities = { image: true, html: true };
+  readonly icon = 'cloudflare';
+  readonly capabilities: StorageProviderCapabilities = { image: true, html: true };
 
-  isConfigured(config: ProviderConfig | null): config is R2ProviderConfig {
-    if (!isR2Config(config)) return false;
-    return !!(config.accountId && config.accessKeyId && config.secretAccessKey && config.bucket && config.publicBaseUrl);
+  isConfigured(config: unknown): config is R2ProviderConfig {
+    if (!config || (config as R2ProviderConfig).provider !== 'r2') return false;
+    const c = config as R2ProviderConfig;
+    return !!(c.accountId && c.accessKeyId && c.secretAccessKey && c.bucket && c.publicBaseUrl);
   }
 
-  async uploadImage(bytes: Uint8Array, ext: string, config: ProviderConfig): Promise<string> {
+  async uploadImage(bytes: Uint8Array, ext: string, config: unknown): Promise<string> {
     const cfg = config as R2ProviderConfig;
     const hash = await sha1Hex(bytes);
     const key = joinKey(cfg.imageKeyPrefix || 'images/', `${hash}.${ext}`);
@@ -89,7 +89,7 @@ export class R2Provider implements StorageProvider {
     return publicUrl(cfg, key);
   }
 
-  async uploadHtml(html: string, config: ProviderConfig): Promise<string> {
+  async uploadHtml(html: string, config: unknown): Promise<string> {
     const cfg = config as R2ProviderConfig;
     const bytes = new TextEncoder().encode(html);
     const hash = await sha1Hex(bytes);

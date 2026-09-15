@@ -2,9 +2,12 @@
  * Storage provider abstraction — used by both the image-paste flow
  * (image hosting) and the markdown→HTML share flow (HTML hosting).
  *
- * Adding a new provider = new file under `providers/` implementing
- * `StorageProvider` + one line in `registry.ts`. The two call sites
- * (`imageUploader.ts` for paste, `useExport.ts` for share) do not change.
+ * A provider is a {@link StorageProviderEntry} registered in
+ * `registry.ts`'s `StorageProviderRegistry`. Built-in R2/Qiniu/OSS register
+ * at boot (`builtinStorageProviders.ts`); trusted extensions register through
+ * the `storageProviderAdapter` contribution point. The two call sites
+ * (`imageUploader.ts` for paste, `useExport.ts` for share) route through
+ * `getProvider(id)` and never branch per provider.
  *
  * ponytail: no AuthSigner/Transport sub-interfaces. SigV4, HmacSHA1,
  * Bearer token and OAuth differ enough that an extra abstraction layer
@@ -15,7 +18,7 @@
 
 // ─── Provider ids ──────────────────────────────────────────────────────
 
-/** Discriminator for `ProviderConfig`. String, not literal union —
+/** Discriminator for a provider's config. String, not literal union —
  *  custom ids (smms, imgur, oss, cos, …) flow through without a cast.
  *  Mirrors ChatProvider's `string` stance. */
 export type StorageProviderId = string;
@@ -29,7 +32,12 @@ export interface StorageProviderCapabilities {
   html: boolean;
 }
 
-// ─── Provider config (discriminated union) ─────────────────────────────
+// ─── Built-in provider configs ──────────────────────────────────────────
+//
+// Each built-in provider owns its config shape. The host store holds configs
+// as opaque `Record<string, unknown>` keyed by provider id; a provider narrows
+// to its own type at the boundary (its `isConfigured` / `uploadImage` cast the
+// `unknown` config). Extension providers own whatever shape they declare.
 
 export interface R2ProviderConfig {
   provider: 'r2';
@@ -73,54 +81,4 @@ export interface OssProviderConfig {
   publicBaseUrl: string;
   imageKeyPrefix: string;
   htmlKeyPrefix: string;
-}
-
-// ponytail: discriminated union by `provider`. Adding a new provider =
-// adding a new member here + a new file under providers/. TS narrows
-// in switch (cfg.provider) so each provider's upload gets its own
-// correctly-typed config without casts at the call site.
-export type ProviderConfig = R2ProviderConfig | QiniuProviderConfig | OssProviderConfig;
-
-// ─── StorageProvider interface ─────────────────────────────────────────
-
-export interface StorageProvider {
-  readonly id: StorageProviderId;
-  /** i18n key, e.g. 'settings:storage.providers.r2.label'. */
-  readonly labelKey: string;
-  /** lucide icon name or single emoji. */
-  readonly icon: string;
-  readonly capabilities: StorageProviderCapabilities;
-
-  /** Type guard: is this config populated enough to attempt an upload?
-   *  Controls whether the UI shows the provider as enabled or "coming soon". */
-  isConfigured(config: ProviderConfig | null): boolean;
-
-  /** Upload image bytes. Caller verifies capabilities.image before calling.
-   *  Returns the public https URL to insert into markdown. */
-  uploadImage(
-    bytes: Uint8Array,
-    ext: string,
-    config: ProviderConfig,
-  ): Promise<string>;
-
-  /** Upload an HTML string. Caller verifies capabilities.html before calling.
-   *  Returns the public https URL to share. */
-  uploadHtml(
-    html: string,
-    config: ProviderConfig,
-  ): Promise<string>;
-}
-
-// ─── Type guards ────────────────────────────────────────────────────────
-
-export function isR2Config(c: ProviderConfig | null | undefined): c is R2ProviderConfig {
-  return !!c && c.provider === 'r2';
-}
-
-export function isQiniuConfig(c: ProviderConfig | null | undefined): c is QiniuProviderConfig {
-  return !!c && c.provider === 'qiniu';
-}
-
-export function isOssConfig(c: ProviderConfig | null | undefined): c is OssProviderConfig {
-  return !!c && c.provider === 'oss';
 }

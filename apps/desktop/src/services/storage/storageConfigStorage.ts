@@ -4,16 +4,21 @@
  * Mirrors the aiConfigStore secret-storage pattern: per-provider file,
  * atomic write (temp + rename), debounced flush, eager-load cache.
  * Secrets stay out of `~/.folyn/storage/*.json` (the plain-settings dir).
+ *
+ * Configs are opaque JSON keyed by provider id — built-ins write a
+ * `provider` discriminator for self-narrowing; extension providers own
+ * whatever shape they declare. The host never inspects the contents.
  */
 import { homeDir, join } from '@tauri-apps/api/path';
 import { exists, mkdir, readTextFile, writeTextFile, rename } from '@tauri-apps/plugin-fs';
 import { debounce } from '@/utils/debounce';
-import type { ProviderConfig, R2ProviderConfig, QiniuProviderConfig, OssProviderConfig } from './types';
+
+import type { R2ProviderConfig, QiniuProviderConfig, OssProviderConfig } from './types';
 
 const FLUSH_DELAY = 300;
 
 let cachedBase: string | null = null;
-let cache: Partial<Record<string, ProviderConfig>> | null = null;
+let cache: Record<string, unknown> | null = null;
 let loaded = false;
 
 async function getBaseDir(): Promise<string> {
@@ -30,15 +35,17 @@ async function ensureLoaded(): Promise<void> {
   }
   cache = {};
   // ponytail: one file per provider id. Read each eagerly; missing/empty
-  // → skip. No glob needed — provider ids are known.
+  // → skip. Known built-ins are read by id; extension provider files are
+  // picked up if they were saved before (the settings UI only lists
+  // registered providers, so we don't glob).
   for (const id of ['r2', 'qiniu', 'oss']) {
     const path = await join(base, `${id}.json`);
     if (!(await exists(path))) continue;
     try {
       const raw = await readTextFile(path);
-      const parsed = JSON.parse(raw) as ProviderConfig;
-      if (parsed && typeof parsed === 'object' && parsed.provider === id) {
-        (cache as Record<string, ProviderConfig>)[id] = parsed;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        (cache as Record<string, unknown>)[id] = parsed;
       }
     } catch {
       // Corrupt file — skip; next save overwrites with valid content.
@@ -63,7 +70,7 @@ const flush = debounce(async () => {
   for (const id of Object.keys(cache)) {
     const path = await join(base, `${id}.json`);
     try {
-      await atomicWrite(path, (cache as Record<string, ProviderConfig>)[id]);
+      await atomicWrite(path, (cache as Record<string, unknown>)[id]);
     } catch (err) {
       console.warn(`[storageConfigStorage] Failed to flush ${id}:`, err);
     }
@@ -71,26 +78,26 @@ const flush = debounce(async () => {
 }, FLUSH_DELAY);
 
 export const storageConfigStorage = {
-  async load(): Promise<Partial<Record<string, ProviderConfig>>> {
+  async load(): Promise<Record<string, unknown>> {
     await ensureLoaded();
     return cache ?? {};
   },
 
-  async get(id: string): Promise<ProviderConfig | null> {
+  async get(id: string): Promise<unknown | null> {
     await ensureLoaded();
-    return (cache as Record<string, ProviderConfig>)[id] ?? null;
+    return (cache as Record<string, unknown>)[id] ?? null;
   },
 
-  async set(cfg: ProviderConfig): Promise<void> {
+  async set(id: string, cfg: unknown): Promise<void> {
     await ensureLoaded();
-    (cache as Record<string, ProviderConfig>)[cfg.provider] = cfg;
+    (cache as Record<string, unknown>)[id] = cfg;
     void flush();
   },
 
   async remove(id: string): Promise<void> {
     await ensureLoaded();
     if (!cache || !(id in cache)) return;
-    delete (cache as Record<string, ProviderConfig>)[id];
+    delete (cache as Record<string, unknown>)[id];
     void flush();
   },
 
@@ -109,7 +116,7 @@ export const storageConfigStorage = {
     const base = await getBaseDir();
     for (const id of Object.keys(cache)) {
       const path = await join(base, `${id}.json`);
-      await atomicWrite(path, (cache as Record<string, ProviderConfig>)[id]);
+      await atomicWrite(path, (cache as Record<string, unknown>)[id]);
     }
   },
 };
