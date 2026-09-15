@@ -1,5 +1,8 @@
-/** Upload target types */
-export type UploadTarget = 'local' | 'r2' | 'qiniu' | 'oss';
+/** Upload target id. `'local'` for the vault-local strategy; otherwise a
+ *  registered storage provider id (e.g. `r2`, `github-jsdelivr`). String so
+ *  extension provider ids flow through without a cast — mirrors
+ *  `StorageProviderId`'s stance. */
+export type UploadTarget = string;
 
 /** Result returned after a successful upload */
 export interface ImageUploadResult {
@@ -36,6 +39,8 @@ export interface ImageUploadStrategy {
 
 import { writeFile, mkdir } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
+import { getAllProviders, type StorageProviderEntry } from '@/services/storage/registry';
 
 // ─── Local Server Strategy ──────────────────────────────
 
@@ -78,24 +83,33 @@ class LocalFileStrategy implements ImageUploadStrategy {
   }
 }
 
-// ─── R2 Strategy (delegates to storage layer) ─────────────────────────
+const localStrategy = new LocalFileStrategy();
 
-import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
-import { getProvider } from '@/services/storage/registry';
+// ─── Cloud-provider Strategy (delegates to storage layer) ─────────────
+// One strategy per image-capable registered provider (built-in R2/Qiniu/OSS
+// + extension-contributed providers like github-jsdelivr). The provider list
+// comes from the StorageProviderRegistry, so the paste dropdown stays in sync
+// with whatever providers are registered — no per-provider class, no
+// hardcoded id list.
 
-class R2Strategy implements ImageUploadStrategy {
-  readonly name: UploadTarget = 'r2';
-  readonly labelKey = 'editor:imagePaste.targets.r2';
-  readonly icon = '☁️';
+class CloudProviderStrategy implements ImageUploadStrategy {
+  readonly name: UploadTarget;
+  readonly labelKey: string;
+  readonly icon: string;
+  constructor(private readonly entry: StorageProviderEntry) {
+    this.name = entry.id;
+    this.labelKey = entry.labelKey;
+    this.icon = entry.icon ?? '';
+  }
   get enabled(): boolean {
-    const cfg = useStorageConfigStore.getState().configs.r2 ?? null;
-    return getProvider('r2').isConfigured(cfg);
+    const cfg = useStorageConfigStore.getState().configs[this.entry.id] ?? null;
+    return this.entry.isConfigured(cfg);
   }
 
   async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
-    const cfg = useStorageConfigStore.getState().configs.r2 ?? null;
-    const upload = getProvider('r2').uploadImage;
-    if (!getProvider('r2').isConfigured(cfg) || !upload) throw new Error('R2 not configured');
+    const cfg = useStorageConfigStore.getState().configs[this.entry.id] ?? null;
+    const upload = this.entry.uploadImage;
+    if (!this.entry.isConfigured(cfg) || !upload) throw new Error(`${this.entry.id} not configured`);
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
     const ext = config.format === 'jpeg' ? 'jpg' : config.format;
     const url = await upload(bytes, ext, cfg);
@@ -103,67 +117,21 @@ class R2Strategy implements ImageUploadStrategy {
   }
 }
 
-// ─── Qiniu Strategy (delegates to storage layer) ──────────────────────
-
-class QiniuStrategy implements ImageUploadStrategy {
-  readonly name: UploadTarget = 'qiniu';
-  readonly labelKey = 'editor:imagePaste.targets.qiniu';
-  readonly icon = '🐄';
-  get enabled(): boolean {
-    const cfg = useStorageConfigStore.getState().configs.qiniu ?? null;
-    return getProvider('qiniu').isConfigured(cfg);
-  }
-
-  async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
-    const cfg = useStorageConfigStore.getState().configs.qiniu ?? null;
-    const upload = getProvider('qiniu').uploadImage;
-    if (!getProvider('qiniu').isConfigured(cfg) || !upload) throw new Error('Qiniu not configured');
-    const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
-    const ext = config.format === 'jpeg' ? 'jpg' : config.format;
-    const url = await upload(bytes, ext, cfg);
-    return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
-  }
-}
-
-// ─── OSS Strategy (delegates to storage layer) ────────────────────────
-
-class OssStrategy implements ImageUploadStrategy {
-  readonly name: UploadTarget = 'oss';
-  readonly labelKey = 'editor:imagePaste.targets.oss';
-  readonly icon = '🟧';
-  get enabled(): boolean {
-    const cfg = useStorageConfigStore.getState().configs.oss ?? null;
-    return getProvider('oss').isConfigured(cfg);
-  }
-
-  async upload(imageBase64: string, config: ImageUploadConfig, _vaultRoot: string, _currentFilePath?: string): Promise<ImageUploadResult> {
-    const cfg = useStorageConfigStore.getState().configs.oss ?? null;
-    const upload = getProvider('oss').uploadImage;
-    if (!getProvider('oss').isConfigured(cfg) || !upload) throw new Error('OSS not configured');
-    const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
-    const ext = config.format === 'jpeg' ? 'jpg' : config.format;
-    const url = await upload(bytes, ext, cfg);
-    return { markdownUrl: url, previewUrl: url, fileSize: bytes.length };
-  }
-}
-
-// ─── Registry ───────────────────────────────────────────
-
-const uploadStrategies: ImageUploadStrategy[] = [
-  new LocalFileStrategy(),
-  new R2Strategy(),
-  new QiniuStrategy(),
-  new OssStrategy(),
-];
-
-export function getStrategy(name: UploadTarget): ImageUploadStrategy {
-  const strategy = uploadStrategies.find((s) => s.name === name);
-  if (!strategy) throw new Error(`Unknown upload target: ${name}`);
-  return strategy;
-}
+// ─── Registry ─────────────────────────────────────────────────────────
+// Built fresh on each call so extension providers that register after boot
+// (trusted-tier activation) appear in the paste dropdown immediately.
 
 export function getAllStrategies(): ImageUploadStrategy[] {
-  return uploadStrategies;
+  const cloud = getAllProviders()
+    .filter((p) => p.capabilities.image)
+    .map((p) => new CloudProviderStrategy(p));
+  return [localStrategy, ...cloud];
+}
+
+export function getStrategy(name: UploadTarget): ImageUploadStrategy {
+  const strategy = getAllStrategies().find((s) => s.name === name);
+  if (!strategy) throw new Error(`Unknown upload target: ${name}`);
+  return strategy;
 }
 
 // ─── Image conversion helpers ───────────────────────────

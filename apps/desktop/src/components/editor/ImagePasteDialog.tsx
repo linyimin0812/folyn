@@ -7,14 +7,12 @@ import {
   type UploadTarget,
 } from '@/utils/imageUploader';
 import { IconSelect } from '@/components/common/IconSelect';
-import { ThemeIcon } from '@/components/icons/ThemeIcon';
+import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
 
-const TARGET_ICON: Record<UploadTarget, React.ReactNode> = {
-  local: <FolderOpen size={14} />,
-  r2: <ThemeIcon name="cloudflare" size={14} />,
-  qiniu: <ThemeIcon name="qiniu" size={14} />,
-  oss: <ThemeIcon name="aliyun" size={14} />,
-};
+function StrategyIcon({ icon, size = 14 }: { icon: string; size?: number }) {
+  if (hasIcon(icon)) return <ThemeIcon name={icon} size={size} />;
+  return <span className="text-[14px] leading-none">{icon}</span>;
+}
 
 export interface ImageSaveConfig {
   target: UploadTarget;
@@ -172,7 +170,7 @@ export function ImagePasteDialog({
               return {
                 value: s.name,
                 label,
-                icon: TARGET_ICON[s.name],
+                icon: s.name === 'local' ? <FolderOpen size={14} /> : <StrategyIcon icon={s.icon} />,
                 disabled: !s.enabled,
                 suffix,
               };
