@@ -23,16 +23,18 @@
         "id": "github-jsdelivr",
         "labelKey": "GitHub + jsDelivr",
         "icon": "🐙",
-        "capabilities": { "image": true, "html": false },
+        "capabilities": { "image": true, "html": true },
         "configForm": "form",
         "isConfigured": "isConfigured",
         "uploadImage": "uploadImage",
+        "uploadHtml": "uploadHtml",
         "defaultConfig": {
           "owner": "",
           "repo": "",
           "branch": "main",
           "token": "",
-          "imageKeyPrefix": "images/"
+          "imageKeyPrefix": "images/",
+          "htmlKeyPrefix": "html/"
         }
       }
     ]

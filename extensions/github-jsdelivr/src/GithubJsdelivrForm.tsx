@@ -56,7 +56,10 @@ export function GithubJsdelivrForm({ config, onSave, onRemove }: StorageConfigFo
         <Field label="分支 (Branch)" value={draft.branch} onChange={(v) => set({ branch: v })} placeholder="main" />
       </div>
       <Field label="访问令牌 (Token)" value={draft.token} onChange={(v) => set({ token: v })} type="password" placeholder="ghp_… / github_pat_…" />
-      <Field label="图片路径前缀" value={draft.imageKeyPrefix} onChange={(v) => set({ imageKeyPrefix: v })} placeholder="images/" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="图片路径前缀" value={draft.imageKeyPrefix} onChange={(v) => set({ imageKeyPrefix: v })} placeholder="images/" />
+        <Field label="HTML 路径前缀" value={draft.htmlKeyPrefix} onChange={(v) => set({ htmlKeyPrefix: v })} placeholder="html/" />
+      </div>
       <div className="flex gap-2 mt-3">
         <button
           className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50"
@@ -71,6 +74,7 @@ export function GithubJsdelivrForm({ config, onSave, onRemove }: StorageConfigFo
                 branch: draft.branch.trim() || 'main',
                 token: draft.token.trim(),
                 imageKeyPrefix: draft.imageKeyPrefix.trim() || 'images/',
+                htmlKeyPrefix: draft.htmlKeyPrefix.trim() || 'html/',
               });
               setSavedAt(Date.now());
               if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
@@ -93,7 +97,7 @@ export function GithubJsdelivrForm({ config, onSave, onRemove }: StorageConfigFo
       <ul className="text-[11px] text-t3 mt-3 leading-relaxed space-y-1.5">
         <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>令牌需有目标仓库的 Contents: write 权限（经典 PAT 用 <code>repo</code> scope，或细粒度 PAT 授予该仓库的 Contents 读写）。</span></li>
         <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>仓库需为公开仓库，jsDelivr 才能公开缓存；私有仓库的链接无法被外部访问。</span></li>
-        <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>图片通过 <code>https://cdn.jsdelivr.net/gh/&lt;owner&gt;/&lt;repo&gt;@&lt;branch&gt;/&lt;prefix&gt;/&lt;hash&gt;.png</code> 访问。同名图片（相同内容哈希）重复上传会跳过，URL 不变。</span></li>
+        <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>图片与导出的 HTML 分别通过 <code>https://cdn.jsdelivr.net/gh/&lt;owner&gt;/&lt;repo&gt;@&lt;branch&gt;/&lt;prefix&gt;/&lt;hash&gt;.png</code> 或 <code>.html</code> 访问。相同内容（相同哈希）重复上传会跳过，URL 不变。</span></li>
       </ul>
     </div>
   );

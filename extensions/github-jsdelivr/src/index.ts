@@ -1,6 +1,6 @@
 import type { ExtensionModule } from 'folyn-extension-sdk';
 import { GithubJsdelivrForm } from './GithubJsdelivrForm';
-import { isConfigured, uploadImage } from './upload';
+import { isConfigured, uploadImage, uploadHtml } from './upload';
 
 /**
  * Trusted ExtensionModule. The host's `storageProviderAdapter` resolves the
@@ -12,6 +12,7 @@ const module: ExtensionModule = {
     form: GithubJsdelivrForm,
     isConfigured,
     uploadImage,
+    uploadHtml,
   },
 };
 

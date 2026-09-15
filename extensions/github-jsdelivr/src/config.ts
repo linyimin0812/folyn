@@ -7,8 +7,9 @@ export interface GithubJsdelivrConfig {
    *  Contents: write). Stored at ~/.folyn/image-hosts/github-jsdelivr.json. */
   token: string;
   imageKeyPrefix: string;
+  htmlKeyPrefix: string;
 }
 
 export function defaultConfig(): GithubJsdelivrConfig {
-  return { owner: '', repo: '', branch: 'main', token: '', imageKeyPrefix: 'images/' };
+  return { owner: '', repo: '', branch: 'main', token: '', imageKeyPrefix: 'images/', htmlKeyPrefix: 'html/' };
 }

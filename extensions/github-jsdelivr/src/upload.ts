@@ -46,16 +46,15 @@ async function sha1Hex(bytes: Uint8Array): Promise<string> {
     .join('');
 }
 
-export async function uploadImage(
+/** PUT bytes to the GitHub Contents API; return the jsDelivr public URL.
+ *  422 already_exists is success (same content -> same hash -> same URL). */
+async function putObject(
+  cfg: GithubJsdelivrConfig,
+  objectKey: string,
   bytes: Uint8Array,
-  ext: string,
-  config: unknown,
+  message: string,
 ): Promise<string> {
-  const cfg = config as GithubJsdelivrConfig;
-  const hash = await sha1Hex(bytes);
-  const key = joinKey(cfg.imageKeyPrefix ?? 'images/', `${hash}.${ext}`);
-
-  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(key)}`;
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(objectKey)}`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -64,19 +63,35 @@ export async function uploadImage(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      message: `chore(images): upload ${hash}.${ext}`,
+      message,
       content: toBase64(bytes),
       branch: cfg.branch,
     }),
   });
-
-  // 201 = created. 422 with "already_exists" = same-hash re-upload; the object
-  // is already at the target path, so the jsDelivr URL is unchanged.
   if (res.status !== 201 && res.status !== 422) {
     const text = await res.text().catch(() => '');
     const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
     throw new Error(`GitHub upload failed: ${res.status} ${res.statusText} ${trimmed}`);
   }
+  return publicUrl(cfg, objectKey);
+}
 
-  return publicUrl(cfg, key);
+export async function uploadImage(
+  bytes: Uint8Array,
+  ext: string,
+  config: unknown,
+): Promise<string> {
+  const cfg = config as GithubJsdelivrConfig;
+  const hash = await sha1Hex(bytes);
+  return putObject(cfg, joinKey(cfg.imageKeyPrefix ?? 'images/', `${hash}.${ext}`), bytes, `chore(images): upload ${hash}.${ext}`);
+}
+
+export async function uploadHtml(
+  html: string,
+  config: unknown,
+): Promise<string> {
+  const cfg = config as GithubJsdelivrConfig;
+  const bytes = new TextEncoder().encode(html);
+  const hash = await sha1Hex(bytes);
+  return putObject(cfg, joinKey(cfg.htmlKeyPrefix ?? 'html/', `${hash}.html`), bytes, `chore(html): share ${hash}.html`);
 }
