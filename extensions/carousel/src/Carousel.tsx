@@ -23,7 +23,6 @@ export function Slide({ children, attributes }: ContainerProps) {
  * Collects `:::slide` children via DOM after mount (same shape as tabs),
  * shows one at a time, and advances automatically. Controls:
  *  - interval (attribute, seconds; default 5; 0 disables auto-advance)
- *  - Prev / Next arrow buttons
  *  - Dot indicators (click to jump)
  *  - Pause on hover, circular wrap-around
  *
@@ -75,8 +74,6 @@ export function Carousel({ children, attributes }: ContainerProps) {
     if (slides.length === 0) return;
     setActive(((i % slides.length) + slides.length) % slides.length);
   };
-  const prev = () => go(active - 1);
-  const next = () => go(active + 1);
 
   const hasNav = slides.length > 1;
 
@@ -95,26 +92,12 @@ export function Carousel({ children, attributes }: ContainerProps) {
       onMouseLeave={() => { pausedRef.current = false; }}
     >
       {/* Slide viewport */}
-      <div ref={containerRef} style={{ padding: '1.25rem 1.5rem', minHeight: '3rem' }}>
+      <div ref={containerRef} style={{ padding: '1.25rem 1.5rem', minHeight: '6rem' }}>
         {children}
       </div>
 
       {hasNav && (
         <>
-          {/* Prev / Next arrows */}
-          <button
-            type="button"
-            aria-label="Previous"
-            onClick={prev}
-            style={arrowBtn(-1)}
-          >‹</button>
-          <button
-            type="button"
-            aria-label="Next"
-            onClick={next}
-            style={arrowBtn(1)}
-          >›</button>
-
           {/* Dot indicators */}
           <div style={{
             display: 'flex',
@@ -146,27 +129,4 @@ export function Carousel({ children, attributes }: ContainerProps) {
       )}
     </div>
   );
-}
-
-/** Shared style for the prev/next arrow buttons. `side` = -1 (left) | 1 (right). */
-function arrowBtn(side: -1 | 1): CSSProperties {
-  return {
-    position: 'absolute',
-    top: 'calc(50% - 1.6rem)', // center on the slide viewport, not the dots
-    [side < 0 ? 'left' : 'right']: '6px',
-    width: '26px',
-    height: '26px',
-    borderRadius: '50%',
-    border: '1px solid var(--brd2, #d4d4d8)',
-    background: 'var(--panel, #fff)',
-    color: 'var(--t2, #52525b)',
-    fontSize: '16px',
-    lineHeight: '24px',
-    padding: 0,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-  } as CSSProperties;
 }
