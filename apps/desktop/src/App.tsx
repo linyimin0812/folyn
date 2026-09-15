@@ -410,19 +410,27 @@ export default function App() {
 
       // Listen for live install/approve/uninstall events.
       const { listen } = await import('@tauri-apps/api/event');
-      const unInstall = await listen<{ id: string }>('extension://installed', async (event) => {
+      const unInstall = await listen<{ id: string; trusted?: boolean; tier?: string }>('extension://installed', async (event) => {
         try {
-          // Idempotent: boot hydration may have already registered this
-          // extension from `list_extensions`, in which case re-installing
-          // throws "already installed". If it's already known, skip the
-          // install (and any activation — boot handled it) and no-op.
-          if (!extensionHost.get(event.payload.id)) {
-            const manifest = await readExtensionManifest(event.payload.id);
-            await extensionHost.install(manifest as never);
-            // Sandbox: activate immediately. Trusted: wait for approval.
-            if (manifest.tier === 'sandbox') {
-              await extensionHost.activate(manifest.id as string).catch(() => {});
-            }
+          // Re-install (update): if the host already has a record, tear it
+          // down first (deactivate + drop) so the FRESH manifest + bundle from
+          // disk take effect — otherwise the host keeps the stale activation
+          // (e.g. an old :::carousel template) and the slash menu / preview
+          // keep using it. (Boot hydration also installs, but that path is
+          // guarded separately against StrictMode double-invoke.)
+          if (extensionHost.get(event.payload.id)) {
+            await extensionHost.uninstall(event.payload.id);
+          }
+          const manifest = await readExtensionManifest(event.payload.id) as {
+            id: string; tier: 'sandbox' | 'trusted';
+          };
+          await extensionHost.install(manifest as never);
+          // Sandbox: activate immediately. Trusted: only if already approved
+          // (Rust re-install resets `trusted` to false → re-TOFU required).
+          if (manifest.tier === 'sandbox') {
+            await extensionHost.activate(manifest.id).catch(() => {});
+          } else if (manifest.tier === 'trusted' && event.payload.trusted) {
+            await extensionHost.activate(manifest.id).catch(() => {});
           }
         } catch (err: unknown) {
           console.warn(`[App] failed to install extension on event:`, err);
