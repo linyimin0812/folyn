@@ -880,6 +880,14 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       const codeEl = el.querySelector('code');
       const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
       alignPoint = codeBlockAlignPoint(srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, padTop);
+    } else if (el.getAttribute('data-container') === 'tabs') {
+      // `tabs` renders only one tab's content (the rest stay display:none
+      // until the user clicks a tab), so its rendered height does not scale
+      // with source lines — line-proportional interpolation maps the cursor
+      // onto the tab-header band instead of the content. Top-align the
+      // block so the whole `::::tabs` stays visible + stable while the
+      // cursor is anywhere inside it, instead of drifting onto a hidden tab.
+      alignPoint = blockOffset;
     } else {
       // Non-code block: headings center on the cursor line (block center,
       // so the highlight box is symmetric around the cursor instead of
