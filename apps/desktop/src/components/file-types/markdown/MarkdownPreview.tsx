@@ -860,6 +860,25 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // Align the preview block to the cursor's screen position.
     const containerRect = scrollContainer.getBoundingClientRect();
     const blockRect = el.getBoundingClientRect();
+    // `tabs` renders only one tab's content (the rest stay display:none), so
+    // its rendered height doesn't scale with source rows — any line→pixel
+    // alignment drifts off. Treat it as sticky: if the block is already in
+    // view, don't scroll at all (no drift while the cursor roams the hidden
+    // tabs' source lines); only scroll when it's off-screen, to bring it in.
+    if (el.getAttribute('data-container') === 'tabs') {
+      const tabsHeight = blockRect.height;
+      const inView = blockRect.top >= containerRect.top - tabsHeight
+        && blockRect.bottom <= containerRect.bottom + tabsHeight;
+      if (inView) return;
+      // Off-screen: bring the block top to ~25% of the viewport, clamped.
+      const bringTop = blockRect.top - containerRect.top + scrollContainer.scrollTop
+        - (containerRect.height - tabsHeight) * 0.25;
+      const desired = Math.max(0, bringTop);
+      if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
+        scrollContainer.scrollTop = desired;
+      }
+      return;
+    }
     const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop;
     const blockHeight = blockRect.height;
     const blockSrcLine = Number(el.getAttribute('data-source-line'));
@@ -880,14 +899,6 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       const codeEl = el.querySelector('code');
       const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
       alignPoint = codeBlockAlignPoint(srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, padTop);
-    } else if (el.getAttribute('data-container') === 'tabs') {
-      // `tabs` renders only one tab's content (the rest stay display:none
-      // until the user clicks a tab), so its rendered height does not scale
-      // with source lines — line-proportional interpolation maps the cursor
-      // onto the tab-header band instead of the content. Top-align the
-      // block so the whole `::::tabs` stays visible + stable while the
-      // cursor is anywhere inside it, instead of drifting onto a hidden tab.
-      alignPoint = blockOffset;
     } else {
       // Non-code block: headings center on the cursor line (block center,
       // so the highlight box is symmetric around the cursor instead of
