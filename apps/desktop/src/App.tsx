@@ -406,15 +406,24 @@ export default function App() {
           // extension from `list_extensions`, in which case re-installing
           // throws "already installed". If it's already known, skip the
           // install (and any activation — boot handled it) and no-op.
-          if (extensionHost.get(event.payload.id)) return;
-          const manifest = await readExtensionManifest(event.payload.id);
-          await extensionHost.install(manifest as never);
-          // Sandbox: activate immediately. Trusted: wait for approval.
-          if (manifest.tier === 'sandbox') {
-            await extensionHost.activate(manifest.id as string).catch(() => {});
+          if (!extensionHost.get(event.payload.id)) {
+            const manifest = await readExtensionManifest(event.payload.id);
+            await extensionHost.install(manifest as never);
+            // Sandbox: activate immediately. Trusted: wait for approval.
+            if (manifest.tier === 'sandbox') {
+              await extensionHost.activate(manifest.id as string).catch(() => {});
+            }
           }
         } catch (err: unknown) {
           console.warn(`[App] failed to install extension on event:`, err);
+        } finally {
+          // Refresh any open Settings tab so the new row appears even when
+          // the install originated from another window (or the caller's
+          // refresh raced the host install above).
+          try {
+            const { useExtensionStore } = await import('@/store/extensionStore');
+            await useExtensionStore.getState().refresh();
+          } catch { /* non-fatal */ }
         }
       });
       const unApprove = await listen<{ id: string }>('extension://approved', async (event) => {
@@ -426,6 +435,15 @@ export default function App() {
           });
         } catch (err: unknown) {
           console.warn(`[App] failed to approve extension on event:`, err);
+        } finally {
+          // Approval flips the trusted flag + activation state — refresh so
+          // open Settings tabs (Extensions + Containers gallery) reflect it
+          // (the Containers gallery re-reads ContainerRegistry.getAll() on
+          // rows change, so newly-registered carousel/slide appear here too).
+          try {
+            const { useExtensionStore } = await import('@/store/extensionStore');
+            await useExtensionStore.getState().refresh();
+          } catch { /* non-fatal */ }
         }
       });
       const unUninstall = await listen<{ id: string }>('extension://uninstalled', async (event) => {
