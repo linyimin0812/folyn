@@ -295,6 +295,27 @@ importers:
         specifier: ^6.0.0
         version: 6.4.2(@types/node@22.19.17)(jiti@1.21.7)(sass@1.51.0)(terser@5.46.1)(yaml@2.9.0)
 
+  extensions/carousel:
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.28
+      esbuild:
+        specifier: ^0.23.0
+        version: 0.23.1
+      folyn-extension-sdk:
+        specifier: workspace:*
+        version: link:../../packages/extension-sdk
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   extensions/dbml:
     dependencies:
       '@antv/x6':

@@ -1,0 +1,41 @@
+{
+  "id": "folyn-carousel",
+  "name": "Carousel",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "icon": "🎠",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false, "readBinary": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "containers": [
+      {
+        "name": "carousel",
+        "icon": "🎠",
+        "label": "走马灯",
+        "category": "layout",
+        "component": "Carousel",
+        "template": ":::carousel{interval=\"5\"}\n:::slide\n第一张幻灯片：欢迎来到 Folyn\n:::\n:::slide\n第二张幻灯片：容器指令可组合\n:::\n:::slide\n第三张幻灯片：自动轮播 + 手动切换\n:::\n:::",
+        "description": "一组轮播的区域（interval 秒数，含 :::slide 子项）"
+      },
+      {
+        "name": "slide",
+        "icon": "🖼️",
+        "label": "幻灯片",
+        "category": "layout",
+        "component": "Slide",
+        "template": ":::slide\n单张幻灯片内容（用在 :::carousel 内部）\n:::",
+        "description": "单张幻灯片（用在 :::carousel 内部）"
+      }
+    ]
+  }
+}
