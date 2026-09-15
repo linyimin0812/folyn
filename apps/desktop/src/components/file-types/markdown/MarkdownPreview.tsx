@@ -103,8 +103,15 @@ registerBuiltinCodeContributions();
  * Build a component map from the ContainerRegistry for rehype-react.
  * remark-directive-rehype converts :::name{attrs} into <name ...attrs> hast nodes.
  * We map each registered extension name to its React component.
+ *
+ * `offset` is the frontmatter line count, folded into each directive's
+ * `data-source-line` (node.position.start.line + offset) so cursor sync
+ * can locate the container block by editor line number — without it,
+ * `:::name` blocks carry no `data-source-line` (directive tag names
+ * aren't in rehypeSourceLine's BLOCK_TAGS), and the preview's cursor
+ * sync can't align while the cursor sits inside a container directive.
  */
-function buildComponentMap(): Record<string, React.ComponentType<any>> {
+function buildComponentMap(offset: number = 0): Record<string, React.ComponentType<any>> {
   const componentMap: Record<string, React.ComponentType<any>> = {};
 
   for (const extension of getActiveContainers()) {
@@ -121,6 +128,15 @@ function buildComponentMap(): Record<string, React.ComponentType<any>> {
         attributes: mergedAttributes,
         name: extension.name,
       };
+      // Stamp the directive's source line (frontmatter-offset-adjusted) so
+      // the preview's cursor sync can locate this container block —
+      // querySelectorAll('[data-source-line]') then matches it like any
+      // other block-level element.
+      const startLine = node?.position?.start?.line;
+      const dataProps: Record<string, string> = { 'data-container': extension.name };
+      if (typeof startLine === 'number') {
+        dataProps['data-source-line'] = String(startLine + offset);
+      }
       // Tag with data-container so the export DOM walk can locate rendered
       // containers by directive name and apply extension enhancers. Transparent
       // wrapper div — container extensions use inline styles, so an extra plain
@@ -129,7 +145,7 @@ function buildComponentMap(): Record<string, React.ComponentType<any>> {
       // container doesn't white-screen the whole markdown preview.
       return createElement(
         'div',
-        { 'data-container': extension.name },
+        dataProps,
         createElement(PanelErrorBoundary, { panelId: extension.name, children: createElement(ExtensionComponent, containerProps) }),
       );
     };
@@ -949,8 +965,13 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     void import('@/services/editorIoService').then(({ openFile: open }) => open(path, name));
   }, []);
 
+  // Parse frontmatter before building the component map so the directive
+  // wrappers can stamp a frontmatter-offset-adjusted `data-source-line`
+  // (matches rehypeSourceLine's offset, so cursor sync lines up).
+  const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(content), [content]);
+
   const componentMap = useMemo(() => {
-    const map = buildComponentMap();
+    const map = buildComponentMap(frontmatterLineCount);
     // Add heading components with auto-generated id anchors for outline navigation
     const headingLevels = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
     for (const tag of headingLevels) {
@@ -1057,9 +1078,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     map['script'] = () => null;
 
     return map;
-  }, [filePath, vaultRoot, resolvedVaultRoot, assetBase]);
-
-  const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(content), [content]);
+  }, [filePath, vaultRoot, resolvedVaultRoot, assetBase, frontmatterLineCount]);
 
   const reactContent = useMemo(() => {
     try {
