@@ -1045,6 +1045,11 @@
     },
     "installHint": "Instala una extensión de terceros que aporte contenedores y aparecerá arriba",
     "enable": "Activar",
-    "disable": "Desactivar"
+    "disable": "Desactivar",
+    "pendingTitle": "Extensiones de contenedor pendientes",
+    "pendingHint": "Aporta {{count}} directiva(s) de contenedor; aprueba/activa para mostrarlas arriba",
+    "approving": "Aprobando…",
+    "approve": "Aprobar y activar",
+    "activate": "Activar"
   }
 }

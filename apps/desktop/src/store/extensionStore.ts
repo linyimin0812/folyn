@@ -140,6 +140,11 @@ export interface ExtensionRow {
   /** i18n key for the display name (built-in rows). When present, the UI
    * renders `t(nameKey)` instead of `entry.name`. */
   nameKey?: string;
+  /** Count of container directives this extension contributes
+   *  (`manifest.contributes.containers.length`). 0 / undefined when it
+   *  contributes none or the manifest read failed. Lets the Containers
+   *  settings surface installed-but-not-active container extensions. */
+  contributesContainers?: number;
   /** i18n key for the description (built-in rows). */
   descKey?: string;
   /** Dark-mode variant of `icon` (raw SVG text). When present and the
@@ -319,6 +324,7 @@ async function fetchRows(): Promise<ExtensionRow[]> {
       const error = record?.error ? String(record.error) : undefined;
       let icon: string | undefined;
       let description: string | undefined;
+      let contributesContainers: number | undefined;
       try {
         const manifestText = await invoke<string>('read_extension_file', {
           id: entry.id,
@@ -331,6 +337,9 @@ async function fetchRows(): Promise<ExtensionRow[]> {
         };
         icon = resolveManifestIcon(manifest);
         description = manifest.description;
+        contributesContainers = Array.isArray(manifest.contributes?.containers)
+          ? manifest.contributes.containers.length
+          : 0;
         if (icon && icon.trim().toLowerCase().endsWith('.svg') && !icon.trim().startsWith('<svg')) {
           try {
             icon = await invoke<string>('read_extension_file', { id: entry.id, path: icon });
@@ -339,9 +348,9 @@ async function fetchRows(): Promise<ExtensionRow[]> {
           }
         }
       } catch {
-        // manifest read failed — leave icon/description undefined
+        // manifest read failed — leave icon/description/contributes undefined
       }
-      return { entry, state, error, icon, description };
+      return { entry, state, error, icon, description, contributesContainers };
     }),
   );
   return [...builtinRows, ...rows];

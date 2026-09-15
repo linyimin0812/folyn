@@ -1045,6 +1045,11 @@
     },
     "installHint": "Installiere eine Drittanbieter-Erweiterung, die Container beisteuert, und sie erscheint oben",
     "enable": "Aktivieren",
-    "disable": "Deaktivieren"
+    "disable": "Deaktivieren",
+    "pendingTitle": "Container-Erweiterungen ohne Aktivierung",
+    "pendingHint": "Stellt {{count}} Container-Anweisung(en) bei; freischalten, um sie oben anzuzeigen",
+    "approving": "Genehmige…",
+    "approve": "Genehmigen & aktivieren",
+    "activate": "Aktivieren"
   }
 }

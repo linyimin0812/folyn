@@ -1067,6 +1067,11 @@
     },
     "installHint": "安装贡献容器指令的第三方扩展后会出现在上方列表",
     "enable": "启用",
-    "disable": "停用"
+    "disable": "停用",
+    "pendingTitle": "待启用的容器扩展",
+    "pendingHint": "贡献 {{count}} 个容器指令,批准/启用后才会出现在上方列表",
+    "approving": "批准中…",
+    "approve": "批准并启用",
+    "activate": "启用"
   }
 }

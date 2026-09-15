@@ -240,6 +240,9 @@ export function ContainersSettings() {
   const installFromFolder = useExtensionStore((s) => s.installFromFolder);
   const installFromZip = useExtensionStore((s) => s.installFromZip);
   const installFromRawUrl = useExtensionStore((s) => s.installFromRawUrl);
+  const approve = useExtensionStore((s) => s.approve);
+  const activate = useExtensionStore((s) => s.activate);
+  const busy = useExtensionStore(useShallow((s) => s.busy));
 
   const [folderOpen, setFolderOpen] = useState(false);
   const [zipOpen, setZipOpen] = useState(false);
@@ -294,6 +297,16 @@ export function ContainersSettings() {
     cat,
     items: visible.filter((c) => (c.category ?? 'custom') === cat),
   })).filter((g) => g.items.length > 0);
+
+  // Installed extensions that contribute containers but aren't active yet
+  // (e.g. a freshly-installed trusted container extension awaiting TOFU
+  // approval). Surface them here so the user sees their install + can
+  // approve/activate it from the Containers page, instead of wondering where
+  // the new directive went (it only registers into ContainerRegistry after
+  // activation).
+  const pending = rows.filter(
+    (r) => !r.builtin && (r.contributesContainers ?? 0) > 0 && r.state !== 'active',
+  );
 
   return (
     <div className="mb-8">
@@ -390,6 +403,47 @@ export function ContainersSettings() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div className="mt-2 mb-2 border border-amber/40 bg-amber/5 rounded-lg p-2.5">
+          <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1.5">
+            {t('settings:containers.pendingTitle')}
+          </div>
+          {pending.map((r) => {
+            const needsApproval = r.entry.tier === 'trusted' && !r.entry.trusted;
+            const isBusy = !!busy[`${r.entry.id}:approve`] || !!busy[`${r.entry.id}:activate`];
+            return (
+              <div key={r.entry.id} className="flex items-center justify-between gap-2 py-1">
+                <div className="min-w-0">
+                  <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
+                    {r.entry.name}
+                  </span>
+                  <span className="text-[10.5px] text-t3 font-mono ml-2">{r.entry.id}</span>
+                  <div className="text-[11px] text-t2 mt-0.5">
+                    {t('settings:containers.pendingHint', { count: r.contributesContainers ?? 0 })}
+                  </div>
+                </div>
+                <button
+                  className="btn btn-p btn-sm shrink-0"
+                  disabled={isBusy}
+                  onClick={() => {
+                    // Trusted + un-approved: open the consent modal (→ approve).
+                    // Otherwise (inactive but approved): re-activate.
+                    if (needsApproval) void approve(r.entry.id);
+                    else void activate(r.entry.id);
+                  }}
+                >
+                  {isBusy
+                    ? t('settings:containers.approving')
+                    : needsApproval
+                      ? t('settings:containers.approve')
+                      : t('settings:containers.activate')}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

@@ -368,7 +368,13 @@ export default function App() {
           if (entry.enabled === false) {
             try {
               const manifest = await readExtensionManifest(entry.id);
-              await extensionHost.install(manifest as never);
+              // Idempotent: React.StrictMode double-invokes effects in dev,
+              // so this runs twice — the 2nd pass would re-install and throw
+              // "already installed". Install only when the host doesn't yet
+              // have the record (the 1st pass's install is the source of truth).
+              if (!extensionHost.get(entry.id)) {
+                await extensionHost.install(manifest as never);
+              }
             } catch (err: unknown) {
               console.warn(`[App] failed to hydrate disabled extension ${entry.id}:`, err);
             }
@@ -376,7 +382,11 @@ export default function App() {
           }
           try {
             const manifest = await readExtensionManifest(entry.id);
-            await extensionHost.install(manifest as never);
+            // Idempotent (see the disabled branch above): skip install on the
+            // StrictMode 2nd pass; `activate` below is itself idempotent.
+            if (!extensionHost.get(entry.id)) {
+              await extensionHost.install(manifest as never);
+            }
             // Activate sandbox extensions so their commands appear immediately.
             // Trusted extensions activate only after approval (extension://approved).
             if (manifest.tier === 'sandbox') {

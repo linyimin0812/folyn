@@ -1051,6 +1051,11 @@
     },
     "installHint": "コンテナを提供する拡張をインストールすると上のリストに表示されます",
     "enable": "有効化",
-    "disable": "無効化"
+    "disable": "無効化",
+    "pendingTitle": "有効化待ちのコンテナ拡張",
+    "pendingHint": "コンテナ指令を {{count}} 個提供。承認/有効化すると上のリストに表示",
+    "approving": "承認中…",
+    "approve": "承認して有効化",
+    "activate": "有効化"
   }
 }

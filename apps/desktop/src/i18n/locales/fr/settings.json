@@ -1045,6 +1045,11 @@
     },
     "installHint": "Installez une extension tierce qui fournit des conteneurs et elle apparaîtra ci-dessus",
     "enable": "Activer",
-    "disable": "Désactiver"
+    "disable": "Désactiver",
+    "pendingTitle": "Extensions de conteneur en attente",
+    "pendingHint": "Fournit {{count}} directive(s) de conteneur ; approuver/activer pour les afficher ci-dessus",
+    "approving": "Approbation…",
+    "approve": "Approuver et activer",
+    "activate": "Activer"
   }
 }

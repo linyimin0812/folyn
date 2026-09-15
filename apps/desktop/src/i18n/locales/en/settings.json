@@ -1067,6 +1067,11 @@
     },
     "installHint": "Install a third-party extension that contributes containers and it appears above",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "pendingTitle": "Container extensions pending enablement",
+    "pendingHint": "Contributes {{count}} container directive(s); approve/enable to surface them above",
+    "approving": "Approving…",
+    "approve": "Approve & enable",
+    "activate": "Enable"
   }
 }
