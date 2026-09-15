@@ -430,3 +430,37 @@ Vault 整库导出时仅排除图片类型;ft='unsupported' 或 handler.needsFil
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: Extension platform-service registration seams
+
+**Date**: 2026-09-15
+**Task**: Extension platform-service registration seams
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Introduced two registration seams in @folyn/extension-host (CapabilityProvider + ContributionAdapter registries) mirroring registerLoader. buildExtensionApi folds providers into ExtensionApi; trustedLoader.activate folds adapters; normalizeModule is data-driven via moduleKey. createExtensionApi.ts self-registers 15 capability providers and delegates to buildExtensionApi. trustedContributions.ts is a single declarative manifest for all 12 trusted adapters. Zero behavior change; tsc clean; 53/53 extension-host tests green. trellis-check found and fixed a behavior-parity violation (highlightGrammars moduleKey) and adapter registration order.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fdd2abda` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
