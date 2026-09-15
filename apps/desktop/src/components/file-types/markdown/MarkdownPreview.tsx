@@ -838,6 +838,13 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       if (raw == null) return;
       const line = Number(raw);
       if (!Number.isFinite(line)) return;
+      // Skip blocks that render hidden — e.g. a paragraph inside a
+      // ::::tabs `:::tab` whose wrapper is display:none until its tab is
+      // active. They'd be picked as the nearest block but collapse to 0
+      // height, so line-proportional alignment drifts onto the tab-header
+      // band. Falling back past them reaches the visible `tabs` wrapper,
+      // which the sticky branch below holds in place.
+      if (getComputedStyle(el).display === 'none') return;
       if (line <= cursorLine && line >= bestLine) {
         bestLine = line;
         target = el;
