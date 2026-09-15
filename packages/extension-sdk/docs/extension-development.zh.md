@@ -5,14 +5,14 @@ Folyn 的微内核让你可以在运行时扩展编辑器：装一个插件文�
 
 本指南覆盖：manifest schema、两种执行 tier、contribution 点位、权限模型、生命周期、
 TOFU 审批流程、本地开发、打包。示例插件位于
-[`examples/plugins/`](../examples/plugins/)。
+[`examples/extensions/`](../examples/extensions/)。
 
 - [快速开始](#快速开始)
 - [一览：host 对外提供什么](#一览host-对外提供什么)
 - [两种 tier](#两种-tier)
 - [manifest.json schema](#manifestjson-schema)
 - [Contribution 点位](#contribution-点位)
-- [PluginModule 导出契约（trusted tier）](#pluginmodule-导出契约trusted-tier)
+- [ExtensionModule 导出契约（trusted tier）](#extensionmodule-导出契约trusted-tier)
 - [Sandbox RPC 协议（sandbox tier）](#sandbox-rpc-协议sandbox-tier)
 - [权限模型](#权限模型)
 - [生命周期：activate / deactivate / dispose](#生命周期activate--deactivate--dispose)
@@ -26,8 +26,8 @@ TOFU 审批流程、本地开发、打包。示例插件位于
 
 ## 快速开始
 
-最快路径：把 [`examples/plugins/markdown-todo`](../examples/plugins/markdown-todo)
-复制到一个文件夹，然后通过 **Settings → Plugins → 从文件夹安装…** 安装。
+最快路径：把 [`examples/extensions/markdown-todo`](../examples/extensions/markdown-todo)
+复制到一个文件夹，然后通过 **Settings → Extensions → 从文件夹安装…** 安装。
 文件夹名必须是插件的 kebab-case id（如 `markdown-todo`），插件就会出现在列表里。
 Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-审批流程)）。
 
@@ -40,18 +40,18 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 
 ### 安装 SDK
 
-用 `folyn-plugin-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
-（manifest schema、贡献点、`PluginModule`、AI 能力类型，以及 `definePlugin`/
+用 `folyn-extension-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
+（manifest schema、贡献点、`ExtensionModule`、AI 能力类型，以及 `defineExtension`/
 `validateManifest` 等 dev helper）。它无运行时依赖；React 仅作 peer 类型
 （type-only 消费者在构建时被擦除）。
 
 ```bash
-npm install folyn-plugin-sdk
+npm install folyn-extension-sdk
 ```
 
 ```ts
 // index.ts —— trusted tier 插件入口模块
-import type { PluginModule, ExporterHandler } from "folyn-plugin-sdk";
+import type { ExtensionModule, ExporterHandler } from "folyn-extension-sdk";
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
@@ -62,15 +62,15 @@ export const exporters: Record<string, ExporterHandler> = {
 export const commands = { ping: () => console.info("pong") };
 ```
 
-内部 workspace 插件依赖 `@folyn/plugin-host`（它 re-export 了完整 SDK 面）——
-从两边 import 都可以。运行时微内核（`PluginHost`、`pluginHost` 单例）留在
-`@folyn/plugin-host`；SDK 保持可发布、无运行时。
+内部 workspace 插件依赖 `@folyn/extension-host`（它 re-export 了完整 SDK 面）——
+从两边 import 都可以。运行时微内核（`ExtensionHost`、`extensionHost` 单例）留在
+`@folyn/extension-host`；SDK 保持可发布、无运行时。
 
 ---
 
 ## 一览：host 对外提供什么
 
-一个 Folyn 插件是 `~/.folyn/plugins/<id>/` 下的一个文件夹，包含 `manifest.json`
+一个 Folyn 插件是 `~/.folyn/extensions/<id>/` 下的一个文件夹，包含 `manifest.json`
 
 - 资源文件。host 给你五样东西：
 
@@ -78,7 +78,7 @@ export const commands = { ping: () => console.info("pong") };
 
 | Tier      | 隔离                                                                 | 能力面                                  | 信任门槛                        |
 | --------- | -------------------------------------------------------------------- | --------------------------------------- | ------------------------------- |
-| `sandbox` | 独立 `WebviewWindow` 或 iframe，origin 为 `folyn-plugin://localhost` | 仅能用 host RPC 桥，无 Tauri API        | 无（sandbox 本身就是边界）      |
+| `sandbox` | 独立 `WebviewWindow` 或 iframe，origin 为 `folyn-extension://localhost` | 仅能用 host RPC 桥，无 Tauri API        | 无（sandbox 本身就是边界）      |
 | `trusted` | 主 webview realm（进程内）                                           | 完整 host realm + Zustand store + Tauri | TOFU：用户必须点 **批准并授权** |
 
 ### 2. Contribution 点位
@@ -88,7 +88,7 @@ export const commands = { ping: () => console.info("pong") };
 
 | 点位                      | Sandbox | Trusted | 作用                                                        |
 | ------------------------- | ------- | ------- | ----------------------------------------------------------- |
-| `commands`                | ✓       | ✓       | 命令面板入口（⌘P）—— 注册 id 为 `plugin.<pluginId>.<id>`    |
+| `commands`                | ✓       | ✓       | 命令面板入口（⌘P）—— 注册 id 为 `extension.<extensionId>.<id>`    |
 | `tools`（`window: true`） | ✓       | ✓       | "Open: <title>" 命令 → 弹出 Tauri WebviewWindow             |
 | `fileTypes`               | ✗       | ✓       | 文件扩展名 → handler 映射                                   |
 | `containers`              | ✗       | ✓       | `:::name` Markdown 指令 → React 组件                        |
@@ -103,8 +103,8 @@ export const commands = { ping: () => console.info("pong") };
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
 Sandbox 插件通过 `postMessage`（iframe 传输）或
-`fetch('folyn-plugin://localhost/<id>/rpc', ...)`（工具窗口传输）调用 host 能力。
-两者都走同一个 `dispatchPluginRpc` 表——同样的权限校验、同样的路径解析。
+`fetch('folyn-extension://localhost/<id>/rpc', ...)`（工具窗口传输）调用 host 能力。
+两者都走同一个 `dispatchExtensionRpc` 表——同样的权限校验、同样的路径解析。
 
 | 方法                    | 参数                | 所需权限                    | 返回值                                       |
 | ----------------------- | ------------------- | --------------------------- | -------------------------------------------- |
@@ -137,7 +137,7 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 ### 4. manifest 校验规则（开发者必须遵守的规范）
 
 - `id`：kebab-case，`^[a-z0-9]+(-[a-z0-9]+)+$`（至少一个连字符）。
-  `~/.folyn/plugins/` 下的文件夹名必须等于 `id`。
+  `~/.folyn/extensions/` 下的文件夹名必须等于 `id`。
 - `version`：非空字符串（建议 semver）。
 - `tier`：`"sandbox"` 或 `"trusted"`。
 - `main`：非空字符串（入口模块的相对路径）。
@@ -149,28 +149,28 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 
 ### 5. sandbox 插件的 CSP（HTML/JS 能做什么）
 
-每个 `folyn-plugin://localhost/<id>/<file>` 响应都带这个 CSP header：
+每个 `folyn-extension://localhost/<id>/<file>` 响应都带这个 CSP header：
 
 ```
 default-src 'none';
-  script-src 'unsafe-inline' folyn-plugin:;
+  script-src 'unsafe-inline' folyn-extension:;
   style-src  'unsafe-inline';
-  connect-src folyn-plugin:;
+  connect-src folyn-extension:;
 ```
 
 对开发者意味着：
 
 - ✓ HTML 中可内联 `<script>` 和 `<style>`。
 - ✓ `<script src="index.js">`（同 scheme，来自插件自己的文件）。
-- ✓ `fetch('folyn-plugin://localhost/<id>/rpc', ...)`（RPC 桥）。
+- ✓ `fetch('folyn-extension://localhost/<id>/rpc', ...)`（RPC 桥）。
 - ✗ 不能加载任何远程 script、style、font、image；也不能 `connect-src` 到其他 origin。
   需要网络访问就声明 `http.origins` 并调 `http:fetch` —— host 在 Rust 中发请求
   （不受 CSP 限制）。
-- ✗ 不能嵌入 iframe、不能用 blob: 启 web worker（只允许 `folyn-plugin:`）。
+- ✗ 不能嵌入 iframe、不能用 blob: 启 web worker（只允许 `folyn-extension:`）。
 - ✗ 没有 `default-src` 兜底——每个 directive 都显式声明。
 
-注：故意不用 `'self'`。Chromium 对 `folyn-plugin://` 这类 custom scheme 不会把
-`'self'` 解析为文档 origin，必须显式写 scheme source `folyn-plugin:`。
+注：故意不用 `'self'`。Chromium 对 `folyn-extension://` 这类 custom scheme 不会把
+`'self'` 解析为文档 origin，必须显式写 scheme source `folyn-extension:`。
 
 ---
 
@@ -181,13 +181,13 @@ default-src 'none';
 
 |                   | **sandbox**                                                                                                       | **trusted**                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Loader            | 隐藏 `<iframe sandbox="allow-scripts">`（无 `allow-same-origin`），从 `folyn-plugin://localhost/<id>/<html>` 加载 | `import(/* @vite-ignore */ blobUrl)` 进 **主 webview realm**                                                |
+| Loader            | 隐藏 `<iframe sandbox="allow-scripts">`（无 `allow-same-origin`），从 `folyn-extension://localhost/<id>/<html>` 加载 | `import(/* @vite-ignore */ blobUrl)` 进 **主 webview realm**                                                |
 | 隔离              | 跨 origin opaque origin；无父 DOM、无 Tauri API、无 localStorage                                                  | 无——运行在 host realm；可读 Zustand store、调 Tauri、操作 DOM                                               |
-| 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；`grant_plugin_capabilities` 加范围化 Tauri 能力（基本冗余——见 [权限模型](#权限模型)） |
+| 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；`grant_extension_capabilities` 加范围化 Tauri 能力（基本冗余——见 [权限模型](#权限模型)） |
 | 信任门槛          | 无（sandbox 本身就是边界）                                                                                        | TOFU：激活前必须 **批准并授权**                                                                             |
 | 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`      |
 | 热卸载            | 销毁 iframe 元素                                                                                                  | `dispose()` adapter + `URL.revokeObjectURL(blobUrl)`                                                        |
-| 打包要求          | HTML + JS 由 iframe 通过 `folyn-plugin://` 加载                                                                   | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了）                                       |
+| 打包要求          | HTML + JS 由 iframe 通过 `folyn-extension://` 加载                                                                   | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了）                                       |
 
 **什么时候用哪个**：
 
@@ -206,10 +206,10 @@ default-src 'none';
 ```jsonc
 {
   // 必填。全局唯一的 kebab-case id（匹配 ^[a-z0-9]+(-[a-z0-9]+)+$）。
-  // ~/.folyn/plugins/ 下的文件夹名必须等于此 id。
-  "id": "my-plugin",
+  // ~/.folyn/extensions/ 下的文件夹名必须等于此 id。
+  "id": "my-extension",
   // 必填。人类可读的显示名。
-  "name": "My Plugin",
+  "name": "My Extension",
   // 必填。semver 风格的版本字符串。
   "version": "1.0.0",
   "author": "Jane Doe",
@@ -305,7 +305,7 @@ default-src 'none';
     ],
     "keybindings": [
       {
-        "command": "plugin.my-plugin.greet",
+        "command": "extension.my-extension.greet",
         "key": "Control+Alt+Shift+T",
         "mac": "Cmd+Alt+Shift+T",
       },
@@ -328,11 +328,11 @@ default-src 'none';
 
 ### 校验规则
 
-manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validateManifest`）。
+manifest 在安装时校验（Rust `validate_manifest` + TS `ExtensionHost.validateManifest`）。
 规则：
 
 - `id` 必须是 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)+$`）——至少一个连字符，仅小写
-  字母数字。`my-plugin` ✓；`MyPlugin` ✗；`myplugin` ✗。
+  字母数字。`my-extension` ✓；`MyExtension` ✗；`myextension` ✗。
 - `version` 必须是非空字符串。
 - `tier` 必须是 `sandbox` 或 `trusted`。
 - `main` 必须是非空字符串。
@@ -351,8 +351,8 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 "commands": [{ "id": "greet", "title": "Greet", "icon": "👋", "keywords": ["hi"], "run": "greet" }]
 ```
 
-- `id` 是命令的本地 id；注册的 palette id 为 `plugin.<pluginId>.<id>`
-  （如 `plugin.hello-tool.greet`）。
+- `id` 是命令的本地 id；注册的 palette id 为 `extension.<extensionId>.<id>`
+  （如 `extension.hello-tool.greet`）。
 - `title` 是 palette 标签（UI 中会加插件名前缀）。
 - `run` 是 **entry-ref**——指向插件模块 `commands` map 的 key（trusted），
   或要 dispatch 到 iframe 的命令 id（sandbox）。
@@ -378,7 +378,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 ```
 
 - `name` 是指令名（Markdown 中 `:::` 后面的部分）。
-- `icon` 接受三种形式：内联 `<svg>...</svg>` 字符串（由宿主 `IconFromSvg` 原样渲染）；`.svg` 文件路径，相对于插件安装目录（宿主在 activate 时通过 `read_plugin_file` 读取；文件缺失则告警并回退为空）；emoji 或短字符串，作为纯文本渲染（内置惯例，如 `💡`）。
+- `icon` 接受三种形式：内联 `<svg>...</svg>` 字符串（由宿主 `IconFromSvg` 原样渲染）；`.svg` 文件路径，相对于插件安装目录（宿主在 activate 时通过 `read_extension_file` 读取；文件缺失则告警并回退为空）；emoji 或短字符串，作为纯文本渲染（内置惯例，如 `💡`）。
 - `component` 是模块 `containers` map 的 entry-ref。component 必须是接受
   `ContainerProps`（`{ children?, attributes?, name? }`）的 React 组件。
 - `category` 取 `layout` / `media` / `ai` / `data` / `custom`（slash 菜单分组）。
@@ -405,13 +405,13 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   warning 并拒绝第二次注册。
 - `panel` 取 `left` / `right` / `bottom`。**MVP 仅实现 `left`**——`right` 和
   `bottom` 会打 warning 并跳过（right/bottom shell slot 是后续任务）。
-- `component` 是模块 `features` map 的 **entry-ref**（见下方 `PluginModule`
+- `component` 是模块 `features` map 的 **entry-ref**（见下方 `ExtensionModule`
   导出契约）。必须是 React 组件（渲染时包在 `PanelErrorBoundary` 内，插件
   panel 抛错不会白屏整个侧边栏）。
 - `icon` **必填**。可以是原始内联 SVG 字符串（`<svg ...>...</svg>`），或
   `ThemeIcon` 名（解析 host 的 `assets/icons/*.svg`）。内联 SVG 是插件作者
   的自包含路径。
-- `title` 是 tooltip + 无障碍标签。缺省时为 `<pluginId>/<id>`。
+- `title` 是 tooltip + 无障碍标签。缺省时为 `<extensionId>/<id>`。
 - `order` 可选。内置 id 占用 0（files）、10（wiki）、20（clips）、
   40（calendar）。未声明 `order` 的插件 panel 按注册顺序分配内置之后的槽位
   （≥100）。Activity bar 按 `(order, 注册顺序)` 排序渲染。
@@ -428,7 +428,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 
 #### 参考：示例 feature-panel 插件
 
-- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
+- [`examples/extensions/feature-panel-sample`](../examples/extensions/feature-panel-sample)
   —— 最小的 trusted-tier 插件，贡献一个 left 侧边栏 panel（`notes-panel`，
   内联 SVG 图标 + `order` + `badge`）+ 一个 **Notes: Open Panel** 命令（⌘P）。
   panel 是个临时文本框，"Insert into doc" 按钮通过进程内 editor store 把内容
@@ -441,23 +441,23 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 ```
 
 - `window: true` 把工具放进独立的 Tauri `WebviewWindow`，从
-  `folyn-plugin://localhost/<id>/<entry>` 加载 HTML。窗口 origin 为
-  `folyn-plugin://localhost`（macOS/Linux）/ `http://folyn-plugin.localhost`（Windows）
+  `folyn-extension://localhost/<id>/<entry>` 加载 HTML。窗口 origin 为
+  `folyn-extension://localhost`（macOS/Linux）/ `http://folyn-extension.localhost`（Windows）
   ——与主 app 隔离。`window: false` 会内联渲染（MVP：仅支持 `window: true`；
   内联 panel 是后续工作）。
 - `entry` 是 HTML 入口文件（sandbox tier）。trusted tier 用 component entry-ref
   （推迟——本 MVP 仅出 sandbox 工具窗口）。
 - host 为每个 tool 注册一个 "Open: <title>" 命令，⌘P → "Open: Hello Tool"
   就能创建新窗口。多实例：每次调用开一个新窗口，label 唯一。
-- 插件 HTML 通过 `folyn-plugin://` scheme 的 **fetch-RPC** 访问 host 能力：
+- 插件 HTML 通过 `folyn-extension://` scheme 的 **fetch-RPC** 访问 host 能力：
 
   ```js
-  // POST folyn-plugin://localhost/<plugin-id>/rpc
+  // POST folyn-extension://localhost/<extension-id>/rpc
   // body: { "method": "<rpc-method>", "params": { ... } }
   // 响应: 成功 → 200 + <返回值>（按方法不同，对象/string/null）；
   //       失败 → 200 + { "error": "<msg>" }；
   //       超时 30s → 504 + { "error": "rpc timeout" }。
-  const res = await fetch("folyn-plugin://localhost/<plugin-id>/rpc", {
+  const res = await fetch("folyn-extension://localhost/<extension-id>/rpc", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -472,8 +472,8 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   }
   ```
 
-  Rust URI handler 发 `plugin-rpc-request` 事件，主 webview 通过共享的
-  `dispatchPluginRpc` dispatch（与 iframe 桥相同的权限校验 + 路径解析）。见上方
+  Rust URI handler 发 `extension-rpc-request` 事件，主 webview 通过共享的
+  `dispatchExtensionRpc` dispatch（与 iframe 桥相同的权限校验 + 路径解析）。见上方
   "一览" 中的方法表，下方 "Sandbox RPC 协议" 看协议细节。插件 bundle 不依赖
   Tauri SDK——只用纯 `fetch()`。
 
@@ -482,9 +482,9 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 
 #### 参考：示例工具插件
 
-- [`examples/plugins/hello-tool`](../examples/plugins/hello-tool) —— 最小 sandbox
+- [`examples/extensions/hello-tool`](../examples/extensions/hello-tool) —— 最小 sandbox
   工具，通过 RPC 桥写剪贴板。
-- [`examples/plugins/markdown-table`](../examples/plugins/markdown-table) —— 端到端
+- [`examples/extensions/markdown-table`](../examples/extensions/markdown-table) —— 端到端
   demo：textarea → markdown 表格 → Insert 按钮 → `vault:insert-content` RPC →
   表格被追加进当前文档。
 
@@ -497,7 +497,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 ```
 
 - `format` 是输出格式 id（插件内唯一）；palette 命令 id 为
-  `plugin.<pluginId>.export.<format>`。
+  `extension.<extensionId>.export.<format>`。
 - `label` 是菜单标签；注册的命令标题为 `Export as <label>`。
 - `fileExtension` 是输出扩展名（不带点，如 `txt`）。
 - `run` 是模块 `exporters` map 的 **entry-ref**。handler 签名为
@@ -515,29 +515,29 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 ```
 
 - 纯声明式——无模块 map。每条会注册进 host 的 `fileTemplateRegistry`
-  （key 为 `<pluginId>.<templateId>`）并暴露 palette 命令
-  `plugin.<pluginId>.new.<templateId>`，标题 `New <label>`。运行命令会弹保存
+  （key 为 `<extensionId>.<templateId>`）并暴露 palette 命令
+  `extension.<extensionId>.new.<templateId>`，标题 `New <label>`。运行命令会弹保存
   对话框（默认路径在当前 vault root 下），把 `template` 原样写入，再刷新文件树。
 - ponytail：文件树右键「新建」子菜单暂未接入——其内联重命名流程按扩展名从
   `prefsStore.fileTemplates` 取内容，无法承载任意 body。palette 命令是 MVP 的
-  用户入口；子菜单分组是升级路径（读 `getPluginFileTemplates()`）。
+  用户入口；子菜单分组是升级路径（读 `getExtensionFileTemplates()`）。
 
 ### keybindings（仅 trusted）
 
 ```jsonc
 "keybindings": [
-  { "command": "plugin.my-plugin.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T", "when": "..." }
+  { "command": "extension.my-extension.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T", "when": "..." }
 ]
 ```
 
-- `command` 是命令 id——可以是插件贡献的命令（`plugin.<pluginId>.<id>`）或
+- `command` 是命令 id——可以是插件贡献的命令（`extension.<extensionId>.<id>`）或
   内置命令（如 `action.toggle-theme`）。按键触发时 host 在 `commandRegistry`
   里查并运行它。
 - `key` 是 Tauri accelerator（`Cmd+Shift+K`、`Control+Alt+T`）。
 - `mac` 覆盖 macOS。`when` 是可选的激活子句（opaque 字符串，预留——MVP 全局注册）。
-- ponytail：项目未装 `@tauri-apps/plugin-global-shortcut`，所以绑定是 app 级
+- ponytail：项目未装 `@tauri-apps/extension-global-shortcut`，所以绑定是 app 级
   `keydown` 监听器——只在 app 窗口聚焦时触发，后台不触发。OS 全局的升级路径是
-  `plugin-global-shortcut` 的 `register(accelerator, handler)` + dispose 里
+  `extension-global-shortcut` 的 `register(accelerator, handler)` + dispose 里
   `unregister(accelerator)`。
 
 ### exportEnhancers（仅 trusted）
@@ -564,7 +564,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   body。调用前会剥离 action 按钮。
 - ponytail：enhancer 失败被 best-effort 吞掉（`.catch(() => {})`）——一个
   enhancer 挂了不能中断整个导出。多个插件注册同一 key → last-registered-wins；
-  升级路径是 per-plugin 优先级列表（若需要组合）。
+  升级路径是 per-extension 优先级列表（若需要组合）。
 
 ### markdownCodeRenderers（仅 trusted）
 
@@ -588,7 +588,7 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
 - ponytail：renderer 是 host-realm React（trusted blob `import()` 共用 host 的
   Reactor）；自带 React bundle 会触发 "Invalid hook call" 双 React 错误。用
   `window.React` 经 `resolveReact()` helper 拿（与下方 `resolveCodemirror()` 同
-  形）。规范形态见 `folyn-plugin-sdk/folyn-plugin-plantuml/src/index.ts` 的
+  形）。规范形态见 `folyn-extension-sdk/folyn-extension-plantuml/src/index.ts` 的
   `PlantUmlMarkdownBlock`。
 
 ### editorLanguages（仅 trusted）
@@ -614,15 +614,15 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `PluginHost.validate
   mismatch——和自带 React bundle 是同一种失败）。用 `resolveCodemirror()` helper
   懒加载 host 的 `@codemirror/language`，从 `window.codemirrorLanguage` 拿
   （host 在 `main.tsx` 中于任何 trusted 插件 `import()` 前赋值）。规范形态见
-  `folyn-plugin-sdk/folyn-plugin-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
+  `folyn-extension-sdk/folyn-extension-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
   `window.React` 的处理镜像。
 
 ---
 
-## PluginModule 导出契约（trusted tier）
+## ExtensionModule 导出契约（trusted tier）
 
 Trusted 插件的 `main` 是一个 ESM 模块。host `import()` 后读取其 **named exports**
-作为 `PluginModule`：
+作为 `ExtensionModule`：
 
 ```ts
 // index.js —— 自包含的 ESM bundle
@@ -634,8 +634,8 @@ export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': e
 export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
 export const markdownCodeRenderers: Record<string, ComponentType<MarkdownCodeRendererProps>> = { 'PlantUmlMarkdownBlock': PlantUmlBlock };
 export const editorLanguages: Record<string, EditorLanguageFactory> = { 'plantumlLanguage': () => plantumlLanguage() };
-export function activate(ctx: PluginContext) { /* 可选 */ }
-export function deactivate(ctx: PluginContext) { /* 可选 */ }
+export function activate(ctx: ExtensionContext) { /* 可选 */ }
+export function deactivate(ctx: ExtensionContext) { /* 可选 */ }
 ```
 
 各个 map **以 entry-ref 为 key**——即 manifest `contributes.*[].run` / `.handler`
@@ -646,9 +646,9 @@ export function deactivate(ctx: PluginContext) { /* 可选 */ }
 `markdownCodeRenderers` 的 key 对应 manifest 的 `component` 字符串；
 `editorLanguages` 的 key 对应 `entry`。完整四 map 示例（`handlers`、`exporters`、
 `markdownCodeRenderers`、`containers`、`exportEnhancers`、`editorLanguages`）见
-`folyn-plugin-sdk/folyn-plugin-plantuml`。
+`folyn-extension-sdk/folyn-extension-plantuml`。
 
-也接受 default-export 工厂 `(ctx) => PluginModule`（loader 会归一两种形态）。详见
+也接受 default-export 工厂 `(ctx) => ExtensionModule`（loader 会归一两种形态）。详见
 `contributionAdapters.ts` 的具体解析规则。
 
 ### Trusted tier 打包
@@ -657,7 +657,7 @@ Trusted loader 把你的 `main` 包成 **blob URL** 再 `import()`。Blob URL �
 所以：
 
 - **相对 import 解析不了**（`./utils.js` 会失败）
-- **远程 import 被 `folyn-plugin://` CSP 拦截**
+- **远程 import 被 `folyn-extension://` CSP 拦截**
 - **bare specifier**（`react`、`@/store/...`）只有在 Vite 让其作为运行时 `import()`
   时，才能解析到 host realm 已加载的模块。保险起见，**打包你的依赖**（Vite/Rollup/
   esbuild），让 blob-URL `import()` 完全自包含。
@@ -671,7 +671,7 @@ demo 能跑；真实插件应该 bundle。
 主窗口的 CSP 在 `tauri.conf.json` 构建时写死，**不包含第三方 origin**。
 trusted 插件里直接 `fetch()` 或 `<img src=remote>` 在打包构建下会被 CSP 拦截
 （dev 模式不强制 CSP，掩盖了 bug）。需要访问远程 origin 的插件必须走
-`ctx.http.fetch` —— 该方法把请求路由到 Rust 的 `plugin_http_fetch` 命令
+`ctx.http.fetch` —— 该方法把请求路由到 Rust 的 `extension_http_fetch` 命令
 （reqwest，在 webview 之外执行，不受 CSP 约束），并强制校验 manifest 中的
 `permissions.http.origins`。
 
@@ -688,12 +688,12 @@ trusted 插件里直接 `fetch()` 或 `<img src=remote>` 在打包构建下会�
 **第 2 步 —— 在 `activate()` 缓存 `ctx.http`，到处复用：**
 
 ```ts
-import type { PluginContext, PluginHttpCapability } from "folyn-plugin-sdk";
+import type { ExtensionContext, ExtensionHttpCapability } from "folyn-extension-sdk";
 
-let hostHttp: PluginHttpCapability | undefined;
-export async function activate(ctx: PluginContext) { hostHttp = ctx.http; }
-function http(): PluginHttpCapability {
-  if (!hostHttp) throw new Error("plugin: activate() not called");
+let hostHttp: ExtensionHttpCapability | undefined;
+export async function activate(ctx: ExtensionContext) { hostHttp = ctx.http; }
+function http(): ExtensionHttpCapability {
+  if (!hostHttp) throw new Error("extension: activate() not called");
   return hostHttp;
 }
 
@@ -752,7 +752,7 @@ iframe → host: { type: 'invoke-result',  id, result?, error? }
 | `vault:insert-content`  | `{ content }`       | `vault.insertContent: true`           |
 | `window:open`           | `{ toolId }`        | `window: true`                        |
 
-完整示例见 `examples/plugins/hello-tool/index.js`——iframe 脚本把 `postMessage`
+完整示例见 `examples/extensions/hello-tool/index.js`——iframe 脚本把 `postMessage`
 封装成 Promise 风格的 `rpc()` helper。
 
 #### `http:fetch` 路由（CSP 旁路）
@@ -760,7 +760,7 @@ iframe → host: { type: 'invoke-result',  id, result?, error? }
 `http:fetch` 不在 host webview 跑 `fetch()`。Host webview 的 CSP
 `connect-src 'self' ipc: http://ipc.localhost` 不包含插件声明的 origin，直接
 `fetch()` 在 release 会被拦（dev 不注入 CSP 掩盖了 bug）。RPC 桥改为调用 Rust
-命令 `plugin_http_fetch(plugin_id, url, method?, headers?, body?)`，用 `reqwest`
+命令 `extension_http_fetch(extension_id, url, method?, headers?, body?)`，用 `reqwest`
 发请求（无 CSP），返回 buffered `{ status, headers, body }`，与旧 `fetch()` 形状
 一致。
 
@@ -768,7 +768,7 @@ origin 校验双层：
 
 1. **JS 快速失败**——`rpcBridge` 在 IPC 前调 `isOriginAllowed(url, manifest.permissions.http.origins)`；
    不在白名单的 origin 根本到不了 Rust。
-2. **Rust 纵深防御**——`plugin_http_fetch` 重新读磁盘上 `manifest.json` 的
+2. **Rust 纵深防御**——`extension_http_fetch` 重新读磁盘上 `manifest.json` 的
    `permissions.http.origins` 再校验一次，即便未来 JS 桥被绕过，也无法把数据
    送到未声明的 origin。
 
@@ -792,7 +792,7 @@ manifest 声明的 `permissions` 再 dispatch。Sandbox 插件无法绕过——
 
 Trusted 插件运行在 **主 webview realm**，本身已有 `capabilities/default.json`
 赋予的宽泛 Tauri 能力（`fs:scope-home-recursive`、`shell:allow-spawn` 等）。
-`grant_plugin_capabilities` Rust 命令调 `add_capability` 加范围化权限——但这是
+`grant_extension_capabilities` Rust 命令调 `add_capability` 加范围化权限——但这是
 **additive / 冗余**，不是 confinement。Trusted 插件仍可直接 `import('@tauri-apps/api/core')`
 用主窗口已有的能力。
 
@@ -802,7 +802,7 @@ Trusted 插件运行在 **主 webview realm**，本身已有 `capabilities/defau
 
 > TOFU-pinned = 用户显式信任 = 完整权限。
 
-不要假装 `grant_plugin_capabilities` 是硬沙箱。需要硬边界装第三方插件，用
+不要假装 `grant_extension_capabilities` 是硬沙箱。需要硬边界装第三方插件，用
 **sandbox tier**。
 
 ---
@@ -826,11 +826,11 @@ host 中介的能力暴露给插件。host 持有 provider/model/apiKey；插件
 - `edit`（boolean）——`ctx.ai.editFile` / `ctx.ai.createFile` 必填（仅 trusted）。
   host 把结果文件改动通过共享的 editor/vault chokepoint 应用；插件本身不写文件系统。
 
-### Trusted tier —— `PluginContext.ai`
+### Trusted tier —— `ExtensionContext.ai`
 
 ```ts
 ctx.ai.chat({
-  sessionId: "my-plugin-session", // 插件自管；rig 按 id 持久化历史
+  sessionId: "my-extension-session", // 插件自管；rig 按 id 持久化历史
   prompt: "用 3 个要点总结当前文档",
   onEvent: (e) => {
     /* e.type ∈ 'text'|'thinking'|'error'|'done' */
@@ -880,12 +880,12 @@ Sandbox 插件无法调 feature agent（canonical agent 文件位于 vault 的
 并在用户运行时切换时跟随变化。Host 推送当前值 + 变更事件；**插件自带
 i18n bundle**——host 的 `t()` 不暴露，只传 locale 字符串（如 `'zh'`、`'en'`）。
 
-### Trusted tier —— `PluginContext.env`
+### Trusted tier —— `ExtensionContext.env`
 
 ```ts
-import type { PluginContext } from "folyn-plugin-sdk";
+import type { ExtensionContext } from "folyn-extension-sdk";
 
-export function activate(ctx: PluginContext) {
+export function activate(ctx: ExtensionContext) {
   console.log("theme:", ctx.env?.theme, "locale:", ctx.env?.locale);
 
   ctx.addDisposable(
@@ -952,9 +952,9 @@ contribution 都返回一个 `Disposable`；host 在 deactivate 时统一回收�
 - **deactivate** → 你的 `deactivate(ctx)` 执行（如有）；所有 disposable 回收
   （命令注销、containers 移除、trusted 的 blob URL revoke / sandbox 的 iframe
   销毁）。
-- **uninstall** → deactivate（如激活中）+ 从 `plugins.json` 移除 + 删插件文件夹。
+- **uninstall** → deactivate（如激活中）+ 从 `extensions.json` 移除 + 删插件文件夹。
 
-激活/ deactivate 失败会把状态置为 `failed`，错误在 Settings → Plugins UI 显示。
+激活/ deactivate 失败会把状态置为 `failed`，错误在 Settings → Extensions UI 显示。
 
 ---
 
@@ -963,12 +963,12 @@ contribution 都返回一个 `Disposable`；host 在 deactivate 时统一回收�
 Sandbox 插件安装即自动激活（其边界是 iframe，无需审批）。Trusted 插件需要显式
 批准：
 
-1. 安装 trusted 插件（Settings → Plugins → 从文件夹安装…）。列表中出现，状态为
+1. 安装 trusted 插件（Settings → Extensions → 从文件夹安装…）。列表中出现，状态为
    "已安装"，带一个 **批准并授权** 按钮。
 2. 点 **批准并授权**。弹出同意 modal，列出声明的 permissions + contributions，
    并警告 trusted 插件拥有完整 host 权限。
-3. 确认 → `approve_plugin(id)` 在 `plugins.json` 中设 `trusted: true`，并 emit
-   `plugin://approved`。host 的 listener 激活插件。
+3. 确认 → `approve_extension(id)` 在 `extensions.json` 中设 `trusted: true`，并 emit
+   `extension://approved`。host 的 listener 激活插件。
 4. 取消 → 插件保持已安装但未批准。仍可卸载。
 
 批准后插件立刻激活，且之后每次 app 启动都会激活（`App.tsx` 的 hydrate 循环看到
@@ -986,20 +986,20 @@ PR4 在其上加 **ed25519 签名脚手架**：
 
 - manifest 可携带 `signature`（base64 ed25519 签名，覆盖 canonicalized manifest JSON）
   和 `publisherPublicKey`（base64 ed25519 公钥）。
-- `verify_plugin_signature(manifest, signature, publicKey)` 是纯 Rust 函数：无签名
+- `verify_extension_signature(manifest, signature, publicKey)` 是纯 Rust 函数：无签名
   返回 `Ok(())`（MVP：可选），有签名则校验。
 - 安装时若有签名，best-effort 校验（非致命——只打 stderr；SHA-256 仍是门槛）。
-- `verify_plugin_signature_cmd` Tauri 命令让未来的诊断 UI 在批准前显示"签名无效"。
+- `verify_extension_signature_cmd` Tauri 命令让未来的诊断 UI 在批准前显示"签名无效"。
 
 ### 迁移到强制签名
 
 当 marketplace 上线：
 
 1. 加配置开关（如 `requireSignatures: true`）。
-2. `verify_plugin_signature` 在 `signature` 为 `None` 且开关打开时返回 `Err`。
+2. `verify_extension_signature` 在 `signature` 为 `None` 且开关打开时返回 `Err`。
 3. 在同意 modal 中显示"此插件未签名"。
 4. 固定 publisher 公钥到可信集合；首次批准 TOFU-pin（`publisherPublicKey` 持久化
-   到 `plugins.json`，后续更新换 key 会重新触发同意）。
+   到 `extensions.json`，后续更新换 key 会重新触发同意）。
 
 对现有插件无破坏性变更——未签名插件在开关打开前一直可用。脚手架已就位，门槛只是
 尚未强制。
@@ -1008,25 +1008,25 @@ PR4 在其上加 **ed25519 签名脚手架**：
 
 ## 本地开发
 
-### 把文件夹丢进 ~/.folyn/plugins/
+### 把文件夹丢进 ~/.folyn/extensions/
 
-最简单的 dev loop：把插件文件夹复制到 `~/.folyn/plugins/<plugin-id>/`。下次 app
-启动时 `App.tsx` 的 hydrate 循环读 `plugins.json` + 各 manifest 安装/激活。Sandbox
-插件的 HTML/JS 改动通过重载 app 即可生效（iframe 重新从 `folyn-plugin://` fetch）。
+最简单的 dev loop：把插件文件夹复制到 `~/.folyn/extensions/<extension-id>/`。下次 app
+启动时 `App.tsx` 的 hydrate 循环读 `extensions.json` + 各 manifest 安装/激活。Sandbox
+插件的 HTML/JS 改动通过重载 app 即可生效（iframe 重新从 `folyn-extension://` fetch）。
 Trusted 插件则 deactivate → activate 拿新代码（loader 每次激活创建新 blob URL）。
 
 ### 从文件夹安装的 UI
 
-用 Settings → Plugins → 从文件夹安装…，选你的 dev 文件夹。文件夹名必须是插件
-kebab-case id。会把文件夹复制进 `~/.folyn/plugins/<id>/` 并安装。
+用 Settings → Extensions → 从文件夹安装…，选你的 dev 文件夹。文件夹名必须是插件
+kebab-case id。会把文件夹复制进 `~/.folyn/extensions/<id>/` 并安装。
 
 ### Dev server（sandbox tier）
 
-因为 `html` 从 `folyn-plugin://localhost/<id>/<html>` 加载，不能直接指向
+因为 `html` 从 `folyn-extension://localhost/<id>/<html>` 加载，不能直接指向
 `http://localhost:5173`（跨 origin）。热重载方案：
 
 - 每次改动后重装（小插件最快），或
-- 跑 dev server 并通过 `folyn-plugin://` scheme 代理（未来增强——MVP 没有）。
+- 跑 dev server 并通过 `folyn-extension://` scheme 代理（未来增强——MVP 没有）。
 
 ### Trusted tier + Vite
 
@@ -1037,7 +1037,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [react()],
+  extensions: [react()],
   build: { lib: { entry: "index.tsx", formats: ["es"], fileName: "index" } },
 });
 ```
@@ -1050,34 +1050,34 @@ export default defineConfig({
 ## 打包
 
 MVP：**未打包的文件夹**。安装命令把包含 `manifest.json` + 资源的文件夹复制进
-`~/.folyn/plugins/<id>/`。目前不支持 zip / tarball / npm-pack——zip 解压明确推迟。
+`~/.folyn/extensions/<id>/`。目前不支持 zip / tarball / npm-pack——zip 解压明确推迟。
 
 今天分发插件的方式：发文件夹（自己 zip 给用户下载；用户解压到本地路径，通过文件夹
 对话框安装）。
 
-未来：`.folyn-plugin` archive（文件夹的 zip）+ marketplace 下载会在签名链强制后上线。
+未来：`.folyn-extension` archive（文件夹的 zip）+ marketplace 下载会在签名链强制后上线。
 ed25519 脚手架（见上）已为其就位。
 
 ---
 
 ## 参考：示例插件
 
-- [`examples/plugins/hello-tool`](../examples/plugins/hello-tool) —— sandbox tier。
+- [`examples/extensions/hello-tool`](../examples/extensions/hello-tool) —— sandbox tier。
   贡献一个 command + 一个 tool。iframe 脚本把 `postMessage` 封装成 Promise 风格
   的 `rpc()` helper，演示 `clipboard:read` / `clipboard:write`。
-- [`examples/plugins/markdown-todo`](../examples/plugins/markdown-todo) —— trusted
+- [`examples/extensions/markdown-todo`](../examples/extensions/markdown-todo) —— trusted
   tier。贡献一个 `:::todo` 容器指令（交互式 checkbox 列表）+ 一个
   **Todo: Insert Checklist** 命令。纯 ESM，无需 bundler（React + editor store 在
   函数内 lazy-import，blob-URL `import()` 能干净加载）。
-- [`examples/plugins/markdown-table`](../examples/plugins/markdown-table) ——
+- [`examples/extensions/markdown-table`](../examples/extensions/markdown-table) ——
   sandbox tier。端到端 fetch-RPC demo：textarea 输入 → 生成 markdown 表格 →
   Insert 按钮 → `vault:insert-content` → 表格追加进当前文档。
-- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
+- [`examples/extensions/feature-panel-sample`](../examples/extensions/feature-panel-sample)
   —— trusted tier。贡献一个 `features` 侧边栏 panel（`notes-panel`，left slot，
   内联 SVG 图标 + `order` + `badge`）+ 一个 **Notes: Open Panel** 命令。演示
   数据驱动的 activity bar / 侧边栏挂载路径，以及 panel 组件内进程内 editor
   store 访问。
-- [`examples/plugins/plugin-export-demo`](../examples/plugins/plugin-export-demo)
+- [`examples/extensions/extension-export-demo`](../examples/extensions/extension-export-demo)
   —— trusted tier。在一个小插件里演练各贡献点：一个 `exporters`（当前
   文档 → 带表头的 `.txt`）、一个 `fileTemplates`（**New Meeting Notes** 面板
   命令）、一个 `keybindings`（`Cmd/Ctrl+Alt+Shift+T` → 一个 **Demo: Ping**
@@ -1085,4 +1085,4 @@ ed25519 脚手架（见上）已为其就位。
   `createElement`）、一个 `exportEnhancers`（导出时的后渲染 DOM 变异）。
   纯 ESM，无 JSX、无打包步骤。
 
-任一都通过 Settings → Plugins → 从文件夹安装… 装，手动 QA 全流程。
+任一都通过 Settings → Extensions → 从文件夹安装… 装，手动 QA 全流程。

@@ -9,13 +9,13 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 /**
  * Two bundles:
  *
- * 1. HOST bundle (`dist/index.js`) — the trusted PluginModule. Loaded from a
+ * 1. HOST bundle (`dist/index.js`) — the trusted ExtensionModule. Loaded from a
  *    blob URL, so it MUST be self-contained: `react` / `react/jsx-runtime`
  *    alias to shims reading the host's `window.React` (one React instance),
  *    Node built-ins pulled by a couple of deps alias to a browser shim. This
  *    bundle is tiny — the renderers are NOT here.
  * 2. IFRAME bundle (`dist/preview.html` + assets, via vite) — the actual
- *    @file-viewer renderers, served from the plugin's `folyn-plugin://` origin
+ *    @file-viewer renderers, served from the extension's `folyn-extension://` origin
  *    where Workers / WASM / relative asset URLs resolve.
  */
 const shim = path.join(root, 'src/shims/node-empty.js');
@@ -77,4 +77,4 @@ for await (const mapPath of glob('**/*.map', { cwd: path.join(root, 'dist'), abs
   console.log('removed source map:', path.relative(root, mapPath));
 }
 
-console.log('built dist/ — install the dist/ folder in Folyn → Plugins → Install from folder…');
+console.log('built dist/ — install the dist/ folder in Folyn → Extensions → Install from folder…');

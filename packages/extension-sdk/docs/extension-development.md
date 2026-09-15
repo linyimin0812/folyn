@@ -1,20 +1,20 @@
-# Folyn Plugin Development Guide
+# Folyn Extension Development Guide
 
-Folyn's microkernel lets you extend the editor at runtime: install a plugin
+Folyn's microkernel lets you extend the editor at runtime: install a extension
 folder and its file types, commands, container directives, feature panels, or
 tool windows become available immediately — no recompile, no repackage.
 
 This guide covers the manifest schema, the two execution tiers, contribution
 points, the permissions model, lifecycle, the TOFU approval flow, local
-development, and packaging. It references the two sample plugins in
-[`examples/plugins/`](../examples/plugins/).
+development, and packaging. It references the two sample extensions in
+[`examples/extensions/`](../examples/extensions/).
 
 - [Quick start](#quick-start)
 - [At a glance: what the host provides](#at-a-glance-what-the-host-provides)
 - [The two tiers](#the-two-tiers)
 - [manifest.json schema](#manifestjson-schema)
 - [Contribution points](#contribution-points)
-- [The PluginModule export contract (trusted tier)](#the-pluginmodule-export-contract-trusted-tier)
+- [The ExtensionModule export contract (trusted tier)](#the-extensionmodule-export-contract-trusted-tier)
 - [The sandbox RPC protocol (sandbox tier)](#the-sandbox-rpc-protocol-sandbox-tier)
 - [Permissions model](#permissions-model)
 - [Lifecycle: activate / deactivate / dispose](#lifecycle-activate--deactivate--dispose)
@@ -22,20 +22,20 @@ development, and packaging. It references the two sample plugins in
 - [Integrity upgrade path (ed25519 scaffolding)](#integrity-upgrade-path-ed25519-scaffolding)
 - [Local development](#local-development)
 - [Packaging](#packaging)
-- [Reference: sample plugins](#reference-sample-plugins)
+- [Reference: sample extensions](#reference-sample-extensions)
 
 ---
 
 ## At a glance: what the host provides
 
-A Folyn plugin is a folder under `~/.folyn/plugins/<id>/` with a
+A Folyn extension is a folder under `~/.folyn/extensions/<id>/` with a
 `manifest.json` + assets. The host gives you five things:
 
 ### 1. Two execution tiers
 
 | Tier      | Isolation                                                             | Capability surface                       | Trust gate                     |
 | --------- | --------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ |
-| `sandbox` | separate `WebviewWindow` or iframe, origin `folyn-plugin://localhost` | host RPC bridge only — no Tauri APIs     | none (sandbox IS the boundary) |
+| `sandbox` | separate `WebviewWindow` or iframe, origin `folyn-extension://localhost` | host RPC bridge only — no Tauri APIs     | none (sandbox IS the boundary) |
 | `trusted` | main webview realm (in-process)                                       | full host realm + Zustand stores + Tauri | TOFU: user must **批准并授权** |
 
 ### 2. Contribution points
@@ -45,7 +45,7 @@ activate; auto-unregistered on deactivate.
 
 | Point                         | Sandbox? | Trusted? | What it adds                                                         |
 | ----------------------------- | -------- | -------- | -------------------------------------------------------------------- |
-| `commands`                    | ✓        | ✓        | palette entry (⌘P) — `plugin.<pluginId>.<id>`                        |
+| `commands`                    | ✓        | ✓        | palette entry (⌘P) — `extension.<extensionId>.<id>`                        |
 | `tools` (with `window: true`) | ✓        | ✓        | "Open: <title>" command → Tauri WebviewWindow                        |
 | `fileTypes`                   | ✗        | ✓        | file extension → handler mapping                                     |
 | `containers`                  | ✗        | ✓        | `:::name` Markdown directive → React component                       |
@@ -59,9 +59,9 @@ activate; auto-unregistered on deactivate.
 
 ### 3. RPC method table (sandbox tier — host-mediated)
 
-Sandbox plugins call host capabilities via `postMessage` (iframe transport) or
-`fetch('folyn-plugin://localhost/<id>/rpc', ...)` (tool-window transport). Both
-hit the same `dispatchPluginRpc` table — same permission checks, same path
+Sandbox extensions call host capabilities via `postMessage` (iframe transport) or
+`fetch('folyn-extension://localhost/<id>/rpc', ...)` (tool-window transport). Both
+hit the same `dispatchExtensionRpc` table — same permission checks, same path
 resolution.
 
 | Method                  | Params                  | Required permission             | Returns                                                                                  |
@@ -88,7 +88,7 @@ iframe whenever the user switches theme or locale mid-session):
 { "type": "env-event", "event": "locale", "value": "zh" }
 ```
 
-Plugins should call `env:get` on `activate` to seed the initial values, then
+Extensions should call `env:get` on `activate` to seed the initial values, then
 listen for `env-event` messages to update in place.
 
 **Response shape**: success → JSON object per the "Returns" column; failure →
@@ -99,7 +99,7 @@ listen for `env-event` messages to update in place.
 ### 4. Manifest validation rules (the spec authors must follow)
 
 - `id`: kebab-case, `^[a-z0-9]+(-[a-z0-9]+)+$` (at least one hyphen). Folder
-  name under `~/.folyn/plugins/` MUST equal `id`.
+  name under `~/.folyn/extensions/` MUST equal `id`.
 - `version`: non-empty string (semver-ish recommended).
 - `tier`: `"sandbox"` or `"trusted"`.
 - `main`: non-empty string (relative path to entry module).
@@ -109,31 +109,31 @@ listen for `env-event` messages to update in place.
 - Optional ed25519 `signature` + `publisherPublicKey` (MVP: not enforced;
   scaffolding for future marketplace gate).
 
-### 5. CSP for sandbox plugins (what HTML/JS can do)
+### 5. CSP for sandbox extensions (what HTML/JS can do)
 
-Every `folyn-plugin://localhost/<id>/<file>` response carries this CSP header:
+Every `folyn-extension://localhost/<id>/<file>` response carries this CSP header:
 
 ```
 default-src 'none';
-  script-src 'unsafe-inline' folyn-plugin:;
+  script-src 'unsafe-inline' folyn-extension:;
   style-src  'unsafe-inline';
-  connect-src folyn-plugin:;
+  connect-src folyn-extension:;
 ```
 
 What this means for authors:
 
 - ✓ Inline `<script>` and inline `<style>` in your HTML.
-- ✓ `<script src="index.js">` (same-scheme, your plugin's own files).
-- ✓ `fetch('folyn-plugin://localhost/<id>/rpc', ...)` (the RPC bridge).
+- ✓ `<script src="index.js">` (same-scheme, your extension's own files).
+- ✓ `fetch('folyn-extension://localhost/<id>/rpc', ...)` (the RPC bridge).
 - ✗ No remote scripts, styles, fonts, images, or `connect-src` to any other
   origin. If you need network access, declare `http.origins` and call
   `http:fetch` — the host performs the request in Rust (no CSP).
-- ✗ No `iframe` embedding, no web workers from blob: (only `folyn-plugin:`).
+- ✗ No `iframe` embedding, no web workers from blob: (only `folyn-extension:`).
 - ✗ No `default-src` fallback — every directive is explicit.
 
 Note: `'self'` is intentionally NOT used. Chromium does not resolve `'self'`
-to the document origin for custom schemes like `folyn-plugin://`, so the
-explicit scheme source `folyn-plugin:` is required instead.
+to the document origin for custom schemes like `folyn-extension://`, so the
+explicit scheme source `folyn-extension:` is required instead.
 
 ---
 
@@ -141,35 +141,35 @@ explicit scheme source `folyn-plugin:` is required instead.
 
 ## Quick start
 
-The fastest path: copy [`examples/plugins/markdown-todo`](../examples/plugins/markdown-todo)
-into a folder, then install it from **Settings → Plugins → 从文件夹安装…**.
-Pick the folder (its name must be the plugin's kebab-case id, e.g.
-`markdown-todo`), and the plugin appears in the list. Trusted-tier plugins
+The fastest path: copy [`examples/extensions/markdown-todo`](../examples/extensions/markdown-todo)
+into a folder, then install it from **Settings → Extensions → 从文件夹安装…**.
+Pick the folder (its name must be the extension's kebab-case id, e.g.
+`markdown-todo`), and the extension appears in the list. Trusted-tier extensions
 need an extra **批准并授权** click (see [TOFU](#tofu-approval-flow)).
 
 After install + activate:
 
-- The `markdown-todo` plugin contributes a `:::todo` container directive
+- The `markdown-todo` extension contributes a `:::todo` container directive
   (type `/todo` in the slash menu) and a **Todo: Insert Checklist** command
   (⌘P → "Todo: Insert Checklist").
-- The `hello-tool` plugin (sandbox tier) contributes a **Hello: Greet**
+- The `hello-tool` extension (sandbox tier) contributes a **Hello: Greet**
   command that writes to the clipboard via the host RPC bridge.
 
 ### Install the SDK
 
-Type your manifest against `folyn-plugin-sdk` — the publishable type package
-(manifest schema, contribution points, `PluginModule`, AI capability types,
-and dev helpers like `definePlugin` / `validateManifest`). It has no runtime
+Type your manifest against `folyn-extension-sdk` — the publishable type package
+(manifest schema, contribution points, `ExtensionModule`, AI capability types,
+and dev helpers like `defineExtension` / `validateManifest`). It has no runtime
 dependency; React is a peer type only (erased at build for type-only
 consumers).
 
 ```bash
-npm install folyn-plugin-sdk
+npm install folyn-extension-sdk
 ```
 
 ```ts
-// index.ts — a trusted-tier plugin's entry module
-import type { PluginModule, ExporterHandler } from "folyn-plugin-sdk";
+// index.ts — a trusted-tier extension's entry module
+import type { ExtensionModule, ExporterHandler } from "folyn-extension-sdk";
 
 const exportTxt: ExporterHandler = async (content, ctx) =>
   `# ${ctx.filePath}\n\n${content}`;
@@ -180,42 +180,42 @@ export const exporters: Record<string, ExporterHandler> = {
 export const commands = { ping: () => console.info("pong") };
 ```
 
-Internal workspace plugins depend on `@folyn/plugin-host` (which re-exports
+Internal workspace extensions depend on `@folyn/extension-host` (which re-exports
 the full SDK surface) — `import` from either works. The runtime microkernel
-(`PluginHost`, `pluginHost` singleton) lives in `@folyn/plugin-host`; the SDK
+(`ExtensionHost`, `extensionHost` singleton) lives in `@folyn/extension-host`; the SDK
 stays publishable and runtime-free.
 
 ---
 
 ## The two tiers
 
-Every plugin declares `tier: "sandbox" | "trusted"` in its manifest. The tier
+Every extension declares `tier: "sandbox" | "trusted"` in its manifest. The tier
 determines the loader, isolation boundary, capability surface, and which
 contribution points are available.
 
 |                             | **sandbox**                                                                                                            | **trusted**                                                                                                                               |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Loader                      | hidden `<iframe sandbox="allow-scripts">` (no `allow-same-origin`), loaded from `folyn-plugin://localhost/<id>/<html>` | `import(/* @vite-ignore */ blobUrl)` into the **main webview realm**                                                                      |
+| Loader                      | hidden `<iframe sandbox="allow-scripts">` (no `allow-same-origin`), loaded from `folyn-extension://localhost/<id>/<html>` | `import(/* @vite-ignore */ blobUrl)` into the **main webview realm**                                                                      |
 | Isolation                   | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage                                              | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM                                                         |
-| Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; `grant_plugin_capabilities` adds scoped Tauri caps (largely redundant — see [Design reality](#permissions-model)) |
+| Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; `grant_extension_capabilities` adds scoped Tauri caps (largely redundant — see [Design reality](#permissions-model)) |
 | Trust gate                  | none (sandbox IS the boundary)                                                                                         | TOFU: user must **批准并授权** before activation                                                                                          |
 | Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`                                    |
 | Hot unload                  | destroy iframe element                                                                                                 | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)`                                                                                     |
-| Bundle requirement          | HTML + JS loaded by the iframe via `folyn-plugin://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
+| Bundle requirement          | HTML + JS loaded by the iframe via `folyn-extension://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
 
 **When to use which:**
 
-- **sandbox** when the plugin is a self-contained tool/launcher that doesn't
+- **sandbox** when the extension is a self-contained tool/launcher that doesn't
   need to render inside the editor (no file-type handlers, no Markdown
   container directives). Safest for untrusted third-party code.
-- **trusted** when the plugin must render inline React/CodeMirror components
+- **trusted** when the extension must render inline React/CodeMirror components
   (file-type handler, `:::container` directive, feature panel) or needs deep
   host integration. Requires the user to explicitly approve (TOFU).
 
 ### Render isolation (trusted tier — host guarantee)
 
-Because the `plugin-sdk` is public and third-party authors ship plugins, the
-host treats **render isolation as a hard contract**: no plugin render throw,
+Because the `extension-sdk` is public and third-party authors ship extensions, the
+host treats **render isolation as a hard contract**: no extension render throw,
 lazy-factory throw, or `activate()` failure may crash the host app. You do
 not need to do anything to get this — it is applied host-side, at the
 adapter that registers your component, regardless of how your component is
@@ -229,12 +229,12 @@ written. Specifically:
   working. **Your throw never white-screens the host.**
 - Isolation is per-instance: one broken `:::box` or ` ```lang ` block does
   not disable its siblings.
-- The throw is recorded to the plugin's row in Settings → Plugins (an ⚠
+- The throw is recorded to the extension's row in Settings → Extensions (an ⚠
   "render error" line with the surface label + a Clear button), so the user
-  can see which plugin errored.
+  can see which extension errored.
 - If your `activate()` throws **after** registering contributions, the host
   rolls back everything registered during that activation (commands, file
-  types, containers, …) so no half-wired plugin lingers. The plugin enters
+  types, containers, …) so no half-wired extension lingers. The extension enters
   the `failed` state; the user can fix and re-activate.
 
 Practical guidance: you may still `throw` from render for genuine
@@ -246,15 +246,15 @@ the user sees your message rather than the generic boundary fallback.
 
 ## manifest.json schema
 
-Every plugin folder has a `manifest.json` at its root. Full schema:
+Every extension folder has a `manifest.json` at its root. Full schema:
 
 ```jsonc
 {
   // Required. Globally-unique kebab-case id (matches ^[a-z0-9]+(-[a-z0-9]+)+$).
-  // The folder name under ~/.folyn/plugins/ MUST equal this id.
-  "id": "my-plugin",
+  // The folder name under ~/.folyn/extensions/ MUST equal this id.
+  "id": "my-extension",
   // Required. Human-readable display name.
-  "name": "My Plugin",
+  "name": "My Extension",
   // Required. Semver-ish version string.
   "version": "1.0.0",
   "author": "Jane Doe",
@@ -262,14 +262,14 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
   "folyn": ">=0.1.0",
   // Required. "sandbox" or "trusted" (see above).
   "tier": "trusted",
-  // Required. Entry module path (relative to the plugin folder).
+  // Required. Entry module path (relative to the extension folder).
   //   sandbox: the JS loaded inside the iframe (typically "index.js")
   //   trusted: the ESM bundle import()-ed into the host realm
   "main": "index.js",
   // Required for sandbox tier. HTML entry loaded into the iframe.
   "html": "index.html",
 
-  // Optional. Declared capabilities the plugin may use. Enforced differently
+  // Optional. Declared capabilities the extension may use. Enforced differently
   // per tier — see "Permissions model" below.
   "permissions": {
     "fs": { "scope": ["data/**", "vault:read-active"] },
@@ -280,7 +280,7 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
     "vault": { "readActive": true, "insertContent": true },
   },
 
-  // Optional. The contribution points this plugin adds to the app.
+  // Optional. The contribution points this extension adds to the app.
   "contributes": {
     "commands": [
       {
@@ -332,7 +332,7 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
     ],
   },
 
-  // Optional. Lazy activation triggers. The plugin's code is loaded only when
+  // Optional. Lazy activation triggers. The extension's code is loaded only when
   // one of these fires (mirrors VSCode activation events).
   "activation": {
     "onCommand": "greet", // activate when this command is invoked
@@ -350,10 +350,10 @@ Every plugin folder has a `manifest.json` at its root. Full schema:
 ### Validation rules
 
 The manifest is validated at install time (Rust `validate_manifest` + TS
-`PluginHost.validateManifest`). The rules:
+`ExtensionHost.validateManifest`). The rules:
 
 - `id` must be kebab-case (`^[a-z0-9]+(-[a-z0-9]+)+$`) — at least one hyphen,
-  lowercase alphanumerics only. `my-plugin` ✓; `MyPlugin` ✗; `myplugin` ✗.
+  lowercase alphanumerics only. `my-extension` ✓; `MyExtension` ✗; `myextension` ✗.
 - `version` must be a non-empty string.
 - `tier` must be `sandbox` or `trusted`.
 - `main` must be a non-empty string.
@@ -364,7 +364,7 @@ The manifest is validated at install time (Rust `validate_manifest` + TS
 ## Contribution points
 
 Each contribution is a plain-data descriptor in `contributes`. The host
-adapts it into the matching app registry when the plugin activates.
+adapts it into the matching app registry when the extension activates.
 
 ### commands
 
@@ -373,9 +373,9 @@ adapts it into the matching app registry when the plugin activates.
 ```
 
 - `id` is the command's local id; the registered palette id becomes
-  `plugin.<pluginId>.<id>` (e.g. `plugin.hello-tool.greet`).
-- `title` is the palette label (prefixed with the plugin name in the UI).
-- `run` is the **entry-ref** — a string indexing into the plugin module's
+  `extension.<extensionId>.<id>` (e.g. `extension.hello-tool.greet`).
+- `title` is the palette label (prefixed with the extension name in the UI).
+- `run` is the **entry-ref** — a string indexing into the extension module's
   `commands` map (trusted) or the command id dispatched to the iframe
   (sandbox).
 
@@ -393,7 +393,7 @@ adapts it into the matching app registry when the plugin activates.
 - `supportedViewModes` (optional) declares the handler's view modes — the
   host merges manifest-declared ids into the handler's own set so the
   shell's view-mode switcher surfaces them. Beyond the 5 built-ins
-  (`split`/`edit`/`preview`/`visual`/`source`), a plugin may declare
+  (`split`/`edit`/`preview`/`visual`/`source`), a extension may declare
   **custom** mode ids (e.g. `canvas`); the handler's own `Editor`/`Preview`
   then renders that mode.
 
@@ -404,7 +404,7 @@ adapts it into the matching app registry when the plugin activates.
 ```
 
 - `name` is the directive name (what follows `:::` in Markdown).
-- `icon` accepts three forms: an inline `<svg>...</svg>` string (rendered verbatim via the host's `IconFromSvg`), a `.svg` file path relative to the plugin install dir (the host reads it at activate via `read_plugin_file`; missing file → warn + empty fallback), or an emoji/short string rendered as plain text (the builtin convention, e.g. `💡`).
+- `icon` accepts three forms: an inline `<svg>...</svg>` string (rendered verbatim via the host's `IconFromSvg`), a `.svg` file path relative to the extension install dir (the host reads it at activate via `read_extension_file`; missing file → warn + empty fallback), or an emoji/short string rendered as plain text (the builtin convention, e.g. `💡`).
 - `component` is the entry-ref into the module's `containers` map. The
   component must be a React component accepting `ContainerProps`
   (`{ children?, attributes?, name? }`).
@@ -431,43 +431,43 @@ adapts it into the matching app registry when the plugin activates.
 
 - `id` is the panel's local id; it must NOT collide with the reserved
   built-in ids (`files`, `wiki`, `calendar`). A collision
-  (with a built-in or an already-registered plugin panel) is logged and the
+  (with a built-in or an already-registered extension panel) is logged and the
   second registration is refused.
 - `panel` is `left` / `right` / `bottom`. **MVP implements `left` only** —
   `right` and `bottom` declarations are logged + skipped (right/bottom shell
   slots are a follow-up task).
 - `component` is the **entry-ref** into the module's `features` map (see the
-  `PluginModule` export contract below). The component must be a React
-  component (renders inside `PanelErrorBoundary`, so a throwing plugin panel
+  `ExtensionModule` export contract below). The component must be a React
+  component (renders inside `PanelErrorBoundary`, so a throwing extension panel
   won't white-screen the sidebar).
 - `icon` is **required**. Either a raw inline SVG string
   (`<svg ...>...</svg>`) or a `ThemeIcon` name resolved against the host's
-  `assets/icons/*.svg`. Raw SVG is the self-contained path for plugin authors.
+  `assets/icons/*.svg`. Raw SVG is the self-contained path for extension authors.
 - `title` is the tooltip + accessibility label. Defaults to
-  `<pluginId>/<id>` if absent.
+  `<extensionId>/<id>` if absent.
 - `order` is optional. Built-ins occupy slots 0 (files), 10 (wiki), 20
-  (clips), 40 (calendar). A plugin panel that omits `order` is
+  (clips), 40 (calendar). A extension panel that omits `order` is
   assigned the next-after-builtin slot (≥100) by registration order. The
   activity bar renders panels sorted by `(order, registration seq)`.
 - `badge` is optional (`string | number`). When present it renders as a small
   accent-colored text dot on the activity-bar icon. Useful for unread counts
   or status flags.
-- **Trusted-tier only** (Decision Q1). Sandbox plugins cannot contribute
+- **Trusted-tier only** (Decision Q1). Sandbox extensions cannot contribute
   sidebar panels — they contribute `tools` (tool windows) for full-page UI
   instead. The asymmetry is intentional: sandbox isolation can't mount a
   same-realm React component.
-- **Deactivate fallback**: when the plugin deactivates, its panel is
+- **Deactivate fallback**: when the extension deactivates, its panel is
   unregistered. If the panel was active at deactivate time, the active panel
   falls back to `files` (and `editorStore.activePanel` is synced so WorkArea's
   tab filter follows).
 - **Persisted-active fallback**: if `editorStore.activePanel` points at an
-  uninstalled plugin's panel id on next launch, the `registerBuiltinPanels`
+  uninstalled extension's panel id on next launch, the `registerBuiltinPanels`
   mirror re-routes it to `files`.
 
-#### Reference: sample feature-panel plugin
+#### Reference: sample feature-panel extension
 
-- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
-  — minimal trusted-tier plugin that contributes a left sidebar panel
+- [`examples/extensions/feature-panel-sample`](../examples/extensions/feature-panel-sample)
+  — minimal trusted-tier extension that contributes a left sidebar panel
   (`notes-panel`) with a raw inline-SVG icon, an `order`, and a `badge`. The
   panel is a scratchpad textarea; an "Insert into doc" button writes the
   scratchpad into the active markdown doc via the in-process editor store
@@ -481,9 +481,9 @@ adapts it into the matching app registry when the plugin activates.
 ```
 
 - `window: true` opens the tool in its own Tauri `WebviewWindow` that loads
-  the plugin's HTML entry from `folyn-plugin://localhost/<id>/<entry>`. The
-  window's origin is `folyn-plugin://localhost` (macOS/Linux) /
-  `http://folyn-plugin.localhost` (Windows) — isolated from the main app.
+  the extension's HTML entry from `folyn-extension://localhost/<id>/<entry>`. The
+  window's origin is `folyn-extension://localhost` (macOS/Linux) /
+  `http://folyn-extension.localhost` (Windows) — isolated from the main app.
   `window: false` would render inline (MVP: `window: true` only; inline
   panels are a follow-up).
 - `entry` is the HTML entry file (sandbox tier). Trusted tier uses a
@@ -491,16 +491,16 @@ adapts it into the matching app registry when the plugin activates.
 - The host registers an "Open: <title>" command per tool, so ⌘P →
   "Open: Hello Tool" creates a new window. Multi-instance: each invocation
   opens a fresh window with a unique label.
-- The plugin's HTML reaches host capabilities via **fetch-RPC** over the
-  `folyn-plugin://` scheme:
+- The extension's HTML reaches host capabilities via **fetch-RPC** over the
+  `folyn-extension://` scheme:
 
   ```js
-  // POST folyn-plugin://localhost/<plugin-id>/rpc
+  // POST folyn-extension://localhost/<extension-id>/rpc
   // body: { "method": "<rpc-method>", "params": { ... } }
   // response: 200 with `<return-value>` (object/string/null per method) on
   //           success, or 200 with `{ "error": "<msg>" }` on RPC failure,
   //           or 504 with `{ "error": "rpc timeout" }` after 30s.
-  const res = await fetch("folyn-plugin://localhost/<plugin-id>/rpc", {
+  const res = await fetch("folyn-extension://localhost/<extension-id>/rpc", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -515,21 +515,21 @@ adapts it into the matching app registry when the plugin activates.
   }
   ```
 
-  The Rust URI handler emits a `plugin-rpc-request` event that the main
-  webview dispatches through the shared `dispatchPluginRpc` (same permission
+  The Rust URI handler emits a `extension-rpc-request` event that the main
+  webview dispatches through the shared `dispatchExtensionRpc` (same permission
   checks + path resolution as the iframe bridge). See "At a glance" above for
   the method table and "Sandbox RPC protocol" below for protocol details. No
-  Tauri SDK dependency in the plugin bundle — plain `fetch()` only.
+  Tauri SDK dependency in the extension bundle — plain `fetch()` only.
 
-- Closing the WebviewWindow (user OS-close or plugin deactivate) destroys
-  the window. Plugin deactivate closes ALL of that plugin's open tool
+- Closing the WebviewWindow (user OS-close or extension deactivate) destroys
+  the window. Extension deactivate closes ALL of that extension's open tool
   windows in the same dispose pass that unregisters commands.
 
-#### Reference: sample tool plugins
+#### Reference: sample tool extensions
 
-- [`examples/plugins/hello-tool`](../examples/plugins/hello-tool) — minimal
+- [`examples/extensions/hello-tool`](../examples/extensions/hello-tool) — minimal
   sandbox tool that writes to the clipboard via the RPC bridge.
-- [`examples/plugins/markdown-table`](../examples/plugins/markdown-table) —
+- [`examples/extensions/markdown-table`](../examples/extensions/markdown-table) —
   end-to-end demo: textarea → markdown table → Insert button →
   `vault:insert-content` RPC → table appended to the active doc.
 
@@ -541,8 +541,8 @@ adapts it into the matching app registry when the plugin activates.
 ]
 ```
 
-- `format` is the output format id (unique within the plugin); the palette
-  command id becomes `plugin.<pluginId>.export.<format>`.
+- `format` is the output format id (unique within the extension); the palette
+  command id becomes `extension.<extensionId>.export.<format>`.
 - `label` is the menu label; the registered command is titled
   `Export as <label>`.
 - `fileExtension` is the output extension without the dot (e.g. `txt`).
@@ -562,8 +562,8 @@ adapts it into the matching app registry when the plugin activates.
 ```
 
 - Declarative — no module map. Each entry registers into a host
-  `fileTemplateRegistry` (keyed `<pluginId>.<templateId>`) and surfaces a
-  palette command `plugin.<pluginId>.new.<templateId>` titled
+  `fileTemplateRegistry` (keyed `<extensionId>.<templateId>`) and surfaces a
+  palette command `extension.<extensionId>.new.<templateId>` titled
   `New <label>`. Running the command prompts for a save path (default under
   the current vault root) and writes `template` verbatim, then refreshes the
   file tree.
@@ -571,26 +571,26 @@ adapts it into the matching app registry when the plugin activates.
   inline-rename flow keys file content off the extension via
   `prefsStore.fileTemplates`, which can't carry an arbitrary body. The
   palette command is the MVP surface; the submenu group is the upgrade path
-  (read `getPluginFileTemplates()`).
+  (read `getExtensionFileTemplates()`).
 
 ### keybindings (trusted only)
 
 ```jsonc
 "keybindings": [
-  { "command": "plugin.my-plugin.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T", "when": "..." }
+  { "command": "extension.my-extension.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T", "when": "..." }
 ]
 ```
 
-- `command` is a command id — a plugin-contributed command
-  (`plugin.<pluginId>.<id>`) or a built-in (e.g. `action.toggle-theme`).
+- `command` is a command id — a extension-contributed command
+  (`extension.<extensionId>.<id>`) or a built-in (e.g. `action.toggle-theme`).
   The host looks it up in `commandRegistry` and runs it when the key fires.
 - `key` is a Tauri accelerator string (`Cmd+Shift+K`, `Control+Alt+T`).
 - `mac` overrides for macOS. `when` is an optional activation clause
   (opaque string, reserved for forward-compat — MVP registers globally).
-- ponytail: the project has no `@tauri-apps/plugin-global-shortcut`
+- ponytail: the project has no `@tauri-apps/extension-global-shortcut`
   dependency, so bindings are app-scope `keydown` listeners — they fire
   only while the app window has focus, not when backgrounded. The OS-global
-  upgrade path is `plugin-global-shortcut`'s `register(accelerator, handler)`
+  upgrade path is `extension-global-shortcut`'s `register(accelerator, handler)`
   - `unregister(accelerator)` in dispose.
 
 ### exportEnhancers (trusted only)
@@ -612,7 +612,7 @@ adapts it into the matching app registry when the plugin activates.
 - The handler runs **host-realm** on a real `HTMLElement` after the in-DOM
   render has settled (inside `renderMarkdownToHtmlViaDom`, after
   `processFilePreviews`). It can use `body.querySelector` /
-  `body.appendChild` directly — the plugin module runs in the host realm as
+  `body.appendChild` directly — the extension module runs in the host realm as
   a trusted blob-URL `import()`.
 - The `body` handed to the enhancer is the `[data-container]` element
   itself, unless it contains a `[data-file-preview-body]` child (a
@@ -620,8 +620,8 @@ adapts it into the matching app registry when the plugin activates.
   inner body is used. Action buttons are stripped before the call.
 - ponytail: enhancer failures are swallowed best-effort
   (`.catch(() => {})`) — a broken enhancer must not abort the whole export.
-  Multiple plugins registering for the same key → last-registered-wins; the
-  upgrade path is a per-plugin precedence list if colliding enhancers ever
+  Multiple extensions registering for the same key → last-registered-wins; the
+  upgrade path is a per-extension precedence list if colliding enhancers ever
   need to compose.
 
 ### markdownCodeRenderers (trusted only)
@@ -635,7 +635,7 @@ adapts it into the matching app registry when the plugin activates.
 - `language` is the fenced code block language label (the string after the
   opening ` ``` `) that this renderer handles. The host's
   `MarkdownPreview` looks up the fence's `language-*` class on the rendered
-  `<pre>` against the registry; a hit dispatches to the plugin component
+  `<pre>` against the registry; a hit dispatches to the extension component
   instead of the default `CodeBlockWrapper`.
 - `aliases` (optional) are alternate language labels that resolve to the
   same renderer (e.g. `puml` / `pu` for PlantUML).
@@ -643,14 +643,14 @@ adapts it into the matching app registry when the plugin activates.
   map. The component receives `MarkdownCodeRendererProps`
   (`{ source, language, resolvedLanguage, filePath }`) and renders the
   block (typically a transformed/preview rendering of `source`).
-- Builtin `mermaid` registers before plugins at app boot, so plugin
+- Builtin `mermaid` registers before extensions at app boot, so extension
   registrations for the same `language` are first-registered-wins. A miss
   falls back to `CodeBlockWrapper` (the default syntax-highlighted `<pre>`).
 - ponytail: the renderer is host-realm React (the trusted blob `import()`
   shares the host's Reactor); bundle React yourself and you'll get the
   "Invalid hook call" two-React error. Use `window.React` via a
   `resolveReact()` helper (mirror of `resolveCodemirror()` below). See
-  `folyn-plugin-sdk/folyn-plugin-plantuml/src/index.ts` `PlantUmlMarkdownBlock` for
+  `folyn-extension-sdk/folyn-extension-plantuml/src/index.ts` `PlantUmlMarkdownBlock` for
   the canonical shape.
 
 ### editorLanguages (trusted only)
@@ -672,22 +672,22 @@ adapts it into the matching app registry when the plugin activates.
   factory's type is `EditorLanguageFactory = () => unknown`; the host
   narrows the return to `LanguageSupport` for CodeMirror 6.
 - **Trusted-tier `window.codemirrorLanguage` requirement**: trusted
-  plugins load via blob URL, so `import '@codemirror/language'` resolves
+  extensions load via blob URL, so `import '@codemirror/language'` resolves
   to a _second_ module instance whose `LanguageSupport` the host's
   `EditorState` won't reliably apply (module-instance mismatch — same
   failure mode as bundling your own React). Resolve the host's
   `@codemirror/language` lazily via a `resolveCodemirror()` helper that
   reads `window.codemirrorLanguage` (the host sets it in `main.tsx` before
-  any trusted plugin is `import()`-ed). See
-  `folyn-plugin-sdk/folyn-plugin-plantuml/src/codemirror.ts` for the canonical
+  any trusted extension is `import()`-ed). See
+  `folyn-extension-sdk/folyn-extension-plantuml/src/codemirror.ts` for the canonical
   pattern — it mirrors the `resolveReact()` approach for `window.React`.
 
 ---
 
-## The PluginModule export contract (trusted tier)
+## The ExtensionModule export contract (trusted tier)
 
-A trusted plugin's `main` is an ESM module. The host `import()`-s it and
-reads its **named exports** as a `PluginModule`:
+A trusted extension's `main` is an ESM module. The host `import()`-s it and
+reads its **named exports** as a `ExtensionModule`:
 
 ```ts
 // index.js — a self-contained ESM bundle
@@ -699,22 +699,22 @@ export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': e
 export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
 export const markdownCodeRenderers: Record<string, ComponentType<MarkdownCodeRendererProps>> = { 'PlantUmlMarkdownBlock': PlantUmlBlock };
 export const editorLanguages: Record<string, EditorLanguageFactory> = { 'plantumlLanguage': () => plantumlLanguage() };
-export function activate(ctx: PluginContext) { /* optional */ }
-export function deactivate(ctx: PluginContext) { /* optional */ }
+export function activate(ctx: ExtensionContext) { /* optional */ }
+export function deactivate(ctx: ExtensionContext) { /* optional */ }
 ```
 
 The maps are **keyed by entry-ref** — the strings in the manifest's
 `contributes.*[].run` / `.handler` / `.component` / `.entry`. An entry-ref
 missing from the module's exports is skipped with a console warning
-(best-effort: a partial plugin still loads its other contributions).
+(best-effort: a partial extension still loads its other contributions).
 `fileTemplates` and `keybindings` are declarative — no module map.
 
 `markdownCodeRenderers` is keyed by the manifest's `component` string;
-`editorLanguages` by `entry`. See `folyn-plugin-sdk/folyn-plugin-plantuml` for a
+`editorLanguages` by `entry`. See `folyn-extension-sdk/folyn-extension-plantuml` for a
 working example of all four maps (`handlers`, `exporters`,
 `markdownCodeRenderers`, `containers`, `exportEnhancers`, `editorLanguages`).
 
-A default-export factory `(ctx) => PluginModule` is also accepted (the loader
+A default-export factory `(ctx) => ExtensionModule` is also accepted (the loader
 normalizes both shapes). See `contributionAdapters.ts` for the exact
 resolution rules.
 
@@ -724,7 +724,7 @@ The trusted loader wraps your `main` in a **blob URL** and `import()`-s it.
 Blob URLs have no path, so:
 
 - **relative imports do not resolve** (`./utils.js` fails)
-- **remote imports are blocked** by the `folyn-plugin://` CSP
+- **remote imports are blocked** by the `folyn-extension://` CSP
 - **bare specifiers** (`react`, `@/store/...`) resolve against the host
   realm's already-loaded modules ONLY if Vite leaves them as runtime
   `import()`. To be safe, **bundle your deps** (Vite/Rollup/esbuild) so the
@@ -733,16 +733,16 @@ Blob URLs have no path, so:
 The `markdown-todo` sample sidesteps this by keeping all bare-specifier
 imports **inside functions** (lazy, not at module-eval time) and using a
 variable specifier so Vite doesn't statically resolve them. That works for a
-demo; a real plugin should bundle.
+demo; a real extension should bundle.
 
 ### Fetching remote resources (trusted tier)
 
 The main webview's CSP is build-time-fixed in `tauri.conf.json` and does
 NOT include third-party origins. **Direct `fetch()` and `<img src=remote>`
-in a trusted plugin are blocked in packaged builds** (dev mode does not
-enforce CSP, masking the bug). Plugins that need to reach a remote
+in a trusted extension are blocked in packaged builds** (dev mode does not
+enforce CSP, masking the bug). Extensions that need to reach a remote
 origin must go through `ctx.http.fetch`, which routes the request through
-the Rust `plugin_http_fetch` command (reqwest, outside the webview) and
+the Rust `extension_http_fetch` command (reqwest, outside the webview) and
 enforces `permissions.http.origins` from the manifest.
 
 **Step 1 — declare the origin in the manifest:**
@@ -758,12 +758,12 @@ enforces `permissions.http.origins` from the manifest.
 **Step 2 — stash `ctx.http` in `activate()`, use it everywhere:**
 
 ```ts
-import type { PluginContext, PluginHttpCapability } from 'folyn-plugin-sdk';
+import type { ExtensionContext, ExtensionHttpCapability } from 'folyn-extension-sdk';
 
-let hostHttp: PluginHttpCapability | undefined;
-export async function activate(ctx: PluginContext) { hostHttp = ctx.http; }
-function http(): PluginHttpCapability {
-  if (!hostHttp) throw new Error('plugin: activate() not called');
+let hostHttp: ExtensionHttpCapability | undefined;
+export async function activate(ctx: ExtensionContext) { hostHttp = ctx.http; }
+function http(): ExtensionHttpCapability {
+  if (!hostHttp) throw new Error('extension: activate() not called');
   return hostHttp;
 }
 
@@ -794,7 +794,7 @@ inline `<svg>` (carries script-injection surface).
 
 ## The sandbox RPC protocol (sandbox tier)
 
-A sandbox plugin's `index.html` + `index.js` run inside a sandboxed iframe
+A sandbox extension's `index.html` + `index.js` run inside a sandboxed iframe
 with origin `null` (opaque). The ONLY bridge to host capabilities is
 `window.parent.postMessage`. The host's `RpcBridge` validates every call
 against the manifest's `permissions`.
@@ -813,7 +813,7 @@ Available RPC methods (all gated by the manifest `permissions`):
 
 | Method                  | Params              | Permission                                     |
 | ----------------------- | ------------------- | ---------------------------------------------- |
-| `fs:read`               | `{ path }`          | `fs.scope` (glob, relative to plugin data dir) |
+| `fs:read`               | `{ path }`          | `fs.scope` (glob, relative to extension data dir) |
 | `fs:write`              | `{ path, content }` | `fs.scope`                                     |
 | `fs:list`               | `{ path }`          | `fs.scope`                                     |
 | `http:fetch`            | `{ url, init? }`    | `http.origins` (allowlist)                     |
@@ -825,16 +825,16 @@ Available RPC methods (all gated by the manifest `permissions`):
 | `vault:insert-content`  | `{ content }`       | `vault.insertContent: true`                    |
 | `window:open`           | `{ toolId }`        | `window: true`                                 |
 
-See `examples/plugins/hello-tool/index.js` for a complete iframe script that
+See `examples/extensions/hello-tool/index.js` for a complete iframe script that
 wraps `postMessage` in a Promise-based `rpc()` helper.
 
 #### `http:fetch` routing (CSP bypass)
 
 `http:fetch` does NOT run `fetch()` in the host webview. The host webview's
 CSP `connect-src 'self' ipc: http://ipc.localhost` does not include the
-plugin-declared origins, so a direct `fetch()` would be blocked in release
+extension-declared origins, so a direct `fetch()` would be blocked in release
 (dev does not inject CSP, which masked the bug). Instead the RPC bridge
-invokes the Rust command `plugin_http_fetch(plugin_id, url, method?, headers?, body?)`,
+invokes the Rust command `extension_http_fetch(extension_id, url, method?, headers?, body?)`,
 which performs the request with `reqwest` (no CSP) and returns a buffered
 `{ status, headers, body }` matching the old `fetch()` shape.
 
@@ -842,7 +842,7 @@ Origin enforcement is double-layered:
 
 1. **JS fast-fail** — `rpcBridge` calls `isOriginAllowed(url, manifest.permissions.http.origins)`
    before the IPC hop; a non-allowlisted origin never reaches Rust.
-2. **Rust defense-in-depth** — `plugin_http_fetch` re-reads the plugin's
+2. **Rust defense-in-depth** — `extension_http_fetch` re-reads the extension's
    on-disk `manifest.json` `permissions.http.origins` and re-checks the
    origin before issuing the request, so a future JS-bridge bypass still
    cannot exfiltrate to an undeclared origin.
@@ -861,37 +861,37 @@ design trade-off** (see prd.md ADR-lite + research/vscode-extension-host.md
 
 The iframe has **no Tauri APIs at all**. Every privileged call goes through
 the `postMessage` RPC bridge, which checks the manifest's declared
-`permissions` before dispatching. A sandbox plugin cannot bypass this — there
+`permissions` before dispatching. A sandbox extension cannot bypass this — there
 is no path to raw Tauri. This is the VSCode-extension-host model: isolation
 makes the capability-scoped API enforceable.
 
 ### trusted tier — TOFU + design reality (soft boundary)
 
-Trusted plugins run **in the main webview realm**, which already has broad
+Trusted extensions run **in the main webview realm**, which already has broad
 Tauri capabilities from `capabilities/default.json` (`fs:scope-home-recursive`,
-`shell:allow-spawn`, etc.). The `grant_plugin_capabilities` Rust command
+`shell:allow-spawn`, etc.). The `grant_extension_capabilities` Rust command
 calls `add_capability` with scoped permissions — but this is **additive /
-redundant**, NOT a confinement. A trusted plugin can still call
+redundant**, NOT a confinement. A trusted extension can still call
 `import('@tauri-apps/api/core')` directly with the main window's existing
 caps.
 
 **The real security boundary for the trusted tier is the TOFU gate**
 (integrity + user-pin), NOT `add_capability`. Once you approve a trusted
-plugin, it has full power. This is the VSCode "in-process host = soft consent
+extension, it has full power. This is the VSCode "in-process host = soft consent
 gate" trade-off, explicitly accepted for the trusted tier:
 
 > TOFU-pinned = user explicitly trusted = full power.
 
-Do NOT pretend `grant_plugin_capabilities` is a hard sandbox. If you need a
-hard boundary for a third-party plugin, use the **sandbox tier**.
+Do NOT pretend `grant_extension_capabilities` is a hard sandbox. If you need a
+hard boundary for a third-party extension, use the **sandbox tier**.
 
 ---
 
 ## AI capability (`permissions.ai`)
 
 Folyn's AI surface (chat via `runRigChat` + feature agents via
-`runFeatureAgent`) is exposed to plugins as a host-mediated capability. The
-host owns provider/model/apiKey; plugins never see credentials.
+`runFeatureAgent`) is exposed to extensions as a host-mediated capability. The
+host owns provider/model/apiKey; extensions never see credentials.
 
 ### Permission declaration
 
@@ -903,18 +903,18 @@ host owns provider/model/apiKey; plugins never see credentials.
 
 - `chat` (boolean) — required for `ctx.ai.chat` (trusted) or `ai:chat` RPC
   (sandbox).
-- `agents` (string[]) — whitelist of feature names the plugin may drive via
+- `agents` (string[]) — whitelist of feature names the extension may drive via
   `ctx.ai.agent`. Empty/absent = no agent calls. **Trusted tier only.**
 - `edit` (boolean) — required for `ctx.ai.editFile` / `ctx.ai.createFile`
   (trusted only). The host applies the resulting file changes through the
-  shared editor/vault chokepoint; the plugin never writes the filesystem
+  shared editor/vault chokepoint; the extension never writes the filesystem
   directly.
 
-### Trusted tier — `PluginContext.ai`
+### Trusted tier — `ExtensionContext.ai`
 
 ```ts
 ctx.ai.chat({
-  sessionId: "my-plugin-session", // plugin-owned; rig persists history by id
+  sessionId: "my-extension-session", // extension-owned; rig persists history by id
   prompt: "Summarize the active doc",
   onEvent: (e) => {
     /* e.type ∈ 'text'|'thinking'|'error'|'done' */
@@ -931,7 +931,7 @@ ctx.ai.agent({
 });
 
 // AI-driven file edits (trusted only — requires permissions.ai.edit). The
-// host reads/writes the file through the vault manager; the plugin only
+// host reads/writes the file through the vault manager; the extension only
 // states intent + receives streaming progress.
 await ctx.ai.editFile({
   path: "notes/summary.md", // vault-relative
@@ -948,7 +948,7 @@ await ctx.ai.createFile({
 ```
 
 `onEvent` mirrors `CliStreamEvent` but filters out `tool_*` / `file_change`
-events — plugins see only text / thinking / error / done. Provider/model
+events — extensions see only text / thinking / error / done. Provider/model
 come from the host's `useAiConfigStore`; apiKey never appears in `ctx` or
 RPC params.
 
@@ -976,34 +976,34 @@ window.parent.postMessage(
 );
 ```
 
-Sandbox plugins cannot call feature agents (canonical agent files live
+Sandbox extensions cannot call feature agents (canonical agent files live
 under the vault's `__<feature>__/` directory; sandbox isolation makes
 exposing them safely out-of-scope). Use the trusted tier if you need
 `ai.agent`.
 
 ### Examples
 
-- `examples/plugins/ai-chat-demo/` — trusted, demonstrates `ctx.ai.chat` +
+- `examples/extensions/ai-chat-demo/` — trusted, demonstrates `ctx.ai.chat` +
   `ctx.ai.agent` (study).
-- `examples/plugins/ai-chat-sandbox-demo/` — sandbox, demonstrates `ai:chat`
+- `examples/extensions/ai-chat-sandbox-demo/` — sandbox, demonstrates `ai:chat`
   RPC + `ai-stream` event consumption.
 
 ---
 
 ## Host environment (theme + locale)
 
-Plugins that render UI need to track the host's resolved theme (bright/dark)
+Extensions that render UI need to track the host's resolved theme (bright/dark)
 and the user's locale, and react when the user switches either mid-session.
-The host signals the current values and pushes change events; **plugins bring
+The host signals the current values and pushes change events; **extensions bring
 their own i18n bundles** — the host's `t()` is NOT exposed. Only the locale
 identifier string (e.g. `'zh'`, `'en'`) is delivered.
 
-### Trusted tier — `PluginContext.env`
+### Trusted tier — `ExtensionContext.env`
 
 ```ts
-import type { PluginContext } from "folyn-plugin-sdk";
+import type { ExtensionContext } from "folyn-extension-sdk";
 
-export function activate(ctx: PluginContext) {
+export function activate(ctx: ExtensionContext) {
   console.log("theme:", ctx.env?.theme, "locale:", ctx.env?.locale);
 
   ctx.addDisposable(
@@ -1021,14 +1021,14 @@ export function activate(ctx: PluginContext) {
 ```
 
 - `env.theme`: resolved `'light' | 'dark'` — `'system'` is resolved by the
-  host before delivery, plugins never see `'system'`.
+  host before delivery, extensions never see `'system'`.
 - `env.locale`: current locale string.
 - `env.onThemeChange(cb)` / `env.onLocaleChange(cb)`: subscribe to mid-session
   changes; return a `Disposable` for cleanup (push into `ctx.addDisposable`).
 
 ### Sandbox tier — `env:get` RPC + `env-event` push
 
-Sandbox plugins call `env:get` on activate to seed, then listen for
+Sandbox extensions call `env:get` on activate to seed, then listen for
 `env-event` messages to update in place:
 
 ```js
@@ -1062,7 +1062,7 @@ no network, no credentials; just the current theme + locale string).
 
 ## Lifecycle: activate / deactivate / dispose
 
-The host calls your plugin's optional `activate(ctx)` / `deactivate(ctx)`
+The host calls your extension's optional `activate(ctx)` / `deactivate(ctx)`
 hooks. Every contribution you register returns a `Disposable`; the host
 reaps all disposables on deactivate, so your contributions are
 auto-unregistered even if your `deactivate` is missing or throws.
@@ -1074,30 +1074,30 @@ auto-unregistered even if your `deactivate` is missing or throws.
 - **deactivate** → your `deactivate(ctx)` runs (if present); all
   disposables reaped (commands unregistered, containers removed, blob URL
   revoked for trusted / iframe destroyed for sandbox).
-- **uninstall** → deactivate (if active) + remove from `plugins.json` +
-  delete the plugin folder.
+- **uninstall** → deactivate (if active) + remove from `extensions.json` +
+  delete the extension folder.
 
 A failed activate/deactivate sets the state to `failed` with the error
-surfaced in the Settings → Plugins UI.
+surfaced in the Settings → Extensions UI.
 
 ---
 
 ## TOFU approval flow
 
-Sandbox plugins auto-activate on install (their boundary is the iframe, no
-approval needed). Trusted plugins require explicit approval:
+Sandbox extensions auto-activate on install (their boundary is the iframe, no
+approval needed). Trusted extensions require explicit approval:
 
-1. Install the trusted plugin (Settings → Plugins → 从文件夹安装…). It
+1. Install the trusted extension (Settings → Extensions → 从文件夹安装…). It
    appears in the list with state "已安装" and a **批准并授权** button.
 2. Click **批准并授权**. A consent modal opens listing the declared
-   permissions + contributions, with a warning that trusted plugins have
+   permissions + contributions, with a warning that trusted extensions have
    full host power.
-3. Confirm → `approve_plugin(id)` sets `trusted: true` in `plugins.json`
-   and emits `plugin://approved`. The host's listener activates the plugin.
-4. Cancel → the plugin stays installed but unapproved. You can still
+3. Confirm → `approve_extension(id)` sets `trusted: true` in `extensions.json`
+   and emits `extension://approved`. The host's listener activates the extension.
+4. Cancel → the extension stays installed but unapproved. You can still
    uninstall it.
 
-Once approved, the plugin activates immediately and on every subsequent app
+Once approved, the extension activates immediately and on every subsequent app
 launch (the hydrate loop in `App.tsx` sees `trusted: true` and activates).
 
 ---
@@ -1114,12 +1114,12 @@ PR4 adds **ed25519 signature scaffolding** on top:
 - The manifest MAY carry `signature` (base64 ed25519 signature over the
   canonicalized manifest JSON) and `publisherPublicKey` (base64 ed25519
   public key).
-- `verify_plugin_signature(manifest, signature, publicKey)` is a pure Rust
+- `verify_extension_signature(manifest, signature, publicKey)` is a pure Rust
   function: returns `Ok(())` when no signature is present (MVP: optional),
   verifies when present.
 - At install, if a signature is present, it's verified best-effort
   (non-fatal — logged to stderr; SHA-256 is still the gate).
-- The `verify_plugin_signature_cmd` Tauri command lets a future diagnostics
+- The `verify_extension_signature_cmd` Tauri command lets a future diagnostics
   UI surface "signature invalid" before approval.
 
 ### Migration path to required signatures
@@ -1127,15 +1127,15 @@ PR4 adds **ed25519 signature scaffolding** on top:
 When a marketplace launches:
 
 1. Add a config flag (e.g. `requireSignatures: true` in settingsStore).
-2. In `verify_plugin_signature`, return `Err` when `signature` is `None`
+2. In `verify_extension_signature`, return `Err` when `signature` is `None`
    and the flag is on.
-3. Surface "this plugin is unsigned" in the consent modal.
+3. Surface "this extension is unsigned" in the consent modal.
 4. Pin publisher keys in a trusted set (config file or hardcoded for MVP);
    TOFU-pin on first approve (the `publisherPublicKey` is persisted in
-   `plugins.json` so a later update with a different key re-triggers
+   `extensions.json` so a later update with a different key re-triggers
    consent).
 
-No breaking change to existing plugins — unsigned plugins keep working
+No breaking change to existing extensions — unsigned extensions keep working
 until the flag flips. The scaffolding is in place; the gate is just
 not yet enforced.
 
@@ -1143,42 +1143,42 @@ not yet enforced.
 
 ## Local development
 
-### Drop a folder in ~/.folyn/plugins/
+### Drop a folder in ~/.folyn/extensions/
 
-The simplest dev loop: copy your plugin folder to
-`~/.folyn/plugins/<plugin-id>/`. On next app launch, the hydrate loop in
-`App.tsx` reads `plugins.json` + each manifest and installs/activates. For
-sandbox plugins, changes to the HTML/JS are picked up by reloading the app
-(the iframe re-fetches from `folyn-plugin://`). For trusted plugins, bump
+The simplest dev loop: copy your extension folder to
+`~/.folyn/extensions/<extension-id>/`. On next app launch, the hydrate loop in
+`App.tsx` reads `extensions.json` + each manifest and installs/activates. For
+sandbox extensions, changes to the HTML/JS are picked up by reloading the app
+(the iframe re-fetches from `folyn-extension://`). For trusted extensions, bump
 the blob URL (the loader creates a fresh one per activation, so deactivate →
 activate picks up new code).
 
 ### Install-from-folder UI
 
-Use Settings → Plugins → 从文件夹安装… and pick your dev folder. The folder
-name must be the plugin's kebab-case id. This copies the folder into
-`~/.folyn/plugins/<id>/` and installs it.
+Use Settings → Extensions → 从文件夹安装… and pick your dev folder. The folder
+name must be the extension's kebab-case id. This copies the folder into
+`~/.folyn/extensions/<id>/` and installs it.
 
 ### Dev server (sandbox tier)
 
-Because `html` is loaded from `folyn-plugin://localhost/<id>/<html>`, you
+Because `html` is loaded from `folyn-extension://localhost/<id>/<html>`, you
 can't point it at `http://localhost:5173` directly (cross-origin). For hot
 reload, either:
 
-- re-install after each change (fastest for small plugins), or
-- run a dev server and proxy it through the `folyn-plugin://` scheme (future
+- re-install after each change (fastest for small extensions), or
+- run a dev server and proxy it through the `folyn-extension://` scheme (future
   enhancement — not in MVP).
 
 ### Trusted tier + Vite
 
-A trusted plugin that uses JSX/TSX needs a build step. Minimal `vite.config.ts`:
+A trusted extension that uses JSX/TSX needs a build step. Minimal `vite.config.ts`:
 
 ```ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [react()],
+  extensions: [react()],
   build: { lib: { entry: "index.tsx", formats: ["es"], fileName: "index" } },
 });
 ```
@@ -1193,25 +1193,25 @@ the host realm — see "Trusted tier bundling" above).
 
 **Two install paths today**:
 
-1. **Folder install** (dev/debug): Settings → Plugins → 从文件夹安装… picks an
+1. **Folder install** (dev/debug): Settings → Extensions → 从文件夹安装… picks an
    unpacked folder containing `manifest.json` + assets; the install command
-   copies it verbatim into `~/.folyn/plugins/<id>/`. No source/asset
-   filtering — useful while iterating on a plugin locally.
+   copies it verbatim into `~/.folyn/extensions/<id>/`. No source/asset
+   filtering — useful while iterating on a extension locally.
 
-2. **Zip install** (distribution): Settings → Plugins → 从 .zip 安装… picks a
+2. **Zip install** (distribution): Settings → Extensions → 从 .zip 安装… picks a
    `.zip` archive; the install command extracts it to a staging dir, filters
    forbidden files, validates the manifest, then atomically renames into
-   `~/.folyn/plugins/<id>/`. This is the path end users use to install a
-   plugin someone else shipped.
+   `~/.folyn/extensions/<id>/`. This is the path end users use to install a
+   extension someone else shipped.
 
 ### Distributing as a .zip
 
 The zip MUST contain `manifest.json` at the root. Everything else must be
-**compiled output** — the source/lockfiles/configs that built the plugin do
+**compiled output** — the source/lockfiles/configs that built the extension do
 not belong in the shipped package. The zip installer hard-rejects forbidden
 files and silently drops files whose extension is outside the whitelist.
 
-**Allowed file types** (copied to `~/.folyn/plugins/<id>/`):
+**Allowed file types** (copied to `~/.folyn/extensions/<id>/`):
 - `manifest.json` (required at the root)
 - Built `main` (e.g. `dist/index.js`, `dist/index.mjs`) and `html` for sandbox
 - Static assets: `html`/`htm`/`css`/`svg`/`png`/`jpg`/`jpeg`/`gif`/`ico`/
@@ -1233,7 +1233,7 @@ author can fix it once):
 | `.DS_Store`, `Thumbs.db` | OS cruft |
 
 **Soft-skipped — not copied, install continues** (the zip might still ship
-them; they just don't land in `~/.folyn/plugins/<id>/`): any file whose
+them; they just don't land in `~/.folyn/extensions/<id>/`): any file whose
 extension is not in the whitelist above and is not `manifest.json` /
 `LICENSE` / `README.md`. Common example: `.otf` fonts, `.txt` notes.
 
@@ -1245,37 +1245,37 @@ extension is not in the whitelist above and is not `manifest.json` /
 **Zip-slip defense** (install hard-fails): any entry whose path is absolute
 (`/etc/...`, `C:\...`), contains `..` segments, or is a symlink.
 
-To build a distributable zip from a built plugin folder:
+To build a distributable zip from a built extension folder:
 
 ```bash
 cd dist-output/
-zip -r ../my-plugin-1.0.0.zip manifest.json dist/ assets/
+zip -r ../my-extension-1.0.0.zip manifest.json dist/ assets/
 ```
 
-Future: a `.folyn-plugin` archive + marketplace download will land when the
+Future: a `.folyn-extension` archive + marketplace download will land when the
 ed25519 signature chain is enforced. The scaffolding (see "Integrity
 upgrade path" above) is already in place for that.
 
 ---
 
-## Reference: sample plugins
+## Reference: sample extensions
 
-- [`examples/plugins/hello-tool`](../examples/plugins/hello-tool) — sandbox
+- [`examples/extensions/hello-tool`](../examples/extensions/hello-tool) — sandbox
   tier. Contributes a command + a tool. The iframe script wraps
   `postMessage` in a Promise-based `rpc()` helper and demonstrates
   `clipboard:read` / `clipboard:write`.
-- [`examples/plugins/markdown-todo`](../examples/plugins/markdown-todo) —
+- [`examples/extensions/markdown-todo`](../examples/extensions/markdown-todo) —
   trusted tier. Contributes a `:::todo` container directive (interactive
   checkbox list) + a **Todo: Insert Checklist** command. Pure ESM, no
   bundler step needed (lazy-imports React + the editor store inside
   functions so the blob-URL `import()` loads cleanly).
-- [`examples/plugins/feature-panel-sample`](../examples/plugins/feature-panel-sample)
+- [`examples/extensions/feature-panel-sample`](../examples/extensions/feature-panel-sample)
   — trusted tier. Contributes a `features` sidebar panel (`notes-panel`,
   left slot, inline-SVG icon, `order`, `badge`) + a **Notes: Open Panel**
   command. Demonstrates the data-driven activity bar / sidebar mounting
   path and the in-process editor-store access from a panel component.
-- [`examples/plugins/plugin-export-demo`](../examples/plugins/plugin-export-demo)
-  — trusted tier. Exercises the contribution points in one tiny plugin: an
+- [`examples/extensions/extension-export-demo`](../examples/extensions/extension-export-demo)
+  — trusted tier. Exercises the contribution points in one tiny extension: an
   `exporters` entry (active doc → `.txt` with a header), a
   `fileTemplates` entry (**New Meeting Notes** palette command), a
   `keybindings` entry (`Cmd/Ctrl+Alt+Shift+T` → a **Demo: Ping** command), a
@@ -1283,5 +1283,5 @@ upgrade path" above) is already in place for that.
   and an `exportEnhancers` entry (post-render DOM mutation during export).
   Pure ESM, no JSX, no bundler step.
 
-Install any via Settings → Plugins → 从文件夹安装… to manually QA the full
+Install any via Settings → Extensions → 从文件夹安装… to manually QA the full
 pipeline.

@@ -1,23 +1,23 @@
-# Plugin SDK Reference
+# Extension SDK Reference
 
-Plugin SDK (`folyn-plugin-sdk`) 类型契约与示例速查。运行时微内核（`PluginHost`）位于 `@folyn/plugin-host`。
+Extension SDK (`folyn-extension-sdk`) 类型契约与示例速查。运行时微内核（`ExtensionHost`）位于 `@folyn/extension-host`。
 
 ## 1. 安装
 
 ```bash
-npm install folyn-plugin-sdk
+npm install folyn-extension-sdk
 ```
 
 ```ts
 import type {
-  PluginManifest,
-  PluginModule,
+  ExtensionManifest,
+  ExtensionModule,
   FileTypeHandler,
-} from "folyn-plugin-sdk";
-import { definePlugin, validateManifest } from "folyn-plugin-sdk";
+} from "folyn-extension-sdk";
+import { defineExtension, validateManifest } from "folyn-extension-sdk";
 ```
 
-内部 workspace 插件也可从 `@folyn/plugin-host` 导入（re-export 全部 SDK 公共面）。SDK 无运行时依赖；React 仅作 peer 类型引用（构建时擦除）。
+内部 workspace 插件也可从 `@folyn/extension-host` 导入（re-export 全部 SDK 公共面）。SDK 无运行时依赖；React 仅作 peer 类型引用（构建时擦除）。
 
 ## 2. manifest.json 全字段表
 
@@ -31,7 +31,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 | `tier`               | `'sandbox' \| 'trusted'` | 是           | 执行 tier                                                   |
 | `main`               | `string`                 | 是           | 入口模块相对路径                                            |
 | `html`               | `string`                 | sandbox 必填 | sandbox tier 的 HTML 入口                                   |
-| `permissions`        | `PluginPermissions`      | 否           | 能力声明                                                    |
+| `permissions`        | `ExtensionPermissions`      | 否           | 能力声明                                                    |
 | `contributes`        | `ContributionPoints`     | 否           | 贡献点                                                      |
 | `activation`         | `ActivationEvents`       | 否           | 懒激活触发                                                  |
 | `signature`          | `string`                 | 否           | ed25519 签名（base64），MVP 可选                            |
@@ -61,7 +61,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 
 | 贡献点                  | sandbox | trusted | manifest 字段                         | module map                       | 增加什么                                    |
 | ----------------------- | ------- | ------- | ------------------------------------- | -------------------------------- | ------------------------------------------- |
-| `commands`              | ✓       | ✓       | `contributes.commands[]`              | `module.commands`                | palette 条目（`plugin.<id>.<cmdId>`）       |
+| `commands`              | ✓       | ✓       | `contributes.commands[]`              | `module.commands`                | palette 条目（`extension.<id>.<cmdId>`）       |
 | `tools`                 | ✓       | ✓       | `contributes.tools[]`                 | sandbox HTML / trusted component | 独立 WebviewWindow                          |
 | `fileTypes`             | ✗       | ✓       | `contributes.fileTypes[]`             | `module.handlers`                | 扩展名 → handler 映射                       |
 | `containers`            | ✗       | ✓       | `contributes.containers[]`            | `module.containers`              | `:::name` Markdown 指令 → React 组件        |
@@ -79,7 +79,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 
 | 字段       | 类型       | 必填 | 说明                                           |
 | ---------- | ---------- | ---- | ---------------------------------------------- |
-| `id`       | `string`   | 是   | 本地 id；palette id = `plugin.<pluginId>.<id>` |
+| `id`       | `string`   | 是   | 本地 id；palette id = `extension.<extensionId>.<id>` |
 | `title`    | `string`   | 是   | palette 标签                                   |
 | `icon`     | `string`   | 否   | emoji/icon                                     |
 | `keywords` | `string[]` | 否   | 搜索关键词                                     |
@@ -127,7 +127,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 | `panel`     | `'left' \| 'right' \| 'bottom'` | 是   | MVP 仅 `left`；`right`/`bottom` 跳过                                         |
 | `component` | `string`                        | 是   | entry-ref，索引 `module.features`                                            |
 | `icon`      | `string`                        | 是   | 内联 SVG 字符串或 ThemeIcon 名                                               |
-| `title`     | `string`                        | 否   | tooltip；缺省 `pluginId/id`                                                  |
+| `title`     | `string`                        | 否   | tooltip；缺省 `extensionId/id`                                                  |
 | `order`     | `number`                        | 否   | 内置 files=0,wiki=10,clips=20,calendar=40；省略 ≥100              |
 | `badge`     | `string \| number`              | 否   | 角标                                                                         |
 
@@ -154,7 +154,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 | 字段            | 类型     | 必填 | 说明                                                                                                        |
 | --------------- | -------- | ---- | ----------------------------------------------------------------------------------------------------------- |
 | `id`            | `string` | 是   | 导出器 id                                                                                                   |
-| `format`        | `string` | 是   | 输出格式 id（插件内唯一）；palette id = `plugin.<pluginId>.export.<format>`                                 |
+| `format`        | `string` | 是   | 输出格式 id（插件内唯一）；palette id = `extension.<extensionId>.export.<format>`                                 |
 | `label`         | `string` | 是   | 菜单标签；命令标题 `Export as <label>`                                                                      |
 | `fileExtension` | `string` | 是   | 输出扩展名（不含 `.`）                                                                                      |
 | `run`           | `string` | 是   | entry-ref，索引 `module.exporters`；签名 `(content, ctx: {filePath, vaultRoot}) => Promise<Blob \| string>` |
@@ -167,7 +167,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 
 | 字段       | 类型     | 必填 | 说明                                                       |
 | ---------- | -------- | ---- | ---------------------------------------------------------- |
-| `id`       | `string` | 是   | 模板 id；palette id = `plugin.<pluginId>.new.<templateId>` |
+| `id`       | `string` | 是   | 模板 id；palette id = `extension.<extensionId>.new.<templateId>` |
 | `label`    | `string` | 是   | 子菜单标签                                                 |
 | `fileName` | `string` | 是   | 默认文件名                                                 |
 | `template` | `string` | 是   | 初始文件内容                                               |
@@ -189,7 +189,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 > app-scope keydown 监听；非 OS 全局快捷键（仅 app 窗口获焦时触发）。
 
 ```jsonc
-"keybindings": [{ "command": "plugin.my-plugin.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T" }]
+"keybindings": [{ "command": "extension.my-extension.greet", "key": "Control+Alt+Shift+T", "mac": "Cmd+Alt+Shift+T" }]
 ```
 
 ### exportEnhancers
@@ -215,7 +215,7 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 "markdownCodeRenderers": [{ "language": "plantuml", "aliases": ["puml", "pu"], "component": "PlantUmlMarkdownBlock" }]
 ```
 
-> host-realm React（用 `window.React` + `resolveReact()`）。未命中回退到 `CodeBlockWrapper`。规范形态见 `folyn-plugin-sdk/folyn-plugin-plantuml/src/index.ts`。
+> host-realm React（用 `window.React` + `resolveReact()`）。未命中回退到 `CodeBlockWrapper`。规范形态见 `folyn-extension-sdk/folyn-extension-plantuml/src/index.ts`。
 
 ### editorLanguages（仅 trusted）
 
@@ -229,12 +229,12 @@ import { definePlugin, validateManifest } from "folyn-plugin-sdk";
 "editorLanguages": [{ "id": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlLanguage" }]
 ```
 
-> trusted 插件经 blob URL 加载，需通过 `window.codemirrorLanguage`（host 在 `main.tsx` 中赋值）+ `resolveCodemirror()` helper 拿 `@codemirror/language`，避免 module-instance mismatch。规范形态见 `folyn-plugin-sdk/folyn-plugin-plantuml/src/codemirror.ts`。
+> trusted 插件经 blob URL 加载，需通过 `window.codemirrorLanguage`（host 在 `main.tsx` 中赋值）+ `resolveCodemirror()` helper 拿 `@codemirror/language`，避免 module-instance mismatch。规范形态见 `folyn-extension-sdk/folyn-extension-plantuml/src/codemirror.ts`。
 
-## 5. PluginModule 导出契约（trusted）
+## 5. ExtensionModule 导出契约（trusted）
 
 ```ts
-export interface PluginModule {
+export interface ExtensionModule {
   handlers?: Record<string, FileTypeHandler>;
   containers?: Record<string, ComponentType<ContainerProps>>;
   features?: Record<string, ComponentType>;
@@ -246,22 +246,22 @@ export interface PluginModule {
     ComponentType<MarkdownCodeRendererProps>
   >;
   editorLanguages?: Record<string, EditorLanguageFactory>;
-  activate?: (ctx: PluginContext) => void | Promise<void>;
-  deactivate?: (ctx: PluginContext) => void | Promise<void>;
+  activate?: (ctx: ExtensionContext) => void | Promise<void>;
+  deactivate?: (ctx: ExtensionContext) => void | Promise<void>;
 }
 ```
 
-entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对应。缺失 key 跳过并告警（其它贡献仍加载）。`fileTemplates` + `keybindings` 无 module map（declarative）。默认导出工厂 `(ctx) => PluginModule` 也被接受。
+entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对应。缺失 key 跳过并告警（其它贡献仍加载）。`fileTemplates` + `keybindings` 无 module map（declarative）。默认导出工厂 `(ctx) => ExtensionModule` 也被接受。
 
 ### trusted 导出骨架（无 JSX，用 `window.React` + `createElement`）
 
 ```ts
 // index.ts — self-contained ESM bundle
-import type { PluginModule, ExporterHandler } from "folyn-plugin-sdk";
+import type { ExtensionModule, ExporterHandler } from "folyn-extension-sdk";
 
 function loadReact() {
   if (typeof window !== "undefined" && window.React) return window.React;
-  throw new Error("[my-plugin] window.React not available");
+  throw new Error("[my-extension] window.React not available");
 }
 
 export const containers = {
@@ -356,15 +356,15 @@ export interface MarkdownCodeRendererProps {
 
 export type EditorLanguageFactory = () => unknown;
 
-export interface PluginContext {
-  readonly pluginId: string;
-  readonly manifest: PluginManifest;
+export interface ExtensionContext {
+  readonly extensionId: string;
+  readonly manifest: ExtensionManifest;
   addDisposable(d: Disposable): void;
-  readonly ai?: PluginAiCapability;
-  readonly env?: PluginEnv;
+  readonly ai?: ExtensionAiCapability;
+  readonly env?: ExtensionEnv;
 }
 
-export interface PluginEnv {
+export interface ExtensionEnv {
   readonly theme: "light" | "dark";
   readonly locale: string;
   onThemeChange(cb: (t: "light" | "dark") => void): Disposable;
@@ -388,7 +388,7 @@ provider/model/apiKey 由 host 持有，绝不暴露给插件。
 ```ts
 // trusted tier — ctx.ai 在 activate 时由 host 注入
 await ctx.ai.chat({
-  sessionId: "my-plugin",
+  sessionId: "my-extension",
   prompt: "Summarize",
   onEvent: (e) => {},
 });
@@ -412,10 +412,10 @@ await ctx.ai.createFile({
 ## 8. dev helpers
 
 ```ts
-import { definePlugin, validateManifest } from "folyn-plugin-sdk";
+import { defineExtension, validateManifest } from "folyn-extension-sdk";
 
-export const manifest = definePlugin({
-  id: "my-plugin",
+export const manifest = defineExtension({
+  id: "my-extension",
   version: "1.0.0",
   tier: "trusted",
   main: "index.js",
@@ -423,7 +423,7 @@ export const manifest = definePlugin({
 // validateManifest(manifest) — 非法时 throw，可在 test 步骤调用
 ```
 
-`definePlugin` 类型守卫 + 运行时校验；`validateManifest` 校验 id 格式、`version`、`tier`、`main`、sandbox 的 `html`、`permissions.ai` 形状。host 的 `PluginHost.validateManifest` 复用同一实现。
+`defineExtension` 类型守卫 + 运行时校验；`validateManifest` 校验 id 格式、`version`、`tier`、`main`、sandbox 的 `html`、`permissions.ai` 形状。host 的 `ExtensionHost.validateManifest` 复用同一实现。
 
 ## 9. trusted 打包约束
 
@@ -432,20 +432,20 @@ trusted 加载器把 `main` 包成 blob URL 后 `import()`，blob URL 无路径�
 | 约束                               | 后果                                                                          |
 | ---------------------------------- | ----------------------------------------------------------------------------- |
 | 相对 import（`./utils.js`）        | 解析失败，加载失败                                                            |
-| 远程 import                        | 被 `folyn-plugin://` CSP 阻断                                                 |
+| 远程 import                        | 被 `folyn-extension://` CSP 阻断                                                 |
 | bare specifier（`react`、`@/...`） | 仅当 Vite 留作运行时 `import()` 且 host realm 已加载时解析；否则失败          |
 | bundle 自带 React                  | hooks 抛 `Invalid hook call`（两份 React 实例）                               |
 | JSX（自动 runtime）                | 构建产物 `import { jsx } from 'react/jsx-runtime'` → blob import 失败，不可用 |
 
 **正确做法**：用 Vite/Rollup/esbuild bundle 真实运行时依赖；React 通过 `window.React`（host 暴露）+ `createElement`（无 JSX）；bare specifier 放进函数体内懒加载（demo 用法，见 `markdown-todo`）。
 
-参考：`../examples/plugins/plugin-export-demo`（纯 ESM 无 JSX，window.React）、`../examples/plugins/markdown-todo`（懒加载 bare specifier）、`../plugins/plugin-graphviz`（Vite bundle + window.React）。
+参考：`../examples/extensions/extension-export-demo`（纯 ESM 无 JSX，window.React）、`../examples/extensions/markdown-todo`（懒加载 bare specifier）、`../extensions/extension-graphviz`（Vite bundle + window.React）。
 
 ## 10. 示例插件索引
 
-- `../examples/plugins/plugin-export-demo` — trusted；演示 `exporters` + `fileTemplates` + `keybindings` + `containers` + `exportEnhancers` 五项。
-- `../examples/plugins/markdown-todo` — trusted；`containers`（`:::todo`）+ `commands`。
-- `../examples/plugins/feature-panel-sample` — trusted；`features` 侧栏 panel。
-- `../examples/plugins/hello-tool` — sandbox；`tools` + 剪贴板 RPC。
-- `../examples/plugins/markdown-table` — sandbox；`tools` + `vault:insert-content` RPC。
-- `../plugins/plugin-graphviz` — trusted；`fileTypes` + `containers`，Vite 打包。
+- `../examples/extensions/extension-export-demo` — trusted；演示 `exporters` + `fileTemplates` + `keybindings` + `containers` + `exportEnhancers` 五项。
+- `../examples/extensions/markdown-todo` — trusted；`containers`（`:::todo`）+ `commands`。
+- `../examples/extensions/feature-panel-sample` — trusted；`features` 侧栏 panel。
+- `../examples/extensions/hello-tool` — sandbox；`tools` + 剪贴板 RPC。
+- `../examples/extensions/markdown-table` — sandbox；`tools` + `vault:insert-content` RPC。
+- `../extensions/extension-graphviz` — trusted；`fileTypes` + `containers`，Vite 打包。

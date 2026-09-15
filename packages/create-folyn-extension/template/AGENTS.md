@@ -1,19 +1,19 @@
-# Agent Context — Folyn Plugin
+# Agent Context — Folyn Extension
 
-You are working on a **Folyn plugin**. This file is the self-contained reference for plugin development. Read it before editing `manifest.json` or `src/index.ts`.
+You are working on a **Folyn extension**. This file is the self-contained reference for extension development. Read it before editing `manifest.json` or `src/index.ts`.
 
 ## What this is
 
-A Folyn plugin is a single-file ESM bundle loaded by the Folyn desktop app at runtime. It declares contributions (commands, file types, containers, exporters, feature panels, tool windows, markdown code renderers, editor languages, highlight grammars, …) in `manifest.json` and wires them up in `src/index.ts` via the `PluginModule` default export. React is provided by the host (`window.React`) — do not bundle it.
+A Folyn extension is a single-file ESM bundle loaded by the Folyn desktop app at runtime. It declares contributions (commands, file types, containers, exporters, feature panels, tool windows, markdown code renderers, editor languages, highlight grammars, …) in `manifest.json` and wires them up in `src/index.ts` via the `ExtensionModule` default export. React is provided by the host (`window.React`) — do not bundle it.
 
 ## Tiers
 
 | Tier | Loader | Isolation | Capability surface |
 |------|--------|-----------|---------------------|
-| `sandbox` | Sandboxed iframe (`folyn-plugin://` origin) | Full isolation; postMessage RPC only | No raw Tauri APIs; `http`/`ai`/`env` via RPC bridge |
-| `trusted` | Host-realm `import()` (TOFU-pinned) | Same realm as host; can contribute inline React/CodeMirror | Scoped Tauri capability grants; full `PluginContext` |
+| `sandbox` | Sandboxed iframe (`folyn-extension://` origin) | Full isolation; postMessage RPC only | No raw Tauri APIs; `http`/`ai`/`env` via RPC bridge |
+| `trusted` | Host-realm `import()` (TOFU-pinned) | Same realm as host; can contribute inline React/CodeMirror | Scoped Tauri capability grants; full `ExtensionContext` |
 
-This template defaults to `tier: "trusted"` in `manifest.json`. Switch to `sandbox` only if the plugin is untrusted or needs full isolation — the SDK contract narrows (no `ai.agent` / `ai.edit`, no inline component contribution).
+This template defaults to `tier: "trusted"` in `manifest.json`. Switch to `sandbox` only if the extension is untrusted or needs full isolation — the SDK contract narrows (no `ai.agent` / `ai.edit`, no inline component contribution).
 
 ## Build / verify loop
 
@@ -22,14 +22,14 @@ pnpm install
 pnpm build        # → dist/ (self-contained installable dir)
 ```
 
-Then in Folyn: **Settings → Plugins → Install from folder…** → pick `dist/`. Reload Folyn (or restart) to pick up changes. Test by exercising the contribution you added.
+Then in Folyn: **Settings → Extensions → Install from folder…** → pick `dist/`. Reload Folyn (or restart) to pick up changes. Test by exercising the contribution you added.
 
 To ship a zip: `cd dist && zip -r ../<name>-<version>.zip .`
 
 ## First files to read
 
-- `manifest.json` — declares `id`, `name`, `version`, `folyn` compat, `tier`, `permissions`, `contributes.*`, `activation`. The contract between plugin and host. Start here when adding a feature.
-- `src/index.ts` — plugin entry. Default export is a `PluginModule` whose maps mirror the entry-refs in `manifest.json`'s `contributes.*`.
+- `manifest.json` — declares `id`, `name`, `version`, `folyn` compat, `tier`, `permissions`, `contributes.*`, `activation`. The contract between extension and host. Start here when adding a feature.
+- `src/index.ts` — extension entry. Default export is a `ExtensionModule` whose maps mirror the entry-refs in `manifest.json`'s `contributes.*`.
 - `build.mjs` — esbuild config. Bundles `src/index.ts` → `dist/index.js` (single-file ESM, all deps inlined), then writes `dist/manifest.json` with `main` rewritten to `index.js`. React stays external (resolved from `window.React` at runtime).
 - `README.md` — install + structure overview (human-facing).
 
@@ -47,7 +47,7 @@ To ship a zip: `cd dist && zip -r ../<name>-<version>.zip .`
   "html": "",                         // sandbox-tier HTML UI entry; required when tier === 'sandbox'
   "permissions": { /* see Permissions */ },
   "contributes": { /* see Contribution points */ },
-  "activation": {                     // when the host activates this plugin
+  "activation": {                     // when the host activates this extension
     "onCommand": "",                  // command id that triggers activation
     "onFileType": [],                 // file-type ids that trigger activation
     "onLanguage": []                  // language ids that trigger activation
@@ -55,7 +55,7 @@ To ship a zip: `cd dist && zip -r ../<name>-<version>.zip .`
   "signature": "",                    // optional ed25519 sig over canonicalized manifest (base64)
   "publisherPublicKey": "",           // optional base64 ed25519 pubkey paired with signature
   "icon": "",                         // optional: inline <svg> | .svg path | emoji/short text
-  "description": ""                   // optional one-liner shown in Settings → Plugins
+  "description": ""                   // optional one-liner shown in Settings → Extensions
 }
 ```
 
@@ -81,17 +81,17 @@ Host-enforced, declarative. Undeclared capability calls throw at runtime.
 
 ## Contribution points
 
-Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`/`component`/`run`/`entry` field is a **string entry-ref** that the loader resolves to a function/component by matching against the `PluginModule` export map with the same key.
+Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`/`component`/`run`/`entry` field is a **string entry-ref** that the loader resolves to a function/component by matching against the `ExtensionModule` export map with the same key.
 
 ### commands
 
 ```jsonc
 "commands": [{
-  "id": "my-plugin.greet",
+  "id": "my-extension.greet",
   "title": "Greet",
   "icon": "💡",                  // optional
   "keywords": ["hello"],          // optional, for command palette search
-  "run": "greet"                  // entry-ref → PluginModule.commands["greet"]
+  "run": "greet"                  // entry-ref → ExtensionModule.commands["greet"]
 }]
 ```
 
@@ -101,7 +101,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 "fileTypes": [{
   "id": "puml",
   "extensions": [".puml", ".plantuml"],
-  "handler": "puml-handler",       // entry-ref → PluginModule.handlers["puml-handler"]
+  "handler": "puml-handler",       // entry-ref → ExtensionModule.handlers["puml-handler"]
   "defaultViewMode": "split",      // optional
   "supportedViewModes": ["split","preview","source"]  // optional, incl. custom ids like "canvas"
 }]
@@ -115,7 +115,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
   "icon": "<svg>…</svg>",          // inline SVG | .svg path | emoji
   "label": "Callout",
   "category": "layout",            // 'layout' | 'media' | 'ai' | 'data' | 'custom'
-  "component": "callout",          // entry-ref → PluginModule.containers["callout"]
+  "component": "callout",          // entry-ref → ExtensionModule.containers["callout"]
   "template": ":::callout\n:::",
   "description": "Admonition block"
 }]
@@ -127,7 +127,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 "features": [{
   "id": "my-panel",
   "panel": "left",                 // 'left' (MVP) | 'right' | 'bottom' (right/bottom reserved for follow-up)
-  "component": "my-panel",         // entry-ref → PluginModule.features["my-panel"]
+  "component": "my-panel",         // entry-ref → ExtensionModule.features["my-panel"]
   "icon": "<svg>…</svg>",          // REQUIRED: inline SVG | ThemeIcon name
   "title": "My Panel",
   "order": 50,                     // sort key; built-ins: files=0, wiki=10, clips=20, analyze=30, calendar=40
@@ -155,7 +155,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
   "format": "pdf",
   "label": "Export as PDF",
   "fileExtension": "pdf",
-  "run": "export-pdf",             // entry-ref → PluginModule.exporters["export-pdf"]
+  "run": "export-pdf",             // entry-ref → ExtensionModule.exporters["export-pdf"]
   "fileType": "puml"               // optional: restrict to a file-type id; absent = all types
 }]
 ```
@@ -176,7 +176,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 
 ```jsonc
 "keybindings": [{
-  "command": "my-plugin.greet",     // command id (plugin-contributed or built-in)
+  "command": "my-extension.greet",     // command id (extension-contributed or built-in)
   "key": "Cmd+Shift+K",            // Tauri accelerator
   "mac": "Cmd+Shift+K",            // optional mac override
   "when": ""                       // optional activation clause (opaque string, reserved)
@@ -188,7 +188,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 ```jsonc
 "exportEnhancers": [{
   "name": "callout",                // ::: container name OR file extension (without dot)
-  "run": "enhance-callout"          // entry-ref → PluginModule.exportEnhancers["enhance-callout"]
+  "run": "enhance-callout"          // entry-ref → ExtensionModule.exportEnhancers["enhance-callout"]
 }]
 ```
 
@@ -198,7 +198,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 "markdownCodeRenderers": [{
   "language": "plantuml",
   "aliases": ["puml"],              // optional
-  "component": "plantuml-renderer"  // entry-ref → PluginModule.markdownCodeRenderers["plantuml-renderer"]
+  "component": "plantuml-renderer"  // entry-ref → ExtensionModule.markdownCodeRenderers["plantuml-renderer"]
 }]
 ```
 
@@ -208,7 +208,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 "editorLanguages": [{
   "id": "plantuml",
   "aliases": ["puml"],
-  "entry": "plantuml-lang"          // entry-ref → PluginModule.editorLanguages["plantuml-lang"]
+  "entry": "plantuml-lang"          // entry-ref → ExtensionModule.editorLanguages["plantuml-lang"]
 }]
 ```
 
@@ -218,18 +218,18 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 "highlightGrammars": [{
   "name": "plantuml",
   "aliases": ["puml"],
-  "entry": "plantuml-grammar"       // entry-ref → PluginModule.highlightGrammars["plantuml-grammar"]
+  "entry": "plantuml-grammar"       // entry-ref → ExtensionModule.highlightGrammars["plantuml-grammar"]
 }]
 ```
 
-## PluginModule export contract
+## ExtensionModule export contract
 
 The default export of `src/index.ts`. Every entry-ref in `manifest.json`'s `contributes.*[]` MUST have a matching key in the corresponding map here. Missing keys surface as runtime errors when the host tries to resolve the entry-ref.
 
 ```ts
-import type { PluginModule } from 'folyn-plugin-sdk';
+import type { ExtensionModule } from 'folyn-extension-sdk';
 
-const module: PluginModule = {
+const module: ExtensionModule = {
   // entry-ref → file-type handler (matches contributes.fileTypes[].handler)
   handlers: {
     'puml-handler': {
@@ -277,7 +277,7 @@ const module: PluginModule = {
   highlightGrammars: { 'plantuml-grammar': (hljs) => /* Language */ },
 
   // Optional lifecycle hooks (trusted loader calls these on activate/deactivate)
-  activate: async (ctx) => { /* ctx: PluginContext */ },
+  activate: async (ctx) => { /* ctx: ExtensionContext */ },
   deactivate: async (ctx) => { /* ... */ },
 };
 
@@ -302,25 +302,25 @@ interface FileTypeHandler {
 }
 ```
 
-## PluginContext (trusted tier)
+## ExtensionContext (trusted tier)
 
 Passed to `activate`/`deactivate`. Capabilities are `undefined` when the tier doesn't expose them.
 
 ```ts
-interface PluginContext {
-  pluginId: string;
-  manifest: PluginManifest;
+interface ExtensionContext {
+  extensionId: string;
+  manifest: ExtensionManifest;
   addDisposable(d: Disposable): void;          // register for auto-cleanup on deactivate
-  ai?: PluginAiCapability;                      // requires permissions.ai
-  env?: PluginEnv;                              // theme + locale + change subscriptions
-  http?: PluginHttpCapability;                   // requires permissions.http
+  ai?: ExtensionAiCapability;                      // requires permissions.ai
+  env?: ExtensionEnv;                              // theme + locale + change subscriptions
+  http?: ExtensionHttpCapability;                   // requires permissions.http
 }
 ```
 
 ### AI capability (`ctx.ai` — requires `permissions.ai`)
 
 ```ts
-// chat: stream a multi-turn turn. sessionId owned by plugin. useSharedSession surfaces in aiPanel.
+// chat: stream a multi-turn turn. sessionId owned by extension. useSharedSession surfaces in aiPanel.
 await ctx.ai.chat({ sessionId, prompt, onEvent, useSharedSession? });
 // onEvent: { type: 'text'|'thinking'|'error'|'done', content? }
 
@@ -337,7 +337,7 @@ await ctx.ai.createFile({ path, instruction, onEvent });
 ### HTTP capability (`ctx.http` — requires `permissions.http`)
 
 ```ts
-// Routes through Rust plugin_http_fetch (reqwest, outside webview CSP).
+// Routes through Rust extension_http_fetch (reqwest, outside webview CSP).
 // Rejects with 'origin not allowed' if URL origin not in manifest permissions.http.origins.
 const res = await ctx.http.fetch(url, { method?, headers?, body? });
 // res: { status, headers: Record<string,string>, body: string }  — body is string, no streaming/binary
@@ -355,28 +355,28 @@ ctx.env.onLocaleChange(cb);                 // returns Disposable
 
 1. Host reads `manifest.json`, checks `tier` + signature/TOFU approval.
 2. Host resolves `activation` — activates on first matching command/fileType/language, or eagerly if `activation` is empty.
-3. Trusted loader: `import()` the bundle, take default export as `PluginModule`.
+3. Trusted loader: `import()` the bundle, take default export as `ExtensionModule`.
 4. Host calls `module.activate?.(ctx)` if present. Errors here set state `failed`.
 5. Host registers disposables added via `ctx.addDisposable()`.
 6. On deactivate: host calls `module.deactivate?.(ctx)`, then disposes all registered disposables.
 
-A plugin that needs no explicit lifecycle can omit `activate`/`deactivate` — the host guards with optional chaining.
+A extension that needs no explicit lifecycle can omit `activate`/`deactivate` — the host guards with optional chaining.
 
 ## How to add a contribution (checklist)
 
 1. Add an entry under the matching `contributes.*[]` array in `manifest.json`. Note the entry-ref string (`handler` / `component` / `run` / `entry`).
-2. Wire the matching key in `src/index.ts`'s `PluginModule` export map. The key MUST equal the entry-ref.
+2. Wire the matching key in `src/index.ts`'s `ExtensionModule` export map. The key MUST equal the entry-ref.
 3. Update `permissions` in `manifest.json` if the contribution touches fs / http / clipboard / dialog / window / vault / ai. Host enforces at the trust boundary — missing permission = runtime reject, not build error.
 4. If the contribution needs lifecycle setup (register listeners, start a worker), put it in `module.activate(ctx)` and register disposables via `ctx.addDisposable()`.
-5. `pnpm build` → reinstall `dist/` via Settings → Plugins → Install from folder… → reload Folyn → test by exercising the contribution.
+5. `pnpm build` → reinstall `dist/` via Settings → Extensions → Install from folder… → reload Folyn → test by exercising the contribution.
 
 ## Pitfalls
 
-- **Main-thread-only APIs.** Tray, window, and any Electron/Tauri-decorated API that touches the UI must run on the main thread. Calling them from a plugin render / worker context can crash the host on reload (see fix `e43aed4` for `tray_set_enabled`). If an API is documented as main-thread-only, route the call through the SDK's main-thread bridge — do not call it directly from a component effect.
+- **Main-thread-only APIs.** Tray, window, and any Electron/Tauri-decorated API that touches the UI must run on the main thread. Calling them from a extension render / worker context can crash the host on reload (see fix `e43aed4` for `tray_set_enabled`). If an API is documented as main-thread-only, route the call through the SDK's main-thread bridge — do not call it directly from a component effect.
 - **`manifest.main` rewrite.** Root `manifest.json` says `"main": "dist/index.js"` so the host finds it during dev. `build.mjs` strips the `dist/` prefix when copying into `dist/manifest.json` (→ `"main": "index.js"`). Do not "fix" the prefix in one place without the other — install breaks silently.
-- **React is external.** `build.mjs` sets `external: []` but React is resolved via `window.React` at runtime (host exposes it before any trusted plugin is `import()`-ed). Importing React as a normal dep will create a second copy and break hooks. Use the global.
+- **React is external.** `build.mjs` sets `external: []` but React is resolved via `window.React` at runtime (host exposes it before any trusted extension is `import()`-ed). Importing React as a normal dep will create a second copy and break hooks. Use the global.
 - **Permissions are enforced at runtime, not build time.** A missing `permissions.fs.scope` / `permissions.http.origins` entry will cause the call to reject at runtime. Declare what you use, in the manifest, before writing the code that calls the capability.
-- **`tier: "trusted"`** in the manifest means the host loads the plugin with elevated access (same realm, scoped Tauri grants, `ai.agent`/`ai.edit` available). Do not accept untrusted input into plugin code paths without validation. Untrusted or third-party plugins should use `tier: "sandbox"`.
+- **`tier: "trusted"`** in the manifest means the host loads the extension with elevated access (same realm, scoped Tauri grants, `ai.agent`/`ai.edit` available). Do not accept untrusted input into extension code paths without validation. Untrusted or third-party extensions should use `tier: "sandbox"`.
 - **Entry-ref keys must match exactly.** `manifest.json`'s `contributes.fileTypes[].handler` = `"puml-handler"` must equal `src/index.ts`'s `module.handlers["puml-handler"]`. Typos surface as runtime resolution errors, not type errors (the manifest is JSON, not typed).
 - **Sandbox tier restrictions.** `tier: "sandbox"` cannot use `ai.agent`, `ai.edit`, or contribute inline React components / CodeMirror languages. It reaches `ai.chat` / `http` / `env` only via the postMessage RPC bridge. `html` field is required.
 
@@ -384,12 +384,12 @@ A plugin that needs no explicit lifecycle can omit `activate`/`deactivate` — t
 
 - Make the smallest change that works end to end before adding capability. Do not scaffold for hypothetical contributions.
 - Keep `manifest.json` and `src/index.ts` in lockstep — every `contributes.*` entry must have a matching handler/component, and vice versa.
-- After any manifest or source change: `pnpm build` → reinstall `dist/` → reload Folyn → exercise the contribution. Type errors that pass at build time do not prove the plugin runs.
+- After any manifest or source change: `pnpm build` → reinstall `dist/` → reload Folyn → exercise the contribution. Type errors that pass at build time do not prove the extension runs.
 - Prefer the SDK's typed contracts (`FileTypeHandler`, `ContainerProps`, `MarkdownCodeRendererProps`, `ExporterHandler`, etc.) over `any` — the host narrows at runtime and type drift surfaces as runtime resolution failures.
 
 ## Reference
 
-- **`packages/plugin-sdk/src/types.ts`** + **`contracts.ts`** in this monorepo — authoritative SDK source. When in doubt about a type, read it there.
-- **`docs/plugin-development.md`** + **`docs/plugin-sdk-reference.md`** in this monorepo — full development guide (1257 + 445 lines): TOFU approval flow, sandbox RPC protocol, packaging, signing, examples. Not bundled into the generated plugin; read from the monorepo when you need depth.
-- **`folyn-plugin-plantuml`** in the external `folyn-plugin-sdk` repo — canonical reference plugin covering fileTypes + containers + exporters + markdownCodeRenderers + editorLanguages end to end.
+- **`packages/extension-sdk/src/types.ts`** + **`contracts.ts`** in this monorepo — authoritative SDK source. When in doubt about a type, read it there.
+- **`docs/extension-development.md`** + **`docs/extension-sdk-reference.md`** in this monorepo — full development guide (1257 + 445 lines): TOFU approval flow, sandbox RPC protocol, packaging, signing, examples. Not bundled into the generated extension; read from the monorepo when you need depth.
+- **`folyn-extension-plantuml`** in the external `folyn-extension-sdk` repo — canonical reference extension covering fileTypes + containers + exporters + markdownCodeRenderers + editorLanguages end to end.
 - Repo-root `AGENTS.md` — engineering principles for this monorepo (remove obsolete paths, simplest implementation, layers, prefer existing deps).

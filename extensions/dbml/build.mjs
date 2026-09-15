@@ -8,11 +8,11 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Two bundles:
- * 1. HOST bundle (`dist/index.js`) — the trusted PluginModule (registers the
+ * 1. HOST bundle (`dist/index.js`) — the trusted ExtensionModule (registers the
  *    `dbml` FileTypeProvider with DbmlFrame). Loaded from a blob URL, so
  *    react/jsx-runtime alias to shims reading window.React (one instance).
  * 2. IFRAME bundle (`dist/dbml-preview.html` + assets, via vite) — @dbml/core
- *    + @antv/x6 render at the plugin origin.
+ *    + @antv/x6 render at the extension origin.
  */
 const shim = path.join(root, 'src/react-shim.js');
 const hostAlias = {
@@ -57,4 +57,4 @@ await writeFile(
   JSON.stringify(manifest, null, 2) + '\n',
 );
 
-console.log('built dist/ — install the dist/ folder in Folyn → Plugins → Install from folder…');
+console.log('built dist/ — install the dist/ folder in Folyn → Extensions → Install from folder…');
