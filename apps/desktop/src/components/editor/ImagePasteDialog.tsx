@@ -7,12 +7,7 @@ import {
   type UploadTarget,
 } from '@/utils/imageUploader';
 import { IconSelect } from '@/components/common/IconSelect';
-import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
-
-function StrategyIcon({ icon, size = 14 }: { icon: string; size?: number }) {
-  if (hasIcon(icon)) return <ThemeIcon name={icon} size={size} />;
-  return <span className="text-[14px] leading-none">{icon}</span>;
-}
+import { StorageProviderIcon } from '@/components/icons/StorageProviderIcon';
 
 export interface ImageSaveConfig {
   target: UploadTarget;
@@ -179,7 +174,7 @@ export function ImagePasteDialog({
               return {
                 value: s.name,
                 label,
-                icon: s.name === 'local' ? <FolderOpen size={14} /> : <StrategyIcon icon={s.icon} />,
+                icon: s.name === 'local' ? <FolderOpen size={14} /> : <StorageProviderIcon icon={s.icon} />,
                 disabled: !s.enabled,
                 suffix,
               };

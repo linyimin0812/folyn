@@ -12,6 +12,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, ExternalLink, Check, Settings } from 'lucide-react';
+import { StorageProviderIcon } from '@/components/icons/StorageProviderIcon';
 import { useVaultStore } from '@/store/vaultStore';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getProvider, getAllProviders } from '@/services/storage/registry';
@@ -163,7 +164,7 @@ export function VaultExportDialog({ onClose }: VaultExportDialogProps): React.JS
           options={configuredProviders.map((p) => ({
             value: p.id,
             label: t(p.labelKey),
-            icon: <span className="text-[14px] leading-none">{p.icon}</span>,
+            icon: <StorageProviderIcon icon={p.icon} />,
           }))}
         />
         {showErr && (

@@ -9,16 +9,9 @@ import { useTranslation } from 'react-i18next';
 import { CloudCog } from 'lucide-react';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getAllProviders } from '@/services/storage/registry';
-import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
+import { StorageProviderIcon } from '@/components/icons/StorageProviderIcon';
 import { IconSelect } from '@/components/common/IconSelect';
 
-function ProviderIcon({ icon, size = 14 }: { icon?: string; size?: number }) {
-  if (!icon) return null;
-  if (hasIcon(icon)) return <ThemeIcon name={icon} size={size} />;
-  // Emoji / short text fallback for extension providers that didn't ship a
-  // ThemeIcon name.
-  return <span className="text-[14px] leading-none">{icon}</span>;
-}
 
 export function StorageSharingSettings() {
   const { t } = useTranslation();
@@ -54,7 +47,7 @@ export function StorageSharingSettings() {
             return {
               value: p.id,
               label: t(p.labelKey),
-              icon: <ProviderIcon icon={p.icon} />,
+              icon: <StorageProviderIcon icon={p.icon} />,
               suffix,
             };
           })}

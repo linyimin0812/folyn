@@ -8,6 +8,7 @@
  */
 import { useTranslation } from 'react-i18next';
 import { Settings } from 'lucide-react';
+import { StorageProviderIcon } from '@/components/icons/StorageProviderIcon';
 import { useStorageConfigStore } from '@/services/storage/storageConfigStore';
 import { getAllProviders } from '@/services/storage/registry';
 import { IconSelect } from '@/components/common/IconSelect';
@@ -70,7 +71,7 @@ export function ProviderPicker({
         options={configuredProviders.map((p) => ({
           value: p.id,
           label: t(p.labelKey),
-          icon: <span className="text-[14px] leading-none">{p.icon}</span>,
+          icon: <StorageProviderIcon icon={p.icon} />,
         }))}
       />
       {showErr && (
