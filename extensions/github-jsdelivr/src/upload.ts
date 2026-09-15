@@ -25,8 +25,16 @@ function joinKey(prefix: string, key: string): string {
   return p ? `${p}/${k}` : k;
 }
 
-function publicUrl(cfg: GithubJsdelivrConfig, objectKey: string): string {
+function jsdelivrUrl(cfg: GithubJsdelivrConfig, objectKey: string): string {
   return `https://cdn.jsdelivr.net/gh/${cfg.owner}/${cfg.repo}@${cfg.branch}/${objectKey}`;
+}
+
+/** GitHub Pages URL. Serves from whatever branch the user enabled Pages on
+ *  in repo Settings → Pages (root source) — so unlike jsDelivr there is no
+ *  @branch segment. Assumes a normal project repo; a repo named
+ *  `<owner>.github.io` (user site) or a custom domain would differ. */
+function pagesUrl(cfg: GithubJsdelivrConfig, objectKey: string): string {
+  return `https://${cfg.owner}.github.io/${cfg.repo}/${objectKey}`;
 }
 
 /** bytes → base64 (GitHub Contents API wants base64 content). */
@@ -46,14 +54,14 @@ async function sha1Hex(bytes: Uint8Array): Promise<string> {
     .join('');
 }
 
-/** PUT bytes to the GitHub Contents API; return the jsDelivr public URL.
- *  422 already_exists is success (same content -> same hash -> same URL). */
+/** PUT bytes to the GitHub Contents API. 422 already_exists is success
+ *  (same content -> same hash -> same object already at the path). */
 async function putObject(
   cfg: GithubJsdelivrConfig,
   objectKey: string,
   bytes: Uint8Array,
   message: string,
-): Promise<string> {
+): Promise<void> {
   const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(objectKey)}`;
   const res = await fetch(url, {
     method: 'PUT',
@@ -73,7 +81,6 @@ async function putObject(
     const trimmed = text.length > 200 ? text.slice(0, 200) + '…' : text;
     throw new Error(`GitHub upload failed: ${res.status} ${res.statusText} ${trimmed}`);
   }
-  return publicUrl(cfg, objectKey);
 }
 
 export async function uploadImage(
@@ -83,7 +90,9 @@ export async function uploadImage(
 ): Promise<string> {
   const cfg = config as GithubJsdelivrConfig;
   const hash = await sha1Hex(bytes);
-  return putObject(cfg, joinKey(cfg.imageKeyPrefix ?? 'images/', `${hash}.${ext}`), bytes, `chore(images): upload ${hash}.${ext}`);
+  const key = joinKey(cfg.imageKeyPrefix ?? 'images/', `${hash}.${ext}`);
+  await putObject(cfg, key, bytes, `chore(images): upload ${hash}.${ext}`);
+  return jsdelivrUrl(cfg, key);
 }
 
 export async function uploadHtml(
@@ -93,5 +102,7 @@ export async function uploadHtml(
   const cfg = config as GithubJsdelivrConfig;
   const bytes = new TextEncoder().encode(html);
   const hash = await sha1Hex(bytes);
-  return putObject(cfg, joinKey(cfg.htmlKeyPrefix ?? 'html/', `${hash}.html`), bytes, `chore(html): share ${hash}.html`);
+  const key = joinKey(cfg.htmlKeyPrefix ?? 'html/', `${hash}.html`);
+  await putObject(cfg, key, bytes, `chore(html): share ${hash}.html`);
+  return pagesUrl(cfg, key);
 }

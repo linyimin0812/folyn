@@ -7,7 +7,7 @@
   "tier": "trusted",
   "main": "dist/index.js",
   "icon": "🐙",
-  "description": "图床：上传图片到 GitHub 仓库，通过 jsDelivr CDN 访问。需提供 GitHub 账户、仓库、分支与 Personal Access Token（repo 权限）。",
+  "description": "图床 + HTML 分享：上传图片走 jsDelivr CDN（需公开仓库），上传的 HTML 走 GitHub Pages（需在仓库 Settings → Pages 开启）。需提供 GitHub 账户、仓库、分支与 Personal Access Token（repo 权限）。",
   "permissions": {
     "fs": { "scope": [] },
     "http": { "origins": ["https://api.github.com"] },

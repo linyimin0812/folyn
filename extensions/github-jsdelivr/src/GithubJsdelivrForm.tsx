@@ -96,8 +96,9 @@ export function GithubJsdelivrForm({ config, onSave, onRemove }: StorageConfigFo
       </div>
       <ul className="text-[11px] text-t3 mt-3 leading-relaxed space-y-1.5">
         <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>令牌需有目标仓库的 Contents: write 权限（经典 PAT 用 <code>repo</code> scope，或细粒度 PAT 授予该仓库的 Contents 读写）。</span></li>
-        <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>仓库需为公开仓库，jsDelivr 才能公开缓存；私有仓库的链接无法被外部访问。</span></li>
-        <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>图片与导出的 HTML 分别通过 <code>https://cdn.jsdelivr.net/gh/&lt;owner&gt;/&lt;repo&gt;@&lt;branch&gt;/&lt;prefix&gt;/&lt;hash&gt;.png</code> 或 <code>.html</code> 访问。相同内容（相同哈希）重复上传会跳过，URL 不变。</span></li>
+        <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>图片走 jsDelivr CDN：<code>https://cdn.jsdelivr.net/gh/&lt;owner&gt;/&lt;repo&gt;@&lt;branch&gt;/&lt;prefix&gt;/&lt;hash&gt;.png</code>。仓库需为公开仓库，jsDelivr 才能公开缓存。</span></li>
+        <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>导出的 HTML 走 GitHub Pages：<code>https://&lt;owner&gt;.github.io/&lt;repo&gt;/&lt;prefix&gt;/&lt;hash&gt;.html</code>。<b>需在仓库 Settings → Pages 手动开启</b>，分支与上方配置一致、源选根目录（root）。首次开启后 Pages 构建需约 1 分钟才生效。</span></li>
+        <li className="flex gap-1.5"><span className="shrink-0 text-t3/70">•</span><span>相同内容（相同哈希）重复上传会跳过，URL 不变。</span></li>
       </ul>
     </div>
   );
