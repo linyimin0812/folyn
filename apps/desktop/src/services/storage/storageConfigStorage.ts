@@ -10,7 +10,7 @@
  * whatever shape they declare. The host never inspects the contents.
  */
 import { homeDir, join } from '@tauri-apps/api/path';
-import { exists, mkdir, readTextFile, writeTextFile, rename } from '@tauri-apps/plugin-fs';
+import { exists, mkdir, readTextFile, writeTextFile, rename, readDir } from '@tauri-apps/plugin-fs';
 import { debounce } from '@/utils/debounce';
 
 import type { R2ProviderConfig, QiniuProviderConfig, OssProviderConfig } from './types';
@@ -34,21 +34,25 @@ async function ensureLoaded(): Promise<void> {
     await mkdir(base, { recursive: true });
   }
   cache = {};
-  // ponytail: one file per provider id. Read each eagerly; missing/empty
-  // → skip. Known built-ins are read by id; extension provider files are
-  // picked up if they were saved before (the settings UI only lists
-  // registered providers, so we don't glob).
-  for (const id of ['r2', 'qiniu', 'oss']) {
-    const path = await join(base, `${id}.json`);
-    if (!(await exists(path))) continue;
-    try {
-      const raw = await readTextFile(path);
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        (cache as Record<string, unknown>)[id] = parsed;
+  // Read every provider config file in the dir — built-ins (r2/qiniu/oss)
+  // AND extension-contributed providers (e.g. github-jsdelivr). Keyed purely
+  // by filename id; the host never inspects contents. A corrupt file is
+  // skipped (next save overwrites with valid content).
+  if (await exists(base)) {
+    const entries = await readDir(base);
+    for (const e of entries) {
+      if (!e.name?.endsWith('.json')) continue;
+      const id = e.name.slice(0, -5);
+      const path = await join(base, e.name);
+      try {
+        const raw = await readTextFile(path);
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          (cache as Record<string, unknown>)[id] = parsed;
+        }
+      } catch {
+        // Corrupt file — skip.
       }
-    } catch {
-      // Corrupt file — skip; next save overwrites with valid content.
     }
   }
   loaded = true;
