@@ -133,6 +133,37 @@ then reuses the full zip-install path — filter, validate, integrity, registry,
 `extension://installed` event — so there is one install pipeline, not three.
 Local folder / zip / URL all converge on it.
 
+## Registration seams (platform-service modularization)
+
+The host kernel stays a thin lifecycle state machine; concrete capability
+implementations and contribution wiring are injected at boot through two
+registries in `@folyn/extension-host`, mirroring the existing `registerLoader`
+tier seam. Both are "mechanism in kernel, policy in swappable servers" done at
+registration time (single-process Tauri app — not a speculative package
+extraction; no second consumer exists yet).
+
+- **`CapabilityProvider` registry** (`capabilityRegistry.ts`) — the
+  platform-service seam. Each provider fills one slot of `ExtensionApi`
+  (`{ slot, build(manifest), dispose?(value) }`). `buildExtensionApi(manifest)`
+  folds registered providers into the `ExtensionApi` handed to
+  `module.activate(api, ctx)`, collecting each `dispose` into one `Disposable`.
+  The desktop app self-registers providers at module load
+  (`createExtensionApi.ts`); the `createApi` hook calls `buildExtensionApi` and
+  remains the whole-`Api` override escape hatch for tests / alternate shells.
+  Adding a capability = add a factory + one `registerCapability` line.
+- **`ContributionAdapter` registry** (`contributionAdapterRegistry.ts`) — the
+  trusted-tier contribution wiring seam. Each adapter
+  (`{ moduleKey?, register(manifest, module): Disposable | Promise<Disposable> }`)
+  wires one contribution point. `trustedLoader.activate` folds over registered
+  adapters; `normalizeModule` pulls only the `moduleKey`s they declare. A single
+  declarative manifest (`trustedContributions.ts`) registers all 12. Adding a
+  contribution point = add the adapter + one line in `trustedContributions.ts` —
+  `trustedLoader` and `normalizeModule` stay stable folds.
+
+The sandbox tier is structurally different (RPC-dispatched, no module) and does
+not use these seams. `OwnedRegistry` is not used here — providers/adapters are
+host-owned singletons, not extension-owned.
+
 ## Open seams (to record, not to fix now)
 
 - Name alignment: resolved. Template (`create-folyn-extension/template`), SDK

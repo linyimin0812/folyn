@@ -37,30 +37,22 @@
  * blocked by the `folyn-extension://` CSP. The extension MUST bundle all deps.
  */
 
+import {
+  disposable,
+  getContributionAdapters,
+} from '@folyn/extension-host';
 import type {
-  Disposable,
   Extension,
   ExtensionApi,
   ExtensionContext,
   ExtensionLoader,
   ExtensionManifest,
+  ExtensionModule,
 } from '@folyn/extension-host';
-import { disposable } from '@folyn/extension-host';
-import type { ExtensionModule } from './contributionAdapters';
-import {
-  registerTrustedExtensionCommands,
-  registerExtensionFileTypes,
-  registerExtensionContainers,
-} from './contributionAdapters';
-import { registerExtensionTools } from './toolAdapter';
-import { registerExtensionFeatures } from './featureAdapter';
-import { registerExtensionExporters } from './exporterAdapter';
-import { registerExtensionFileTemplates } from './fileTemplateAdapter';
-import { registerExtensionKeybindings } from './keybindingAdapter';
-import { registerExtensionExportEnhancers } from './exportEnhancerAdapter';
-import { registerExtensionMarkdownCodeRenderers } from './markdownCodeRendererAdapter';
-import { registerExtensionEditorLanguages } from './editorLanguageAdapter';
-import { registerExtensionHighlightGrammars } from './highlightGrammarAdapter';
+// Side-effect: load + self-register all trusted contribution adapters.
+// `activate` folds over getContributionAdapters(); normalizeModule pulls their
+// declared moduleKeys. Adding an adapter = one line in trustedContributions.ts.
+import './trustedContributions';
 
 export const trustedLoader: ExtensionLoader = {
   tier: 'trusted',
@@ -112,26 +104,14 @@ export const trustedLoader: ExtensionLoader = {
 
     return {
       activate: async (api: ExtensionApi, ctx: ExtensionContext) => {
-        // Wire contribution adapters. Each returns a Disposable; push them
-        // all into the context so ExtensionHost reaps them on deactivate.
-        // `registerExtensionContainers` is async (resolves `.svg` file-path icons
-        // via read_extension_file before registering); the other adapters are sync.
-        const containerDisp = await registerExtensionContainers(manifest, module);
-        const adapterDisposables: Disposable[] = [
-          registerTrustedExtensionCommands(manifest, module),
-          registerExtensionFileTypes(manifest, module),
-          containerDisp,
-          registerExtensionTools(manifest),
-          registerExtensionFeatures(manifest, module),
-          registerExtensionExporters(manifest, module),
-          registerExtensionFileTemplates(manifest),
-          registerExtensionKeybindings(manifest),
-          registerExtensionExportEnhancers(manifest, module),
-          registerExtensionMarkdownCodeRenderers(manifest, module),
-          registerExtensionEditorLanguages(manifest, module),
-          registerExtensionHighlightGrammars(manifest, module),
-        ];
-        for (const d of adapterDisposables) ctx.addDisposable(d);
+        // Fold over registered contribution adapters (registry seam — see
+        // trustedContributions.ts). Each returns a Disposable (sync or async;
+        // containers resolves `.svg` icons first); pushed into the context so
+        // ExtensionHost reaps them on deactivate. Adapters are independent, so
+        // order is not load-bearing (mirrors the prior list for parity).
+        for (const adapter of getContributionAdapters()) {
+          ctx.addDisposable(await adapter.register(manifest, module));
+        }
 
         // The blob-URL disposable: revoke after deactivate so the module can
         // be GC'd. Pushed here so it reaped in the same pass.
@@ -160,24 +140,25 @@ export const trustedLoader: ExtensionLoader = {
 
 /**
  * Normalize a raw `import()` result into a `ExtensionModule`. Unwraps a
- * `default` export if present, then copies the named extension exports
- * (`handlers`, `containers`, `features`, `commands`, `exporters`, `activate`,
- * `deactivate`) when they exist on the module namespace.
+ * `default` export if present, then copies the export maps declared by
+ * registered contribution adapters (via their `moduleKey`) plus the
+ * `activate`/`deactivate` lifecycle hooks when present. Data-driven: no
+ * hand-written per-map branches — see trustedContributions.ts.
  */
 function normalizeModule(mod: Record<string, unknown>): ExtensionModule {
-  const out: ExtensionModule = {};
   const src = (mod.default ?? mod) as Record<string, unknown>;
-  if (src.handlers) out.handlers = src.handlers as ExtensionModule['handlers'];
-  if (src.containers) out.containers = src.containers as ExtensionModule['containers'];
-  if (src.features) out.features = src.features as ExtensionModule['features'];
-  if (src.commands) out.commands = src.commands as ExtensionModule['commands'];
-  if (src.exporters) out.exporters = src.exporters as ExtensionModule['exporters'];
-  if (src.exportEnhancers) out.exportEnhancers = src.exportEnhancers as ExtensionModule['exportEnhancers'];
-  if (src.markdownCodeRenderers) out.markdownCodeRenderers = src.markdownCodeRenderers as ExtensionModule['markdownCodeRenderers'];
-  if (src.editorLanguages) out.editorLanguages = src.editorLanguages as ExtensionModule['editorLanguages'];
-  if (typeof src.activate === 'function') out.activate = src.activate as ExtensionModule['activate'];
-  if (typeof src.deactivate === 'function') out.deactivate = src.deactivate as ExtensionModule['deactivate'];
-  return out;
+  // Data-driven: pull only the module maps declared by registered contribution
+  // adapters (via their `moduleKey`). No hand-written per-map branches — adding
+  // a contribution point with a new map key only needs the adapter to declare it.
+  const out: Record<string, unknown> = {};
+  for (const adapter of getContributionAdapters()) {
+    if (adapter.moduleKey && src[adapter.moduleKey] !== undefined) {
+      out[adapter.moduleKey] = src[adapter.moduleKey];
+    }
+  }
+  if (typeof src.activate === 'function') out.activate = src.activate;
+  if (typeof src.deactivate === 'function') out.deactivate = src.deactivate;
+  return out as ExtensionModule;
 }
 
 /**

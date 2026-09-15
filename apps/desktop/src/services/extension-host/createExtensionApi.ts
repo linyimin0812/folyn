@@ -1,19 +1,23 @@
 /**
  * createExtensionApi — builds a real {@link ExtensionApi} for a trusted-tier
- * extension (Phase 2, doc §63). Wires the existing host capability impls
- * (ai / network / env) + the P1 registries (export service, file-type,
- * exporter) into the capability boundary the loader hands to
- * `module.activate(api, ctx)`.
+ * extension by folding over registered {@link CapabilityProvider}s (the
+ * platform-service seam). Each capability (vault / editor / ai / network / env
+ * / terminal / storage / events / fileTypes / exporters / ...) is a factory
+ * that self-registers at module load; `buildExtensionApi` assembles them and
+ * collects each provider's `dispose` (env subscriptions today) into one
+ * `Disposable` the host reaps on deactivate.
  *
- * Slots without a real impl yet (vault/files/editor/terminal/storage/events)
- * are operational no-ops so the api is never `undefined` — a extension that
+ * The `createApi` hook in App.tsx calls this; the hook stays as the whole-Api
+ * override escape hatch for tests / alternate shells (ADR-lite, Option A).
+ *
+ * Slots without a real impl yet (workspace/commands) are registered as
+ * operational no-ops so the api is never `undefined` — an extension that
  * touches them gets a defined throw/empty, not a crash on `undefined`.
  */
 
 import type {
   CommandContributionApi,
   ExportService,
-  ExtensionApi,
   ExtensionManifest,
   FileApi,
   EditorApi,
@@ -27,12 +31,12 @@ import type {
   WorkspaceContextApi,
 } from 'folyn-extension-sdk';
 import type { ExtensionApiHandle } from '@folyn/extension-host';
+import { registerCapability, buildExtensionApi, disposable } from '@folyn/extension-host';
 import { exportService, exporterRegistry } from '../export/exporterRegistry';
 import { registerFileTypeHandler, resolveDefault } from '@/components/file-types/registry';
 import { buildExtensionAi } from './aiCapability';
 import { buildExtensionEnv, disposeExtensionEnv } from './envCapability';
 import { buildExtensionHttp } from './httpCapability';
-import type { ExtensionAiCapability, ExtensionEnv, ExtensionHttpCapability } from 'folyn-extension-sdk';
 import type { Disposable as Disp } from 'folyn-extension-sdk';
 import { useVaultStore } from '@/store/vaultStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
@@ -43,7 +47,6 @@ import { useTerminalStore } from '@/store/terminalStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { isTauri } from '@/utils/platform';
 import { resolveBasePath } from '@/utils/pathResolver';
-import { disposable } from '@folyn/extension-host';
 
 /** A simple per-extension in-memory event bus. */
 function createEventsApi(): EventApi {
@@ -209,24 +212,9 @@ function createEditorApi(): EditorApi {
   };
 }
 
-const noopWorkspace: WorkspaceContextApi = {};
-
-const noopCommands = {
-  register: (_c: CommandContributionApi): Disp => ({ dispose() {} }),
-};
-
-
-/**
- * Build the ExtensionApi for a manifest. The returned handle's `dispose()`
- * releases the env capability's host-side subscriptions; the loader pushes it
- * as a disposable so ExtensionHost reaps it on deactivate.
- */
-export function createExtensionApi(manifest: ExtensionManifest): ExtensionApiHandle {
-  const ai: ExtensionAiCapability = buildExtensionAi(manifest);
-  const network: ExtensionHttpCapability = buildExtensionHttp(manifest);
-  const env: ExtensionEnv = buildExtensionEnv();
-
-  const fileTypes: FileTypeRegistryApi = {
+/** Build a real FileTypeRegistryApi backed by the host file-type registry. */
+function createFileTypesApi(): FileTypeRegistryApi {
+  return {
     register: (provider, ownerExtensionId) =>
       registerFileTypeHandler(provider as never, ownerExtensionId),
     resolve: (path: string) => {
@@ -234,37 +222,56 @@ export function createExtensionApi(manifest: ExtensionManifest): ExtensionApiHan
       return resolveDefault(ext);
     },
   };
+}
 
-  const exporters: ExporterRegistryApi = {
+/** Build a real ExporterRegistryApi backed by the host exporter registry. */
+function createExportersApi(): ExporterRegistryApi {
+  return {
     register: (registration, ownerExtensionId) =>
       exporterRegistry.register(registration as never, ownerExtensionId),
     list: (fileType?: string) =>
       fileType ? exporterRegistry.getForFileType(fileType, { filePath: '', vaultRoot: '', content: '' }) : exporterRegistry.list(),
   };
+}
 
-  const vault = createVaultApi();
-  const vaultConfig = createVaultConfigApi();
-  const storage = createStorageApi(manifest);
-  const api: ExtensionApi = {
-    vault,
-    vaultConfig,
-    files: createFilesApi(),
-    editor: createEditorApi(),
-    workspace: noopWorkspace,
-    commands: noopCommands,
-    events: createEventsApi(),
-    storage,
-    ai,
-    network,
-    env,
-    terminal: createTerminalApi(),
-    export: exportService as ExportService,
-    fileTypes,
-    exporters,
-  };
+const noopWorkspace: WorkspaceContextApi = {};
 
-  return {
-    api,
-    dispose: { dispose: () => disposeExtensionEnv(env) },
-  };
+const noopCommands = {
+  register: (_c: CommandContributionApi): Disp => ({ dispose() {} }),
+};
+
+// ── Capability provider self-registration (platform-service seam) ────────────
+// Each capability registers a provider for one ExtensionApi slot; buildExtensionApi
+// folds them into the ExtensionApi handed to module.activate(api, ctx). Adding a
+// capability = add a factory + one registerCapability line. The createApi hook
+// (App.tsx) calls createExtensionApi → buildExtensionApi; the hook remains the
+// whole-Api override escape hatch for tests / alternate shells.
+registerCapability({ slot: 'vault', build: () => createVaultApi() });
+registerCapability({ slot: 'vaultConfig', build: () => createVaultConfigApi() });
+registerCapability({ slot: 'storage', build: (m) => createStorageApi(m) });
+registerCapability({ slot: 'files', build: () => createFilesApi() });
+registerCapability({ slot: 'editor', build: () => createEditorApi() });
+registerCapability({ slot: 'terminal', build: () => createTerminalApi() });
+registerCapability({ slot: 'events', build: () => createEventsApi() });
+registerCapability({ slot: 'ai', build: (m) => buildExtensionAi(m) });
+registerCapability({ slot: 'network', build: (m) => buildExtensionHttp(m) });
+registerCapability({
+  slot: 'env',
+  build: () => buildExtensionEnv(),
+  dispose: (env) => disposeExtensionEnv(env),
+});
+registerCapability({ slot: 'workspace', build: () => noopWorkspace });
+registerCapability({ slot: 'commands', build: () => noopCommands });
+registerCapability({ slot: 'fileTypes', build: () => createFileTypesApi() });
+registerCapability({ slot: 'exporters', build: () => createExportersApi() });
+registerCapability({ slot: 'export', build: () => exportService as ExportService });
+
+/**
+ * Build the ExtensionApi for a manifest by folding over registered capability
+ * providers. The returned handle's `dispose()` releases provider teardowns
+ * (env subscriptions today); the loader pushes it as a disposable so
+ * ExtensionHost reaps it on deactivate.
+ */
+export function createExtensionApi(manifest: ExtensionManifest): ExtensionApiHandle {
+  return buildExtensionApi(manifest);
 }

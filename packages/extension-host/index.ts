@@ -11,6 +11,19 @@ export type { Extension, ExtensionApi, ExtensionContext, ExtensionUIContext, Ext
 export { ExtensionHost, extensionHost } from './src/ExtensionHost';
 export type { ExtensionState, ExtensionRecord, ExtensionHostHooks, ExtensionApiHandle } from './src/ExtensionHost';
 export { ExtensionRuntime, consoleLogger } from './src/ExtensionRuntime';
+export {
+  registerCapability,
+  buildExtensionApi,
+  getCapabilityProviders,
+  clearCapabilityProviders,
+} from './src/capabilityRegistry';
+export type { CapabilityProvider } from './src/capabilityRegistry';
+export {
+  registerContributionAdapter,
+  getContributionAdapters,
+  clearContributionAdapters,
+} from './src/contributionAdapterRegistry';
+export type { ContributionAdapter } from './src/contributionAdapterRegistry';
 export type {
   ExtensionManifest,
   ExtensionPermissions,
