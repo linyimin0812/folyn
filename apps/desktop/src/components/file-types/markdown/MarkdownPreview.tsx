@@ -132,9 +132,14 @@ function buildComponentMap(offset: number = 0): Record<string, React.ComponentTy
       // the preview's cursor sync can locate this container block —
       // querySelectorAll('[data-source-line]') then matches it like any
       // other block-level element.
+      // ponytail: skip the `tab` sub-directive — it renders as display:none
+      // (TabsComponent shows one tab's content via DOM, the rest stay hidden),
+      // so its wrapper block collapses to 0 height and cursor-sync's
+      // intra-block interpolation lands the cursor on a 0-height block.
+      // Skipping lets sync fall back to the visible `tabs` parent block.
       const startLine = node?.position?.start?.line;
       const dataProps: Record<string, string> = { 'data-container': extension.name };
-      if (typeof startLine === 'number') {
+      if (typeof startLine === 'number' && extension.name !== 'tab') {
         dataProps['data-source-line'] = String(startLine + offset);
       }
       // Tag with data-container so the export DOM walk can locate rendered
