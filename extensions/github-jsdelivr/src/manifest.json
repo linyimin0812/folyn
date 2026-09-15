@@ -1,0 +1,40 @@
+{
+  "id": "github-jsdelivr",
+  "name": "GitHub + jsDelivr",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "icon": "🐙",
+  "description": "图床：上传图片到 GitHub 仓库，通过 jsDelivr CDN 访问。需提供 GitHub 账户、仓库、分支与 Personal Access Token（repo 权限）。",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": ["https://api.github.com"] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "storageProviders": [
+      {
+        "id": "github-jsdelivr",
+        "labelKey": "GitHub + jsDelivr",
+        "icon": "🐙",
+        "capabilities": { "image": true, "html": false },
+        "configForm": "form",
+        "isConfigured": "isConfigured",
+        "uploadImage": "uploadImage",
+        "defaultConfig": {
+          "owner": "",
+          "repo": "",
+          "branch": "main",
+          "token": "",
+          "imageKeyPrefix": "images/"
+        }
+      }
+    ]
+  }
+}
