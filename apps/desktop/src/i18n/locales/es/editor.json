@@ -167,7 +167,8 @@
     "originalSize": "Original: {{w}} × {{h}} px",
     "pathPreview": "📄 {{path}}",
     "cancel": "Cancelar",
-    "upload": "✓ Subir"
+    "upload": "✓ Subir",
+    "uploading": "Subiendo…"
   },
   "filePaste": {
     "conflictTitle": "El archivo ya existe",

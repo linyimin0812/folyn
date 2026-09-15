@@ -167,7 +167,8 @@
     "originalSize": "元のサイズ: {{w}} × {{h}} px",
     "pathPreview": "📄 {{path}}",
     "cancel": "キャンセル",
-    "upload": "✓ アップロード"
+    "upload": "✓ アップロード",
+    "uploading": "アップロード中…"
   },
   "filePaste": {
     "conflictTitle": "ファイルが既に存在します",

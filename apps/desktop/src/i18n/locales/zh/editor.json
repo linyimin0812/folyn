@@ -174,7 +174,8 @@
     "originalSize": "原始尺寸：{{w}} × {{h}} px",
     "pathPreview": "📄 {{path}}",
     "cancel": "取消",
-    "upload": "✓ 上传"
+    "upload": "✓ 上传",
+    "uploading": "上传中…"
   },
   "filePaste": {
     "conflictTitle": "文件已存在",

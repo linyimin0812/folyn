@@ -174,7 +174,8 @@
     "originalSize": "Original: {{w}} × {{h}} px",
     "pathPreview": "📄 {{path}}",
     "cancel": "Cancel",
-    "upload": "✓ Upload"
+    "upload": "✓ Upload",
+    "uploading": "Uploading…"
   },
   "filePaste": {
     "conflictTitle": "File already exists",

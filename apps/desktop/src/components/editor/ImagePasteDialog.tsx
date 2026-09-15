@@ -28,7 +28,7 @@ interface ImagePasteDialogProps {
   previewUrl: string;
   currentFilePath: string;
   vaultRoot: string;
-  onConfirm: (config: ImageSaveConfig) => void;
+  onConfirm: (config: ImageSaveConfig) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -43,6 +43,7 @@ export function ImagePasteDialog({
   const { t } = useTranslation();
   const strategies = getAllStrategies();
   const [selectedTarget, setSelectedTarget] = useState<UploadTarget>('local');
+  const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState('');
   const [directory, setDirectory] = useState('assets/images');
   const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>('png');
@@ -115,19 +116,27 @@ export function ImagePasteDialog({
 
   const fullPath = `${directory}/${fileName}.${format}`;
 
-  const handleConfirm = useCallback(() => {
-    if (!fileName.trim()) return;
+  const handleConfirm = useCallback(async () => {
+    if (!fileName.trim() || uploading) return;
     const finalWidth = typeof width === 'number' && width !== originalWidth ? width : undefined;
     const finalHeight = typeof height === 'number' && height !== originalHeight ? height : undefined;
-    onConfirm({
-      target: selectedTarget,
-      fileName: fileName.trim(),
-      format,
-      directory,
-      width: finalWidth,
-      height: finalHeight,
-    });
-  }, [selectedTarget, fileName, format, directory, width, height, originalWidth, originalHeight, onConfirm]);
+    setUploading(true);
+    try {
+      await onConfirm({
+        target: selectedTarget,
+        fileName: fileName.trim(),
+        format,
+        directory,
+        width: finalWidth,
+        height: finalHeight,
+      });
+    } catch {
+      // Upload error is surfaced by the host (toast/console); the dialog
+      // closes via the parent's visible toggle either way.
+    } finally {
+      setUploading(false);
+    }
+  }, [selectedTarget, fileName, format, directory, width, height, originalWidth, originalHeight, onConfirm, uploading]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -306,9 +315,10 @@ export function ImagePasteDialog({
 
         {/* Actions */}
         <div className="flex justify-end gap-2 py-3 px-[18px] border-t border-brd mt-2">
-          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd" onClick={onCancel}>{t('editor:imagePaste.cancel')}</button>
-          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleConfirm} disabled={!fileName.trim()}>
-            {t('editor:imagePaste.upload')}
+          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-surf2 text-t2 hover:bg-brd disabled:opacity-50 disabled:cursor-not-allowed" onClick={onCancel} disabled={uploading}>{t('editor:imagePaste.cancel')}</button>
+          <button className="py-[7px] px-[18px] rounded-md text-[13px] font-medium cursor-pointer border-none bg-acc text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5" onClick={handleConfirm} disabled={!fileName.trim() || uploading}>
+            {uploading && <span className="inline-block w-3.5 h-3.5 rounded-full border-[1.5px] border-white/40 border-t-white animate-spin shrink-0" />}
+            {uploading ? t('editor:imagePaste.uploading') : t('editor:imagePaste.upload')}
           </button>
         </div>
       </div>
