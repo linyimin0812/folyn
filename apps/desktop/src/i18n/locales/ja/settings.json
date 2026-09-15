@@ -21,7 +21,8 @@
     "notifications": "通知",
     "extensions": "拡張機能",
     "storage": "ストレージと共有",
-    "about": "情報"
+    "about": "情報",
+    "containers": "コンテナ指令"
   },
   "appearance": {
     "title": "外観",
@@ -453,7 +454,7 @@
       "label": "設計理念",
       "localFirst": "ローカルファースト —— あなたのノートはあなたのもの。すべてのドキュメントはローカルのファイルシステムにプレーン Markdown ファイルとして保存され、クラウドアカウント不要、オフラインで完全に利用可能、自由に移行できます。Vault システムは vault-provider 抽象レイヤーで着脱可能なバックエンドをサポートしますが、データの所有権は常にあなたにあります。",
       "openFormat": "オープンフォーマット —— ロックインなし。Folyn は標準 Markdown を唯一の保存形式として使い、GFM と独自ディレクティブのために remark/rehype パイプラインで処理します。どんなテキストエディタでもノートを開け、HTML をローカルへ、またはリモートストレージへいつでもエクスポートでき、Folyn をアンインストールした後もデータは完全に読めます。",
-      "extensible": "拡張可能 —— エディタコアからストレージバックエンドまでエンドツーエンドで開いています。マイクロカーネル + 拡張機能 SDK は 14 種のコンテナディレクティブ（callout、tabs、mermaid 等）とサードパーティ拡張機能をサポートし、CLI アダプター抽象は 6 種の AI ツール（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）を着脱可能にし、pnpm workspaces は container-extensions、vault-provider、cli-adapter、extension-host、extension-sdk を独立パッケージとして進化させます。",
+      "extensible": "拡張可能 —— エディタコアからストレージバックエンドまでエンドツーエンドで開いています。マイクロカーネル + 拡張機能 SDK は 13 種のコンテナディレクティブ（callout、tabs、mermaid 等）とサードパーティ拡張機能をサポートし、CLI アダプター抽象は 6 種の AI ツール（Claude Code、Codex、Gemini、Opencode、Pi、Qoder）を着脱可能にし、pnpm workspaces は container-extensions、vault-provider、cli-adapter、extension-host、extension-sdk を独立パッケージとして進化させます。",
       "privacy": "プライバシーファースト —— AI チャットとコード生成はローカル CLI ツール経由で行われ、あなたの API キーと会話内容は Folyn のサーバーを通りません。CSP ポリシーと拡張機能サンドボックス層が多層防御を提供し、trusted 層と sandbox 層は分離実行され、サードパーティ拡張機能は制限付き権限下で動きます。"
     },
     "features": {
@@ -578,7 +579,7 @@
     "projectStructure": {
       "label": "プロジェクト構成",
       "description": "Folyn は pnpm モノレポであり、デスクトップアプリ、CLI アダプター、コンテナ拡張機能、Vault Provider、Extension Host/SDK がそれぞれ独立パッケージです。",
-      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri デスクトップアプリ\n│       ├── src/              # React フロントエンド\n│       │   ├── components/   # UI コンポーネント（シェル、エディタ、AI、サイドバー等）\n│       │   ├── editor/       # CodeMirror 拡張\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand ストア\n│       │   └── utils/        # ユーティリティモジュール\n│       └── src-tauri/        # Rust バックエンド（Tauri コマンド）\n├── packages/\n│   ├── cli-adapter/          # AI CLI アダプター抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-extensions/    # Markdown コンテナディレクティブ拡張機能（14）\n│   ├── vault-provider/       # Vault ストレージ Provider 抽象\n│   ├── extension-host/         # 拡張機能ホストランタイム\n│   ├── extension-sdk/          # 拡張機能開発 SDK\n│   └── create-folyn-extension/ # Scaffold ツール\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri デスクトップアプリ\n│       ├── src/              # React フロントエンド\n│       │   ├── components/   # UI コンポーネント（シェル、エディタ、AI、サイドバー等）\n│       │   ├── editor/       # CodeMirror 拡張\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand ストア\n│       │   └── utils/        # ユーティリティモジュール\n│       └── src-tauri/        # Rust バックエンド（Tauri コマンド）\n├── packages/\n│   ├── cli-adapter/          # AI CLI アダプター抽象（Claude/Codex/Gemini/Opencode/Pi/Qoder）\n│   ├── container-extensions/    # Markdown コンテナディレクティブ拡張機能（13）\n│   ├── vault-provider/       # Vault ストレージ Provider 抽象\n│   ├── extension-host/         # 拡張機能ホストランタイム\n│   ├── extension-sdk/          # 拡張機能開発 SDK\n│   └── create-folyn-extension/ # Scaffold ツール\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "ストレージバックエンド",
@@ -646,7 +647,7 @@
         }
       },
       "containerExtensions": {
-        "label": "コンテナディレクティブ拡張機能（14）",
+        "label": "コンテナディレクティブ拡張機能（13）",
         "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
       }
     },
@@ -1020,5 +1021,36 @@
       "fileMenu": "ソースファイルをクラウドにアップロード",
       "fileMenuDesc": "現在のファイルをクラウドに直接アップロードし、公開直リンクを返します"
     }
+  },
+  "containers": {
+    "title": "コンテナ指令",
+    "description": "組み込みコンテナ指令とスタイルを表示し、コンテナを提供する拡張をインストール",
+    "installFromFolder": "フォルダからインストール…",
+    "installFromZip": ".zip からインストール…",
+    "installFromUrl": "URL からインストール",
+    "urlPlaceholder": "github.com Release zip の直リンクを貼り付け…",
+    "refresh": "更新",
+    "refreshing": "更新中…",
+    "installing": "インストール中（{{id}}）…",
+    "empty": "コンテナ指令が登録されていません",
+    "builtin": "組み込み",
+    "external": "拡張",
+    "preview": "プレビュー",
+    "template": "テンプレート",
+    "directive": "指令",
+    "categoryLabel": "分類",
+    "descriptionLabel": "説明",
+    "copyTemplate": "テンプレートをコピー",
+    "copied": "コピーしました",
+    "category": {
+      "layout": "レイアウト",
+      "media": "メディア",
+      "ai": "AI",
+      "data": "データ",
+      "custom": "その他"
+    },
+    "installHint": "コンテナを提供する拡張をインストールすると上のリストに表示されます",
+    "enable": "有効化",
+    "disable": "無効化"
   }
 }

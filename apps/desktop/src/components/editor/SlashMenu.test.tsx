@@ -7,9 +7,9 @@
  * `contributionAdapters.test.ts` (host-side resolve at activate); here we
  * assert the registry's resolved string renders as the right element.
  *
- * Also covers menu-level behavior: extensions hidden from the `/` menu
- * (`ai-result`, `extension-error-demo`) are not rendered, and the active item
- * resets to the first entry every time the menu reopens (no stale selection).
+ * Also covers menu-level behavior: the `tab` and `step` sub-directives are
+ * hidden from the `/` menu, and the active item resets to the first entry
+ * every time the menu reopens (no stale selection).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -104,10 +104,10 @@ describe('SlashMenu container icon dispatcher', () => {
 });
 
 describe('SlashMenu hidden extensions', () => {
-  it('excludes ai-result and extension-error-demo from the rendered menu', () => {
+  it('excludes tab and step sub-directives from the rendered menu', () => {
     const cr = ContainerRegistry.getInstance();
-    cr.register(makeExtension({ name: 'ai-result', label: 'AI 结果', category: 'ai' }));
-    cr.register(makeExtension({ name: 'extension-error-demo', label: '错误隔离自检', category: 'data' }));
+    cr.register(makeExtension({ name: 'tab', label: '标签项', category: 'layout' }));
+    cr.register(makeExtension({ name: 'step', label: '步骤项', category: 'layout' }));
     cr.register(makeExtension({ name: 'callout', label: '提示框', category: 'layout' }));
 
     const { container } = render(
@@ -123,8 +123,8 @@ describe('SlashMenu hidden extensions', () => {
     const items = container.querySelectorAll('.slash-menu-item');
     expect(items).toHaveLength(1);
     expect(items[0]!.textContent).toContain('提示框');
-    expect(container.textContent).not.toContain('AI 结果');
-    expect(container.textContent).not.toContain('错误隔离自检');
+    expect(container.textContent).not.toContain('标签项');
+    expect(container.textContent).not.toContain('步骤项');
   });
 });
 

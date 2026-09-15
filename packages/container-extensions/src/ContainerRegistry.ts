@@ -50,6 +50,13 @@ export class ContainerRegistry {
     return this.owned.get(name) !== undefined;
   }
 
+  /** Owning extension id for a directive. {@link FOLYN_CORE_OWNER} marks the
+   *  built-in containers; an external extension's id marks its contributed
+   *  containers. Lets the UI distinguish built-in from third-party. */
+  ownerOf(name: string): string | undefined {
+    return this.owned.ownerOf(name);
+  }
+
   /** Unregister a extension */
   unregister(name: string): boolean {
     return this.owned.remove(name);

@@ -40,7 +40,6 @@ import { registerBuiltinExtensions } from '@folyn/container-extensions';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
 import { registerBuiltinCodeContributions } from './services/registerBuiltinCodeContributions';
-import { registerErrorDemoExtension } from './services/registerErrorDemoExtension';
 import { registerBuiltinExporters } from './services/export/exporterRegistry';
 import { isTauri } from "@/utils/platform";
 import { useLocaleStore } from '@/store/localeStore';
@@ -54,7 +53,6 @@ import { attachToolWindowRpcListener } from './services/extension-host/toolWindo
 
 registerBuiltinExtensions();
 registerBuiltinCodeContributions();
-registerErrorDemoExtension();
 registerBuiltinExporters();
 // Seed the command palette's static commands (actions + panels/modes) once at
 // startup. File commands are sourced dynamically from the live vault tree.

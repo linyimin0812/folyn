@@ -4,6 +4,7 @@ export type {
   ContainerCategory,
 } from './src/ContainerExtension';
 export { ContainerRegistry } from './src/ContainerRegistry';
+export { FOLYN_CORE_OWNER } from 'folyn-extension-sdk';
 export { VaultContext, useVaultContext } from './src/VaultContext';
 export type { VaultContextValue } from './src/VaultContext';
 
@@ -14,7 +15,6 @@ export { mermaidExtension, MermaidBlock, useMermaidSvg } from './src/extensions/
 export { PlantUmlBlock, usePlantUmlSvg } from './src/extensions/PlantUmlExtension';
 export { encodePlantUml } from './src/plantuml/encode';
 export { GraphvizBlock, useGraphvizSvg } from './src/extensions/GraphvizExtension';
-export { aiResultExtension } from './src/extensions/AiResultExtension';
 export { statusTagExtension } from './src/extensions/StatusTagExtension';
 export { timelineExtension } from './src/extensions/TimelineExtension';
 export { filePreviewExtension } from './src/extensions/FilePreviewExtension';
@@ -34,7 +34,6 @@ import { ContainerRegistry } from './src/ContainerRegistry';
 import { calloutExtension } from './src/extensions/CalloutExtension';
 import { tabsExtension, tabExtension } from './src/extensions/TabsExtension';
 import { mermaidExtension } from './src/extensions/MermaidExtension';
-import { aiResultExtension } from './src/extensions/AiResultExtension';
 import { statusTagExtension } from './src/extensions/StatusTagExtension';
 import { timelineExtension } from './src/extensions/TimelineExtension';
 import { filePreviewExtension } from './src/extensions/FilePreviewExtension';
@@ -51,7 +50,6 @@ export function registerBuiltinExtensions(): void {
   registry.register(tabsExtension);
   registry.register(tabExtension);
   registry.register(mermaidExtension);
-  registry.register(aiResultExtension);
   registry.register(statusTagExtension);
   registry.register(timelineExtension);
   registry.register(filePreviewExtension);

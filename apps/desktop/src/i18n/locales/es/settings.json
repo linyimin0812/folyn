@@ -21,7 +21,8 @@
     "notifications": "Notificaciones",
     "extensions": "Extensions",
     "storage": "Almacenamiento y compartir",
-    "about": "Acerca de"
+    "about": "Acerca de",
+    "containers": "Contenedores"
   },
   "appearance": {
     "title": "Apariencia",
@@ -447,7 +448,7 @@
       "label": "Filosofía",
       "localFirst": "Local-first — tus notas te pertenecen. Todos los documentos se guardan como archivos Markdown simples en tu sistema de archivos local, sin cuenta en la nube, usables offline, libres de migrar. El sistema Vault soporta backends intercambiables vía la capa de abstracción vault-provider, pero la propiedad de los datos siempre es tuya.",
       "openFormat": "Formato abierto — sin lock-in. Folyn usa Markdown estándar como único formato de almacenamiento, procesado por el pipeline remark/rehype para GFM y directivas propias. Cualquier editor de texto puede abrir tus notas; exporta a HTML en local o guárdalo en almacenamiento remoto en cualquier momento; tras desinstalar Folyn, tus datos siguen siendo completamente legibles.",
-      "extensible": "Extensible — abierto de extremo a extremo, del núcleo del editor a los backends de almacenamiento. El micronúcleo + el SDK de extensions soporta 14 directivas de contenedor (callout, tabs, mermaid, etc.) y extensions de terceros; la abstracción del adaptador CLI hace intercambiables 6 herramientas de IA (Claude Code, Codex, Gemini, Opencode, Pi, Qoder); pnpm workspaces deja que container-extensions, vault-provider, cli-adapter, extension-host y extension-sdk evolucionen como paquetes independientes.",
+      "extensible": "Extensible — abierto de extremo a extremo, del núcleo del editor a los backends de almacenamiento. El micronúcleo + el SDK de extensions soporta 13 directivas de contenedor (callout, tabs, mermaid, etc.) y extensions de terceros; la abstracción del adaptador CLI hace intercambiables 6 herramientas de IA (Claude Code, Codex, Gemini, Opencode, Pi, Qoder); pnpm workspaces deja que container-extensions, vault-provider, cli-adapter, extension-host y extension-sdk evolucionen como paquetes independientes.",
       "privacy": "Privacidad primero — el chat de IA y la generación de código fluyen por herramientas CLI locales; tus claves API y el contenido de las conversaciones nunca tocan los servidores de Folyn. La política CSP y la capa sandbox de extensions ofrecen defensa en profundidad, con las capas trusted y sandbox ejecutándose por separado; los extensions de terceros corren bajo permisos restringidos."
     },
     "features": {
@@ -572,7 +573,7 @@
     "projectStructure": {
       "label": "Estructura del proyecto",
       "description": "Folyn es un monorepo pnpm — la app de escritorio, el adaptador CLI, los extensions de contenedor, el Vault Provider y el Extension Host/SDK son cada uno paquetes independientes.",
-      "tree": "folyn/\n├── apps/\n│   └── desktop/              # App de escritorio Tauri\n│       ├── src/              # Frontend React\n│       │   ├── components/   # Componentes UI (shell, editor, IA, sidebar, etc.)\n│       │   ├── editor/       # Extensiones CodeMirror\n│       │   ├── hooks/        # Hooks de React\n│       │   ├── store/        # Stores Zustand\n│       │   └── utils/        # Módulos utilitarios\n│       └── src-tauri/        # Backend Rust (comandos Tauri)\n├── packages/\n│   ├── cli-adapter/          # Abstracción del adaptador CLI de IA (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-extensions/    # Extensions de directivas de contenedor Markdown (14)\n│   ├── vault-provider/       # Abstracción del provider de almacenamiento Vault\n│   ├── extension-host/         # Runtime del host de extensions\n│   ├── extension-sdk/          # SDK de desarrollo de extensions\n│   └── create-folyn-extension/ # Herramienta de scaffold\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # App de escritorio Tauri\n│       ├── src/              # Frontend React\n│       │   ├── components/   # Componentes UI (shell, editor, IA, sidebar, etc.)\n│       │   ├── editor/       # Extensiones CodeMirror\n│       │   ├── hooks/        # Hooks de React\n│       │   ├── store/        # Stores Zustand\n│       │   └── utils/        # Módulos utilitarios\n│       └── src-tauri/        # Backend Rust (comandos Tauri)\n├── packages/\n│   ├── cli-adapter/          # Abstracción del adaptador CLI de IA (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-extensions/    # Extensions de directivas de contenedor Markdown (13)\n│   ├── vault-provider/       # Abstracción del provider de almacenamiento Vault\n│   ├── extension-host/         # Runtime del host de extensions\n│   ├── extension-sdk/          # SDK de desarrollo de extensions\n│   └── create-folyn-extension/ # Herramienta de scaffold\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "Backends de almacenamiento",
@@ -1014,5 +1015,36 @@
       "fileMenu": "Subir archivo fuente a la nube",
       "fileMenuDesc": "Sube el archivo actual directamente a la nube y devuelve un enlace público"
     }
+  },
+  "containers": {
+    "title": "Directivas de contenedor",
+    "description": "Explora las directivas y estilos de contenedor integrados; instala extensiones que aporten contenedores",
+    "installFromFolder": "Instalar desde carpeta…",
+    "installFromZip": "Instalar desde .zip…",
+    "installFromUrl": "Instalar desde URL",
+    "urlPlaceholder": "Pega un enlace zip de Release de github.com…",
+    "refresh": "Actualizar",
+    "refreshing": "Actualizando…",
+    "installing": "Instalando ({{id}})…",
+    "empty": "No hay directivas de contenedor registradas",
+    "builtin": "Integrado",
+    "external": "Extensión",
+    "preview": "Vista previa",
+    "template": "Plantilla",
+    "directive": "Directiva",
+    "categoryLabel": "Categoría",
+    "descriptionLabel": "Descripción",
+    "copyTemplate": "Copiar plantilla",
+    "copied": "Copiado",
+    "category": {
+      "layout": "Diseño",
+      "media": "Multimedia",
+      "ai": "IA",
+      "data": "Datos",
+      "custom": "Otro"
+    },
+    "installHint": "Instala una extensión de terceros que aporte contenedores y aparecerá arriba",
+    "enable": "Activar",
+    "disable": "Desactivar"
   }
 }

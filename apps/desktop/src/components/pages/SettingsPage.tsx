@@ -6,6 +6,7 @@ import { usePrefsStore } from '@/store/prefsStore';
 import { CliSettings } from '@/components/settings/CliSettings';
 import { ModelServicesSettings } from '@/components/settings/ModelServicesSettings';
 import { ExtensionsSettings } from '@/components/settings/ExtensionsSettings';
+import { ContainersSettings } from '@/components/settings/ContainersSettings';
 import { VoiceSettings, VoiceHotkeyRecorder } from '@/components/settings/VoiceSettings';
 import { FileTemplatesSettings } from '@/components/settings/FileTemplatesSettings';
 import { PetSettings } from '@/components/settings/PetSettings';
@@ -130,7 +131,7 @@ export function SettingsPage() {
           cli uses the narrow 50vw column — its cards (input + 2 buttons) are
           compact and don't need full width. overflow-x-hidden clips any
           residual unbreakable content (long URLs, file paths). */}
-      <div className={`sc2 overflow-y-auto overflow-x-hidden pt-[22px] pb-2 px-[26px] min-w-0 ${settingsTab === 'models' || settingsTab === 'voice' || settingsTab === 'templates' ? 'flex-1' : 'w-[50vw]'}`}>
+      <div className={`sc2 overflow-y-auto overflow-x-hidden pt-[22px] pb-2 px-[26px] min-w-0 ${settingsTab === 'models' || settingsTab === 'voice' || settingsTab === 'templates' ? 'flex-1' : settingsTab === 'containers' ? 'w-[68vw]' : 'w-[50vw]'}`}>
         {/* -- 外观 -- */}
         {settingsTab === 'appearance' && (
           <div className="mb-8">
@@ -378,6 +379,11 @@ export function SettingsPage() {
         {/* -- 插件 -- */}
         {settingsTab === 'extensions' && (
           <ExtensionsSettings />
+        )}
+
+        {/* -- 容器指令 -- */}
+        {settingsTab === 'containers' && (
+          <ContainersSettings />
         )}
 
         {/* -- 存储与分享 -- */}

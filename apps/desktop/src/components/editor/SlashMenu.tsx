@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ContainerRegistry } from '@folyn/container-extensions';
 import type { ContainerExtension, ContainerCategory } from '@folyn/container-extensions';
+import { getActiveContainers } from '@/services/containerRegistryService';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
 
 const CATEGORY_KEYS: Record<ContainerCategory, string> = {
@@ -12,11 +12,6 @@ const CATEGORY_KEYS: Record<ContainerCategory, string> = {
   data: 'editor:slashMenu.categories.data',
   custom: 'editor:slashMenu.categories.custom',
 };
-
-/** Extensions that still render in the preview pane but should not be offered as
- *  `/`-commands. `ai-result` is inserted through the AI panel's own flow;
- *  `extension-error-demo` is a dev-only error-boundary self-check. */
-const SLASH_MENU_HIDDEN_PLUGINS = new Set(['ai-result', 'extension-error-demo']);
 
 interface SlashMenuProps {
   visible: boolean;
@@ -57,11 +52,9 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
   // below/above decision doesn't oscillate as the filtered list height
   // changes on every keystroke.
   const flippedRef = useRef(false);
-  const registry = ContainerRegistry.getInstance();
 
-  const allExtensions = registry
-    .getAll()
-    .filter((p) => !SLASH_MENU_HIDDEN_PLUGINS.has(p.name) && p.name !== 'step' && p.name !== 'tab');
+  const allExtensions = getActiveContainers()
+    .filter((p) => p.name !== 'step' && p.name !== 'tab');
   const filtered = filter
     ? allExtensions.filter(
         (p) =>

@@ -18,10 +18,11 @@ import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/ren
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { codeBlockAlignPoint } from './codeBlockAlign';
 import { blockAlignPoint } from './blockAlignPoint';
-import { ContainerRegistry, registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
+import { registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
 import { getMarkdownCodeRenderer } from '@/services/extension-host/markdownCodeRendererAdapter';
+import { getActiveContainers } from '@/services/containerRegistryService';
 import { getHandlerByExtension, getHandlerById, getModeComponent } from "@/components/file-types/registry";
 import { isTauri } from '@/utils/platform';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -104,10 +105,9 @@ registerBuiltinCodeContributions();
  * We map each registered extension name to its React component.
  */
 function buildComponentMap(): Record<string, React.ComponentType<any>> {
-  const registry = ContainerRegistry.getInstance();
   const componentMap: Record<string, React.ComponentType<any>> = {};
 
-  for (const extension of registry.getAll()) {
+  for (const extension of getActiveContainers()) {
     const ExtensionComponent = extension.component;
     // Wrapper that adapts hast element props to ContainerProps
     componentMap[extension.name] = function DirectiveWrapper(props: any) {

@@ -435,6 +435,16 @@ mjx-container svg {
 
 /* ── Markdown Preview (targets rendered HTML) ── */
 .md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); overflow-wrap: break-word; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; }
+/* Preview frame variant for the Containers settings modal: full width
+   (no 800px cap) and flattened first/last vertical margins so the preview's
+   top + bottom spacing is symmetric inside the frame's `p-4` padding —
+   container components set inline marginBottom:1.5rem which otherwise
+   makes the bottom gap bigger than the top. */
+.md-preview.container-preview-frame { max-width: none; margin-left: 0; margin-right: 0; }
+.md-preview.container-preview-frame > :first-child { margin-top: 0 !important; }
+.md-preview.container-preview-frame > :last-child { margin-bottom: 0 !important; }
+.md-preview.container-preview-frame [data-container] > :first-child { margin-top: 0 !important; }
+.md-preview.container-preview-frame [data-container] > :last-child { margin-bottom: 0 !important; }
 .translation-result .md-preview { font-size: var(--ui-font-size); line-height: 1.6; text-align: justify; }
 .translation-result .md-preview > :first-child { margin-top: 0; }
 .translation-result .md-preview > :last-child { margin-bottom: 0; }
@@ -652,7 +662,7 @@ mjx-container svg {
 
 /* ── Steps container (CSS counter) ── */
 .docmd-steps { position: relative; padding-left: 3rem; margin: 1.5rem 0; counter-reset: docmd-step; }
-.docmd-steps-line { position: absolute; left: 1.15rem; top: 1rem; bottom: 1rem; width: 2px; background-color: var(--brd, #e4e4e7); }
+.docmd-steps-line { position: absolute; left: calc(1rem - 1px); top: 1rem; bottom: 1rem; width: 2px; background-color: var(--brd, #e4e4e7); }
 .docmd-step { position: relative; margin-bottom: 2.5rem; counter-increment: docmd-step; }
 .docmd-step-number { position: absolute; left: -2.75rem; top: 0; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.75rem; line-height: 1; color: var(--t2, #3f3f46); z-index: 1; background-color: var(--surf, #f4f4f5); border: 1px solid var(--brd, #e4e4e7); border-radius: 50%; }
 .docmd-step-number::before { content: counter(docmd-step); }

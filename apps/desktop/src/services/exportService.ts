@@ -15,8 +15,9 @@ import { all as allLowlightGrammars } from 'lowlight';
 import rehypeMathjax from 'rehype-mathjax';
 import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
-import { ContainerRegistry, registerBuiltinExtensions } from '@folyn/container-extensions';
+import { registerBuiltinExtensions } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
+import { getActiveContainers } from '@/services/containerRegistryService';
 import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdown/renderMarkdown';
 
 import * as excalidrawExporter from './export/excalidraw';
@@ -50,10 +51,9 @@ export function hasContainerSyntax(content: string): boolean {
  * output is identical to the in-app preview.
  */
 export function buildExportComponentMap(): Record<string, React.ComponentType<any>> {
-  const registry = ContainerRegistry.getInstance();
   const componentMap: Record<string, React.ComponentType<any>> = {};
 
-  for (const extension of registry.getAll()) {
+  for (const extension of getActiveContainers()) {
     const ExtensionComponent = extension.component;
     componentMap[extension.name] = function DirectiveWrapper(props: any) {
       const { children, node, ...rest } = props;
@@ -551,7 +551,7 @@ export const HTML_STYLES = `
      * rendered as inline styles by the shared React components.
      */
     .docmd-steps { position: relative; padding-left: 3rem; margin: 1.5rem 0; counter-reset: docmd-step; }
-    .docmd-steps-line { position: absolute; left: 1.15rem; top: 1rem; bottom: 1rem; width: 2px; background-color: #dde2f0; }
+    .docmd-steps-line { position: absolute; left: calc(1rem - 1px); top: 1rem; bottom: 1rem; width: 2px; background-color: #dde2f0; }
     .docmd-step { position: relative; margin-bottom: 2.5rem; counter-increment: docmd-step; }
     .docmd-step-number {
       position: absolute; left: -2.75rem; top: 0; width: 1.5rem; height: 1.5rem;

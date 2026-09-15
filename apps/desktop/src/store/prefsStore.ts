@@ -92,15 +92,24 @@ export function backfillDefaultShortcuts(saved: ShortcutItem[]): ShortcutItem[] 
 export const PERSIST_KEYS_PREFS = [
   'fileTemplates',
   'shortcuts',
+  'disabledContainers',
 ] as const;
 
 export interface PrefsState {
   fileTemplates: Record<string, string>;
   shortcuts: ShortcutItem[];
+  /** Directive names the user has disabled in Settings → Containers. A
+   *  disabled `:::name` won't render in the doc preview / slash menu / export
+   *  (it renders as a plain element), and won't appear in the slash menu.
+   *  The settings gallery still lists it so the user can re-enable. */
+  disabledContainers: string[];
 
   setFileTemplates: (v: Record<string, string>) => void;
   updateShortcut: (id: string, keys: string[]) => void;
   resetShortcuts: () => void;
+  /** Toggle whether a container directive is enabled (name = directive).
+   *  Idempotent: enabling an already-enabled directive is a no-op. */
+  toggleContainerEnabled: (name: string) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -141,6 +150,7 @@ export function backfillDefaultFileTemplates(saved: Record<string, string>): Rec
 export const usePrefsStore = create<PrefsState>((set) => ({
   fileTemplates: { ...DEFAULT_FILE_TEMPLATES },
   shortcuts: [...DEFAULT_SHORTCUTS],
+  disabledContainers: [],
 
   setFileTemplates: (v) => { set({ fileTemplates: v }); persist(); },
 
@@ -153,6 +163,18 @@ export const usePrefsStore = create<PrefsState>((set) => ({
 
   resetShortcuts: () => {
     set({ shortcuts: [...DEFAULT_SHORTCUTS] });
+    persist();
+  },
+
+  toggleContainerEnabled: (name) => {
+    set((state) => {
+      const has = state.disabledContainers.includes(name);
+      return {
+        disabledContainers: has
+          ? state.disabledContainers.filter((n) => n !== name)
+          : [...state.disabledContainers, name],
+      };
+    });
     persist();
   },
 
@@ -171,6 +193,11 @@ export const usePrefsStore = create<PrefsState>((set) => ({
       // the persisted array. Preserves user-customized keys on existing
       // entries — only missing ids are appended. Mirrors the legacy path.
       patch.shortcuts = backfillDefaultShortcuts(blob.shortcuts as ShortcutItem[]);
+    }
+    if (Array.isArray(blob.disabledContainers)) {
+      // Persisted as a plain string[]; coerce defensively (drop non-strings).
+      patch.disabledContainers = (blob.disabledContainers as unknown[])
+        .filter((n): n is string => typeof n === 'string');
     }
     if (Object.keys(patch).length > 0) set(patch);
   },

@@ -21,7 +21,8 @@
     "notifications": "Notifications",
     "extensions": "Extensions",
     "storage": "Storage & Sharing",
-    "about": "About"
+    "about": "About",
+    "containers": "Containers"
   },
   "appearance": {
     "title": "Appearance",
@@ -453,7 +454,7 @@
       "label": "Philosophy",
       "localFirst": "Local-first — your notes belong to you. All documents are stored as plain Markdown files on your local filesystem, no cloud account required, fully usable offline, free to migrate. The Vault system supports pluggable backends via the vault-provider abstraction layer, but data ownership always stays with you.",
       "openFormat": "Open format — no lock-in. Folyn uses standard Markdown as its only storage format, processed by the remark/rehype pipeline for GFM and custom directives. Any text editor can open your notes; export to HTML locally or hosted to remote storage anytime; after uninstalling Folyn, your data remains fully readable.",
-      "extensible": "Extensible — open end-to-end, from editor core to storage backends. The microkernel + extension SDK supports 14 container directives (callout, tabs, mermaid, etc.) and third-party extensions; the CLI adapter abstraction makes 6 AI tools (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) pluggable; pnpm workspaces lets container-extensions, vault-provider, cli-adapter, extension-host, and extension-sdk evolve as independent packages.",
+      "extensible": "Extensible — open end-to-end, from editor core to storage backends. The microkernel + extension SDK supports 13 container directives (callout, tabs, mermaid, etc.) and third-party extensions; the CLI adapter abstraction makes 6 AI tools (Claude Code, Codex, Gemini, Opencode, Pi, Qoder) pluggable; pnpm workspaces lets container-extensions, vault-provider, cli-adapter, extension-host, and extension-sdk evolve as independent packages.",
       "privacy": "Privacy-first — AI chat and code generation flow through local CLI tools; your API keys and conversation content never touch Folyn's servers. CSP policy and the extension sandbox tier provide defense-in-depth, with trusted and sandbox tiers executing separately; third-party extensions run under restricted permissions."
     },
     "features": {
@@ -578,7 +579,7 @@
     "projectStructure": {
       "label": "Project structure",
       "description": "Folyn is a pnpm monorepo — the desktop app, CLI adapter, container extensions, Vault Provider, and Extension Host/SDK are each independent packages.",
-      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri desktop app\n│       ├── src/              # React frontend\n│       │   ├── components/   # UI components (shell, editor, AI, sidebar, etc.)\n│       │   ├── editor/       # CodeMirror extensions\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # Utility modules\n│       └── src-tauri/        # Rust backend (Tauri commands)\n├── packages/\n│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-extensions/    # Markdown container directive extensions (14)\n│   ├── vault-provider/       # Vault storage provider abstraction\n│   ├── extension-host/         # Extension host runtime\n│   ├── extension-sdk/          # Extension development SDK\n│   └── create-folyn-extension/ # Scaffold tool\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
+      "tree": "folyn/\n├── apps/\n│   └── desktop/              # Tauri desktop app\n│       ├── src/              # React frontend\n│       │   ├── components/   # UI components (shell, editor, AI, sidebar, etc.)\n│       │   ├── editor/       # CodeMirror extensions\n│       │   ├── hooks/        # React hooks\n│       │   ├── store/        # Zustand stores\n│       │   └── utils/        # Utility modules\n│       └── src-tauri/        # Rust backend (Tauri commands)\n├── packages/\n│   ├── cli-adapter/          # AI CLI adapter abstraction (Claude/Codex/Gemini/Opencode/Pi/Qoder)\n│   ├── container-extensions/    # Markdown container directive extensions (13)\n│   ├── vault-provider/       # Vault storage provider abstraction\n│   ├── extension-host/         # Extension host runtime\n│   ├── extension-sdk/          # Extension development SDK\n│   └── create-folyn-extension/ # Scaffold tool\n├── package.json\n├── pnpm-workspace.yaml\n└── tsconfig.base.json"
     },
     "storageBackends": {
       "label": "Storage backends",
@@ -646,7 +647,7 @@
         }
       },
       "containerExtensions": {
-        "label": "Container directive extensions (14)",
+        "label": "Container directive extensions (13)",
         "list": "AiResult · Button · Callout · Card · Collapsible · FilePreview · Graphviz · Grid · Mermaid · PlantUml · StatusTag · Steps · Tabs · Timeline"
       }
     },
@@ -1036,5 +1037,36 @@
       "fileMenu": "Upload Source File to Cloud",
       "fileMenuDesc": "Upload the current file directly to the cloud and return a public direct link"
     }
+  },
+  "containers": {
+    "title": "Container Directives",
+    "description": "Browse built-in container directives and styles; install extensions that contribute containers",
+    "installFromFolder": "Install from folder…",
+    "installFromZip": "Install from .zip…",
+    "installFromUrl": "Install from URL",
+    "urlPlaceholder": "Paste a github.com Release zip URL…",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "installing": "Installing ({{id}})…",
+    "empty": "No container directives registered",
+    "builtin": "Built-in",
+    "external": "Extension",
+    "preview": "Preview",
+    "template": "Template",
+    "directive": "Directive",
+    "categoryLabel": "Category",
+    "descriptionLabel": "Description",
+    "copyTemplate": "Copy template",
+    "copied": "Copied",
+    "category": {
+      "layout": "Layout",
+      "media": "Media",
+      "ai": "AI",
+      "data": "Data",
+      "custom": "Other"
+    },
+    "installHint": "Install a third-party extension that contributes containers and it appears above",
+    "enable": "Enable",
+    "disable": "Disable"
   }
 }
