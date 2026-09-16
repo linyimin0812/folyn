@@ -52,7 +52,6 @@ export interface FilePresentationContext {
   readonly cursorViewportY?: number;
   readonly editorViewportTop?: number;
   readonly cursorCol?: number;
-  readonly lineLength?: number;
   readonly hasSelection?: boolean;
 }
 
@@ -161,7 +160,6 @@ export interface PreviewProps {
   cursorViewportY?: number;
   editorViewportTop?: number;
   cursorCol?: number;
-  lineLength?: number;
   hasSelection?: boolean;
 }
 

@@ -16,8 +16,8 @@ import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
-import { codeBlockAlignPoint } from './codeBlockAlign';
-import { blockAlignPoint } from './blockAlignPoint';
+import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
+import { blockAlignPoint, blockLastSrcLine, gapAlignPoint } from './blockAlignPoint';
 import { registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -814,7 +814,34 @@ function VaultImageInner(props: {
   return createElement(ResizableMedia, { kind: 'img', sourceLine, contentRef, onChangeRef }, imgEl);
 }
 
-export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursorLine, cursorViewportY, editorViewportTop, cursorCol, lineLength, hasSelection }: import('../types').PreviewProps) {
+/**
+ * Find the next visible [data-source-line] block after `current` in DOM order,
+ * for cursor-sync gap alignment + highlight. Mirrors the selection filter
+ * (skip display:none and 0-height data-container wrappers) so the gap
+ * aligns to a block the user actually sees. Returns its top offset from the
+ * scroll container's content top and the element, or null if there is none
+ * (cursor on trailing EOF blanks). `current` itself is excluded.
+ */
+function findNextBlock(
+  root: HTMLElement,
+  current: HTMLElement,
+): { offset: number; el: HTMLElement } | null {
+  const blocks = Array.from(root.querySelectorAll('[data-source-line]')) as HTMLElement[];
+  const startIdx = blocks.indexOf(current);
+  for (let i = startIdx + 1; i < blocks.length; i++) {
+    const el = blocks[i];
+    if (getComputedStyle(el).display === 'none') continue;
+    if (el.hasAttribute('data-container') && el.offsetHeight === 0) continue;
+    const scrollContainer = root.parentElement;
+    if (!scrollContainer) return null;
+    const cr = scrollContainer.getBoundingClientRect();
+    const br = el.getBoundingClientRect();
+    return { offset: br.top - cr.top + scrollContainer.scrollTop, el };
+  }
+  return null;
+}
+
+export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursorLine, cursorViewportY, editorViewportTop, hasSelection }: import('../types').PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
@@ -822,6 +849,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // center, not just its top (coordsAtPos gives the line top). Read from
   // the store directly so no new prop threads through PreviewProps.
   const editorLineHeight = useEditorViewStateStore((s) => s.editorLineHeight);
+  const cursorLineFrac = useEditorViewStateStore((s) => s.cursorLineFrac);
 
   // ponytail: cursor-driven preview scroll (split mode only). When the
   // editor cursor moves, scroll the preview so the point in the matched
@@ -888,33 +916,54 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const containerWrap = (target as HTMLElement).closest('[data-hides-inactive][data-source-line]');
     if (containerWrap) target = containerWrap;
     const el = target as HTMLElement;
-    const blockChanged = activeBlockRef.current !== el;
-    if (blockChanged) {
-      activeBlockRef.current?.classList.remove('cursor-sync-active');
-      activeBlockRef.current = el;
-      el.classList.add('cursor-sync-active');
-    }
 
     // Align the preview block to the cursor's screen position.
     const containerRect = scrollContainer.getBoundingClientRect();
     const blockRect = el.getBoundingClientRect();
     const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop;
     const blockHeight = blockRect.height;
+    const blockBottom = blockOffset + blockHeight;
     const blockSrcLine = Number(el.getAttribute('data-source-line'));
     const srcLines = contentRef.current.split('\n');
 
-    // ponytail: fenced code blocks render only the content BETWEEN fences — the
-    // fence lines themselves aren't content rows, and blank lines inside code
-    // are valid content. The old non-blank-line span counter both under-counted
-    // (stopped at the first inner blank → intraFrac clamped to 1 → cursor
-    // pinned to the block bottom, the actual reported misalignment) and skewed
-    // (fences + the <code> 12px padding aren't source rows). So for code blocks,
-    // map the cursor's content row to its exact pixel position (row top aligned
-    // to the editor cursor's line top — coordsAtPos returns the line top)
-    // instead of a fraction of blockHeight. Editor vs preview line heights
-    // need not match: we align one specific row, not a linear pixel scale.
+    // ponytail: when the cursor sits on a blank line below the selected block
+    // (the gap between this block and the next), blank lines render no preview
+    // height, so the in-block align functions can't place the cursor. Align to
+    // the NEXT block's top instead — the preview advances to the content that
+    // follows the cursor's blank line (the cursor is on the separator before
+    // the next block), so the preview visibly tracks the cursor instead of
+    // clamping to the current block bottom and drifting one line per blank
+    // line. If there is no next block (cursor on trailing blanks at EOF),
+    // stay on the current block bottom — nothing below to advance to.
+    // Covers every block kind (paragraph/heading/list, code, container) so the
+    // gap is handled once, in one place, with the live DOM (no editor line
+    // height needed — editor vs preview line heights differ, and a guessed
+    // value drifted).
+    const isCodeBlock = el.tagName === 'PRE' && el.closest('.code-block-wrapper');
+    const lastSrcLine = isCodeBlock
+      ? codeBlockCloseLine(srcLines, blockSrcLine) // closing fence: cursor on/after it is the gap
+      : blockLastSrcLine(srcLines, blockSrcLine);
+    const inGap = cursorLine > lastSrcLine;
+    const nextBlock = inGap ? findNextBlock(root, el) : null;
+
+    // The highlight target: when in a gap with a next block, highlight the
+    // NEXT block (the content the cursor is about to enter / the separator
+    // sits before it), not the block above the blank line — otherwise the
+    // .cursor-sync-active highlight stayed on the previous block after a
+    // line break while the user typed into the new one. No next block (EOF
+    // blanks) → keep the highlight on the current (last) block.
+    const highlightEl = nextBlock ? nextBlock.el : el;
+    const blockChanged = activeBlockRef.current !== highlightEl;
+    if (blockChanged) {
+      activeBlockRef.current?.classList.remove('cursor-sync-active');
+      activeBlockRef.current = highlightEl;
+      highlightEl.classList.add('cursor-sync-active');
+    }
+
     let alignPoint: number;
-    if (el.tagName === 'PRE' && el.closest('.code-block-wrapper')) {
+    if (inGap) {
+      alignPoint = gapAlignPoint(blockBottom, nextBlock ? nextBlock.offset : null);
+    } else if (isCodeBlock) {
       const codeEl = el.querySelector('code');
       const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
       alignPoint = codeBlockAlignPoint(srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, padTop);
@@ -936,27 +985,28 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       // source-line fraction; a single source line that renders tall
       // (image, etc.) falls back to a cursor-column fraction.
       alignPoint = blockAlignPoint(
-        el.tagName, srcLines, blockSrcLine, cursorLine,
-        cursorCol ?? 0, lineLength ?? 1, blockOffset, blockHeight,
+        el.tagName, srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, cursorLineFrac,
       );
     }
 
     // cursorScreenY = where the cursor line top is on screen.
     // After setting scrollTop=desired, the align point appears at
     // screen y = containerRect.top + (alignPoint - desired).
-    // For headings, align the block CENTER to the cursor LINE center
-    // (cursorScreenY + editorLineHeight/2) so the highlight is symmetric
-    // around the cursor line; coordsAtPos gives the line top, so half the
-    // editor line height offsets to the line center. Other blocks align
-    // to the line top (code rows top-align to the cursor line top).
+    // For headings (cursor on the heading line, not in a gap below it), align
+    // the block CENTER to the cursor LINE center (cursorScreenY +
+    // editorLineHeight/2) so the highlight is symmetric around the cursor
+    // line; coordsAtPos gives the line top, so half the editor line height
+    // offsets to the line center. The gap path aligns the NEXT block's TOP
+    // to the cursor line top (not center), so it must not apply the heading
+    // center offset. Other blocks align to the line top.
     const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
-    const isHeading = /^H[1-6]$/.test(el.tagName);
-    const targetY = isHeading ? cursorScreenY + (editorLineHeight ?? 0) / 2 : cursorScreenY;
+    const headingCenter = !inGap && /^H[1-6]$/.test(el.tagName);
+    const targetY = headingCenter ? cursorScreenY + (editorLineHeight ?? 0) / 2 : cursorScreenY;
     const desired = Math.max(0, alignPoint - (targetY - containerRect.top));
     if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
       scrollContainer.scrollTop = desired;
     }
-  }, [cursorLine, cursorViewportY, editorViewportTop, cursorCol, lineLength, hasSelection, editorLineHeight]);
+  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac]);
 
   // Clean up the active-block marker on unmount.
   useEffect(() => {

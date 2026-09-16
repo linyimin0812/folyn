@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codeBlockAlignPoint } from './codeBlockAlign';
+import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
 
 // blockOffset=0, padTop=12, lineHeight=19.2 ⇒ a block with N content rows is
 // N*19.2 + 24 tall. blockHeight passed in reflects the rendered <pre>.
@@ -89,5 +89,25 @@ describe('codeBlockAlignPoint', () => {
     const lines = src(['```js', 'const x = 1;', '```']);
     const ap = codeBlockAlignPoint(lines, 1, 2, 0, blockHeight(1), PAD);
     expect(ap).toBeCloseTo(PAD, 5); // first content row
+  });
+});
+
+describe('codeBlockCloseLine', () => {
+  it('returns the 1-indexed line of the closing fence', () => {
+    // fence=1 (idx0), content=2-3, closing ```=4 (idx3).
+    expect(codeBlockCloseLine(['```js', 'a', 'b', '```'], 1)).toBe(4);
+  });
+
+  it('skips the opening fence (it has a trailing language)', () => {
+    // ```js must not be mistaken for the closing fence.
+    expect(codeBlockCloseLine(['```js', '```'], 1)).toBe(2);
+  });
+
+  it('defaults to one past EOF when the fence is unclosed', () => {
+    expect(codeBlockCloseLine(['```js', 'a', 'b'], 1)).toBe(4);
+  });
+
+  it('supports tilde fences', () => {
+    expect(codeBlockCloseLine(['~~~py', 'a', '~~~'], 1)).toBe(3);
   });
 });

@@ -56,8 +56,6 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     const cursorLine = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorLine : 0);
     const cursorViewportY = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorViewportY : 0);
     const editorViewportTop = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.editorViewportTop : 0);
-    const cursorCol = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorCol : 1);
-    const lineLength = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.lineLength : 1);
     const hasSelection = useEditorViewStateStore((s) => viewMode === 'split' ? s.hasSelection : false);
     const outlineVisible = useEditorViewStateStore((s) => s.outlineVisible);
     const toggleOutline = useEditorViewStateStore((s) => s.toggleOutline);
@@ -175,8 +173,6 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   cursorLine={cursorLine}
                   cursorViewportY={cursorViewportY}
                   editorViewportTop={editorViewportTop}
-                  cursorCol={cursorCol}
-                  lineLength={lineLength}
                   hasSelection={hasSelection}
                   onChange={onChange}
                 />

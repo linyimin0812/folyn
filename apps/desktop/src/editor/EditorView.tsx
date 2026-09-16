@@ -348,7 +348,30 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
                 const coords = v.coordsAtPos(pos);
                 if (coords) {
                   const r = sd.getBoundingClientRect();
-                  setCursorViewportY(coords.top - r.top, r.top, pos - line.from, line.length, coords.bottom - coords.top);
+                  // ponytail: lineFrac = the cursor's vertical position
+                  // within its SOURCE line's soft-wrapped block (0 at the
+                  // first visual line, 1 at the last). A long single-line
+                  // paragraph soft-wraps in the editor into N visual lines;
+                  // as the cursor moves down the wraps, its screen Y drops,
+                  // but the preview renders one block — top-aligning it
+                  // (blockLineSpan=1) left the preview stuck at the block top
+                  // while the cursor drifted down, one visual line per wrap
+                  // (the reported soft-wrap drift). lineFrac maps the
+                  // cursor's wrap position onto the preview block height so
+                  // the preview tracks it. Unwrapped lines: the cursor stays
+                  // on the only visual line → lineFrac≈0 → top-align (no
+                  // horizontal drift either, since left/right movement on a
+                  // single visual line never changes coords.top).
+                  let lineFrac = 0;
+                  const startCoords = v.coordsAtPos(line.from);
+                  const endCoords = v.coordsAtPos(line.to);
+                  if (startCoords && endCoords) {
+                    const span = endCoords.bottom - startCoords.top;
+                    if (span > 0) {
+                      lineFrac = Math.min(1, Math.max(0, (coords.top - startCoords.top) / span));
+                    }
+                  }
+                  setCursorViewportY(coords.top - r.top, r.top, pos - line.from, coords.bottom - coords.top, lineFrac);
                 }
               }
             }
