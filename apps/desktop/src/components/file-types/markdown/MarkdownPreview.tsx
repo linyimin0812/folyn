@@ -132,14 +132,16 @@ function buildComponentMap(offset: number = 0): Record<string, React.ComponentTy
       // the preview's cursor sync can locate this container block —
       // querySelectorAll('[data-source-line]') then matches it like any
       // other block-level element.
-      // ponytail: skip the `tab` sub-directive — it renders as display:none
-      // (TabsComponent shows one tab's content via DOM, the rest stay hidden),
-      // so its wrapper block collapses to 0 height and cursor-sync's
-      // intra-block interpolation lands the cursor on a 0-height block.
-      // Skipping lets sync fall back to the visible `tabs` parent block.
+      // ponytail: skip the `tab` / `slide` sub-directives — they render as
+      // display:none (TabsComponent/Carousel shows one item's content via
+      // DOM, the rest stay hidden), so their wrapper blocks collapse to 0
+      // height and cursor-sync's intra-block interpolation lands the cursor
+      // on a 0-height block. Skipping lets sync fall back to the visible
+      // `tabs`/`carousel` parent block.
       const startLine = node?.position?.start?.line;
+      const SUB_DIRECTIVES = new Set(['tab', 'slide']);
       const dataProps: Record<string, string> = { 'data-container': extension.name };
-      if (typeof startLine === 'number' && extension.name !== 'tab') {
+      if (typeof startLine === 'number' && !SUB_DIRECTIVES.has(extension.name)) {
         dataProps['data-source-line'] = String(startLine + offset);
       }
       // Tag with data-container so the export DOM walk can locate rendered
@@ -842,8 +844,8 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       // ::::tabs `:::tab` whose wrapper is display:none until its tab is
       // active. They'd be picked as the nearest block but collapse to 0
       // height, so line-proportional alignment drifts onto the tab-header
-      // band. Falling back past them reaches the visible `tabs` wrapper,
-      // which the sticky branch below holds in place.
+      // band. Falling back past them reaches the visible `tabs`/`carousel`
+      // wrapper, which the promote-to-wrapper step below then aligns.
       if (getComputedStyle(el).display === 'none') return;
       if (line <= cursorLine && line >= bestLine) {
         bestLine = line;
@@ -856,14 +858,13 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    // If the cursor landed inside a `::::tabs` block (any tab — visible or
-    // hidden), promote the target up to the `tabs` wrapper so the sticky
-    // branch below holds the whole container in place. Without this, the
-    // nearest visible block is the *active* tab's content paragraph (a
-    // different source line than the cursor's hidden tab), and line
-    // interpolation maps the cursor onto it → drift.
-    const tabsWrap = (target as HTMLElement).closest('[data-container="tabs"]');
-    if (tabsWrap) target = tabsWrap;
+    // If the cursor landed inside a `::::tabs` or `::::carousel` block (any
+    // slide/tab — visible or hidden), promote the target up to that wrapper
+    // so the block-alignment below targets the whole container, not the
+    // *active* item's content (a different source line than the cursor's
+    // hidden item), which would let line interpolation drift.
+    const containerWrap = (target as HTMLElement).closest('[data-container="tabs"], [data-container="carousel"]');
+    if (containerWrap) target = containerWrap;
     const el = target as HTMLElement;
     const blockChanged = activeBlockRef.current !== el;
     if (blockChanged) {
