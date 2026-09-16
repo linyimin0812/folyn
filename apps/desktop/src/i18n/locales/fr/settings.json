@@ -163,7 +163,8 @@
       "strikethrough": "Barré",
       "code": "Code en ligne",
       "link": "Insérer un lien",
-      "togglePetPanel": "Ouvrir le panneau du pet"
+      "togglePetPanel": "Ouvrir le panneau du pet",
+      "cursorSync": "Synchronisation du curseur"
     },
     "appItems": {
       "focusMode": "Basculer le mode concentration",

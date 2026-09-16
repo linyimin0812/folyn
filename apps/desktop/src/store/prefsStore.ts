@@ -35,6 +35,11 @@ export function buildDefaultShortcuts(primaryMod: '⌘' | 'Ctrl'): ShortcutItem[
     // re-registration on rebind (see SettingsPage.tsx ShortcutEditor +
     // PetApp.tsx mount effect).
     { id: 'togglePetPanel', name: '唤起桌宠面板', keys: [primaryMod, 'Shift', 'Q'] },
+    // DOCUMENT-level shortcut — handled in App.tsx's keydown listener (toggles
+    // editorPrefsStore.cursorSyncPreview). Rebindable like the rest: App.tsx
+    // reads this entry from prefsStore at match time, so re-recording here
+    // takes effect immediately without an App.tsx edit. Not OS-registered.
+    { id: 'cursorSync', name: '光标同步', keys: [primaryMod, 'Shift', 'I'] },
   ];
 }
 

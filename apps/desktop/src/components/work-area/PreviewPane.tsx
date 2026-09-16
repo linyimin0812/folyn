@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, type ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
 import { useEditorViewStateStore } from '@/store/editorViewState';
@@ -29,6 +30,8 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // In preview-only mode the editor is unmounted, so cursorLine never
     // changes; passing it would scroll to a stale position on tab switch.
     const cursorSyncPreview = useEditorPrefsStore((s) => s.cursorSyncPreview);
+    const setCursorSyncPreview = useEditorPrefsStore((s) => s.setCursorSyncPreview);
+    const { t } = useTranslation();
     const setPreviewScrollTop = useEditorViewStateStore((s) => s.setPreviewScrollTop);
     // ponytail: the .prev-body scroll container stays mounted across tab
     // switches (no key change), so without intervention it keeps the previous
@@ -136,6 +139,20 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 <line x1="2" y1="12.5" x2="14" y2="12.5" />
               </svg>
             </button>
+            {viewMode === 'split' && (
+              <button
+                className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${cursorSyncPreview ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
+                onClick={() => setCursorSyncPreview(!cursorSyncPreview)}
+                title={cursorSyncPreview ? t('editor:previewToolbar.cursorSyncOn') : t('editor:previewToolbar.cursorSyncOff')}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1.5" y="1.5" width="6" height="13" rx="1" />
+                  <rect x="8.5" y="1.5" width="6" height="13" rx="1" />
+                  <line x1="4.5" y1="4.5" x2="4.5" y2="11.5" strokeDasharray="1.6 1.8" />
+                  <line x1="11.5" y1="5.5" x2="11.5" y2="10.5" strokeDasharray="1.6 1.8" />
+                </svg>
+              </button>
+            )}
           </div>
         )}
         <div className="flex-1 flex overflow-hidden">

@@ -833,7 +833,15 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   const activeBlockRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (cursorLine == null || cursorLine <= 0) return;
+    if (cursorLine == null || cursorLine <= 0) {
+      // sync disabled (cursorSyncPreview off or left split mode) → drop the
+      // highlight that the last active run stamped, so toggling off clears it.
+      if (activeBlockRef.current) {
+        activeBlockRef.current.classList.remove('cursor-sync-active');
+        activeBlockRef.current = null;
+      }
+      return;
+    }
     if (hasSelection) return;
     const root = containerRef.current;
     if (!root) return;

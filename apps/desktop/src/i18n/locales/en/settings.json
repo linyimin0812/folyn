@@ -163,7 +163,8 @@
       "strikethrough": "Strikethrough",
       "code": "Inline code",
       "link": "Insert link",
-      "togglePetPanel": "Open pet panel"
+      "togglePetPanel": "Open pet panel",
+      "cursorSync": "Cursor sync"
     },
     "appItems": {
       "focusMode": "Toggle focus mode",

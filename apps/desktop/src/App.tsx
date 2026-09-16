@@ -34,6 +34,8 @@ import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import type { VaultEntry } from '@folyn/vault-provider';
 import { useSearchStore } from './store/searchStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
+import { useEditorPrefsStore } from './store/editorPrefsStore';
+import { usePrefsStore, type ShortcutItem } from './store/prefsStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { startPetChatSessionsHost } from './store/petChatSessions';
 import { registerBuiltinExtensions } from '@folyn/container-extensions';
@@ -107,6 +109,36 @@ function useIsMobile(breakpoint = 768) {
     return () => mql.removeEventListener('change', handler);
   }, [breakpoint]);
   return isMobile;
+}
+
+/**
+ * Match a prefsStore ShortcutItem's display-symbol keys (e.g. ['⌘','Shift','I']
+ * on mac, ['Ctrl','Shift','I'] on Windows) against a KeyboardEvent. Modifiers
+ * are matched as an exact set (every declared mod pressed, no extras) so a
+ * re-recorded combo is honored precisely. Single non-modifier token compared
+ * case-insensitively. Mirrors keybindingAdapter's matchAccelerator approach.
+ */
+function eventMatchesShortcut(e: KeyboardEvent, keys: string[]): boolean {
+  let mainKey = '';
+  let mainCount = 0;
+  const required: Array<(ev: KeyboardEvent) => boolean> = [];
+  for (const k of keys) {
+    switch (k) {
+      case '⌘': case 'Win': required.push((ev) => ev.metaKey); break;
+      case 'Ctrl': required.push((ev) => ev.ctrlKey); break;
+      case '⌥': case 'Alt': required.push((ev) => ev.altKey); break;
+      case 'Shift': required.push((ev) => ev.shiftKey); break;
+      default: mainKey = k.toLowerCase(); mainCount++;
+    }
+  }
+  if (mainCount !== 1) return false;
+  if (mainKey !== e.key.toLowerCase()) return false;
+  // Exact modifier set: every required mod pressed AND no extra mod pressed.
+  for (const ok of required) if (!ok(e)) return false;
+  const requiredLen = required.length;
+  const pressedCount =
+    (e.metaKey ? 1 : 0) + (e.ctrlKey ? 1 : 0) + (e.altKey ? 1 : 0) + (e.shiftKey ? 1 : 0);
+  return pressedCount === requiredLen;
 }
 
 export default function App() {
@@ -628,6 +660,17 @@ export default function App() {
           e.preventDefault();
           el.select();
         }
+      }
+      // Cursor sync toggle — default Cmd/Ctrl+Shift+I, rebindable via
+      // Settings → Shortcuts (prefsStore `cursorSync` entry). Toggles preview
+      // cursor-sync (scroll + highlight) in split mode. Default on.
+      const cursorSyncShortcut = usePrefsStore
+        .getState()
+        .shortcuts.find((s: ShortcutItem) => s.id === 'cursorSync');
+      if (cursorSyncShortcut && eventMatchesShortcut(e, cursorSyncShortcut.keys)) {
+        e.preventDefault();
+        const { cursorSyncPreview, setCursorSyncPreview } = useEditorPrefsStore.getState();
+        setCursorSyncPreview(!cursorSyncPreview);
       }
       // Cmd/Ctrl+P (no Shift) toggles the command palette. Shift is reserved
       // (e.g. Cmd+Shift+P / Cmd+Shift+F), so this branch only fires without it.

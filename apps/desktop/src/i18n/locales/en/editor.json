@@ -246,5 +246,9 @@
       "clearBg": "Clear background",
       "customColor": "Custom color…"
     }
+  },
+  "previewToolbar": {
+    "cursorSyncOn": "Disable cursor sync",
+    "cursorSyncOff": "Enable cursor sync"
   }
 }

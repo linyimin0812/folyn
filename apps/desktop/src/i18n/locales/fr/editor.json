@@ -239,5 +239,9 @@
       "clearBg": "Effacer l'arrière-plan",
       "customColor": "Couleur personnalisée…"
     }
+  },
+  "previewToolbar": {
+    "cursorSyncOn": "Désactiver la sync. du curseur",
+    "cursorSyncOff": "Activer la sync. du curseur"
   }
 }

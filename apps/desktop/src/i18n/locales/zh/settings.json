@@ -163,7 +163,8 @@
       "strikethrough": "删除线",
       "code": "行内代码",
       "link": "插入链接",
-      "togglePetPanel": "唤起桌宠面板"
+      "togglePetPanel": "唤起桌宠面板",
+      "cursorSync": "光标同步"
     },
     "appItems": {
       "focusMode": "切换专注模式",

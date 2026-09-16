@@ -163,7 +163,8 @@
       "strikethrough": "取り消し線",
       "code": "インラインコード",
       "link": "リンクを挿入",
-      "togglePetPanel": "桌宠パネルを開く"
+      "togglePetPanel": "桌宠パネルを開く",
+      "cursorSync": "カーソル同期"
     },
     "appItems": {
       "focusMode": "フォーカスモード切替",

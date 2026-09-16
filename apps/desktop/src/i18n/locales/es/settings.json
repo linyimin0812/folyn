@@ -163,7 +163,8 @@
       "strikethrough": "Tachado",
       "code": "Código en línea",
       "link": "Insertar enlace",
-      "togglePetPanel": "Abrir panel de mascota"
+      "togglePetPanel": "Abrir panel de mascota",
+      "cursorSync": "Sincronización del cursor"
     },
     "appItems": {
       "focusMode": "Alternar modo enfoque",

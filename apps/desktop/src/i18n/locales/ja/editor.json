@@ -239,5 +239,9 @@
       "clearBg": "背景をクリア",
       "customColor": "カスタム色…"
     }
+  },
+  "previewToolbar": {
+    "cursorSyncOn": "カーソル同期をオフ",
+    "cursorSyncOff": "カーソル同期をオン"
   }
 }

@@ -246,5 +246,9 @@
       "clearBg": "清除背景",
       "customColor": "自定义颜色…"
     }
+  },
+  "previewToolbar": {
+    "cursorSyncOn": "关闭光标同步",
+    "cursorSyncOff": "开启光标同步"
   }
 }
