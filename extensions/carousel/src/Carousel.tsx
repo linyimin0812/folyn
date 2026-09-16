@@ -151,27 +151,35 @@ export function Carousel({ children, attributes }: ContainerProps) {
             gap: '6px',
             padding: '0 0 0.6rem',
           }}>
-            {slides.map((s, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={s.label}
-                title={s.label}
-                data-carousel-dot="true"
-                data-index={i}
-                onClick={() => go(i)}
-                style={{
-                  width: i === active ? 18 : 7,
-                  height: 7,
-                  borderRadius: 999,
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  transition: 'width .2s, background-color .2s',
-                  background: i === active ? 'var(--acc, #068ad5)' : 'var(--brd2, #d4d4d8)',
-                }}
-              />
-            ))}
+            {slides.map((s, i) => {
+              const onKey = (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(i); }
+              };
+              return (
+                <span
+                  key={i}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={s.label}
+                  title={s.label}
+                  data-carousel-dot="true"
+                  data-index={i}
+                  onClick={() => go(i)}
+                  onKeyDown={onKey}
+                  style={{
+                    width: i === active ? 18 : 7,
+                    height: 7,
+                    borderRadius: 999,
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    display: 'inline-block',
+                    transition: 'width .2s, background-color .2s',
+                    background: i === active ? 'var(--acc, #068ad5)' : 'var(--brd2, #d4d4d8)',
+                  }}
+                />
+              );
+            })}
           </div>
         </>
       )}

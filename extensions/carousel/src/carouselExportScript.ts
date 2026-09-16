@@ -19,7 +19,7 @@ export const carouselExportScript = `
   var inner = c.querySelector('.docmd-carousel');
   if (!inner) return;
 
-  var dots = c.querySelectorAll('button[data-carousel-dot]');
+  var dots = c.querySelectorAll('[data-carousel-dot]');
   var slides = c.querySelectorAll('[data-is-slide="true"]');
   if (!slides.length) return;
 
@@ -40,7 +40,7 @@ export const carouselExportScript = `
 
   // Dot click → switch (delegated).
   c.addEventListener('click', function (e) {
-    var dot = e.target.closest && e.target.closest('button[data-carousel-dot]');
+    var dot = e.target.closest && e.target.closest('[data-carousel-dot]');
     if (!dot) return;
     go(parseInt(dot.getAttribute('data-index'), 10) || 0);
   });
