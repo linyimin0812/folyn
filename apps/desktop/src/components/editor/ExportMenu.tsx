@@ -49,21 +49,35 @@ export function ExportMenu() {
   });
   const activeTabPath = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.path ?? '');
 
+  // Any overlay a native WebView2 child (Windows) would render above the
+  // main webview's HTML: the dropdown, the four export modals, and the
+  // inline container-warning / share success / share error dialogs.
+  // While any is open, hide native webviews; restore only when all close.
+  // Without this, picking an export item closes the dropdown (which
+  // dispatched folyn:overlay-closed → webview restored) right as the modal
+  // opens — on Windows the WebView2 child then covers the modal, so the
+  // user sees "no popup". macOS WKWebView layering happens not to cover it.
+  const overlayActive =
+    open || containerWarning || !!shareUrl || !!shareError ||
+    vaultExportOpen || singleDocExportOpen || sourceExportOpen || !!formatExport;
+
   useEffect(() => {
+    if (!overlayActive) return;
+    hideWebviewsForOverlay();
+    return () => {
+      window.dispatchEvent(new CustomEvent('folyn:overlay-closed'));
+    };
+  }, [overlayActive]);
+
+  useEffect(() => {
+    if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    if (open) {
-      // Hide the native webview so the export menu isn't covered by it.
-      hideWebviewsForOverlay();
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      if (open) window.dispatchEvent(new CustomEvent('folyn:overlay-closed'));
-    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
   // Markdown container-syntax gate — pre-flight before opening the source
