@@ -76,13 +76,16 @@ export function Carousel({ children, attributes }: ContainerProps) {
       const show = i === active;
       s.element.style.display = show ? 'flex' : 'none';
       if (show) {
+        // position:absolute + inset:0 fills the viewport REGARDLESS of how
+        // many wrapper divs sit between the viewport and [data-is-slide]
+        // (the host's DirectiveWrapper wraps :::slide in a <div
+        // data-container="slide"> — flex:1/width:100% on the slide would
+        // resolve against that wrapper, which doesn't fill the viewport,
+        // so centering had no room). Absolute positioning ignores the
+        // wrapper and pins the slide to the viewport's edges.
+        s.element.style.position = 'absolute';
+        s.element.style.inset = '0';
         s.element.style.flexDirection = 'column';
-        s.element.style.width = '100%';
-        // flex:1 stretches the slide to fill the viewport's height so
-        // justifyContent (vertical) has space to center content. (height:100%
-        // would resolve to auto under a min-height-only flex column → no
-        // room to center.)
-        s.element.style.flex = '1 1 0%';
         s.element.style.textAlign = textAlign;
         s.element.style.justifyContent =
           vToken === 'middle' ? 'center' : vToken === 'bottom' ? 'flex-end' : 'flex-start';
@@ -110,6 +113,7 @@ export function Carousel({ children, attributes }: ContainerProps) {
 
   const hasNav = slides.length > 1;
   const viewportStyle: CSSProperties = {
+    position: 'relative',
     padding: '1.25rem 1.5rem',
     display: 'flex',
     flexDirection: 'column',

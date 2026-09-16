@@ -52,6 +52,7 @@ describe('Carousel', () => {
     await act(async () => {});
     const viewport = container.querySelector('.docmd-carousel > div') as HTMLElement;
     expect(viewport.style.height).toBe('200px');
+    expect(viewport.style.position).toBe('relative');
   });
 
   it('autoplays when interval>0 and autoplay is not "false"', async () => {
@@ -104,8 +105,8 @@ describe('Carousel', () => {
     );
     await act(async () => {});
     const slide = container.querySelector('[data-is-slide="true"]') as HTMLElement;
-    // Stretches to fill the viewport (so vertical centering has room).
-    expect(slide.style.flex).toBe('1 1 0%');
+    // Pinned to the viewport (absolute, inset:0) so centering has room.
+    expect(slide.style.position).toBe('absolute');
     expect(slide.style.justifyContent).toBe('center'); // vertical middle
     expect(slide.style.alignItems).toBe('center');     // horizontal center
   });
