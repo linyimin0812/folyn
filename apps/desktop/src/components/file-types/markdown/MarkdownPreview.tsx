@@ -846,13 +846,18 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       if (raw == null) return;
       const line = Number(raw);
       if (!Number.isFinite(line)) return;
-      // Skip blocks that render hidden — e.g. a paragraph inside a
-      // ::::tabs `:::tab` whose wrapper is display:none until its tab is
-      // active. They'd be picked as the nearest block but collapse to 0
-      // height, so line-proportional alignment drifts onto the tab-header
-      // band. Falling back past them reaches the visible `tabs`/`carousel`
-      // wrapper, which the promote-to-wrapper step below then aligns.
+      // Skip blocks that render hidden OR collapse to 0 height.
+      // - display:none: a paragraph inside a ::::carousel `:::slide` whose
+      //   <div data-is-slide> wrapper is display:none until active.
+      // - offsetHeight===0 on a [data-container] wrapper: the `:::slide` /
+      //   `:::tab` DirectiveWrapper div itself is NOT display:none (so the
+      //   check above misses it), but its only child (the component's
+      //   data-is-slide/data-is-tab root) is display:none → the wrapper has
+      //   0 height. Selecting it lands the cursor on a 0-height block →
+      //   line-proportional interpolation drifts. Skipping it falls back to
+      //   the visible `carousel`/`tabs` parent (promoted below).
       if (getComputedStyle(el).display === 'none') return;
+      if (el.hasAttribute('data-container') && (el as HTMLElement).offsetHeight === 0) return;
       if (line <= cursorLine && line >= bestLine) {
         bestLine = line;
         target = el;
