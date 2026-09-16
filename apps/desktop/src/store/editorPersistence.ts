@@ -10,6 +10,8 @@ export interface PersistedTabInfo {
   activity?: ActivityPanel;
   cursorLine?: number;
   cursorCol?: number;
+  editorScrollTop?: number;
+  previewScrollTop?: number;
   viewMode?: ViewMode;
 }
 
@@ -27,7 +29,7 @@ const EXTERNAL_OPEN_TABS_KEY = 'editor:externalOpenTabs';
 function buildPersistedData(vaultId: string, tabs: FileTab[], activeTabId: string | null) {
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const data: PersistedOpenTabs = {
-    tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, activity: t.activity, cursorLine: t.cursorLine, cursorCol: t.cursorCol, viewMode: t.viewMode })),
+    tabs: tabs.map((t) => ({ path: t.path, name: t.name, fileType: t.fileType, activity: t.activity, cursorLine: t.cursorLine, cursorCol: t.cursorCol, editorScrollTop: t.editorScrollTop, previewScrollTop: t.previewScrollTop, viewMode: t.viewMode })),
     activeTabPath: activeTab?.path ?? null,
   };
   return [vaultId, data] as const;
@@ -75,6 +77,8 @@ function buildExternalPersistedData(tabs: FileTab[], activeTabId: string | null)
       activity: t.activity,
       cursorLine: t.cursorLine,
       cursorCol: t.cursorCol,
+      editorScrollTop: t.editorScrollTop,
+      previewScrollTop: t.previewScrollTop,
       viewMode: t.viewMode,
     })),
     activeTabPath: activeTab?.path ?? null,

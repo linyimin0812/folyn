@@ -333,6 +333,8 @@ export async function restoreOpenTabs(): Promise<void> {
           activity: restoredActivity,
           cursorLine: tabInfo.cursorLine,
           cursorCol: tabInfo.cursorCol,
+          editorScrollTop: tabInfo.editorScrollTop,
+          previewScrollTop: tabInfo.previewScrollTop,
           viewMode: tabInfo.viewMode,
         };
         set((state) => ({
@@ -439,6 +441,8 @@ async function restoreExternalTabs(): Promise<void> {
         activity: restoredActivity,
         cursorLine: tabInfo.cursorLine,
         cursorCol: tabInfo.cursorCol,
+        editorScrollTop: tabInfo.editorScrollTop,
+        previewScrollTop: tabInfo.previewScrollTop,
         viewMode: tabInfo.viewMode,
       };
       set((state) => ({ tabs: [...state.tabs, newTab] }));

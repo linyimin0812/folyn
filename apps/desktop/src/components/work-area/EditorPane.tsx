@@ -220,6 +220,7 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
             initialContent={activeTab?.content ?? ''}
             initialCursorLine={activeTab?.cursorLine}
             initialCursorCol={activeTab?.cursorCol}
+            initialScrollTop={activeTab?.editorScrollTop}
             onChange={(content) => {
               if (activeTab) onContentChange(activeTab.id, content);
             }}

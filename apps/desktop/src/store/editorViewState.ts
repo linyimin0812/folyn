@@ -69,6 +69,12 @@ interface EditorViewState {
   focusMode: boolean;
 
   setCursorPosition: (line: number, col: number) => void;
+  /** Persist the editor scroll top onto the active tab (survives tab
+   *  switches + disk persistence). Throttled at the call site. */
+  setEditorScrollTop: (top: number) => void;
+  /** Persist the preview scroll top onto the active tab (survives tab
+   *  switches + disk persistence). Throttled at the call site. */
+  setPreviewScrollTop: (top: number) => void;
   setWordCount: (count: number) => void;
   setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineLength: number, lineHeight: number) => void;
   setHasSelection: (v: boolean) => void;
@@ -126,6 +132,34 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
       useEditorStore.setState((state) => ({
         tabs: state.tabs.map((t) =>
           t.id === activeTabId ? { ...t, cursorLine: line, cursorCol: col } : t,
+        ),
+      }));
+    }
+  },
+
+  setEditorScrollTop: (top) => {
+    // ponytail: mirror setCursorPosition — persist scrollTop onto the active
+    // tab so the exact viewport (not just cursorLine's scrollIntoView center)
+    // survives tab switches + restart. Throttled by the FolynEditor caller.
+    const activeTabId = useEditorStore.getState().activeTabId;
+    if (activeTabId) {
+      useEditorStore.setState((state) => ({
+        tabs: state.tabs.map((t) =>
+          t.id === activeTabId ? { ...t, editorScrollTop: top } : t,
+        ),
+      }));
+    }
+  },
+
+  setPreviewScrollTop: (top) => {
+    // ponytail: persist the preview pane scrollTop onto the active tab so
+    // switching files resumes each file's exact preview position, not the
+    // previous file's. Throttled by the PreviewPane caller.
+    const activeTabId = useEditorStore.getState().activeTabId;
+    if (activeTabId) {
+      useEditorStore.setState((state) => ({
+        tabs: state.tabs.map((t) =>
+          t.id === activeTabId ? { ...t, previewScrollTop: top } : t,
         ),
       }));
     }

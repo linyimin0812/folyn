@@ -30,6 +30,7 @@ import { extractImgSrcFromHtml } from '@/services/clipboardFiles';
 import { detectMarkdownTable, markdownTableToMarkdown, detectTsvTable, tsvTableToMarkdown, detectCsvTable, csvTableToMarkdown } from '@folyn/extension-rich-text/src/markdownTable';
 import { TableConvertDialog, type TableConvertChoice } from '@/components/editor/TableConvertDialog';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { debounce } from '@/utils/debounce';
 registerBuiltinCodeContributions();
 
 // ponytail: build markdown codeLanguages at module load. Reads the editorLanguageRegistry
@@ -191,6 +192,10 @@ interface FolynEditorProps {
   initialCursorLine?: number;
   /** Initial cursor column (1-based) to restore on mount */
   initialCursorCol?: number;
+  /** Initial editor scroll top (px) to restore on mount — preserves the
+   *  exact viewport across tab switches + restart, not just cursorLine's
+   *  scrollIntoView center. */
+  initialScrollTop?: number;
   onChange?: (content: string) => void;
   onSlashMenuChange?: (state: SlashMenuState) => void;
   onCodeBlockMenuChange?: (state: CodeBlockMenuState) => void;
@@ -203,7 +208,7 @@ interface FolynEditorProps {
 }
 
 export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
-  function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly }, ref) {
+  function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, initialScrollTop, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [view, setView] = useState<EditorView | null>(null);
@@ -212,6 +217,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     const markdownKeymapCompartment = useRef(new Compartment());
     const langCompartment = useRef(new Compartment());
     const setCursorPosition = useEditorViewStateStore((s) => s.setCursorPosition);
+    const setEditorScrollTop = useEditorViewStateStore((s) => s.setEditorScrollTop);
     const setWordCount = useEditorViewStateStore((s) => s.setWordCount);
     const setCursorViewportY = useEditorViewStateStore((s) => s.setCursorViewportY);
     const setHasSelection = useEditorViewStateStore((s) => s.setHasSelection);
@@ -230,6 +236,13 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     onSaveRef.current = onSave;
     const onImagePasteRef = useRef(onImagePaste);
     onImagePasteRef.current = onImagePaste;
+    // ponytail: throttle scrollTop persistence onto the active tab — scroll
+    //  fires every frame; persisting per-frame would storm the store + disk.
+    //  Trailing 200ms debounce coalesces a scroll burst into one write.
+    const persistScrollTopRef = useRef<((top: number) => void) | null>(null);
+    if (persistScrollTopRef.current === null) {
+      persistScrollTopRef.current = debounce((top: number) => setEditorScrollTop(top), 200);
+    }
     // ponytail: smart paste → table convert dialog. When a table is detected
     // on paste and the user hasn't suppressed the prompt, show a confirmation
     // modal before converting. The pending insert is held in a ref so the
@@ -304,6 +317,13 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           if (update.docChanged || update.selectionSet) {
             sp.setViewTick((t) => (t + 1) % 1_000_000);
           }
+          if (update.viewportChanged) {
+            // ponytail: persist the editor scroll top so switching files +
+            //  restart restore the exact viewport (cursorLine alone only
+            //  scrollIntoView's to the cursor). Throttled by persistScrollTopRef.
+            const sd = update.view.scrollDOM;
+            if (sd) persistScrollTopRef.current?.(sd.scrollTop);
+          }
           if (update.docChanged) {
             const content = update.state.doc.toString();
             onChangeRef.current?.(content);
@@ -345,7 +365,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
         }
       },
-      [setCursorPosition, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick],
+      [setCursorPosition, setEditorScrollTop, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick],
     );
 
     useEffect(() => {
@@ -575,7 +595,11 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       viewRef.current = view;
       setView(view);
 
-      // Restore cursor position if provided
+      // Restore cursor position if provided. When we also have a saved
+      // scrollTop, skip scrollIntoView (it would center the cursor and
+      // clobber the exact viewport restored below); otherwise scrollIntoView
+      // brings the cursor into view (no saved scroll to restore).
+      const hasSavedScroll = typeof initialScrollTop === 'number' && initialScrollTop >= 0;
       if (initialCursorLine && initialCursorLine > 0) {
         const lineCount = view.state.doc.lines;
         const targetLine = Math.min(initialCursorLine, lineCount);
@@ -584,7 +608,20 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         const cursorPos = lineInfo.from + col;
         view.dispatch({
           selection: { anchor: cursorPos },
-          scrollIntoView: true,
+          ...(hasSavedScroll ? {} : { scrollIntoView: true }),
+        });
+      }
+      // Restore the exact saved viewport. Layout (line heights, wrap) isn't
+      //  settled until after a frame, so set scrollTop on rAF — and re-set on
+      //  a second rAF to win against CodeMirror's own post-mount scroll
+      //  reconciliation (lineWrapping re-measure can reset it).
+      if (hasSavedScroll) {
+        const target = initialScrollTop as number;
+        const sd = view.scrollDOM;
+        const apply = () => { if (sd) sd.scrollTop = target; };
+        requestAnimationFrame(() => {
+          apply();
+          requestAnimationFrame(apply);
         });
       }
 

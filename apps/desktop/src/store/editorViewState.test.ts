@@ -113,6 +113,44 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorStore.getState().tabs).toEqual([]);
   });
 
+  it('setEditorScrollTop writes the editorScrollTop onto the active tab', () => {
+    useEditorStore.setState({
+      tabs: [
+        { id: 't1', name: 'a.md', path: 'a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+        { id: 't2', name: 'b.md', path: 'b.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+      ],
+      activeTabId: 't1',
+    });
+
+    useEditorViewStateStore.getState().setEditorScrollTop(480);
+
+    const tabs = useEditorStore.getState().tabs;
+    expect(tabs[0].editorScrollTop).toBe(480);
+    expect(tabs[1].editorScrollTop).toBeUndefined();
+  });
+
+  it('setEditorScrollTop is a no-op when no active tab', () => {
+    useEditorStore.setState({ tabs: [], activeTabId: null });
+    useEditorViewStateStore.getState().setEditorScrollTop(100);
+    expect(useEditorStore.getState().tabs).toEqual([]);
+  });
+
+  it('setPreviewScrollTop writes the previewScrollTop onto the active tab', () => {
+    useEditorStore.setState({
+      tabs: [
+        { id: 't1', name: 'a.md', path: 'a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+        { id: 't2', name: 'b.md', path: 'b.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+      ],
+      activeTabId: 't2',
+    });
+
+    useEditorViewStateStore.getState().setPreviewScrollTop(320);
+
+    const tabs = useEditorStore.getState().tabs;
+    expect(tabs[1].previewScrollTop).toBe(320);
+    expect(tabs[0].previewScrollTop).toBeUndefined();
+  });
+
   it('toggleVersionHistory flips versionHistoryVisible', () => {
     useEditorViewStateStore.getState().toggleVersionHistory();
     expect(useEditorViewStateStore.getState().versionHistoryVisible).toBe(true);

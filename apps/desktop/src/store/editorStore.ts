@@ -46,6 +46,14 @@ export interface FileTab {
   cursorLine?: number;
   /** Saved cursor column (1-based) for this tab */
   cursorCol?: number;
+  /** Saved editor scroll top (px) for this tab — restored on remount so
+   *  switching files preserves the exact scroll position (cursorLine alone
+   *  only scrollIntoView's to the cursor, not the precise viewport). */
+  editorScrollTop?: number;
+  /** Saved preview scroll top (px) for this tab — restored on tab switch so
+   *  the preview pane resumes the exact scroll position of each file, not
+   *  the previous file's. */
+  previewScrollTop?: number;
   /** Saved view mode for this tab (restored on tab switch) */
   viewMode?: ViewMode;
 }
