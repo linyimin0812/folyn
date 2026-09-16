@@ -910,6 +910,15 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       const codeEl = el.querySelector('code');
       const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
       alignPoint = codeBlockAlignPoint(srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, padTop);
+    } else if (el.hasAttribute('data-hides-inactive')) {
+      // A show-one-at-a-time container (carousel/tabs): it renders only ONE
+      // child's content, so its rendered height doesn't scale with its full
+      // source-line span — line-proportional interpolation (intraFrac *
+      // blockHeight) maps the cursor onto a fraction of a too-short height,
+      // leaving a small offset. Top-align instead: the cursor anywhere inside
+      // the container aligns to the container's top, so no interpolation
+      // drift (matches list-item top-align).
+      alignPoint = blockOffset;
     } else {
       // Non-code block: headings center on the cursor line (block center,
       // so the highlight box is symmetric around the cursor instead of
