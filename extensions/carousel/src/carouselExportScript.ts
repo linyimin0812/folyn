@@ -8,6 +8,8 @@
  *  - `[data-is-slide="true"]` — slide panels (Carousel shows one at a time)
  *  - `.docmd-carousel[data-carousel-interval]` — auto-advance interval (ms)
  *  - `.docmd-carousel[data-carousel-autoplay="true"]` — auto-advance enabled
+ *  - `.docmd-carousel[data-carousel-align]` — horizontal align (left|center|right)
+ *  - `.docmd-carousel[data-carousel-valign]` — vertical align (top|middle|bottom)
  *
  * Wires up dot-click switching + auto-advance (paused on hover), mirroring the
  * React component's behavior in static HTML where React's onClick/setInterval
@@ -23,10 +25,28 @@ export const carouselExportScript = `
   var slides = c.querySelectorAll('[data-is-slide="true"]');
   if (!slides.length) return;
 
+  var align = inner.getAttribute('data-carousel-align') || 'left';
+  var valign = inner.getAttribute('data-carousel-valign') || 'top';
+
   function go(idx) {
     for (var i = 0; i < slides.length; i++) {
       var active = i === idx;
-      if (slides[i]) slides[i].style.display = active ? 'flex' : 'none';
+      if (!slides[i]) continue;
+      if (active) {
+        // Mirror the React component's effect: pin the visible slide to the
+        // viewport + apply alignment (the effect only styled the slide that
+        // was active at mount time; hidden slides carry no alignment, so in
+        // exported HTML switching to them would show top-left default flow).
+        slides[i].style.display = 'flex';
+        slides[i].style.position = 'absolute';
+        slides[i].style.inset = '0';
+        slides[i].style.flexDirection = 'column';
+        slides[i].style.textAlign = align;
+        slides[i].style.justifyContent = valign === 'middle' ? 'center' : valign === 'bottom' ? 'flex-end' : 'flex-start';
+        slides[i].style.alignItems = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
+      } else {
+        slides[i].style.display = 'none';
+      }
       if (dots[i]) {
         dots[i].style.width = active ? '18px' : '7px';
         dots[i].style.background = active ? 'var(--acc, #068ad5)' : 'var(--brd2, #d4d4d8)';

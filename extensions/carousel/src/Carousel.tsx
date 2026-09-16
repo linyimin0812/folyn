@@ -126,6 +126,8 @@ export function Carousel({ children, attributes }: ContainerProps) {
       className="docmd-carousel"
       data-carousel-interval={autoMs > 0 ? String(autoMs) : undefined}
       data-carousel-autoplay={autoplay ? 'true' : undefined}
+      data-carousel-align={textAlign}
+      data-carousel-valign={vToken}
       style={{
         position: 'relative',
         margin: '1.5rem 0',
