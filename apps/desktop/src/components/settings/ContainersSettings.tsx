@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Folder, FileArchive, Link2, RefreshCw, Copy, Check, X } from 'lucide-react';
+import { Folder, FileArchive, RefreshCw, Copy, Check, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ContainerRegistry, FOLYN_CORE_OWNER, type ContainerExtension, type ContainerCategory } from '@folyn/container-extensions';
 import { isTauri } from '@/utils/platform';
@@ -241,7 +241,6 @@ function ContainerPreviewModal({ ext, builtin, onClose }: {
 export function ContainersSettings() {
   const { t } = useTranslation();
   const [containers, setContainers] = useState<ContainerExtension[]>([]);
-  const [urlInput, setUrlInput] = useState('');
   // The directive whose preview modal is open (null = closed). Parent-owned
   // so there's exactly one modal for the whole gallery, regardless of how
   // many cards are rendered.
@@ -258,7 +257,6 @@ export function ContainersSettings() {
   const clearError = useExtensionStore((s) => s.clearError);
   const installFromFolder = useExtensionStore((s) => s.installFromFolder);
   const installFromZip = useExtensionStore((s) => s.installFromZip);
-  const installFromRawUrl = useExtensionStore((s) => s.installFromRawUrl);
   const approve = useExtensionStore((s) => s.approve);
   const activate = useExtensionStore((s) => s.activate);
   const busy = useExtensionStore(useShallow((s) => s.busy));
@@ -356,31 +354,6 @@ export function ContainersSettings() {
         >
           <FileArchive size={13} />
           {installing ? t('settings:containers.installing', { id: installing.id }) : t('settings:containers.installFromZip')}
-        </button>
-      </div>
-      <div className="flex items-center gap-2 mb-2.5">
-        <Link2 size={13} className="shrink-0 text-t3" />
-        <input
-          className="flex-1 min-w-0 text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1 placeholder:text-t3 focus:outline-none focus:border-acc"
-          placeholder={t('settings:containers.urlPlaceholder')}
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && urlInput.trim() && !installing) {
-              void installFromRawUrl(urlInput.trim()).then(() => setUrlInput(''));
-            }
-          }}
-          disabled={!isTauri() || !!installing}
-        />
-        <button
-          className="btn btn-p btn-sm shrink-0"
-          disabled={!isTauri() || !!installing || !urlInput.trim()}
-          onClick={() => {
-            const u = urlInput.trim();
-            if (u) void installFromRawUrl(u).then(() => setUrlInput(''));
-          }}
-        >
-          {installing ? t('settings:containers.installing', { id: installing.id }) : t('settings:containers.installFromUrl')}
         </button>
       </div>
 
