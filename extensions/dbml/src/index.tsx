@@ -8,8 +8,10 @@
  * render to the extension's iframe so those heavy deps never enter the host.
  *
  * Also contributes the `dbml-svg` + `dbml-png` exporters (manifest
- * `contributes.exporters`). Each handler spawns a hidden iframe at
- * `folyn-extension://localhost/<id>/dbml-preview.html`, posts the .dbml
+ * `contributes.exporters`). Each handler spawns a hidden iframe at this
+ * extension's own origin (`ctx.resolveAssetUrl('dbml-preview.html')` —
+ * `folyn-extension://localhost/<id>/dbml-preview.html` on macOS/Linux,
+ * `http://folyn-extension.localhost/<id>/dbml-preview.html` on Windows), posts the .dbml
  * content, waits for the iframe's x6 graph to render, then asks it to
  * serialize the graph (toSVGAsync / toPNGAsync). The @dbml/core + @antv/x6
  * runtime stays in the iframe bundle — never imported by the host module.
@@ -28,7 +30,7 @@ import type {
   ExporterHandler,
 } from 'folyn-extension-sdk';
 import { DbmlFrame } from './DbmlFrame';
-import { setApi, setExtensionId, getExtensionId } from './api';
+import { setApi, setExtensionId, getExtensionId, setResolveAssetUrl, resolveExtensionAssetUrl } from './api';
 import { DbmlIcon } from './icons';
 
 const provider: FileTypeProvider = {
@@ -76,7 +78,7 @@ async function renderDbmlViaIframe(
   if (!extensionId) throw new Error('dbml export: extension not activated');
 
   const iframe = document.createElement('iframe');
-  iframe.src = `folyn-extension://localhost/${extensionId}/dbml-preview.html`;
+  iframe.src = resolveExtensionAssetUrl('dbml-preview.html');
   iframe.style.cssText =
     'position:absolute;left:-9999px;top:0;width:1024px;height:768px;border:none;visibility:hidden;';
   document.body.appendChild(iframe);
@@ -167,6 +169,7 @@ const module: ExtensionModule = {
   activate(api: ExtensionApi, ctx: ExtensionContext) {
     setApi(api);
     setExtensionId(ctx.extensionId);
+    setResolveAssetUrl(ctx.resolveAssetUrl);
   },
 };
 

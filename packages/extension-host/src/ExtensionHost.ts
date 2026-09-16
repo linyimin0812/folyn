@@ -78,7 +78,7 @@ export interface ExtensionHostHooks {
    * addDisposable by the runtime. */
   createContext?: (
     record: ExtensionRecord,
-  ) => Pick<ExtensionContext, 'extensionId' | 'extensionPath' | 'manifest' | 'vault' | 'ui' | 'logger'>;
+  ) => Pick<ExtensionContext, 'extensionId' | 'extensionPath' | 'manifest' | 'vault' | 'ui' | 'logger' | 'resolveAssetUrl'>;
 }
 
 /** A loader that returns an {@link Extension} for a tier. */
@@ -253,7 +253,7 @@ export class ExtensionHost {
   }
 }
 
-function defaultContext(record: ExtensionRecord): Pick<ExtensionContext, 'extensionId' | 'extensionPath' | 'manifest' | 'vault' | 'ui' | 'logger'> {
+function defaultContext(record: ExtensionRecord): Pick<ExtensionContext, 'extensionId' | 'extensionPath' | 'manifest' | 'vault' | 'ui' | 'logger' | 'resolveAssetUrl'> {
   return {
     extensionId: record.manifest.id,
     extensionPath: record.manifest.main,
@@ -261,6 +261,9 @@ function defaultContext(record: ExtensionRecord): Pick<ExtensionContext, 'extens
     vault: { name: 'default', path: 'default' } satisfies VaultContext,
     ui: { dialogs: noopDialogs, notifications: noopNotifications } satisfies ExtensionUIContext,
     logger: consoleLogger,
+    // Test/no-host fallback: assume the navigable custom-scheme form
+    // (macOS/Linux). Real host injects the platform-correct rewrite.
+    resolveAssetUrl: (file) => `folyn-extension://localhost/${record.manifest.id}/${file}`,
   };
 }
 

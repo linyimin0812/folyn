@@ -20,7 +20,7 @@
 import type { ReactNode } from 'react';
 import type { ExtensionModule, FileTypeProvider, ExtensionApi, ExtensionContext } from 'folyn-extension-sdk';
 import { OfficeFrame } from './OfficeFrame';
-import { setApi, setExtensionId } from './api';
+import { setApi, setExtensionId, setResolveAssetUrl } from './api';
 import {
   DocIcon, PresentationIcon, SpreadsheetIcon, PdfIcon, ArchiveIcon, EmailIcon,
   CadIcon, Model3dIcon, EbookIcon, ImageIcon, AudioIcon, VideoIcon, FontIcon,
@@ -65,6 +65,7 @@ const extensionModule: ExtensionModule = {
   activate(api: ExtensionApi, ctx: ExtensionContext) {
     setApi(api);
     setExtensionId(ctx.extensionId);
+    setResolveAssetUrl(ctx.resolveAssetUrl);
   },
 };
 

@@ -130,6 +130,21 @@ export interface ExtensionContext {
   readonly logger: ExtensionLogger;
 
   addDisposable(disposable: Disposable): void;
+
+  /** Resolve a file inside this extension's own `folyn-extension://` origin
+   *  (e.g. `'preview.html'`, `'dbml-preview.html'`) to a URL the webview
+   *  can navigate to as an iframe `src`. The raw `folyn-extension://`
+   *  form is navigable on macOS/Linux (WKWebView) but NOT on Windows/Android
+   *  WebView2, where a custom scheme is only fetchable as a sub-resource and
+   *  cannot be a top-level document unless registered as a privileged scheme
+   *  (CoreWebView2CustomSchemeRegistration — Tauri/wry does not do this;
+   *  tauri-apps/tauri#10667). There the host rewrite is
+   *  `http://folyn-extension.localhost/<id>/<file>` (the same rule Tauri's
+   *  runtime applies in `convertFileSrc`). Use this for every iframe `src`
+   *  into the extension origin; never hardcode `folyn-extension://localhost`.
+   *  `file` is relative to the extension's served root (the `dist/` the
+   *  scheme serves), MUST NOT start with `/`, and is appended verbatim. */
+  resolveAssetUrl(file: string): string;
 }
 
 // ── ExtensionApi (doc §5) ───────────────────────────────────────────────────

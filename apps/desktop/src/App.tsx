@@ -90,6 +90,21 @@ extensionHost.setHooks({
       workspace: workspaceApi,
     } as ToolExtensionUIContext,
     logger: console,
+    // Mirrors Tauri's runtime convertFileSrc rule (tauri/scripts/core.js):
+    // Windows/Android serve a registered custom scheme under
+    // `${protocolScheme}://${scheme}.localhost`, and the raw `scheme://`
+    // form is NOT navigable as a top-level document there (Tauri/wry does
+    // not call CoreWebView2CustomSchemeRegistration — tauri-apps/tauri#10667).
+    // So on an http(s) app origin (Windows/Android) the iframe src must be
+    // `http://folyn-extension.localhost/<id>/<file>`; on macOS/Linux the
+    // custom-scheme form `folyn-extension://localhost/<id>/<file>` works.
+    resolveAssetUrl: (file) => {
+      const proto = window.location.protocol;
+      if (proto === 'http:' || proto === 'https:') {
+        return `${proto}//folyn-extension.localhost/${record.manifest.id}/${file}`;
+      }
+      return `folyn-extension://localhost/${record.manifest.id}/${file}`;
+    },
   }),
 });
 

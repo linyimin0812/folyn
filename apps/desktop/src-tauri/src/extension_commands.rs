@@ -77,8 +77,17 @@ pub fn content_type_for(path: &str) -> &'static str {
 /// directives, so `eval` grants no capability the extension did not already
 /// have. `worker-src` is explicit because it would otherwise fall back to
 /// `default-src 'none'` and block the renderers' workers.
+///
+/// Every sub-resource directive lists BOTH `folyn-extension:` (the
+/// navigable custom-scheme origin on macOS/Linux, where the document origin
+/// is `folyn-extension://localhost`) AND `'self'` (the Windows/Android
+/// WebView2 origin, where Tauri serves the same scheme under
+/// `http://folyn-extension.localhost` because wry does not register a
+/// privileged custom scheme — tauri-apps/tauri#10667). `'self'` resolves to
+/// the iframe's own http origin there, so scripts/workers/wasm/images from
+/// the extension's own origin load; it does NOT broaden the origin set.
 pub const EXTENSION_CSP: &str =
-    "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' folyn-extension:; style-src 'unsafe-inline' folyn-extension:; connect-src folyn-extension:; worker-src folyn-extension: blob:; img-src folyn-extension: data: blob:; font-src folyn-extension: data:; media-src folyn-extension: data: blob:";
+    "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'self' folyn-extension:; style-src 'unsafe-inline' 'self' folyn-extension:; connect-src 'self' folyn-extension:; worker-src 'self' folyn-extension: blob:; img-src 'self' folyn-extension: data: blob:; font-src 'self' folyn-extension: data:; media-src 'self' folyn-extension: data: blob:";
 
 /// Resolve `~/.folyn/extensions/` using the Tauri path resolver.
 pub fn extensions_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
