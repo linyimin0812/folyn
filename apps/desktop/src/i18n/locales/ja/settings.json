@@ -742,7 +742,8 @@
     },
     "store": {
       "tabContainers": "コンテナ指令",
-      "containers": "コンテナ指令"
+      "containers": "コンテナ指令",
+      "tabInstalled": "拡張機能"
     }
   },
   "voice": {

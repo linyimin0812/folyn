@@ -696,7 +696,7 @@
     "installFromFolder": "Install from folder…",
     "installFromZip": "Install from .zip…",
     "store": {
-      "tabInstalled": "Installed",
+      "tabInstalled": "Extensions",
       "tabStore": "Store",
       "install": "Install",
       "installed": "Installed",

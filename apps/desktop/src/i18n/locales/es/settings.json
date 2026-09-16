@@ -736,7 +736,8 @@
     },
     "store": {
       "tabContainers": "Contenedores",
-      "containers": "Contenedores"
+      "containers": "Contenedores",
+      "tabInstalled": "Extensiones"
     }
   },
   "voice": {
