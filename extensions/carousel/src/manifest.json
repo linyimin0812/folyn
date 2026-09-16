@@ -37,6 +37,12 @@
         "template": ":::slide\n单张幻灯片内容（用在 :::carousel 内部）\n:::",
         "description": "单张幻灯片（用在 ::::carousel 内部）"
       }
+    ],
+    "exportEnhancers": [
+      {
+        "name": "carousel",
+        "run": "carouselEnhancer"
+      }
     ]
   }
 }
