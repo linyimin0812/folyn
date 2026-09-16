@@ -706,7 +706,8 @@
       "empty": "No extensions in the store yet",
       "error": "Failed to load store",
       "installFromUrl": "Install from URL",
-      "urlPlaceholder": "Paste a github.com Release zip URL…"
+      "urlPlaceholder": "Paste a github.com Release zip URL…",
+      "tabContainers": "Containers"
     },
     "installing": "Installing ({{id}})…",
     "refresh": "Refresh",

@@ -733,6 +733,9 @@
       "warning": "Trusted Extensions laufen im Hauptprozess und haben volle Host-Fähigkeiten (Vault lesen/schreiben, Tauri-Befehle aufrufen, auf den gesamten React-State zugreifen). Genehmigung bedeutet volles Vertrauen — nur Extensions aus vertrauten Quellen genehmigen.",
       "cancel": "Abbrechen",
       "confirm": "Verstanden, genehmigen"
+    },
+    "store": {
+      "tabContainers": "Container"
     }
   },
   "voice": {

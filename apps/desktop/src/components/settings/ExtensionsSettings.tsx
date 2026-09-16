@@ -33,6 +33,7 @@ import i18n from '@/i18n';
 import { isTauri } from '@/utils/platform';
 import { useExtensionStore, type ExtensionRow, type CatalogEntry, pickCatalogText } from '@/store/extensionStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import { ContainersSettings } from '@/components/settings/ContainersSettings';
 import { Toggle } from '@/components/settings/primitives';
 import { ThemeIcon, hasIcon } from '@/components/icons/ThemeIcon';
 
@@ -478,7 +479,7 @@ export function ExtensionsSettings() {
   const [urlInput, setUrlInput] = useState('');
   // Tab is component-local UI state (only this component reads it), so useState
   // per state-management.md — no store needed.
-  const [tab, setTab] = useState<'installed' | 'store'>('installed');
+  const [tab, setTab] = useState<'installed' | 'containers' | 'store'>('installed');
 
   // Refresh on mount + whenever the tab gains focus (cheap; guards against
   // external mutation). The listener in App.tsx also calls refresh on
@@ -552,6 +553,12 @@ export function ExtensionsSettings() {
           {t('settings:extensions.store.tabInstalled')}
         </button>
         <button
+          className={`px-3 py-1.5 text-[length:calc(var(--ui-font-size)-1px)] font-medium border-b-2 -mb-px ${tab === 'containers' ? 'border-acc text-t1' : 'border-transparent text-t3 hover:text-t2'}`}
+          onClick={() => setTab('containers')}
+        >
+          {t('settings:extensions.store.tabContainers')}
+        </button>
+        <button
           className={`px-3 py-1.5 text-[length:calc(var(--ui-font-size)-1px)] font-medium border-b-2 -mb-px ${tab === 'store' ? 'border-acc text-t1' : 'border-transparent text-t3 hover:text-t2'}`}
           onClick={() => setTab('store')}
         >
@@ -599,6 +606,10 @@ export function ExtensionsSettings() {
             </div>
           )}
         </>
+      )}
+
+      {tab === 'containers' && (
+        <ContainersSettings />
       )}
 
       {tab === 'store' && (

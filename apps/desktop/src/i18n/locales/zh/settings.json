@@ -706,7 +706,8 @@
       "empty": "商店暂无可用扩展",
       "error": "商店加载失败",
       "installFromUrl": "从 URL 安装",
-      "urlPlaceholder": "粘贴 github.com Release zip 直链…"
+      "urlPlaceholder": "粘贴 github.com Release zip 直链…",
+      "tabContainers": "容器指令"
     },
     "installing": "安装中（{{id}}）…",
     "refresh": "刷新",

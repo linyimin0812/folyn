@@ -733,6 +733,9 @@
       "warning": "Los extensions trusted se ejecutan en el proceso principal y tienen todas las capacidades del host (leer/escribir el vault, invocar comandos Tauri, acceder a todo el estado de React). Aprobar es confianza total — solo aprueba extensions de fuentes de confianza.",
       "cancel": "Cancelar",
       "confirm": "Entiendo, aprobar"
+    },
+    "store": {
+      "tabContainers": "Contenedores"
     }
   },
   "voice": {
