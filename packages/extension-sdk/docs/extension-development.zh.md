@@ -39,7 +39,8 @@ Trusted tier 插件还需额外点一次 **批准并授权**（见 [TOFU](#tofu-
 
 ### 安装 SDK
 
-用 `folyn-extension-sdk` 给你的 manifest 做类型守卫——它是可发布到 npm 的类型包
+用 `folyn-extension-sdk` 给你的 manifest 做类型守卫——已发布在
+[npm](https://www.npmjs.com/package/folyn-extension-sdk) 上的类型包
 （manifest schema、贡献点、`ExtensionModule`、AI 能力类型，以及 `defineExtension`/
 `validateManifest` 等 dev helper）。它无运行时依赖；React 仅作 peer 类型
 （type-only 消费者在构建时被擦除）。

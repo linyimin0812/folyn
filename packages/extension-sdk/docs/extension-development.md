@@ -155,7 +155,8 @@ After install + activate:
 
 ### Install the SDK
 
-Type your manifest against `folyn-extension-sdk` — the publishable type package
+Type your manifest against `folyn-extension-sdk` — the type package published on
+[npm](https://www.npmjs.com/package/folyn-extension-sdk)
 (manifest schema, contribution points, `ExtensionModule`, AI capability types,
 and dev helpers like `defineExtension` / `validateManifest`). It has no runtime
 dependency; React is a peer type only (erased at build for type-only

@@ -1,21 +1,21 @@
 {
   "name": "folyn-extension-sdk",
-  "version": "0.0.1",
-  "description": "Folyn Extension SDK — manifest schema, contribution points, contracts, and dev helpers. Publishable to npm; no runtime.",
+  "version": "0.1.0",
+  "description": "Folyn Extension SDK — manifest schema, contribution points, contracts, and dev helpers. Type-only at runtime; publishable to npm.",
   "type": "module",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "import": "./index.ts",
-      "default": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
+  "sideEffects": false,
   "files": [
     "dist",
-    "index.ts",
-    "src",
+    "docs",
     "README.md"
   ],
   "scripts": {
@@ -24,6 +24,24 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "clean": "rm -rf dist"
   },
+  "license": "MIT",
+  "author": "linyimin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linyimin0812/folyn.git",
+    "directory": "packages/extension-sdk"
+  },
+  "homepage": "https://github.com/linyimin0812/folyn/tree/master/packages/extension-sdk",
+  "bugs": {
+    "url": "https://github.com/linyimin0812/folyn/issues"
+  },
+  "keywords": [
+    "folyn",
+    "extension",
+    "sdk",
+    "plugin",
+    "markdown-editor"
+  ],
   "peerDependencies": {
     "react": "^18.0.0"
   },

@@ -1,6 +1,6 @@
 # Extension SDK Reference
 
-Extension SDK (`folyn-extension-sdk`) 类型契约与示例速查。运行时微内核（`ExtensionHost`）位于 `@folyn/extension-host`。
+Extension SDK (`folyn-extension-sdk`，已发布在 [npm](https://www.npmjs.com/package/folyn-extension-sdk)) 类型契约与示例速查。运行时微内核（`ExtensionHost`）位于 `@folyn/extension-host`。
 
 ## 1. 安装
 

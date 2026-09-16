@@ -171,7 +171,7 @@ folyn/
 - **`cli-adapter` package** — Implement the adapter interface to plug in a new CLI Agent
 - **`container-extensions` package** — Custom `:::directive` container extensions, registered to the slash menu
 - **`vault-provider` package** — Custom storage backends (beyond local / GitHub / WebDAV / S3)
-- **`extension-host` + `extension-sdk`** — Third-party extensions register capabilities via the SDK; the microkernel loads them on demand
+- **`extension-host` + `extension-sdk`** — Third-party extensions register capabilities via the SDK (published on npm as [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk)); the microkernel loads them on demand
 - **`create-folyn-extension`** — Scaffolding CLI to quickly start a new extension
 - **File types** — Register a new Handler under `apps/desktop/src/components/file-types/` to extend file types
 

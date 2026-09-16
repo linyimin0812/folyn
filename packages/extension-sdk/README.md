@@ -22,6 +22,8 @@ tarball is just `.d.ts` + a tiny ESM barrel.
 
 ## Install
 
+Published on npm as [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk).
+
 ```bash
 npm install folyn-extension-sdk
 # or
@@ -52,8 +54,8 @@ validateManifest(manifest);
 
 For the full extension authoring guide (manifest schema, contribution points,
 permissions, two execution tiers, sandbox RPC protocol, host environment
-capability), see **[docs/extension-development.md](../../docs/extension-development.md)**
-in the source repo.
+capability), see **[docs/extension-development.md](./docs/extension-development.md)**
+(bundled in this package, also in the source repo).
 
 ## Two execution tiers
 
