@@ -124,6 +124,8 @@ export function Carousel({ children, attributes }: ContainerProps) {
   return (
     <div
       className="docmd-carousel"
+      data-carousel-interval={autoMs > 0 ? String(autoMs) : undefined}
+      data-carousel-autoplay={autoplay ? 'true' : undefined}
       style={{
         position: 'relative',
         margin: '1.5rem 0',
@@ -155,6 +157,8 @@ export function Carousel({ children, attributes }: ContainerProps) {
                 type="button"
                 aria-label={s.label}
                 title={s.label}
+                data-carousel-dot="true"
+                data-index={i}
                 onClick={() => go(i)}
                 style={{
                   width: i === active ? 18 : 7,

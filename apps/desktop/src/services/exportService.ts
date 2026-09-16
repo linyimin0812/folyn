@@ -569,14 +569,16 @@ export const HTML_STYLES = `
 
 /**
  * Inline `<script>` injected into the exported HTML `<head>` to make container
- * directives that rely on React synthetic events work in static HTML. Currently
- * wires up `::::tabs` click-to-switch via event delegation on `[data-tab-button]`.
+ * directives that rely on React synthetic events work in static HTML. Wires up:
+ *  - `::::tabs` click-to-switch via event delegation on `[data-tab-button]`
+ *  - `::::carousel` dot click-to-switch + auto-advance via `[data-carousel-dot]`
  *
- * ponytail: one global listener covers every tabs block in the doc — smaller
- * than per-block script injection and avoids duplicate handlers on re-render.
- * Initial display (tab 0 visible, others hidden) is set by TabsComponent's
- * useEffect during the in-DOM render mount, so the script only handles clicks.
- */
+ * ponytail: one global listener per directive covers every block in the doc —
+ * smaller than per-block script injection and avoids duplicate handlers on
+ * re-render. Initial display (tab 0 / slide 0 visible, others hidden) is set
+ * by the component's useEffect during the in-DOM render mount, so the script
+ * only handles clicks + auto-advance (which needs a live timer the SSR'd
+ * HTML can't carry). */
 export const CONTAINER_INTERACT_SCRIPT = `
     document.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('[data-tab-button]');
@@ -593,6 +595,49 @@ export const CONTAINER_INTERACT_SCRIPT = `
         btns[i].style.backgroundColor = active ? 'var(--panel, #fff)' : 'transparent';
         if (panels[i]) panels[i].style.display = active ? 'block' : 'none';
       }
+    });
+    // Carousel: dot click → switch to that slide; auto-advance on a timer.
+    function carouselGo(c, idx) {
+      var dots = c.querySelectorAll('button[data-carousel-dot]');
+      var slides = c.querySelectorAll('[data-is-slide="true"]');
+      for (var i = 0; i < slides.length; i++) {
+        var active = i === idx;
+        if (slides[i]) slides[i].style.display = active ? 'flex' : 'none';
+        if (dots[i]) {
+          dots[i].style.width = active ? '18px' : '7px';
+          dots[i].style.background = active ? 'var(--acc, #068ad5)' : 'var(--brd2, #d4d4d8)';
+        }
+      }
+      c.setAttribute('data-carousel-active', String(idx));
+    }
+    document.addEventListener('click', function (e) {
+      var dot = e.target.closest && e.target.closest('button[data-carousel-dot]');
+      if (!dot) return;
+      var c = dot.closest('[data-container="carousel"]');
+      if (!c) return;
+      var dots = c.querySelectorAll('button[data-carousel-dot]');
+      carouselGo(c, Array.prototype.indexOf.call(dots, dot));
+    });
+    // Auto-advance: for each carousel with autoplay + interval, start a timer.
+    document.querySelectorAll('[data-container="carousel"]').forEach(function (c) {
+      var inner = c.querySelector('.docmd-carousel[data-carousel-interval]');
+      if (!inner) return;
+      if (inner.getAttribute('data-carousel-autoplay') !== 'true') return;
+      var ms = parseInt(inner.getAttribute('data-carousel-interval'), 10);
+      if (!(ms > 0)) return;
+      var slides = c.querySelectorAll('[data-is-slide="true"]');
+      if (slides.length < 2) return;
+      var idx = 0;
+      c.setAttribute('data-carousel-active', '0');
+      // Pause on hover (mirrors the React component).
+      var paused = false;
+      inner.addEventListener('mouseenter', function () { paused = true; });
+      inner.addEventListener('mouseleave', function () { paused = false; });
+      setInterval(function () {
+        if (paused) return;
+        idx = (idx + 1) % slides.length;
+        carouselGo(c, idx);
+      }, ms);
     });
 `;
 
