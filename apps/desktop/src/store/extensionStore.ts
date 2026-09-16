@@ -337,10 +337,13 @@ async function fetchRows(): Promise<ExtensionRow[]> {
         const manifest = JSON.parse(manifestText) as {
           icon?: string;
           description?: string;
-          contributes?: Record<string, Array<{ icon?: string }>>;
+          contributes?: Record<string, Array<{ icon?: string; description?: string }>>;
         };
         icon = resolveManifestIcon(manifest);
-        description = manifest.description;
+        description = manifest.description
+          ?? (Array.isArray(manifest.contributes?.containers)
+            ? manifest.contributes.containers[0]?.description
+            : undefined);
         contributesContainers = Array.isArray(manifest.contributes?.containers)
           ? manifest.contributes.containers.length
           : 0;
