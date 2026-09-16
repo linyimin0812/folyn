@@ -364,14 +364,24 @@ export function PetPanelApp() {
   // Internal clicks never cost focus (the panel stays key), so interacting
   // with the search box / tabs / chat does NOT close the panel.
   //
-  // ponytail: subscribe to `tauri://focus` + `tauri://blur` via the event
-  // API (`@tauri-apps/api/event`, the shared mock) rather than
-  // `getCurrentWindow().onFocusChanged()`. A mount-time
-  // `getCurrentWindow()` dynamic import desynced Vitest's
-  // `vi.mock('@tauri-apps/api/window')` cache and broke the click-path
-  // minimize/toggleMaximize mocks — the event API is already used by every
-  // other listener here and stays test-stable. These are global events,
-  // but this JS realm IS the pet-panel window, so any focus/blur is ours.
+  // ponytail: scope the focus/blur listener to the PANEL window only via
+  // `listen(..., { target: { kind: 'Window', label: 'pet-panel' } })`. A
+  // BARE `listen('tauri://focus'/'blur')` defaults to `target: { kind: 'Any' }`
+  // and fires for EVERY window's focus/blur — so on Windows (where the panel
+  // is a plain always-on-top window, unlike macOS's non-activating NSPanel)
+  // `pet_panel_show`'s `set_focus()` transfers focus off the previously-
+  // focused window → that window emits `tauri://blur` → the Any-target
+  // handler hides the just-shown, unpinned panel (闪一下又自动关闭).
+  // Window-scoping means only the PANEL's own focus/blur drives auto-hide;
+  // other windows' focus churn can't reach in. macOS was unaffected only
+  // because its non-activating NSPanel doesn't steal focus on `set_focus()`,
+  // so no other window ever blurred. The label is hardcoded `'pet-panel'`
+  // (this component mounts only in that window — same label already used
+  // for `pet_set_topmost_level`/`pet_make_transparent` below). Not
+  // `getCurrentWindow().onFocusChanged()` because a mount-time
+  // `getCurrentWindow()` call desyncs the `vi.mock('@tauri-apps/api/window')`
+  // cache in tests and lets the real module run — same reason every other
+  // listener here uses the event API.
   useEffect(() => {
     if (!isTauri()) return;
     let unFocus: (() => void) | undefined;
@@ -379,15 +389,16 @@ export function PetPanelApp() {
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
+        const panelTarget = { target: { kind: 'Window' as const, label: 'pet-panel' } };
         unFocus = await listen('tauri://focus', () => {
           panelFocusedRef.current = true;
-        });
+        }, panelTarget);
         unBlur = await listen('tauri://blur', () => {
           if (panelFocusedRef.current && !isPinnedRef.current) {
             panelFocusedRef.current = false;
             void hidePanel();
           }
-        });
+        }, panelTarget);
       } catch (err) {
         console.warn('[pet-panel] focus/blur listener failed:', err);
       }
