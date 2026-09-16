@@ -1,0 +1,32 @@
+{
+  "id": "__id__",
+  "name": "__Name__",
+  "version": "__version__",
+  "author": "__author__",
+  "folyn": "__folyn__",
+  "tier": "sandbox",
+  "main": "index.js",
+  "html": "index.html",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "commands": [],
+    "fileTypes": [],
+    "containers": [],
+    "features": [],
+    "tools": [],
+    "exporters": [],
+    "fileTemplates": [],
+    "keybindings": [],
+    "exportEnhancers": [],
+    "markdownCodeRenderers": [],
+    "editorLanguages": []
+  }
+}

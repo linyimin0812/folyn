@@ -1,0 +1,16 @@
+{
+  "name": "__pkgName__",
+  "version": "__version__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "folyn-extension-sdk": "^0.1.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -6,7 +6,7 @@
   "bin": {
     "create-folyn-extension": "dist/index.js"
   },
-  "files": ["dist", "template"],
+  "files": ["dist", "template", "README.md"],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "tsc",
@@ -14,6 +14,25 @@
     "test": "tsc && node test/smoke.mjs",
     "clean": "rm -rf dist"
   },
+  "license": "MIT",
+  "author": "linyimin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linyimin0812/folyn.git",
+    "directory": "packages/create-folyn-extension"
+  },
+  "homepage": "https://github.com/linyimin0812/folyn/tree/master/packages/create-folyn-extension",
+  "bugs": {
+    "url": "https://github.com/linyimin0812/folyn/issues"
+  },
+  "keywords": [
+    "folyn",
+    "extension",
+    "scaffold",
+    "create",
+    "cli",
+    "scaffolding"
+  ],
   "devDependencies": {
     "@types/node": "^20.14.0",
     "typescript": "^5.7.0"
