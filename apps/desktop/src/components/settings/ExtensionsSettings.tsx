@@ -466,6 +466,9 @@ function StoreEntryCard({ entry }: { entry: CatalogEntry }) {
 export function ExtensionsSettings() {
   const { t } = useTranslation();
   const rows = useExtensionStore((s) => s.rows);
+  // The Extensions tab excludes container extensions — they're managed in the
+  // Containers tab, so don't duplicate them here.
+  const installedRows = rows.filter((r) => (r.contributesContainers ?? 0) === 0);
   const refreshing = useExtensionStore((s) => s.refreshing);
   const installing = useExtensionStore((s) => s.installing);
   const error = useExtensionStore((s) => s.error);
@@ -599,13 +602,13 @@ export function ExtensionsSettings() {
             </div>
           )}
 
-          {rows.length === 0 ? (
+          {installedRows.length === 0 ? (
             <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
               {t('settings:extensions.empty')}
             </div>
           ) : (
             <div>
-              {rows.map((row) => (
+              {installedRows.map((row) => (
                 <ExtensionRowCard key={row.entry.id} row={row} />
               ))}
             </div>
