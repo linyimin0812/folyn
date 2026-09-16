@@ -25,6 +25,8 @@ import { useExtensionStore } from '@/store/extensionStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { ContainerPreview } from '@/components/settings/ContainerPreview';
 import { Toggle } from '@/components/settings/primitives';
+import { ExtensionIcon } from '@/components/settings/ExtensionsSettings';
+import type { ExtensionRow } from '@/store/extensionStore';
 
 /** Stable category ordering for the gallery (matches the slash-menu groups). */
 const CATEGORY_ORDER: ContainerCategory[] = ['layout', 'media', 'ai', 'data', 'custom'];
@@ -123,6 +125,72 @@ function ContainerCard({ ext, builtin, onPreview }: {
             {uninstalling ? t('settings:containers.uninstalling') : t('settings:containers.uninstall')}
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** A pending (not-yet-active) container extension card — same layout as
+ *  an installed ContainerCard, but driven by ExtensionRow metadata (the
+ *  extension isn't activated, so its containers aren't in the registry yet).
+ *  No preview (containers can't render until activated); just icon + name +
+ *  badges + description + Approve/Uninstall buttons. */
+function PendingContainerCard({ row, onApprove, onUninstall }: {
+  row: ExtensionRow;
+  onApprove: () => void;
+  onUninstall: () => void;
+}) {
+  const { t } = useTranslation();
+  const approveBusy = useExtensionStore(useShallow((s) => !!s.busy[`${row.entry.id}:approve`]));
+  const uninstallBusy = useExtensionStore(useShallow((s) => !!s.busy[`${row.entry.id}:uninstall`]));
+  const anyBusy = approveBusy || uninstallBusy;
+  const needsApproval = row.entry.tier === 'trusted' && !row.entry.trusted;
+
+  return (
+    <div className="flex items-start gap-1 bg-surf border border-brd rounded-lg p-2 transition-colors hover:border-acc hover:bg-hov/40 min-w-0">
+      <div className="flex items-start gap-2 min-w-0 flex-1">
+        <ExtensionIcon icon={row.icon} name={row.entry.name} />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
+              {row.entry.name}
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
+              {t('settings:containers.external')}
+            </span>
+            <span className="text-[10.5px] text-t3 font-mono truncate">
+              {row.entry.id}
+            </span>
+          </div>
+          {row.description && (
+            <div className="text-[11px] text-t2 mt-0.5 truncate" title={row.description}>
+              {row.description}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 mt-0.5">
+        <button
+          type="button"
+          className="btn btn-p btn-sm"
+          disabled={anyBusy}
+          onClick={onApprove}
+        >
+          {approveBusy
+            ? t('settings:containers.approving')
+            : needsApproval
+              ? t('settings:containers.approve')
+              : t('settings:containers.activate')}
+        </button>
+        <button
+          type="button"
+          className="btn btn-d btn-sm"
+          disabled={anyBusy}
+          onClick={onUninstall}
+          title={t('settings:containers.uninstallTitle')}
+        >
+          {uninstallBusy ? t('settings:containers.uninstalling') : t('settings:containers.uninstall')}
+        </button>
       </div>
     </div>
   );
@@ -260,7 +328,6 @@ export function ContainersSettings() {
   const approve = useExtensionStore((s) => s.approve);
   const activate = useExtensionStore((s) => s.activate);
   const uninstall = useExtensionStore((s) => s.uninstall);
-  const busy = useExtensionStore(useShallow((s) => s.busy));
 
   const [folderOpen, setFolderOpen] = useState(false);
   const [zipOpen, setZipOpen] = useState(false);
@@ -356,61 +423,43 @@ export function ContainersSettings() {
       )}
 
       {pending.length > 0 && (
-        <div className="mb-3 border border-amber/40 bg-amber/5 rounded-lg p-2.5">
-          <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1.5">
-            {t('settings:containers.pendingTitle')}
+        <div className="mb-3.5">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-[3px] h-[12px] rounded-full bg-amber-500" />
+            <h3 className="text-[11.5px] font-bold text-t1 m-0">
+              {t('settings:containers.pendingTitle')}
+            </h3>
+            <span className="text-[10px] text-t3">{pending.length}</span>
           </div>
-          {pending.map((r) => {
-            const needsApproval = r.entry.tier === 'trusted' && !r.entry.trusted;
-            const approveBusy = !!busy[`${r.entry.id}:approve`];
-            const uninstallBusy = !!busy[`${r.entry.id}:uninstall`];
-            const handleUninstall = async () => {
-              const { confirm } = await import('@tauri-apps/plugin-dialog');
-              const ok = await confirm(t('settings:containers.uninstallConfirm.message'), {
-                title: t('settings:containers.uninstallConfirm.title'),
-                okLabel: t('settings:containers.uninstallConfirm.confirm'),
-                cancelLabel: t('settings:containers.uninstallConfirm.cancel'),
-              });
-              if (ok) void uninstall(r.entry.id);
-            };
-            return (
-              <div key={r.entry.id} className="flex items-center justify-between gap-2 py-1">
-                <div className="min-w-0">
-                  <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
-                    {r.entry.name}
-                  </span>
-                  <span className="text-[10.5px] text-t3 font-mono ml-2">{r.entry.id}</span>
-                  <div className="text-[11px] text-t2 mt-0.5">
-                    {t('settings:containers.pendingHint', { count: r.contributesContainers ?? 0 })}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    className="btn btn-p btn-sm"
-                    disabled={approveBusy || uninstallBusy}
-                    onClick={() => {
-                      if (needsApproval) void approve(r.entry.id);
-                      else void activate(r.entry.id);
-                    }}
-                  >
-                    {approveBusy
-                      ? t('settings:containers.approving')
-                      : needsApproval
-                        ? t('settings:containers.approve')
-                        : t('settings:containers.activate')}
-                  </button>
-                  <button
-                    className="btn btn-d btn-sm"
-                    disabled={approveBusy || uninstallBusy}
-                    onClick={() => void handleUninstall()}
-                    title={t('settings:containers.uninstallTitle')}
-                  >
-                    {uninstallBusy ? t('settings:containers.uninstalling') : t('settings:containers.uninstall')}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: 'repeat(2, 1fr)', alignItems: 'start' }}
+          >
+            {pending.map((r) => {
+              const needsApproval = r.entry.tier === 'trusted' && !r.entry.trusted;
+              const handleApprove = () => {
+                if (needsApproval) void approve(r.entry.id);
+                else void activate(r.entry.id);
+              };
+              const handleUninstall = async () => {
+                const { confirm } = await import('@tauri-apps/plugin-dialog');
+                const ok = await confirm(t('settings:containers.uninstallConfirm.message'), {
+                  title: t('settings:containers.uninstallConfirm.title'),
+                  okLabel: t('settings:containers.uninstallConfirm.confirm'),
+                  cancelLabel: t('settings:containers.uninstallConfirm.cancel'),
+                });
+                if (ok) void uninstall(r.entry.id);
+              };
+              return (
+                <PendingContainerCard
+                  key={r.entry.id}
+                  row={r}
+                  onApprove={handleApprove}
+                  onUninstall={() => void handleUninstall()}
+                />
+              );
+            })}
+          </div>
         </div>
       )}
 
