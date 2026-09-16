@@ -65,7 +65,13 @@ export function DbmlFrame({ content, onChange }: PreviewProps): React.JSX.Elemen
       <iframe
         ref={iframeRef}
         src={src}
-        sandbox="allow-scripts allow-same-origin"
+        // allow-top-navigation-to-custom-protocols: WebView2 (Windows/Chromium)
+        // blocks external-protocol navigation inside a sandboxed iframe
+        // (SandboxExternalProtocolBlocked). WKWebView (macOS) does not enforce
+        // it, so the missing flag only bites on Windows. The flag permits
+        // navigating to custom protocols only (OS-delegated); no top-navigation
+        // to http(s), and the iframe stays cross-origin to the host.
+        sandbox="allow-scripts allow-same-origin allow-top-navigation-to-custom-protocols"
         title="DBML ER diagram"
         style={{ width: '100%', height: '100%', border: 'none' }}
       />

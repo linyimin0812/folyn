@@ -75,7 +75,16 @@ export function OfficeFrame({ filePath }: PreviewProps): React.JSX.Element {
       <iframe
         ref={iframeRef}
         src={src}
-        sandbox="allow-scripts allow-same-origin"
+        // allow-top-navigation-to-custom-protocols: WebView2 (Windows/Chromium)
+        // blocks any external-protocol navigation inside a sandboxed iframe
+        // (SandboxExternalProtocolBlocked) — without this flag, docx/pptx/etc.
+        // that contain external-protocol links (mailto:, ms-word:, …) throw
+        // "Navigation to external protocol blocked by sandbox". WKWebView
+        // (macOS) does not enforce this, so the bug is Windows-only. The flag
+        // only permits navigating to custom protocols (delegated to the OS);
+        // it does NOT grant top-navigation to http(s), and the iframe stays
+        // cross-origin to the host so it still can't reach parent.__TAURI__.
+        sandbox="allow-scripts allow-same-origin allow-top-navigation-to-custom-protocols"
         title="File Viewer"
         style={{ width: '100%', height: '100%', border: 'none' }}
       />
