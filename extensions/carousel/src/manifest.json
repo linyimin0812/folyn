@@ -6,7 +6,7 @@
   "folyn": ">=0.1.0",
   "tier": "trusted",
   "main": "dist/index.js",
-  "icon": "🎠",
+  "icon": "C",
   "permissions": {
     "fs": { "scope": [] },
     "http": { "origins": [] },
@@ -20,7 +20,7 @@
     "containers": [
       {
         "name": "carousel",
-        "icon": "🎠",
+        "icon": "C",
         "label": "走马灯",
         "category": "layout",
         "component": "Carousel",

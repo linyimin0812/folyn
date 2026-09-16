@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Folder, FileArchive, RefreshCw, Copy, Check, X } from 'lucide-react';
+import { Folder, FileArchive, Copy, Check, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ContainerRegistry, FOLYN_CORE_OWNER, type ContainerExtension, type ContainerCategory } from '@folyn/container-extensions';
 import { isTauri } from '@/utils/platform';
@@ -497,11 +497,6 @@ export function ContainersSettings() {
           ))}
         </div>
       )}
-
-      <div className="mt-2.5 text-[11px] text-t3 flex items-center gap-1.5">
-        <RefreshCw size={11} className="shrink-0" />
-        {t('settings:containers.installHint')}
-      </div>
 
       {previewing && (
         <ContainerPreviewModal
