@@ -21,10 +21,16 @@ export function Slide({ children, attributes }: ContainerProps) {
  * Carousel (走马灯) — a group of rotating slide regions.
  *
  * Collects `:::slide` children via DOM after mount (same shape as tabs),
- * shows one at a time, and advances automatically. Controls:
- *  - interval (attribute, seconds; default 5; 0 disables auto-advance)
- *  - Dot indicators (click to jump)
- *  - Pause on hover, circular wrap-around
+ * shows one at a time, and advances automatically. Controls (attributes on
+ * the `::::carousel` directive):
+ *  - interval (seconds; default 5; 0 disables auto-advance)
+ *  - autoplay="false" — explicitly disable auto-advance (overrides interval)
+ *  - height — CSS length, e.g. "200px" / "12rem"; overrides the default min
+ *  - align — text/content alignment inside each slide:
+ *      horizontal: "left" | "center" | "right"
+ *      vertical:   "top" | "middle" | "bottom"
+ *      combine with a space, e.g. align="center middle"
+ *  - Dot indicators (click to jump), pause on hover, circular wrap-around
  *
  * Inline-styled (no Tailwind dependency in the extension bundle) so it
  * renders identically in the host preview and in exported HTML.
@@ -36,7 +42,18 @@ export function Carousel({ children, attributes }: ContainerProps) {
   const pausedRef = useRef(false);
 
   const intervalSec = Math.max(0, Number(attributes?.interval) || 5);
-  const autoMs = intervalSec > 0 ? intervalSec * 1000 : 0;
+  const autoplay = attributes?.autoplay !== 'false';
+  const autoMs = autoplay && intervalSec > 0 ? intervalSec * 1000 : 0;
+
+  // height: explicit CSS length overrides the default min-height.
+  const heightAttr =
+    typeof attributes?.height === 'string' && attributes.height.trim() ? attributes.height.trim() : undefined;
+
+  // align: split tokens → horizontal + vertical alignment of slide content.
+  // "center" alone = horizontal-center; "center middle" = both axes.
+  const alignTokens = (attributes?.align ?? '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const textAlign = ((alignTokens.find((t) => ['left', 'center', 'right'].includes(t)) ?? 'left') as 'left' | 'center' | 'right');
+  const vToken = (alignTokens.find((t) => ['top', 'middle', 'bottom'].includes(t)) ?? 'top') as 'top' | 'middle' | 'bottom';
 
   // Collect slides from the rendered DOM (children are SlideComponent output).
   useEffect(() => {
@@ -50,17 +67,29 @@ export function Carousel({ children, attributes }: ContainerProps) {
     setSlides(collected);
   }, [children]);
 
-  // Show the active slide, hide the rest. Runs whenever the active index or
-  // the collected set changes — so a newly-collected set (first mount) and
-  // every advance both converge here.
+  // Show the active slide, hide the rest, and apply the alignment to the
+  // visible slide's wrapper so content centers within the viewport. The
+  // slide wrapper becomes a flex column: justifyContent = vertical, alignItems
+  // = horizontal; textAlign also set for inline/paragraph content.
   useEffect(() => {
     slides.forEach((s, i) => {
-      s.element.style.display = i === active ? 'block' : 'none';
+      const show = i === active;
+      s.element.style.display = show ? 'flex' : 'none';
+      if (show) {
+        s.element.style.flexDirection = 'column';
+        s.element.style.width = '100%';
+        s.element.style.height = '100%';
+        s.element.style.textAlign = textAlign;
+        s.element.style.justifyContent =
+          vToken === 'middle' ? 'center' : vToken === 'bottom' ? 'flex-end' : 'flex-start';
+        s.element.style.alignItems =
+          textAlign === 'center' ? 'center' : textAlign === 'right' ? 'flex-end' : 'flex-start';
+      }
     });
-  }, [active, slides]);
+  }, [active, slides, textAlign, vToken]);
 
-  // Auto-advance. Paused on hover (pausedRef) and disabled when interval=0
-  // or there's only one slide. Wraps around circularly.
+  // Auto-advance. Paused on hover (pausedRef) and disabled when interval=0 /
+  // autoplay=false or there's only one slide. Wraps around circularly.
   useEffect(() => {
     if (autoMs <= 0 || slides.length < 2) return;
     const id = window.setInterval(() => {
@@ -76,6 +105,13 @@ export function Carousel({ children, attributes }: ContainerProps) {
   };
 
   const hasNav = slides.length > 1;
+  const viewportStyle: CSSProperties = {
+    padding: '1.25rem 1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    boxSizing: 'border-box',
+    ...(heightAttr ? { height: heightAttr } : { minHeight: '6rem' }),
+  };
 
   return (
     <div
@@ -92,7 +128,7 @@ export function Carousel({ children, attributes }: ContainerProps) {
       onMouseLeave={() => { pausedRef.current = false; }}
     >
       {/* Slide viewport */}
-      <div ref={containerRef} style={{ padding: '1.25rem 1.5rem', minHeight: '6rem' }}>
+      <div ref={containerRef} style={viewportStyle}>
         {children}
       </div>
 

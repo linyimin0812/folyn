@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { Carousel, Slide } from './Carousel';
 
@@ -41,5 +41,70 @@ describe('Carousel', () => {
     const visible = slides.filter((el) => (el as HTMLElement).style.display !== 'none');
     expect(visible).toHaveLength(1);
     expect(visible[0].textContent).toContain('二');
+  });
+
+  it('applies an explicit height to the viewport', async () => {
+    const { container } = render(
+      <Carousel attributes={{ interval: '0', height: '200px' }}>
+        <Slide><p>x</p></Slide>
+      </Carousel>,
+    );
+    await act(async () => {});
+    const viewport = container.querySelector('.docmd-carousel > div') as HTMLElement;
+    expect(viewport.style.height).toBe('200px');
+  });
+
+  it('autoplays when interval>0 and autoplay is not "false"', async () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <Carousel attributes={{ interval: '1' }}>
+          <Slide><p>一</p></Slide>
+          <Slide><p>二</p></Slide>
+        </Carousel>,
+      );
+      await act(async () => {});
+      let visible = Array.from(container.querySelectorAll('[data-is-slide="true"]'))
+        .filter((el) => (el as HTMLElement).style.display !== 'none');
+      expect(visible[0].textContent).toContain('一');
+      await act(async () => { vi.advanceTimersByTime(1000); });
+      visible = Array.from(container.querySelectorAll('[data-is-slide="true"]'))
+        .filter((el) => (el as HTMLElement).style.display !== 'none');
+      expect(visible[0].textContent).toContain('二');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does NOT autoplay when autoplay="false"', async () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <Carousel attributes={{ interval: '1', autoplay: 'false' }}>
+          <Slide><p>一</p></Slide>
+          <Slide><p>二</p></Slide>
+        </Carousel>,
+      );
+      await act(async () => {});
+      await act(async () => { vi.advanceTimersByTime(5000); });
+      const visible = Array.from(container.querySelectorAll('[data-is-slide="true"]'))
+        .filter((el) => (el as HTMLElement).style.display !== 'none');
+      expect(visible).toHaveLength(1);
+      expect(visible[0].textContent).toContain('一');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('centers slide content horizontally + vertically with align="center middle"', async () => {
+    const { container } = render(
+      <Carousel attributes={{ interval: '0', align: 'center middle' }}>
+        <Slide><p>x</p></Slide>
+      </Carousel>,
+    );
+    await act(async () => {});
+    const slide = container.querySelector('[data-is-slide="true"]') as HTMLElement;
+    expect(slide.style.justifyContent).toBe('center'); // vertical middle
+    expect(slide.style.alignItems).toBe('center');     // horizontal center
   });
 });
