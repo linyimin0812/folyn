@@ -248,6 +248,7 @@ export async function registerExtensionContainers(
       component,
       template: c.template,
       description: c.description,
+      hidesInactiveChildren: c.hidesInactiveChildren === true ? true : undefined,
     };
     // register() now returns a Disposable (owned by manifest.id); no need to
     // track names manually for cleanup.

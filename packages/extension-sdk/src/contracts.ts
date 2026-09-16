@@ -69,6 +69,15 @@ export interface ContainerExtension {
   template: string;
   /** Optional description shown in the slash menu */
   description?: string;
+  /** True for a container that shows only ONE of its children at a time and
+   *  hides the rest (e.g. `tabs`, `carousel`), or for a child directive that
+   *  renders `display:none` until its parent reveals it (e.g. `tab`,
+   *  `slide`). The host's cursor-sync reads this: it skips stamping
+   *  `data-source-line` on such children (a hidden child is a 0-height
+   *  locatable block → drift) and promotes the cursor target up to the
+   *  nearest hiding parent. Declared at the definition site, so a new
+   *  container of this shape just sets the flag — no host-side allowlist. */
+  hidesInactiveChildren?: boolean;
 }
 
 // ── ExtensionModule export contract ────────────────────────────────────────────

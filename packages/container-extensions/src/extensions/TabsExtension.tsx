@@ -98,6 +98,7 @@ export const tabExtension: ContainerExtension = {
   component: TabComponent,
   template: ':::tab{label="标签名"}\n标签内容\n:::',
   description: '单个标签（用在 ::::tabs 内部）',
+  hidesInactiveChildren: true,
 };
 
 export const tabsExtension: ContainerExtension = {
@@ -108,4 +109,5 @@ export const tabsExtension: ContainerExtension = {
   component: TabsComponent,
   template: '::::tabs\n:::tab{label="macOS"}\nmacOS 安装说明\n:::\n:::tab{label="Windows"}\nWindows 安装说明\n:::\n:::tab{label="Linux"}\nLinux 安装说明\n:::\n::::',
   description: '可切换的标签面板',
+  hidesInactiveChildren: true,
 };

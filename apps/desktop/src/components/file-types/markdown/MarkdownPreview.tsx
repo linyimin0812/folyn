@@ -132,18 +132,22 @@ function buildComponentMap(offset: number = 0): Record<string, React.ComponentTy
       // the preview's cursor sync can locate this container block —
       // querySelectorAll('[data-source-line]') then matches it like any
       // other block-level element.
-      // ponytail: skip the `tab` / `slide` sub-directives — they render as
-      // display:none (TabsComponent/Carousel shows one item's content via
-      // DOM, the rest stay hidden), so their wrapper blocks collapse to 0
-      // height and cursor-sync's intra-block interpolation lands the cursor
-      // on a 0-height block. Skipping lets sync fall back to the visible
-      // `tabs`/`carousel` parent block.
+      // ponytail: a container that `hidesInactiveChildren` (e.g. `tabs`,
+      // `carousel`, and their `tab`/`slide` sub-directives) renders its
+      // non-active children as display:none. Stamping data-source-line on a
+      // hidden child makes it a 0-height locatable block → cursor-sync's
+      // intra-block interpolation drifts. Skip it AND tag the (visible)
+      // outer wrapper with data-hides-inactive so the promote-to-wrapper
+      // step below finds it by attribute, not by hardcoded name. The flag
+      // is declared at the container definition site, so a new container of
+      // this shape just sets hidesInactiveChildren — no host allowlist.
       const startLine = node?.position?.start?.line;
-      const SUB_DIRECTIVES = new Set(['tab', 'slide']);
+      const hides = extension.hidesInactiveChildren === true;
       const dataProps: Record<string, string> = { 'data-container': extension.name };
-      if (typeof startLine === 'number' && !SUB_DIRECTIVES.has(extension.name)) {
+      if (typeof startLine === 'number' && !hides) {
         dataProps['data-source-line'] = String(startLine + offset);
       }
+      if (hides) dataProps['data-hides-inactive'] = 'true';
       // Tag with data-container so the export DOM walk can locate rendered
       // containers by directive name and apply extension enhancers. Transparent
       // wrapper div — container extensions use inline styles, so an extra plain
@@ -858,12 +862,15 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    // If the cursor landed inside a `::::tabs` or `::::carousel` block (any
-    // slide/tab — visible or hidden), promote the target up to that wrapper
-    // so the block-alignment below targets the whole container, not the
-    // *active* item's content (a different source line than the cursor's
-    // hidden item), which would let line interpolation drift.
-    const containerWrap = (target as HTMLElement).closest('[data-container="tabs"], [data-container="carousel"]');
+    // If the cursor landed inside a container that `hidesInactiveChildren`
+    // (tabs / carousel — and the cursor may be on a hidden sibling item's
+    // source line), promote the target up to that wrapper so the
+    // block-alignment below targets the whole container, not the *active*
+    // item's content (a different source line → drift). The compound selector
+    // [data-hides-inactive][data-source-line] skips the hidden sub-directive
+    // wrappers (tab/slide have no data-source-line) and pins to the outer
+    // container, which carries both. Driven by the declaration, not names.
+    const containerWrap = (target as HTMLElement).closest('[data-hides-inactive][data-source-line]');
     if (containerWrap) target = containerWrap;
     const el = target as HTMLElement;
     const blockChanged = activeBlockRef.current !== el;

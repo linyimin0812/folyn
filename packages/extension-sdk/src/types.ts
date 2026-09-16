@@ -266,6 +266,11 @@ export interface ContainerContribution {
   component: string;
   template: string;
   description?: string;
+  /** True if this container shows only one child at a time and hides the
+   *  rest (e.g. `tabs`, `carousel`), or is itself such a hidden child (e.g.
+   *  `tab`, `slide`). Passed through to ContainerExtension at registration;
+   *  see that field's doc for why the host reads it (cursor-sync). */
+  hidesInactiveChildren?: boolean;
 }
 
 export interface FeatureContribution {

@@ -25,7 +25,8 @@
         "category": "layout",
         "component": "Carousel",
         "template": "::::carousel{interval=\"5\" height=\"160px\" align=\"center middle\"}\n:::slide\n第一张幻灯片：欢迎来到 Folyn\n:::\n:::slide\n第二张幻灯片：容器指令可组合\n:::\n:::slide\n第三张幻灯片：自动轮播 + 手动切换\n:::\n::::",
-        "description": "一组轮播的区域（interval 秒数 / height 高度 / autoplay=false 关自动 / align 文字水平+垂直对齐，含 :::slide 子项）"
+        "description": "一组轮播的区域（interval 秒数 / height 高度 / autoplay=false 关自动 / align 文字水平+垂直对齐，含 :::slide 子项）",
+        "hidesInactiveChildren": true
       },
       {
         "name": "slide",
@@ -34,7 +35,8 @@
         "category": "layout",
         "component": "Slide",
         "template": ":::slide\n单张幻灯片内容（用在 :::carousel 内部）\n:::",
-        "description": "单张幻灯片（用在 ::::carousel 内部）"
+        "description": "单张幻灯片（用在 ::::carousel 内部）",
+        "hidesInactiveChildren": true
       }
     ]
   }
