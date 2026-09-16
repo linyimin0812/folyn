@@ -259,6 +259,7 @@ export function ContainersSettings() {
   const installFromZip = useExtensionStore((s) => s.installFromZip);
   const approve = useExtensionStore((s) => s.approve);
   const activate = useExtensionStore((s) => s.activate);
+  const uninstall = useExtensionStore((s) => s.uninstall);
   const busy = useExtensionStore(useShallow((s) => s.busy));
 
   const [folderOpen, setFolderOpen] = useState(false);
@@ -361,7 +362,17 @@ export function ContainersSettings() {
           </div>
           {pending.map((r) => {
             const needsApproval = r.entry.tier === 'trusted' && !r.entry.trusted;
-            const isBusy = !!busy[`${r.entry.id}:approve`] || !!busy[`${r.entry.id}:activate`];
+            const approveBusy = !!busy[`${r.entry.id}:approve`];
+            const uninstallBusy = !!busy[`${r.entry.id}:uninstall`];
+            const handleUninstall = async () => {
+              const { confirm } = await import('@tauri-apps/plugin-dialog');
+              const ok = await confirm(t('settings:containers.uninstallConfirm.message'), {
+                title: t('settings:containers.uninstallConfirm.title'),
+                okLabel: t('settings:containers.uninstallConfirm.confirm'),
+                cancelLabel: t('settings:containers.uninstallConfirm.cancel'),
+              });
+              if (ok) void uninstall(r.entry.id);
+            };
             return (
               <div key={r.entry.id} className="flex items-center justify-between gap-2 py-1">
                 <div className="min-w-0">
@@ -373,22 +384,30 @@ export function ContainersSettings() {
                     {t('settings:containers.pendingHint', { count: r.contributesContainers ?? 0 })}
                   </div>
                 </div>
-                <button
-                  className="btn btn-p btn-sm shrink-0"
-                  disabled={isBusy}
-                  onClick={() => {
-                    // Trusted + un-approved: open the consent modal (→ approve).
-                    // Otherwise (inactive but approved): re-activate.
-                    if (needsApproval) void approve(r.entry.id);
-                    else void activate(r.entry.id);
-                  }}
-                >
-                  {isBusy
-                    ? t('settings:containers.approving')
-                    : needsApproval
-                      ? t('settings:containers.approve')
-                      : t('settings:containers.activate')}
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    className="btn btn-p btn-sm"
+                    disabled={approveBusy || uninstallBusy}
+                    onClick={() => {
+                      if (needsApproval) void approve(r.entry.id);
+                      else void activate(r.entry.id);
+                    }}
+                  >
+                    {approveBusy
+                      ? t('settings:containers.approving')
+                      : needsApproval
+                        ? t('settings:containers.approve')
+                        : t('settings:containers.activate')}
+                  </button>
+                  <button
+                    className="btn btn-d btn-sm"
+                    disabled={approveBusy || uninstallBusy}
+                    onClick={() => void handleUninstall()}
+                    title={t('settings:containers.uninstallTitle')}
+                  >
+                    {uninstallBusy ? t('settings:containers.uninstalling') : t('settings:containers.uninstall')}
+                  </button>
+                </div>
               </div>
             );
           })}
