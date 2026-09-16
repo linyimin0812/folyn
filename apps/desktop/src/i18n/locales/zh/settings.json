@@ -1072,6 +1072,15 @@
     "pendingHint": "贡献 {{count}} 个容器指令,批准/启用后才会出现在上方列表",
     "approving": "批准中…",
     "approve": "批准并启用",
-    "activate": "启用"
+    "activate": "启用",
+    "uninstallTitle": "卸载容器扩展",
+    "uninstall": "卸载",
+    "uninstalling": "卸载中…",
+    "uninstallConfirm": {
+      "title": "卸载容器扩展",
+      "message": "确定卸载此容器扩展？将移除其所有容器指令。",
+      "confirm": "卸载",
+      "cancel": "取消"
+    }
   }
 }

@@ -1072,6 +1072,15 @@
     "pendingHint": "Contributes {{count}} container directive(s); approve/enable to surface them above",
     "approving": "Approving…",
     "approve": "Approve & enable",
-    "activate": "Enable"
+    "activate": "Enable",
+    "uninstallTitle": "Uninstall container extension",
+    "uninstall": "Uninstall",
+    "uninstalling": "Uninstalling…",
+    "uninstallConfirm": {
+      "title": "Uninstall container extension",
+      "message": "Uninstall this container extension? All its container directives will be removed.",
+      "confirm": "Uninstall",
+      "cancel": "Cancel"
+    }
   }
 }

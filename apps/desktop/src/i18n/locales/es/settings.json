@@ -1050,6 +1050,15 @@
     "pendingHint": "Aporta {{count}} directiva(s) de contenedor; aprueba/activa para mostrarlas arriba",
     "approving": "Aprobando…",
     "approve": "Aprobar y activar",
-    "activate": "Activar"
+    "activate": "Activar",
+    "uninstallTitle": "Desinstalar extensión de contenedor",
+    "uninstall": "Desinstalar",
+    "uninstalling": "Desinstalando…",
+    "uninstallConfirm": {
+      "title": "Desinstalar extensión de contenedor",
+      "message": "¿Desinstalar esta extensión de contenedor? Se eliminarán todas sus directivas.",
+      "confirm": "Desinstalar",
+      "cancel": "Cancelar"
+    }
   }
 }

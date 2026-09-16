@@ -1050,6 +1050,15 @@
     "pendingHint": "Stellt {{count}} Container-Anweisung(en) bei; freischalten, um sie oben anzuzeigen",
     "approving": "Genehmige…",
     "approve": "Genehmigen & aktivieren",
-    "activate": "Aktivieren"
+    "activate": "Aktivieren",
+    "uninstallTitle": "Container-Erweiterung deinstallieren",
+    "uninstall": "Deinstallieren",
+    "uninstalling": "Deinstallieren…",
+    "uninstallConfirm": {
+      "title": "Container-Erweiterung deinstallieren",
+      "message": "Diese Container-Erweiterung deinstallieren? Alle ihre Container-Anweisungen werden entfernt.",
+      "confirm": "Deinstallieren",
+      "cancel": "Abbrechen"
+    }
   }
 }

@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Folder, FileArchive, Link2, RefreshCw, Copy, Check, X, Eye } from 'lucide-react';
+import { Folder, FileArchive, Link2, RefreshCw, Copy, Check, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ContainerRegistry, FOLYN_CORE_OWNER, type ContainerExtension, type ContainerCategory } from '@folyn/container-extensions';
 import { isTauri } from '@/utils/platform';
@@ -30,7 +30,8 @@ import { Toggle } from '@/components/settings/primitives';
 const CATEGORY_ORDER: ContainerCategory[] = ['layout', 'media', 'ai', 'data', 'custom'];
 
 /** A compact card: clickable header (opens the preview modal) on the left,
- *  two icon buttons on the right — enable/disable toggle + preview. */
+ *  controls on the right — enable/disable toggle, plus an Uninstall button
+ *  for external (non-builtin) containers. */
 function ContainerCard({ ext, builtin, onPreview }: {
   ext: ContainerExtension;
   builtin: boolean;
@@ -41,6 +42,27 @@ function ContainerCard({ ext, builtin, onPreview }: {
   // immediately on toggle (prefsStore persists across restarts).
   const disabled = usePrefsStore((s) => s.disabledContainers.includes(ext.name));
   const toggleContainerEnabled = usePrefsStore((s) => s.toggleContainerEnabled);
+  const uninstall = useExtensionStore((s) => s.uninstall);
+  const uninstalling = useExtensionStore(useShallow((s) => !!s.busy[`${ext.name}:uninstall`]));
+
+  // For an external container, ownerOf(name) is the contributing extension's
+  // manifest id — uninstalling it removes ALL that extension's containers
+  // (via ContainerRegistry.removeByOwner). Builtin (folyn.core) shows no
+  // uninstall (can't uninstall built-in directives).
+  const ownerId = builtin ? null : ContainerRegistry.getInstance().ownerOf(ext.name);
+  const canUninstall = !builtin && !!ownerId && ownerId !== FOLYN_CORE_OWNER;
+
+  const handleUninstall = useCallback(async () => {
+    if (!ownerId) return;
+    const { confirm } = await import('@tauri-apps/plugin-dialog');
+    const ok = await confirm(t('settings:containers.uninstallConfirm.message'), {
+      title: t('settings:containers.uninstallConfirm.title'),
+      okLabel: t('settings:containers.uninstallConfirm.confirm'),
+      cancelLabel: t('settings:containers.uninstallConfirm.cancel'),
+    });
+    if (!ok) return;
+    void uninstall(ownerId);
+  }, [ownerId, uninstall, t]);
 
   return (
     <div className="flex items-start gap-1 bg-surf border border-brd rounded-lg p-2 transition-colors hover:border-acc hover:bg-hov/40 min-w-0">
@@ -82,25 +104,25 @@ function ContainerCard({ ext, builtin, onPreview }: {
       </button>
 
       {/* Right-side controls. Toggle reuses the standard settings switch
-          primitive (same affordance as the rest of Settings); the preview
-          button is the app's standard ghost button so it reads cleanly next
-          to the switch. Both are siblings of the header button, so clicks
-          here never trigger preview-open. */}
+          primitive. External (non-builtin) containers get an Uninstall button
+          (ownerOf(name) = the contributing extension's id → uninstalling
+          removes all its containers). */}
       <div className="flex items-center gap-2 shrink-0 mt-0.5">
         <Toggle
           value={!disabled}
           onChange={() => toggleContainerEnabled(ext.name)}
         />
-        <button
-          type="button"
-          className="btn btn-g btn-sm"
-          onClick={onPreview}
-          title={t('settings:containers.preview')}
-          aria-label={t('settings:containers.preview')}
-        >
-          <Eye size={13} />
-          {t('settings:containers.preview')}
-        </button>
+        {canUninstall && (
+          <button
+            type="button"
+            className="btn btn-d btn-sm"
+            disabled={uninstalling}
+            onClick={handleUninstall}
+            title={t('settings:containers.uninstallTitle')}
+          >
+            {uninstalling ? t('settings:containers.uninstalling') : t('settings:containers.uninstall')}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -204,10 +226,7 @@ function ContainerPreviewModal({ ext, builtin, onClose }: {
 
           {/* Live preview — full-fidelity (non-compact) so it matches the
               editor. The frame vertically centers the preview within a
-              min-height so short directives sit in the middle (width is left
-              natural — not shortened). pointerEvents disabled so interactive
-              containers (tabs/buttons) don't capture clicks meant for the
-              modal surface. */}
+              min-height so short directives sit in the middle. */}
           <div className="border border-brd2 rounded-md bg-panel overflow-hidden">
             <div className="p-4 overflow-x-auto flex items-center justify-center min-h-[120px]">
               <ContainerPreview template={ext.template} />
@@ -371,43 +390,8 @@ export function ContainersSettings() {
         </div>
       )}
 
-      {containers.length === 0 ? (
-        <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
-          {t('settings:containers.empty')}
-        </div>
-      ) : (
-        <div>
-          {grouped.map((g) => (
-            <div key={g.cat} className="mb-3.5">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-[3px] h-[12px] rounded-full bg-t2" />
-                <h3 className="text-[11.5px] font-bold text-t1 m-0">
-                  {t(`settings:containers.category.${g.cat}`)}
-                </h3>
-                <span className="text-[10px] text-t3">{g.items.length}</span>
-              </div>
-              <div
-                className="grid gap-2"
-                style={{ gridTemplateColumns: 'repeat(2, 1fr)', alignItems: 'start' }}
-              >
-                {g.items.map((ext) => (
-                  <ContainerCard
-                    key={ext.name}
-                    ext={ext}
-                    builtin={
-                      ContainerRegistry.getInstance().ownerOf(ext.name) === FOLYN_CORE_OWNER
-                    }
-                    onPreview={() => setPreviewing(ext)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {pending.length > 0 && (
-        <div className="mt-2 mb-2 border border-amber/40 bg-amber/5 rounded-lg p-2.5">
+        <div className="mb-3 border border-amber/40 bg-amber/5 rounded-lg p-2.5">
           <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1.5">
             {t('settings:containers.pendingTitle')}
           </div>
@@ -444,6 +428,41 @@ export function ContainersSettings() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {containers.length === 0 ? (
+        <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+          {t('settings:containers.empty')}
+        </div>
+      ) : (
+        <div>
+          {grouped.map((g) => (
+            <div key={g.cat} className="mb-3.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-[3px] h-[12px] rounded-full bg-t2" />
+                <h3 className="text-[11.5px] font-bold text-t1 m-0">
+                  {t(`settings:containers.category.${g.cat}`)}
+                </h3>
+                <span className="text-[10px] text-t3">{g.items.length}</span>
+              </div>
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: 'repeat(2, 1fr)', alignItems: 'start' }}
+              >
+                {g.items.map((ext) => (
+                  <ContainerCard
+                    key={ext.name}
+                    ext={ext}
+                    builtin={
+                      ContainerRegistry.getInstance().ownerOf(ext.name) === FOLYN_CORE_OWNER
+                    }
+                    onPreview={() => setPreviewing(ext)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

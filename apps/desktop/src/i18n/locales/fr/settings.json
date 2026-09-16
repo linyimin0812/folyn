@@ -1050,6 +1050,15 @@
     "pendingHint": "Fournit {{count}} directive(s) de conteneur ; approuver/activer pour les afficher ci-dessus",
     "approving": "Approbation…",
     "approve": "Approuver et activer",
-    "activate": "Activer"
+    "activate": "Activer",
+    "uninstallTitle": "Désinstaller l'extension de conteneur",
+    "uninstall": "Désinstaller",
+    "uninstalling": "Désinstallation…",
+    "uninstallConfirm": {
+      "title": "Désinstaller l'extension de conteneur",
+      "message": "Désinstaller cette extension de conteneur ? Toutes ses directives seront supprimées.",
+      "confirm": "Désinstaller",
+      "cancel": "Annuler"
+    }
   }
 }

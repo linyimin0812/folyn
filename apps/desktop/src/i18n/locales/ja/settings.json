@@ -1056,6 +1056,15 @@
     "pendingHint": "コンテナ指令を {{count}} 個提供。承認/有効化すると上のリストに表示",
     "approving": "承認中…",
     "approve": "承認して有効化",
-    "activate": "有効化"
+    "activate": "有効化",
+    "uninstallTitle": "コンテナ拡張をアンインストール",
+    "uninstall": "アンインストール",
+    "uninstalling": "アンインストール中…",
+    "uninstallConfirm": {
+      "title": "コンテナ拡張をアンインストール",
+      "message": "このコンテナ拡張をアンインストールしますか？すべてのコンテナ指令が削除されます。",
+      "confirm": "アンインストール",
+      "cancel": "キャンセル"
+    }
   }
 }

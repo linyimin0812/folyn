@@ -98,7 +98,6 @@ export const tabExtension: ContainerExtension = {
   component: TabComponent,
   template: ':::tab{label="标签名"}\n标签内容\n:::',
   description: '单个标签（用在 ::::tabs 内部）',
-  hidesInactiveChildren: true,
 };
 
 export const tabsExtension: ContainerExtension = {

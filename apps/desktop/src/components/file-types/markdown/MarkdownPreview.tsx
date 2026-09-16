@@ -133,18 +133,20 @@ function buildComponentMap(offset: number = 0): Record<string, React.ComponentTy
       // querySelectorAll('[data-source-line]') then matches it like any
       // other block-level element.
       // ponytail: a container that `hidesInactiveChildren` (e.g. `tabs`,
-      // `carousel`, and their `tab`/`slide` sub-directives) renders its
-      // non-active children as display:none. Stamping data-source-line on a
-      // hidden child makes it a 0-height locatable block → cursor-sync's
-      // intra-block interpolation drifts. Skip it AND tag the (visible)
-      // outer wrapper with data-hides-inactive so the promote-to-wrapper
-      // step below finds it by attribute, not by hardcoded name. The flag
-      // is declared at the container definition site, so a new container of
-      // this shape just sets hidesInactiveChildren — no host allowlist.
+      // `carousel`) is an OUTER container whose non-active children render
+      // display:none. Stamp BOTH data-source-line (so cursor-sync can locate
+      // this visible outer block) AND data-hides-inactive (so the promote-
+      // to-wrapper step below pins the cursor to it by attribute, not name).
+      //
+      // The hidden sub-directives (tab/slide) themselves render display:none
+      // — cursor-sync's selection loop already skips display:none blocks, so
+      // they're harmless (not locatable); no special skip needed. The flag is
+      // declared at the container definition site, so a new container of this
+      // shape just sets hidesInactiveChildren — no host allowlist.
       const startLine = node?.position?.start?.line;
       const hides = extension.hidesInactiveChildren === true;
       const dataProps: Record<string, string> = { 'data-container': extension.name };
-      if (typeof startLine === 'number' && !hides) {
+      if (typeof startLine === 'number') {
         dataProps['data-source-line'] = String(startLine + offset);
       }
       if (hides) dataProps['data-hides-inactive'] = 'true';
