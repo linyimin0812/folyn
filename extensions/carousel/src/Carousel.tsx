@@ -78,7 +78,11 @@ export function Carousel({ children, attributes }: ContainerProps) {
       if (show) {
         s.element.style.flexDirection = 'column';
         s.element.style.width = '100%';
-        s.element.style.height = '100%';
+        // flex:1 stretches the slide to fill the viewport's height so
+        // justifyContent (vertical) has space to center content. (height:100%
+        // would resolve to auto under a min-height-only flex column → no
+        // room to center.)
+        s.element.style.flex = '1 1 0%';
         s.element.style.textAlign = textAlign;
         s.element.style.justifyContent =
           vToken === 'middle' ? 'center' : vToken === 'bottom' ? 'flex-end' : 'flex-start';

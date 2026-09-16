@@ -98,12 +98,14 @@ describe('Carousel', () => {
 
   it('centers slide content horizontally + vertically with align="center middle"', async () => {
     const { container } = render(
-      <Carousel attributes={{ interval: '0', align: 'center middle' }}>
+      <Carousel attributes={{ interval: '0', height: '200px', align: 'center middle' }}>
         <Slide><p>x</p></Slide>
       </Carousel>,
     );
     await act(async () => {});
     const slide = container.querySelector('[data-is-slide="true"]') as HTMLElement;
+    // Stretches to fill the viewport (so vertical centering has room).
+    expect(slide.style.flex).toBe('1 1 0%');
     expect(slide.style.justifyContent).toBe('center'); // vertical middle
     expect(slide.style.alignItems).toBe('center');     // horizontal center
   });
