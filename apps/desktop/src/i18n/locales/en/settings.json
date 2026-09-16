@@ -707,7 +707,8 @@
       "error": "Failed to load store",
       "installFromUrl": "Install from URL",
       "urlPlaceholder": "Paste a github.com Release zip URL…",
-      "tabContainers": "Containers"
+      "tabContainers": "Containers",
+      "containers": "Containers"
     },
     "installing": "Installing ({{id}})…",
     "refresh": "Refresh",

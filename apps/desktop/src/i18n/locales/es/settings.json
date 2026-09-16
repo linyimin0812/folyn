@@ -735,7 +735,8 @@
       "confirm": "Entiendo, aprobar"
     },
     "store": {
-      "tabContainers": "Contenedores"
+      "tabContainers": "Contenedores",
+      "containers": "Contenedores"
     }
   },
   "voice": {

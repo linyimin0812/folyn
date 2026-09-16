@@ -735,7 +735,8 @@
       "confirm": "Verstanden, genehmigen"
     },
     "store": {
-      "tabContainers": "Container"
+      "tabContainers": "Container",
+      "containers": "Container"
     }
   },
   "voice": {

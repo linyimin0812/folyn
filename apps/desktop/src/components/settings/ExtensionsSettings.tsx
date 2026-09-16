@@ -422,6 +422,11 @@ function StoreEntryCard({ entry }: { entry: CatalogEntry }) {
               <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
                 {tierLabel(entry.tier)}
               </span>
+              {(entry.contributesContainers ?? 0) > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
+                  {t('settings:extensions.store.containers')}
+                </span>
+              )}
               {installed && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim">
                   {t('settings:extensions.store.installed')}

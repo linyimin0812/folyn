@@ -69,6 +69,10 @@ export interface CatalogEntry {
   tier: 'sandbox' | 'trusted';
   author?: string;
   icon?: string;
+  /** Count of container directives this extension contributes
+   *  (manifest.contributes.containers.length). Surfaced in the store card
+   *  as a "containers" badge so container-focused users can spot them. */
+  contributesContainers?: number;
   /** Absolute `github.com/.../releases/download/<tag>/<id>-<ver>.zip` URL.
    * `install_extension_from_url` (Rust) restricts the host to github.com. */
   downloadUrl: string;

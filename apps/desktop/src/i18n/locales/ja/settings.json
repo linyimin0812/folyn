@@ -741,7 +741,8 @@
       "confirm": "理解した上で承認"
     },
     "store": {
-      "tabContainers": "コンテナ指令"
+      "tabContainers": "コンテナ指令",
+      "containers": "コンテナ指令"
     }
   },
   "voice": {

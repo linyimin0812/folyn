@@ -65,6 +65,31 @@
       "author": "Folyn",
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 40\" x=\"0px\" y=\"0px\" fill=\"#808080\"><title>Folder_12</title><g data-name=\"Layer 14\"><path d=\"M17.1631,7H28a2.0026,2.0026,0,0,0-2-2H16.4959Z\"/><path d=\"M16,16.0781A5.57,5.57,0,0,0,11.1138,19a5.5469,5.5469,0,0,0,9.7729,0A5.5706,5.5706,0,0,0,16,16.0781ZM16,21a2,2,0,1,1,2-2A2.0023,2.0023,0,0,1,16,21Z\"/><path d=\"M28,9H15.7217L13.9482,3.6826A1,1,0,0,0,13,3H4A2.0026,2.0026,0,0,0,2,5V27a2.0026,2.0026,0,0,0,2,2H28a2.0026,2.0026,0,0,0,2-2V11A2.0026,2.0026,0,0,0,28,9ZM22.9141,19.4053a7.55,7.55,0,0,1-13.8281,0,.9973.9973,0,0,1,0-.8105,7.55,7.55,0,0,1,13.8281,0A1.0012,1.0012,0,0,1,22.9141,19.4053Z\"/></g><text x=\"0\" y=\"47\" fill=\"#808080\" font-size=\"5px\" font-weight=\"bold\" font-family=\"'Helvetica Neue', Helvetica, Arial-Unicode, Arial, Sans-serif\">Created by Alwin Aulia</text><text x=\"0\" y=\"52\" fill=\"#808080\" font-size=\"5px\" font-weight=\"bold\" font-family=\"'Helvetica Neue', Helvetica, Arial-Unicode, Arial, Sans-serif\">from the Noun Project</text></svg>",
       "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.1/folyn-file-viewer-0.1.0.zip"
+    },
+    {
+      "id": "folyn-carousel",
+      "name": {
+        "zh": "走马灯",
+        "en": "Carousel",
+        "ja": "カルーセル",
+        "fr": "Carrousel",
+        "de": "Karussell",
+        "es": "Carrusel"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "走马灯容器：一组轮播的幻灯片区，自动轮播 + 圆点切换（interval/height/autoplay/align）",
+        "en": "Carousel container: a group of rotating slide regions, auto-advance + dot navigation (interval/height/autoplay/align)",
+        "ja": "カルーセルコンテナ：回転するスライド領域のグループ、自動再生 + ドットナビ（interval/height/autoplay/align）",
+        "fr": "Conteneur carrousel : un groupe de régions de diapositives rotatives, avance automatique + navigation par points (interval/height/autoplay/align)",
+        "de": "Karussell-Container: eine Gruppe rotierender Folienbereiche, automatischer Wechsel + Punktnavigation (interval/height/autoplay/align)",
+        "es": "Contenedor carrusel: un grupo de regiones de diapositivas giratorias, avance automático + navegación por puntos (interval/height/autoplay/align)"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "🎠",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.1/folyn-carousel-0.1.0.zip",
+      "contributesContainers": 2
     }
   ]
 }
