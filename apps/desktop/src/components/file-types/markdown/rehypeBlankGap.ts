@@ -35,9 +35,15 @@ const BLOCK_TAGS = new Set([
   'img',
 ]);
 
-// `.md-preview` is font-size:14px, line-height:1.8 → one source line ≈ 1.8em.
-// Using em (not px) keeps the gap proportional if the preview font changes.
-const EM_PER_LINE = 1.8;
+// `.md-preview` sets `--md-gap-line` to the editor's actual line height (see
+// MarkdownPreview). The gap div itself carries `margin: -8px 0` (index.css)
+// which cancels the two adjacent paragraph margins (8px each) so the gap
+// height is the FULL inter-block space — one blank-line gap = one editor
+// line, exactly matching the editor's descent rate (the old hardcoded 1.8em
+// guessed the editor line height AND left the margins stacking on top of
+// it, overshot, read as "空格很大"). Falls back to 1.8em before the editor
+// has measured (editorLineHeight === 0).
+const EM_PER_LINE = 1.6;
 
 export function rehypeBlankGap(options: { offset?: number } = {}) {
   const offset = options.offset ?? 0;
@@ -63,7 +69,7 @@ export function rehypeBlankGap(options: { offset?: number } = {}) {
               tagName: 'div',
               properties: {
                 className: ['md-blank-gap'],
-                style: `height:calc(${gap} * ${EM_PER_LINE}em)`,
+                style: `height:calc(${gap} * var(--md-gap-line, ${EM_PER_LINE}em))`,
                 ariaHidden: true,
               },
               children: [],

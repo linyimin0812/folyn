@@ -434,7 +434,7 @@ mjx-container svg {
 }
 
 /* ── Markdown Preview (targets rendered HTML) ── */
-.md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); overflow-wrap: break-word; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; transition: transform 120ms ease-out; }
+.md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.6; color: var(--t1); overflow-wrap: break-word; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; transition: transform 120ms ease-out; }
 /* Preview frame variant for the Containers settings modal: full width
    (no 800px cap) and flattened first/last vertical margins so the preview's
    top + bottom spacing is symmetric inside the frame's `p-4` padding —
@@ -457,7 +457,7 @@ mjx-container svg {
 /* ponytail: blank-line gaps inserted by rehypeBlankGap so preview blocks
    descend at the editor's rate past blank lines (cursor-sync alignment).
    Empty spacer — height set inline as calc(N * 1.8em); zero everything else. */
-.md-preview > .md-blank-gap { margin: 0; padding: 0; line-height: 0; }
+.md-preview > .md-blank-gap { margin: -8px 0; padding: 0; line-height: 0; }
 .md-preview a { color: var(--acc); text-decoration: none; }
 .md-preview a:hover { text-decoration: underline; }
 .md-preview strong { font-weight: 700; }

@@ -27,7 +27,7 @@ describe('rehypeBlankGap', () => {
     const kids = topChildren(tree);
     const gaps = kids.filter((k) => k.tagName === 'div' && k.properties?.className?.includes('md-blank-gap'));
     expect(gaps.length).toBe(1);
-    expect(gaps[0].properties.style).toBe('height:calc(1 * 1.8em)');
+    expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
   });
 
   it('inserts a multi-line gap for two blank lines between blocks', () => {
@@ -35,7 +35,7 @@ describe('rehypeBlankGap', () => {
     const tree = hastOf('a\n\n\nb');
     const gaps = topChildren(tree).filter((k) => k.properties?.className?.includes('md-blank-gap'));
     expect(gaps.length).toBe(1);
-    expect(gaps[0].properties.style).toBe('height:calc(2 * 1.8em)');
+    expect(gaps[0].properties.style).toBe('height:calc(2 * var(--md-gap-line, 1.6em))');
   });
 
   it('does not insert a gap between adjacent lines in the same paragraph', () => {
@@ -50,8 +50,8 @@ describe('rehypeBlankGap', () => {
     const tree = hastOf('a\n\nb\n\n\nc');
     const gaps = topChildren(tree).filter((k) => k.properties?.className?.includes('md-blank-gap'));
     expect(gaps.length).toBe(2);
-    expect(gaps[0].properties.style).toBe('height:calc(1 * 1.8em)');
-    expect(gaps[1].properties.style).toBe('height:calc(2 * 1.8em)');
+    expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
+    expect(gaps[1].properties.style).toBe('height:calc(2 * var(--md-gap-line, 1.6em))');
   });
 
   it('leaves the first block with no leading gap', () => {
@@ -66,6 +66,6 @@ describe('rehypeBlankGap', () => {
     const tree = hastOf('a\n\nb', /*offset*/ 3);
     const gaps = topChildren(tree).filter((k) => k.properties?.className?.includes('md-blank-gap'));
     expect(gaps.length).toBe(1);
-    expect(gaps[0].properties.style).toBe('height:calc(1 * 1.8em)');
+    expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
   });
 });

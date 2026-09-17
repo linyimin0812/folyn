@@ -1237,9 +1237,20 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     return map;
   }, [filePath, vaultRoot, resolvedVaultRoot, assetBase, frontmatterLineCount]);
 
+  // ponytail: blank-line gaps exist ONLY for cursor-sync alignment — they make
+  // the preview descend at the editor's line rate past blank lines so the
+  // synced block tracks the cursor. When sync is off (preview-only reading,
+  // or split with sync toggled off, cursorLine===0) the gaps are pure noise,
+  // so the gap plugin is skipped and the preview reads like normal markdown.
+  // syncActive is a primitive boolean — it flips only on the sync on/off
+  // transition, NOT on every cursor move (once sync is on, cursorLine stays
+  // ≥1), so this does not re-parse per keystroke or per cursor move; only
+  // one re-parse when the user toggles sync.
+  const syncActive = (cursorLine ?? 0) > 0;
+
   const reactContent = useMemo(() => {
     try {
-      const result = unified()
+      const pipeline = unified()
         .use(remarkParse)
         .use(remarkMath)
         .use(remarkGfm)
@@ -1252,8 +1263,9 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         .use(rehypeRemoveCodeBreaks)
         .use(rehypeMarkResultBlock)
         .use(rehypeMathjax)
-        .use(rehypeSourceLine, { offset: frontmatterLineCount })
-        .use(rehypeBlankGap, { offset: frontmatterLineCount })
+        .use(rehypeSourceLine, { offset: frontmatterLineCount });
+      if (syncActive) pipeline.use(rehypeBlankGap, { offset: frontmatterLineCount });
+      const result = pipeline
         .use(rehypeReact, {
           jsx,
           jsxs,
@@ -1268,7 +1280,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       console.error('[MarkdownPreview] render error:', error);
       return createElement('p', null, '渲染错误');
     }
-  }, [body, componentMap, frontmatterLineCount]);
+  }, [body, componentMap, frontmatterLineCount, syncActive]);
 
   // ponytail: memoize VaultContext value — without this, every keystroke
   // (content change → MarkdownPreview re-renders) creates a fresh value object,
@@ -1286,7 +1298,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
 
   return (
     <VaultContext.Provider value={vaultContextValue}>
-      <div className="md-preview" ref={containerRef} style={{ transform: `translateY(${syncOffset}px)` }}>
+      <div className="md-preview" ref={containerRef} style={{ transform: `translateY(${syncOffset}px)`, '--md-gap-line': editorLineHeight > 0 ? `${editorLineHeight}px` : undefined } as React.CSSProperties}>
         {meta && <SkillMetaCard meta={meta} />}
         {reactContent}
       </div>
