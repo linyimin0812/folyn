@@ -1061,7 +1061,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         scrollContainer.scrollTop = desiredRaw;
       }
     }
-  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac]);
+  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, content]);
 
   // Clean up the active-block marker on unmount.
   useEffect(() => {
