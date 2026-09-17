@@ -16,6 +16,7 @@ import rehypeReact from 'rehype-react';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
+import { rehypeBlankGap } from './rehypeBlankGap';
 import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
 import { blockAlignPoint, blockLastSrcLine, gapAlignPoint } from './blockAlignPoint';
 import { registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
@@ -1252,6 +1253,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         .use(rehypeMarkResultBlock)
         .use(rehypeMathjax)
         .use(rehypeSourceLine, { offset: frontmatterLineCount })
+        .use(rehypeBlankGap, { offset: frontmatterLineCount })
         .use(rehypeReact, {
           jsx,
           jsxs,

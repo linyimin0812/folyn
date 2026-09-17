@@ -454,6 +454,10 @@ mjx-container svg {
 .md-preview h4 { font-size: 15px; font-weight: 600; line-height: 1.3; margin: 12px 0 6px; }
 .md-preview h5, .md-preview h6 { font-size: 13px; font-weight: 600; line-height: 1.3; margin: 10px 0 4px; }
 .md-preview p { margin: 8px 0; }
+/* ponytail: blank-line gaps inserted by rehypeBlankGap so preview blocks
+   descend at the editor's rate past blank lines (cursor-sync alignment).
+   Empty spacer — height set inline as calc(N * 1.8em); zero everything else. */
+.md-preview > .md-blank-gap { margin: 0; padding: 0; line-height: 0; }
 .md-preview a { color: var(--acc); text-decoration: none; }
 .md-preview a:hover { text-decoration: underline; }
 .md-preview strong { font-weight: 700; }
