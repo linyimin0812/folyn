@@ -93,10 +93,17 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
 
     // ponytail: full-bleed is the DEFAULT (zero host padding — the preview
     // component manages its own padding). Only markdown needs the host's
-    // pt-2 px-8 pb-[80vh] padding (the 80vh bottom space lets outline heading
-    // clicks park the last heading at the top of the viewport).
+    // pt-2 px-8 pb-[100vh] padding. The large bottom space lets (1) outline
+    // heading clicks park the last heading at the top of the viewport, and
+    // (2) the cursor-sync effect keep scrolling the preview so the active
+    // block aligns to the editor cursor's screen Y even when the document
+    // is SHORT — with 80vh the preview's maxScroll dropped to ≤0 once content
+    // fell below ~20% of the viewport, so the alignment scroll was clamped
+    // to 0 and the highlight drifted far below the cursor (the reported
+    // "内容较少时光标对齐效果很少，高亮偏移光标很远"). 100vh guarantees
+    // the preview stays scrollable down to an empty doc.
     // Previously a hardcoded list of built-in ids gated this — that forced
-    // every extension file-type to either inherit markdown's 80vh bottom pad
+    // every extension file-type to either inherit markdown's bottom pad
     // (broken) or edit host source to be added to the list.
     const fullBleed = activeTab.fileType !== 'markdown';
 
@@ -162,7 +169,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   still mounts on demand to avoid running markmap-lib transform
                   in the background for every markdown file. */}
               <div
-                className={`prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh] ${markmapMode ? 'hidden' : 'block'}`}
+                className={`prev-body flex-1 overflow-auto pt-2 px-8 pb-[100vh] ${markmapMode ? 'hidden' : 'block'}`}
                 ref={setBodyRef}
                 onScroll={handleBodyScroll}
               >
@@ -189,7 +196,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
             </>
           ) : (
             <div
-              className={fullBleed ? 'prev-body flex-1 h-full overflow-auto' : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[80vh]'}
+              className={fullBleed ? 'prev-body flex-1 h-full overflow-auto' : 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[100vh]'}
               ref={setBodyRef}
               onScroll={handleBodyScroll}
             >
