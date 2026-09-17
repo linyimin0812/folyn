@@ -304,6 +304,24 @@ export function PetPanelApp() {
   // transition starts from the stable final rect, not mid-re-assert. The `pet`
   // window emits via global `emit` (ACL: `core:event:allow-emit` on `pet`);
   // this `listen` is ACL-allowed via `core:event:allow-listen` on `pet-panel`.
+  //
+  // Also re-arms the outside-click auto-hide gate (`panelFocusedRef = true`).
+  // On Windows, `hide()` does NOT always reset tao's internal `is_focused`
+  // flag (a hidden window gets no WM_KILLFOCUS when focus goes cross-process),
+  // so the next `show()` + `set_focus()` finds the flag already `true` and
+  // tao's `set_focused(true)` returns `active_focus_changed=false` → NO
+  // `tauri://focus` event is emitted. `panelFocusedRef` thus stays `false`
+  // (reset on the prior fade-out), so the first real `tauri://blur` when the
+  // user clicks elsewhere is guarded out → the unpinned panel doesn't close.
+  // This is exactly the Windows-only "reopen breaks blur-auto-hide" bug
+  // (first open worked because the flag started false). Setting the gate
+  // here — on the explicit, always-fired show event, AFTER the show-time
+  // transient blur window (which passes during `pet_panel_show` / the
+  // post-show re-assert, all before this event) — fixes it without
+  // re-introducing flash-close: the blur listener is window-scoped to
+  // `pet-panel`, so only the panel's OWN blur fires, and that only happens
+  // when the user actually clicks away. macOS is unaffected (its
+  // non-activating NSPanel emits focus reliably).
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
@@ -315,6 +333,8 @@ export function PetPanelApp() {
           // otherwise survive a close → reopen. The popup search is
           // ephemeral — clear it every time the panel is shown again.
           setSearchQuery('');
+          // Re-arm the blur-auto-hide gate (see block comment above).
+          panelFocusedRef.current = true;
           setVisible(true);
         });
       } catch (err) {
