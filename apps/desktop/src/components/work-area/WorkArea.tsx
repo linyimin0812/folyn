@@ -148,6 +148,26 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
     }
   }, []);
 
+  // ponytail: preview-heading click → move the editor cursor to that
+  // heading's source line + scroll it into view. Setting the selection
+  // (not just scrolling) is what makes cursor-sync联动: the editor's
+  // updateListener writes the new cursorLine/cursorViewportY into the
+  // store, so PreviewPane's cursor-sync effect re-aligns the preview to
+  // the same heading — both panes land on it together. When sync is off,
+  // the cursor still lands on the heading (a cleaner "jump to content").
+  const scrollEditorToLine = useCallback((line: number) => {
+    const view = editorRef.current?.getView();
+    if (!view) return;
+    const doc = view.state.doc;
+    if (line < 1 || line > doc.lines) return;
+    const from = doc.line(line).from;
+    view.focus();
+    view.dispatch({
+      selection: { anchor: from },
+      effects: EditorView.scrollIntoView(from, { y: 'start' }),
+    });
+  }, []);
+
   // Outline heading click: scroll the editor (above) + scroll the preview
   // body to the heading element. The outline is a split-level sibling now,
   // so the preview body is reached via the ref PreviewPane forwards.
@@ -325,6 +345,7 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           viewMode={viewMode}
           previewFlex={previewFlex}
           onChange={(content) => setContentExternal(activeTab.id, content)}
+          onHeadingClick={viewMode === 'split' ? scrollEditorToLine : undefined}
         />
       )}
 

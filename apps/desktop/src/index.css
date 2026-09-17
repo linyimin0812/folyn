@@ -453,6 +453,11 @@ mjx-container svg {
 .md-preview h3 { font-size: 18px; font-weight: 600; line-height: 1.3; margin: 16px 0 8px; }
 .md-preview h4 { font-size: 15px; font-weight: 600; line-height: 1.3; margin: 12px 0 6px; }
 .md-preview h5, .md-preview h6 { font-size: 13px; font-weight: 600; line-height: 1.3; margin: 10px 0 4px; }
+/* ponytail: in split mode a preview heading is clickable (jumps the
+   editor to it). Pointer cursor is the only affordance — no hover
+   highlight so reading stays calm. Scoped to .is-jumpable so
+   preview-only mode stays inert. */
+.prev-body.is-jumpable .md-preview :is(h1,h2,h3,h4,h5,h6) { cursor: pointer; }
 .md-preview p { margin: 8px 0; }
 /* ponytail: blank-line gaps inserted by rehypeBlankGap so preview blocks
    descend at the editor's rate past blank lines (cursor-sync alignment).

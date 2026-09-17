@@ -19,11 +19,18 @@ interface PreviewPaneProps {
    * (e.g. JSON file viewer). Forwarded to the rendered `<Preview>`.
    */
   onChange?: (content: string) => void;
+  /**
+   * Split-mode only: a heading in the preview was clicked. Fires with the
+   * heading's `data-source-line` (1-based editor line) so the caller can
+   * scroll the editor to it. Left undefined in preview-only mode (no
+   * editor to scroll to).
+   */
+  onHeadingClick?: (sourceLine: number) => void;
 }
 
 export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
   function PreviewPane(
-    { activeTab, Preview, vaultRoot, viewMode, previewFlex, onChange },
+    { activeTab, Preview, vaultRoot, viewMode, previewFlex, onChange, onHeadingClick },
     ref,
   ) {
     // ponytail: cursor line drives preview scroll-sync in split mode only.
@@ -53,6 +60,30 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     const handleBodyScroll = useCallback(() => {
       persistPreviewScrollRef.current?.(bodyRef.current?.scrollTop ?? 0);
     }, []);
+
+    // ponytail: split-mode preview→editor jump. Click a rendered heading in
+    // the preview and the editor scrolls to that heading's source line.
+    // Headings carry `data-source-line` (rehypeSourceLine), so no text
+    // matching — works even when the heading contains inline formatting
+    // (`## Hello *world*`) where rendered textContent would diverge from the
+    // source text. Skips when the click lands on a link inside the heading
+    // (let the link navigate) and when the user is mid text-selection (let
+    // them copy the heading).
+    const handlePreviewClick = useCallback((e: React.MouseEvent) => {
+      if (!onHeadingClick) return;
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('a')) return;
+      const heading = target.closest('h1,h2,h3,h4,h5,h6');
+      if (!heading) return;
+      const lineAttr = heading.getAttribute('data-source-line');
+      if (!lineAttr) return;
+      const line = Number(lineAttr);
+      if (!Number.isFinite(line) || line <= 0) return;
+      onHeadingClick(line);
+    }, [onHeadingClick]);
     const cursorLine = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorLine : 0);
     const cursorViewportY = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorViewportY : 0);
     const editorViewportTop = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.editorViewportTop : 0);
@@ -169,9 +200,10 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   still mounts on demand to avoid running markmap-lib transform
                   in the background for every markdown file. */}
               <div
-                className={`prev-body flex-1 overflow-auto pt-2 px-8 pb-[100vh] ${markmapMode ? 'hidden' : 'block'}`}
+                className={`prev-body flex-1 overflow-auto pt-2 px-8 pb-[100vh] ${markmapMode ? 'hidden' : 'block'}${viewMode === 'split' ? ' is-jumpable' : ''}`}
                 ref={setBodyRef}
                 onScroll={handleBodyScroll}
+                onClick={handlePreviewClick}
               >
                 <Preview
                   content={activeTab.content}
