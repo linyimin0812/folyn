@@ -122,23 +122,53 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
     // and `MoveFocus` paths do the same).
     #[cfg(target_os = "windows")]
     {
+        use windows_sys::core::PWSTR;
         use windows_sys::Win32::Foundation::HWND;
-        use windows_sys::Win32::UI::Input::KeyboardAndMouse::SetFocus;
-        use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindow, GW_CHILD};
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetFocus, SetFocus};
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            GetClassNameW, GetWindow, GW_CHILD,
+        };
+        use crate::startup_log;
         if let Ok(hwnd_ptr) = panel.hwnd() {
             let hwnd: HWND = hwnd_ptr.0;
             if !hwnd.is_null() {
-                // SAFETY: GetWindow (GW_CHILD) reads the first top-level child
-                // HWND (the WRY_WEBVIEW container wry creates on the panel
-                // window). SetFocus on a child HWND of the foreground window is
-                // always allowed and is a Win32 no-op when already focused.
+                // [pet-panel-fg-debug] TEMP instrumentation — the
+                // SetFocus(child) fix (commit a7faac6c) still did not focus
+                // the search box; need to see what the child actually is and
+                // whether SetFocus moved the keyboard focus. Remove after.
+                // SAFETY: GetWindow/GetClassNameW/GetFocus/SetFocus are stable
+                // user32 entrypoints; PWSTR buffer is stack-allocated.
                 unsafe {
                     let container = GetWindow(hwnd, GW_CHILD);
-                    if !container.is_null() {
-                        let _ = SetFocus(container);
-                    }
+                    // Class name of the child (expect "WRY_WEBVIEW").
+                    let mut class_buf = [0u16; 64];
+                    let class_len = if !container.is_null() {
+                        GetClassNameW(container, PWSTR(class_buf.as_mut_ptr()), 64)
+                    } else {
+                        -1
+                    };
+                    let class_str = if class_len > 0 {
+                        String::from_utf16_lossy(&class_buf[..class_len as usize])
+                    } else {
+                        "(none)".to_string()
+                    };
+                    let focus_before = GetFocus();
+                    let sfg_ret = if !container.is_null() {
+                        SetFocus(container)
+                    } else {
+                        std::ptr::null_mut()
+                    };
+                    let focus_after = GetFocus();
+                    startup_log(format!(
+                        "[pet-panel-fg-debug] focus_panel SetFocus path: panel_hwnd={hwnd:?} child(container)={container:?} class=\"{class_str}\" focus_before={focus_before:?} setfocus_ret={sfg_ret:?} focus_after={focus_after:?} focus_moved_to_child={}",
+                        focus_after == container
+                    ));
                 }
+            } else {
+                startup_log("[pet-panel-fg-debug] focus_panel: panel hwnd is null");
             }
+        } else {
+            startup_log("[pet-panel-fg-debug] focus_panel: panel.hwnd() returned Err");
         }
     }
 }

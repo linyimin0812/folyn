@@ -361,7 +361,20 @@ export function PetPanelApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('pet://panel-focus-search', () => {
+          // [pet-panel-search-debug] TEMP — does the event arrive, is the ref
+          // bound, and does .focus() make the input the activeElement? Remove
+          // after root cause is confirmed.
+          const hadRef = !!searchInputRef.current;
           searchInputRef.current?.focus();
+          const ae = document.activeElement;
+          const isInputFocused =
+            ae instanceof HTMLInputElement && ae === searchInputRef.current;
+          console.info('[pet-panel-search-debug] panel-focus-search fired:', {
+            hadRef,
+            activeIsInput: ae instanceof HTMLInputElement,
+            isInputFocused,
+            activeClass: ae?.className,
+          });
         });
       } catch (err) {
         console.warn('[pet-panel] panel-focus-search listener failed:', err);
