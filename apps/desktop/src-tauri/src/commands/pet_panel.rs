@@ -142,11 +142,24 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                 // pet_set_topmost_level's Win32 discipline). HWND is not Send
                 // — cast to isize to cross the boundary, cast back inside.
                 let app = panel.app_handle().clone();
+                let app_for_emit = app.clone();
                 let hwnd_send = hwnd as isize;
                 let _ = app.run_on_main_thread(move || {
                     let hwnd: HWND = hwnd_send as HWND;
-                    // [pet-panel-fg-debug] TEMP — confirm SetFocus now moves
-                    // focus when run on the main thread. Remove after.
+                    // Emit pet://panel-refocusing BEFORE SetFocus so the
+                    // frontend arms its "ignore the next blur" guard BEFORE
+                    // the blur fires. Both this emit and tao's resulting
+                    // tauri://blur are delivered through the SAME pet-panel
+                    // webview event loop (FIFO), so the refocusing flag is
+                    // set before the blur listener runs → the spurious blur
+                    // (tao fires blur when focus moves off the top-level
+                    // HWND down to the WebView2 child) no longer trips the
+                    // blur-auto-hide → no flash-close. Clearing happens on
+                    // the next tauri://focus (or a safety timeout).
+                    let _ = app_for_emit.emit("pet://panel-refocusing", ());
+                    // [pet-panel-fg-debug] TEMP — confirm SetFocus moves
+                    // focus onto the WebView2 doc child (the container's
+                    // WM_SETFOCUS handler SetFocuses its GW_CHILD). Remove.
                     // SAFETY: GetWindow/GetClassNameW/GetFocus/SetFocus are
                     // stable user32 entrypoints; PWSTR buffer is stack-alloc.
                     unsafe {
@@ -169,8 +182,11 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                             std::ptr::null_mut()
                         };
                         let focus_after = GetFocus();
+                        // focus moved iff focus_after is non-null and differs
+                        // from focus_before (lands on the WebView2 doc child).
+                        let moved = !focus_after.is_null() && focus_after != focus_before;
                         startup_log(format!(
-                            "[pet-panel-fg-debug] focus_panel SetFocus (MAIN THREAD): panel_hwnd={hwnd_send:?} child={container:?} class=\"{class_str}\" focus_before={focus_before:?} setfocus_ret={sfg_ret:?} focus_after={focus_after:?} focus_moved_to_child={}",
+                            "[pet-panel-fg-debug] focus_panel SetFocus (MAIN THREAD): panel_hwnd={hwnd_send:?} container={container:?} class=\"{class_str}\" focus_before={focus_before:?} setfocus_ret={sfg_ret:?} focus_after={focus_after:?} focus_moved={moved} (focus_after==container: {})",
                             focus_after == container
                         ));
                     }

@@ -157,6 +157,15 @@ export function PetPanelApp() {
   // `set_focus()` (which can emit a spurious focus=false mid-activation):
   // only hide on a focus=false that follows a real focus-gained.
   const panelFocusedRef = useRef(false);
+  // Rust's focus_panel SetFocus(child) (Windows) fires a spurious
+  // `tauri://blur` (tao reads focus moving off the top-level HWND down to
+  // the WebView2 child as the panel losing focus). That blur would trip the
+  // blur-auto-hide below → flash-close. Rust emits `pet://panel-refocusing`
+  // BEFORE the SetFocus (same webview event loop, FIFO) so this flag arms in
+  // time; the blur listener ignores blurs while it's set. Cleared on the
+  // next real `tauri://focus`, or a safety timeout (see the listener below).
+  const refocusingRef = useRef(false);
+  const refocusingTimeoutRef = useRef<number | null>(null);
   const toggleFullscreen = useCallback(async () => {
     if (!isTauri()) return;
     try {
@@ -361,6 +370,7 @@ export function PetPanelApp() {
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
+    let unrefocus: (() => void) | undefined;
     (async () => {
       try {
         const { listen } = await import('@tauri-apps/api/event');
@@ -380,12 +390,32 @@ export function PetPanelApp() {
             activeClass: ae?.className,
           });
         });
+        // Rust's focus_panel SetFocus(child) is about to move Win32 focus
+        // off the top-level panel HWND (down to the WebView2 doc child),
+        // which tao reports as a `tauri://blur`. Arm the ignore-blur guard
+        // (cleared on the next real `tauri://focus`, or a 800ms safety
+        // timeout in case focus never re-lands). See focus/blur listener.
+        unrefocus = await listen('pet://panel-refocusing', () => {
+          refocusingRef.current = true;
+          if (refocusingTimeoutRef.current != null) {
+            window.clearTimeout(refocusingTimeoutRef.current);
+          }
+          refocusingTimeoutRef.current = window.setTimeout(() => {
+            refocusingRef.current = false;
+            refocusingTimeoutRef.current = null;
+          }, 800);
+        });
       } catch (err) {
         console.warn('[pet-panel] panel-focus-search listener failed:', err);
       }
     })();
     return () => {
       void unlisten?.();
+      void unrefocus?.();
+      if (refocusingTimeoutRef.current != null) {
+        window.clearTimeout(refocusingTimeoutRef.current);
+        refocusingTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -429,8 +459,22 @@ export function PetPanelApp() {
         const panelTarget = { target: { kind: 'Window' as const, label: 'pet-panel' } };
         unFocus = await listen('tauri://focus', () => {
           panelFocusedRef.current = true;
+          // Rust's SetFocus(child) landed focus on the WebView2 doc → this
+          // is a real focus-gained, so the preceding spurious blur (if any)
+          // is over. Clear the refocusing guard + its safety timeout.
+          refocusingRef.current = false;
+          if (refocusingTimeoutRef.current != null) {
+            window.clearTimeout(refocusingTimeoutRef.current);
+            refocusingTimeoutRef.current = null;
+          }
         }, panelTarget);
         unBlur = await listen('tauri://blur', () => {
+          // Ignore the spurious blur from Rust's SetFocus(child) — see
+          // refocusingRef. Rust emits pet://panel-refocusing BEFORE the
+          // SetFocus (same webview loop, FIFO), so this is armed in time.
+          if (refocusingRef.current) {
+            return;
+          }
           if (panelFocusedRef.current && !isPinnedRef.current) {
             panelFocusedRef.current = false;
             void hidePanel();
