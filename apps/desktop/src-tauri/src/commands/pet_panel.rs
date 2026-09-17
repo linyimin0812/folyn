@@ -140,8 +140,14 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                 // `run_on_main_thread` is blocking; safe because `focus_panel`
                 // is only called from async commands (runtime thread), never
                 // the main thread — no self-deadlock. Matches pet_set_topmost.
+                // HWND (*mut c_void) is not `Send`, so cast to isize to cross
+                // the thread boundary and cast back to HWND inside the closure
+                // (pet_set_topmost avoids this by fetching hwnd *inside* the
+                // closure; we can't — `panel` is borrowed and not `Send`).
                 let app = panel.app_handle().clone();
+                let hwnd_send = hwnd as isize;
                 let _ = app.run_on_main_thread(move || {
+                    let hwnd: HWND = hwnd_send as HWND;
                     // SAFETY: all are stable user32/kernel32 entrypoints.
                     // `INPUT` is `#[repr(C)]`; `std::mem::zeroed()` is correct
                     // for the union (no Drop). INPUTs are stack-allocated,
