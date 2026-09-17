@@ -523,29 +523,42 @@ area rect and the scale factor.
   `toggle-theme`). The Rust `pet_ctx_menu_action` mapping recognizes all 9 strings so the
   contract stays uniform even though the native menu only renders 4 — the launcher emits the
   other 5 directly from the frontend.
-- **Windows foreground-steal in `focus_panel`**: `set_focus()` routes to Win32
-  `SetForegroundWindow`, which Windows blocks for non-foreground processes. The click-open
-  path works because the pet click satisfies the input-queue recency requirement, but the
-  **global-shortcut** path has no such click (the hotkey fires while the user is in another
-  app) — so the panel SHOWS (always-on-top) but never becomes foreground → the search box's
-  `.focus()` lands in a non-foreground webview → no caret ("没有自动聚焦"). Confirmed by
-  user diagnosis: Esc-without-click fails (keyboard focus never reached the webview), but
-  clicking the search box works (interaction foregrounds it). `focus_panel` (in
-  `commands/pet_panel.rs`) therefore steals the foreground on Windows, run on the main thread
-  (HWND owner thread) via `run_on_main_thread` (matching `pet_set_topmost_level`'s Win32
-  discipline): 1) if `GetForegroundWindow() == hwnd`, skip (idempotent); 2) the runtime
-  foreground-lock bypass is **`AttachThreadInput`** — attach the main thread's input queue
-  to the foreground window's thread so they share input state, then `SetForegroundWindow`
-  succeeds (the Alt-key `SendInput` trick Tao's `force_window_active` uses does NOT work at
-  runtime — Tao's own comment limits it to window creation); 3) last-resort fallback to
-  Tao's exact Alt-`SendInput` form (`VK_LMENU` + `KEYEVENTF_EXTENDEDKEY`, NOT generic
-  `VK_MENU`/plain flags). Reuses `voice/insertion_win.rs`'s `SendInput`/`INPUT`/`KEYBDINPUT`
-  pattern; the `Win32_System_Threading` (AttachThreadInput/GetCurrentThreadId),
-  `Win32_UI_Input_KeyboardAndMouse`, and `Win32_UI_WindowsAndMessaging` features are enabled
-  in `Cargo.toml`. By the time `pet://panel-focus-search` fires (after `applyPanelFrame`'s
-  two `focus_panel` calls), the panel is foreground → `.focus()` works. macOS is unaffected
-  (the `#[cfg(target_os = "windows")]` block is skipped; the macOS
-  `makeFirstResponder(wkwebview)` path still handles Esc + DOM focus).
+- **Windows WebView2-child focus in `focus_panel`**: the macOS path calls
+  `makeFirstResponder(wkwebview)` after `set_focus()` because `set_focus()` makes the
+  window key but NOT the WKWebView first responder. Windows has the SAME gap one layer
+  down: `set_focus()` (Tauri → `SetForegroundWindow` + wry `WebView::focus()` =
+  `controller.MoveFocus(PROGRAMMATIC)`) makes the panel window the foreground window
+  (confirmed by Windows diagnostic logs — `GetForegroundWindow() == panel hwnd` on the
+  show path) BUT does NOT give the WebView2 child HWND the Win32 keyboard focus.
+  `MoveFocus` only relays focus INTO the WebView once the container already has Win32
+  focus — it does not itself grant focus. wry's container window proc handles `WM_SETFOCUS`
+  by `SetFocus(GetWindow(container, GW_CHILD))` (hand focus to the WebView doc child), but
+  that handler only fires when the CONTAINER receives `WM_SETFOCUS` — and Tauri's
+  `set_focus()` never calls wry's `focus_parent()` (which would `SetFocus` the container),
+  so the container never gets `WM_SETFOCUS`, so the WebView doc child is never focused.
+  Result: the panel is foreground but `document` gets no `keydown` (Esc won't close without
+  a click) and the search box's `.focus()` shows no caret ("没有自动聚焦"). A click on
+  the search box works only because the click routes through the WebView and hands it
+  focus directly. `focus_panel` (in `commands/pet_panel.rs`) therefore explicitly
+  `SetFocus`es the first child of the panel window (the `WRY_WEBVIEW` container wry
+  creates) — this triggers the container's `WM_SETFOCUS` handler, which `SetFocus`es the
+  WebView doc child (mirrors wry's own `focus_parent()` + `WM_SETFOCUS` chain, made
+  explicit because Tauri's `set_focus()` stops short of it). No foreground-lock concern:
+  `SetFocus` within an already-foreground window is always allowed (the lock is on
+  cross-process `SetForegroundWindow`, not in-window `SetFocus`); idempotent. Called
+  inline off the async-runtime thread (`SetFocus`/`GetWindow` are stable user32 entrypoints
+  safe to call off the GUI thread — wry's `focus_parent` does the same). Uses
+  `SetFocus` (`Win32_UI_Input_KeyboardAndMouse`) + `GetWindow`/`GW_CHILD`
+  (`Win32_UI_WindowsAndMessaging`), both already enabled. By the time
+  `pet://panel-focus-search` fires (after `applyPanelFrame`'s two `focus_panel` calls),
+  the WebView2 child has focus → `document` receives `keydown` (Esc) and `.focus()` shows
+  a caret. macOS is unaffected (the `#[cfg(target_os = "windows")]` block is skipped; the
+  macOS `makeFirstResponder(wkwebview)` path still handles Esc + DOM focus).
+  - **Do NOT** re-add a `SetForegroundWindow`/`AttachThreadInput`/Alt-`SendInput`
+    "foreground-steal" to this path — an earlier fix chased a foreground-lock hypothesis
+    that the diagnostic logs disproved (`GetForegroundWindow() == panel hwnd` already, so
+    the steal's idempotent guard skipped it every call — it was dead weight). The bug is
+    the WebView2 child focus, not the window foreground.
 
 ### 4. Validation & Error Matrix
 

@@ -31,9 +31,9 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
 }
 
 /// Focus the pet-panel window (set_focus + macOS makeFirstResponder +
-/// Windows foreground-steal). Called by `pet_panel_show` after `show()`,
-/// AND by `applyPanelFrame` (PetApp.tsx) as a SECOND call AFTER the
-/// post-show position/size re-assert.
+/// Windows WebView2-child SetFocus). Called by `pet_panel_show` after
+/// `show()`, AND by `applyPanelFrame` (PetApp.tsx) as a SECOND call AFTER
+/// the post-show position/size re-assert.
 ///
 /// Why the second call exists: on Windows, opening the panel via a click on
 /// the `pet` window does NOT activate the Folyn app first (`pet` is
@@ -90,153 +90,61 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
         });
     }
 
-    // Windows: steal the foreground so the search input's `.focus()` shows a
-    // caret. `set_focus()` above routes to `SetForegroundWindow`, which Windows
-    // blocks for non-foreground processes. The click-open path works because the
-    // pet click satisfies the input-queue recency requirement, but the
-    // **global-shortcut** path has no such click (the hotkey fires while the
-    // user is in another app) → the panel SHOWS (always-on-top) but never
-    // becomes foreground → the `pet://panel-focus-search` `.focus()` lands in a
-    // non-foreground webview → no caret → "没有自动聚焦". Confirmed by user
-    // diagnosis: Esc-without-click fails (keyboard focus never reached the
-    // webview), but clicking the search box works (interaction foregrounds it).
+    // Windows equivalent of macOS `makeFirstResponder(wkwebview)`: give the
+    // WebView2 child the keyboard focus so `document` receives `keydown`
+    // (Esc works without a click) and the search input's `.focus()` shows a
+    // caret. `set_focus()` above makes the panel the foreground window
+    // (Tauri → SetForegroundWindow — confirmed working by the Windows
+    // diagnostic logs: `GetForegroundWindow() == panel hwnd` on the show
+    // path) and calls wry's `WebView::focus()` = `controller.MoveFocus(
+    // PROGRAMMATIC)`. But `MoveFocus` only relays focus INTO the WebView once
+    // the container already has Win32 focus — it does NOT itself grant focus.
+    // wry's `focus_parent()` (SetFocus on the container HWND) is what would
+    // trigger the container's `WM_SETFOCUS` handler (webview2/mod.rs), which
+    // does `SetFocus(GetWindow(container, GW_CHILD))` to hand focus to the
+    // WebView doc child — but Tauri's `set_focus()` never calls `focus_parent`,
+    // so the container never gets `WM_SETFOCUS`, so the WebView doc child is
+    // never focused. Result: the panel is foreground but `document` gets no
+    // keydown (Esc won't close without a click) and `.focus()` shows no caret
+    // ("没有自动聚焦"). A click on the search box works only because the
+    // click routes through the WebView and hands it focus directly.
     //
-    // The runtime foreground-lock bypass is **AttachThreadInput**: attach the
-    // calling thread's input queue to the foreground window's thread — once
-    // shared, the foreground thread's "received the last input" allowance
-    // extends to the calling thread, so `SetForegroundWindow` succeeds. (The
-    // Alt-key `SendInput` trick Tao's `force_window_active` uses does NOT work
-    // at runtime — Tao's own comment says "we only call this function in the
-    // window creation"; my first attempt used it at runtime and it failed.)
-    // As a last resort, fall back to Tao's exact Alt-SendInput form
-    // (`VK_LMENU` + `KEYEVENTF_EXTENDEDKEY`, NOT the generic `VK_MENU`/plain
-    // flags my first attempt wrongly used).
-    //
-    // Runs on the main thread (the HWND owner thread) via `run_on_main_thread`,
-    // matching `pet_set_topmost_level`'s Win32 discipline — `focus_panel` is
-    // called from async commands on the runtime, NOT the main thread, so there
-    // is no `run_on_main_thread` self-deadlock. Idempotent: a leading
-    // `GetForegroundWindow() == hwnd` skips everything when focus already
-    // landed (click path, re-focus while foreground). By the time
-    // `pet://panel-focus-search` fires (AFTER `applyPanelFrame`'s two
-    // `focus_panel` calls), the panel is foreground → `.focus()` works.
+    // Fix: SetFocus the first child of the panel window (the `WRY_WEBVIEW`
+    // container wry creates) — this triggers the container's `WM_SETFOCUS`
+    // handler, which SetFocuses the WebView doc child. Mirrors wry's own
+    // `focus_parent()` + `WM_SETFOCUS` handler chain, made explicit because
+    // Tauri's `set_focus()` stops short of it. No foreground-lock concern:
+    // SetFocus within an already-foreground window is always allowed (the
+    // lock is on cross-process SetForegroundWindow, not in-window SetFocus).
+    // Idempotent: SetFocus on the already-focused child returns it unchanged.
+    // Called inline (no run_on_main_thread) — SetFocus/GetWindow are stable
+    // user32 entrypoints safe to call off the GUI thread (wry's `focus_parent`
+    // and `MoveFocus` paths do the same).
     #[cfg(target_os = "windows")]
     {
-        use std::ptr;
         use windows_sys::Win32::Foundation::HWND;
-        use windows_sys::Win32::System::Threading::{
-            AttachThreadInput, GetCurrentThreadId,
-        };
-        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-            INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
-            KEYEVENTF_KEYUP, SendInput, VK_LMENU,
-        };
-        use windows_sys::Win32::UI::WindowsAndMessaging::{
-            GetForegroundWindow, GetWindowThreadProcessId, SetForegroundWindow,
-        };
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+        use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindow, GW_CHILD};
         if let Ok(hwnd_ptr) = panel.hwnd() {
             let hwnd: HWND = hwnd_ptr.0;
             if !hwnd.is_null() {
-                // `run_on_main_thread` is blocking; safe because `focus_panel`
-                // is only called from async commands (runtime thread), never
-                // the main thread — no self-deadlock. Matches pet_set_topmost.
-                // HWND (*mut c_void) is not `Send`, so cast to isize to cross
-                // the thread boundary and cast back to HWND inside the closure
-                // (pet_set_topmost avoids this by fetching hwnd *inside* the
-                // closure; we can't — `panel` is borrowed and not `Send`).
-                let app = panel.app_handle().clone();
-                let hwnd_send = hwnd as isize;
-                let _ = app.run_on_main_thread(move || {
-                    let hwnd: HWND = hwnd_send as HWND;
-                    // [pet-panel-fg-debug] TEMP instrumentation — see what
-                    // actually happens on the Windows shortcut-summon path.
-                    // Remove after root cause is confirmed.
-                    use crate::startup_log;
-                    let dbg_fg0 = unsafe { GetForegroundWindow() };
-                    startup_log(format!(
-                        "[pet-panel-fg-debug] focus_panel run_on_main_thread: hwnd={hwnd_send:?} fg_before={dbg_fg0:?} is_fg_initial={}",
-                        dbg_fg0 == hwnd
-                    ));
-                    // SAFETY: all are stable user32/kernel32 entrypoints.
-                    // `INPUT` is `#[repr(C)]`; `std::mem::zeroed()` is correct
-                    // for the union (no Drop). INPUTs are stack-allocated,
-                    // passed by mutable pointer to `SendInput` — mirrors
-                    // `insertion_win.rs`. `AttachThreadInput`'s BOOL is `i32`;
-                    // 1 = TRUE (attach), 0 = FALSE (detach).
-                    unsafe {
-                        if GetForegroundWindow() == hwnd {
-                            startup_log("[pet-panel-fg-debug] already foreground, skipping");
-                            return; // already foreground — idempotent
-                        }
-                        // 1. AttachThreadInput: the runtime foreground-lock
-                        //    bypass. Attach the main thread's input queue to
-                        //    the foreground window's thread so they share input
-                        //    state, then SetForegroundWindow succeeds.
-                        let cur_thread = GetCurrentThreadId();
-                        let fg = GetForegroundWindow();
-                        let fg_thread = GetWindowThreadProcessId(fg, ptr::null_mut());
-                        startup_log(format!(
-                            "[pet-panel-fg-debug] cur_thread={cur_thread} fg={fg:?} fg_thread={fg_thread}"
-                        ));
-                        if fg_thread != 0 && fg_thread != cur_thread {
-                            let attach_ret = AttachThreadInput(cur_thread, fg_thread, 1);
-                            let sfg_ret = SetForegroundWindow(hwnd);
-                            let attach_detach = AttachThreadInput(cur_thread, fg_thread, 0);
-                            let fg_after = GetForegroundWindow();
-                            startup_log(format!(
-                                "[pet-panel-fg-debug] AttachThreadInput path: attach={attach_ret} setfg={sfg_ret:?} detach={attach_detach} fg_after={fg_after:?} is_fg={}",
-                                fg_after == hwnd
-                            ));
-                        } else {
-                            let sfg_ret = SetForegroundWindow(hwnd);
-                            startup_log(format!(
-                                "[pet-panel-fg-debug] plain SetForegroundWindow path: setfg={sfg_ret:?} (fg_thread==cur_thread or 0)"
-                            ));
-                        }
-                        // 2. Last resort: if still not foreground, Tao's exact
-                        //    Alt-SendInput form (VK_LMENU + KEYEVENTF_EXTENDEDKEY)
-                        //    to nudge the lock, then retry SetForegroundWindow.
-                        if GetForegroundWindow() != hwnd {
-                            let mut inputs: [INPUT; 2] = [std::mem::zeroed(); 2];
-                            inputs[0].r#type = INPUT_KEYBOARD;
-                            inputs[0].Anonymous.ki = KEYBDINPUT {
-                                wVk: VK_LMENU,
-                                wScan: 0,
-                                dwFlags: KEYEVENTF_EXTENDEDKEY,
-                                time: 0,
-                                dwExtraInfo: 0,
-                            };
-                            inputs[1].r#type = INPUT_KEYBOARD;
-                            inputs[1].Anonymous.ki = KEYBDINPUT {
-                                wVk: VK_LMENU,
-                                wScan: 0,
-                                dwFlags: KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP,
-                                time: 0,
-                                dwExtraInfo: 0,
-                            };
-                            let sent = SendInput(
-                                2,
-                                inputs.as_mut_ptr(),
-                                std::mem::size_of::<INPUT>() as i32,
-                            );
-                            let sfg_ret = SetForegroundWindow(hwnd);
-                            let fg_final = GetForegroundWindow();
-                            startup_log(format!(
-                                "[pet-panel-fg-debug] Alt-SendInput fallback: sent={sent} setfg={sfg_ret} fg_final={fg_final:?} is_fg_final={}",
-                                fg_final == hwnd
-                            ));
-                        } else {
-                            startup_log("[pet-panel-fg-debug] no fallback needed (foreground landed)");
-                        }
+                // SAFETY: GetWindow (GW_CHILD) reads the first top-level child
+                // HWND (the WRY_WEBVIEW container wry creates on the panel
+                // window). SetFocus on a child HWND of the foreground window is
+                // always allowed and is a Win32 no-op when already focused.
+                unsafe {
+                    let container = GetWindow(hwnd, GW_CHILD);
+                    if !container.is_null() {
+                        let _ = SetFocus(container);
                     }
-                });
+                }
             }
         }
     }
 }
 
 /// Re-focus the pet-panel window after the post-show frame re-assert (see
-/// `focus_panel` for the Windows SetForegroundWindow rationale). Idempotent
+/// `focus_panel` for the Windows WebView2-child-focus rationale). Idempotent
 /// on macOS / when focus already landed. Called by `applyPanelFrame` in
 /// PetApp.tsx as the LAST step of the open gesture.
 #[tauri::command]
