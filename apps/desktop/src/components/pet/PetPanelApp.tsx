@@ -408,11 +408,13 @@ export function PetPanelApp() {
           // (below) re-focuses the input once the webview is truly focused.
           pendingSearchFocusRef.current = true;
         });
-        // Rust's focus_panel SetFocus(child) is about to move Win32 focus
-        // off the top-level panel HWND (down to the WebView2 doc child),
-        // which tao reports as a `tauri://blur`. Arm the ignore-blur guard
-        // (cleared on the next real `tauri://focus`, or a 800ms safety
-        // timeout in case focus never re-lands). See focus/blur listener.
+        // Rust's focus_panel emits pet://panel-refocusing BEFORE set_focus() —
+        // it arms this guard so the spurious blur(s) from set_focus() AND the
+        // later async SetFocus(child) (which fires blur when focus moves off
+        // the top-level HWND down to the WebView2 child) are ignored by the
+        // blur-auto-hide below. NOT cleared on tauri://focus (that arrives
+        // mid-churn, before the final blur, so clearing it there re-exposes
+        // the blur → flash); only the 800ms safety timeout clears it.
         unrefocus = await listen('pet://panel-refocusing', () => {
           // [pet-panel-search-debug] TEMP
           console.info('[pet-panel-search-debug] pet://panel-refocusing armed');
@@ -481,17 +483,13 @@ export function PetPanelApp() {
           // [pet-panel-search-debug] TEMP
           console.info('[pet-panel-search-debug] tauri://focus');
           panelFocusedRef.current = true;
-          // Rust's SetFocus(child) landed focus on the WebView2 doc → this
-          // is a real focus-gained, so the preceding spurious blur (if any)
-          // is over. Clear the refocusing guard + its safety timeout.
-          refocusingRef.current = false;
-          if (refocusingTimeoutRef.current != null) {
-            window.clearTimeout(refocusingTimeoutRef.current);
-            refocusingTimeoutRef.current = null;
-          }
+          // Do NOT clear refocusingRef here — focus-gained arrives BEFORE the
+          // final spurious blur on the show path, so clearing it here would
+          // re-expose that blur to the auto-hide → flash. Let the 800ms safety
+          // timeout in the pet://panel-refocusing listener clear it instead.
           // The webview now has Win32 focus — re-run the search input .focus()
-          // if panel-focus-search armed it (it ran before SetFocus landed,
-          // so no caret showed). Now the caret can appear.
+          // if panel-focus-search armed it (it ran before SetFocus landed, so
+          // no caret showed). Now the caret can appear.
           if (pendingSearchFocusRef.current) {
             pendingSearchFocusRef.current = false;
             searchInputRef.current?.focus();
