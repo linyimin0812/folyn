@@ -174,6 +174,12 @@ export function PetPanelApp() {
   // next real `tauri://focus`, or a safety timeout (see the listener below).
   const refocusingRef = useRef(false);
   const refocusingTimeoutRef = useRef<number | null>(null);
+  // True after pet://panel-focus-search fires: re-run .focus() on the search
+  // input once the webview actually gains Win32 focus (tauri://focus),
+  // because .focus() runs BEFORE Rust's async SetFocus(child) lands — the
+  // DOM activeElement is set (isInputFocused=true) but no caret shows until
+  // the webview has Win32 focus. Cleared on first re-focus.
+  const pendingSearchFocusRef = useRef(false);
   const toggleFullscreen = useCallback(async () => {
     if (!isTauri()) return;
     try {
@@ -397,6 +403,10 @@ export function PetPanelApp() {
             isInputFocused,
             activeClass: ae?.className,
           });
+          // .focus() ran before Rust's async SetFocus(child) gave the webview
+          // Win32 focus — the caret won't show yet. Re-arm so tauri://focus
+          // (below) re-focuses the input once the webview is truly focused.
+          pendingSearchFocusRef.current = true;
         });
         // Rust's focus_panel SetFocus(child) is about to move Win32 focus
         // off the top-level panel HWND (down to the WebView2 doc child),
@@ -478,6 +488,14 @@ export function PetPanelApp() {
           if (refocusingTimeoutRef.current != null) {
             window.clearTimeout(refocusingTimeoutRef.current);
             refocusingTimeoutRef.current = null;
+          }
+          // The webview now has Win32 focus — re-run the search input .focus()
+          // if panel-focus-search armed it (it ran before SetFocus landed,
+          // so no caret showed). Now the caret can appear.
+          if (pendingSearchFocusRef.current) {
+            pendingSearchFocusRef.current = false;
+            searchInputRef.current?.focus();
+            console.info('[pet-panel-search-debug] re-focused search input on tauri://focus');
           }
         }, panelTarget);
         unBlur = await listen('tauri://blur', () => {

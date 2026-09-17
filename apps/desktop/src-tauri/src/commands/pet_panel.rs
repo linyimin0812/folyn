@@ -62,6 +62,19 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
     // stays frontmost instead of returning to the user's previous app.
     // Restoring the previous app needs `NSWorkspace.frontmostApplication`
     // tracking + `activateWithOptions:` on hide — out of scope for this fix.
+    // Windows: emit pet://panel-refocusing BEFORE set_focus() so the
+    // frontend arms its ignore-blur guard before the spurious blur from
+    // set_focus() (and from the later SetFocus(child) task) arrives. Both
+    // the emit and tao's tauri://blur route through the same pet-panel
+    // webview event loop (FIFO), so refocusingRef is set first → the blur
+    // is ignored → no flash-close. (The PREVIOUS attempt emitted this only
+    // from inside the late SetFocus task, so set_focus()'s earlier blur
+    // slipped through the gate and hid the panel.) Cleared on the next
+    // real tauri://focus, or an 800ms safety timeout in the frontend.
+    #[cfg(target_os = "windows")]
+    {
+        let _ = panel.app_handle().emit("pet://panel-refocusing", ());
+    }
     let _ = panel.set_focus();
 
     // Make the WKWebView (NOT the contentView / parent view) the first
@@ -142,21 +155,9 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                 // pet_set_topmost_level's Win32 discipline). HWND is not Send
                 // — cast to isize to cross the boundary, cast back inside.
                 let app = panel.app_handle().clone();
-                let app_for_emit = app.clone();
                 let hwnd_send = hwnd as isize;
                 let _ = app.run_on_main_thread(move || {
                     let hwnd: HWND = hwnd_send as HWND;
-                    // Emit pet://panel-refocusing BEFORE SetFocus so the
-                    // frontend arms its "ignore the next blur" guard BEFORE
-                    // the blur fires. Both this emit and tao's resulting
-                    // tauri://blur are delivered through the SAME pet-panel
-                    // webview event loop (FIFO), so the refocusing flag is
-                    // set before the blur listener runs → the spurious blur
-                    // (tao fires blur when focus moves off the top-level
-                    // HWND down to the WebView2 child) no longer trips the
-                    // blur-auto-hide → no flash-close. Clearing happens on
-                    // the next tauri://focus (or a safety timeout).
-                    let _ = app_for_emit.emit("pet://panel-refocusing", ());
                     // [pet-panel-fg-debug] TEMP — confirm SetFocus moves
                     // focus onto the WebView2 doc child (the container's
                     // WM_SETFOCUS handler SetFocuses its GW_CHILD). Remove.
