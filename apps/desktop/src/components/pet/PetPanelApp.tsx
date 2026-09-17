@@ -118,14 +118,6 @@ export function PetPanelApp() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const hidePanel = useCallback(async () => {
-    // [pet-panel-search-debug] TEMP — what triggers the hide? log the
-    // gate state + a stack trace so we can see if it's the blur-auto-hide.
-    console.info('[pet-panel-search-debug] hidePanel called', {
-      refocusing: refocusingRef.current,
-      panelFocused: panelFocusedRef.current,
-      pinned: isPinnedRef.current,
-      stack: new Error().stack?.split('\n').slice(1, 6).join(' | '),
-    });
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('pet_panel_hide');
@@ -352,10 +344,6 @@ export function PetPanelApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('pet://panel-fade-in', () => {
-          // [pet-panel-search-debug] TEMP — proves the pet-panel webview
-          // console is being captured (fade-in always arrives on show).
-          // If this is absent too, the DevTools is open on the wrong window.
-          console.info('[pet-panel-search-debug] panel-fade-in received');
           // The panel webview lives across shows, so the search query would
           // otherwise survive a close → reopen. The popup search is
           // ephemeral — clear it every time the panel is shown again.
@@ -389,20 +377,7 @@ export function PetPanelApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('pet://panel-focus-search', () => {
-          // [pet-panel-search-debug] TEMP — does the event arrive, is the ref
-          // bound, and does .focus() make the input the activeElement? Remove
-          // after root cause is confirmed.
-          const hadRef = !!searchInputRef.current;
           searchInputRef.current?.focus();
-          const ae = document.activeElement;
-          const isInputFocused =
-            ae instanceof HTMLInputElement && ae === searchInputRef.current;
-          console.info('[pet-panel-search-debug] panel-focus-search fired:', {
-            hadRef,
-            activeIsInput: ae instanceof HTMLInputElement,
-            isInputFocused,
-            activeClass: ae?.className,
-          });
           // .focus() ran before Rust's async SetFocus(child) gave the webview
           // Win32 focus — the caret won't show yet. Re-arm so tauri://focus
           // (below) re-focuses the input once the webview is truly focused.
@@ -416,8 +391,6 @@ export function PetPanelApp() {
         // mid-churn, before the final blur, so clearing it there re-exposes
         // the blur → flash); only the 800ms safety timeout clears it.
         unrefocus = await listen('pet://panel-refocusing', () => {
-          // [pet-panel-search-debug] TEMP
-          console.info('[pet-panel-search-debug] pet://panel-refocusing armed');
           refocusingRef.current = true;
           if (refocusingTimeoutRef.current != null) {
             window.clearTimeout(refocusingTimeoutRef.current);
@@ -480,8 +453,6 @@ export function PetPanelApp() {
         const { listen } = await import('@tauri-apps/api/event');
         const panelTarget = { target: { kind: 'Window' as const, label: 'pet-panel' } };
         unFocus = await listen('tauri://focus', () => {
-          // [pet-panel-search-debug] TEMP
-          console.info('[pet-panel-search-debug] tauri://focus');
           panelFocusedRef.current = true;
           // Do NOT clear refocusingRef here — focus-gained arrives BEFORE the
           // final spurious blur on the show path, so clearing it here would
@@ -493,19 +464,14 @@ export function PetPanelApp() {
           if (pendingSearchFocusRef.current) {
             pendingSearchFocusRef.current = false;
             searchInputRef.current?.focus();
-            console.info('[pet-panel-search-debug] re-focused search input on tauri://focus');
           }
         }, panelTarget);
         unBlur = await listen('tauri://blur', () => {
-          // [pet-panel-search-debug] TEMP
-          console.info('[pet-panel-search-debug] tauri://blur', {
-            refocusing: refocusingRef.current,
-            panelFocused: panelFocusedRef.current,
-            pinned: isPinnedRef.current,
-          });
-          // Ignore the spurious blur from Rust's SetFocus(child) — see
-          // refocusingRef. Rust emits pet://panel-refocusing BEFORE the
-          // SetFocus (same webview loop, FIFO), so this is armed in time.
+          // Ignore the spurious blur from Rust's set_focus() / SetFocus(child) —
+          // see refocusingRef. Rust emits pet://panel-refocusing BEFORE
+          // set_focus() (same webview loop, FIFO), so this is armed in time;
+          // the 800ms timeout keeps it armed across the whole show-time churn
+          // (focus-gained arrives mid-churn and must NOT clear it early).
           if (refocusingRef.current) {
             return;
           }

@@ -130,73 +130,44 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
     // SetFocus within an already-foreground window is always allowed (the
     // lock is on cross-process SetForegroundWindow, not in-window SetFocus).
     // Idempotent: SetFocus on the already-focused child returns it unchanged.
-    // Called inline (no run_on_main_thread) — SetFocus/GetWindow are stable
-    // user32 entrypoints safe to call off the GUI thread (wry's `focus_parent`
-    // and `MoveFocus` paths do the same).
+    // Runs on the MAIN (GUI) thread via run_on_main_thread — the HWND owner —
+    // because SetFocus/GetFocus are per-THREAD (inert on the async runtime
+    // thread, which owns no window / has no message pump).
     #[cfg(target_os = "windows")]
     {
         use windows_sys::Win32::Foundation::HWND;
-        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetFocus, SetFocus};
-        use windows_sys::Win32::UI::WindowsAndMessaging::{
-            GetClassNameW, GetWindow, GW_CHILD,
-        };
-        use crate::startup_log;
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+        use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindow, GW_CHILD};
         if let Ok(hwnd_ptr) = panel.hwnd() {
             let hwnd: HWND = hwnd_ptr.0;
             if !hwnd.is_null() {
-                // ROOT CAUSE (confirmed by [pet-panel-fg-debug] logs): the
-                // PREVIOUS SetFocus(child) attempt ran on the Tauri async
-                // runtime thread — `GetFocus()`/`SetFocus()` are per-THREAD
-                // (only affect the calling thread's message queue), and the
-                // async thread owns no window / has no message pump, so
-                // `focus_before=0`, `setfocus_ret=0`, `focus_after=0` —
-                // SetFocus silently failed. Must run on the MAIN (GUI) thread,
-                // the HWND owner thread, via `run_on_main_thread` (mirrors
-                // pet_set_topmost_level's Win32 discipline). HWND is not Send
-                // — cast to isize to cross the boundary, cast back inside.
+                // SetFocus must run on the MAIN (GUI) thread, the HWND owner —
+                // on the async runtime thread GetFocus()/SetFocus() are inert
+                // (per-thread: the async thread owns no window / has no message
+                // pump), so SetFocus silently returns NULL. Mirrors
+                // pet_set_topmost_level's run_on_main_thread discipline. HWND is
+                // not `Send` — cast to isize to cross the boundary, cast back.
+                // pet://panel-refocusing was already emitted above (before
+                // set_focus()) so the frontend's ignore-blur guard is armed
+                // for the spurious blur this focus move fires (tao reads focus
+                // moving off the top-level HWND down to the WebView2 child as
+                // a blur → would trip the blur-auto-hide → flash-close).
                 let app = panel.app_handle().clone();
                 let hwnd_send = hwnd as isize;
                 let _ = app.run_on_main_thread(move || {
                     let hwnd: HWND = hwnd_send as HWND;
-                    // [pet-panel-fg-debug] TEMP — confirm SetFocus moves
-                    // focus onto the WebView2 doc child (the container's
-                    // WM_SETFOCUS handler SetFocuses its GW_CHILD). Remove.
-                    // SAFETY: GetWindow/GetClassNameW/GetFocus/SetFocus are
-                    // stable user32 entrypoints; PWSTR buffer is stack-alloc.
+                    // SAFETY: GetWindow (GW_CHILD) reads the first top-level
+                    // child HWND (the WRY_WEBVIEW container wry creates).
+                    // SetFocus on a child HWND of the foreground window is
+                    // always allowed and is a Win32 no-op when already focused.
                     unsafe {
                         let container = GetWindow(hwnd, GW_CHILD);
-                        let mut class_buf = [0u16; 64];
-                        let class_len = if !container.is_null() {
-                            GetClassNameW(container, class_buf.as_mut_ptr(), 64)
-                        } else {
-                            -1
-                        };
-                        let class_str = if class_len > 0 {
-                            String::from_utf16_lossy(&class_buf[..class_len as usize])
-                        } else {
-                            "(none)".to_string()
-                        };
-                        let focus_before = GetFocus();
-                        let sfg_ret = if !container.is_null() {
-                            SetFocus(container)
-                        } else {
-                            std::ptr::null_mut()
-                        };
-                        let focus_after = GetFocus();
-                        // focus moved iff focus_after is non-null and differs
-                        // from focus_before (lands on the WebView2 doc child).
-                        let moved = !focus_after.is_null() && focus_after != focus_before;
-                        startup_log(format!(
-                            "[pet-panel-fg-debug] focus_panel SetFocus (MAIN THREAD): panel_hwnd={hwnd_send:?} container={container:?} class=\"{class_str}\" focus_before={focus_before:?} setfocus_ret={sfg_ret:?} focus_after={focus_after:?} focus_moved={moved} (focus_after==container: {})",
-                            focus_after == container
-                        ));
+                        if !container.is_null() {
+                            let _ = SetFocus(container);
+                        }
                     }
                 });
-            } else {
-                startup_log("[pet-panel-fg-debug] focus_panel: panel hwnd is null");
             }
-        } else {
-            startup_log("[pet-panel-fg-debug] focus_panel: panel.hwnd() returned Err");
         }
     }
 }
