@@ -825,6 +825,7 @@ function VaultImageInner(props: {
 function findNextBlock(
   root: HTMLElement,
   current: HTMLElement,
+  transformOffset = 0,
 ): { offset: number; el: HTMLElement } | null {
   const blocks = Array.from(root.querySelectorAll('[data-source-line]')) as HTMLElement[];
   const startIdx = blocks.indexOf(current);
@@ -836,7 +837,9 @@ function findNextBlock(
     if (!scrollContainer) return null;
     const cr = scrollContainer.getBoundingClientRect();
     const br = el.getBoundingClientRect();
-    return { offset: br.top - cr.top + scrollContainer.scrollTop, el };
+    // Cancel the .md-preview transform so offset is the UN-transformed
+    // content offset (mirrors blockOffset's cancellation in the effect).
+    return { offset: br.top - cr.top + scrollContainer.scrollTop - transformOffset, el };
   }
   return null;
 }
@@ -859,6 +862,24 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // implemented; only cursor -> preview. The effect never re-parses the
   // markdown (no cursor prop is in reactContent deps).
   const activeBlockRef = useRef<HTMLElement | null>(null);
+  // ponytail: when the editor cursor sits below the preview block's
+  // rendered position (blank lines in the editor push the cursor down a
+  // full line each, but render 0 height in the preview → the preview block
+  // stacks tighter and ends up ABOVE the cursor), `desired` goes NEGATIVE.
+  // scrollTop can't go below 0, so the alignment scroll is clamped and the
+  // highlight drifts far above the cursor. To still bring the block down to
+  // the cursor, push the preview content down by the shortfall via a
+  // transform on `.md-preview` (GPU, transition-smoothed, no reflow). Used
+  // only when `desired < 0`; the normal `desired >= 0` path keeps offset 0
+  // and scrolls normally.
+  //
+  // The transform shifts every block's getBoundingClientRect, so the effect
+  // must SUBTRACT the current offset when measuring block positions —
+  // otherwise the measurement drifts run-to-run (the transform it just set
+  // pollutes the next read). syncOffsetRef mirrors the state for the
+  // effect to cancel; the state drives the render-time transform.
+  const [syncOffset, setSyncOffset] = useState(0);
+  const syncOffsetRef = useRef(0);
 
   useEffect(() => {
     if (cursorLine == null || cursorLine <= 0) {
@@ -868,6 +889,8 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         activeBlockRef.current.classList.remove('cursor-sync-active');
         activeBlockRef.current = null;
       }
+      setSyncOffset(0);
+      syncOffsetRef.current = 0;
       return;
     }
     if (hasSelection) return;
@@ -920,7 +943,10 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // Align the preview block to the cursor's screen position.
     const containerRect = scrollContainer.getBoundingClientRect();
     const blockRect = el.getBoundingClientRect();
-    const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop;
+    // Cancel the transform we applied last run so blockOffset is the
+    // UN-transformed content offset (the transform on .md-preview shifts
+    // blockRect.top by exactly syncOffsetRef.current).
+    const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current;
     const blockHeight = blockRect.height;
     const blockBottom = blockOffset + blockHeight;
     const blockSrcLine = Number(el.getAttribute('data-source-line'));
@@ -944,7 +970,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       ? codeBlockCloseLine(srcLines, blockSrcLine) // closing fence: cursor on/after it is the gap
       : blockLastSrcLine(srcLines, blockSrcLine);
     const inGap = cursorLine > lastSrcLine;
-    const nextBlock = inGap ? findNextBlock(root, el) : null;
+    const nextBlock = inGap ? findNextBlock(root, el, syncOffsetRef.current) : null;
 
     // The highlight target: when in a gap with a next block, highlight the
     // NEXT block (the content the cursor is about to enter / the separator
@@ -1012,9 +1038,27 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
     const headingCenter = !inGap && /^H[1-6]$/.test(el.tagName);
     const targetY = headingCenter ? cursorScreenY + (editorLineHeight ?? 0) / 2 : cursorScreenY;
-    const desired = Math.max(0, alignPoint - (targetY - containerRect.top));
-    if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
-      scrollContainer.scrollTop = desired;
+    // Raw align target: the content offset that should land at the cursor's
+    // screen Y. When this is >= 0, scrollTop = desired scrolls the preview so
+    // the block aligns to the cursor (offset stays 0). When < 0 the preview
+    // block is rendered ABOVE the cursor (blank lines in the editor push the
+    // cursor down a line each but render 0 height in the preview → the block
+    // stacks tighter and ends up above the cursor), and scrollTop can't go
+    // below 0 to bring it down. Instead keep scrollTop=0 and push the preview
+    // content down by the shortfall (transform on .md-preview) so the block
+    // still lands at the cursor. See syncOffset state + .md-preview style.
+    const desiredRaw = alignPoint - (targetY - containerRect.top);
+    if (desiredRaw < 0) {
+      const off = -desiredRaw;
+      syncOffsetRef.current = off;
+      setSyncOffset(off);
+      if (Math.abs(scrollContainer.scrollTop - 0) > 2) scrollContainer.scrollTop = 0;
+    } else {
+      syncOffsetRef.current = 0;
+      setSyncOffset(0);
+      if (Math.abs(scrollContainer.scrollTop - desiredRaw) > 2) {
+        scrollContainer.scrollTop = desiredRaw;
+      }
     }
   }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac]);
 
@@ -1240,7 +1284,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
 
   return (
     <VaultContext.Provider value={vaultContextValue}>
-      <div className="md-preview" ref={containerRef}>
+      <div className="md-preview" ref={containerRef} style={{ transform: `translateY(${syncOffset}px)` }}>
         {meta && <SkillMetaCard meta={meta} />}
         {reactContent}
       </div>

@@ -434,7 +434,7 @@ mjx-container svg {
 }
 
 /* ── Markdown Preview (targets rendered HTML) ── */
-.md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); overflow-wrap: break-word; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; }
+.md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.8; color: var(--t1); overflow-wrap: break-word; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; transition: transform 120ms ease-out; }
 /* Preview frame variant for the Containers settings modal: full width
    (no 800px cap) and flattened first/last vertical margins so the preview's
    top + bottom spacing is symmetric inside the frame's `p-4` padding —
