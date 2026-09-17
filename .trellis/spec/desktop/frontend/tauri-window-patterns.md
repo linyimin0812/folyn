@@ -523,6 +523,23 @@ area rect and the scale factor.
   `toggle-theme`). The Rust `pet_ctx_menu_action` mapping recognizes all 9 strings so the
   contract stays uniform even though the native menu only renders 4 — the launcher emits the
   other 5 directly from the frontend.
+- **Windows foreground-steal in `focus_panel`**: `set_focus()` routes to Win32
+  `SetForegroundWindow`, which Windows blocks for non-foreground processes. The click-open
+  path works because the pet click satisfies the input-queue recency requirement, but the
+  **global-shortcut** path has no such click (the hotkey fires while the user is in another
+  app) — so the panel SHOWS (always-on-top) but never becomes foreground → the search box's
+  `.focus()` lands in a non-foreground webview → no caret ("没有自动聚焦"). `focus_panel`
+  (in `commands/pet_panel.rs`) therefore steals the foreground on Windows: it calls
+  `SetForegroundWindow`, and if `GetForegroundWindow() != hwnd` (blocked), sends a bare
+  Alt down+up via `SendInput` (the canonical foreground-lock bypass — same technique Tao's
+  `force_window_active` uses, but only at window creation; runtime `set_focus()` does NOT)
+  and retries `SetForegroundWindow`. Idempotent (skips the Alt nudge when already foreground).
+  Reuses the `voice/insertion_win.rs` `SendInput`/`INPUT`/`KEYBDINPUT` pattern; `VK_MENU`
+  + `Win32_UI_Input_KeyboardAndMouse` + `Win32_UI_WindowsAndMessaging` features are already
+  enabled in `Cargo.toml`. By the time `pet://panel-focus-search` fires (after
+  `applyPanelFrame`'s two `focus_panel` calls), the panel is foreground → `.focus()` works.
+  macOS is unaffected (the `#[cfg(target_os = "windows")]` block is skipped; the macOS
+  `makeFirstResponder(wkwebview)` path still handles Esc + DOM focus).
 
 ### 4. Validation & Error Matrix
 
