@@ -1080,6 +1080,7 @@ pub fn run() {
             commands::pet_get_work_area,
             commands::pet_panel_show,
             commands::pet_panel_hide,
+            commands::pet_panel_set_focus,
             commands::pet_panel_set_shortcut,
             commands::pet_panel_set_position,
             commands::pet_panel_get_position,

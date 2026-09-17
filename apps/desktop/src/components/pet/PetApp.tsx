@@ -135,6 +135,15 @@ async function applyPanelFrame(
   await invoke('pet_panel_show');
   await invoke('pet_panel_set_position', panelPosPhysical);
   await invoke('pet_panel_set_size', panelSizePhysical);
+  // Re-focus as the LAST step of the open gesture. On Windows, opening via
+  // a `pet` (focus:false) click leaves Folyn non-foreground, so the
+  // `set_focus()` inside `pet_panel_show` can hit Windows' SetForegroundWindow
+  // block → panel shows but never gains focus → clicking elsewhere doesn't
+  // deactivate it → the unpinned blur auto-hide never fires. Re-issuing
+  // focus here (after the visible, user-initiated pet click has satisfied
+  // SetForegroundWindow's input-queue recency) gives Windows another chance
+  // to promote the panel. Idempotent on macOS / when focus already landed.
+  await invoke('pet_panel_set_focus');
   // ponytail: CSS opacity:0 + transition handles the fade-in. The earlier
   // window-level alphaValue mask (NSAnimationContext) crashed with ObjC
   // exceptions ("Rust cannot catch foreign exceptions"). The 忽隐忽现

@@ -26,6 +26,33 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel.show().map_err(|e| e.to_string())?;
+    focus_panel(&panel);
+    Ok(())
+}
+
+/// Focus the pet-panel window (set_focus + macOS makeFirstResponder). Called
+/// by `pet_panel_show` after `show()`, AND by `applyPanelFrame` (PetApp.tsx)
+/// as a SECOND call AFTER the post-show position/size re-assert.
+///
+/// Why the second call exists: on Windows, opening the panel via a click on
+/// the `pet` window does NOT activate the Folyn app first (`pet` is
+/// `focus:false` / `WS_EX_NOACTIVATE`, so the click leaves foreground with
+/// whatever app the user was in). `set_focus()` then routes to Win32
+/// `SetForegroundWindow`, which Windows blocks for non-foreground processes
+/// — so the panel SHOWS but never actually gains focus. Result: clicking
+/// elsewhere doesn't deactivate the panel (it was never active) → no
+/// `tauri://blur` → the unpinned auto-hide never fires (panel won't close).
+/// The first open worked because the user was foreground in Folyn then.
+///
+/// The re-assert (`set_position`/`set_size`) uses `SWP_NOACTIVATE` so it does
+/// not disturb focus, but re-issuing `set_focus()` as the LAST step of the
+/// open gesture gives Windows another chance to promote the panel to
+/// foreground (by then the panel is visible + the user-initiated pet click
+/// has satisfied SetForegroundWindow's input-queue recency window). It is
+/// idempotent when focus already landed (the first call inside
+/// `pet_panel_show`), so macOS is unaffected. Also re-runs the macOS
+/// `makeFirstResponder` so keyboard (Esc) still works after the re-focus.
+fn focus_panel(panel: &tauri::WebviewWindow) {
     // `set_focus()` activates the Folyn app (`activateIgnoringOtherApps:YES`)
     // so the pet-panel becomes the active app's key window — required for
     // the React Esc keydown listener to fire (otherwise keyboard events go
@@ -34,36 +61,45 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
     // stays frontmost instead of returning to the user's previous app.
     // Restoring the previous app needs `NSWorkspace.frontmostApplication`
     // tracking + `activateWithOptions:` on hide — out of scope for this fix.
-    panel.set_focus().map_err(|e| e.to_string())?;
+    let _ = panel.set_focus();
 
     // Make the WKWebView (NOT the contentView / parent view) the first
-    // responder so `document` receives `keydown` → Esc works without a click.
-    // Reuses the `pet_make_transparent` `with_webview` accessor pattern:
-    // `webview.inner()` = WKWebView pointer, `webview.ns_window()` = NSWindow.
-    // Must run on the main thread (AppKit API); `with_webview` schedules the
-    // closure onto the macOS main run loop. The panel is shown/hidden (not
-    // recreated), so `makeFirstResponder` must be re-applied on every show —
-    // after `orderOut` (hide) the first responder resigns and is NOT
-    // auto-restored on the next `makeKeyAndOrderFront` for a nonactivating
-    // panel.
+    // responder so `document` receives `keydown` → Esc works without a
+    // click. Reuses the `pet_make_transparent` `with_webview` accessor
+    // pattern: `webview.inner()` = WKWebView pointer, `webview.ns_window()`
+    // = NSWindow. Must run on the main thread (AppKit API); `with_webview`
+    // schedules the closure onto the macOS main run loop. The panel is
+    // shown/hidden (not recreated), so `makeFirstResponder` must be
+    // re-applied on every show — after `orderOut` (hide) the first responder
+    // resigns and is NOT auto-restored on the next `makeKeyAndOrderFront`
+    // for a nonactivating panel.
     #[cfg(target_os = "macos")]
     {
         use objc::runtime::Object;
         use objc::{msg_send, sel, sel_impl};
-        panel
-            .with_webview(move |webview| {
-                unsafe {
-                    let wk = webview.inner() as *mut Object;
-                    let ns = webview.ns_window() as *mut Object;
-                    if ns.is_null() || wk.is_null() {
-                        return;
-                    }
-                    let _: () = msg_send![ns, makeFirstResponder: wk];
+        let _ = panel.with_webview(move |webview| {
+            unsafe {
+                let wk = webview.inner() as *mut Object;
+                let ns = webview.ns_window() as *mut Object;
+                if ns.is_null() || wk.is_null() {
+                    return;
                 }
-            })
-            .map_err(|e| e.to_string())?;
+                let _: () = msg_send![ns, makeFirstResponder: wk];
+            }
+        });
     }
+}
 
+/// Re-focus the pet-panel window after the post-show frame re-assert (see
+/// `focus_panel` for the Windows SetForegroundWindow rationale). Idempotent
+/// on macOS / when focus already landed. Called by `applyPanelFrame` in
+/// PetApp.tsx as the LAST step of the open gesture.
+#[tauri::command]
+pub async fn pet_panel_set_focus(app: tauri::AppHandle) -> Result<(), AppError> {
+    let panel = app
+        .get_webview_window(PET_PANEL_LABEL)
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    focus_panel(&panel);
     Ok(())
 }
 
