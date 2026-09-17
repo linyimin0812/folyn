@@ -122,7 +122,6 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
     // and `MoveFocus` paths do the same).
     #[cfg(target_os = "windows")]
     {
-        use windows_sys::core::PWSTR;
         use windows_sys::Win32::Foundation::HWND;
         use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetFocus, SetFocus};
         use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -143,7 +142,7 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                     // Class name of the child (expect "WRY_WEBVIEW").
                     let mut class_buf = [0u16; 64];
                     let class_len = if !container.is_null() {
-                        GetClassNameW(container, PWSTR(class_buf.as_mut_ptr()), 64)
+                        GetClassNameW(container, class_buf.as_mut_ptr(), 64)
                     } else {
                         -1
                     };
