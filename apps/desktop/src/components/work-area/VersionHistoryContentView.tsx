@@ -12,12 +12,17 @@ import { PreviewPane } from './PreviewPane';
 // ponytail: snapshot view rides the live tab's fileType / path / viewMode so
 // the file-type editor pipeline (CodeMirror / custom editor / preview) renders
 // the snapshot content with the same fidelity as the live editor — no plain
-// `<pre>`. The synthetic tab id encodes the selected snapshot key so FolynEditor
-// (keyed by activeTab.id in EditorPane) remounts when the user picks a different
-// snapshot. Read-only is enforced on the CodeMirror surface via
-// `EditorState.readOnly.of(true)`; custom editors get best-effort read-only by
-// passing no-op onChange / onSave callbacks — edits don't flow into the editor
-// store (the synthetic id is not in `tabs`), so they never persist to disk.
+// `<pre>`. Switching snapshots changes `snapshotTab.id`, which remounts this
+// whole `EditorPane` subtree via the parent-provided `key={snapshotTab.id}`
+// below — that reinitializes the CodeMirror view with the new snapshot doc.
+// (The live editor path is in-place: FolynEditor swaps docs via
+// view.setState on filePath change, no remount — but the snapshot view needs a
+// real remount because switching snapshots shares the same filePath, so the
+// in-place [filePath] effect would not fire.) Read-only is enforced on the
+// CodeMirror surface via `EditorState.readOnly.of(true)`; custom editors get
+// best-effort read-only by passing no-op onChange / onSave callbacks —
+// edits don't flow into the editor store (the synthetic id is not in `tabs`),
+// so they never persist to disk.
 //
 // Mirrors WorkArea's editor-split branching so the snapshot view inherits the
 // same viewMode + handler config (split / source / preview) as the live editor.

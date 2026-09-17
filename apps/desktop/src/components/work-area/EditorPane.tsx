@@ -214,7 +214,7 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
             </div>
           )}
           <FolynEditor
-            key={`${activeTab?.id}-${showLineNumbers}-${tabSize}-${wrapColumn}-${editorFont}-${editorFontSize}`}
+            key={`${showLineNumbers}-${tabSize}-${wrapColumn}-${editorFont}-${editorFontSize}`}
             ref={editorRef}
             filePath={activeTab?.path ?? ''}
             initialContent={activeTab?.content ?? ''}

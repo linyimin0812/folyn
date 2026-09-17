@@ -135,6 +135,25 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorStore.getState().tabs).toEqual([]);
   });
 
+  it('setEditorScrollTopForTab writes onto the NAMED tab, not the active one', () => {
+    // Regression for the trailing-debounce race: scroll scheduled while
+    // t1 active, flush fires after activeTabId already flipped to t2.
+    // setEditorScrollTopForTab must still write to t1 (the scrolled tab).
+    useEditorStore.setState({
+      tabs: [
+        { id: 't1', name: 'a.md', path: 'a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+        { id: 't2', name: 'b.md', path: 'b.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+      ],
+      activeTabId: 't2',
+    });
+
+    useEditorViewStateStore.getState().setEditorScrollTopForTab('t1', 480);
+
+    const tabs = useEditorStore.getState().tabs;
+    expect(tabs[0].editorScrollTop).toBe(480);
+    expect(tabs[1].editorScrollTop).toBeUndefined();
+  });
+
   it('setPreviewScrollTop writes the previewScrollTop onto the active tab', () => {
     useEditorStore.setState({
       tabs: [

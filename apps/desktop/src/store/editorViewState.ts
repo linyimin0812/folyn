@@ -76,6 +76,12 @@ interface EditorViewState {
   /** Persist the editor scroll top onto the active tab (survives tab
    *  switches + disk persistence). Throttled at the call site. */
   setEditorScrollTop: (top: number) => void;
+  /** Persist the editor scroll top onto a specific tab. Used by the
+   *  debounced scroll-persistence path: the debounce captures the
+   *  activeTabId at schedule time so a flush after a tab switch writes
+   *  to the tab the user was actually scrolling, not the new active one
+   *  (the trailing-edge race that lost scroll position on tab return). */
+  setEditorScrollTopForTab: (tabId: string, top: number) => void;
   /** Persist the preview scroll top onto the active tab (survives tab
    *  switches + disk persistence). Throttled at the call site. */
   setPreviewScrollTop: (top: number) => void;
@@ -153,6 +159,20 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
         ),
       }));
     }
+  },
+
+  setEditorScrollTopForTab: (tabId, top) => {
+    // ponytail: write scrollTop to a SPECIFIC tab, not the current
+    // activeTabId. The debounced scroll-persistence caller captures
+    // activeTabId at schedule time and passes it here on flush, so a tab
+    // switch between schedule and flush no longer diverts the old tab's
+    // scrollTop onto the new tab (the trailing-edge debounce race that left
+    // the old tab's editorScrollTop stale → wrong viewport on return).
+    useEditorStore.setState((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.id === tabId ? { ...t, editorScrollTop: top } : t,
+      ),
+    }));
   },
 
   setPreviewScrollTop: (top) => {

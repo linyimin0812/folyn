@@ -64,6 +64,7 @@ import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { EditorSearchBar } from '@/components/editor/EditorSearchBar';
 import { useSearchPanelState, buildSearchExtensions } from '@/components/editor/searchPanelState';
 import { useEditorViewStateStore } from '@/store/editorViewState';
+import { useEditorStore } from '@/store/editorStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import {
   computeSlashMenuState,
@@ -217,7 +218,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     const markdownKeymapCompartment = useRef(new Compartment());
     const langCompartment = useRef(new Compartment());
     const setCursorPosition = useEditorViewStateStore((s) => s.setCursorPosition);
-    const setEditorScrollTop = useEditorViewStateStore((s) => s.setEditorScrollTop);
     const setWordCount = useEditorViewStateStore((s) => s.setWordCount);
     const setCursorViewportY = useEditorViewStateStore((s) => s.setCursorViewportY);
     const setHasSelection = useEditorViewStateStore((s) => s.setHasSelection);
@@ -236,12 +236,27 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     onSaveRef.current = onSave;
     const onImagePasteRef = useRef(onImagePaste);
     onImagePasteRef.current = onImagePaste;
+    // ponytail: swapRef guards handleUpdate during an in-place doc swap
+    //  (view.setState on tab switch). setState fires an update with
+    //  docChanged=true → without the guard, onChangeRef would fire and mark
+    //  the just-switched-to tab dirty. Cleared on the tick after setState +
+    //  cursor/scroll restore.
+    const swapRef = useRef(false);
+    // ponytail: tab-switch effect runs once on mount; mount effect already
+    //  built the view, so skip the first [filePath] run to avoid a redundant
+    //  setState.
+    const firstRunRef = useRef(true);
     // ponytail: throttle scrollTop persistence onto the active tab — scroll
     //  fires every frame; persisting per-frame would storm the store + disk.
     //  Trailing 200ms debounce coalesces a scroll burst into one write.
-    const persistScrollTopRef = useRef<((top: number) => void) | null>(null);
+    //  Captures the activeTabId at SCHEDULE time (not flush time) so a tab
+    //  switch between schedule and flush writes to the tab the user was
+    //  scrolling, not the new active one (the race that lost scroll position
+    //  on tab return).
+    const setEditorScrollTopForTab = useEditorViewStateStore((s) => s.setEditorScrollTopForTab);
+    const persistScrollTopRef = useRef<((top: number, tabId: string) => void) | null>(null);
     if (persistScrollTopRef.current === null) {
-      persistScrollTopRef.current = debounce((top: number) => setEditorScrollTop(top), 200);
+      persistScrollTopRef.current = debounce((top: number, tabId: string) => setEditorScrollTopForTab(tabId, top), 200);
     }
     // ponytail: smart paste → table convert dialog. When a table is detected
     // on paste and the user hasn't suppressed the prompt, show a confirmation
@@ -314,6 +329,13 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     const handleUpdate = useCallback(
       (update: any) => {
         try {
+          // ponytail: an in-place doc swap (view.setState on tab switch)
+          //  fires this listener with docChanged/selectionSet/viewportChanged
+          //  all true. Skip it entirely: onChange would mark the new tab
+          //  dirty (its content just landed), cursor/scroll writeback would
+          //  clobber the values we're about to restore. swapRef is cleared on
+          //  the tick after setState + restore.
+          if (swapRef.current) return;
           if (update.docChanged || update.selectionSet) {
             sp.setViewTick((t) => (t + 1) % 1_000_000);
           }
@@ -321,8 +343,14 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
             // ponytail: persist the editor scroll top so switching files +
             //  restart restore the exact viewport (cursorLine alone only
             //  scrollIntoView's to the cursor). Throttled by persistScrollTopRef.
+            //  Capture activeTabId HERE (schedule time) — the trailing debounce
+            //  flushes up to 200ms later; by then a tab switch may have changed
+            //  activeTabId, so writing to the flushed-time active tab would
+            //  divert this scroll onto the wrong tab and leave the scrolled
+            //  tab's editorScrollTop stale (wrong viewport on return).
             const sd = update.view.scrollDOM;
-            if (sd) persistScrollTopRef.current?.(sd.scrollTop);
+            const tabId = useEditorStore.getState().activeTabId;
+            if (sd && tabId) persistScrollTopRef.current?.(sd.scrollTop, tabId);
           }
           if (update.docChanged) {
             const content = update.state.doc.toString();
@@ -388,15 +416,15 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
         }
       },
-      [setCursorPosition, setEditorScrollTop, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick],
+      [setCursorPosition, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick],
     );
 
-    useEffect(() => {
-      if (!editorRef.current) return;
-
-      const isMarkdown = !filePath || /\.(md|markdown|mdx|markmap)$/i.test(filePath);
-
-      // Common extensions shared by all file types
+    // Build a fresh EditorState for the given doc + file path. Shared by
+    // the mount effect (initial create) and the tab-switch effect (in-place
+    // setState on filePath change). Extensions close over current refs so a
+    // tab switch picks up the latest handleUpdate / shortcuts / prefs.
+    const buildState = useCallback((doc: string, path: string): EditorState => {
+      const isMarkdown = !path || /\.(md|markdown|mdx|markmap)$/i.test(path);
       const commonExtensions = [
         EditorView.theme({
           '&': { fontSize: `${editorFontSize}px` },
@@ -409,9 +437,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         foldGutter(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
-        // ponytail: read-only snapshot mode blocks doc modifications but keeps
-        // selection + scroll so the version-history view is a real CodeMirror
-        // surface, not a static <pre>.
         ...(readOnly ? [EditorState.readOnly.of(true)] : []),
         tabSizeCompartment.current.of([
           EditorState.tabSize.of(settingsTabSize),
@@ -420,27 +445,14 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         indentOnInput(),
         folynHighlighting(),
         bracketMatching(),
-        // ponytail: closeBrackets() takes no args; the bracket list is
-        // configured via the `closeBrackets` language-data slot. Adding `$`
-        // makes typing `$` auto-pair to `$$` (cursor between), matching the
-        // math inline delimiter.
         EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '[', '{', "'", '"', '$'] } }]),
         closeBrackets(),
-        // closeOnBlur: false — the src dropdown hosts its own search input;
-        // focusing it must not dismiss the dropdown. The search-box extension
-        // closes the completion when focus leaves the editor entirely.
-        // interactionDelay: 0 — the default 75ms swallows accept/arrow keys
-        // right after the popup opens; a swallowed Enter falls through to the
-        // editor's default keymap and inserts a newline into the src string.
         autocompletion({
-          override: [createFilePreviewSrcCompletion(filePath), createMarkdownImageCompletion(filePath)],
+          override: [createFilePreviewSrcCompletion(path), createMarkdownImageCompletion(path)],
           closeOnBlur: false,
           interactionDelay: 0,
         }),
         filePreviewSrcSearchBox(),
-        // Render tooltips on <body> (fixed position): inside the editor they
-        // get clipped by .cm-wrapper's overflow:hidden and slide under the
-        // preview pane on the right.
         tooltips({ parent: document.body }),
         rectangularSelection(),
         crosshairCursor(),
@@ -462,8 +474,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         EditorView.updateListener.of(handleUpdate),
         langCompartment.current.of([]),
       ];
-
-      // Markdown-specific extensions
       const markdownExtensions = isMarkdown ? [
         markdownKeymapCompartment.current.of(
           keymap.of(buildMarkdownKeymap(shortcuts, onSaveRef)),
@@ -476,19 +486,17 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         ...escExitExtension,
         ...headingFoldExtension,
         ...mathExtension,
-       EditorView.lineWrapping,
-       // Wrap selected text with backticks instead of replacing the
-       // selection when a backtick is typed in Markdown mode.
-       EditorView.inputHandler.of((view, from, to, text) => {
-         if (text !== '`' || from === to) return false;
-         const sel = view.state.sliceDoc(from, to);
-         view.dispatch({
-           changes: { from, to, insert: `\`${sel}\`` },
-           selection: { anchor: from + 1, head: from + 1 + sel.length },
-         });
-         return true;
-       }),
-       EditorView.domEventHandlers({
+        EditorView.lineWrapping,
+        EditorView.inputHandler.of((view, from, to, text) => {
+          if (text !== '`' || from === to) return false;
+          const sel = view.state.sliceDoc(from, to);
+          view.dispatch({
+            changes: { from, to, insert: `\`${sel}\`` },
+            selection: { anchor: from + 1, head: from + 1 + sel.length },
+          });
+          return true;
+        }),
+        EditorView.domEventHandlers({
           paste(event) {
             const items = event.clipboardData?.items;
             if (!items) return false;
@@ -503,9 +511,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
                 return true;
               }
             }
-            // ponytail: Chrome "Copy image" places only text/html wrapping a
-            // remote <img src="https://…"> — no bitmap, no file ref. Insert the
-            // URL as markdown image syntax so the preview renders it remotely.
             const html = event.clipboardData?.getData('text/html');
             const imgSrc = html ? extractImgSrcFromHtml(html) : null;
             if (imgSrc) {
@@ -521,17 +526,8 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
               }
               return true;
             }
-            // ponytail: smart paste → table detection. Detect a Markdown or
-            // TSV table in the clipboard's text/plain.
-            //  - Already-Markdown tables (| ... | with a separator row): paste
-            //    directly, no prompt. The source is already valid markdown, so
-            //    converting/confirming would only add friction.
-            //  - TSV tables (rendered table copied from a web page, cells joined
-            //    by tabs): offer to convert to markdown source, gated by the
-            //    saved tablePasteMode preference ('ask'|'convert'|'text').
             const plain = event.clipboardData?.getData('text/plain') ?? '';
             if (plain) {
-              // Markdown table → insert as-is (re-canonicalized).
               const mdTable = detectMarkdownTable(plain);
               if (mdTable.matched && mdTable.table) {
                 event.preventDefault();
@@ -546,15 +542,12 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
                 }
                 return true;
               }
-              // TSV table → conversion is the only way to get a table here, so
-              // honor the user's preference (ask / convert silently / text).
               const tsv = detectTsvTable(plain);
               if (tsv) {
                 const insertMd = tsvTableToMarkdown(tsv);
                 const summary = `${tsv.header.length} columns × ${tsv.rows.length + 1} rows`;
                 const mode = tablePasteModeRef.current;
                 if (mode === 'text') {
-                  // User opted out of conversion — default plain-text paste.
                   return false;
                 }
                 if (mode === 'convert') {
@@ -569,12 +562,10 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
                   }
                   return true;
                 }
-                // 'ask' → hold the insert and show the confirmation dialog.
                 event.preventDefault();
                 setTableConvert({ visible: true, summary, insertText: insertMd, rawText: plain });
                 return true;
               }
-              // CSV table → same conversion flow as TSV.
               const csv = detectCsvTable(plain);
               if (csv) {
                 const insertMd = csvTableToMarkdown(csv);
@@ -604,24 +595,50 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           },
         }),
       ] : [];
-
-      const state = EditorState.create({
-        doc: initialContent,
+      return EditorState.create({
+        doc,
         extensions: [...commonExtensions, ...markdownExtensions],
       });
+    }, [
+      editorFontSize, editorFont, showLineNumbers, readOnly, settingsTabSize,
+      sp.toggleRef, sp.toggleReplaceRef, handleUpdate, shortcuts, onSaveRef,
+    ]);
 
-      const view = new EditorView({
-        state,
-        parent: editorRef.current,
-      });
+    // Reconfigure the language compartment for a (non-markdown) file path.
+    // Shared by the mount effect and the tab-switch effect.
+    const loadLanguage = useCallback((view: EditorView, path: string) => {
+      const isMarkdown = !path || /\.(md|markdown|mdx|markmap)$/i.test(path);
+      if (isMarkdown || !path) return;
+      const isJson = /\.json$/i.test(path);
+      const isDbml = /\.dbml$/i.test(path);
+      if (isJson) {
+        view.dispatch({
+          effects: langCompartment.current.reconfigure([
+            jsonLanguage(),
+            lintGutter(),
+            linter(jsonLintSource, { delay: 300 }),
+          ]),
+        });
+      } else if (isDbml) {
+        const sqlDesc = languages.find((l) => l.name === 'SQL');
+        if (sqlDesc) {
+          sqlDesc.load().then((langSupport) => {
+            view.dispatch({ effects: langCompartment.current.reconfigure(langSupport) });
+          });
+        }
+      } else {
+        const langDesc = LanguageDescription.matchFilename(codeLanguages, path.toLowerCase());
+        if (langDesc) {
+          langDesc.load().then((langSupport) => {
+            view.dispatch({ effects: langCompartment.current.reconfigure(langSupport) });
+          });
+        }
+      }
+    }, []);
 
-      viewRef.current = view;
-      setView(view);
-
-      // Restore cursor position if provided. When we also have a saved
-      // scrollTop, skip scrollIntoView (it would center the cursor and
-      // clobber the exact viewport restored below); otherwise scrollIntoView
-      // brings the cursor into view (no saved scroll to restore).
+    // Restore cursor + scroll onto a freshly-set view state. Shared by the
+    // mount effect and the tab-switch effect.
+    const restoreCursorScroll = useCallback((view: EditorView) => {
       const hasSavedScroll = typeof initialScrollTop === 'number' && initialScrollTop >= 0;
       if (initialCursorLine && initialCursorLine > 0) {
         const lineCount = view.state.doc.lines;
@@ -634,10 +651,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           ...(hasSavedScroll ? {} : { scrollIntoView: true }),
         });
       }
-      // Restore the exact saved viewport. Layout (line heights, wrap) isn't
-      //  settled until after a frame, so set scrollTop on rAF — and re-set on
-      //  a second rAF to win against CodeMirror's own post-mount scroll
-      //  reconciliation (lineWrapping re-measure can reset it).
       if (hasSavedScroll) {
         const target = initialScrollTop as number;
         const sd = view.scrollDOM;
@@ -647,49 +660,21 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           requestAnimationFrame(apply);
         });
       }
+    }, [initialCursorLine, initialCursorCol, initialScrollTop]);
 
-      // For code files, dynamically load the matching language support
-      if (!isMarkdown && filePath) {
-        const isJson = /\.json$/i.test(filePath);
-        const isDbml = /\.dbml$/i.test(filePath);
-        if (isJson) {
-          // JSON files: use dedicated language support + lint
-          view.dispatch({
-            effects: langCompartment.current.reconfigure([
-              jsonLanguage(),
-              lintGutter(),
-              linter(jsonLintSource, { delay: 300 }),
-            ]),
-          });
-        } else if (isDbml) {
-          // DBML has no dedicated CodeMirror language; reuse SQL highlighting
-          // (via @codemirror/language-data's SQL LanguageDescription) as a
-          // close-enough fallback for keywords/types/strings/comments.
-          const sqlDesc = languages.find((l) => l.name === 'SQL');
-          if (sqlDesc) {
-            sqlDesc.load().then((langSupport) => {
-              view.dispatch({
-                effects: langCompartment.current.reconfigure(langSupport),
-              });
-            });
-          }
-        } else {
-          // ponytail: codeLanguages merges listEditorLanguages() (plantuml/graphviz builtin
-          // + extension-contributed) with @codemirror/language-data fallback, so .puml/.gv
-          // files match their registered StreamLanguage instead of falling through to plain-text.
-          // Lowercase to match file-type detection (detectFileType) and the
-          // lowercase extensions registered in the language registry — Foo.PUML
-          // should highlight the same as foo.puml.
-          const langDesc = LanguageDescription.matchFilename(codeLanguages, filePath.toLowerCase());
-          if (langDesc) {
-            langDesc.load().then((langSupport) => {
-              view.dispatch({
-                effects: langCompartment.current.reconfigure(langSupport),
-              });
-            });
-          }
-        }
-      }
+    useEffect(() => {
+      if (!editorRef.current) return;
+
+      const view = new EditorView({
+        state: buildState(initialContent, filePath),
+        parent: editorRef.current,
+      });
+
+      viewRef.current = view;
+      setView(view);
+
+      restoreCursorScroll(view);
+      loadLanguage(view, filePath);
 
       // Initial word count
       const words = initialContent.trim().split(/\s+/).filter(Boolean).length;
@@ -701,6 +686,29 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         setView(null);
       };
     }, []);
+
+    // ponytail: tab switch = in-place doc swap, no view destroy/create.
+    //  Dependency is [filePath] only — NOT initialContent: a user edit
+    //  changes content but not path, and must NOT trigger a setState (that
+    //  would destroy the current edit). filePath changes iff the active tab
+    //  changed; that render's initialContent is the new tab's content.
+    //  swapRef silences the updateListener setState fires (docChanged→
+    //  onChange would mark the new tab dirty). First run skipped: the mount
+    //  effect above already built the view.
+    useEffect(() => {
+      if (firstRunRef.current) { firstRunRef.current = false; return; }
+      const view = viewRef.current;
+      if (!view) return;
+      swapRef.current = true;
+      view.setState(buildState(initialContent, filePath));
+      restoreCursorScroll(view);
+      loadLanguage(view, filePath);
+      const words = initialContent.trim().split(/\s+/).filter(Boolean).length;
+      setWordCount(words);
+      // Clear swap on the next tick so the setState + restore dispatches
+      // (which fire updateListener synchronously) are all silenced.
+      queueMicrotask(() => { swapRef.current = false; });
+    }, [filePath]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Dynamically update tabSize when settings change
     useEffect(() => {

@@ -76,6 +76,30 @@ Reference: `apps/desktop/src/store/aiStore.ts`, `apps/desktop/src/components/wor
 
 ---
 
+## CodeMirror Editor Lifecycle on Tab Switch (in-place doc swap)
+
+`FolynEditor` (`apps/desktop/src/editor/EditorView.tsx`) is an **uncontrolled** CodeMirror wrapper: the `EditorView` is created once in a mount effect with `[]` deps and reads `initialContent` / `filePath` / `initialCursorLine` / `initialScrollTop` only at mount. Prop changes do NOT re-sync the live editor.
+
+**Tab switch = in-place `view.setState`, NOT a remount.** `EditorPane` keys `FolynEditor` with `${showLineNumbers}-${tabSize}-${wrapColumn}-${editorFont}-${editorFontSize}` — **`activeTab.id` is intentionally absent** so switching tabs (id changes, prefs unchanged) does not change the key and does not unmount the editor. A `[filePath]` effect calls `view.setState(EditorState.create({doc: initialContent, extensions: buildState(...)}))` to swap the document in place — no `view.destroy()` / `new EditorView()`, no DOM churn.
+
+**Why `[filePath]` and not `[initialContent]` as the effect dep**: a user edit updates `tab.content` → `initialContent` prop changes but `filePath` does not. Depending on `initialContent` would treat every user edit as a tab switch and `setState` away the live edit. `filePath` changes iff the active tab actually changed; that render's `initialContent` is the new tab's content.
+
+**`swapRef` guard (mandatory)**: `view.setState` fires the `updateListener` with `docChanged=true`. Without a guard, `handleUpdate` would call `onChangeRef(newContent)` → `updateTabContent(newTabId, …)` → the just-switched-to tab gets marked dirty. `swapRef` is set `true` before `setState` and cleared on `queueMicrotask` after `setState` + cursor/scroll restore; `handleUpdate` returns early while `swapRef.current` is true, silencing the spurious `onChange` / cursor-writeback / word-count for the swap tick. This mirrors the drawio `loadedXml` + tiptap `setContent({emitUpdate:false})` anti-loop pattern, adapted to CodeMirror's imperative `setState`.
+
+**Scroll-persistence debounce race (the trailing-edge trap)**: `persistScrollTopRef` debounces `setEditorScrollTopForTab` by 200ms (scroll fires every frame). The debounced flush originally wrote to `getState().activeTabId` at **flush time**; a tab switch in the <200ms window flipped `activeTabId` before flush, so the scrolled tab's last scrollTop landed on the *new* tab and the scrolled tab's `editorScrollTop` stayed stale → wrong viewport on return. Fix: capture `activeTabId` at **schedule time** in the `viewportChanged` branch and pass `(top, tabId)` through the debounce; the flush calls `setEditorScrollTopForTab(tabId, top)`, writing to the tab the user was actually scrolling. (`setCursorPosition` is synchronous, so it has no such race.) Ceiling: a sub-200ms tab return (scroll → switch away → switch back within the debounce window) shows the pre-flush viewport; the pending flush updates the stored `editorScrollTop` afterward but does not re-apply it. Rare; matches prior behavior.
+
+**Language + cursor/scroll restore**: `buildState` / `loadLanguage` / `restoreCursorScroll` are extracted as `useCallback`s shared by the mount effect and the tab-switch effect. `loadLanguage` reconfigures `langCompartment` for the new `filePath` (JSON lint / DBML SQL fallback / `LanguageDescription.matchFilename`). `restoreCursorScroll` applies the tab's saved `cursorLine` / `editorScrollTop` (persisted continuously to the tab object via `editorViewState` store while editing) with the same rAF-deferred `scrollTop` the mount path uses.
+
+**No EditorState cache**: the previous tab's `EditorState` is discarded on switch; the new one is rebuilt (doc re-parsed, syntax tree rebuilt). This keeps memory at one live state (vs. a per-tab cache, which would match the "keep every editor mounted" memory cost). The win over the old key-remount path is the EditorView / DOM / extension-init fixed cost; parsing still happens because the doc changed.
+
+**First-run skip**: the `[filePath]` effect runs once on mount; a `firstRunRef` skips it (the mount effect already built the view) to avoid a redundant `setState`.
+
+**Version-history snapshot view**: `VersionHistoryContentView` passes a synthetic `snapshotTab` whose `id` encodes the selected snapshot key. Switching snapshots changes `snapshotTab.id`, which remounts the parent `<EditorPane key={snapshotTab.id}>` subtree (the live editor's in-place path does NOT apply here — snapshots share the live tab's `filePath`, so the `[filePath]` effect would not fire on a snapshot change; the parent-provided key is the remount trigger). Read-only is enforced via `EditorState.readOnly.of(true)`.
+
+Reference: `apps/desktop/src/editor/EditorView.tsx`, `apps/desktop/src/components/work-area/EditorPane.tsx`, `apps/desktop/src/components/work-area/VersionHistoryContentView.tsx`, `apps/desktop/src/store/editorViewState.ts` (cursor/scroll persistence)
+
+---
+
 ## Draw.io Editor (`.drawio` / `.dio`)
 
 `.drawio` files use `react-drawio`'s `DrawIoEmbed` component, which wraps `https://embed.diagrams.net` in an iframe and communicates via postMessage. Unlike GrapesJS (host-driven canvas), DrawIoEmbed owns its iframe and exposes:
