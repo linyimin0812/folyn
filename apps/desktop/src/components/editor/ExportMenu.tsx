@@ -193,6 +193,14 @@ export function ExportMenu() {
             {items.map((item) => (
               <div
                 key={item.key}
+                // The Topbar header is data-tauri-drag-region="deep" on
+                // Windows (frameless window). Tauri's drag.js only treats
+                // <button>/<a>/<input>/… as "clickable"; a plain <div> is
+                // NOT, so a mousedown on it starts window dragging and
+                // stopImmediatePropagation() kills the click event — onClick
+                // never fires and the export modal never opens. Explicitly
+                // opt this <div> out of the drag hit-test so the click lands.
+                data-tauri-drag-region={false}
                 className="flex items-center gap-2 py-2 px-2.5 rounded-[5px] cursor-pointer transition-[background] duration-100 hover:bg-hov"
                 onClick={item.run}
               >
@@ -209,7 +217,7 @@ export function ExportMenu() {
 
       {/* Container syntax warning dialog */}
       {containerWarning && (
-        <div className="dlg-overlay" onClick={() => setContainerWarning(false)}>
+        <div className="dlg-overlay" data-tauri-drag-region={false} onClick={() => setContainerWarning(false)}>
           <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="dlg-hd">
               <h3>{t('editor:export.containerWarning.title')}</h3>
@@ -233,7 +241,7 @@ export function ExportMenu() {
 
       {/* Share success: URL copied to clipboard; show the URL + dismiss */}
       {shareUrl && (
-        <div className="dlg-overlay" onClick={() => setShareUrl(null)}>
+        <div className="dlg-overlay" data-tauri-drag-region={false} onClick={() => setShareUrl(null)}>
           <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: '18px 20px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <Cloud size={18} className="text-acc" />
@@ -279,7 +287,7 @@ export function ExportMenu() {
 
       {/* Share error: surface the cause; user closes */}
       {shareError && (
-        <div className="dlg-overlay" onClick={() => setShareError(null)}>
+        <div className="dlg-overlay" data-tauri-drag-region={false} onClick={() => setShareError(null)}>
           <div className="dlg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, padding: '18px 20px 16px' }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>
               {t('settings:storage.toast.uploadFailed')}
