@@ -951,14 +951,18 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // sits before it), not the block above the blank line — otherwise the
     // .cursor-sync-active highlight stayed on the previous block after a
     // line break while the user typed into the new one. When the cursor sits
-    // on TRAILING blank lines at EOF (no next block), clear the highlight —
-    // the cursor is past all content, no block corresponds to it, and
-    // keeping the highlight on the last block left it stuck ABOVE the cursor
-    // (the reported "光标所在的行没有对齐高亮" / "高亮块在光标上方"). For
-    // short content the preview also can't scroll the block down to the
-    // cursor (desired clamps to 0), so the highlight-above drift was
+    // on TRAILING blank lines at EOF (in a gap with NO next block), clear the
+    // highlight — the cursor is past all content, no block corresponds to
+    // it, and keeping the highlight on the last block left it stuck ABOVE
+    // the cursor (the reported "光标所在的行没有对齐高亮" / "高亮块在光标
+    // 上方"). For short content the preview also can't scroll the block down
+    // to the cursor (desired clamps to 0), so the highlight-above drift was
     // unavoidable with a block highlight — clearing it is the honest fix.
-    const highlightEl = nextBlock ? nextBlock.el : null;
+    // NOTE: `nextBlock` is non-null ONLY when inGap (findNextBlock runs in
+    // the gap branch); when not in a gap (cursor inside a block) it is null,
+    // so the fallback must be the current block `el` — not null — or the
+    // normal in-block highlight gets cleared too.
+    const highlightEl = inGap ? (nextBlock ? nextBlock.el : null) : el;
     const blockChanged = activeBlockRef.current !== highlightEl;
     if (blockChanged) {
       activeBlockRef.current?.classList.remove('cursor-sync-active');
