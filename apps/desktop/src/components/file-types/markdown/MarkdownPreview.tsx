@@ -1047,15 +1047,9 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // below 0 to bring it down. Instead keep scrollTop=0 and push the preview
     // content down by the shortfall (transform on .md-preview) so the block
     // still lands at the cursor. See syncOffset state + .md-preview style.
-    // Cap the offset so the top blank stays small (reported "预览页前面很多
-    // 空白"): the full shortfall on a cursor far below (many blank lines) would
-    // push a huge empty band to the top. Capping keeps the highlight near the
-    // cursor (small band) instead of perfectly aligned-with-a-chasm; the user
-    // preferred "near, no big blank" over "perfectly aligned with a chasm".
-    const MAX_SYNC_OFFSET = 3 * (editorLineHeight ?? 22);
     const desiredRaw = alignPoint - (targetY - containerRect.top);
     if (desiredRaw < 0) {
-      const off = Math.min(-desiredRaw, MAX_SYNC_OFFSET);
+      const off = -desiredRaw;
       syncOffsetRef.current = off;
       setSyncOffset(off);
       if (Math.abs(scrollContainer.scrollTop - 0) > 2) scrollContainer.scrollTop = 0;
