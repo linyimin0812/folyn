@@ -148,6 +148,15 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                 let hwnd_send = hwnd as isize;
                 let _ = app.run_on_main_thread(move || {
                     let hwnd: HWND = hwnd_send as HWND;
+                    // [pet-panel-fg-debug] TEMP instrumentation — see what
+                    // actually happens on the Windows shortcut-summon path.
+                    // Remove after root cause is confirmed.
+                    use crate::startup_log;
+                    let dbg_fg0 = unsafe { GetForegroundWindow() };
+                    startup_log(format!(
+                        "[pet-panel-fg-debug] focus_panel run_on_main_thread: hwnd={hwnd_send:?} fg_before={dbg_fg0:?} is_fg_initial={}",
+                        dbg_fg0 == hwnd
+                    ));
                     // SAFETY: all are stable user32/kernel32 entrypoints.
                     // `INPUT` is `#[repr(C)]`; `std::mem::zeroed()` is correct
                     // for the union (no Drop). INPUTs are stack-allocated,
@@ -156,6 +165,7 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                     // 1 = TRUE (attach), 0 = FALSE (detach).
                     unsafe {
                         if GetForegroundWindow() == hwnd {
+                            startup_log("[pet-panel-fg-debug] already foreground, skipping");
                             return; // already foreground — idempotent
                         }
                         // 1. AttachThreadInput: the runtime foreground-lock
@@ -165,12 +175,23 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                         let cur_thread = GetCurrentThreadId();
                         let fg = GetForegroundWindow();
                         let fg_thread = GetWindowThreadProcessId(fg, ptr::null_mut());
+                        startup_log(format!(
+                            "[pet-panel-fg-debug] cur_thread={cur_thread} fg={fg:?} fg_thread={fg_thread}"
+                        ));
                         if fg_thread != 0 && fg_thread != cur_thread {
-                            let _ = AttachThreadInput(cur_thread, fg_thread, 1);
-                            let _ = SetForegroundWindow(hwnd);
-                            let _ = AttachThreadInput(cur_thread, fg_thread, 0);
+                            let attach_ret = AttachThreadInput(cur_thread, fg_thread, 1);
+                            let sfg_ret = SetForegroundWindow(hwnd);
+                            let attach_detach = AttachThreadInput(cur_thread, fg_thread, 0);
+                            let fg_after = GetForegroundWindow();
+                            startup_log(format!(
+                                "[pet-panel-fg-debug] AttachThreadInput path: attach={attach_ret} setfg={sfg_ret:?} detach={attach_detach} fg_after={fg_after:?} is_fg={}",
+                                fg_after == hwnd
+                            ));
                         } else {
-                            let _ = SetForegroundWindow(hwnd);
+                            let sfg_ret = SetForegroundWindow(hwnd);
+                            startup_log(format!(
+                                "[pet-panel-fg-debug] plain SetForegroundWindow path: setfg={sfg_ret:?} (fg_thread==cur_thread or 0)"
+                            ));
                         }
                         // 2. Last resort: if still not foreground, Tao's exact
                         //    Alt-SendInput form (VK_LMENU + KEYEVENTF_EXTENDEDKEY)
@@ -193,12 +214,19 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
                                 time: 0,
                                 dwExtraInfo: 0,
                             };
-                            let _ = SendInput(
+                            let sent = SendInput(
                                 2,
                                 inputs.as_mut_ptr(),
                                 std::mem::size_of::<INPUT>() as i32,
                             );
-                            let _ = SetForegroundWindow(hwnd);
+                            let sfg_ret = SetForegroundWindow(hwnd);
+                            let fg_final = GetForegroundWindow();
+                            startup_log(format!(
+                                "[pet-panel-fg-debug] Alt-SendInput fallback: sent={sent} setfg={sfg_ret} fg_final={fg_final:?} is_fg_final={}",
+                                fg_final == hwnd
+                            ));
+                        } else {
+                            startup_log("[pet-panel-fg-debug] no fallback needed (foreground landed)");
                         }
                     }
                 });
