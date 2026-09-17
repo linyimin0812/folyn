@@ -164,8 +164,14 @@ windows-sys = { version = "0.59", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_HiDpi",
   "Win32_Graphics_Gdi",
-  # SendInput / KEYBDINPUT / VK_CONTROL / VK_V for voice insert (PRD R15).
+  # SendInput / KEYBDINPUT / VK_CONTROL / VK_V for voice insert (PRD R15);
+  # also the Alt-SendInput fallback in pet_panel's focus_panel (Windows
+  # foreground-steal for the shortcut-summoned panel).
   "Win32_UI_Input_KeyboardAndMouse",
+  # AttachThreadInput / GetCurrentThreadId for pet_panel's focus_panel
+  # (runtime foreground steal — the Alt-SendInput trick only works at
+  # window creation; runtime re-activation needs input-queue attachment).
+  "Win32_System_Threading",
 ] }
 windows = { version = "0.62", features = [
   "Media_SpeechRecognition",

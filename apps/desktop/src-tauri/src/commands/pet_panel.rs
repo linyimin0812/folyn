@@ -92,78 +92,110 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
 
     // Windows: steal the foreground so the search input's `.focus()` shows a
     // caret. `set_focus()` above routes to `SetForegroundWindow`, which Windows
-    // blocks for non-foreground processes. The `pet_panel_set_focus` re-assert
-    // above (and the `set_focus()` here) rely on a user-initiated pet CLICK to
-    // satisfy SetForegroundWindow's input-queue recency — true for the click
-    // path, FALSE for the global-shortcut path (no click; the hotkey fired
-    // while the user was in another app). Tao's `force_window_active` has an
-    // Alt-key `SendInput` fallback that bypasses the lock, but it runs ONLY at
-    // window CREATION — runtime `set_focus()` calls get plain (blocked)
-    // `SetForegroundWindow`. So on the shortcut path the panel SHOWS
-    // (always-on-top) but never becomes foreground → the `pet://panel-focus-search`
-    // `.focus()` lands in a non-foreground webview → no caret → "没有自动聚焦".
+    // blocks for non-foreground processes. The click-open path works because the
+    // pet click satisfies the input-queue recency requirement, but the
+    // **global-shortcut** path has no such click (the hotkey fires while the
+    // user is in another app) → the panel SHOWS (always-on-top) but never
+    // becomes foreground → the `pet://panel-focus-search` `.focus()` lands in a
+    // non-foreground webview → no caret → "没有自动聚焦". Confirmed by user
+    // diagnosis: Esc-without-click fails (keyboard focus never reached the
+    // webview), but clicking the search box works (interaction foregrounds it).
     //
-    // Fix: try `SetForegroundWindow` plain; if the panel is still not
-    // foreground (blocked), send a bare Alt down+up via `SendInput` — the
-    // keystroke creates input recency that unblocks the lock — then retry
-    // `SetForegroundWindow`. This is the canonical workaround (same technique
-    // Tao uses; see tauri-apps/tao commit 62db431 and tauri#2061). The bare
-    // Alt down+up is benign (activates no menu — the paired press/cancel is
-    // what Win32 ignores). Reuses the `insertion_win.rs` `SendInput`/
-    // `INPUT`/`KEYBDINPUT` pattern verbatim; `VK_MENU` (Alt) lives in the same
-    // `Win32_UI_Input_KeyboardAndMouse` feature already enabled. Idempotent:
-    // when focus already landed (click path, or re-focus while foreground),
-    // `GetForegroundWindow() == hwnd` skips the nudge. By the time
+    // The runtime foreground-lock bypass is **AttachThreadInput**: attach the
+    // calling thread's input queue to the foreground window's thread — once
+    // shared, the foreground thread's "received the last input" allowance
+    // extends to the calling thread, so `SetForegroundWindow` succeeds. (The
+    // Alt-key `SendInput` trick Tao's `force_window_active` uses does NOT work
+    // at runtime — Tao's own comment says "we only call this function in the
+    // window creation"; my first attempt used it at runtime and it failed.)
+    // As a last resort, fall back to Tao's exact Alt-SendInput form
+    // (`VK_LMENU` + `KEYEVENTF_EXTENDEDKEY`, NOT the generic `VK_MENU`/plain
+    // flags my first attempt wrongly used).
+    //
+    // Runs on the main thread (the HWND owner thread) via `run_on_main_thread`,
+    // matching `pet_set_topmost_level`'s Win32 discipline — `focus_panel` is
+    // called from async commands on the runtime, NOT the main thread, so there
+    // is no `run_on_main_thread` self-deadlock. Idempotent: a leading
+    // `GetForegroundWindow() == hwnd` skips everything when focus already
+    // landed (click path, re-focus while foreground). By the time
     // `pet://panel-focus-search` fires (AFTER `applyPanelFrame`'s two
     // `focus_panel` calls), the panel is foreground → `.focus()` works.
     #[cfg(target_os = "windows")]
     {
+        use std::ptr;
         use windows_sys::Win32::Foundation::HWND;
+        use windows_sys::Win32::System::Threading::{
+            AttachThreadInput, GetCurrentThreadId,
+        };
         use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-            INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_MENU,
-            SendInput,
+            INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
+            KEYEVENTF_KEYUP, SendInput, VK_LMENU,
         };
         use windows_sys::Win32::UI::WindowsAndMessaging::{
-            GetForegroundWindow, SetForegroundWindow,
+            GetForegroundWindow, GetWindowThreadProcessId, SetForegroundWindow,
         };
         if let Ok(hwnd_ptr) = panel.hwnd() {
             let hwnd: HWND = hwnd_ptr.0;
             if !hwnd.is_null() {
-                // SAFETY: `SetForegroundWindow` / `GetForegroundWindow` /
-                // `SendInput` are stable user32 entrypoints. `INPUT` is
-                // `#[repr(C)]`; `std::mem::zeroed()` is correct for the union
-                // (no Drop). The 2 INPUTs are stack-allocated, passed by
-                // mutable pointer to `SendInput` — mirrors `insertion_win.rs`.
-                unsafe {
-                    let _ = SetForegroundWindow(hwnd);
-                    if GetForegroundWindow() != hwnd {
-                        // Alt down + Alt up: creates input recency that unblocks
-                        // the foreground lock, then retry SetForegroundWindow.
-                        let mut inputs: [INPUT; 2] = [std::mem::zeroed(); 2];
-                        inputs[0].r#type = INPUT_KEYBOARD;
-                        inputs[0].Anonymous.ki = KEYBDINPUT {
-                            wVk: VK_MENU,
-                            wScan: 0,
-                            dwFlags: 0,
-                            time: 0,
-                            dwExtraInfo: 0,
-                        };
-                        inputs[1].r#type = INPUT_KEYBOARD;
-                        inputs[1].Anonymous.ki = KEYBDINPUT {
-                            wVk: VK_MENU,
-                            wScan: 0,
-                            dwFlags: KEYEVENTF_KEYUP,
-                            time: 0,
-                            dwExtraInfo: 0,
-                        };
-                        let _ = SendInput(
-                            2,
-                            inputs.as_mut_ptr(),
-                            std::mem::size_of::<INPUT>() as i32,
-                        );
-                        let _ = SetForegroundWindow(hwnd);
+                // `run_on_main_thread` is blocking; safe because `focus_panel`
+                // is only called from async commands (runtime thread), never
+                // the main thread — no self-deadlock. Matches pet_set_topmost.
+                let app = panel.app_handle().clone();
+                let _ = app.run_on_main_thread(move || {
+                    // SAFETY: all are stable user32/kernel32 entrypoints.
+                    // `INPUT` is `#[repr(C)]`; `std::mem::zeroed()` is correct
+                    // for the union (no Drop). INPUTs are stack-allocated,
+                    // passed by mutable pointer to `SendInput` — mirrors
+                    // `insertion_win.rs`. `AttachThreadInput`'s BOOL is `i32`;
+                    // 1 = TRUE (attach), 0 = FALSE (detach).
+                    unsafe {
+                        if GetForegroundWindow() == hwnd {
+                            return; // already foreground — idempotent
+                        }
+                        // 1. AttachThreadInput: the runtime foreground-lock
+                        //    bypass. Attach the main thread's input queue to
+                        //    the foreground window's thread so they share input
+                        //    state, then SetForegroundWindow succeeds.
+                        let cur_thread = GetCurrentThreadId();
+                        let fg = GetForegroundWindow();
+                        let fg_thread = GetWindowThreadProcessId(fg, ptr::null_mut());
+                        if fg_thread != 0 && fg_thread != cur_thread {
+                            let _ = AttachThreadInput(cur_thread, fg_thread, 1);
+                            let _ = SetForegroundWindow(hwnd);
+                            let _ = AttachThreadInput(cur_thread, fg_thread, 0);
+                        } else {
+                            let _ = SetForegroundWindow(hwnd);
+                        }
+                        // 2. Last resort: if still not foreground, Tao's exact
+                        //    Alt-SendInput form (VK_LMENU + KEYEVENTF_EXTENDEDKEY)
+                        //    to nudge the lock, then retry SetForegroundWindow.
+                        if GetForegroundWindow() != hwnd {
+                            let mut inputs: [INPUT; 2] = [std::mem::zeroed(); 2];
+                            inputs[0].r#type = INPUT_KEYBOARD;
+                            inputs[0].Anonymous.ki = KEYBDINPUT {
+                                wVk: VK_LMENU,
+                                wScan: 0,
+                                dwFlags: KEYEVENTF_EXTENDEDKEY,
+                                time: 0,
+                                dwExtraInfo: 0,
+                            };
+                            inputs[1].r#type = INPUT_KEYBOARD;
+                            inputs[1].Anonymous.ki = KEYBDINPUT {
+                                wVk: VK_LMENU,
+                                wScan: 0,
+                                dwFlags: KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP,
+                                time: 0,
+                                dwExtraInfo: 0,
+                            };
+                            let _ = SendInput(
+                                2,
+                                inputs.as_mut_ptr(),
+                                std::mem::size_of::<INPUT>() as i32,
+                            );
+                            let _ = SetForegroundWindow(hwnd);
+                        }
                     }
-                }
+                });
             }
         }
     }

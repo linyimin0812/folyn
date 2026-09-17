@@ -528,17 +528,23 @@ area rect and the scale factor.
   path works because the pet click satisfies the input-queue recency requirement, but the
   **global-shortcut** path has no such click (the hotkey fires while the user is in another
   app) — so the panel SHOWS (always-on-top) but never becomes foreground → the search box's
-  `.focus()` lands in a non-foreground webview → no caret ("没有自动聚焦"). `focus_panel`
-  (in `commands/pet_panel.rs`) therefore steals the foreground on Windows: it calls
-  `SetForegroundWindow`, and if `GetForegroundWindow() != hwnd` (blocked), sends a bare
-  Alt down+up via `SendInput` (the canonical foreground-lock bypass — same technique Tao's
-  `force_window_active` uses, but only at window creation; runtime `set_focus()` does NOT)
-  and retries `SetForegroundWindow`. Idempotent (skips the Alt nudge when already foreground).
-  Reuses the `voice/insertion_win.rs` `SendInput`/`INPUT`/`KEYBDINPUT` pattern; `VK_MENU`
-  + `Win32_UI_Input_KeyboardAndMouse` + `Win32_UI_WindowsAndMessaging` features are already
-  enabled in `Cargo.toml`. By the time `pet://panel-focus-search` fires (after
-  `applyPanelFrame`'s two `focus_panel` calls), the panel is foreground → `.focus()` works.
-  macOS is unaffected (the `#[cfg(target_os = "windows")]` block is skipped; the macOS
+  `.focus()` lands in a non-foreground webview → no caret ("没有自动聚焦"). Confirmed by
+  user diagnosis: Esc-without-click fails (keyboard focus never reached the webview), but
+  clicking the search box works (interaction foregrounds it). `focus_panel` (in
+  `commands/pet_panel.rs`) therefore steals the foreground on Windows, run on the main thread
+  (HWND owner thread) via `run_on_main_thread` (matching `pet_set_topmost_level`'s Win32
+  discipline): 1) if `GetForegroundWindow() == hwnd`, skip (idempotent); 2) the runtime
+  foreground-lock bypass is **`AttachThreadInput`** — attach the main thread's input queue
+  to the foreground window's thread so they share input state, then `SetForegroundWindow`
+  succeeds (the Alt-key `SendInput` trick Tao's `force_window_active` uses does NOT work at
+  runtime — Tao's own comment limits it to window creation); 3) last-resort fallback to
+  Tao's exact Alt-`SendInput` form (`VK_LMENU` + `KEYEVENTF_EXTENDEDKEY`, NOT generic
+  `VK_MENU`/plain flags). Reuses `voice/insertion_win.rs`'s `SendInput`/`INPUT`/`KEYBDINPUT`
+  pattern; the `Win32_System_Threading` (AttachThreadInput/GetCurrentThreadId),
+  `Win32_UI_Input_KeyboardAndMouse`, and `Win32_UI_WindowsAndMessaging` features are enabled
+  in `Cargo.toml`. By the time `pet://panel-focus-search` fires (after `applyPanelFrame`'s
+  two `focus_panel` calls), the panel is foreground → `.focus()` works. macOS is unaffected
+  (the `#[cfg(target_os = "windows")]` block is skipped; the macOS
   `makeFirstResponder(wkwebview)` path still handles Esc + DOM focus).
 
 ### 4. Validation & Error Matrix
