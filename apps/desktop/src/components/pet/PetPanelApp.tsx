@@ -118,6 +118,14 @@ export function PetPanelApp() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const hidePanel = useCallback(async () => {
+    // [pet-panel-search-debug] TEMP — what triggers the hide? log the
+    // gate state + a stack trace so we can see if it's the blur-auto-hide.
+    console.info('[pet-panel-search-debug] hidePanel called', {
+      refocusing: refocusingRef.current,
+      panelFocused: panelFocusedRef.current,
+      pinned: isPinnedRef.current,
+      stack: new Error().stack?.split('\n').slice(1, 6).join(' | '),
+    });
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('pet_panel_hide');
@@ -396,6 +404,8 @@ export function PetPanelApp() {
         // (cleared on the next real `tauri://focus`, or a 800ms safety
         // timeout in case focus never re-lands). See focus/blur listener.
         unrefocus = await listen('pet://panel-refocusing', () => {
+          // [pet-panel-search-debug] TEMP
+          console.info('[pet-panel-search-debug] pet://panel-refocusing armed');
           refocusingRef.current = true;
           if (refocusingTimeoutRef.current != null) {
             window.clearTimeout(refocusingTimeoutRef.current);
@@ -458,6 +468,8 @@ export function PetPanelApp() {
         const { listen } = await import('@tauri-apps/api/event');
         const panelTarget = { target: { kind: 'Window' as const, label: 'pet-panel' } };
         unFocus = await listen('tauri://focus', () => {
+          // [pet-panel-search-debug] TEMP
+          console.info('[pet-panel-search-debug] tauri://focus');
           panelFocusedRef.current = true;
           // Rust's SetFocus(child) landed focus on the WebView2 doc → this
           // is a real focus-gained, so the preceding spurious blur (if any)
@@ -469,6 +481,12 @@ export function PetPanelApp() {
           }
         }, panelTarget);
         unBlur = await listen('tauri://blur', () => {
+          // [pet-panel-search-debug] TEMP
+          console.info('[pet-panel-search-debug] tauri://blur', {
+            refocusing: refocusingRef.current,
+            panelFocused: panelFocusedRef.current,
+            pinned: isPinnedRef.current,
+          });
           // Ignore the spurious blur from Rust's SetFocus(child) — see
           // refocusingRef. Rust emits pet://panel-refocusing BEFORE the
           // SetFocus (same webview loop, FIFO), so this is armed in time.
