@@ -130,3 +130,28 @@ jobs:
           args: ${{ matrix.args }}
           releaseId: ${{ needs.release.outputs.release_id }}
           includeUpdaterJson: false
+
+      # Tauri v2 has no "portable" bundle target — the raw release binary at
+      # target/release/folyn.exe is already a self-contained portable exe
+      # (bundle.resources is empty, so there are no sidecar files to ship).
+      # Zip it and attach to the release alongside the NSIS installer.
+      - name: Create + upload portable Windows zip
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = "apps/desktop/src-tauri/target/release/folyn.exe"
+          if (-not (Test-Path $exe)) { throw "Portable exe not found: $exe" }
+          $tag = "${{ steps.bmeta.outputs.tag }}"
+          $ver = $tag -replace '^v',''
+          $zip = if ($ver) { "Folyn_${ver}_x64_portable.zip" } else { "Folyn_portable.zip" }
+          New-Item -ItemType Directory -Force -Path portable | Out-Null
+          Copy-Item $exe "portable/Folyn.exe"
+          Compress-Archive -Path portable/Folyn.exe -DestinationPath $zip -Force
+          if ($tag) {
+            gh release upload "$tag" $zip --clobber
+          } else {
+            Write-Host "No tag set — built $zip but skipped release upload."
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -45,6 +45,8 @@ pnpm tauri build          # current host platform, Tauri defaults
 ### Windows-specific notes
 
 - The NSIS installer (`bundle.windows.nsis.installMode: "currentUser"`) installs per-user (no admin elevation needed).
+- A **portable build** is produced by the release CI: the self-contained release binary at `apps/desktop/src-tauri/target/release/folyn.exe` (Tauri v2 has no native `portable` bundle target; `bundle.resources` is empty so the exe needs no sidecar files) is zipped as `Folyn_<version>_x64_portable.zip` and attached to the GitHub release alongside the NSIS installer. Download, unzip, run `Folyn.exe` — no installation, no admin rights. Requires the WebView2 runtime (preinstalled on Win10+).
+- To build the portable exe locally on a Windows host: `pnpm build:win` (or `pnpm tauri build --bundles nsis`), then grab `apps/desktop/src-tauri/target/release/folyn.exe`.
 - Code signing is **not** configured in this repo; SmartScreen will warn on first run of an unsigned `.exe`. Pass `--target x86_64-pc-windows-msvc` if cross-compiling (rare; usually you build on a Windows host).
 - ARM64 Windows is **not** a build target yet (x86_64 only).
 
@@ -62,7 +64,7 @@ pnpm tauri build          # current host platform, Tauri defaults
 - `windows-latest` × `x86_64-pc-windows-msvc`
 - `build-macos-universal` (separate job, universal binary)
 
-Each job uses `tauri-apps/tauri-action@v0` to build + attach artifacts to the GitHub release.
+Each job uses `tauri-apps/tauri-action@v0` to build + attach artifacts to the GitHub release. The Windows (`windows-latest` × `x86_64-pc-windows-msvc`) job additionally builds and uploads `Folyn_<version>_x64_portable.zip` (a zipped portable `.exe`) alongside the NSIS installer.
 
 ## Platform support matrix
 
