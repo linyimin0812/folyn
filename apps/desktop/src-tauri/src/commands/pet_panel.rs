@@ -131,38 +131,50 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
         if let Ok(hwnd_ptr) = panel.hwnd() {
             let hwnd: HWND = hwnd_ptr.0;
             if !hwnd.is_null() {
-                // [pet-panel-fg-debug] TEMP instrumentation — the
-                // SetFocus(child) fix (commit a7faac6c) still did not focus
-                // the search box; need to see what the child actually is and
-                // whether SetFocus moved the keyboard focus. Remove after.
-                // SAFETY: GetWindow/GetClassNameW/GetFocus/SetFocus are stable
-                // user32 entrypoints; PWSTR buffer is stack-allocated.
-                unsafe {
-                    let container = GetWindow(hwnd, GW_CHILD);
-                    // Class name of the child (expect "WRY_WEBVIEW").
-                    let mut class_buf = [0u16; 64];
-                    let class_len = if !container.is_null() {
-                        GetClassNameW(container, class_buf.as_mut_ptr(), 64)
-                    } else {
-                        -1
-                    };
-                    let class_str = if class_len > 0 {
-                        String::from_utf16_lossy(&class_buf[..class_len as usize])
-                    } else {
-                        "(none)".to_string()
-                    };
-                    let focus_before = GetFocus();
-                    let sfg_ret = if !container.is_null() {
-                        SetFocus(container)
-                    } else {
-                        std::ptr::null_mut()
-                    };
-                    let focus_after = GetFocus();
-                    startup_log(format!(
-                        "[pet-panel-fg-debug] focus_panel SetFocus path: panel_hwnd={hwnd:?} child(container)={container:?} class=\"{class_str}\" focus_before={focus_before:?} setfocus_ret={sfg_ret:?} focus_after={focus_after:?} focus_moved_to_child={}",
-                        focus_after == container
-                    ));
-                }
+                // ROOT CAUSE (confirmed by [pet-panel-fg-debug] logs): the
+                // PREVIOUS SetFocus(child) attempt ran on the Tauri async
+                // runtime thread — `GetFocus()`/`SetFocus()` are per-THREAD
+                // (only affect the calling thread's message queue), and the
+                // async thread owns no window / has no message pump, so
+                // `focus_before=0`, `setfocus_ret=0`, `focus_after=0` —
+                // SetFocus silently failed. Must run on the MAIN (GUI) thread,
+                // the HWND owner thread, via `run_on_main_thread` (mirrors
+                // pet_set_topmost_level's Win32 discipline). HWND is not Send
+                // — cast to isize to cross the boundary, cast back inside.
+                let app = panel.app_handle().clone();
+                let hwnd_send = hwnd as isize;
+                let _ = app.run_on_main_thread(move || {
+                    let hwnd: HWND = hwnd_send as HWND;
+                    // [pet-panel-fg-debug] TEMP — confirm SetFocus now moves
+                    // focus when run on the main thread. Remove after.
+                    // SAFETY: GetWindow/GetClassNameW/GetFocus/SetFocus are
+                    // stable user32 entrypoints; PWSTR buffer is stack-alloc.
+                    unsafe {
+                        let container = GetWindow(hwnd, GW_CHILD);
+                        let mut class_buf = [0u16; 64];
+                        let class_len = if !container.is_null() {
+                            GetClassNameW(container, class_buf.as_mut_ptr(), 64)
+                        } else {
+                            -1
+                        };
+                        let class_str = if class_len > 0 {
+                            String::from_utf16_lossy(&class_buf[..class_len as usize])
+                        } else {
+                            "(none)".to_string()
+                        };
+                        let focus_before = GetFocus();
+                        let sfg_ret = if !container.is_null() {
+                            SetFocus(container)
+                        } else {
+                            std::ptr::null_mut()
+                        };
+                        let focus_after = GetFocus();
+                        startup_log(format!(
+                            "[pet-panel-fg-debug] focus_panel SetFocus (MAIN THREAD): panel_hwnd={hwnd_send:?} child={container:?} class=\"{class_str}\" focus_before={focus_before:?} setfocus_ret={sfg_ret:?} focus_after={focus_after:?} focus_moved_to_child={}",
+                            focus_after == container
+                        ));
+                    }
+                });
             } else {
                 startup_log("[pet-panel-fg-debug] focus_panel: panel hwnd is null");
             }

@@ -329,6 +329,10 @@ export function PetPanelApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('pet://panel-fade-in', () => {
+          // [pet-panel-search-debug] TEMP — proves the pet-panel webview
+          // console is being captured (fade-in always arrives on show).
+          // If this is absent too, the DevTools is open on the wrong window.
+          console.info('[pet-panel-search-debug] panel-fade-in received');
           // The panel webview lives across shows, so the search query would
           // otherwise survive a close → reopen. The popup search is
           // ephemeral — clear it every time the panel is shown again.
