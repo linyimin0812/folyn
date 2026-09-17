@@ -28,7 +28,7 @@
     {
       "id": "folyn-dbml",
       "name": "DBML",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": {
         "zh": "DBML 数据库建模：CodeMirror 编辑 + ER 图实时预览",
         "en": "DBML database modeling: CodeMirror editor + live ER diagram preview",
@@ -40,7 +40,7 @@
       "tier": "trusted",
       "author": "Folyn",
       "icon": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M8 1.5C4.96243 1.5 2.5 2.44143 2.5 3.60275V12.4343C2.5 13.5956 4.96243 14.537 8 14.537C11.0376 14.537 13.5 13.5956 13.5 12.4343V3.60275C13.5 2.44143 11.0376 1.5 8 1.5Z\" fill=\"#FAF5FF\"/>\n<ellipse cx=\"8\" cy=\"3.60275\" rx=\"5.5\" ry=\"2.10275\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 12.4336C13.5 13.5949 11.0376 14.5363 8 14.5363C4.96243 14.5363 2.5 13.5949 2.5 12.4336\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 9.49045C13.5 10.6518 11.0376 11.5932 8 11.5932C4.96243 11.5932 2.5 10.6518 2.5 9.49045\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 6.54688C13.5 7.70819 11.0376 8.64962 8 8.64962C4.96243 8.64962 2.5 7.70819 2.5 6.54688\" stroke=\"#834DF0\"/>\n<path d=\"M13.5 3.39249V12.5184\" stroke=\"#834DF0\"/>\n<path d=\"M2.5 3.39249V12.5184\" stroke=\"#834DF0\"/>\n</svg>",
-      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.1/folyn-dbml-0.1.0.zip"
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/folyn-dbml-0.1.1.zip"
     },
     {
       "id": "folyn-file-viewer",
@@ -52,7 +52,7 @@
         "de": "Dateibetrachter",
         "es": "Visor de archivos"
       },
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": {
         "zh": "通用文件查看器（Office / PDF / CAD / 归档 / 媒体等），兜底 FileType 扩展",
         "en": "Universal file viewer (Office / PDF / CAD / archive / media), fallback FileType extension",
@@ -64,7 +64,7 @@
       "tier": "trusted",
       "author": "Folyn",
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 40\" x=\"0px\" y=\"0px\" fill=\"#808080\"><title>Folder_12</title><g data-name=\"Layer 14\"><path d=\"M17.1631,7H28a2.0026,2.0026,0,0,0-2-2H16.4959Z\"/><path d=\"M16,16.0781A5.57,5.57,0,0,0,11.1138,19a5.5469,5.5469,0,0,0,9.7729,0A5.5706,5.5706,0,0,0,16,16.0781ZM16,21a2,2,0,1,1,2-2A2.0023,2.0023,0,0,1,16,21Z\"/><path d=\"M28,9H15.7217L13.9482,3.6826A1,1,0,0,0,13,3H4A2.0026,2.0026,0,0,0,2,5V27a2.0026,2.0026,0,0,0,2,2H28a2.0026,2.0026,0,0,0,2-2V11A2.0026,2.0026,0,0,0,28,9ZM22.9141,19.4053a7.55,7.55,0,0,1-13.8281,0,.9973.9973,0,0,1,0-.8105,7.55,7.55,0,0,1,13.8281,0A1.0012,1.0012,0,0,1,22.9141,19.4053Z\"/></g><text x=\"0\" y=\"47\" fill=\"#808080\" font-size=\"5px\" font-weight=\"bold\" font-family=\"'Helvetica Neue', Helvetica, Arial-Unicode, Arial, Sans-serif\">Created by Alwin Aulia</text><text x=\"0\" y=\"52\" fill=\"#808080\" font-size=\"5px\" font-weight=\"bold\" font-family=\"'Helvetica Neue', Helvetica, Arial-Unicode, Arial, Sans-serif\">from the Noun Project</text></svg>",
-      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.1/folyn-file-viewer-0.1.0.zip"
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/folyn-file-viewer-0.1.1.zip"
     },
     {
       "id": "folyn-carousel",
@@ -90,6 +90,30 @@
       "icon": "C",
       "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.1/folyn-carousel-0.1.0.zip",
       "contributesContainers": 2
+    },
+    {
+      "id": "github-jsdelivr",
+      "name": {
+        "zh": "GitHub + jsDelivr",
+        "en": "GitHub + jsDelivr",
+        "ja": "GitHub + jsDelivr",
+        "fr": "GitHub + jsDelivr",
+        "de": "GitHub + jsDelivr",
+        "es": "GitHub + jsDelivr"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "图床 + HTML 分享：上传图片走 jsDelivr CDN（需公开仓库），上传的 HTML 走 GitHub Pages（需在仓库 Settings → Pages 开启）。需提供 GitHub 账户、仓库、分支与 Personal Access Token（repo 权限）。",
+        "en": "Image hosting + HTML sharing: images upload via jsDelivr CDN (public repo required), HTML uploads via GitHub Pages (enable in repo Settings → Pages). Requires GitHub owner, repo, branch, and a PAT with repo scope.",
+        "ja": "画像ホスト + HTML 共有：画像は jsDelivr CDN 経由（公開リポジトリが必要）、HTML は GitHub Pages 経由（リポジトリの Settings → Pages で有効化）。GitHub の owner・repo・branch・PAT（repo 権限）が必要です。",
+        "fr": "Hébergement d'images + partage HTML : images via CDN jsDelivr (dépôt public requis), HTML via GitHub Pages (activer dans Settings → Pages du dépôt). Requiert owner, repo, branch GitHub et un PAT avec scope repo.",
+        "de": "Bild-Hosting + HTML-Sharing: Bilder via jsDelivr CDN (öffentliches Repo nötig), HTML via GitHub Pages (in Repo Settings → Pages aktivieren). Benötigt GitHub owner/repo/branch und ein PAT mit repo-Scope.",
+        "es": "Alojamiento de imágenes + compartir HTML: imágenes vía jsDelivr CDN (repo público requerido), HTML vía GitHub Pages (activar en Settings → Pages del repo). Requiere owner, repo, branch de GitHub y un PAT con scope repo."
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "github",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/github-jsdelivr-0.1.0.zip"
     }
   ]
 }
