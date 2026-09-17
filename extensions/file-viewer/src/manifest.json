@@ -1,7 +1,7 @@
 {
   "id": "folyn-file-viewer",
   "name": "File Viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Folyn",
   "folyn": ">=0.1.0",
   "tier": "trusted",
