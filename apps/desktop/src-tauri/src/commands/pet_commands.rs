@@ -572,9 +572,16 @@ pub async fn pet_set_cursor(_app: tauri::AppHandle, kind: String) -> Result<(), 
     // (CSS `cursor: pointer` doesn't apply when the pet is non-activating).
     // LoadCursorW loads a shared system cursor (no need to free).
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        LoadCursorW, SetCursor, IDC_ARROW, IDC_HAND,
+        LoadCursorW, SetCursor, IDC_ARROW, IDC_HAND, IDC_SIZEALL,
     };
-    let cursor_id = if kind == "pointer" { IDC_HAND } else { IDC_ARROW };
+    // "grab" (drag handles, e.g. the extension-tool titlebar) maps to
+    // IDC_SIZEALL — the four-arrow move cursor, the Windows affordance for
+    // draggable chrome (closest native equivalent of the macOS open hand).
+    let cursor_id = match kind.as_str() {
+        "pointer" => IDC_HAND,
+        "grab" => IDC_SIZEALL,
+        _ => IDC_ARROW,
+    };
     unsafe {
         let h = LoadCursorW(std::ptr::null_mut(), cursor_id);
         if h.is_null() {

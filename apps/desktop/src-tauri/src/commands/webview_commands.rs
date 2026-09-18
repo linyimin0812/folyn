@@ -421,9 +421,14 @@ pub async fn open_extension_tool_window(
     }
     #[cfg(not(target_os = "macos"))]
     {
+        // Windows: show WITHOUT stealing the foreground — the popup must
+        // float over the user's app (WS_EX_TOPMOST from alwaysOnTop:true),
+        // not switch them into Folyn (set_focus would SetForegroundWindow
+        // — the Windows twin of the macOS "跳转" bug). Blur auto-hide / Esc
+        // arm themselves once the user CLICKS the popup (Windows activates
+        // a window on click; tao then emits focus/blur like macOS's panel).
         if let Some(w) = app.get_webview_window("extension-tool-panel") {
             let _ = w.show();
-            let _ = w.set_focus();
         }
     }
     Ok(label)
