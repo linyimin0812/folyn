@@ -54,7 +54,8 @@ activate; auto-unregistered on deactivate.
 | `keybindings`                 | ✗        | ✓        | Tauri accelerator → command id (app-scope keydown)                   |
 | `exportEnhancers`             | ✗        | ✓        | post-render DOM mutation during HTML/PDF export                      |
 | `markdownCodeRenderers`       | ✗        | ✓        | lang-tagged fenced code block → React renderer                       |
-| `editorLanguages`             | ✗        | ✓        | CodeMirror language extension for fenced source highlighting         |
+| `editorLanguages`             | ✗        | ✓        | CodeMirror language support for fenced source blocks in the editor     |
+| `highlightGrammars`          | ✗        | ✓        | highlight.js grammar for fenced code blocks in preview + CodeFileViewer |
 | `storageProviders`             | ✗        | ✓        | cloud object-storage provider in Settings → Storage & Sharing       |
 
 ### 3. RPC method table (sandbox tier — host-mediated)
@@ -198,7 +199,7 @@ contribution points are available.
 | Isolation                   | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage                                              | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM                                                         |
 | Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; no per-extension runtime ACL, `permissions` informational (see [Permissions model](#permissions-model))        |
 | Trust gate                  | none (sandbox IS the boundary)                                                                                         | TOFU: user must **批准并授权** before activation                                                                                          |
-| Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`, `storageProviders`                                    |
+| Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`, `highlightGrammars`, `storageProviders`                                    |
 | Hot unload                  | destroy iframe element                                                                                                 | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)`                                                                                     |
 | Bundle requirement          | HTML + JS loaded by the iframe via `folyn-extension://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
 
@@ -668,6 +669,33 @@ adapts it into the matching app registry when the extension activates.
   `folyn-extension-sdk/folyn-extension-plantuml/src/codemirror.ts` for the canonical
   pattern — it mirrors the `resolveReact()` approach for `window.React`.
 
+### highlightGrammars (trusted only)
+
+Registers a highlight.js grammar so the preview's fenced ` ```lang ` code
+blocks and the `CodeFileViewer` get syntax highlighting for languages the
+built-in `hljs` bundle doesn't ship. Distinct from `editorLanguages`:
+`editorLanguages` lights up the **CodeMirror editor** (in-place editing),
+`highlightGrammars` lights up the **rendered preview / file viewer** (read-only
+`<pre><code>` via highlight.js).
+
+```jsonc
+"highlightGrammars": [
+  { "name": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlGrammar" }
+]
+```
+
+- `name` is the highlight.js language name to register (e.g. `plantuml`). It
+  becomes the canonical id; `aliases` are registered as additional lookup
+  keys via hljs's own alias mechanism.
+- `aliases` (optional) are alternate fence languages / file extensions that
+  resolve to this grammar (so ` ```puml ` hits the same grammar as
+  ` ```plantuml `).
+- `entry` is the **entry-ref** into the module's `highlightGrammars` map.
+  The factory's type is `HighlightGrammarFn = (hljs: unknown) => unknown`;
+  it receives the host's `hljs` instance and returns a language definition
+  the host registers via `hljs.registerLanguage(name, fn)`. Typed `unknown`
+  because the SDK has no `highlight.js` dependency — the host narrows.
+
 ### storageProviders (trusted only)
 
 Adds a cloud object-storage provider to **Settings → Storage & Sharing**
@@ -738,6 +766,7 @@ export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': e
 export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
 export const markdownCodeRenderers: Record<string, ComponentType<MarkdownCodeRendererProps>> = { 'PlantUmlMarkdownBlock': PlantUmlBlock };
 export const editorLanguages: Record<string, EditorLanguageFactory> = { 'plantumlLanguage': () => plantumlLanguage() };
+export const highlightGrammars: Record<string, HighlightGrammarFn> = { 'plantumlGrammar': (hljs) => plantumlGrammar(hljs) };
 export const storageProviders: Record<string, unknown> = {
   form: SmmsForm,                 // ComponentType<StorageConfigFormProps>
   isConfigured: (cfg: unknown) => !!(cfg as { token?: string }).token,
@@ -754,9 +783,9 @@ missing from the module's exports is skipped with a console warning
 `fileTemplates` and `keybindings` are declarative — no module map.
 
 `markdownCodeRenderers` is keyed by the manifest's `component` string;
-`editorLanguages` by `entry`. See `folyn-extension-sdk/folyn-extension-plantuml` for a
+`editorLanguages` by `entry`; `highlightGrammars` by `entry`. See `folyn-extension-sdk/folyn-extension-plantuml` for a
 working example of all four maps (`handlers`, `exporters`,
-`markdownCodeRenderers`, `containers`, `exportEnhancers`, `editorLanguages`).
+`markdownCodeRenderers`, `containers`, `exportEnhancers`, `editorLanguages`, `highlightGrammars`).
 
 A default-export factory `(ctx) => ExtensionModule` is also accepted (the loader
 normalizes both shapes). See `contributionAdapters.ts` for the exact

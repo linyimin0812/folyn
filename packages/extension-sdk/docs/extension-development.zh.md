@@ -98,7 +98,9 @@ export const commands = { ping: () => console.info("pong") };
 | `keybindings`             | ✗       | ✓       | Tauri accelerator → 命令 id（app 级 keydown）               |
 | `exportEnhancers`         | ✗       | ✓       | 导出 HTML/PDF 时对已渲染 DOM 的后处理变异                   |
 | `markdownCodeRenderers`   | ✗       | ✓       | 带语言标签的 fenced code block → React 渲染器               |
-| `editorLanguages`         | ✗       | ✓       | fenced source 高亮用的 CodeMirror language 扩展             |
+| `editorLanguages`         | ✗       | ✓       | 编辑器内 fenced source 用的 CodeMirror language 扩展        |
+| `highlightGrammars`      | ✗       | ✓       | 预览与 CodeFileViewer 里 fenced code 用的 highlight.js 语法 |
+| `storageProviders`       | ✗       | ✓       | Settings → Storage & Sharing 里的云对象存储提供者           |
 
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
@@ -183,7 +185,7 @@ default-src 'none';
 | 隔离              | 跨 origin opaque origin；无父 DOM、无 Tauri API、无 localStorage                                                  | 无——运行在 host realm；可读 Zustand store、调 Tauri、操作 DOM                                               |
 | 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；无逐插件运行时 ACL，`permissions` 仅供信息（见 [权限模型](#权限模型)）        |
 | 信任门槛          | 无（sandbox 本身就是边界）                                                                                        | TOFU：激活前必须 **批准并授权**                                                                             |
-| 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`      |
+| 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`、`highlightGrammars`、`storageProviders`      |
 | 热卸载            | 销毁 iframe 元素                                                                                                  | `dispose()` adapter + `URL.revokeObjectURL(blobUrl)`                                                        |
 | 打包要求          | HTML + JS 由 iframe 通过 `folyn-extension://` 加载                                                                   | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了）                                       |
 
@@ -603,6 +605,75 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `ExtensionHost.valid
   `folyn-extension-sdk/folyn-extension-plantuml/src/codemirror.ts`——与 `resolveReact()` 对
   `window.React` 的处理镜像。
 
+### highlightGrammars（仅 trusted）
+
+注册一个 highlight.js 语法，让预览里的 fenced ` ```lang ` 代码块和
+`CodeFileViewer` 在内置 `hljs` 不自带的语言上也能高亮。与 `editorLanguages`
+是分工关系：`editorLanguages` 点亮 **CodeMirror 编辑器**（就地编辑），
+`highlightGrammars` 点亮 **渲染后的预览 / 文件查看器**（只读
+`<pre><code>`，走 highlight.js）。
+
+```jsonc
+"highlightGrammars": [
+  { "name": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlGrammar" }
+]
+```
+
+- `name` 是要注册的 highlight.js 语言名（如 `plantuml`），作为规范 id；
+  `aliases` 经 hljs 自身的别名机制注册为额外查找键。
+- `aliases`（可选）是解析到同一语法的备选 fence 语言 / 文件扩展名
+  （让 ` ```puml ` 与 ` ```plantuml ` 命中同一语法）。
+- `entry` 是模块 `highlightGrammars` map 的 **entry-ref**。factory 类型为
+  `HighlightGrammarFn = (hljs: unknown) => unknown`；收到 host 的 `hljs`
+  实例，返回一个语言定义，host 经 `hljs.registerLanguage(name, fn)` 注册。
+  类型标 `unknown` 是因为 SDK 不依赖 `highlight.js`——host 窄化。
+
+### storageProviders（仅 trusted）
+
+为 **Settings → Storage & Sharing** 增加一个云对象存储提供者
+（图床 + HTML 分享），与内置的 R2 / 七牛 / OSS 并列。
+
+```jsonc
+"storageProviders": [
+  {
+    "id": "smms",
+    "labelKey": "ext.smms.label",
+    "icon": "🖼️",
+    "capabilities": { "image": true, "html": false },
+    "configForm": "form",
+    "isConfigured": "isConfigured",
+    "uploadImage": "uploadImage",
+    "defaultConfig": { "token": "" }
+  }
+]
+```
+
+- `id` 在内置 + 扩展间全局唯一。它作为磁盘配置文件
+  （`~/.folyn/image-hosts/<id>.json`）与 store 条目的 key。
+- `labelKey` 是一个 i18n key，设置选择器用 host 的 `t()` 解析；自带你的
+  i18n bundle（host **不**暴露它的 message catalog），在表单里用 `useTranslation()`。
+- `icon` 是 emoji、内联 `<svg>`、`.svg` 路径或 host `ThemeIcon` 名
+  （设置 UI 在名称已知时渲染 `ThemeIcon`，否则按文本显示）。
+- `capabilities.image` / `capabilities.html` 声明本提供者服务哪些上传路径。
+  只有提供了 `uploadImage` 才声明 `image: true`；只有提供了 `uploadHtml` 才声明
+  `html: true`。
+- `configForm` 是模块 `storageProviders` map 的 **entry-ref**，指向形状为
+  `ComponentType<StorageConfigFormProps>` 的 React 组件——
+  `{ config: unknown; onSave: (cfg) => Promise<void>; onRemove: () => Promise<void> }`。
+  自管 draft 状态；在边界处把不透明的 `config` 窄化成你自己的类型。host 用
+  error boundary 包裹表单，渲染抛错会被隔离。
+- `isConfigured` 是 `(config: unknown) => boolean` 的 **entry-ref**——已存配置
+  是否足够发起上传。决定选择器是否把该提供者显示为已配置。
+- `uploadImage` / `uploadHtml` 是 `(bytes, ext, config) => Promise<publicUrl>` 与
+  `(html, config) => Promise<publicUrl>` 的 **entry-ref**。config 是你表单存的
+  任意值（host 视为不透明）。trusted 代码在 realm 内，可直接 `fetch()` 你的云
+  API 并自己签名。
+- `defaultConfig` 在首次选中该提供者时 seed 进 store。
+
+host 把设置 UI 与图片粘贴 / markdown→HTML 分享流都走同一个
+`StorageProviderRegistry`；内置与扩展提供者是同类东西，卸载会干净移除你的
+条目，已存配置重置为你的 `defaultConfig`。
+
 ---
 
 ## ExtensionModule 导出契约（trusted tier）
@@ -620,6 +691,12 @@ export const exporters: Record<string, ExporterHandler> = { 'txt-with-header': e
 export const exportEnhancers: Record<string, ExportEnhancerHandler> = { 'enhance-quote': enhanceQuote };
 export const markdownCodeRenderers: Record<string, ComponentType<MarkdownCodeRendererProps>> = { 'PlantUmlMarkdownBlock': PlantUmlBlock };
 export const editorLanguages: Record<string, EditorLanguageFactory> = { 'plantumlLanguage': () => plantumlLanguage() };
+export const highlightGrammars: Record<string, HighlightGrammarFn> = { 'plantumlGrammar': (hljs) => plantumlGrammar(hljs) };
+export const storageProviders: Record<string, unknown> = {
+  form: SmmsForm,                 // ComponentType<StorageConfigFormProps>
+  isConfigured: (cfg: unknown) => !!(cfg as { token?: string }).token,
+  uploadImage: async (bytes, ext, cfg) => { /* fetch 你的 API，私有签名 */ return url; },
+};
 export function activate(ctx: ExtensionContext) { /* 可选 */ }
 export function deactivate(ctx: ExtensionContext) { /* 可选 */ }
 ```
@@ -630,8 +707,9 @@ export function deactivate(ctx: ExtensionContext) { /* 可选 */ }
 `fileTemplates` 与 `keybindings` 是声明式的——无模块 map。
 
 `markdownCodeRenderers` 的 key 对应 manifest 的 `component` 字符串；
-`editorLanguages` 的 key 对应 `entry`。完整四 map 示例（`handlers`、`exporters`、
-`markdownCodeRenderers`、`containers`、`exportEnhancers`、`editorLanguages`）见
+`editorLanguages` 与 `highlightGrammars` 的 key 都对应 `entry`。完整示例（`handlers`、
+`exporters`、`markdownCodeRenderers`、`containers`、`exportEnhancers`、
+`editorLanguages`、`highlightGrammars`、`storageProviders`）见
 `folyn-extension-sdk/folyn-extension-plantuml`。
 
 也接受 default-export 工厂 `(ctx) => ExtensionModule`（loader 会归一两种形态）。详见

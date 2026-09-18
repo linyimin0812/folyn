@@ -60,7 +60,9 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `keybindings`           | ✗       | ✓       | `contributes.keybindings[]`           | （declarative，无 module map）   | 快捷键 → command id                         |
 | `exportEnhancers`       | ✗       | ✓       | `contributes.exportEnhancers[]`       | `module.exportEnhancers`         | 导出时 DOM 后处理                           |
 | `markdownCodeRenderers` | ✗       | ✓       | `contributes.markdownCodeRenderers[]` | `module.markdownCodeRenderers`   | fenced code block → React renderer          |
-| `editorLanguages`       | ✗       | ✓       | `contributes.editorLanguages[]`       | `module.editorLanguages`         | fenced source 用的 CodeMirror language 扩展 |
+| `editorLanguages`       | ✗       | ✓       | `contributes.editorLanguages[]`       | `module.editorLanguages`         | 编辑器内 fenced source 用的 CodeMirror language 扩展 |
+| `highlightGrammars`    | ✗       | ✓       | `contributes.highlightGrammars[]`     | `module.highlightGrammars`       | 预览与 CodeFileViewer 里 fenced code 用的 highlight.js 语法 |
+| `storageProviders`     | ✗       | ✓       | `contributes.storageProviders[]`       | `module.storageProviders`        | Settings → Storage & Sharing 里的云对象存储提供者           |
 
 ## 4. 各贡献点字段表 + 片段
 
@@ -220,6 +222,44 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 
 > trusted 插件经 blob URL 加载，需通过 `window.codemirrorLanguage`（host 在 `main.tsx` 中赋值）+ `resolveCodemirror()` helper 拿 `@codemirror/language`，避免 module-instance mismatch。规范形态见 `folyn-extension-sdk/folyn-extension-plantuml/src/codemirror.ts`。
 
+### highlightGrammars（仅 trusted）
+
+注册 highlight.js 语法，让预览的 fenced ` ```lang ` 代码块与 `CodeFileViewer` 在内置 `hljs` 不自带的语言上高亮。与 `editorLanguages` 分工：前者点亮预览（只读 `<pre><code>`），后者点亮 CodeMirror 编辑器。
+
+| 字段       | 类型       | 必填 | 说明                                                                                                          |
+| ---------- | ---------- | ---- | ------------------------------------------------------------------------------------------------------------- |
+| `name`     | `string`   | 是   | highlight.js 语言名（如 `plantuml`），作为规范 id；`aliases` 经 hljs 别名机制注册 |
+| `aliases`  | `string[]` | 否   | 备选 fence 语言 / 文件扩展名，解析到同一语法                                                                  |
+| `entry`    | `string`   | 是   | entry-ref，索引 `module.highlightGrammars`；factory 类型 `HighlightGrammarFn = (hljs: unknown) => unknown`，host 收到 `hljs` 实例后调 `hljs.registerLanguage(name, fn)` |
+
+```jsonc
+"highlightGrammars": [{ "name": "plantuml", "aliases": ["puml", "pu"], "entry": "plantumlGrammar" }]
+```
+
+> factory 类型标 `unknown` 是因为 SDK 不依赖 `highlight.js`；host 窄化为 `Language` 定义对象。
+
+### storageProviders（仅 trusted）
+
+为 Settings → Storage & Sharing 增加云对象存储提供者（图床 + HTML 分享），与内置 R2 / 七牛 / OSS 并列。
+
+| 字段             | 类型                                  | 必填 | 说明                                                                                                                      |
+| ---------------- | ------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------- |
+| `id`             | `string`                              | 是   | 全局唯一（内置 + 扩展）。作为 `~/.folyn/image-hosts/<id>.json` 与 store 条目的 key                                   |
+| `labelKey`       | `string`                              | 是   | i18n key，选择器用 host `t()` 解析；自带 bundle（host 不暴露 catalog）                                          |
+| `icon`           | `string`                              | 否   | emoji / 内联 `<svg>` / `.svg` 路径 / `ThemeIcon` 名                                                              |
+| `capabilities`  | `{ image: boolean; html: boolean }`  | 是   | 声明服务哪些上传路径；有 `uploadImage` 才 `image:true`，有 `uploadHtml` 才 `html:true`                                 |
+| `configForm`     | `string`                              | 是   | entry-ref，索引 `module.storageProviders`；`ComponentType<StorageConfigFormProps>`（`{ config; onSave; onRemove }`） |
+| `isConfigured`   | `string`                              | 是   | entry-ref；`(config: unknown) => boolean`，是否足够发起上传                                                      |
+| `uploadImage`    | `string`                              | 否   | entry-ref；`(bytes, ext, config) => Promise<publicUrl>`。`capabilities.image` 为 true 时必填                          |
+| `uploadHtml`     | `string`                              | 否   | entry-ref；`(html, config) => Promise<publicUrl>`。`capabilities.html` 为 true 时必填                                |
+| `defaultConfig`  | `Record<string, unknown>`            | 是   | 首次选中时 seed 进 store 的默认配置                                                                                |
+
+```jsonc
+"storageProviders": [{ "id": "smms", "labelKey": "ext.smms.label", "icon": "🖼️", "capabilities": { "image": true, "html": false }, "configForm": "form", "isConfigured": "isConfigured", "uploadImage": "uploadImage", "defaultConfig": { "token": "" } }]
+```
+
+> 卸载会干净移除该提供者条目，已存配置重置为 `defaultConfig`。host UI 与图片粘贴 / markdown→HTML 分享流都走同一个 `StorageProviderRegistry`。
+
 ## 5. ExtensionModule 导出契约（trusted）
 
 ```ts
@@ -235,12 +275,14 @@ export interface ExtensionModule {
     ComponentType<MarkdownCodeRendererProps>
   >;
   editorLanguages?: Record<string, EditorLanguageFactory>;
+  highlightGrammars?: Record<string, HighlightGrammarFn>;
+  storageProviders?: Record<string, unknown>;
   activate?: (ctx: ExtensionContext) => void | Promise<void>;
   deactivate?: (ctx: ExtensionContext) => void | Promise<void>;
 }
 ```
 
-entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对应。缺失 key 跳过并告警（其它贡献仍加载）。`fileTemplates` + `keybindings` 无 module map（declarative）。默认导出工厂 `(ctx) => ExtensionModule` 也被接受。
+entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对应。缺失 key 跳过并告警（其它贡献仍加载）。`fileTemplates` + `keybindings` 无 module map（declarative）。`highlightGrammars` 与 `storageProviders` 的 module map 值类型为 `unknown`——host adapter 按角色窄化（语法 factory / React 组件 / 谓词 / 上传 fn）。默认导出工厂 `(ctx) => ExtensionModule` 也被接受。
 
 ### trusted 导出骨架（无 JSX，用 `window.React` + `createElement`）
 
