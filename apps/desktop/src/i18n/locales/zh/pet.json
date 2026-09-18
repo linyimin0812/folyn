@@ -42,7 +42,6 @@
   },
   "tabs": {
     "chat": "对话",
-    "translation": "翻译",
     "inbox": "收件箱"
   },
   "search": {
@@ -50,7 +49,9 @@
     "files": "文件",
     "commands": "命令",
     "extensions": "扩展",
-    "noResults": "无匹配结果"
+    "noResults": "无匹配结果",
+    "translationMain": "翻译（主应用）",
+    "translationPopup": "翻译（弹窗）"
   },
   "window": {
     "fullscreen": "全屏",

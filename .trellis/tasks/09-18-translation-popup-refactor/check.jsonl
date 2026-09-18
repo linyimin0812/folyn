@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/09-18-translation-popup-refactor/prd.md", "reason": "Acceptance criteria checklist (tab removed, two search results, popup wiring, capability fs block, i18n keys) is the verification contract"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Review checklist + forbidden patterns to verify the diff against"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Verify store selectors/mirror wiring follows secondary-window conventions"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Verify capability/ACL changes match the window patterns contract"}

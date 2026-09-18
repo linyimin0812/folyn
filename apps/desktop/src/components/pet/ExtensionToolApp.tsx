@@ -9,8 +9,14 @@
  *  - a pet-panel-style chrome: borderless window with a rounded body, a
  *    draggable title bar (pointerdown → `extension_tool_start_drag`), and
  *    the pet-panel window controls (pin / maximize / close);
- *  - an `<iframe sandbox="allow-scripts">` loading the extension's tool
- *    entry from `folyn-extension://localhost/<ext>/<entry>` — the same
+ *  - for `builtin:translation` (PRD 09-18-translation-popup-refactor):
+ *    React content instead of an iframe — `TranslationToolHost` mirrors the
+ *    stores this realm needs (providers, settings, locale, theme) and
+ *    renders the embedded TranslationPanel. The builtin payload still flows
+ *    through the same `extension-tool://open` event / get_last_extension_tool
+ *    fallback; all chrome + window behaviors stay shared below;
+ *  - otherwise an `<iframe sandbox="allow-scripts">` loading the extension's
+ *    tool entry from `folyn-extension://localhost/<ext>/<entry>` — the same
  *    origin-isolated scheme the dynamic tool windows used, so the
  *    permission-checked fetch-RPC bridge keeps working unchanged (the
  *    `extension-rpc-request` event is global; the MAIN window's listener
@@ -53,6 +59,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Pin, PinOff, Square, Copy } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '@/utils/platform';
+import { TranslationToolHost } from '@/components/translation/TranslationToolHost';
 
 /** Payload of the `extension-tool://open` event (Rust → this window). */
 interface ExtensionToolOpenPayload {
@@ -237,8 +244,10 @@ export function ExtensionToolApp() {
   }, []);
 
   // Same URL shape as the main-window sandbox loader
-  // (sandboxLoader.ts): `folyn-extension://localhost/<id>/<entry>`.
-  const iframeSrc = tool
+  // (sandboxLoader.ts): `folyn-extension://localhost/<id>/<entry>`. Only
+  // third-party tools load an iframe — the builtin translation popup renders
+  // React content (TranslationToolHost), so src stays undefined there.
+  const iframeSrc = tool && tool.extensionId !== 'builtin:translation'
     ? `folyn-extension://localhost/${tool.extensionId}/${tool.entry}`
     : undefined;
 
@@ -287,7 +296,9 @@ export function ExtensionToolApp() {
           </button>
         </div>
       </div>
-      {iframeSrc ? (
+      {tool?.extensionId === 'builtin:translation' ? (
+        <TranslationToolHost />
+      ) : iframeSrc ? (
         <iframe
           key={iframeSrc}
           src={iframeSrc}

@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/09-18-translation-popup-refactor/prd.md", "reason": "PRD with full requirements, acceptance criteria, ADR decision (reuse extension-tool-panel), and the realm-wiring checklist for TranslationToolHost"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Multi-window + NSPanel + ACL capability patterns — the popup reuses extension-tool-panel; explains window realm isolation, transparency, close-to-hide lifecycle"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand granular selectors + secondary-window mirror/hydration conventions (pet://settings-updated broadcast, markSettingsHydrated, per-slice persist)"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Named exports, props composition, embedded-mode component patterns"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "Namespace/locale file conventions for adding pet:search.translationMain/translationPopup keys across all 6 locales and removing pet:tabs.translation"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Forbidden patterns + review checklist for the pet/ components being modified"}

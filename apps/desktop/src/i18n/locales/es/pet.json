@@ -42,7 +42,6 @@
   },
   "tabs": {
     "chat": "Chat",
-    "translation": "Traducción",
     "inbox": "Bandeja de entrada"
   },
   "search": {
@@ -50,7 +49,9 @@
     "files": "Archivos",
     "commands": "Comandos",
     "extensions": "Extensions",
-    "noResults": "Sin resultados coincidentes"
+    "noResults": "Sin resultados coincidentes",
+    "translationMain": "Traducción (app principal)",
+    "translationPopup": "Traducción (ventana emergente)"
   },
   "window": {
     "fullscreen": "Pantalla completa",

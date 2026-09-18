@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
   "identifier": "extension-tool",
-  "description": "Capabilities for the sandbox extension tool popup window (pet-panel machinery: floats over every app/Space). Needs window drag/maximize/hide (pet-panel-style titlebar with pin/fullscreen/close buttons), focus events for the unpinned blur-auto-hide, and the extension-tool lifecycle commands.",
+  "description": "Capabilities for the extension-tool popup (pet-panel machinery: floats over every app/Space). Needs window drag/maximize/hide (pet-panel-style titlebar with pin/fullscreen/close buttons), focus events for the unpinned blur-auto-hide, and the extension-tool lifecycle commands. The built-in translation popup renders React content instead of an iframe: it opens external links via the opener plugin (same grant pet-panel carries). Translation prefs persist through the pet://settings-updated broadcast → main-window hydrateAllStores → quit-time persistNow() flush (secondary windows have no fs grant; the main window is the single disk writer) — NO fs permissions needed.",
   "windows": ["extension-tool-panel"],
   "permissions": [
     "core:default",
@@ -13,6 +13,7 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-is-maximized",
     "core:event:allow-emit",
-    "core:event:allow-listen"
+    "core:event:allow-listen",
+    "opener:default"
   ]
 }

@@ -56,7 +56,11 @@ const CHECK_SVG = (
 );
 
 /** Translation page — full-page two-pane view invoked from the ActivityBar
- *  icon. `embedded` compactifies layout for the pet panel (narrow viewport).
+ *  icon. `embedded` adapts the chrome for the extension-tool popup realm:
+ *  compact paddings/controls, icon-only pair selector, and a cross-window
+ *  settings hop (pet://menu-action) instead of navStore navigation. The pane
+ *  layout is unchanged — always left/right two-pane (input left, result
+ *  right), in the popup (800×600) as on the full page.
  *  All content + prefs live in translationStore, persisted to
  *  ~/.folyn/storage/translation.json — survives page switch AND app restart. */
 export function TranslationPanel({ embedded = false }: { embedded?: boolean } = {}) {
@@ -196,10 +200,13 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
         </label>
       </div>
 
-      {/* Two panes — embedded (pet panel) stacks vertically, full-page side-by-side */}
-      <div className={`flex-1 flex overflow-hidden ${embedded ? 'flex-col' : 'flex-row'}`}>
+      {/* Two panes — input left, result right. Always side-by-side: the only
+          embedded consumer is the extension-tool popup (800×600), and the
+          narrow stacked layout existed for the pet-panel tab, which no longer
+          embeds this panel (removed with the translation-popup refactor). */}
+      <div className="flex-1 flex flex-row overflow-hidden">
         {/* Input pane */}
-        <div className={`flex-1 flex flex-col overflow-hidden ${embedded ? 'border-b' : 'border-r'} border-brd`}>
+        <div className="flex-1 flex flex-col overflow-hidden border-r border-brd">
           <textarea
             className={`flex-1 w-full resize-none outline-none bg-transparent text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify ${embedded ? 'px-3 py-2' : 'px-6 py-3'}`}
             value={input}

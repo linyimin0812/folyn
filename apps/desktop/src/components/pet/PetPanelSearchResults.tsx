@@ -10,10 +10,14 @@
 //    main window's routePetMenuAction runs it via the command registry.
 //  - Extension (third-party) → `pet://menu-action { action:'open-extension-tool',
 //    extensionId }` — the main window opens the extension's tool window (popup).
-//  - Extension (built-in panel) → host panel tries in-panel activation first
-//    (e.g. switch to the translation tab); otherwise `run-command: panel.<name>`
-//    routes to the main window. Built-ins without such a command fall back
-//    to open-extension-tool (Extensions settings tab).
+//  - Extension (built-in translation) → TWO rows instead of one: "main app"
+//    emits `run-command: panel.translation` (ActivityBar page + focus),
+//    "popup" emits `open-extension-tool: builtin:translation` (the main window
+//    invokes `open_extension_tool_window` directly — see petHostRouter).
+//    Gated on `enableTranslationPanel`, same as the ActivityBar icon.
+//  - Extension (other built-in panel) → `run-command: panel.<name>` if such
+//    a command is registered; built-ins without one fall back to
+//    open-extension-tool (Extensions settings tab).
 
 import {
   forwardRef,
@@ -28,7 +32,8 @@ import { Terminal } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenMarkdownFiles } from '@/services/fileCommands';
 import { getCommands } from '@/services/commandRegistry';
-import { useExtensionStore } from '@/store/extensionStore';
+import { useExtensionStore, type ExtensionRow } from '@/store/extensionStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { ExtensionIcon } from '@/components/settings/ExtensionsSettings';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { isTauri } from '@/utils/platform';
@@ -46,10 +51,6 @@ interface PetPanelSearchResultsProps {
   query: string;
   /** Called after a result is picked (the caller hides the panel). */
   onDone: () => void;
-  /** Try to activate a built-in panel in-panel (e.g. switch to the
-   * translation tab). Return true if handled; false → fall back to
-   * main-window routing via `run-command: panel.<name>`. */
-  onActivateBuiltin?: (id: string) => boolean;
 }
 
 /** Imperative keyboard controls driven by the panel's search input. */
@@ -62,16 +63,28 @@ export interface PetPanelSearchResultsHandle {
   activate(): void;
 }
 
-/** One flattened search hit, in render order (files → commands → extensions). */
+/** One flattened search hit, in render order (extensions → commands → files).
+ *  index maps 1:1 onto the DOM buttons (`data-search-index`), so
+ *  ArrowUp/ArrowDown/Enter can drive the UI. */
 type SearchItem =
   | { kind: 'file'; path: string }
   | { kind: 'command'; commandId: string }
-  | { kind: 'extension'; extensionId: string; builtin: boolean };
+  | { kind: 'extension'; extensionId: string; builtin: boolean }
+  | { kind: 'builtin-translation'; mode: 'main' | 'popup' };
+
+/** A visual row in the extensions group. The `builtin:translation` hit
+ *  expands into two rows (main-app page / floating popup) so the flattened
+ *  `items` array and the rendered buttons stay 1:1 — every other hit renders
+ *  exactly one row. */
+type ExtensionVisualRow =
+  | { kind: 'extension'; row: ExtensionRow }
+  | { kind: 'translation-main'; row: ExtensionRow }
+  | { kind: 'translation-popup'; row: ExtensionRow };
 
 export const PetPanelSearchResults = forwardRef<
   PetPanelSearchResultsHandle,
   PetPanelSearchResultsProps
->(function PetPanelSearchResults({ query, onDone, onActivateBuiltin }, ref) {
+>(function PetPanelSearchResults({ query, onDone }, ref) {
   const { t } = useTranslation();
   const fileTree = useVaultStore((s) => s.fileTree);
   // ponytail: read extension rows from the store (includes built-in panels
@@ -81,6 +94,10 @@ export const PetPanelSearchResults = forwardRef<
   // the translation panel.
   const rows = useExtensionStore((s) => s.rows);
   const refreshRows = useExtensionStore((s) => s.refresh);
+  // Same gate as the ActivityBar translation icon + `panel.translation`
+  // command: a disabled translation panel must not surface in search
+  // (neither of its two rows).
+  const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Vault files (the panel receives the tree via `pet://file-tree-updated`).
@@ -112,6 +129,15 @@ export const PetPanelSearchResults = forwardRef<
   const extensionHits = q
     ? rows
         .filter((r) => {
+          // The builtin:translation row is gated on the appearance flag
+          // (above); other built-ins keep current behavior.
+          if (
+            r.builtin &&
+            r.entry.id === 'builtin:translation' &&
+            !enableTranslationPanel
+          ) {
+            return false;
+          }
           // Built-in rows carry nameKey/descKey (i18n labels); third-party
           // rows use entry.name + manifest description. Match both so
           // searching "翻译" hits the translation panel via its zh label.
@@ -121,22 +147,43 @@ export const PetPanelSearchResults = forwardRef<
         })
         .slice(0, MAX_PER_GROUP)
     : [];
-  const total = fileHits.length + commandHits.length + extensionHits.length;
+  // The builtin:translation hit renders TWO rows — "main app" (run-command
+  // panel.translation) and "popup" (open the floating translation popup) —
+  // so a single search surfaces both destinations. Every other hit renders
+  // one row; the flattened `items` array below maps 1:1 onto these buttons.
+  const extensionVisualRows: ExtensionVisualRow[] = extensionHits.flatMap(
+    (row): ExtensionVisualRow[] =>
+      row.builtin && row.entry.id === 'builtin:translation'
+        ? [
+            { kind: 'translation-main', row },
+            { kind: 'translation-popup', row },
+          ]
+        : [{ kind: 'extension', row }],
+  );
+  const total = fileHits.length + commandHits.length + extensionVisualRows.length;
 
   // Flattened hit list in render order (extensions → commands → files):
   // index maps 1:1 onto the DOM buttons (`data-search-index`), so
   // ArrowUp/ArrowDown/Enter can drive the UI.
   const items = useMemo<SearchItem[]>(
     () => [
-      ...extensionHits.map((p): SearchItem => ({
-        kind: 'extension',
-        extensionId: p.entry.id,
-        builtin: !!p.builtin,
-      })),
+      ...extensionVisualRows.map((vr): SearchItem => {
+        if (vr.kind === 'translation-main') {
+          return { kind: 'builtin-translation', mode: 'main' };
+        }
+        if (vr.kind === 'translation-popup') {
+          return { kind: 'builtin-translation', mode: 'popup' };
+        }
+        return {
+          kind: 'extension',
+          extensionId: vr.row.entry.id,
+          builtin: !!vr.row.builtin,
+        };
+      }),
       ...commandHits.map((c): SearchItem => ({ kind: 'command', commandId: c.id })),
       ...fileHits.map((f): SearchItem => ({ kind: 'file', path: f.path })),
     ],
-    [fileHits, commandHits, extensionHits],
+    [fileHits, commandHits, extensionVisualRows],
   );
 
   // A new query starts with the first result highlighted.
@@ -164,18 +211,24 @@ export const PetPanelSearchResults = forwardRef<
         await emitNavigateFile(item.path);
       } else if (item.kind === 'command') {
         await emitRunCommand(item.commandId);
+      } else if (item.kind === 'builtin-translation') {
+        // The translation hit's two rows: "main app" runs the registered
+        // `panel.translation` command in the main window (ActivityBar page
+        // switch + focus), "popup" opens the floating translation popup —
+        // the main window's petHostRouter invokes `open_extension_tool_window`
+        // directly for builtin:translation (no `extension.openTool.*`
+        // command exists — it's not an on-disk extension).
+        if (item.mode === 'main') {
+          await emitRunCommand('panel.translation');
+        } else {
+          await emitOpenExtensionTool('builtin:translation');
+        }
       } else if (item.kind === 'extension') {
         if (item.builtin) {
-          // Built-in panel hit: let the host panel try in-panel activation
-          // first (e.g. switch to the translation tab). The host clears the
-          // search query itself; we must NOT call onDone() here — onDone
-          // hides the whole pet panel, which would mask the tab switch.
-          // Otherwise route to the main window via `run-command: panel.<name>`.
-          // Built-ins without such a command fall back to
-          // open-extension-tool which opens the Extensions settings tab.
-          if (onActivateBuiltin?.(item.extensionId)) {
-            return;
-          }
+          // Other built-in panels route to the main window via
+          // `run-command: panel.<name>` when such a command is registered;
+          // built-ins without one fall back to open-extension-tool which
+          // opens the Extensions settings tab.
           const { getCommands } = await import('@/services/commandRegistry');
           const cmdId = `panel.${item.extensionId.replace(/^builtin:/, '')}`;
           if (getCommands().some((c) => c.id === cmdId)) {
@@ -189,7 +242,7 @@ export const PetPanelSearchResults = forwardRef<
       }
       onDone();
     },
-    [onActivateBuiltin, onDone],
+    [onDone],
   );
 
   useImperativeHandle(
@@ -214,37 +267,67 @@ export const PetPanelSearchResults = forwardRef<
           {t('pet:search.noResults')}
         </div>
       )}
-      {extensionHits.length > 0 && (
+      {extensionVisualRows.length > 0 && (
         <section className="pet-panel-search-group">
           <div className="pet-panel-search-group-label">
             {t('pet:search.extensions')}
           </div>
-          {extensionHits.map((p, i) => {
+          {extensionVisualRows.map((vr, i) => {
+            // The extensions group is FIRST in the flattened render order and
+            // every visual row is exactly one button, so the in-group index IS
+            // the flattened `data-search-index` (command/file groups offset
+            // from this array's length below).
             const index = i;
-            const title = p.nameKey ? t(p.nameKey) : p.entry.name;
+            // The two translation rows replace the single built-in row's
+            // generic title; both keep the row's icon + description.
+            const isTranslationMain = vr.kind === 'translation-main';
+            const isTranslationPopup = vr.kind === 'translation-popup';
+            const title = isTranslationMain
+              ? t('pet:search.translationMain')
+              : isTranslationPopup
+                ? t('pet:search.translationPopup')
+                : vr.row.nameKey
+                  ? t(vr.row.nameKey)
+                  : vr.row.entry.name;
             // Functional description: built-in rows carry a descKey (i18n),
             // third-party rows carry manifest `description`. Falls back to the
             // id·version sub when neither is present so the row isn't blank.
-            const desc = p.builtin && p.descKey ? t(p.descKey) : (p.description ?? '');
-            const sub = desc || (p.builtin
-              ? p.entry.id
-              : `${p.entry.id} · v${p.entry.version}`);
+            const desc =
+              vr.row.builtin && vr.row.descKey
+                ? t(vr.row.descKey)
+                : (vr.row.description ?? '');
+            const sub =
+              desc ||
+              (vr.row.builtin
+                ? vr.row.entry.id
+                : `${vr.row.entry.id} · v${vr.row.entry.version}`);
+            const item: SearchItem = isTranslationMain
+              ? { kind: 'builtin-translation', mode: 'main' }
+              : isTranslationPopup
+                ? { kind: 'builtin-translation', mode: 'popup' }
+                : {
+                    kind: 'extension',
+                    extensionId: vr.row.entry.id,
+                    builtin: !!vr.row.builtin,
+                  };
             return (
             <button
-              key={p.entry.id}
+              key={
+                isTranslationMain
+                  ? `${vr.row.entry.id}:main`
+                  : isTranslationPopup
+                    ? `${vr.row.entry.id}:popup`
+                    : vr.row.entry.id
+              }
               type="button"
               data-search-index={index}
               className={`pet-panel-search-item is-with-icon${index === activeIndex ? ' is-active' : ''}`}
               role="option"
               aria-selected={index === activeIndex}
               title={desc || undefined}
-              onClick={() => activateItem({
-                kind: 'extension',
-                extensionId: p.entry.id,
-                builtin: !!p.builtin,
-              })}
+              onClick={() => activateItem(item)}
             >
-              <ExtensionIcon icon={p.icon} iconDark={p.iconDark} name={title} size={16} />
+              <ExtensionIcon icon={vr.row.icon} iconDark={vr.row.iconDark} name={title} size={16} />
               <span className="pet-panel-search-item-text">
                 <span className="pet-panel-search-item-title">{title}</span>
                 <span className="pet-panel-search-item-sub">{sub}</span>
@@ -260,7 +343,7 @@ export const PetPanelSearchResults = forwardRef<
             {t('pet:search.commands')}
           </div>
           {commandHits.map((c, i) => {
-            const index = extensionHits.length + i;
+            const index = extensionVisualRows.length + i;
             return (
             <button
               key={c.id}
@@ -286,7 +369,7 @@ export const PetPanelSearchResults = forwardRef<
             {t('pet:search.files')}
           </div>
           {fileHits.map((f, i) => {
-            const index = extensionHits.length + commandHits.length + i;
+            const index = extensionVisualRows.length + commandHits.length + i;
             return (
             <button
               key={f.path}

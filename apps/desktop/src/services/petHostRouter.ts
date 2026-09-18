@@ -197,6 +197,29 @@ export async function routePetMenuAction(
       // must avoid. Extensions without a window tool fall back to the
       // Extensions settings tab (the previous behavior).
       if (extensionId) {
+        // ponytail: the built-in translation popup is NOT an on-disk
+        // extension — there is no `extension.openTool.*` command for it. Invoke
+        // the window open directly (PRD 09-18-translation-popup-refactor):
+        // the extension-tool host renders the builtin TranslationPanel for
+        // this payload instead of an iframe, so `entry`/`title` only need to
+        // identify the tool (the title feeds the iframe title attribute on the
+        // third-party path; the builtin branch never reads it).
+        if (extensionId === 'builtin:translation') {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('open_extension_tool_window', {
+              extensionId: 'builtin:translation',
+              toolId: 'translation',
+              entry: 'builtin',
+              title: 'Translation',
+            });
+          } catch (err) {
+            // Non-fatal — mirrors the other invoke branches; the user can
+            // retry from the panel search.
+            console.warn('[pet-host] open builtin translation tool failed:', err);
+          }
+          break;
+        }
         const { getCommands, runCommand } = await import('@/services/commandRegistry');
         const toolCmd = getCommands().find((c) =>
           c.id.startsWith(`extension.openTool.${extensionId}.`),

@@ -158,6 +158,43 @@ describe('routePetMenuAction', () => {
     expect(useNavStore.getState().settingsTab).toBe('extensions');
     expect(showMock).toHaveBeenCalledTimes(1);
   });
+
+  it('open-extension-tool for builtin:translation invokes open_extension_tool_window directly (no command lookup, no focusMain)', async () => {
+    // The built-in translation popup is not an on-disk extension — there is
+    // no extension.openTool.* command. The router invokes the Rust window
+    // open with the builtin payload (the extension-tool host renders the
+    // embedded TranslationPanel for it instead of an iframe) and must NOT
+    // focus the main window (the popup floats over the user's app).
+    const { registerCommand } = await import('@/services/commandRegistry');
+    const run = vi.fn(async () => undefined);
+    // A decoy panel.translation command proves the builtin path is taken
+    // BEFORE any command lookup — it must never run.
+    const disposables = [
+      registerCommand({
+        id: 'extension.openTool.builtin:translation.translation',
+        title: 'Open: Decoy',
+        category: 'action',
+        run,
+      }),
+    ];
+    await routePetMenuAction(
+      'open-extension-tool',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'builtin:translation',
+    );
+    expect(invokeMock).toHaveBeenCalledWith('open_extension_tool_window', {
+      extensionId: 'builtin:translation',
+      toolId: 'translation',
+      entry: 'builtin',
+      title: 'Translation',
+    });
+    expect(run).not.toHaveBeenCalled();
+    expect(showMock).not.toHaveBeenCalled();
+    for (const d of disposables) d.dispose();
+  });
 });
 
 describe('routePetBubbleAction', () => {

@@ -15,7 +15,6 @@ import {
 } from './petPosition';
 import { AiPanel } from '@/components/ai/AiPanel';
 import { PetInbox } from './PetInbox';
-import { TranslationPanel } from '@/components/translation/TranslationPanel';
 import {
   PetPanelSearchResults,
   type PetPanelSearchResultsHandle,
@@ -32,7 +31,7 @@ import type {
 } from '@/services/providers/providerConfigStorage';
 import type { Model } from '@/services/modelRegistry/types';
 
-type PetPanelTab = 'chat' | 'translation' | 'inbox';
+type PetPanelTab = 'chat' | 'inbox';
 
 interface PetCursorProbeResult {
   cursor_x: number;
@@ -52,8 +51,12 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
 
 /**
  * PetPanelApp — mounted only in the `pet-panel` Tauri window (see main.tsx
- * `#/pet-panel` route switch). Hosts a tabbed layout: **Actions** (the
- * and **Chat** (the `PetChat` component). Only one view
+ * `#/pet-panel` route switch). Hosts a tabbed layout: **Chat** (the embedded
+ * `AiPanel`) and **Inbox** (notifications). The built-in translation panel
+ * is NOT a tab anymore — it lives in the standalone `extension-tool-panel`
+ * popup (PRD 09-18-translation-popup-refactor), reached from the panel's
+ * search results as the “翻译（弹窗）” row; the “翻译（主应用）” row opens the
+ * main window's ActivityBar translation page. Only one view
  * is mounted at a time; switching tabs unmounts the inactive view — this
  * releases the chat's `CliAdapter` mid-stream, which is acceptable per the
  * PRD's Out-of-Scope "stream-interrupt resume" rule.
@@ -965,15 +968,6 @@ export function PetPanelApp() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={tab === 'translation'}
-                className={`pet-panel-tab${tab === 'translation' ? ' is-active' : ''}`}
-                onClick={() => setTab('translation')}
-              >
-                {t('pet:tabs.translation')}
-              </button>
-              <button
-                type="button"
-                role="tab"
                 aria-selected={tab === 'inbox'}
                 className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
                 onClick={() => setTab('inbox')}
@@ -990,23 +984,9 @@ export function PetPanelApp() {
             ref={searchResultsRef}
             query={searchQuery}
             onDone={handleSearchDone}
-            onActivateBuiltin={(id) => {
-              // ponytail: the pet panel already embeds the translation tab,
-              // so switch to it in-panel and clear the search query (don't
-              // hide the panel — that's onDone's job, for cross-window jumps).
-              // Other built-ins fall through to run-command.
-              if (id === 'builtin:translation') {
-                setTab('translation');
-                setSearchQuery('');
-                return true;
-              }
-              return false;
-            }}
           />
         ) : tab === 'chat' ? (
           <AiPanel embedded />
-        ) : tab === 'translation' ? (
-          <TranslationPanel embedded />
         ) : (
           <PetInbox />
         )}

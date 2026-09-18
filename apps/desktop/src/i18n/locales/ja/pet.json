@@ -42,7 +42,6 @@
   },
   "tabs": {
     "chat": "チャット",
-    "translation": "翻訳",
     "inbox": "受信箱"
   },
   "search": {
@@ -50,7 +49,9 @@
     "files": "ファイル",
     "commands": "コマンド",
     "extensions": "拡張機能",
-    "noResults": "一致する結果はありません"
+    "noResults": "一致する結果はありません",
+    "translationMain": "翻訳（メインアプリ）",
+    "translationPopup": "翻訳（ポップアップ）"
   },
   "window": {
     "fullscreen": "全画面表示",

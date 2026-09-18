@@ -295,6 +295,32 @@ empirically proven to float over every app/Space:
   scheme the dynamic tool windows used, so the permission-checked
   fetch-RPC bridge is unchanged (`extension-rpc-request` is a global Tauri
   event dispatched by the MAIN window's listener).
+- **builtin branch (translation popup, 2026-09-18 refactor)**: when the
+  payload is `builtin:translation` (pet-panel search →
+  `pet://menu-action {action:'open-extension-tool'}` → `petHostRouter`
+  invokes `open_extension_tool_window` DIRECTLY — no `extension.openTool.*`
+  command exists for a built-in), `ExtensionToolApp` renders React content
+  (`TranslationToolHost`: embedded `TranslationPanel` + the pet-panel realm
+  wiring — providers mirror, `pet://settings-updated` hydrate +
+  `pet://settings-request`, `locale://changed`, `useTheme`,
+  auto-capitalize, external-link interceptor) instead of the iframe. Same
+  payload channel (`window.__extensionToolOpen` eval +
+  `get_last_extension_tool` fallback), same titlebar chrome/behaviors.
+  `capabilities/extension-tool.json` therefore carries ONLY
+  `opener:default` (the interceptor's `openUrl` — default
+  `linkOpenMode: 'external'`) — NO fs grant: secondary windows never had
+  working direct writes anyway (`fs:scope-appdata-recursive` resolves to
+  `$APPDATA/**`, which does NOT cover ~/.folyn/storage — the storageClient
+  flush is ACL-denied and swallowed by its try/catch; the main window,
+  with `fs:scope "**"`, is the single disk writer). Translation prefs
+  persist via the same path every secondary realm uses: setter →
+  `markSettingsHydrated()`-gated persist() → debounced
+  `pet://settings-updated` broadcast → main-window `hydrateAllStores` →
+  quit-time `persistNow()` flush — identical to pet-panel (whose
+  translation tab worked exactly this way). The iframe tools need no fs
+  grant either (their RPC goes through the MAIN window's listener).
+  Translation itself invokes the custom `chat_stream` command (custom
+  commands bypass the ACL).
 - **open**: `open_extension_tool_window` emits `extension-tool://open`
   {extensionId, toolId, entry, title} to the window (iframe swap) and
   surfaces it via `pet_panel_macos::surface_extension_tool_panel` —

@@ -29,14 +29,10 @@ vi.mock('@tauri-apps/api/window', () => ({
 vi.mock('@/components/ai/AiPanel', () => ({
   AiPanel: () => <div className="ai-panel">chat</div>,
 }));
-// TranslationPanel pulls in MarkdownPreview → ExcalidrawPreview →
-// @excalidraw, which crashes under jsdom (canvas-less). The pet-panel host
-// test only asserts tab-host behavior, so stub the tab body.
-vi.mock('@/components/translation/TranslationPanel', () => ({
-  TranslationPanel: () => <div className="translation-panel">translation</div>,
-}));
 
 import { PetPanelApp } from './PetPanelApp';
+import { useExtensionStore } from '@/store/extensionStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 
 // Resolve the aliased core/event mocks AFTER `vi.mock('@tauri-apps/api/window')`
 // is hoisted — importing these statically before the hoisted window mock was
@@ -45,12 +41,15 @@ import { PetPanelApp } from './PetPanelApp';
 // avoids this by importing no Tauri module statically; we follow the same
 // discipline and resolve both lazily in `beforeAll`.
 let invokeMock!: import('vitest').Mock;
+let emitMock!: import('vitest').Mock;
 let eventInternals!: { getListeners(c: string): unknown; emitTo(c: string, p?: unknown): void };
 
 beforeAll(async () => {
   const { invoke } = await import('@tauri-apps/api/core');
   invokeMock = invoke as unknown as import('vitest').Mock;
-  ({ __internals: eventInternals } = await import('@tauri-apps/api/event'));
+  const eventApi = await import('@tauri-apps/api/event');
+  eventInternals = eventApi.__internals;
+  emitMock = eventApi.emit as unknown as import('vitest').Mock;
 });
 
 beforeEach(() => {
@@ -331,5 +330,141 @@ describe('PetPanelApp', () => {
       eventInternals.emitTo('pet://panel-focus-search');
     });
     expect(document.activeElement).toBe(input);
+  });
+
+  // ── Translation search rows (PRD: translation popup refactor) ──
+  // Searching "翻译" surfaces the builtin:translation row as TWO results:
+  // main-app page (run-command panel.translation) and the floating popup
+  // (open-extension-tool builtin:translation). The translation TAB was
+  // removed — these rows are the only in-panel entry points.
+  describe('translation search rows', () => {
+    const builtinRow = {
+      entry: {
+        id: 'builtin:translation',
+        name: 'builtin:translation',
+        version: '—',
+        tier: 'sandbox' as const,
+        trusted: true,
+        integrity: {},
+        enabled: true,
+      },
+      state: 'active' as const,
+      builtin: true,
+      nameKey: 'settings:appearance.panels.translation.label',
+      descKey: 'settings:appearance.panels.translation.description',
+    };
+
+    /** Seed the extension store with ONLY the builtin row (the mount-time
+     *  refresh fails benignly in jsdom — `list_extensions` returns undefined
+     *  — and leaves the seeded rows intact) and remember the prior rows to
+     *  restore after the test. */
+    function seedBuiltinRow() {
+      const prevRows = useExtensionStore.getState().rows;
+      useExtensionStore.setState({ rows: [builtinRow] });
+      return () => useExtensionStore.setState({ rows: prevRows });
+    }
+
+    afterEach(() => {
+      // Belt-and-braces: restore both stores in case a test forgot its own
+      // cleanup (appearance flag gates the rows; extension rows drive them).
+      useAppearanceStore.getState().setEnableTranslationPanel(true);
+      useExtensionStore.setState({ rows: [] });
+    });
+
+    it('searching 翻译 renders exactly the two translation rows', () => {
+      const restore = seedBuiltinRow();
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '翻译' } });
+      const items = container.querySelectorAll('.pet-panel-search-item');
+      expect(items).toHaveLength(2);
+      // Row A = main app, row B = popup (zh labels — setup.desktop.ts pins zh).
+      expect(items[0].textContent).toContain('翻译（主应用）');
+      expect(items[1].textContent).toContain('翻译（弹窗）');
+      // Both rows share the built-in row's description as the sub label.
+      expect(items[0].textContent).toContain('双栏翻译');
+      expect(items[1].textContent).toContain('双栏翻译');
+      restore();
+    });
+
+    it('clicking the main-app row emits run-command panel.translation', async () => {
+      const restore = seedBuiltinRow();
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '翻译' } });
+      await fireEvent.click(container.querySelectorAll('.pet-panel-search-item')[0]);
+      // activateItem is async (dynamic import + emit) — wait for the call.
+      await waitFor(() =>
+        expect(emitMock).toHaveBeenCalledWith('pet://menu-action', {
+          action: 'run-command',
+          commandId: 'panel.translation',
+        }),
+      );
+      // Picking a result dismisses the panel (onDone → pet_panel_hide).
+      await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide'));
+      restore();
+    });
+
+    it('clicking the popup row emits open-extension-tool builtin:translation', async () => {
+      const restore = seedBuiltinRow();
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '翻译' } });
+      await fireEvent.click(container.querySelectorAll('.pet-panel-search-item')[1]);
+      // activateItem is async (dynamic import + emit) — wait for the call.
+      await waitFor(() =>
+        expect(emitMock).toHaveBeenCalledWith('pet://menu-action', {
+          action: 'open-extension-tool',
+          extensionId: 'builtin:translation',
+        }),
+      );
+      // The open-extension-tool path hides the panel with restoreFocus so
+      // the popup floats over the user's app (not Folyn).
+      await waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: true }),
+      );
+      restore();
+    });
+
+    it('hides both translation rows when enableTranslationPanel is false', () => {
+      const restore = seedBuiltinRow();
+      useAppearanceStore.getState().setEnableTranslationPanel(false);
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '翻译' } });
+      expect(container.querySelectorAll('.pet-panel-search-item')).toHaveLength(0);
+      expect(container.querySelector('.pet-panel-search-empty')).toBeTruthy();
+      // Restore the appearance flag for the next test (also covered by the
+      // afterEach belt-and-braces restore).
+      useAppearanceStore.getState().setEnableTranslationPanel(true);
+      restore();
+    });
+
+    it('keyboard navigation walks the two translation rows (data-search-index 0/1)', async () => {
+      const restore = seedBuiltinRow();
+      const { container } = render(<PetPanelApp />);
+      const input = screen.getByRole('textbox');
+      fireEvent.change(input, { target: { value: '翻译' } });
+      const items = container.querySelectorAll('.pet-panel-search-item');
+      expect(items).toHaveLength(2);
+      expect(items[0].getAttribute('data-search-index')).toBe('0');
+      expect(items[1].getAttribute('data-search-index')).toBe('1');
+      // First row is highlighted by default (main app).
+      expect(items[0].classList.contains('is-active')).toBe(true);
+      // ArrowDown moves the highlight to the popup row.
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      expect(items[1].classList.contains('is-active')).toBe(true);
+      expect(items[0].classList.contains('is-active')).toBe(false);
+      // ArrowUp moves back.
+      fireEvent.keyDown(input, { key: 'ArrowUp' });
+      expect(items[0].classList.contains('is-active')).toBe(true);
+      // Enter on the popup row routes to open-extension-tool.
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      emitMock.mockClear();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await waitFor(() =>
+        expect(emitMock).toHaveBeenCalledWith('pet://menu-action', {
+          action: 'open-extension-tool',
+          extensionId: 'builtin:translation',
+        }),
+      );
+      restore();
+    });
   });
 });
