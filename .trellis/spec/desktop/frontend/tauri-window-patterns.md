@@ -671,6 +671,21 @@ area rect and the scale factor.
   `toggle-theme`). The Rust `pet_ctx_menu_action` mapping recognizes all 9 strings so the
   contract stays uniform even though the native menu only renders 4 — the launcher emits the
   other 5 directly from the frontend.
+- **Native-dialog blur guard in the hide commands**: `tauri-plugin-dialog` always parents its
+  confirm/ask/open/save dialogs to the CALLING window (`builder.parent(&window)` in its
+  commands), and rfd presents a parented message dialog as a SHEET on that window (macOS
+  `beginSheetModalForWindow`) or an owned modal (Windows — modal dialogs disable their
+  owner). The sheet starting resigns the parent's key-window status → `tauri://blur` → the
+  unpinned blur-auto-hide invokes the hide command → hiding the window tears the attached
+  dialog down with it → the confirm sheet vanishes mid-question (bug: 非置顶模式下删除会话，
+  点删除图标后确认框随面板一起消失). Both `pet_panel_hide` (commands/pet_panel.rs) and
+  `hide_extension_tool_window` (commands/webview_commands.rs) therefore call
+  `window_has_modal_dialog` (pet_common.rs: macOS `attachedSheet != nil` via main-thread
+  dispatch + channel; Windows `IsWindowEnabled(hwnd) == 0`) BEFORE hiding and skip while a
+  dialog is up. When the dialog ends the parent re-gains key → `tauri://focus` re-arms the
+  blur-auto-hide, so the panel still closes on the NEXT real outside click. Any FUTURE
+  hide path for a panel that hosts native dialogs must carry the same guard — do not hide a
+  window out from under the modal dialog attached to it.
 - **Windows WebView2-child focus in `focus_panel`**: the macOS path calls
   `makeFirstResponder(wkwebview)` after `set_focus()` because `set_focus()` makes the
   window key but NOT the WKWebView first responder. Windows has the SAME gap one layer

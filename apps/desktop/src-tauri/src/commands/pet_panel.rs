@@ -292,6 +292,16 @@ pub async fn pet_panel_hide(
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
+    // A native modal dialog is attached (sheet) — the blur that invoked this
+    // hide came FROM that dialog opening (tauri-plugin-dialog parents its
+    // confirm/ask/save dialogs to the calling window; see
+    // `window_has_modal_dialog` in pet_common.rs). Hiding now would tear the
+    // dialog down mid-question (非置顶模式下删除会话无法确认). Skip the hide;
+    // the dialog ending re-keys the panel and re-arms the blur-auto-hide, so
+    // the next real outside click still closes it.
+    if window_has_modal_dialog(&panel) {
+        return Ok(());
+    }
     panel.hide().map_err(|e| e.to_string())?;
     // ponytail: emit the fade-out event so PetPanelApp resets `is-visible`.
     // The previous blur-based `isVisible()` check in PetPanelApp's

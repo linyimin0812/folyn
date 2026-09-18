@@ -445,6 +445,14 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
     let Some(w) = app.get_webview_window(&label) else {
         return Ok(()); // already gone — nothing to hide
     };
+    // Same guard as `pet_panel_hide`: a native modal dialog attached to this
+    // window (extension tools open file dialogs via the rpc bridge, parented
+    // here) fired the blur that invoked this hide — hide would tear the
+    // dialog down with the window. Skip; the dialog ending re-focuses the
+    // popup and re-arms the blur-auto-hide.
+    if crate::commands::pet_common::window_has_modal_dialog(&w) {
+        return Ok(());
+    }
     let fullscreen = w.is_fullscreen().unwrap_or(false);
     if fullscreen {
         // Reuse the pet-mode close-to-hide dance (invisible → dismiss the

@@ -459,6 +459,74 @@ pub(crate) const PET_MENU_LABEL: &str = "pet-menu";
 
 pub(crate) const PET_CORNER_LABEL: &str = "pet-corner";
 
+/// True while a NATIVE modal dialog is attached to this window — macOS: it
+/// has an attached sheet (`attachedSheet != nil`); Windows: it was disabled
+/// by a modal dialog it owns (MessageBox / common dialogs disable their
+/// owner while running).
+///
+/// Why the hide commands need this: `tauri-plugin-dialog` always parents its
+/// dialogs to the calling window (`builder.parent(&window)` in its commands),
+/// and rfd presents a parented message dialog as a sheet on that window
+/// (macOS `beginSheetModalForWindow`) or as an owned modal (Windows). The
+/// sheet starting resigns the parent's key-window status → tao emits
+/// `tauri://blur` → the panel's unpinned blur-auto-hide invokes the hide
+/// command → hiding the window tears the sheet down with it → the confirm
+/// dialog vanishes before the user can answer (bug: 非置顶模式下删除会话时
+/// 确认框随面板一起消失，无法确认删除). The hide commands call this BEFORE
+/// hiding and skip while a dialog is up — the blur that the dialog itself
+/// fired must not close the window the dialog is attached to. When the
+/// dialog ends, the parent re-gains key → `tauri://focus` re-arms the
+/// blur-auto-hide, so the panel still closes on the NEXT real outside click.
+///
+/// macOS needs the main thread for AppKit — dispatch + channel wait; this is
+/// the same main-thread wait `WebviewWindow::hide()` itself performs
+/// internally, so it adds no new blocking. Windows `IsWindowEnabled` is
+/// thread-safe and needs no main-thread hop.
+pub(crate) fn window_has_modal_dialog(window: &tauri::WebviewWindow) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri_nspanel::objc2::msg_send;
+        use tauri_nspanel::objc2::runtime::AnyObject;
+        let (tx, rx) = std::sync::mpsc::channel();
+        let w = window.clone();
+        let dispatched = window.app_handle().run_on_main_thread(move || {
+            let has = w
+                .ns_window()
+                .map(|ns| {
+                    let ns = ns as *mut AnyObject;
+                    if ns.is_null() {
+                        return false;
+                    }
+                    // SAFETY: `ns` is a valid NSWindow on the main thread;
+                    // attachedSheet returns the sheet window or nil.
+                    let sheet: *mut AnyObject = unsafe { msg_send![ns, attachedSheet] };
+                    !sheet.is_null()
+                })
+                .unwrap_or(false);
+            let _ = tx.send(has);
+        });
+        // Dispatch failed (app tearing down) — don't block on recv.
+        if dispatched.is_err() {
+            return false;
+        }
+        rx.recv().unwrap_or(false)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // IsWindowEnabled lives in Win32::UI::Input::KeyboardAndMouse in
+        // windows-sys 0.59 (its WindowAndMessaging sibling only has IsWindow).
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::IsWindowEnabled;
+        window
+            .hwnd()
+            .map(|h| unsafe { IsWindowEnabled(h.0) == 0 })
+            .unwrap_or(false)
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
