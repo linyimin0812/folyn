@@ -270,6 +270,136 @@ pub fn prewarm_extension_tool_panel(app: &AppHandle) {
     dbg_toolwin_log("prewarm: ordered invisible (alpha 0 + ignoresMouse)");
 }
 
+/// Global Escape-key watcher for the extension-tool popup.
+///
+/// Why global: macOS routes keyboard events ONLY to the ACTIVE app's key
+/// window. The popup deliberately never activates Folyn (that was the
+/// "快捷键跳转到 folyn" bug — the pet panel accepts activation for its Esc
+/// support; we must not). So when the user works in another app, Esc
+/// physically cannot reach the popup's webview and the document keydown
+/// listener never fires ("取消置顶后没办法关闭"). NSEvent's global monitor
+/// (passive observation, NO accessibility permission needed) bridges this:
+/// on every keyDown, if it's Escape (keyCode 53) AND the popup is visible
+/// AND the mouse hovers the popup (screen coords, bottom-left origin —
+/// NSEvent.mouseLocation and NSWindow.frame share that space, direct
+/// CGRectContainsPoint), hide it. Mouse-hover gating keeps the user's Esc
+/// in OTHER apps' dialogs untouched. Installed once at setup; the monitor
+/// lives for the process lifetime (no removal needed, no leak).
+/// Pin state is ignored on purpose: Esc is an explicit dismiss, pin only
+/// guards the blur (outside-click) path.
+#[cfg(target_os = "macos")]
+pub fn install_extension_tool_esc_monitor(app: &AppHandle) {
+    use block2::RcBlock;
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+
+    // Local CGPoint/CGRect: objc2-foundation is only an indirect dep, and
+    // the struct ENCODING NAME must match the runtime's exactly ("CGPoint"/
+    // "CGRect" on the Tahoe SDK) or objc2's debug message-send verification
+    // panics (see crash #5 in tauri-window-patterns.md).
+    #[repr(C)]
+    #[allow(non_camel_case_types)]
+    struct CGPoint {
+        x: f64,
+        y: f64,
+    }
+    unsafe impl objc2::Encode for CGPoint {
+        const ENCODING: objc2::Encoding =
+            objc2::Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]);
+    }
+    // Frame's size is CGSize {w,h} — distinct struct, own encoding name.
+    #[repr(C)]
+    #[allow(non_camel_case_types)]
+    struct CGSize {
+        w: f64,
+        h: f64,
+    }
+    unsafe impl objc2::Encode for CGSize {
+        const ENCODING: objc2::Encoding =
+            objc2::Encoding::Struct("CGSize", &[f64::ENCODING, f64::ENCODING]);
+    }
+
+    let app2 = app.clone();
+    let block = RcBlock::new(move |event: *mut AnyObject| {
+        if event.is_null() {
+            return;
+        }
+        unsafe {
+            // NSEvent.keyCode == 53 is Escape.
+            let code: u16 = msg_send![event, keyCode];
+            if code != 53 {
+                return;
+            }
+            // DEBUG-toolwin: full-pipeline trace — which gate kills the Esc
+            // close (monitor dead vs visible=false vs mouse-outside)?
+            dbg_toolwin_log("esc: key 53 seen");
+            let Some(window) = app2.get_webview_window("extension-tool-panel") else {
+                dbg_toolwin_log("esc: window lookup FAILED");
+                return;
+            };
+            let vis = window.is_visible().unwrap_or(false);
+            if !vis {
+                dbg_toolwin_log("esc: window NOT visible");
+                return;
+            }
+            // Mouse must hover the window — NSEvent.mouseLocation and
+            // NSWindow.frame share the screen coordinate space (bottom-left
+            // origin), so a plain rect check works.
+            let mouse: CGPoint = msg_send![
+                objc2::class!(NSEvent),
+                mouseLocation
+            ];
+            let Ok(ns_window) = window.ns_window() else { return };
+            let ns = ns_window as *mut AnyObject;
+            if ns.is_null() {
+                return;
+            }
+            #[repr(C)]
+            #[allow(non_camel_case_types)]
+            struct NSRect {
+                origin: CGPoint,
+                size: CGSize,
+            }
+            unsafe impl objc2::Encode for NSRect {
+                const ENCODING: objc2::Encoding = objc2::Encoding::Struct(
+                    "NSRect",
+                    &[CGPoint::ENCODING, CGSize::ENCODING],
+                );
+            }
+            let frame: NSRect = msg_send![ns, frame];
+            let ox = frame.origin.x;
+            let oy = frame.origin.y;
+            let sw = frame.size.w;
+            let sh = frame.size.h;
+            let inside = mouse.x >= ox && mouse.x <= ox + sw && mouse.y >= oy && mouse.y <= oy + sh;
+            dbg_toolwin_log(&format!(
+                "esc: hide (mouse=({:.0},{:.0}) frame=({:.0},{:.0}+{:.0}x{:.0}) inside={})",
+                mouse.x, mouse.y, ox, oy, sw, sh, inside
+            ));
+            if !inside {
+                return;
+            }
+            let _ = window.hide();
+        }
+    });
+    unsafe {
+        // NSEventMaskKeyDown = 1 << 10 (NSUInteger). Passive global monitor:
+        // observation only (no interception), so NO accessibility permission
+        // is required. Monitor lives for the process lifetime.
+        // NOTE: addGlobalMonitorForEventsMatchingMask:handler: is a CLASS
+        // method on NSEvent (+[NSEvent addGlobalMonitor...]) — calling it on
+        // the NSApplication instance (tao's TaoApp subclass) was "method not
+        // found" (crash #6 in the ledger).
+        let mask: u64 = 1 << 10;
+        let _: *mut AnyObject = msg_send![
+            objc2::class!(NSEvent),
+            addGlobalMonitorForEventsMatchingMask: mask,
+            handler: &*block
+        ];
+    }
+    dbg_toolwin_log("esc: global monitor installed");
+}
+
 /// Surface the `extension-tool-panel` (the sandbox extension popup) without
 /// activating Folyn. Must run on the macOS main thread. The window was
 /// converted to a nonactivating NSPanel at startup (`convert_windows`) and
@@ -312,11 +442,50 @@ pub fn surface_extension_tool_panel(window: &tauri::WebviewWindow) -> bool {
         if ns.is_null() {
             return false;
         }
+        // Defensive transparency re-assert: the startup style-mask swap
+        // (titled → borderless panel) can reset the window's background to
+        // windowBackgroundColor, which paints the gray square corners
+        // outside the shell's 12px radius. tao set clear at creation; the
+        // conversion may have clobbered it — force it back every surface.
+        let clear: *mut AnyObject =
+            msg_send![tauri_nspanel::objc2::class!(NSColor), clearColor];
+        let _: () = msg_send![ns, setBackgroundColor: clear];
+        let _: () = msg_send![ns, setOpaque: false];
         // Undo the prewarm state (alpha 0 + ignoresMouse) — the prewarm only
         // runs once at startup, but restoring unconditionally is idempotent.
         let _: () = msg_send![ns, setAlphaValue: 1.0f64];
         let _: () = msg_send![ns, setIgnoresMouseEvents: false];
         let _: () = msg_send![ns, orderFrontRegardless];
+        // Recompute the shadow shape: the prewarm phase ran with alphaValue
+        // 0 (empty alpha shape), and AppKit does NOT recompute a transparent
+        // window's shadow when the content later changes — without this the
+        // shadow stays stale (square/half-baked), reading as gray corner
+        // squares outside the shell's radius.
+        let _: () = msg_send![ns, invalidateShadow];
+        // Key WITHOUT app activation (nonactivating panel — same trick as
+        // focus_panel). The key state is what makes tao emit tauri://focus /
+        // tauri://blur when the user clicks another app, which drives the
+        // unpinned blur-auto-hide in ExtensionToolApp (the pin button's
+        // "点击外部不收起" semantics, same as the pet panel).
+        let _: () = msg_send![ns, makeKeyWindow];
+        // POLITE app activation (activateWithOptions:0, no force-steal).
+        // Why: macOS routes keyboard events ONLY to the active app — without
+        // this, Esc (and any keystroke) physically cannot reach the popup
+        // until the user clicks something of ours ("只有点 header 才能关").
+        // In pet/float mode Folyn has NO ordinary visible window, so
+        // activating it changes only the menu bar — no visible "jump to
+        // Folyn" (the popup stays floating over the user's workspace).
+        // Politeness (0, not activateIgnoringOtherApps): when no user
+        // gesture is in scope the system may decline — acceptable.
+        // (The earlier focus_panel de-activation was about the pet PANEL
+        // show stealing the frontmost app slot at hotkey time; this one
+        // runs at popup-open time, when the click chain provides a
+        // gesture, and Folyn's frontmost-slot change has no visible cost.)
+        let ns_app: *mut AnyObject = msg_send![
+            tauri_nspanel::objc2::class!(NSApplication),
+            sharedApplication
+        ];
+        let _: () = msg_send![ns_app, activateWithOptions: 0u64];
         true
     }));
     let ok = applied.unwrap_or(false);
@@ -455,6 +624,24 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                 panel.set_hides_on_deactivate(false);
                 disable_touch_bar_recalc(panel.as_panel());
                 count += 1;
+            }
+            // Style-mask swap may reset the background (gray corners);
+            // re-assert transparent right after the conversion. tao set it
+            // at creation, the mask swap can clobber it.
+            if let Ok(ns_window) = window.ns_window() {
+                use tauri_nspanel::objc2::msg_send;
+                use tauri_nspanel::objc2::runtime::AnyObject;
+                let ns = ns_window as *mut AnyObject;
+                if !ns.is_null() {
+                    unsafe {
+                        let clear: *mut AnyObject = msg_send![
+                            tauri_nspanel::objc2::class!(NSColor),
+                            clearColor
+                        ];
+                        let _: () = msg_send![ns, setBackgroundColor: clear];
+                        let _: () = msg_send![ns, setOpaque: false];
+                    }
+                }
             }
         }));
     }

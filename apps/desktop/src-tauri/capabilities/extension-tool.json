@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
+  "identifier": "extension-tool",
+  "description": "Capabilities for the sandbox extension tool popup window (pet-panel machinery: floats over every app/Space). Needs window drag/maximize/hide (pet-panel-style titlebar with pin/fullscreen/close buttons), focus events for the unpinned blur-auto-hide, and the extension-tool lifecycle commands.",
+  "windows": ["extension-tool-panel"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-hide",
+    "core:window:allow-outer-position",
+    "core:window:allow-start-dragging",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:event:allow-emit",
+    "core:event:allow-listen"
+  ]
+}

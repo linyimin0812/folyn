@@ -548,10 +548,14 @@ pub async fn pet_set_cursor(app: tauri::AppHandle, kind: String) -> Result<(), A
     let app2 = app.clone();
     let _ = app.run_on_main_thread(move || {
         unsafe {
-            let cursor: id = if kind == "pointer" {
-                msg_send![class!(NSCursor), pointingHandCursor]
-            } else {
-                msg_send![class!(NSCursor), arrowCursor]
+            // kind: "pointer" (hand), "grab" (open hand — drag handles,
+            // e.g. the extension-tool titlebar), "arrow" (reset). CSS cursor
+            // flickers on non-key nonactivating panels; this sets the OS
+            // cursor directly.
+            let cursor: id = match kind.as_str() {
+                "pointer" => msg_send![class!(NSCursor), pointingHandCursor],
+                "grab" => msg_send![class!(NSCursor), openHandCursor],
+                _ => msg_send![class!(NSCursor), arrowCursor],
             };
             let _: () = msg_send![cursor, set];
         }
@@ -838,8 +842,18 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 let wk = webview.inner() as *mut Object;
                 let ns = webview.ns_window() as *mut Object;
                 if ns.is_null() || wk.is_null() {
+                    crate::commands::webview_commands::dbg_toolwin_log(
+                        &format!("make_transparent: SKIP null ptr (label={})", label),
+                    );
                     return;
                 }
+                // DEBUG-toolwin: the invoke resolving Ok does NOT prove this
+                // closure ran (it is scheduled onto the main run loop) — log
+                // entry so the gray-corner diagnosis can tell "closure ran"
+                // from "silently never scheduled".
+                crate::commands::webview_commands::dbg_toolwin_log(
+                    &format!("make_transparent: closure ran (label={})", label),
+                );
                 // 1. NSWindow opaque = NO
                 let _: () = msg_send![ns, setOpaque: objc::runtime::NO];
                 // 2. NSWindow backgroundColor = NSColor clearColor
@@ -853,6 +867,9 @@ pub async fn pet_make_transparent(app: tauri::AppHandle, label: String) -> Resul
                 ];
                 let key: id = NSString::alloc(nil).init_str("drawsBackground");
                 let _: () = msg_send![wk, setValue: no_num forKey: key];
+                crate::commands::webview_commands::dbg_toolwin_log(
+                    &format!("make_transparent: applied (label={})", label),
+                );
                 // 4. Raise to the ScreenSaver NSWindow level + set the
                 //    fullscreen-auxiliary collectionBehavior. LEGACY path
                 //    only — the NSPanel backend (`to_panel()`) already sets

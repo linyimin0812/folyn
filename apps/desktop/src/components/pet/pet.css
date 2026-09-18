@@ -1322,3 +1322,108 @@ html.is-extension-tool-window body,
 html.is-extension-tool-window #root {
   background: transparent !important;
 }
+
+/* ── ExtensionToolApp chrome (pet-panel title-bar semantics, themed) ──
+ * The shell previously used hard-coded dark inline styles (#1e1e22 — read
+ * as "black header" on a light theme). These classes use the same theme
+ * variables as .pet-panel-root/.pet-panel-titlebar so the popup matches the
+ * pet panel in both appearances. Controls copy .pet-panel-ctrl exactly. */
+html.is-extension-tool-window .ext-tool-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel, #ffffff);
+  color: var(--t1, #1f2330);
+  /* Slight radius (user: "设置一点弧度"): 6px — small enough that the
+   * corner-triangle transparency/shadow issues that plagued the 12px
+   * version stay invisible at this scale; border line keeps the edge
+   * crisp. Native shadow stays OFF (conf) — the shadow shape never
+   * survived the prewarm+convert chain on this window. */
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  font-family: var(--ui-font, system-ui, sans-serif);
+  font-size: 14px;
+  /* No CSS box-shadow: the 48px blur painted a thick gray gradient band
+   * hugging the shell edge (read as "粗灰 Border" once the corners went
+   * square). The native NSWindow shadow (shadow:true + invalidateShadow on
+   * surface) provides the drop shadow — same as the pet panel. */
+}
+
+html.is-extension-tool-window .ext-tool-titlebar {
+  height: 36px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  background: var(--panel, #ffffff);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+html.is-extension-tool-window .ext-tool-titlebar,
+html.is-extension-tool-window .ext-tool-titlebar .ext-tool-controls {
+  cursor: grab;
+}
+/* :active keeps the grab affordance while the mouse is HELD DOWN on the
+ * titlebar — without this, the press resets the WKWebView cursor to the
+ * default arrow mid-drag (the pet mascot has the same :active rule). */
+html.is-extension-tool-window .ext-tool-titlebar:active {
+  cursor: grab;
+}
+html.is-extension-tool-window .ext-tool-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+html.is-extension-tool-window .ext-tool-ctrl {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--t2, #5a6275);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+html.is-extension-tool-window .ext-tool-ctrl:hover {
+  background: var(--hov, #eef0f5);
+  color: var(--t1, #1f2330);
+}
+html.is-extension-tool-window .ext-tool-ctrl.is-active {
+  background: var(--accglow, rgba(58, 110, 240, 0.14));
+  color: var(--acc, #3a6ef0);
+}
+html.is-extension-tool-window .ext-tool-ctrl.is-active:hover {
+  background: var(--accglow, rgba(58, 110, 240, 0.22));
+}
+html.is-extension-tool-window .ext-tool-ctrl.ext-tool-ctrl-close:hover {
+  background: rgba(220, 70, 70, 0.12);
+  color: #d6463c;
+}
+
+html.is-extension-tool-window .ext-tool-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: transparent;
+}
+
+html.is-extension-tool-window .ext-tool-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  color: var(--t2, #5a6275);
+}

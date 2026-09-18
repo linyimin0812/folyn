@@ -331,6 +331,39 @@ The pet panels' own reapply thread must also never call `to_panel`
 (repeat setClass = crash #4): `reapply_pet_nspanel_level` goes through the
 panel store and only re-asserts attributes.
 
+2026-09-18 (evening, same feature) — two more, both in the extension-tool
+panel itself:
+4. `setValue:forKey:"drawsBackground"` on the LIVE WKWebView threw a
+   foreign Obj-C exception (KVC unknown-key — the private key exists on
+   WKWebviewConfiguration, NOT the view) → "Rust cannot catch foreign
+   exceptions" abort. Removed entirely; window-level
+   setBackgroundColor:clearColor + setOpaque:false (catch-wrapped) is the
+   only transparency defense.
+5. objc2's debug message-send VERIFICATION panics on struct-name mismatch:
+   custom `NSPoint` declared as `Encoding::Struct("NSPoint", ...)` vs the
+   runtime's method encoding `{CGPoint=dd}` (Tahoe SDK: NSPoint is a
+   CGPoint typealias) → panic-in-panic → abort. Declared type names must
+   match the RUNTIME encoding string ("CGPoint"), and integer argument
+   signedness must match too (NSEventType/NSUInteger → u64 `Q`, not i64
+   `q`). `extension_tool_start_drag` (synthesize LeftMouseDown →
+   performWindowDragWithEvent:) needs this — tao's plain `startDragging`
+   forwards `NSApp.currentEvent`, which by IPC-arrival time is no longer a
+   mouseDown, and performWindowDrag then silently no-ops while returning
+   Ok (the "无法拖动" root cause). The synthesized event's location must
+   be in WINDOW coordinates (`mouseLocationOutsideOfEventStream`), not
+   screen coordinates (`NSEvent.mouseLocation`) — screen coords mis-anchor
+   the drag loop and the window visibly jumps on click.
+6. `+[NSEvent addGlobalMonitorForEventsMatchingMask:handler:]` is an NSEvent
+   CLASS method — sending it to the NSApplication instance (tao's TaoApp
+   subclass) is "method not found" → objc2 debug-verify panic → abort (the
+   esc-key global monitor). Same family as #5: always check which class
+   actually owns the selector.
+   Keyboard reality that motivated the monitor: macOS routes keydown ONLY
+   to the ACTIVE app's key window — a popup that never activates Folyn
+   (the no-app-switch requirement) physically cannot receive Esc from
+   another app. Passive global NSEvent monitor (no accessibility
+   permission) + mouse-hovers-the-popup gating is the pattern.
+
 **Debug loop** (temporary, grep `DEBUG-toolwin` to remove): `open_extension_tool_window`
 probes to `/tmp/folyn-toolwin-debug.log` (command entry, singleton hit, build,
 raise + level/behavior/isOnActiveSpace readback); `scripts/inspect-toolwin.sh`

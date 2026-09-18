@@ -7,11 +7,11 @@ use crate::errors::AppError;
 // sites need no cfg noise. TEMPORARY instrumentation for the "extension
 // popup only opens above Folyn" bug; remove by grepping `DEBUG-toolwin`.
 #[cfg(target_os = "macos")]
-fn dbg_toolwin_log(msg: &str) {
+pub(crate) fn dbg_toolwin_log(msg: &str) {
     crate::pet_panel_macos::dbg_toolwin_log(msg)
 }
 #[cfg(not(target_os = "macos"))]
-fn dbg_toolwin_log(_msg: &str) {}
+pub(crate) fn dbg_toolwin_log(_msg: &str) {}
 
 /// Create an embedded webview in the main window from Rust side.
 /// Uses initialization_script to inject JS on every page load (handles target="_blank" links).
@@ -427,6 +427,18 @@ pub async fn open_extension_tool_window(
                 let _ = crate::pet_panel_macos::surface_extension_tool_panel(&w);
             }
         });
+        // Re-assert WKWebView transparency on every open — the pet-panel's
+        // fix for the gray-corner bug (pet_make_transparent on mount). The
+        // mount-time call from the frontend may race the hidden→shown
+        // transition (a suspended web content process may miss it); this
+        // runs AFTER the surface, on the live window. Idempotent, and it's
+        // the exact proven code path (cocoa/objc bridge KVC).
+        let _ = crate::commands::pet_commands::pet_make_transparent(
+            app.clone(),
+            "extension-tool-panel".to_string(),
+        )
+        .await;
+        dbg_toolwin_log("surface: make_transparent re-asserted");
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -482,6 +494,104 @@ pub async fn get_last_extension_tool(
 pub async fn debug_toolwin_log(app: tauri::AppHandle, msg: String) -> Result<(), String> {
     dbg_toolwin_log(&format!("[fe] {}", msg));
     let _ = app;
+    Ok(())
+}
+
+/// Start a native window drag for the extension tool panel.
+///
+/// tao's `drag_window` (what `startDragging()` calls) forwards
+/// `NSApp.currentEvent` to `performWindowDragWithEvent:` — but by the time
+/// the async JS→Rust IPC lands on the main thread, the current event is
+/// long past the mouseDown (it may even be the webview's own event), and
+/// `performWindowDragWithEvent:` with a non-mouseDown event is a SILENT
+/// no-op that still returns Ok — the "无法拖动" symptom. tao itself
+/// has the fix for one event type (0x15, tablet): it SYNTHESIZES a
+/// LeftMouseDown event at the current mouseLocation and passes that.
+/// We do the same unconditionally: synthesize a leftMouseDown at
+/// `NSEvent.mouseLocation` targeting OUR windowNumber, then
+/// `performWindowDragWithEvent:` — which enters the native modal drag
+/// loop (exactly the system window-drag feel). Mirrors tao-0.35.3
+/// `drag_window`'s 0x15 branch.
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub fn extension_tool_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send};
+
+    // Local NSPoint: objc2-foundation is only an INDIRECT dep (arboard),
+    // so declare the struct + its encoding here. Name MUST be "CGPoint":
+    // the runtime type-encoding of NSEvent.mouseLocation on the Tahoe SDK
+    // is {CGPoint=dd} (NSPoint is a typealias of CGPoint there), and objc2's
+    // debug message-send verification panics on a name mismatch — the
+    // crash "expected {CGPoint=dd}, found {NSPoint=dd}".
+    #[repr(C)]
+    #[allow(non_camel_case_types)]
+    struct NSPoint {
+        x: f64,
+        y: f64,
+    }
+    // SAFETY: {f64,f64} FFI-safe struct with Foundation's @encode name.
+    unsafe impl objc2::Encode for NSPoint {
+        const ENCODING: objc2::Encoding = objc2::Encoding::Struct(
+            "CGPoint",
+            &[f64::ENCODING, f64::ENCODING],
+        );
+    }
+
+    let app = window.app_handle().clone();
+    let _ = window.run_on_main_thread(move || unsafe {
+        let Ok(ns_window) = app
+            .get_webview_window("extension-tool-panel")
+            .ok_or_else(|| "extension-tool-panel not found".to_string())
+            .and_then(|w| w.ns_window().map_err(|e| e.to_string()))
+        else {
+            return;
+        };
+        let ns = ns_window as *mut AnyObject;
+        if ns.is_null() {
+            return;
+        }
+        // Mouse location in WINDOW coordinates (origin = window's
+        // bottom-left) — performWindowDragWithEvent: expects the event's
+        // location in the window's coordinate space (like locationInWindow).
+        // NSEvent.mouseLocation would give SCREEN coordinates and the drag
+        // loop mis-anchors → the window "jumps" on click.
+        // (mouseLocationOutsideOfEventStream works even when the cursor is
+        // outside the window — it extrapolates.)
+        let mouse: NSPoint = msg_send![ns, mouseLocationOutsideOfEventStream];
+        // Our window's number so the synthesized event routes to us.
+        let window_number: i64 = msg_send![ns, windowNumber];
+        // Synthesize the LeftMouseDown (NSEventType 1) tao builds in its
+        // tablet branch: same selector, same argument shapes. Types must
+        // match the method's runtime encodings EXACTLY (objc2's debug
+        // verification panics on mismatch): NSEventType/NSUInteger → u64,
+        // NSTimeInterval → f64, NSInteger → i64, float pressure → f32.
+        let event: *mut AnyObject = msg_send![
+            class!(NSEvent),
+            mouseEventWithType: 1u64,
+            location: mouse,
+            modifierFlags: 0u64,
+            timestamp: 0f64,
+            windowNumber: window_number,
+            context: std::ptr::null_mut::<AnyObject>(),
+            eventNumber: 0i64,
+            clickCount: 1i64,
+            pressure: 1.0f32,
+        ];
+        if event.is_null() {
+            return;
+        }
+        let _: () = msg_send![ns, performWindowDragWithEvent: event];
+    });
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub fn extension_tool_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
+    // Windows/other: keep the standard path (tao's Win32 implementation
+    // is synchronous-scoped and works from the IPC handler).
+    let _ = window.start_dragging();
     Ok(())
 }
 
