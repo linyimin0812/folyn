@@ -77,10 +77,9 @@ function tierLabel(tier: ExtensionRow['entry']['tier']): string {
  * icons keep a visible, theme-appropriate color. A host ThemeIcon name
  * (e.g. "folder") is rendered via ThemeIcon; emoji/short text is rendered
  * as text; absent icon falls back to the first letter of the extension name. */
-export function ExtensionIcon({ icon, iconDark, name }: { icon: string | undefined; iconDark?: string; name: string }) {
+export function ExtensionIcon({ icon, iconDark, name, size = 20 }: { icon: string | undefined; iconDark?: string; name: string; size?: number }) {
   // Subscribed so --t2 is re-resolved (and the data URI rebuilt) on theme change.
   const theme = useAppearanceStore((s) => s.theme);
-  const size = 20;
   const boxCls =
     'shrink-0 inline-flex items-center justify-center rounded bg-surf2 border border-brd2 text-t2 overflow-hidden';
 

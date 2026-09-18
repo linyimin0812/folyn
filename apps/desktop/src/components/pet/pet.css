@@ -314,12 +314,15 @@ html.is-pet-panel-window body {
 }
 
 /* Search row above the tabs — input + clear button. The row itself is a
- * drag-handle child (suppressDrag stops the input from starting a drag). */
+ * drag-handle child (suppressDrag stops the input from starting a drag).
+ * 8px bottom padding keeps the input clear of the header's bottom border
+ * (the “横线”) when results replace the tabs, instead of sitting flush on
+ * the line. */
 .pet-panel-search-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 0;
+  padding: 4px 10px 8px;
 }
 .pet-panel-search-field {
   position: relative;
@@ -478,6 +481,28 @@ html.is-pet-panel-window body {
   /* Keyboard selection (ArrowUp/ArrowDown): slightly deeper than hover so
    * the highlighted row stays visible even when the mouse hovers another. */
   background: var(--act, #e3e8f5);
+}
+/* Every result row carries a leading icon: switch to a row (icon + text
+ * stack) so the glyph sits to the left of the title/sub instead of stacking
+ * above them. */
+.pet-panel-search-item.is-with-icon {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.pet-panel-search-item-glyph {
+  /* Lucide glyph for file/command rows — muted so it sits beside the
+   * extension icon (which paints its own colors) without competing. */
+  flex-shrink: 0;
+  color: var(--t3, #9aa1b2);
+}
+.pet-panel-search-item-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
 }
 .pet-panel-search-item-title {
   color: var(--t1, #1f2330);

@@ -24,10 +24,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Terminal } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
 import { flattenMarkdownFiles } from '@/services/fileCommands';
 import { getCommands } from '@/services/commandRegistry';
 import { useExtensionStore } from '@/store/extensionStore';
+import { ExtensionIcon } from '@/components/settings/ExtensionsSettings';
+import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { isTauri } from '@/utils/platform';
 
 /** Max results per group — bounds DOM size for large vaults. */
@@ -120,17 +123,18 @@ export const PetPanelSearchResults = forwardRef<
     : [];
   const total = fileHits.length + commandHits.length + extensionHits.length;
 
-  // Flattened hit list in render order — index maps 1:1 onto the DOM buttons
-  // (`data-search-index`), so ArrowUp/ArrowDown/Enter can drive the UI.
+  // Flattened hit list in render order (extensions → commands → files):
+  // index maps 1:1 onto the DOM buttons (`data-search-index`), so
+  // ArrowUp/ArrowDown/Enter can drive the UI.
   const items = useMemo<SearchItem[]>(
     () => [
-      ...fileHits.map((f): SearchItem => ({ kind: 'file', path: f.path })),
-      ...commandHits.map((c): SearchItem => ({ kind: 'command', commandId: c.id })),
       ...extensionHits.map((p): SearchItem => ({
         kind: 'extension',
         extensionId: p.entry.id,
         builtin: !!p.builtin,
       })),
+      ...commandHits.map((c): SearchItem => ({ kind: 'command', commandId: c.id })),
+      ...fileHits.map((f): SearchItem => ({ kind: 'file', path: f.path })),
     ],
     [fileHits, commandHits, extensionHits],
   );
@@ -210,25 +214,44 @@ export const PetPanelSearchResults = forwardRef<
           {t('pet:search.noResults')}
         </div>
       )}
-      {fileHits.length > 0 && (
+      {extensionHits.length > 0 && (
         <section className="pet-panel-search-group">
           <div className="pet-panel-search-group-label">
-            {t('pet:search.files')}
+            {t('pet:search.extensions')}
           </div>
-          {fileHits.map((f, i) => (
+          {extensionHits.map((p, i) => {
+            const index = i;
+            const title = p.nameKey ? t(p.nameKey) : p.entry.name;
+            // Functional description: built-in rows carry a descKey (i18n),
+            // third-party rows carry manifest `description`. Falls back to the
+            // id·version sub when neither is present so the row isn't blank.
+            const desc = p.builtin && p.descKey ? t(p.descKey) : (p.description ?? '');
+            const sub = desc || (p.builtin
+              ? p.entry.id
+              : `${p.entry.id} · v${p.entry.version}`);
+            return (
             <button
-              key={f.path}
+              key={p.entry.id}
               type="button"
-              data-search-index={i}
-              className={`pet-panel-search-item${i === activeIndex ? ' is-active' : ''}`}
+              data-search-index={index}
+              className={`pet-panel-search-item is-with-icon${index === activeIndex ? ' is-active' : ''}`}
               role="option"
-              aria-selected={i === activeIndex}
-              onClick={() => activateItem({ kind: 'file', path: f.path })}
+              aria-selected={index === activeIndex}
+              title={desc || undefined}
+              onClick={() => activateItem({
+                kind: 'extension',
+                extensionId: p.entry.id,
+                builtin: !!p.builtin,
+              })}
             >
-              <span className="pet-panel-search-item-title">{f.name}</span>
-              <span className="pet-panel-search-item-sub">{f.path}</span>
+              <ExtensionIcon icon={p.icon} iconDark={p.iconDark} name={title} size={16} />
+              <span className="pet-panel-search-item-text">
+                <span className="pet-panel-search-item-title">{title}</span>
+                <span className="pet-panel-search-item-sub">{sub}</span>
+              </span>
             </button>
-          ))}
+            );
+          })}
         </section>
       )}
       {commandHits.length > 0 && (
@@ -237,50 +260,48 @@ export const PetPanelSearchResults = forwardRef<
             {t('pet:search.commands')}
           </div>
           {commandHits.map((c, i) => {
-            const index = fileHits.length + i;
+            const index = extensionHits.length + i;
             return (
             <button
               key={c.id}
               type="button"
               data-search-index={index}
-              className={`pet-panel-search-item${index === activeIndex ? ' is-active' : ''}`}
+              className={`pet-panel-search-item is-with-icon${index === activeIndex ? ' is-active' : ''}`}
               role="option"
               aria-selected={index === activeIndex}
               onClick={() => activateItem({ kind: 'command', commandId: c.id })}
             >
-              <span className="pet-panel-search-item-title">{c.title}</span>
+              <Terminal size={16} className="pet-panel-search-item-glyph" />
+              <span className="pet-panel-search-item-text">
+                <span className="pet-panel-search-item-title">{c.title}</span>
+              </span>
             </button>
             );
           })}
         </section>
       )}
-      {extensionHits.length > 0 && (
+      {fileHits.length > 0 && (
         <section className="pet-panel-search-group">
           <div className="pet-panel-search-group-label">
-            {t('pet:search.extensions')}
+            {t('pet:search.files')}
           </div>
-          {extensionHits.map((p, i) => {
-            const index = fileHits.length + commandHits.length + i;
-            const title = p.nameKey ? t(p.nameKey) : p.entry.name;
-            const sub = p.builtin
-              ? p.entry.id
-              : `${p.entry.id} · v${p.entry.version}`;
+          {fileHits.map((f, i) => {
+            const index = extensionHits.length + commandHits.length + i;
             return (
             <button
-              key={p.entry.id}
+              key={f.path}
               type="button"
               data-search-index={index}
-              className={`pet-panel-search-item${index === activeIndex ? ' is-active' : ''}`}
+              className={`pet-panel-search-item is-with-icon${index === activeIndex ? ' is-active' : ''}`}
               role="option"
               aria-selected={index === activeIndex}
-              onClick={() => activateItem({
-                kind: 'extension',
-                extensionId: p.entry.id,
-                builtin: !!p.builtin,
-              })}
+              onClick={() => activateItem({ kind: 'file', path: f.path })}
             >
-              <span className="pet-panel-search-item-title">{title}</span>
-              <span className="pet-panel-search-item-sub">{sub}</span>
+              <ThemeIcon name="markdown" />
+              <span className="pet-panel-search-item-text">
+                <span className="pet-panel-search-item-title">{f.name}</span>
+                <span className="pet-panel-search-item-sub">{f.path}</span>
+              </span>
             </button>
             );
           })}
