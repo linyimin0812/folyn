@@ -464,3 +464,35 @@ Introduced two registration seams in @folyn/extension-host (CapabilityProvider +
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Fix: pet-panel unpinned delete-session confirm dialog killed by blur auto-hide
+
+**Date**: 2026-09-19
+**Task**: Fix: pet-panel unpinned delete-session confirm dialog killed by blur auto-hide
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Root cause: tauri-plugin-dialog parents native confirm() to the calling window; macOS presents it as a sheet on pet-panel. Sheet starting resigns key -> tauri://blur -> unpinned blur-auto-hide -> pet_panel_hide -> window hide tears the sheet down mid-question. Fix: window_has_modal_dialog guard (macOS attachedSheet, Windows IsWindowEnabled==0) in pet_panel_hide + hide_extension_tool_window; skip hide while a native modal dialog is attached. Spec updated: tauri-window-patterns.md Contracts.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
