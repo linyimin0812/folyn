@@ -68,9 +68,10 @@
 ## Requirements (evolving)
 
 * R1: `PetPanelApp` 移除 translation Tab（类型、按钮、渲染分支、import）。
-* R2: 搜索结果中 `builtin:translation` 不再切 Tab；改为两条结果：
-  * "翻译（主应用）" → `emitRunCommand('panel.translation')`（主窗口切页 + 聚焦）
+* R2: 搜索结果中 `builtin:translation` 不再切 Tab；改为两条结果（弹窗在前、主应用
+  在后，用户新增要求 2026-09-19）：
   * "翻译（弹窗）" → `emitOpenExtensionTool('builtin:translation')`（主窗口特殊路由）
+  * "翻译（主应用）" → `emitRunCommand('panel.translation')`（主窗口切页 + 聚焦）
   * 两条结果带 i18n 标签（pet.json，zh/en/ja/de/es/fr）与翻译图标，按
     `enableTranslationPanel` 门控。
 * R3: `ExtensionToolApp` 在 payload.extensionId === 'builtin:translation' 时渲染
@@ -90,7 +91,8 @@
 ## Acceptance Criteria (evolving)
 
 * [x] 桌宠弹窗无"翻译"Tab，仅剩"对话 / 收件箱"。（PetPanelApp.test.tsx：2 tabs + 切 Inbox/Chat 回切用例）
-* [x] 桌宠弹窗搜索"翻译"出现两条结果：主应用翻译 / 弹窗翻译。（PetPanelApp.test.tsx：exactly-two-rows 用例）
+* [x] 桌宠弹窗搜索"翻译"出现两条结果：弹窗翻译在前、主应用翻译在后（弹窗在前，
+  用户新增要求 2026-09-19）。（PetPanelApp.test.tsx：exactly-two-rows 用例）
 * [x] 选"主应用翻译"：主窗口激活并切到翻译页。（emit run-command panel.translation → commandRegistry 既有命令；focusMain 既有路径）
 * [ ] 选"弹窗翻译"：浮动弹窗出现（不切换前台应用），内含完整 TranslationPanel，
   可翻译（模型选择可用）、语言/输入/结果状态持久化。（实现完成；需真实 Tauri 环境手动验收）

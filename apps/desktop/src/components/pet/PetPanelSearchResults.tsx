@@ -147,16 +147,17 @@ export const PetPanelSearchResults = forwardRef<
         })
         .slice(0, MAX_PER_GROUP)
     : [];
-  // The builtin:translation hit renders TWO rows — "main app" (run-command
-  // panel.translation) and "popup" (open the floating translation popup) —
-  // so a single search surfaces both destinations. Every other hit renders
+  // The builtin:translation hit renders TWO rows — "popup" (open the
+  // floating translation popup) first, then "main app" (run-command
+  // panel.translation) — so a single search surfaces both destinations, with
+  // the popup on top (user preference 2026-09-19). Every other hit renders
   // one row; the flattened `items` array below maps 1:1 onto these buttons.
   const extensionVisualRows: ExtensionVisualRow[] = extensionHits.flatMap(
     (row): ExtensionVisualRow[] =>
       row.builtin && row.entry.id === 'builtin:translation'
         ? [
-            { kind: 'translation-main', row },
             { kind: 'translation-popup', row },
+            { kind: 'translation-main', row },
           ]
         : [{ kind: 'extension', row }],
   );
