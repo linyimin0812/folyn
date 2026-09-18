@@ -322,6 +322,13 @@ async function emitOpenExtensionTool(extensionId: string): Promise<void> {
   try {
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://menu-action', { action: 'open-extension-tool', extensionId });
+    // The panel hide for THIS path restores the user's previous frontmost
+    // app: the panel activated Folyn (set_focus for Esc support), but the
+    // tool popup is meant to float over the user's app — Folyn must not
+    // stay in the foreground after the panel hides. The generic onDone()
+    // hide that follows is a no-op (window already hidden).
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('pet_panel_hide', { restoreFocus: true });
   } catch {
     // Non-fatal.
   }

@@ -115,6 +115,215 @@ pub fn backend_is_nspanel() -> bool {
     }
 }
 
+/// `[DEBUG-toolwin]` probe log — append-only file in /tmp so the runtime
+/// state is readable without the dev terminal. TEMPORARY instrumentation
+/// for the "extension popup only opens above Folyn" bug (called from
+/// `commands/webview_commands.rs` through a cfg'd wrapper); remove
+/// everything by grepping the `DEBUG-toolwin` tag.
+pub(crate) fn dbg_toolwin_log(msg: &str) {
+    use std::io::Write;
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/folyn-toolwin-debug.log")
+    {
+        let _ = writeln!(f, "[DEBUG-toolwin {}] {}", ts, msg);
+    }
+}
+
+/// Raise a dynamically-created Tauri window to the global floating tier so
+/// it appears over the frontmost app (including fullscreen apps) without
+/// activating Folyn. Used by `open_extension_tool_window` for sandbox
+/// extension popups triggered from the pet panel while the user is in
+/// another app.
+///
+/// Space model (space-switch experiment, 2026-09-18 — the earlier notes'
+/// conclusion was half-right and the missing half cost a day): a window
+/// shows on every Space iff its behavior is
+/// `CanJoinAllSpaces | **Stationary** | fullScreenAuxiliary` (1 + 16 +
+/// 256 = 273 — the FULL pet-panel recipe). Experiment matrix with a
+/// space-switch canary window (flips `isOnActiveSpace` when the Space
+/// really changes): no-stationary combos (with or without panel class)
+/// PIN to one Space; stationary combos — plain NSWindow AND NSPanel alike —
+/// stay on the active Space across switches. The pet panels work because
+/// of Stationary, not because they are panels.
+///
+/// Constant values verified against objc2-app-kit's SDK-generated bindings
+/// (the codebase's old comments had them wrong — e.g. "stationary(2)" is
+/// actually MoveToActiveSpace, real Stationary is 16):
+///   CanJoinAllSpaces = 1<<0, MoveToActiveSpace = 1<<1, Stationary = 1<<4,
+///   FullScreenAuxiliary = 1<<8, FullScreenAllowsTiling = 1<<11.
+///
+/// Deliberately raw `msg_send!` on the plain NSWindow — NOT `to_panel()` /
+/// any class swap. Three separate crashes (contentView unwrap panic;
+/// style-mask strip → frame rebuild → detached contentView; close-time
+/// uncatchable Obj-C exception) all came from the class-swap family. These
+/// window-server-only calls (same category as `reapply_pet_topmost`, which
+/// runs indefinitely on the pet) cannot reproduce any of them: no content
+/// view access, no style change, no lifecycle interference.
+///
+/// Must run on the macOS main thread (caller schedules via
+/// `run_on_main_thread`). Sets:
+///   - `setLevel:` ScreenSaver (`CGWindowLevelForKey(13)`) — above every
+///     normal app window (and above the pet panels at Dock level);
+///   - `setCollectionBehavior:` CanJoinAllSpaces | Stationary |
+///     fullScreenAuxiliary (1 + 16 + 256 = 273);
+///   - `orderFrontRegardless` — only when `order_front` is true (initial
+///     raise / singleton re-surface). The 500ms reapply loop calls with
+///     false: re-`orderFront` every tick is what macOS interprets as "the
+///     user wants this window" and ACTIVATES the app (the "自动切换到 folyn"
+///     regression); `reapply_pet_topmost` never orders front either.
+///
+/// Wrapped in `objc2::exception::catch` (worst case the level stays
+/// Floating, no abort). Logs the post-state readback to
+/// `/tmp/folyn-toolwin-debug.log` (temporary `[DEBUG-toolwin]` probes).
+/// Returns true when the level/behavior were applied.
+pub fn convert_window_to_floating_panel(
+    window: &tauri::WebviewWindow,
+    order_front: bool,
+) -> bool {
+    use std::panic::AssertUnwindSafe;
+    use tauri_nspanel::objc2::exception::catch;
+    use tauri_nspanel::objc2::msg_send;
+    use tauri_nspanel::objc2::runtime::AnyObject;
+
+    let log = |msg: &str| dbg_toolwin_log(msg);
+
+    extern "C" {
+        fn CGWindowLevelForKey(key: i32) -> i32;
+    }
+    const KCG_SCREENSAVER_WINDOW_LEVEL_KEY: i32 = 13;
+
+    let Ok(ns_window) = window.ns_window() else {
+        log("raise: no ns_window handle");
+        return false;
+    };
+    let ns = ns_window as *mut AnyObject;
+    if ns.is_null() {
+        log("raise: null ns_window");
+        return false;
+    }
+    let applied = catch(AssertUnwindSafe(|| unsafe {
+        // 64-bit `setLevel:` takes NSInteger — the `as isize` cast widens
+        // the i32 CG level (same cast as `reapply_pet_topmost` in lib.rs).
+        let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
+        let _: () = msg_send![ns, setLevel: level];
+        const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0; // 1
+        const CB_STATIONARY: isize = 1 << 4; // 16 — the load-bearing bit
+        const CB_FULLSCREEN_AUXILIARY: isize = 1 << 8; // 256
+        let behavior: isize =
+            CB_CAN_JOIN_ALL_SPACES | CB_STATIONARY | CB_FULLSCREEN_AUXILIARY;
+        let _: () = msg_send![ns, setCollectionBehavior: behavior];
+        if order_front {
+            let _: () = msg_send![ns, orderFrontRegardless];
+        }
+    }));
+    let ok = applied.is_ok();
+    // Probe readback: level / behavior / space membership after the raise.
+    // `Bool` (objc2's BOOL wrapper, FFI-safe for msg_send!) → as_bool().
+    let level: isize = unsafe { msg_send![ns, level] };
+    let behavior: isize = unsafe { msg_send![ns, collectionBehavior] };
+    let on_active_space = unsafe {
+        let b: tauri_nspanel::objc2::runtime::Bool = msg_send![ns, isOnActiveSpace];
+        b.as_bool()
+    };
+    log(&format!(
+        "raise: applied={} level={} behavior={} onActiveSpace={}",
+        ok, level, behavior, on_active_space
+    ));
+    ok
+}
+
+/// Prewarm the `extension-tool-panel` at startup: order it front ONCE with
+/// alpha 0 + ignoresMouseEvents so it stops being the app's "first window".
+/// macOS activates the whole app when the FIRST window of a windowless app
+/// is ordered front (the "第一次触发跳转到 folyn" bug: in pet mode the main
+/// window is hidden, so the tool panel's first orderFront activated Folyn;
+/// subsequent hide→show cycles don't, which is exactly the observed
+/// first-time-only behavior). Ordering it during setup — while the app is
+/// legitimately activating its own windows at launch — burns that first-window
+/// slot invisibly. Must run on the macOS main thread (called from
+/// `apply_pet_backend_init` after `convert_windows`).
+pub fn prewarm_extension_tool_panel(app: &AppHandle) {
+    use std::panic::AssertUnwindSafe;
+    use tauri_nspanel::objc2::exception::catch;
+    use tauri_nspanel::objc2::msg_send;
+    use tauri_nspanel::objc2::runtime::AnyObject;
+
+    let Some(window) = app.get_webview_window("extension-tool-panel") else {
+        return;
+    };
+    let Ok(ns_window) = window.ns_window() else { return };
+    let ns = ns_window as *mut AnyObject;
+    if ns.is_null() {
+        return;
+    }
+    let _ = catch(AssertUnwindSafe(|| unsafe {
+        let _: () = msg_send![ns, setAlphaValue: 0.0f64];
+        let _: () = msg_send![ns, setIgnoresMouseEvents: true];
+        let _: () = msg_send![ns, orderFrontRegardless];
+    }));
+    dbg_toolwin_log("prewarm: ordered invisible (alpha 0 + ignoresMouse)");
+}
+
+/// Surface the `extension-tool-panel` (the sandbox extension popup) without
+/// activating Folyn. Must run on the macOS main thread. The window was
+/// converted to a nonactivating NSPanel at startup (`convert_windows`) and
+/// prewarmed there (`prewarm_extension_tool_panel` — alpha 0, first-window
+/// slot burned), so this restores alpha/mouse and orders front without
+/// `makeKeyAndOrderFront:` — no IMK observer attach, no app switch. The
+/// panel-recipe re-assert (behavior 273 + hidesOnDeactivate) is idempotent
+/// insurance against AppKit/tauri downgrades — attribute-only, NEVER
+/// `to_panel`/`object_setClass` here (one class swap per window, ever — see
+/// the crash ledger in the spec).
+pub fn surface_extension_tool_panel(window: &tauri::WebviewWindow) -> bool {
+    use std::panic::AssertUnwindSafe;
+    use tauri_nspanel::objc2::exception::catch;
+    use tauri_nspanel::objc2::msg_send;
+    use tauri_nspanel::objc2::runtime::AnyObject;
+    use tauri_nspanel::ManagerExt;
+
+    let app = window.app_handle();
+    // Re-assert the panel attributes through the panel store (no class
+    // swap). Not-converted (legacy backend / store miss) → fall back to the
+    // plain-window raise.
+    if let Ok(panel) = app.get_webview_panel(window.label()) {
+        let _ = catch(AssertUnwindSafe(|| {
+            // 273 = CanJoinAllSpaces(1) | Stationary(16) | FullScreenAuxiliary(256)
+            panel.set_collection_behavior(
+                CollectionBehavior::new()
+                    .stationary()
+                    .can_join_all_spaces()
+                    .full_screen_auxiliary()
+                    .into(),
+            );
+            panel.set_hides_on_deactivate(false);
+        }));
+    } else {
+        crate::pet_panel_macos::convert_window_to_floating_panel(window, true);
+    }
+    let applied = catch(AssertUnwindSafe(|| unsafe {
+        let Ok(ns_window) = window.ns_window() else { return false };
+        let ns = ns_window as *mut AnyObject;
+        if ns.is_null() {
+            return false;
+        }
+        // Undo the prewarm state (alpha 0 + ignoresMouse) — the prewarm only
+        // runs once at startup, but restoring unconditionally is idempotent.
+        let _: () = msg_send![ns, setAlphaValue: 1.0f64];
+        let _: () = msg_send![ns, setIgnoresMouseEvents: false];
+        let _: () = msg_send![ns, orderFrontRegardless];
+        true
+    }));
+    let ok = applied.unwrap_or(false);
+    dbg_toolwin_log(&format!("surface: orderFrontRegardless applied={}", ok));
+    ok
+}
+
 /// Convert the `pet`, `pet-panel`, `pet-bubble`, and `pet-corner` windows into
 /// NSPanels with the fullscreen-overlay configuration. Must run on the macOS
 /// main thread (NSWindow API is main-thread-only). `to_panel()` swaps the
@@ -212,6 +421,38 @@ pub fn convert_windows(app: &AppHandle) -> usize {
                         .full_screen_auxiliary()
                         .into(),
                 );
+                disable_touch_bar_recalc(panel.as_panel());
+                count += 1;
+            }
+        }));
+    }
+
+    // Extension-tool-panel — the sandbox extension popup, pet-panel
+    // machinery (the "桌宠弹窗同款" architecture): statically declared in
+    // tauri.conf.json, converted HERE AT SETUP (the one proven-safe
+    // conversion moment — the window exists, the app event loop is fresh,
+    // and nothing has interacted with it yet), then shown/hidden for its
+    // whole life (never destroyed, never re-converted — see the crash
+    // ledger in .trellis/spec/desktop/frontend/tauri-window-patterns.md for
+    // why dynamic creation + runtime conversion kept crashing). Loads the
+    // extension's tool page via iframe from the #/extension-tool host route;
+    // the extension-rpc-request event is dispatched by the MAIN window's
+    // listener (Tauri events are global), so this window needs no RPC wiring.
+    if let Some(window) = app.get_webview_window("extension-tool-panel") {
+        let _ = catch(AssertUnwindSafe(|| {
+            if let Ok(panel) = window.to_panel::<FolynPanelWindow>() {
+                panel.set_level(PanelLevel::Dock.value());
+                panel.set_style_mask(StyleMask::empty().resizable().nonactivating_panel().into());
+                panel.set_collection_behavior(
+                    CollectionBehavior::new()
+                        .stationary()
+                        .can_join_all_spaces()
+                        .full_screen_auxiliary()
+                        .into(),
+                );
+                // AppKit hides a panel on app-deactivate by default; Folyn
+                // stays background while the user works elsewhere.
+                panel.set_hides_on_deactivate(false);
                 disable_touch_bar_recalc(panel.as_panel());
                 count += 1;
             }

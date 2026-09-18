@@ -187,9 +187,15 @@ export async function routePetMenuAction(
       // separate realm whose command registry lacks extension commands (extensions
       // are activated in the main window), so it sends the extension id and the
       // MAIN window resolves the registered "Open: <tool>" command. No
-      // focusMain on success — the newly created tool window comes to front
-      // on its own. Extensions without a window tool fall back to the Extensions
-      // settings tab (the previous behavior).
+      // focusMain on success — on macOS the Rust `open_extension_tool_window`
+      // builds the window with .focused(false) (build() surfaces it via
+      // `orderFront:`, not `makeKeyAndOrderFront:`) and raises it to
+      // ScreenSaver level, so it appears over the user's current app WITHOUT
+      // activating Folyn (singleton: reuses an existing window of the same
+      // tool instead of creating a duplicate). Calling focusMain here would
+      // switch the user into the Folyn app — the very app-switch this path
+      // must avoid. Extensions without a window tool fall back to the
+      // Extensions settings tab (the previous behavior).
       if (extensionId) {
         const { getCommands, runCommand } = await import('@/services/commandRegistry');
         const toolCmd = getCommands().find((c) =>

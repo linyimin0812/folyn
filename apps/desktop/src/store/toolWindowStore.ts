@@ -1,10 +1,12 @@
 /**
  * Tool-window state.
  *
- * Tracks open extension tool windows (one Tauri `WebviewWindow` per activation,
- * multi-instance). The store is the runtime side of the `tools` contribution
- * point; `registerExtensionTools` (services/extension-host/toolAdapter.ts) opens
- * windows via this store when the user invokes an "Open: <tool>" command.
+ * Tracks open extension tool windows (singleton per tool: one Tauri
+ * `WebviewWindow` per `<extension>/<tool>` — reopening focuses the
+ * existing window instead of creating a second one). The store is the
+ * runtime side of the `tools` contribution point; `registerExtensionTools`
+ * (services/extension-host/toolAdapter.ts) opens windows via this store
+ * when the user invokes an "Open: <tool>" command.
  *
  * On extension deactivate, the adapter's disposable calls `closeAllForExtension`
  * so all of that extension's tool windows are destroyed in the same pass that
@@ -19,6 +21,11 @@ import { create } from 'zustand';
 import { isTauri } from '@/utils/platform';
 import type { ToolContribution } from '@folyn/extension-host';
 
+/** macOS check inline (the keybindingAdapter pattern) — the hide-not-
+ *  destroy lifecycle is macOS-only; other platforms keep destroying. */
+const isMacOS = (): boolean =>
+  typeof navigator !== 'undefined' && /mac|iphone|ipad|ipod/i.test(navigator.platform);
+
 export interface OpenToolWindow {
   label: string;
   extensionId: string;
@@ -28,7 +35,9 @@ export interface OpenToolWindow {
 
 interface ToolWindowState {
   windows: OpenToolWindow[];
-  /** Open a new tool window. Multi-instance: each call creates a new window. */
+  /** Open (or focus) the tool window. Singleton per tool: if the window is
+   * already open Rust returns its existing label, which we dedup against
+   * the tracked list so `.windows` never holds duplicates. */
   open: (extensionId: string, tool: ToolContribution) => Promise<void>;
   /** Close a specific window by label. No-op if not open. */
   close: (label: string) => Promise<void>;
@@ -74,15 +83,29 @@ export const useToolWindowStore = create<ToolWindowState>((set, get) => ({
       return;
     }
     set({
-      windows: [
-        ...get().windows,
-        { label, extensionId, toolId: tool.id, title },
-      ],
+      windows: get().windows.some((w) => w.label === label)
+        ? get().windows
+        : [...get().windows, { label, extensionId, toolId: tool.id, title }],
     });
   },
 
   close: async (label) => {
     if (!isTauri()) return;
+    // ponytail: macOS pet-panel lifecycle — extension tool windows are
+    // class-swapped into NSPanels and destroying one on the user-close path
+    // throws an uncatchable Obj-C exception (the crash we hit twice). The
+    // Rust command HIDES the window instead; reopening re-surfaces the same
+    // singleton. Destroying is still fine on Windows/Linux.
+    if (isMacOS()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('hide_extension_tool_window', { label }).catch(
+        (err: unknown) => {
+          console.warn(`[extension-host] failed to hide tool window "${label}":`, err);
+        },
+      );
+      get().remove(label);
+      return;
+    }
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
     const existing = await WebviewWindow.getByLabel(label);
     if (existing) {

@@ -1309,3 +1309,16 @@ html.is-pet-menu-window[data-theme="dark"] .pet-menu-sep {
     background: #1c2136;
   }
 }
+
+/* The extension-tool-panel window (sandbox extension popup, pet-panel
+ * machinery): transparent window so the rounded ExtensionToolApp shell
+ * floats over the desktop like the pet panels. Same opaque-square defense
+ * as the pet-panel — the editor's `html, body { background: var(--bg) }`
+ * must not paint the corners behind the shell's 12px radius. main.tsx tags
+ * <html> with `.is-extension-tool-window` for the `/#/extension-tool`
+ * route only. The shell sets its own opaque card background. */
+html.is-extension-tool-window,
+html.is-extension-tool-window body,
+html.is-extension-tool-window #root {
+  background: transparent !important;
+}

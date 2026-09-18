@@ -264,6 +264,80 @@ it on the next open of the same tool (Native drops `alwaysOnTop` first — macOS
 fullscreen on always-on-top windows — while Simple keeps it). The key is derived from the label
 by stripping the trailing numeric instance counter.
 
+**Singleton per tool** (extension tool windows): `open_extension_tool_window`
+(`commands/webview_commands.rs`) is one-window-per-`<extension>/<tool>`, NOT
+multi-instance. Before minting a label it scans `app.webview_windows()` for an
+existing window whose counter-less `tool_key` matches
+`extension-tool-<extension>-<tool>`; if found it re-surfaces it and returns its
+label instead of creating a second window. Repeated invocations of the same
+"Open: <tool>" command therefore re-show the existing popup, never stack
+duplicates. The global `COUNTER` now only disambiguates the (single) label each
+tool gets on first open.
+
+**Extension tool popup = a pet panel** (final architecture, 2026-09-18): the
+sandbox extension popup is the statically-declared `extension-tool-panel`
+window — the exact pet-panel machinery, because that is the ONE path
+empirically proven to float over every app/Space:
+
+- **Static declaration + startup conversion**: `tauri.conf.json` declares
+  the window (borderless/transparent/skipTaskbar/visible:false, url
+  `/#/extension-tool`); `convert_windows` converts it at setup
+  (`FolynPanelWindow` NSPanel class, Dock level, nonactivating,
+  `CanJoinAllSpaces | Stationary | FullScreenAuxiliary` (273 — real values;
+  the old comments' constant values were wrong, e.g. "stationary(2)" is
+  really MoveToActiveSpace, real Stationary is 16), `hidesOnDeactivate: NO`).
+  One class swap per window, EVER, at the one proven-safe moment.
+- **Host route + iframe**: the window loads `/#/extension-tool`
+  (main.tsx hash routing → `ExtensionToolApp`), which renders a
+  pet-panel-style shell (drag region, title, close X) and a
+  `<iframe sandbox="allow-scripts">` pointed at
+  `folyn-extension://localhost/<ext>/<entry>` — the same origin-isolated
+  scheme the dynamic tool windows used, so the permission-checked
+  fetch-RPC bridge is unchanged (`extension-rpc-request` is a global Tauri
+  event dispatched by the MAIN window's listener).
+- **open**: `open_extension_tool_window` emits `extension-tool://open`
+  {extensionId, toolId, entry, title} to the window (iframe swap) and
+  surfaces it via `pet_panel_macos::surface_extension_tool_panel` —
+  attribute re-assert (store-based, no class swap) +
+  `orderFrontRegardless` (a nonactivating panel shows without
+  `makeKeyAndOrderFront:`, so no IMK attach, no app switch, no focus
+  steal).
+- **close**: never destroyed — the shell's X → `hide_extension_tool_window`;
+  lib.rs CloseRequested for `extension-tool-*` (the panel matches the
+  prefix) → `prevent_close` + hide; reopen re-surfaces the same window.
+
+Why the architecture is static-only (the day-long crash ledger, all
+2026-09-18, all on dynamically created windows):
+1. Dynamic + runtime `to_panel` conversion crashed 4 ways: contentView
+   unwrap panic (to_panel before webview attach); style-mask strip →
+   frame rebuild exception → detached contentView → tao ns_view() panic
+   (pet windows survive set_style_mask only because they are created
+   `decorations: false`); destroy-after-conversion → uncatchable Obj-C
+   exception ("Rust cannot catch foreign exceptions"); repeated
+   `object_setClass` (the 200ms pet reapply thread did `to_panel` every
+   tick; the singleton re-surface did it every reopen) strips the KVO
+   subclass the TouchBar finder observes → `NSRangeException`
+   (_NSTouchBarFinderObservation … not registered).
+2. Dynamic + plain-NSWindow raise (any behavior combo: 770 MoveToActive,
+   2305 CanJoinAllSpaces, 273 CanJoin+Stationary) stayed PINNED to Folyn's
+   Space in-app (`onActiveSpace=false` probes), while standalone Swift
+   experiment windows with identical calls follow the user across Spaces —
+   the delta was never isolated, and the statically-declared pet panels
+   (same process, same behavior bits, converted at startup) float
+   correctly, which is the observable that matters.
+3. Re-`orderFront` on a loop activates the app ("自动切换到 folyn"
+   regression) — only order on open, never in reapply loops.
+The pet panels' own reapply thread must also never call `to_panel`
+(repeat setClass = crash #4): `reapply_pet_nspanel_level` goes through the
+panel store and only re-asserts attributes.
+
+**Debug loop** (temporary, grep `DEBUG-toolwin` to remove): `open_extension_tool_window`
+probes to `/tmp/folyn-toolwin-debug.log` (command entry, singleton hit, build,
+raise + level/behavior/isOnActiveSpace readback); `scripts/inspect-toolwin.sh`
+dumps that log plus the live CGWindowList state (layer 1000 = ScreenSaver raise
+applied, 3 = Floating = raise failed) — run it with the app running to see
+where the chain broke.
+
 ---
 
 ## Scenario: Windows Custom Titlebar (undecorated main window + in-app window controls)

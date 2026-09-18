@@ -4,6 +4,64 @@ use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize};
 use crate::commands::pet_common::*;
 use crate::errors::AppError;
 
+/// The frontmost app's pid at the moment `pet_panel_show` ran — captured
+/// BEFORE `focus_panel`'s `set_focus()` activates Folyn, so a later
+/// `pet_panel_hide(restore_focus: true)` can give the user's previous app
+/// its frontmost slot back (the open-extension-tool path: the panel
+/// activates Folyn by design — Esc keyboard — but the tool popup is meant
+/// to float over the user's app, not steal the foreground).
+pub struct PreviousFrontmostApp(pub Mutex<Option<i32>>);
+
+/// Capture the frontmost app pid (main-thread safe via msg_send — same
+/// pattern as voice.rs's frontmostApplication probe). None when the
+/// frontmost app is Folyn itself (pid match) or the probe fails.
+#[cfg(target_os = "macos")]
+fn capture_frontmost_pid() -> Option<i32> {
+    use tauri_nspanel::objc2::msg_send;
+    unsafe {
+        let cls: *mut tauri_nspanel::objc2::runtime::AnyObject =
+            msg_send![tauri_nspanel::objc2::class!(NSWorkspace), sharedWorkspace];
+        let app: *mut tauri_nspanel::objc2::runtime::AnyObject =
+            msg_send![cls, frontmostApplication];
+        if app.is_null() {
+            return None;
+        }
+        let pid: i32 = msg_send![app, processIdentifier];
+        if pid == std::process::id() as i32 {
+            return None; // Folyn is already frontmost — nothing to restore
+        }
+        Some(pid)
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn capture_frontmost_pid() -> Option<i32> {
+    None
+}
+
+/// Give the frontmost slot back to the app with `pid` (captured at
+/// panel-show time). No-op if the app exited. Runs on the main thread
+/// shortly after the hide so the panel teardown settles first.
+#[cfg(target_os = "macos")]
+fn restore_frontmost_app(app: &tauri::AppHandle, pid: i32) {
+    use tauri_nspanel::objc2::msg_send;
+    let _ = app.run_on_main_thread(move || unsafe {
+        let cls: *mut tauri_nspanel::objc2::runtime::AnyObject =
+            msg_send![tauri_nspanel::objc2::class!(NSRunningApplication),
+                      runningApplicationWithProcessIdentifier: pid];
+        if cls.is_null() {
+            return; // app exited — leave focus where it is
+        }
+        // activateWithOptions:0 — a polite activation (no
+        // activateIgnoringOtherApps force-steal; if the user has already
+        // moved on, the system may decline).
+        let _: () = msg_send![cls, activateWithOptions: 0u64];
+    });
+}
+
+#[cfg(not(target_os = "macos"))]
+fn restore_frontmost_app(_app: &tauri::AppHandle, _pid: i32) {}
+
 /// Show the pet-panel window and set focus. The caller sets the window's
 /// position via `pet_panel_set_position` first (or right after) so the panel
 /// appears next to the pet.
@@ -25,6 +83,11 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
+    // Capture the user's current frontmost app BEFORE focus_panel activates
+    // Folyn — a later pet_panel_hide(restore_focus: true) gives it back.
+    if let Some(state) = app.try_state::<PreviousFrontmostApp>() {
+        *state.0.lock().unwrap() = capture_frontmost_pid();
+    }
     panel.show().map_err(|e| e.to_string())?;
     focus_panel(&panel);
     Ok(())
@@ -54,14 +117,42 @@ pub async fn pet_panel_show(app: tauri::AppHandle) -> Result<(), AppError> {
 /// `pet_panel_show`), so macOS is unaffected. Also re-runs the macOS
 /// `makeFirstResponder` so keyboard (Esc) still works after the re-focus.
 fn focus_panel(panel: &tauri::WebviewWindow) {
-    // `set_focus()` activates the Folyn app (`activateIgnoringOtherApps:YES`)
-    // so the pet-panel becomes the active app's key window — required for
-    // the React Esc keydown listener to fire (otherwise keyboard events go
-    // to whatever app was frontmost, e.g. VS Code, and Esc can't close the
-    // panel). The side effect: when the panel hides, the main Folyn editor
-    // stays frontmost instead of returning to the user's previous app.
-    // Restoring the previous app needs `NSWorkspace.frontmostApplication`
-    // tracking + `activateWithOptions:` on hide — out of scope for this fix.
+    // macOS: the pet-panel is a NONACTIVATING NSPanel (converted at
+    // startup, `nonactivating_panel` style) — it can become the KEY window
+    // without activating the Folyn app, the Spotlight model. tao's
+    // `set_focus()` forces `activateIgnoringOtherApps:YES` (whole-app
+    // activation) — that was the "快捷键触发跳转到 folyn" complaint: the
+    // user stays in their app, hits the pet hotkey, and gets visually
+    // yanked into Folyn for the panel's whole lifetime. `makeKeyWindow` +
+    // `orderFrontRegardless` give the panel keyboard input (Esc listener,
+    // search typing) with the user's app left frontmost. The Windows path
+    // below keeps `set_focus()` (Win32 has no nonactivating-panel concept;
+    // the refocusing guard handles the spurious blur there).
+    //
+    // Side effects of dropping the app activation (accepted): the panel's
+    // blur→hide logic still works (resigning key fires tauri://blur
+    // regardless of app activation); after the panel hides, focus falls
+    // back to whatever was frontmost naturally (no Folyn residue — the
+    // desired behavior for the extension-tool path).
+    #[cfg(target_os = "macos")]
+    {
+        use tauri_nspanel::objc2::msg_send;
+        use tauri_nspanel::objc2::runtime::AnyObject;
+        let panel2 = panel.clone();
+        let _ = panel.app_handle().run_on_main_thread(move || {
+            let Ok(ns_window) = panel2.ns_window() else { return };
+            let ns = ns_window as *mut AnyObject;
+            if ns.is_null() {
+                return;
+            }
+            unsafe {
+                // Key WITHOUT activation (nonactivating panel), surfaced
+                // without the makeKeyAndOrderFront app-activation path.
+                let _: () = msg_send![ns, orderFrontRegardless];
+                let _: () = msg_send![ns, makeKeyWindow];
+            }
+        });
+    }
     // Windows: emit pet://panel-refocusing BEFORE set_focus() so the
     // frontend arms its ignore-blur guard before the spurious blur from
     // set_focus() (and from the later SetFocus(child) task) arrives. Both
@@ -70,12 +161,12 @@ fn focus_panel(panel: &tauri::WebviewWindow) {
     // is ignored → no flash-close. (The PREVIOUS attempt emitted this only
     // from inside the late SetFocus task, so set_focus()'s earlier blur
     // slipped through the gate and hid the panel.) Cleared on the next
-    // real tauri://focus, or an 800ms safety timeout in the frontend.
+    // real `tauri://focus`, or an 800ms safety timeout in the frontend.
     #[cfg(target_os = "windows")]
     {
         let _ = panel.app_handle().emit("pet://panel-refocusing", ());
+        let _ = panel.set_focus();
     }
-    let _ = panel.set_focus();
 
     // Make the WKWebView (NOT the contentView / parent view) the first
     // responder so `document` receives `keydown` → Esc works without a
@@ -188,7 +279,16 @@ pub async fn pet_panel_set_focus(app: tauri::AppHandle) -> Result<(), AppError> 
 /// Hide the pet-panel window without closing it (the window stays alive for
 /// the next show). Used by the close button, Esc, and the second pet click.
 #[tauri::command]
-pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), AppError> {
+pub async fn pet_panel_hide(
+    app: tauri::AppHandle,
+    // restore_focus: when true (the open-extension-tool path), give the
+    // frontmost slot back to the app the user was in before the panel
+    // activated Folyn — the extension tool popup floats over THEIR app, so
+    // Folyn must not stay in the foreground after the panel hides.
+    // Absent/false (Esc, ×, blur) keeps today's behavior (Folyn stays
+    // frontmost). Optional param: existing callers unchanged.
+    restore_focus: Option<bool>,
+) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
@@ -204,6 +304,21 @@ pub async fn pet_panel_hide(app: tauri::AppHandle) -> Result<(), AppError> {
     // File-upload (NSOpenPanel steals key window → blur, but panel still
     // visible) does NOT emit this event → panel stays at opacity:1.
     let _ = app.emit("pet://panel-fade-out", ());
+    if restore_focus.unwrap_or(false) {
+        // Restore the app the user was in before the panel activated Folyn.
+        // Delayed ~150ms so the panel hide settles first (an immediate
+        // activate can race the hide's window-server state and lose).
+        let prev = app
+            .try_state::<PreviousFrontmostApp>()
+            .and_then(|s| *s.0.lock().ok()?);
+        if let Some(pid) = prev {
+            let app2 = app.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                restore_frontmost_app(&app2, pid);
+            });
+        }
+    }
     Ok(())
 }
 

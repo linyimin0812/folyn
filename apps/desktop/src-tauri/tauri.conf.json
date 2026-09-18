@@ -182,6 +182,24 @@
         "dragDropEnabled": false
       },
       {
+        "label": "extension-tool-panel",
+        "url": "/#/extension-tool",
+        "title": "Folyn Extension Tool",
+        "width": 800,
+        "height": 600,
+        "minWidth": 320,
+        "minHeight": 240,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": true,
+        "shadow": true,
+        "visible": false,
+        "focus": false,
+        "dragDropEnabled": false
+      },
+      {
         "label": "pet-bubble",
         "url": "/#/pet-bubble",
         "title": "Folyn Pet Bubble",

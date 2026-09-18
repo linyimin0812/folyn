@@ -195,14 +195,18 @@ fn reapply_pet_topmost(_app: &tauri::AppHandle) {
 /// baked into `convert_windows`, but driven periodically instead of once.
 #[cfg(target_os = "macos")]
 fn reapply_pet_nspanel_level(app: &tauri::AppHandle) {
-    use tauri::Manager;
-    use tauri_nspanel::{CollectionBehavior, PanelLevel, WebviewWindowExt};
-
-    let Some(window) = app.get_webview_window("pet") else {
-        return;
-    };
-    let Ok(panel) = window.to_panel::<crate::pet_panel_macos::FolynPetPanel>() else {
-        return;
+    use tauri_nspanel::{CollectionBehavior, PanelLevel, ManagerExt};
+    // ponytail: NEVER call `to_panel()` here again. Every `to_panel` runs
+    // `object_setClass`, and this function runs on a 200ms loop — repeated
+    // setClass strips the KVO dynamic subclass the TouchBar finder
+    // registers its `nextResponder` observation on, so the finder's next
+    // invalidate throws `NSRangeException` ("Cannot remove an observer
+    // _NSTouchBarFinderObservation … not registered", crash 2026-09-18
+    // 16:58). Re-assert the panel ATTRIBUTES through the panel store
+    // instead (idempotent, no class swap): startup converted the pet once
+    // and put the PanelHandle in the store; `get_webview_panel` fetches it.
+    let Ok(panel) = app.get_webview_panel("pet") else {
+        return; // not converted (should not happen — startup converts)
     };
     panel.set_hides_on_deactivate(false);
     panel.set_level(PanelLevel::Dock.value());
@@ -241,6 +245,12 @@ fn reapply_pet_nspanel_level(_app: &tauri::AppHandle) {}
 fn apply_pet_backend_init(app: &tauri::AppHandle) {
     if pet_panel_macos::backend_is_nspanel() {
         pet_panel_macos::convert_windows(app);
+        // Burn the extension-tool-panel's "first window" slot invisibly
+        // (alpha 0 + ignoresMouse + orderFront) — macOS activates the whole
+        // app when the first window of a windowless (pet-mode) app is ordered
+        // front; doing it here, during launch, makes the user's first open
+        // a plain re-raise with no app switch.
+        pet_panel_macos::prewarm_extension_tool_panel(app);
         spawn_nspanel_reapply_thread(app.clone());
     } else {
         let app2 = app.clone();
@@ -384,27 +394,17 @@ async fn make_window_invisible(app: &tauri::AppHandle, label: &str) {
 #[cfg(not(target_os = "macos"))]
 async fn make_window_invisible(_app: &tauri::AppHandle, _label: &str) {}
 
-/// Close a fullscreen window the way native macOS apps do: the window content
-/// is made invisible immediately (setAlphaValue:0, scheduled on the main
-/// thread), then the fullscreen Space is dismissed via `exit_fullscreen_and_wait`
-/// (mandatory — destroying a fullscreen window under macOSPrivateApi leaves a
-/// black Space behind), then the window is destroyed. The user sees the window
-/// vanish on click with no shrink-back-to-windowed transition and no black
-/// screen.
-async fn close_fullscreen_window_directly(app: tauri::AppHandle, label: &str) {
-    let Some(w) = app.get_webview_window(label) else {
-        return; // window gone, nothing to do
-    };
-    make_window_invisible(&app, label).await;
-    exit_fullscreen_and_wait(&w).await;
-    let _ = w.destroy();
-}
-
-/// Same as `close_fullscreen_window_directly` but hides the window instead of
-/// destroying it (pet-mode main-window close-to-hide). Opacity is restored to
-/// 1.0 AFTER the hide so the next show of the window is never transparent;
-/// only the fullscreen restore is left to `MainWindowFullscreenRestore` (see
-/// the app-level on_window_event Focused handler).
+/// Hide a fullscreen window the way native macOS apps close one: the window
+/// content is made invisible immediately (setAlphaValue:0, scheduled on the
+/// main thread), then the fullscreen Space is dismissed via
+/// `exit_fullscreen_and_wait` (mandatory — a fullscreen window under
+/// macOSPrivateApi leaves a black Space behind otherwise), then the window
+/// is HIDDEN (never destroyed — used by pet-mode main-window close-to-hide
+/// AND extension tool windows; destroying class-swapped windows is the
+/// uncatchable close crash). Opacity is restored to 1.0 AFTER the hide so
+/// the next show of the window is never transparent; only the fullscreen
+/// restore is left to `MainWindowFullscreenRestore` (see the app-level
+/// on_window_event Focused handler).
 async fn hide_fullscreen_window_directly(app: tauri::AppHandle, label: &str) {
     let Some(w) = app.get_webview_window(label) else {
         return; // window gone, nothing to do
@@ -863,30 +863,49 @@ pub fn run() {
                     if let Some(tool_key) = commands::tool_key_from_label(label) {
                         state.set_mode(tool_key, mode);
                     }
+                    // PET-PANEL LIFECYCLE: never destroy extension tool
+                    // windows while the app runs — macOS class-swaps them
+                    // into NSPanels (pet_panel_macos::
+                    // convert_tool_window_to_panel) and destroying a
+                    // class-swapped window on the user-close path throws an
+                    // Obj-C exception Rust cannot catch (2026-09-18 crash:
+                    // "fatal runtime error: Rust cannot catch foreign
+                    // exceptions"). Hide instead, exactly like the pet
+                    // panels (`pet_panel_hide`); reopen re-surfaces the same
+                    // singleton window.
+                    api.prevent_close();
                     if fullscreen {
-                        api.prevent_close();
                         let app2 = app.clone();
                         let label2 = label.to_string();
-                        // Native fullscreen (Space) — direct close: make the
-                        // window invisible, dismiss the Space + wait for the
-                        // transition, then destroy — no visible
-                        // shrink-back-to-windowed transition, no black Space.
+                        // Native fullscreen (Space) — make invisible, dismiss
+                        // the Space + wait for the transition, then HIDE (the
+                        // close-to-hide twin of the old destroy dance —
+                        // `hide_fullscreen_window_directly`, same as pet-mode
+                        // main-window close).
                         tauri::async_runtime::spawn(async move {
-                            close_fullscreen_window_directly(app2, &label2).await;
+                            hide_fullscreen_window_directly(app2, &label2).await;
                         });
                     } else if simple_fullscreen {
                         // Simple fullscreen (⌘⇧F, no separate Space): restore
                         // the app-global dock/menu-bar presentation options +
                         // the windowed frame with the window already
-                        // invisible, then let the default close destroy it.
+                        // invisible, then hide it.
                         #[cfg(target_os = "macos")]
                         if let Some(w) = app.get_webview_window(label) {
                             set_window_alpha(&w, 0.0);
                         }
                         let _ = window.set_simple_fullscreen(false);
                         state.mark_simple_fullscreen(label, false);
+                        let _ = window.hide();
+                        // Restore opacity while hidden so the next show is
+                        // never transparent.
+                        #[cfg(target_os = "macos")]
+                        if let Some(w) = app.get_webview_window(label) {
+                            set_window_alpha(&w, 1.0);
+                        }
+                    } else {
+                        let _ = window.hide();
                     }
-                    // else: default close proceeds.
                 }
             }
         }
@@ -905,6 +924,12 @@ pub fn run() {
         .manage({
             startup_log("[builder] manage ExtensionToolWindowState");
             commands::ExtensionToolWindowState::new()
+        })
+        .manage({
+            startup_log("[builder] manage PreviousFrontmostApp");
+            commands::PreviousFrontmostApp(std::sync::Mutex::new(
+                None,
+            ))
         })
         .manage({
             startup_log("[builder] manage MainWindowFullscreenRestore");
@@ -1057,6 +1082,9 @@ pub fn run() {
             commands::read_clipboard_files,
             commands::create_webview,
             commands::open_extension_tool_window,
+            commands::hide_extension_tool_window,
+            commands::get_last_extension_tool,
+            commands::debug_toolwin_log,
             commands::navigate_webview,
             commands::close_webview,
             commands::set_webview_position,

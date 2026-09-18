@@ -2,6 +2,17 @@ use tauri::{Emitter, Manager};
 
 use crate::errors::AppError;
 
+// [DEBUG-toolwin] probe wrapper — the real log fn lives in the macOS-only
+// `pet_panel_macos` module; non-macOS builds get a no-op so probe call
+// sites need no cfg noise. TEMPORARY instrumentation for the "extension
+// popup only opens above Folyn" bug; remove by grepping `DEBUG-toolwin`.
+#[cfg(target_os = "macos")]
+fn dbg_toolwin_log(msg: &str) {
+    crate::pet_panel_macos::dbg_toolwin_log(msg)
+}
+#[cfg(not(target_os = "macos"))]
+fn dbg_toolwin_log(_msg: &str) {}
+
 /// Create an embedded webview in the main window from Rust side.
 /// Uses initialization_script to inject JS on every page load (handles target="_blank" links).
 #[tauri::command]
@@ -259,6 +270,11 @@ pub enum ToolFullscreenMode {
 pub struct ExtensionToolWindowState {
     fullscreen_pref: std::sync::Mutex<std::collections::HashMap<String, ToolFullscreenMode>>,
     simple_labels: std::sync::Mutex<std::collections::HashSet<String>>,
+    /// The payload of the last `extension-tool://open` emit — so the
+    /// `#/extension-tool` host route can fetch it on mount (covers the
+    /// race where the webview's event listener is not yet attached when
+    /// the open fires right after app launch).
+    pub last_open: std::sync::Mutex<Option<serde_json::Value>>,
 }
 
 impl ExtensionToolWindowState {
@@ -266,11 +282,18 @@ impl ExtensionToolWindowState {
         Self {
             fullscreen_pref: std::sync::Mutex::new(std::collections::HashMap::new()),
             simple_labels: std::sync::Mutex::new(std::collections::HashSet::new()),
+            last_open: std::sync::Mutex::new(None),
         }
     }
 
     /// The mode this tool's last instance was closed in (or should reopen
     /// in), if any.
+    ///
+    /// NOTE: the panel-architecture rewrite (static `extension-tool-panel`)
+    /// no longer restores fullscreen on reopen — the panel is a floating
+    /// popup, not a fullscreen app. The write side (`set_mode`) is kept
+    /// because lib.rs's CloseRequested bookkeeping still records it.
+    #[allow(dead_code)]
     pub fn mode(&self, tool_key: &str) -> Option<ToolFullscreenMode> {
         self.fullscreen_pref
             .lock()
@@ -329,14 +352,25 @@ pub fn tool_key_from_label(label: &str) -> Option<&str> {
     Some(base)
 }
 
-/// Open a extension tool window (multi-instance). Rust-side creation so the
-/// fullscreen close handling and the per-tool fullscreen memory stay
-/// together: `ExtensionToolWindowState` (managed in lib.rs) remembers the mode
-/// the last instance of this tool was closed in, and we restore that on
-/// reopen. Native fullscreen drops the pinned level first (macOS rejects
-/// native fullscreen on always-on-top windows); simple fullscreen keeps it.
-/// Fullscreen-aware close lives in the app-level `on_window_event` handler
-/// in lib.rs.
+/// Open an extension tool window — the pet-panel machinery ("桌宠弹窗同款"):
+/// the `extension-tool-panel` window is statically declared in
+/// tauri.conf.json and converted to an NSPanel at startup
+/// (`pet_panel_macos::convert_windows`), which is the one proven-safe
+/// conversion moment — and the reason it floats over every app/Space like
+/// the pet popup (probed 2026-09-18: dynamically created windows stayed
+/// pinned to Folyn's Space no matter the behavior bits or class swaps, and
+/// every runtime-conversion attempt crashed; the statically-declared pet
+/// panels have floated correctly since forever). This command:
+///   1. emits `extension-tool://open` {extensionId, toolId, entry, title} —
+///      the window's `#/extension-tool` host route (ExtensionToolApp) swaps
+///      its sandboxed `folyn-extension://` iframe to the tool's entry. RPC
+///      flows through the MAIN window's `extension-rpc-request` listener
+///      (Tauri events are global) — unchanged bridge;
+///   2. surfaces the window WITHOUT activating Folyn (macOS: the panel is
+///      already `nonactivating`, so `orderFrontRegardless` suffices; other
+///      platforms: `show()` + `set_focus()`).
+/// The window is never destroyed: close → `hide_extension_tool_window`,
+/// reopen → this command. Returns the window label (constant).
 #[tauri::command]
 pub async fn open_extension_tool_window(
     app: tauri::AppHandle,
@@ -345,46 +379,110 @@ pub async fn open_extension_tool_window(
     entry: String,
     title: String,
 ) -> Result<String, String> {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    use tauri::WebviewWindowBuilder;
-    static COUNTER: AtomicU64 = AtomicU64::new(1);
-    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let label = format!("extension-tool-{}-{}-{}", extension_id, tool_id, n);
-    let tool_key = format!("extension-tool-{}-{}", extension_id, tool_id);
-    let url_str = format!("folyn-extension://localhost/{}/{}", extension_id, entry);
-    let parsed_url = url_str
-        .parse::<tauri::Url>()
-        .map_err(|e| format!("invalid extension URL '{}': {}", url_str, e))?;
-    let win = WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::External(parsed_url))
-        .title(title)
-        .inner_size(800.0, 600.0)
-        .center()
-        .focused(true)
-        .always_on_top(true)
-        .resizable(true)
-        .build()
-        .map_err(|e| format!("failed to build extension tool window: {}", e))?;
-    let state = app.state::<ExtensionToolWindowState>();
-    match state.mode(&tool_key) {
-        Some(ToolFullscreenMode::Native) => {
-            // Reopen in native fullscreen (closed while in a macOS fullscreen
-            // Space, entered via the standard Window menu "Enter Full Screen"
-            // ⌃⌘F): drop the pinned level first — macOS rejects native
-            // fullscreen on always-on-top windows — then enter fullscreen.
-            let _ = win.set_always_on_top(false);
-            let _ = win.set_fullscreen(true);
-        }
-        Some(ToolFullscreenMode::Simple) => {
-            // Reopen in simple fullscreen (⌘⇧F "扩展弹窗全屏", pre-Lion style,
-            // no separate Space): simple fullscreen accepts always-on-top
-            // windows, so the pinned level stays.
-            let _ = win.set_simple_fullscreen(true);
-            state.mark_simple_fullscreen(&label, true);
-        }
-        None => {}
+    let label = "extension-tool-panel".to_string();
+    dbg_toolwin_log(&format!(
+        "open: ext={} tool={} title={}",
+        extension_id, tool_id, title
+    ));
+    // 1. Tell the host route which tool to load — via webview `eval`
+    //    (a DOM CustomEvent), NOT the Tauri event system: `listen()` in the
+    //    extension-tool webview never resolved (probe-verified 2026-09-18:
+    //    `listener attached` never logged while `invoke` in the same window
+    //    worked), so Tauri-event delivery is unreliable here. `eval` is the
+    //    same primitive `navigate_webview` uses — plain webview JS, no
+    //    event-system dependency. Payload goes on `window.__extensionToolOpen`
+    //    so a webview that mounts AFTER this eval still reads it on mount.
+    let payload = serde_json::json!({
+        "extensionId": extension_id,
+        "toolId": tool_id,
+        "entry": entry,
+        "title": title,
+    });
+    if let Some(w) = app.get_webview_window("extension-tool-panel") {
+        let js = format!(
+            "window.__extensionToolOpen = {}; window.dispatchEvent(new CustomEvent('extension-tool-open'));",
+            payload
+        );
+        let eval_result = w.eval(js.as_str());
+        dbg_toolwin_log(&format!(
+            "eval dispatch: ok={} len={}",
+            eval_result.is_ok(),
+            js.len()
+        ));
     }
-    let _ = win.set_focus();
+    // Cache for the host route's mount-time fetch (see
+    // `get_last_extension_tool`).
+    if let Some(state) = app.try_state::<ExtensionToolWindowState>() {
+        *state.last_open.lock().unwrap() = Some(payload);
+    }
+    // 2. Surface without app activation. The panel conversion at startup
+    //    already set level/behavior; re-asserting `orderFrontRegardless`
+    //    here is idempotent and covers the hidden→shown transition (the
+    //    one ordering call that never activates a nonactivating panel).
+    #[cfg(target_os = "macos")]
+    {
+        let app2 = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            if let Some(w) = app2.get_webview_window("extension-tool-panel") {
+                let _ = crate::pet_panel_macos::surface_extension_tool_panel(&w);
+            }
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some(w) = app.get_webview_window("extension-tool-panel") {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+    }
     Ok(label)
+}
+
+/// Hide (not destroy) an extension tool window — the pet-panel lifecycle.
+/// Destroying a class-swapped NSPanel on the user-close path is the
+/// uncatchable Obj-C exception crash; hiding is what the pet panels have
+/// done forever. Reopening re-surfaces the same window (singleton path in
+/// `open_extension_tool_window`). Called by the frontend's
+/// `toolWindowStore.close` / `closeAllForExtension`.
+#[tauri::command]
+pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    let Some(w) = app.get_webview_window(&label) else {
+        return Ok(()); // already gone — nothing to hide
+    };
+    let fullscreen = w.is_fullscreen().unwrap_or(false);
+    dbg_toolwin_log(&format!("hide: label={} fullscreen_was={}", label, fullscreen));
+    if fullscreen {
+        // Reuse the pet-mode close-to-hide dance (invisible → dismiss the
+        // fullscreen Space + wait → hide) — hiding a native-fullscreen
+        // window mid-animation would leave a black Space behind.
+        crate::hide_fullscreen_window_directly(app, &label).await;
+        return Ok(());
+    }
+    let _ = w.hide();
+    Ok(())
+}
+
+/// The payload of the last `extension-tool://open` (null if never opened).
+/// The `#/extension-tool` host route fetches this on mount so a tool opened
+/// right after app launch (before the webview's event listener attached)
+/// still shows. See `open_extension_tool_window`.
+#[tauri::command]
+pub async fn get_last_extension_tool(
+    app: tauri::AppHandle,
+) -> Result<Option<serde_json::Value>, String> {
+    Ok(app
+        .try_state::<ExtensionToolWindowState>()
+        .and_then(|s| s.last_open.lock().ok().and_then(|g| g.clone())))
+}
+
+/// Frontend probe bridge — lets the `#/extension-tool` host route report its
+/// state into the same `/tmp/folyn-toolwin-debug.log` (webview consoles are
+/// not visible for secondary windows). TEMPORARY, tagged `DEBUG-toolwin`.
+#[tauri::command]
+pub async fn debug_toolwin_log(app: tauri::AppHandle, msg: String) -> Result<(), String> {
+    dbg_toolwin_log(&format!("[fe] {}", msg));
+    let _ = app;
+    Ok(())
 }
 
 /// Reposition an embedded webview.

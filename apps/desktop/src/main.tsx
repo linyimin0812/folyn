@@ -64,6 +64,7 @@ import { PetPanelApp } from './components/pet/PetPanelApp';
 import { PetBubbleApp } from './components/pet/PetBubbleApp';
 import { PetCornerApp } from './components/pet/PetCornerApp';
 import { PetMenuApp } from './components/pet/PetMenuApp';
+import { ExtensionToolApp } from './components/pet/ExtensionToolApp';
 import { VoiceOrbApp } from './components/ai/VoiceOrbApp';
 import './index.css';
 import './components/pet/pet.css';
@@ -97,7 +98,8 @@ const petLoc =
   typeof window !== 'undefined'
     ? (window.location.hash || window.location.href || '')
     : '';
-const isPetPanelWindow = petLoc.indexOf('#/pet-panel') !== -1;
+const isExtensionToolWindow = petLoc.indexOf('#/extension-tool') !== -1;
+const isPetPanelWindow = !isExtensionToolWindow && petLoc.indexOf('#/pet-panel') !== -1;
 const isPetBubbleWindow = !isPetPanelWindow && petLoc.indexOf('#/pet-bubble') !== -1;
 const isPetCornerWindow = !isPetPanelWindow && !isPetBubbleWindow && petLoc.indexOf('#/pet-corner') !== -1;
 const isPetMenuWindow =
@@ -125,6 +127,9 @@ if (isPetWindow) {
   // eslint-disable-next-line no-console
   console.log('[pet] is-pet-window class applied');
 }
+if (isExtensionToolWindow) {
+  document.documentElement.classList.add('is-extension-tool-window');
+}
 if (isPetPanelWindow) {
   document.documentElement.classList.add('is-pet-panel-window');
 }
@@ -143,7 +148,9 @@ if (isVoiceOrbWindow) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {isPetWindow ? (
+    {isExtensionToolWindow ? (
+      <ExtensionToolApp />
+    ) : isPetWindow ? (
       <PetApp />
     ) : isPetPanelWindow ? (
       <PetPanelApp />
