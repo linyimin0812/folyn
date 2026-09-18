@@ -1,0 +1,40 @@
+{
+  "name": "folyn-extension-dev-skill",
+  "version": "0.1.0",
+  "description": "Code-Agent skill for developing Folyn extensions end to end: scaffold with create-folyn-extension, build contribution points against folyn-extension-sdk, and publish to the Folyn extension store (GitHub Releases + catalog.json).",
+  "type": "module",
+  "bin": {
+    "folyn-extension-dev-skill": "index.js"
+  },
+  "files": [
+    "index.js",
+    "SKILL.md",
+    "references"
+  ],
+  "scripts": {
+    "typecheck": "node --check index.js"
+  },
+  "license": "MIT",
+  "author": "linyimin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linyimin0812/folyn.git",
+    "directory": "packages/extension-dev-skill"
+  },
+  "homepage": "https://github.com/linyimin0812/folyn/tree/master/packages/extension-dev-skill",
+  "bugs": {
+    "url": "https://github.com/linyimin0812/folyn/issues"
+  },
+  "keywords": [
+    "folyn",
+    "extension",
+    "skill",
+    "agent",
+    "create-folyn-extension",
+    "scaffold",
+    "publish"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
