@@ -18,7 +18,7 @@ import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/ren
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { rehypeBlankGap } from './rehypeBlankGap';
 import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
-import { blockAlignPoint, blockLastSrcLine, gapAlignPoint } from './blockAlignPoint';
+import { blockAlignPoint, blockLastSrcLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
 import { registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -819,28 +819,20 @@ function VaultImageInner(props: {
  * Find the next visible [data-source-line] block after `current` in DOM order,
  * for cursor-sync gap alignment + highlight. Mirrors the selection filter
  * (skip display:none and 0-height data-container wrappers) so the gap
- * aligns to a block the user actually sees. Returns its top offset from the
- * scroll container's content top and the element, or null if there is none
- * (cursor on trailing EOF blanks). `current` itself is excluded.
+ * aligns to a block the user actually sees. Returns the element, or null
+ * if there is none (cursor on trailing EOF blanks). `current` itself is
+ * excluded. Returns the ELEMENT only — its offset must be measured by the
+ * caller AFTER the cursor-sync highlight swap (the swap changes layout:
+ * an active code block re-caps, shifting everything below).
  */
-function findNextBlock(
-  root: HTMLElement,
-  current: HTMLElement,
-  transformOffset = 0,
-): { offset: number; el: HTMLElement } | null {
+function findNextBlockEl(root: HTMLElement, current: HTMLElement): HTMLElement | null {
   const blocks = Array.from(root.querySelectorAll('[data-source-line]')) as HTMLElement[];
   const startIdx = blocks.indexOf(current);
   for (let i = startIdx + 1; i < blocks.length; i++) {
     const el = blocks[i];
     if (getComputedStyle(el).display === 'none') continue;
     if (el.hasAttribute('data-container') && el.offsetHeight === 0) continue;
-    const scrollContainer = root.parentElement;
-    if (!scrollContainer) return null;
-    const cr = scrollContainer.getBoundingClientRect();
-    const br = el.getBoundingClientRect();
-    // Cancel the .md-preview transform so offset is the UN-transformed
-    // content offset (mirrors blockOffset's cancellation in the effect).
-    return { offset: br.top - cr.top + scrollContainer.scrollTop - transformOffset, el };
+    return el;
   }
   return null;
 }
@@ -854,6 +846,11 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // the store directly so no new prop threads through PreviewProps.
   const editorLineHeight = useEditorViewStateStore((s) => s.editorLineHeight);
   const cursorLineFrac = useEditorViewStateStore((s) => s.cursorLineFrac);
+  // ponytail: the cursor's MEASURED Y below its paragraph's first line
+  // (wrap-exact — includes earlier lines' soft-wrap rows); the multi-line
+  // align-point step. Read from the store directly like cursorLineFrac, no
+  // prop threading.
+  const cursorBlockOffsetY = useEditorViewStateStore((s) => s.cursorBlockOffsetY);
 
   // ponytail: cursor-driven preview scroll (split mode only). When the
   // editor cursor moves, scroll the preview so the point in the matched
@@ -940,16 +937,6 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const containerWrap = (target as HTMLElement).closest('[data-hides-inactive][data-source-line]');
     if (containerWrap) target = containerWrap;
     const el = target as HTMLElement;
-
-    // Align the preview block to the cursor's screen position.
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const blockRect = el.getBoundingClientRect();
-    // Cancel the transform we applied last run so blockOffset is the
-    // UN-transformed content offset (the transform on .md-preview shifts
-    // blockRect.top by exactly syncOffsetRef.current).
-    const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current;
-    const blockHeight = blockRect.height;
-    const blockBottom = blockOffset + blockHeight;
     const blockSrcLine = Number(el.getAttribute('data-source-line'));
     const srcLines = contentRef.current.split('\n');
 
@@ -971,7 +958,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       ? codeBlockCloseLine(srcLines, blockSrcLine) // closing fence: cursor on/after it is the gap
       : blockLastSrcLine(srcLines, blockSrcLine);
     const inGap = cursorLine > lastSrcLine;
-    const nextBlock = inGap ? findNextBlock(root, el, syncOffsetRef.current) : null;
+    const nextBlockEl = inGap ? findNextBlockEl(root, el) : null;
 
     // The highlight target: when in a gap with a next block, highlight the
     // NEXT block (the content the cursor is about to enter / the separator
@@ -985,11 +972,22 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // 上方"). For short content the preview also can't scroll the block down
     // to the cursor (desired clamps to 0), so the highlight-above drift was
     // unavoidable with a block highlight — clearing it is the honest fix.
-    // NOTE: `nextBlock` is non-null ONLY when inGap (findNextBlock runs in
-    // the gap branch); when not in a gap (cursor inside a block) it is null,
-    // so the fallback must be the current block `el` — not null — or the
-    // normal in-block highlight gets cleared too.
-    const highlightEl = inGap ? (nextBlock ? nextBlock.el : null) : el;
+    // NOTE: `nextBlockEl` is non-null ONLY when inGap (findNextBlockEl runs
+    // in the gap branch); when not in a gap (cursor inside a block) it is
+    // null, so the fallback must be the current block `el` — not null — or
+    // the normal in-block highlight gets cleared too.
+    const highlightEl = inGap ? (nextBlockEl ?? null) : el;
+    // ponytail: swap the highlight BEFORE measuring any rect. The swap
+    // changes layout: the ACTIVE code block is uncapped (CSS
+    // .code-block-wrapper:has(.cursor-sync-active) → max-height:none), so
+    // when the cursor LEAVES it the block re-caps and everything below
+    // shifts up by hundreds of px — a rect measured before the swap is
+    // stale by exactly that amount, and the scroll overshot, landing the
+    // new block ABOVE the cursor (the reported 从代码块移到段落预览偏上).
+    // (And entering a code block uncaps it — the block's own rect must be
+    // the post-swap full height too.) Measuring after the swap reads the
+    // final layout; the paragraph highlight itself is layout-neutral
+    // (background only).
     const blockChanged = activeBlockRef.current !== highlightEl;
     if (blockChanged) {
       activeBlockRef.current?.classList.remove('cursor-sync-active');
@@ -997,13 +995,67 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       highlightEl?.classList.add('cursor-sync-active');
     }
 
+    // Align the preview block to the cursor's screen position (measured in
+    // the post-swap layout).
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const blockRect = el.getBoundingClientRect();
+    // Cancel the transform we applied last run so blockOffset is the
+    // UN-transformed content offset (the transform on .md-preview shifts
+    // blockRect.top by exactly syncOffsetRef.current).
+    const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current;
+    const blockHeight = blockRect.height;
+    const blockBottom = blockOffset + blockHeight;
+    // The next block's top, also post-swap (mirrors blockOffset's transform
+    // cancellation).
+    const nextBlockOffset = nextBlockEl
+      ? nextBlockEl.getBoundingClientRect().top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current
+      : null;
+
+    // Where the cursor line top sits on screen (editor frame). Computed
+    // before the align point: blockAlignPoint's multi-line path clamps its
+    // per-line step at the cursor's depth into the (shared-height) viewport.
+    const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
     let alignPoint: number;
     if (inGap) {
-      alignPoint = gapAlignPoint(blockBottom, nextBlock ? nextBlock.offset : null);
+      alignPoint = gapAlignPoint(blockBottom, nextBlockOffset);
     } else if (isCodeBlock) {
       const codeEl = el.querySelector('code');
       const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
       alignPoint = codeBlockAlignPoint(srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, padTop);
+    } else if (el.tagName === 'TABLE') {
+      // Tables render one <tr> per source line, but the |---| separator
+      // line renders as the thead/tbody border (~0 height) and cell
+      // padding makes rows taller than editor lines. Neither the
+      // editor-line step (pins the table top → rows drift below the
+      // cursor, growing per row: the reported "表格预览偏下") nor a
+      // height fraction (mis-maps the separator) fits — map the cursor's
+      // source line to its MEASURED row top in the live DOM instead:
+      // header line → thead row 0; separator → thead bottom (the border
+      // it renders as); body line K → tbody row K-3's top. A row index
+      // past the rendered rows (content directly after the table with no
+      // blank line, counted into the span by blockLastSrcLine) falls back
+      // to the table bottom.
+      const table = el as HTMLTableElement;
+      const anchor = tableRowAnchor(cursorLine - blockSrcLine);
+      let anchorEl: Element | null = null;
+      let useBottom = false;
+      if (anchor.kind === 'thead-row') {
+        anchorEl = table.tHead?.rows[0] ?? null;
+      } else if (anchor.kind === 'thead-bottom') {
+        anchorEl = table.tHead;
+        useBottom = true;
+      } else {
+        const tbody = table.tBodies[0];
+        anchorEl = tbody ? (tbody.rows[anchor.index] ?? null) : null;
+      }
+      if (anchorEl) {
+        const ar = anchorEl.getBoundingClientRect();
+        alignPoint =
+          ar.top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current +
+          (useBottom ? ar.height : 0);
+      } else {
+        alignPoint = anchor.kind === 'tbody-row' ? blockBottom : blockOffset;
+      }
     } else if (el.hasAttribute('data-hides-inactive')) {
       // A show-one-at-a-time container (carousel/tabs): it renders only ONE
       // child's content, so its rendered height doesn't scale with its full
@@ -1018,15 +1070,18 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       // so the highlight box is symmetric around the cursor instead of
       // top-aligned with the box hanging below); list items top-align to
       // the cursor line (one line each, independent — the whole <ul> is
-      // no longer treated as one block); multi-line blocks use a
-      // source-line fraction; a single source line that renders tall
-      // (image, etc.) falls back to a cursor-column fraction.
+      // no longer treated as one block); multi-line blocks step by the
+      // cursor's MEASURED offset below its paragraph's first line
+      // (cursorBlockOffsetY — wrap-exact) so the block top stays pinned
+      // to the editor paragraph top (no pane drift as the cursor walks
+      // the lines); a single source line that renders tall tracks the
+      // cursor's soft-wrap fraction.
       alignPoint = blockAlignPoint(
-        el.tagName, srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight, cursorLineFrac,
+        el.tagName, srcLines, blockSrcLine, blockOffset, blockHeight, cursorLineFrac,
+        cursorScreenY - containerRect.top, cursorBlockOffsetY,
       );
     }
 
-    // cursorScreenY = where the cursor line top is on screen.
     // After setting scrollTop=desired, the align point appears at
     // screen y = containerRect.top + (alignPoint - desired).
     // For headings (cursor on the heading line, not in a gap below it), align
@@ -1036,7 +1091,6 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // offsets to the line center. The gap path aligns the NEXT block's TOP
     // to the cursor line top (not center), so it must not apply the heading
     // center offset. Other blocks align to the line top.
-    const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
     const headingCenter = !inGap && /^H[1-6]$/.test(el.tagName);
     const targetY = headingCenter ? cursorScreenY + (editorLineHeight ?? 0) / 2 : cursorScreenY;
     // Raw align target: the content offset that should land at the cursor's
@@ -1061,7 +1115,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         scrollContainer.scrollTop = desiredRaw;
       }
     }
-  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, content]);
+  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, content]);
 
   // Clean up the active-block marker on unmount.
   useEffect(() => {

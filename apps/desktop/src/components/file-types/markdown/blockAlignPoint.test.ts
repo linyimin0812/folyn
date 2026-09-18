@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { blockAlignPoint, blockLastSrcLine, gapAlignPoint } from './blockAlignPoint';
+import { blockAlignPoint, blockLastSrcLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
 
 // srcLines are 0-indexed; blockSrcLine is 1-indexed (data-source-line).
-// Signature: (tagName, srcLines, blockSrcLine, cursorLine, blockOffset, blockHeight).
+// Signature: (tagName, srcLines, blockSrcLine, blockOffset, blockHeight,
+// lineFrac, cursorViewportDepth, cursorBlockOffsetY).
+// cursorBlockOffsetY = the cursor's MEASURED Y below its paragraph's first
+// line in the editor (EditorView publishes it — includes earlier lines'
+// soft-wrap rows). cursorViewportDepth = the cursor's depth into the shared
+// preview viewport. Both default to 0 (→ top-align).
 function src(lines: string[]): string[] {
   return lines;
 }
@@ -12,51 +17,62 @@ describe('blockAlignPoint', () => {
     it('centers an h1 on the cursor line', () => {
       // line 1 = "# Heading" (single source line). blockOffset=200, tall block.
       const lines = src(['# Heading', '', 'body text']);
-      const ap = blockAlignPoint('H1', lines, 1, 1, 200, 60);
+      const ap = blockAlignPoint('H1', lines, 1, 200, 60);
       expect(ap).toBe(200 + 60 / 2); // block center
     });
 
     it('centers every heading level on the cursor line', () => {
       const lines = src(['## Sub', '', 'x']);
       for (const tag of ['H1', 'H2', 'H3', 'H4', 'H5', 'H6']) {
-        const ap = blockAlignPoint(tag, lines, 1, 1, 100, 40);
+        const ap = blockAlignPoint(tag, lines, 1, 100, 40);
         expect(ap).toBe(100 + 40 / 2);
       }
     });
   });
 
   describe('multi-line blocks', () => {
-    // 3-row paragraph (N=3); blockHeight=90 ⇒ each rendered row is 30px.
-    // Row K (1-indexed from block start) top = (K-1)/N * blockHeight.
     const lines = src(['line one', 'line two', 'line three', '']);
 
-    it('maps the first source line to the block top (row top, no offset)', () => {
-      const ap = blockAlignPoint('P', lines, 1, 1, 0, 90);
-      expect(ap).toBeCloseTo(0, 5); // (0)/3*90 = 0
+    it('aligns the block top when the cursor is on the first line (offset 0)', () => {
+      expect(blockAlignPoint('P', lines, 1, 0, 90, 0, 500, 0)).toBe(0);
     });
 
-    it('maps the second source line to the second row top (not the block middle)', () => {
-      // The old (blockLineSpan-1) denominator mapped line 2 to 1/2 of the
-      // block (45) — half a row below its true top — the per-line drift.
-      const ap = blockAlignPoint('P', lines, 1, 2, 0, 90);
-      expect(ap).toBeCloseTo(30, 5); // (1)/3*90 = 30 = row 2 top
+    it('steps by the measured offset (one editor line down → 30px)', () => {
+      expect(blockAlignPoint('P', lines, 1, 0, 90, 0, 500, 30)).toBe(30);
     });
 
-    it('maps the last source line to its row top, not the block bottom', () => {
-      // The old denominator mapped line 3 to the block BOTTOM (90) — one
-      // row + margins below where it should be. The fix lands it on row 3
-      // top (2/3 of the block).
-      const ap = blockAlignPoint('P', lines, 1, 3, 0, 90);
-      expect(ap).toBeCloseTo(60, 5); // (2)/3*90 = 60 = row 3 top
+    it('uses the wrap-aware measured offset, not (K-1)·lineHeight', () => {
+      // The reported bug: 3 source lines; lines 1-2 each soft-wrap into 2
+      // visual rows in the editor; the cursor on line 3's first visual row
+      // sits 4 rows (120px) below the paragraph top. The (K-1)·lineHeight
+      // estimate said 60 — the missing 60px drifted the preview block top
+      // BELOW the editor paragraph top, one line per wrap, worst on the
+      // last line. The measured offset pins the tops exactly.
+      const wrapped = src(['l1 l1', 'l2 l2', 'line three', '']);
+      expect(blockAlignPoint('P', wrapped, 1, 0, 90, 0, 500, 120)).toBe(120);
     });
 
-    it('does not drift downward as the cursor moves down the rows', () => {
-      // Each row top should advance by exactly one row height (30px); the
-      // old code accelerated (0, 45, 90) because it mapped to the whole
-      // block height instead of N row tops.
-      const tops = [1, 2, 3].map((l) => blockAlignPoint('P', lines, 1, l, 0, 90));
-      expect(tops[1] - tops[0]).toBeCloseTo(30, 5);
-      expect(tops[2] - tops[1]).toBeCloseTo(30, 5);
+    it('runs the align point past a short joined block on purpose (tops pinned)', () => {
+      // 5 source lines join into ONE preview row (H=20) while the editor
+      // shows 5 lines (26px each): the measured offset (26 / 104px) is
+      // where the cursor's line sits in the editor's frame — the scroll
+      // target need not stay inside the block; the block TOP stays pinned
+      // to the editor paragraph top (no pane drift as the cursor descends).
+      const joined = src(['一', '二', '三', '四', '五', '']);
+      expect(blockAlignPoint('P', joined, 1, 100, 20, 0, 500, 26)).toBe(126);
+      expect(blockAlignPoint('P', joined, 1, 100, 20, 0, 500, 104)).toBe(204);
+    });
+
+    it('clamps the step at the cursor viewport depth so the pinned top stays visible', () => {
+      // Paragraph top scrolled above the viewport: the cursor sits 40px
+      // into the viewport, the measured offset is 104 → clamped to 40, so
+      // the block glues to the viewport top instead of disappearing above.
+      const joined = src(['一', '二', '三', '四', '五', '']);
+      expect(blockAlignPoint('P', joined, 1, 100, 20, 0, 40, 104)).toBe(140);
+    });
+
+    it('top-aligns when the offset is unknown (0)', () => {
+      expect(blockAlignPoint('P', lines, 1, 0, 90)).toBe(0);
     });
   });
 
@@ -65,7 +81,7 @@ describe('blockAlignPoint', () => {
       // Unwrapped line: the cursor stays on the only visual line, so
       // lineFrac is ~0 → top-align to the cursor line.
       const lines = src(['a short para', '']);
-      const ap = blockAlignPoint('P', lines, 1, 1, 0, 20);
+      const ap = blockAlignPoint('P', lines, 1, 0, 20);
       expect(ap).toBe(0);
     });
 
@@ -75,7 +91,7 @@ describe('blockAlignPoint', () => {
       // point is fixed — no vertical preview sweep on the same line.
       const lines = src(['a short para', '']);
       const points = [0, 3, 6, 9, 12].map(() =>
-        blockAlignPoint('P', lines, 1, 1, 0, 20), // lineFrac defaults to 0
+        blockAlignPoint('P', lines, 1, 0, 20), // lineFrac defaults to 0
       );
       expect(new Set(points).size).toBe(1);
       expect(points[0]).toBe(0);
@@ -88,9 +104,9 @@ describe('blockAlignPoint', () => {
       // wraps. lineFrac interpolates the align point down the preview
       // block so it follows the cursor.
       const lines = src(['a long paragraph that soft wraps', '']);
-      const top = blockAlignPoint('P', lines, 1, 1, 100, 60, 0); // 1st visual line
-      const mid = blockAlignPoint('P', lines, 1, 1, 100, 60, 0.5); // middle wrap
-      const bot = blockAlignPoint('P', lines, 1, 1, 100, 60, 1); // last visual line
+      const top = blockAlignPoint('P', lines, 1, 100, 60, 0); // 1st visual line
+      const mid = blockAlignPoint('P', lines, 1, 100, 60, 0.5); // middle wrap
+      const bot = blockAlignPoint('P', lines, 1, 100, 60, 1); // last visual line
       expect(top).toBe(100); // block top
       expect(mid).toBeCloseTo(100 + 30, 5); // halfway down
       expect(bot).toBeCloseTo(100 + 60, 5); // block bottom
@@ -98,26 +114,22 @@ describe('blockAlignPoint', () => {
   });
 
   it('treats a block with no trailing blank line as spanning to EOF', () => {
-    // No blank line terminates the paragraph → span runs to the last line.
-    // 2-row block, H=60 ⇒ row top = 30. Cursor on line 2 (row 2 top), not
-    // the block bottom.
+    // No blank line terminates the paragraph → span runs to the last line
+    // (multi-line path). The measured offset steps 30px.
     const lines = src(['line one', 'line two']);
-    const ap = blockAlignPoint('P', lines, 1, 2, 0, 60);
+    const ap = blockAlignPoint('P', lines, 1, 0, 60, 0, 500, 30);
     expect(ap).toBeCloseTo(30, 5);
   });
 
   describe('list items (li)', () => {
     it('top-aligns each item to the cursor line (no whole-list span)', () => {
       // Tight list: no blank lines between items. The blockLineSpan loop
-      // would count all 3 items (span=3) if li used the fraction path,
+      // would count all 3 items (span=3) if li used the multi-line path,
       // re-merging the list. li must top-align regardless.
       const lines = src(['- a', '- b', '- c', '']);
-      // cursor on item a (line 1) → its own top; never the list fraction.
-      const a = blockAlignPoint('LI', lines, 1, 1, 100, 24);
-      // cursor on item b (line 2) → li b top.
-      const b = blockAlignPoint('LI', lines, 2, 2, 200, 24);
-      // cursor on item c (line 3) → li c top.
-      const c = blockAlignPoint('LI', lines, 3, 3, 300, 24);
+      const a = blockAlignPoint('LI', lines, 1, 100, 24);
+      const b = blockAlignPoint('LI', lines, 2, 200, 24);
+      const c = blockAlignPoint('LI', lines, 3, 300, 24);
       expect(a).toBe(100);
       expect(b).toBe(200);
       expect(c).toBe(300);
@@ -148,6 +160,27 @@ describe('blockLastSrcLine', () => {
   it('clamps a start inside blanks to at least one line', () => {
     // blockSrcLine points at a blank line itself → span floors at 1.
     expect(blockLastSrcLine(['', ''], 1)).toBe(1);
+  });
+});
+
+describe('tableRowAnchor', () => {
+  it('maps the header line to the thead row', () => {
+    expect(tableRowAnchor(0)).toEqual({ kind: 'thead-row' });
+  });
+
+  it('maps the |---| separator line to the thead bottom (the border it renders as)', () => {
+    expect(tableRowAnchor(1)).toEqual({ kind: 'thead-bottom' });
+  });
+
+  it('maps body lines to their tbody row index', () => {
+    // line 3 (first body row) → index 0; each further line steps one row.
+    expect(tableRowAnchor(2)).toEqual({ kind: 'tbody-row', index: 0 });
+    expect(tableRowAnchor(3)).toEqual({ kind: 'tbody-row', index: 1 });
+    expect(tableRowAnchor(7)).toEqual({ kind: 'tbody-row', index: 5 });
+  });
+
+  it('clamps non-positive deltas to the header row', () => {
+    expect(tableRowAnchor(-1)).toEqual({ kind: 'thead-row' });
   });
 });
 

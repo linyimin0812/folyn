@@ -22,8 +22,21 @@
  *   the whole list into one span. Top-aligning each item keeps them
  *   independent — one item highlights/aligns per cursor line, not the
  *   whole <ul>.
- * - Multi-line blocks: fraction by source-line offset within the block's
- *   blank-line-terminated span.
+ * - Multi-line blocks: step by the cursor's MEASURED Y offset below the
+ *   paragraph's first line in the editor (cursorBlockOffsetY, published by
+ *   EditorView), clamped at the cursor's viewport depth. The measurement
+ *   includes the soft-wrap rows of every earlier line — line arithmetic
+ *   cannot: the (K-1)·lineHeight estimate missed those wraps, so the
+ *   accumulated excess landed the block top progressively BELOW the editor
+ *   paragraph top (one line per wrap, worst on the last line — the reported
+ *   首行完美 / 非首行整体往下偏移), and before that, height fractions
+ *   mis-mapped joined paragraphs (the preview joins and re-wraps source
+ *   lines, so per-source-line rendered height ≠ editor line height). The
+ *   measured offset pins the block TOP to the editor paragraph top, so the
+ *   preview pane does not move while the cursor walks the block's lines.
+ *   The align point may run past a short (joined) block's bottom on
+ *   purpose — it is where the cursor's line sits in the editor's frame,
+ *   and the scroll target need not stay inside the block.
  * - Single source line: top-align to the cursor line. The cursor's
  *   horizontal column has no bearing on vertical alignment, so the old
  *   cursor-column fraction (which swept the preview top→bottom as the cursor
@@ -34,7 +47,6 @@
  *
  * @param srcLines     full document split by '\n' (0-indexed)
  * @param blockSrcLine 1-indexed source line of the block (data-source-line)
- * @param cursorLine   1-indexed editor cursor line
  * @param blockOffset  px offset of the block's top from the scroll container's content top
  * @param blockHeight   px height of the rendered block
  * @param lineFrac     vertical fraction (0..1) of the cursor within its soft-wrapped
@@ -43,6 +55,16 @@
  *   this, top-aligning a single-line block left the preview stuck at the block
  *   top while the cursor drifted down (the reported soft-wrap drift). ~0 when
  *   the line isn't wrapped.
+ * @param cursorViewportDepth  px depth of the cursor line top into the shared
+ *   preview viewport (cursorScreenY - containerRect.top). Clamps the
+ *   multi-line step so the pinned block top never rises above the viewport:
+ *   when the paragraph is scrolled off the top in the editor, the block glues
+ *   to the viewport top instead of disappearing. 0 → top-align.
+ * @param cursorBlockOffsetY   px of the cursor's visual line top below the
+ *   first line of its containing markdown BLOCK (paragraph, fenced code,
+ *   list item paragraph, …), measured in the editor (EditorView publishes
+ *   it; includes earlier lines' soft-wrap rows). 0 (unknown / first line) →
+ *   top-align.
  */
 const HEADING_RE = /^H[1-6]$/;
 
@@ -79,14 +101,41 @@ export function gapAlignPoint(prevBlockBottom: number, nextBlockOffset: number |
   return nextBlockOffset != null ? nextBlockOffset : prevBlockBottom;
 }
 
+/**
+ * Which part of a rendered GFM table the cursor's source line maps to.
+ * Tables render one <tr> per source line, but the |---| separator line
+ * renders as the thead/tbody border (~0 height) and cell padding makes
+ * rows taller than editor lines — so neither the editor-line step (which
+ * pins the table top and lets rows drift below the cursor, growing per
+ * row: the reported "表格预览偏下") nor a height fraction (which mis-maps
+ * the separator) aligns rows to the cursor. The effect resolves the anchor
+ * against the live DOM (thead row 0 / thead bottom / tbody row index) and
+ * measures its offset; a tbody index past the rendered rows falls back to
+ * the table bottom.
+ *
+ * @param delta  cursorLine - blockSrcLine (0-based offset within the table's
+ *   source lines: 0 = header, 1 = separator, 2+ = body rows)
+ */
+export type TableRowAnchor =
+  | { kind: 'thead-row' }
+  | { kind: 'thead-bottom' }
+  | { kind: 'tbody-row'; index: number };
+
+export function tableRowAnchor(delta: number): TableRowAnchor {
+  if (delta <= 0) return { kind: 'thead-row' };
+  if (delta === 1) return { kind: 'thead-bottom' };
+  return { kind: 'tbody-row', index: delta - 2 };
+}
+
 export function blockAlignPoint(
   tagName: string,
   srcLines: string[],
   blockSrcLine: number,
-  cursorLine: number,
   blockOffset: number,
   blockHeight: number,
   lineFrac: number = 0,
+  cursorViewportDepth: number = 0,
+  cursorBlockOffsetY: number = 0,
 ): number {
   if (HEADING_RE.test(tagName)) return blockOffset + blockHeight / 2;
   // ponytail: list items top-align (one line each) and must NOT use the
@@ -97,18 +146,17 @@ export function blockAlignPoint(
   const blockLineSpan = blockLastSrcLine(srcLines, blockSrcLine) - blockSrcLine + 1;
 
   if (blockLineSpan > 1) {
-    // Map the cursor's source line to its RENDERED ROW TOP inside the
-    // block, not a [0,1] sweep across the whole block height. The old
-    // `(cursorLine - blockSrcLine) / (blockLineSpan - 1)` mapped the first
-    // line to the block top (0 → perfect, so line 1 aligned) but the last
-    // line to the block BOTTOM (1 → one row + margins below where it
-    // should be), and every line in between was pushed down proportionally
-    // — the reported "first line perfect, other lines drift downward".
-    // A block with N source rows renders N rows; row K (1-indexed from the
-    // block start) has its top at (K-1)/N of the (marginless) blockHeight,
-    // so the denominator is N (blockLineSpan), not N-1.
-    const rowFrac = (cursorLine - blockSrcLine) / blockLineSpan;
-    return blockOffset + Math.min(1, Math.max(0, rowFrac)) * blockHeight;
+    // Step by the cursor's MEASURED Y offset below the paragraph's first
+    // line in the editor (cursorBlockOffsetY) — see the header comment.
+    // It includes every earlier line's soft-wrap rows, which the
+    // (K-1)·lineHeight estimate missed (that excess drifted the block top
+    // below the editor paragraph top, one line per wrap, worst on the
+    // last line). Pins the block TOP to the editor paragraph top; the
+    // align point may run past a short (joined) block's bottom on purpose.
+    // Clamped at the cursor's viewport depth so a paragraph scrolled off
+    // the editor's top keeps its block glued to the preview viewport top
+    // instead of disappearing above it.
+    return blockOffset + Math.min(Math.max(0, cursorBlockOffsetY), Math.max(0, cursorViewportDepth));
   }
   // Single source line: map the cursor's position within the soft-wrapped
   // block onto the preview block height. A long single-line paragraph

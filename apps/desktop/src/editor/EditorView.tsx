@@ -22,6 +22,7 @@ import {
   indentUnit,
   LanguageDescription,
   LanguageSupport,
+  syntaxTree,
 } from '@codemirror/language';
 import { folynHighlighting } from './highlightStyle';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -35,6 +36,17 @@ registerBuiltinCodeContributions();
 
 // ponytail: build markdown codeLanguages at module load. Reads the editorLanguageRegistry
 // (mermaid builtin + any extension-registered languages loaded before this module) and falls
+// ponytail: lezer-markdown block node names — the blocks remark stamps with
+// data-source-line. The deepest one containing the cursor is the anchor the
+// preview's cursor-sync targets; nodes outside the set walk up, Document →
+// no anchor (blank line / non-markdown) → offset 0.
+const MD_BLOCK_NODES = new Set([
+  'Paragraph', 'ATXHeading1', 'ATXHeading2', 'ATXHeading3', 'ATXHeading4',
+  'ATXHeading5', 'ATXHeading6', 'SetextHeading1', 'SetextHeading2',
+  'FencedCode', 'CodeBlock', 'BulletList', 'OrderedList', 'ListItem',
+  'Blockquote', 'HTMLBlock', 'HorizontalRule', 'Table', 'LinkReference',
+]);
+
 // back to @codemirror/language-data. Open editors do NOT live-migrate on later extension load —
 // MVP; affects newly-opened editors only.
 function buildCodeLanguages(): LanguageDescription[] {
@@ -399,7 +411,46 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
                       lineFrac = Math.min(1, Math.max(0, (coords.top - startCoords.top) / span));
                     }
                   }
-                  setCursorViewportY(coords.top - r.top, r.top, pos - line.from, coords.bottom - coords.top, lineFrac);
+                  // ponytail: the cursor's measured Y offset below the top
+                  // of the FIRST line of its containing markdown BLOCK (the
+                  // same block the preview's cursor-sync targets). Measured,
+                  // so it includes the soft-wrap rows of every earlier line
+                  // (line arithmetic missed those and drifted the preview
+                  // down one line per wrap). Anchored via the syntax tree's
+                  // block node, NOT a blank-line run scan: a paragraph
+                  // directly after a code fence / list / blockquote (no
+                  // blank line) shares a run with the taller block above,
+                  // and the run scan misattributed that whole block's
+                  // editor height to the paragraph's offset — the preview
+                  // pinned the paragraph far ABOVE the cursor (the reported
+                  // 从代码块移到段落预览偏上). Resolve TWICE: a pos at a
+                  // block EDGE falls between nodes — side -1 anchors the
+                  // block ENDING there (cursor at a line END, e.g. the
+                  // paragraph's last line — the common typing position;
+                  // +1 alone resolved Document there → offset 0 → the
+                  // block dropped to the cursor: the reported 非首行
+                  // 整体往下偏移，行尾对不齐、行中又对齐), and falls back
+                  // to +1 when -1 lands on Document (pos at a block's
+                  // FIRST char, e.g. after Home). Mid-line pos resolves
+                  // inside the block with either side.
+                  let blockOffsetY = 0;
+                  // any: SyntaxNode isn't exported by this @codemirror/language version;
+                  // the loop's null guard keeps the walk safe.
+                  let blockNode: any = syntaxTree(v.state).resolveInner(pos, -1);
+                  if (blockNode && blockNode.name === 'Document') {
+                    blockNode = syntaxTree(v.state).resolveInner(pos, 1);
+                  }
+                  while (blockNode && blockNode.name !== 'Document' && !MD_BLOCK_NODES.has(blockNode.name)) {
+                    blockNode = blockNode.parent;
+                  }
+                  if (blockNode && blockNode.name !== 'Document') {
+                    const blockLine = v.state.doc.lineAt(blockNode.from);
+                    if (blockLine.number < line.number) {
+                      const blockTop = v.coordsAtPos(blockLine.from);
+                      if (blockTop) blockOffsetY = Math.max(0, coords.top - blockTop.top);
+                    }
+                  }
+                  setCursorViewportY(coords.top - r.top, r.top, pos - line.from, coords.bottom - coords.top, lineFrac, blockOffsetY);
                 }
               }
             }

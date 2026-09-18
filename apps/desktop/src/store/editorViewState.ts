@@ -49,6 +49,14 @@ interface EditorViewState {
    *  cursor down a wrapped single-line paragraph. ≈0 when the line isn't
    *  wrapped (cursor stays on the only visual line). */
   cursorLineFrac: number;
+  /** Cursor's measured Y (px) below the top of the first line of its
+   *  containing markdown BLOCK (syntax-tree anchored — the same block the
+   *  preview's cursor-sync targets; NOT a blank-line run, which
+   *  mis-anchors paragraphs directly after code fences/lists/blockquotes).
+   *  Includes the soft-wrap rows of every earlier line — the exact
+   *  editor-side anchor for pinning the preview's block tops. 0 = on the
+   *  block's first line, blank cursor line, or unknown. */
+  cursorBlockOffsetY: number;
   /** True when the editor has an active (non-empty) text selection.
    *  Previews skip cursor-sync while the user is selecting. */
   hasSelection: boolean;
@@ -86,7 +94,7 @@ interface EditorViewState {
    *  switches + disk persistence). Throttled at the call site. */
   setPreviewScrollTop: (top: number) => void;
   setWordCount: (count: number) => void;
-  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number) => void;
+  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number, blockOffsetY: number) => void;
   setHasSelection: (v: boolean) => void;
   toggleOutline: () => void;
   toggleAiPanel: () => void;
@@ -120,6 +128,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   editorViewportTop: 0,
   editorLineHeight: 0,
   cursorLineFrac: 0,
+  cursorBlockOffsetY: 0,
   hasSelection: false,
   outlineVisible: false,
   aiPanelVisible: false,
@@ -190,7 +199,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   },
 
   setWordCount: (count) => set({ wordCount: count }),
-  setCursorViewportY: (y, viewportTop, cursorCol, lineHeight, lineFrac) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, editorLineHeight: lineHeight, cursorLineFrac: lineFrac }),
+  setCursorViewportY: (y, viewportTop, cursorCol, lineHeight, lineFrac, blockOffsetY) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, editorLineHeight: lineHeight, cursorLineFrac: lineFrac, cursorBlockOffsetY: blockOffsetY }),
   setHasSelection: (v) => set({ hasSelection: v }),
 
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),
