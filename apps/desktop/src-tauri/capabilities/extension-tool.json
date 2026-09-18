@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
   "identifier": "extension-tool",
-  "description": "Capabilities for the extension-tool popup (pet-panel machinery: floats over every app/Space). Needs window drag/maximize/hide (pet-panel-style titlebar with pin/fullscreen/close buttons), focus events for the unpinned blur-auto-hide, and the extension-tool lifecycle commands. The built-in translation popup renders React content instead of an iframe: it opens external links via the opener plugin (same grant pet-panel carries). Translation prefs persist through the pet://settings-updated broadcast → main-window hydrateAllStores → quit-time persistNow() flush (secondary windows have no fs grant; the main window is the single disk writer) — NO fs permissions needed.",
+  "description": "Capabilities for the extension-tool popup (pet-panel machinery: floats over every app/Space). Needs window drag/maximize/hide (pet-panel-style titlebar with pin/fullscreen/close buttons), focus events for the unpinned blur-auto-hide, the extension-tool lifecycle commands, and the opener plugin for external links in the built-in translation popup. The built-in translation popup persists its prefs (~/.folyn/storage/translation.json) DIRECTLY via a narrowly-scoped fs grant ($HOME/.folyn/storage only — exists/mkdir/write-text-file, no read); cross-realm sync still flows through pet://settings-updated broadcasts and the main window's quit-time flush remains the safety net (v3: the broadcast-only path lost the popup's writes on any non-graceful exit — dev reload / Ctrl-C / crash).",
   "windows": ["extension-tool-panel"],
   "permissions": [
     "core:default",
@@ -14,6 +14,16 @@
     "core:window:allow-is-maximized",
     "core:event:allow-emit",
     "core:event:allow-listen",
-    "opener:default"
+    "opener:default",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME/.folyn/storage" },
+        { "path": "$HOME/.folyn/storage/**" }
+      ]
+    }
   ]
 }

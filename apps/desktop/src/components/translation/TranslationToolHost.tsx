@@ -25,12 +25,18 @@
  *    `hydrateAllStores` + `markSettingsHydrated`, plus a `pet://settings-request`
  *    emit on mount (the main window's usePetHostBridge answers with the current
  *    blob). The translationStore slice (source/target/input/result/prefs)
- *    hydrates from it. This popup's own setters call persist() → the
- *    storageClient fs flush is ACL-denied in this realm (secondary windows
- *    carry no fs scope; the main window with `fs:scope "**"` is the single
- *    disk writer) — durable persistence flows through the debounced
- *    `pet://settings-updated` broadcast → main-window hydrateAllStores →
- *    quit-time persistNow() flush, exactly like the pet-panel realm;
+ *    hydrates from it. This popup's own setters persist DIRECTLY: persist() →
+ *    storageClient.set → debounced writeTextFile to
+ *    ~/.folyn/storage/translation.json, permitted by the narrowly-scoped fs
+ *    grant in capabilities/extension-tool.json ($HOME/.folyn/storage only;
+ *    exists/mkdir/write-text-file — no read). The same persist also fires the
+ *    `pet://settings-updated` broadcast, which keeps the OTHER realms' stores
+ *    (main window + pet windows) in sync, so the main window's quit-time
+ *    persistNow() flush and any concurrent main-window edits stay coherent.
+ *    (v3: the previous broadcast-only design relied on the main window's
+ *    quit-flush as the sole disk writer — which loses this popup's config on
+ *    any non-graceful exit: dev reload / Ctrl-C / crash — the reported
+ *    “translation prefs reset on restart” bug);
  *  - locale sync — `locale://changed` → `i18n.changeLanguage` +
  *    `useLocaleStore.setState` on this realm's own instances.
  */
@@ -165,13 +171,23 @@ export function TranslationToolHost() {
             if (!event.payload) return;
             hydrateAllStores(event.payload);
             // Flip the persist gate so this popup's own setters (a language
-            // switch, a new input) run persist() + broadcast — without it
-            // their writes are skipped and the prefs are lost on restart.
-            // Safe to call repeatedly — idempotent. The direct fs flush
-            // from this realm is ACL-denied (secondary windows carry no fs
-            // scope; the main window is the single disk writer), so the
-            // broadcast → main-window hydrate → quit-time flush is what
-            // actually makes these prefs durable — same path as pet-panel.
+            // switch, a new input) run persist() — without it their writes
+            // are skipped and the prefs are lost on restart. Safe to call
+            // repeatedly — idempotent. Those setters persist DIRECTLY:
+            // persist() → storageClient.set → debounced writeTextFile to
+            // ~/.folyn/storage/translation.json, permitted by the
+            // narrowly-scoped fs grant in capabilities/extension-tool.json
+            // ($HOME/.folyn/storage only; exists/mkdir/write-text-file —
+            // no read), so the write lands on disk within ~300ms and
+            // survives dev reload / Ctrl-C / crash (the quit-flush-only path
+            // lost the popup's config on any non-graceful exit — the reported
+            // restart-reset bug). The same persist also broadcasts
+            // `pet://settings-updated`, keeping the OTHER realms (main window
+            // + pet windows) in sync; the main window's quit-time
+            // persistNow() flush stays as the safety net, and hydrating
+            // here (NOT via loadSettings — re-reading the files directly
+            // would race the main window's writes) keeps concurrent
+            // main-window edits coherent.
             markSettingsHydrated();
           },
         );

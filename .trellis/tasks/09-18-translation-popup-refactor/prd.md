@@ -78,9 +78,16 @@
   `<TranslationToolHost />`（内嵌 TranslationPanel + realm 镜像接线）而非 iframe。
 * R4: `petHostRouter` `open-extension-tool` 分支对 `builtin:translation` 直接 invoke
   `open_extension_tool_window`（builtin payload），不再查找 `extension.openTool.*` 命令。
-* R5: `extension-tool.json` capability 增加 `opener:default`（外部链接）；不加 fs
-  权限——次级窗口的直写本就被 scope 拒绝，持久化走 `pet://settings-updated` 广播 +
-  主窗口退出 flush（与 pet-panel 一致）。
+* R5: `extension-tool.json` capability 授予真实作用域的 fs 权限：
+  `fs:scope { allow: [$HOME/.folyn/storage, $HOME/.folyn/storage/**] }` +
+  `fs:allow-exists` / `fs:allow-mkdir` / `fs:allow-write-text-file`（弹窗直写
+  translation.json 落盘，崩溃/dev 重启不丢）；同时保留 `opener:default`。
+  （v3，2026-09-19：v2 曾因 “appdata scope 不覆盖 ~/.folyn/storage、直写无效”
+  而去掉 fs 改走广播+退出 flush；但退出 flush 只在优雅退出时触发，
+  用户实测 dev 重启后弹窗翻译配置全部重置 —— translation.json mtime 停留在
+  09-18 17:25，而同目录 aiConfig/appearance 00:12 正常写入，证明弹窗写入
+  从未落盘。修复 = 真实路径的最小 scope 直写，广播继续负责跨 realm 同步，
+  退出 flush 保留为兜底。）
 * R6: 移除 `onActivateBuiltin` prop 及 pet-panel 侧特殊分支（无其他内置面板使用）。
 * R7: 移除 `pet:tabs.translation` i18n key（所有 locale）；新增
   `pet:search.translationMain` / `pet:search.translationPopup`。
@@ -94,7 +101,8 @@
 * [x] 桌宠弹窗搜索"翻译"出现两条结果：弹窗翻译在前、主应用翻译在后（弹窗在前，
   用户新增要求 2026-09-19）。（PetPanelApp.test.tsx：exactly-two-rows 用例）
 * [x] 选"主应用翻译"：主窗口激活并切到翻译页。（emit run-command panel.translation → commandRegistry 既有命令；focusMain 既有路径）
-* [ ] 选"弹窗翻译"：浮动弹窗出现（不切换前台应用），内含完整 TranslationPanel，
+* [ ] 弹窗内修改的翻译配置（语言/模型/预览等）在应用重启（含 dev 热重载/Ctrl-C 硬重启）后保留：修改后 ≤ ~1s `~/.folyn/storage/translation.json` 更新，重启后弹窗/主窗口均为新值。（v3 fs 直写修复；需真实 Tauri 环境验收）
+* [ ] 选“弹窗翻译”：浮动弹窗出现（不切换前台应用），内含完整 TranslationPanel，
   可翻译（模型选择可用）、语言/输入/结果状态持久化。（实现完成；需真实 Tauri 环境手动验收）
 * [x] 弹窗支持拖拽、置顶 Pin、放大/还原、Esc 关闭、点击外部自动隐藏（未 Pin 时）。（零代码改动，复用 ExtensionToolApp 既有机制）
 * [x] 弹窗内翻译为左右双栏（与主应用翻译页一致：输入左、译文右，中间 border-r 分隔）。（TranslationPanel 两栏容器改为无条件 flex-row + border-r；embedded 保留但仅驱动紧凑 chrome）

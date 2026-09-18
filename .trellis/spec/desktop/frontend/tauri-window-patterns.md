@@ -306,21 +306,29 @@ empirically proven to float over every app/Space:
   auto-capitalize, external-link interceptor) instead of the iframe. Same
   payload channel (`window.__extensionToolOpen` eval +
   `get_last_extension_tool` fallback), same titlebar chrome/behaviors.
-  `capabilities/extension-tool.json` therefore carries ONLY
-  `opener:default` (the interceptor's `openUrl` — default
-  `linkOpenMode: 'external'`) — NO fs grant: secondary windows never had
-  working direct writes anyway (`fs:scope-appdata-recursive` resolves to
-  `$APPDATA/**`, which does NOT cover ~/.folyn/storage — the storageClient
-  flush is ACL-denied and swallowed by its try/catch; the main window,
-  with `fs:scope "**"`, is the single disk writer). Translation prefs
-  persist via the same path every secondary realm uses: setter →
-  `markSettingsHydrated()`-gated persist() → debounced
-  `pet://settings-updated` broadcast → main-window `hydrateAllStores` →
-  quit-time `persistNow()` flush — identical to pet-panel (whose
-  translation tab worked exactly this way). The iframe tools need no fs
-  grant either (their RPC goes through the MAIN window's listener).
-  Translation itself invokes the custom `chat_stream` command (custom
-  commands bypass the ACL).
+  `capabilities/extension-tool.json` therefore carries `opener:default`
+  (the interceptor's `openUrl` — default `linkOpenMode: 'external'`) PLUS
+  a NARROW fs scope for the builtin branch (v3, 2026-09-19):
+  `fs:scope { allow: [$HOME/.folyn/storage, $HOME/.folyn/storage/**] }` +
+  `fs:allow-exists` / `fs:allow-mkdir` / `fs:allow-write-text-file` — the
+  minimum storageClient's write path needs (glob `dir/**` does not match
+  `dir` itself, hence the bare directory entry; NO read perms — the realm
+  hydrates from the broadcast). With that grant the popup's
+  translation.json writes (`markSettingsHydrated()`-gated persist() →
+  debounced `storageClient.set` → `writeTextFile`) land on disk
+  immediately, so they survive crash / dev-restart. The previous v2
+  design (broadcast-only + quit-flush, adopted when
+  `fs:scope-appdata-recursive` was found to resolve to `$APPDATA/**`,
+  which does NOT cover ~/.folyn/storage) lost the popup's config on any
+  NON-graceful termination — quit-time `persistNow()` only runs on
+  graceful exit, so dev reload / Ctrl-C / crash reset the prefs (the
+  reported bug: translation.json mtime frozen while sibling files
+  updated). The main window (`fs:scope "**"`) remains the broad writer;
+  the `pet://settings-updated` broadcast (emitted on every persist)
+  keeps all realms coherent, and the quit-time flush stays as the safety
+  net. The iframe tools need no fs grant either (their RPC goes through
+  the MAIN window's listener). Translation itself invokes the custom
+  `chat_stream` command (custom commands bypass the ACL).
 - **open**: `open_extension_tool_window` emits `extension-tool://open`
   {extensionId, toolId, entry, title} to the window (iframe swap) and
   surfaces it via `pet_panel_macos::surface_extension_tool_panel` —
