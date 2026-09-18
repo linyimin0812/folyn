@@ -7,8 +7,8 @@
  * popup does). This route is the window's content:
  *
  *  - a pet-panel-style chrome: borderless window with a rounded body, a
- *    draggable title bar (pointerdown → `startDragging()`), and the
- *    pet-panel window controls (pin / maximize / close);
+ *    draggable title bar (pointerdown → `extension_tool_start_drag`), and
+ *    the pet-panel window controls (pin / maximize / close);
  *  - an `<iframe sandbox="allow-scripts">` loading the extension's tool
  *    entry from `folyn-extension://localhost/<ext>/<entry>` — the same
  *    origin-isolated scheme the dynamic tool windows used, so the
@@ -16,23 +16,37 @@
  *    `extension-rpc-request` event is global; the MAIN window's listener
  *    dispatches and responds — this window needs no RPC wiring).
  *
- * Title-bar semantics mirror PetPanelApp exactly (that's the point — the
- * user asked for "和桌宠弹窗一样"):
- *  - drag: header pointerdown → startDragging, buttons stop propagation;
+ * Title-bar semantics mirror PetPanelApp (the user asked for "和桌宠弹窗
+ * 一样"):
+ *  - drag: header pointerdown → extension_tool_start_drag (tao's
+ *    startDragging no-ops from async IPC context; the custom command
+ *    synthesizes a LeftMouseDown and enters the native drag loop);
  *  - pin (置顶): when NOT pinned, a `tauri://blur` (user clicks another
  *    app) hides the popup; pinned keeps it on screen (e.g. diff-viewer
  *    side-by-side use). macOS `surface_extension_tool_panel` makes the
- *    nonactivating panel key WITHOUT activating Folyn, so focus/blur events
- *    flow exactly like the pet panel's. Not persisted across reopens.
+ *    nonactivating panel key AND politely activates Folyn (no visible
+ *    jump in float mode), so focus/blur events flow like the pet panel's.
+ *    Not persisted across reopens.
  *  - maximize (放大): `toggleMaximize()` with the Square/Copy icon toggle;
  *  - close (×): `hide_extension_tool_window` — never destroyed, reopen
- *    re-surfaces the same window (pet-panel lifecycle).
+ *    re-surfaces the same window (pet-panel lifecycle);
+ *  - Esc: document keydown → hide. Keyboard reaches this webview only
+ *    while Folyn is the active app (macOS routing) — the surface's polite
+ *    activation covers the opened-from-panel path. If focus is inside the
+ *    sandboxed iframe the keystroke stays there; clicking the titlebar
+ *    re-arms it.
  *
  * The tool payload arrives via Rust `webview.eval` — a DOM CustomEvent with
- * the payload on `window.__extensionToolOpen` (NOT the Tauri event system:
- * `listen()` for APP events in this webview never resolved — see the probe
- * notes in open_extension_tool_window). Window-scoped events
- * (`tauri://blur`) DO work, so the blur listener below is fine.
+ * the payload on `window.__extensionToolOpen` (NOT the Tauri app-event
+ * system: `listen()` for app events in this webview never resolved).
+ * Window-scoped events (`tauri://blur`) DO work. A mount-time
+ * `get_last_extension_tool` fetch covers a webview reload that wiped the
+ * window global but not the Rust-side cache.
+ *
+ * Window transparency (pet-panel's own fix): `pet_make_transparent` on
+ * mount re-asserts NSWindow opaque=NO + backgroundColor=clearColor +
+ * WKWebView drawsBackground=NO — wry's create-time KVC on the
+ * WKWebviewConfiguration doesn't stick.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -53,8 +67,10 @@ const PANEL_LABEL = 'extension-tool-panel';
 export function ExtensionToolApp() {
   const [tool, setTool] = useState<ExtensionToolOpenPayload | null>(null);
   // Pin (置顶): when pinned, blur (clicking another app) does NOT hide the
-  // popup. Mirrors PetPanelApp's isPinned/isPinnedRef pair (ref read inside
-  // the blur listener — the closure must see fresh state without re-subscribing).
+  // popup. Unpinned by default — clicking another app dismisses it; the pin
+  // button keeps it up (e.g. diff-viewer side-by-side use). Mirrors
+  // PetPanelApp's isPinned/isPinnedRef pair (ref read inside the blur
+  // listener — the closure must see fresh state without re-subscribing).
   const [isPinned, setIsPinned] = useState(false);
   const isPinnedRef = useRef(false);
   // Drives the maximize button icon (Square = maximize, Copy = restore).
@@ -63,53 +79,14 @@ export function ExtensionToolApp() {
   useEffect(() => {
     if (!isTauri()) return undefined;
     let cancelled = false;
-    const probe = (msg: string) => {
-      void invoke('debug_toolwin_log', { msg }).catch(() => {});
-    };
-    // v4 marker: distinguishes THIS frontend from older bundles — a hidden
-    // WKWebView gets its web process suspended and MISSES vite HMR updates,
-    // so the window can silently run a stale bundle. If the log shows an
-    // older marker after a code change, restart dev fully.
-    probe(`mount: v4 loc=${window.location.hash}`);
-    // v4 diagnostics — dump the render/CSS state right after mount so the
-    // log answers, without user input: (a) is the pet.css class styling
-    // actually applied (titlebar height 36 vs collapsed)? (b) does the
-    // window receive ANY pointer event, and where do clicks land (element
-    // + coords)? (c) which element do the "header" clicks hit — if the
-    // target is inside the IFRAME the event never reaches us (sandboxed
-    // iframe = separate document), meaning the user is clicking the
-    // extension's OWN header UI, not our titlebar.
-    requestAnimationFrame(() => {
-      const tb = document.querySelector('.ext-tool-titlebar');
-      const fr = document.querySelector('.ext-tool-iframe');
-      const root = document.querySelector('.ext-tool-root');
-      probe(
-        `css: htmlCls=${document.documentElement.className} ` +
-          `rootBg=${root ? getComputedStyle(root).backgroundColor : 'none'} ` +
-          `tbH=${tb ? getComputedStyle(tb).height : 'none'} ` +
-          `frH=${fr ? getComputedStyle(fr).height : 'none'}`,
-      );
-    });
-    const anyPointer = (e: PointerEvent) => {
-      const t = e.target as HTMLElement | null;
-      probe(
-        `pointer: (${Math.round(e.clientX)},${Math.round(e.clientY)}) ` +
-          `target=${t ? t.tagName + (t.className ? '.' + String(t.className).split(' ')[0] : '') : 'null'} ` +
-          `button=${e.button}`,
-      );
-    };
-    window.addEventListener('pointerdown', anyPointer, true);
     // The tool payload arrives via Rust `webview.eval` — a DOM CustomEvent
-    // with the payload on `window.__extensionToolOpen` (NOT the Tauri event
-    // system: `listen()` in this webview never resolved — see the probe
-    // notes in open_extension_tool_window). Handle both orderings: the
-    // eval can land before this mount (read the global directly) or after
-    // (the CustomEvent).
+    // with the payload on `window.__extensionToolOpen`. Handle both
+    // orderings: the eval can land before this mount (read the global
+    // directly) or after (the CustomEvent).
     const handler = () => {
       const p = (window as unknown as Record<string, unknown>)[
         '__extensionToolOpen'
       ] as ExtensionToolOpenPayload | undefined;
-      probe(`dom event: ${JSON.stringify(p ?? null)}`);
       if (p) setTool(p);
     };
     window.addEventListener('extension-tool-open', handler);
@@ -118,7 +95,6 @@ export function ExtensionToolApp() {
       '__extensionToolOpen'
     ] as ExtensionToolOpenPayload | undefined;
     if (pre) {
-      probe(`pre-set global: ${pre.extensionId}/${pre.entry}`);
       setTool(pre);
     }
     // Mount-time fetch fallback (covers a webview reload that wiped the
@@ -128,50 +104,29 @@ export function ExtensionToolApp() {
         const last = await invoke<ExtensionToolOpenPayload | null>(
           'get_last_extension_tool',
         );
-        probe(`fetch last: ${JSON.stringify(last)}`);
         if (!cancelled && last) {
           setTool((prev) => prev ?? last);
         }
-      } catch (err) {
-        probe(`fetch last FAILED: ${String(err)}`);
+      } catch {
+        // Non-fatal: the eval/global paths normally carry the payload.
       }
     })();
-    // Window transparency (the pet-panel's own fix for THIS exact bug —
-    // gray square corners outside the rounded shell): wry's create-time
-    // `drawsBackground=NO` (private KVC on WKWebviewConfiguration) doesn't
-    // stick, so the pet-panel calls `pet_make_transparent` on mount, which
-    // re-applies NSWindow opaque=NO + backgroundColor=clearColor +
-    // WKWebView drawsBackground=NO via the cocoa/objc bridge (the
-    // proven-not-to-crash path — do NOT re-implement with objc2
-    // `stringWithUTF8String`; see crash #4 in tauri-window-patterns.md).
-    // Run AFTER the payload setup — order doesn't matter, but keep it in
-    // the same mount effect so a window reload re-applies it.
+    // Window transparency (the pet-panel's fix for the gray square corners).
     (async () => {
       try {
         await invoke('pet_make_transparent', { label: PANEL_LABEL });
-        probe('make_transparent: ok');
-      } catch (err) {
-        probe(`make_transparent FAILED: ${String(err)}`);
+      } catch {
+        // Non-fatal: the open path re-asserts it after every surface.
       }
     })();
     return () => {
       cancelled = true;
       window.removeEventListener('extension-tool-open', handler);
-      window.removeEventListener('pointerdown', anyPointer, true);
     };
   }, []);
 
-  useEffect(() => {
-    if (tool) {
-      void invoke('debug_toolwin_log', {
-        msg: `tool state set: ${tool.extensionId}/${tool.entry}`,
-      }).catch(() => {});
-    }
-  }, [tool]);
-
   const close = useCallback(async () => {
     if (!isTauri()) return;
-    void invoke('debug_toolwin_log', { msg: 'close: called' }).catch(() => {});
     await invoke('hide_extension_tool_window', { label: PANEL_LABEL }).catch(
       (err: unknown) => {
         console.warn('[extension-tool] hide failed:', err);
@@ -197,12 +152,10 @@ export function ExtensionToolApp() {
     }
   }, []);
 
-  // Unpinned blur-auto-hide: macOS `surface_extension_tool_panel` makes the
-  // nonactivating panel KEY (no app activation), so a user click on another
-  // app resigns key → tauri://blur → hide. Pinned: stay on screen. Windows:
-  // this window never becomes key there (focus:false, no set_focus path), so
-  // no blur fires and the listener is inert — acceptable, the window simply
-  // stays until closed.
+  // Unpinned blur-auto-hide: a user click on another app resigns key →
+  // tauri://blur → hide. Pinned: stay on screen. Windows: this window never
+  // becomes key there (focus:false, no set_focus path), so no blur fires
+  // and the listener is inert — the window stays until closed.
   useEffect(() => {
     if (!isTauri()) return undefined;
     let unBlur: (() => void) | undefined;
@@ -212,9 +165,6 @@ export function ExtensionToolApp() {
         const { listen } = await import('@tauri-apps/api/event');
         const target = { target: { kind: 'Window' as const, label: PANEL_LABEL } };
         const un = await listen('tauri://blur', () => {
-          void invoke('debug_toolwin_log', { msg: 'hide: via BLUR' }).catch(
-            () => {},
-          );
           if (!isPinnedRef.current) void close();
         }, target);
         if (disposed) un();
@@ -229,20 +179,10 @@ export function ExtensionToolApp() {
     };
   }, [close]);
 
-  // Esc dismisses the popup (pet-panel parity; works because the surface
-  // makes the nonactivating panel KEY and politely ACTIVATES Folyn (no
-  // visible jump in float mode) — keydown events land on this document.
-  // If focus is inside the sandboxed iframe, the keystroke stays in the
-  // iframe realm and this listener won't fire; clicking the titlebar or
-  // body re-arms it.
+  // Esc dismisses the popup (pet-panel parity; see the header comment for
+  // the keyboard-routing caveats).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // DEBUG-toolwin: any-key trace — proves whether keyboard events reach
-      // this webview at all (separates "keyboard routing dead" from
-      // "listener dead").
-      void invoke('debug_toolwin_log', {
-        msg: `key: ${e.key}`,
-      }).catch(() => {});
       if (e.key === 'Escape') {
         e.preventDefault();
         void close();
@@ -258,19 +198,11 @@ export function ExtensionToolApp() {
   // forwards `NSApp.currentEvent` to `performWindowDragWithEvent:`, and by
   // the time the async IPC lands the current event is no longer the
   // mouseDown — performWindowDrag then silently no-ops (returns Ok, window
-  // never moves; the "无法拖动" symptom). The custom command synthesizes a
-  // LeftMouseDown at the current mouseLocation (tao's own tablet-branch
-  // trick) and enters the native modal drag loop. PetPanelApp keeps
-  // startDragging() — its window empirically works there (different event
-  // timing); if it ever regresses, it can switch to the same command.
+  // never moves). The custom command synthesizes a LeftMouseDown at the
+  // current mouseLocation and enters the native modal drag loop.
   const headerPointerDown = useCallback(async (e: React.PointerEvent) => {
     if (e.button != null && e.button !== 0) return;
     if (!isTauri()) return;
-    // DEBUG-toolwin: drag diagnostics — did the invoke reach Rust and
-    // resolve, or was it rejected?
-    void invoke('debug_toolwin_log', {
-      msg: `drag: pointerdown (button=${e.button ?? 'null'})`,
-    }).catch(() => {});
     // Re-assert the open-hand cursor at press time: the synthesized
     // mouseDown + performWindowDrag modal loop can reset the OS cursor to
     // the arrow — set it AFTER the drag loop returns too (the loop blocks
@@ -281,13 +213,7 @@ export function ExtensionToolApp() {
     try {
       await invoke('extension_tool_start_drag');
       void invoke('pet_set_cursor', { kind: 'grab' }).catch(() => {});
-      void invoke('debug_toolwin_log', {
-        msg: 'drag: start_drag resolved OK',
-      }).catch(() => {});
     } catch (err) {
-      void invoke('debug_toolwin_log', {
-        msg: `drag: start_drag FAILED: ${String(err)}`,
-      }).catch(() => {});
       console.warn('[extension-tool] start_drag failed:', err);
     }
   }, []);
@@ -302,9 +228,7 @@ export function ExtensionToolApp() {
   // webview's hover→cursor update is unreliable until the window is key —
   // same root cause documented on `pet_set_cursor`). Belt-and-braces with
   // the CSS: on titlebar enter, set the OS cursor to the open hand via the
-  // existing `pet_set_cursor` command; on leave, back to the arrow. Buttons
-  // keep their own pointer affordance via CSS (the OS cursor overrides
-  // visually, accepted: grab-over-the-titlebar is the dominant affordance).
+  // existing `pet_set_cursor` command; on leave, back to the arrow.
   const titlebarEnter = useCallback(() => {
     void invoke('pet_set_cursor', { kind: 'grab' }).catch(() => {});
   }, []);
@@ -328,8 +252,7 @@ export function ExtensionToolApp() {
         role="banner"
       >
         {/* No title text (user request) — pet-panel titlebar layout:
-            controls only, right-aligned; the whole bar is the drag
-            handle. */}
+            controls only, right-aligned; the whole bar is the drag handle. */}
         <div
           className="ext-tool-controls"
           onPointerDown={suppressDrag}
@@ -375,10 +298,9 @@ export function ExtensionToolApp() {
             // The iframe's document (extension page, often with autofocus
             // or a focus() call of its own) steals the WKWebView's focused
             // DOCUMENT on load — keydown events then route into the iframe
-            // realm, and this window's Esc keydown listener never fires
-            // ("点 header 才能关": clicking the titlebar — an outer element —
-            // pulls focus back). Re-assert the OUTER document's focus right
-            // after the iframe settles so Esc works from the start.
+            // realm, and this window's Esc keydown listener never fires.
+            // Re-assert the OUTER document's focus right after the iframe
+            // settles so Esc works from the start.
             window.focus();
           }}
         />

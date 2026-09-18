@@ -251,11 +251,6 @@ fn apply_pet_backend_init(app: &tauri::AppHandle) {
         // front; doing it here, during launch, makes the user's first open
         // a plain re-raise with no app switch.
         pet_panel_macos::prewarm_extension_tool_panel(app);
-        // Global Escape watcher for the extension-tool popup (macOS routes
-        // keydown only to the ACTIVE app; the popup never activates Folyn
-        // by design, so Esc must be observed globally). Passive monitor,
-        // no accessibility permission required.
-        pet_panel_macos::install_extension_tool_esc_monitor(app);
         spawn_nspanel_reapply_thread(app.clone());
     } else {
         let app2 = app.clone();
@@ -1089,7 +1084,6 @@ pub fn run() {
             commands::open_extension_tool_window,
             commands::hide_extension_tool_window,
             commands::get_last_extension_tool,
-            commands::debug_toolwin_log,
             commands::extension_tool_start_drag,
             commands::navigate_webview,
             commands::close_webview,

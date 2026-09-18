@@ -115,26 +115,6 @@ pub fn backend_is_nspanel() -> bool {
     }
 }
 
-/// `[DEBUG-toolwin]` probe log — append-only file in /tmp so the runtime
-/// state is readable without the dev terminal. TEMPORARY instrumentation
-/// for the "extension popup only opens above Folyn" bug (called from
-/// `commands/webview_commands.rs` through a cfg'd wrapper); remove
-/// everything by grepping the `DEBUG-toolwin` tag.
-pub(crate) fn dbg_toolwin_log(msg: &str) {
-    use std::io::Write;
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
-    if let Ok(mut f) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("/tmp/folyn-toolwin-debug.log")
-    {
-        let _ = writeln!(f, "[DEBUG-toolwin {}] {}", ts, msg);
-    }
-}
-
 /// Raise a dynamically-created Tauri window to the global floating tier so
 /// it appears over the frontmost app (including fullscreen apps) without
 /// activating Folyn. Used by `open_extension_tool_window` for sandbox
@@ -179,9 +159,7 @@ pub(crate) fn dbg_toolwin_log(msg: &str) {
 ///     regression); `reapply_pet_topmost` never orders front either.
 ///
 /// Wrapped in `objc2::exception::catch` (worst case the level stays
-/// Floating, no abort). Logs the post-state readback to
-/// `/tmp/folyn-toolwin-debug.log` (temporary `[DEBUG-toolwin]` probes).
-/// Returns true when the level/behavior were applied.
+/// Floating, no abort). Returns true when the level/behavior were applied.
 pub fn convert_window_to_floating_panel(
     window: &tauri::WebviewWindow,
     order_front: bool,
@@ -191,20 +169,16 @@ pub fn convert_window_to_floating_panel(
     use tauri_nspanel::objc2::msg_send;
     use tauri_nspanel::objc2::runtime::AnyObject;
 
-    let log = |msg: &str| dbg_toolwin_log(msg);
-
     extern "C" {
         fn CGWindowLevelForKey(key: i32) -> i32;
     }
     const KCG_SCREENSAVER_WINDOW_LEVEL_KEY: i32 = 13;
 
     let Ok(ns_window) = window.ns_window() else {
-        log("raise: no ns_window handle");
         return false;
     };
     let ns = ns_window as *mut AnyObject;
     if ns.is_null() {
-        log("raise: null ns_window");
         return false;
     }
     let applied = catch(AssertUnwindSafe(|| unsafe {
@@ -222,20 +196,7 @@ pub fn convert_window_to_floating_panel(
             let _: () = msg_send![ns, orderFrontRegardless];
         }
     }));
-    let ok = applied.is_ok();
-    // Probe readback: level / behavior / space membership after the raise.
-    // `Bool` (objc2's BOOL wrapper, FFI-safe for msg_send!) → as_bool().
-    let level: isize = unsafe { msg_send![ns, level] };
-    let behavior: isize = unsafe { msg_send![ns, collectionBehavior] };
-    let on_active_space = unsafe {
-        let b: tauri_nspanel::objc2::runtime::Bool = msg_send![ns, isOnActiveSpace];
-        b.as_bool()
-    };
-    log(&format!(
-        "raise: applied={} level={} behavior={} onActiveSpace={}",
-        ok, level, behavior, on_active_space
-    ));
-    ok
+    applied.is_ok()
 }
 
 /// Prewarm the `extension-tool-panel` at startup: order it front ONCE with
@@ -267,138 +228,8 @@ pub fn prewarm_extension_tool_panel(app: &AppHandle) {
         let _: () = msg_send![ns, setIgnoresMouseEvents: true];
         let _: () = msg_send![ns, orderFrontRegardless];
     }));
-    dbg_toolwin_log("prewarm: ordered invisible (alpha 0 + ignoresMouse)");
 }
 
-/// Global Escape-key watcher for the extension-tool popup.
-///
-/// Why global: macOS routes keyboard events ONLY to the ACTIVE app's key
-/// window. The popup deliberately never activates Folyn (that was the
-/// "快捷键跳转到 folyn" bug — the pet panel accepts activation for its Esc
-/// support; we must not). So when the user works in another app, Esc
-/// physically cannot reach the popup's webview and the document keydown
-/// listener never fires ("取消置顶后没办法关闭"). NSEvent's global monitor
-/// (passive observation, NO accessibility permission needed) bridges this:
-/// on every keyDown, if it's Escape (keyCode 53) AND the popup is visible
-/// AND the mouse hovers the popup (screen coords, bottom-left origin —
-/// NSEvent.mouseLocation and NSWindow.frame share that space, direct
-/// CGRectContainsPoint), hide it. Mouse-hover gating keeps the user's Esc
-/// in OTHER apps' dialogs untouched. Installed once at setup; the monitor
-/// lives for the process lifetime (no removal needed, no leak).
-/// Pin state is ignored on purpose: Esc is an explicit dismiss, pin only
-/// guards the blur (outside-click) path.
-#[cfg(target_os = "macos")]
-pub fn install_extension_tool_esc_monitor(app: &AppHandle) {
-    use block2::RcBlock;
-    use objc2::msg_send;
-    use objc2::runtime::AnyObject;
-
-    // Local CGPoint/CGRect: objc2-foundation is only an indirect dep, and
-    // the struct ENCODING NAME must match the runtime's exactly ("CGPoint"/
-    // "CGRect" on the Tahoe SDK) or objc2's debug message-send verification
-    // panics (see crash #5 in tauri-window-patterns.md).
-    #[repr(C)]
-    #[allow(non_camel_case_types)]
-    struct CGPoint {
-        x: f64,
-        y: f64,
-    }
-    unsafe impl objc2::Encode for CGPoint {
-        const ENCODING: objc2::Encoding =
-            objc2::Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]);
-    }
-    // Frame's size is CGSize {w,h} — distinct struct, own encoding name.
-    #[repr(C)]
-    #[allow(non_camel_case_types)]
-    struct CGSize {
-        w: f64,
-        h: f64,
-    }
-    unsafe impl objc2::Encode for CGSize {
-        const ENCODING: objc2::Encoding =
-            objc2::Encoding::Struct("CGSize", &[f64::ENCODING, f64::ENCODING]);
-    }
-
-    let app2 = app.clone();
-    let block = RcBlock::new(move |event: *mut AnyObject| {
-        if event.is_null() {
-            return;
-        }
-        unsafe {
-            // NSEvent.keyCode == 53 is Escape.
-            let code: u16 = msg_send![event, keyCode];
-            if code != 53 {
-                return;
-            }
-            // DEBUG-toolwin: full-pipeline trace — which gate kills the Esc
-            // close (monitor dead vs visible=false vs mouse-outside)?
-            dbg_toolwin_log("esc: key 53 seen");
-            let Some(window) = app2.get_webview_window("extension-tool-panel") else {
-                dbg_toolwin_log("esc: window lookup FAILED");
-                return;
-            };
-            let vis = window.is_visible().unwrap_or(false);
-            if !vis {
-                dbg_toolwin_log("esc: window NOT visible");
-                return;
-            }
-            // Mouse must hover the window — NSEvent.mouseLocation and
-            // NSWindow.frame share the screen coordinate space (bottom-left
-            // origin), so a plain rect check works.
-            let mouse: CGPoint = msg_send![
-                objc2::class!(NSEvent),
-                mouseLocation
-            ];
-            let Ok(ns_window) = window.ns_window() else { return };
-            let ns = ns_window as *mut AnyObject;
-            if ns.is_null() {
-                return;
-            }
-            #[repr(C)]
-            #[allow(non_camel_case_types)]
-            struct NSRect {
-                origin: CGPoint,
-                size: CGSize,
-            }
-            unsafe impl objc2::Encode for NSRect {
-                const ENCODING: objc2::Encoding = objc2::Encoding::Struct(
-                    "NSRect",
-                    &[CGPoint::ENCODING, CGSize::ENCODING],
-                );
-            }
-            let frame: NSRect = msg_send![ns, frame];
-            let ox = frame.origin.x;
-            let oy = frame.origin.y;
-            let sw = frame.size.w;
-            let sh = frame.size.h;
-            let inside = mouse.x >= ox && mouse.x <= ox + sw && mouse.y >= oy && mouse.y <= oy + sh;
-            dbg_toolwin_log(&format!(
-                "esc: hide (mouse=({:.0},{:.0}) frame=({:.0},{:.0}+{:.0}x{:.0}) inside={})",
-                mouse.x, mouse.y, ox, oy, sw, sh, inside
-            ));
-            if !inside {
-                return;
-            }
-            let _ = window.hide();
-        }
-    });
-    unsafe {
-        // NSEventMaskKeyDown = 1 << 10 (NSUInteger). Passive global monitor:
-        // observation only (no interception), so NO accessibility permission
-        // is required. Monitor lives for the process lifetime.
-        // NOTE: addGlobalMonitorForEventsMatchingMask:handler: is a CLASS
-        // method on NSEvent (+[NSEvent addGlobalMonitor...]) — calling it on
-        // the NSApplication instance (tao's TaoApp subclass) was "method not
-        // found" (crash #6 in the ledger).
-        let mask: u64 = 1 << 10;
-        let _: *mut AnyObject = msg_send![
-            objc2::class!(NSEvent),
-            addGlobalMonitorForEventsMatchingMask: mask,
-            handler: &*block
-        ];
-    }
-    dbg_toolwin_log("esc: global monitor installed");
-}
 
 /// Surface the `extension-tool-panel` (the sandbox extension popup) without
 /// activating Folyn. Must run on the macOS main thread. The window was
@@ -488,9 +319,7 @@ pub fn surface_extension_tool_panel(window: &tauri::WebviewWindow) -> bool {
         let _: () = msg_send![ns_app, activateWithOptions: 0u64];
         true
     }));
-    let ok = applied.unwrap_or(false);
-    dbg_toolwin_log(&format!("surface: orderFrontRegardless applied={}", ok));
-    ok
+    applied.unwrap_or(false)
 }
 
 /// Convert the `pet`, `pet-panel`, `pet-bubble`, and `pet-corner` windows into

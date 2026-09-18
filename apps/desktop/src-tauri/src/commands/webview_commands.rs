@@ -2,17 +2,6 @@ use tauri::{Emitter, Manager};
 
 use crate::errors::AppError;
 
-// [DEBUG-toolwin] probe wrapper — the real log fn lives in the macOS-only
-// `pet_panel_macos` module; non-macOS builds get a no-op so probe call
-// sites need no cfg noise. TEMPORARY instrumentation for the "extension
-// popup only opens above Folyn" bug; remove by grepping `DEBUG-toolwin`.
-#[cfg(target_os = "macos")]
-pub(crate) fn dbg_toolwin_log(msg: &str) {
-    crate::pet_panel_macos::dbg_toolwin_log(msg)
-}
-#[cfg(not(target_os = "macos"))]
-pub(crate) fn dbg_toolwin_log(_msg: &str) {}
-
 /// Create an embedded webview in the main window from Rust side.
 /// Uses initialization_script to inject JS on every page load (handles target="_blank" links).
 #[tauri::command]
@@ -380,10 +369,6 @@ pub async fn open_extension_tool_window(
     title: String,
 ) -> Result<String, String> {
     let label = "extension-tool-panel".to_string();
-    dbg_toolwin_log(&format!(
-        "open: ext={} tool={} title={}",
-        extension_id, tool_id, title
-    ));
     // 1. Tell the host route which tool to load — via webview `eval`
     //    (a DOM CustomEvent), NOT the Tauri event system: `listen()` in the
     //    extension-tool webview never resolved (probe-verified 2026-09-18:
@@ -403,12 +388,7 @@ pub async fn open_extension_tool_window(
             "window.__extensionToolOpen = {}; window.dispatchEvent(new CustomEvent('extension-tool-open'));",
             payload
         );
-        let eval_result = w.eval(js.as_str());
-        dbg_toolwin_log(&format!(
-            "eval dispatch: ok={} len={}",
-            eval_result.is_ok(),
-            js.len()
-        ));
+        let _ = w.eval(js.as_str());
     }
     // Cache for the host route's mount-time fetch (see
     // `get_last_extension_tool`).
@@ -438,7 +418,6 @@ pub async fn open_extension_tool_window(
             "extension-tool-panel".to_string(),
         )
         .await;
-        dbg_toolwin_log("surface: make_transparent re-asserted");
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -462,7 +441,6 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
         return Ok(()); // already gone — nothing to hide
     };
     let fullscreen = w.is_fullscreen().unwrap_or(false);
-    dbg_toolwin_log(&format!("hide: label={} fullscreen_was={}", label, fullscreen));
     if fullscreen {
         // Reuse the pet-mode close-to-hide dance (invisible → dismiss the
         // fullscreen Space + wait → hide) — hiding a native-fullscreen
@@ -485,16 +463,6 @@ pub async fn get_last_extension_tool(
     Ok(app
         .try_state::<ExtensionToolWindowState>()
         .and_then(|s| s.last_open.lock().ok().and_then(|g| g.clone())))
-}
-
-/// Frontend probe bridge — lets the `#/extension-tool` host route report its
-/// state into the same `/tmp/folyn-toolwin-debug.log` (webview consoles are
-/// not visible for secondary windows). TEMPORARY, tagged `DEBUG-toolwin`.
-#[tauri::command]
-pub async fn debug_toolwin_log(app: tauri::AppHandle, msg: String) -> Result<(), String> {
-    dbg_toolwin_log(&format!("[fe] {}", msg));
-    let _ = app;
-    Ok(())
 }
 
 /// Start a native window drag for the extension tool panel.

@@ -356,20 +356,27 @@ panel itself:
 6. `+[NSEvent addGlobalMonitorForEventsMatchingMask:handler:]` is an NSEvent
    CLASS method — sending it to the NSApplication instance (tao's TaoApp
    subclass) is "method not found" → objc2 debug-verify panic → abort (the
-   esc-key global monitor). Same family as #5: always check which class
-   actually owns the selector.
-   Keyboard reality that motivated the monitor: macOS routes keydown ONLY
-   to the ACTIVE app's key window — a popup that never activates Folyn
-   (the no-app-switch requirement) physically cannot receive Esc from
-   another app. Passive global NSEvent monitor (no accessibility
-   permission) + mouse-hovers-the-popup gating is the pattern.
+   esc-key global monitor, since removed). Same family as #5: always check
+   which class actually owns the selector.
+   Keyboard reality that motivated it: macOS routes keydown ONLY to the
+   ACTIVE app's key window — a popup that never activates Folyn (the
+   no-app-switch requirement) physically cannot receive Esc from another
+   app. Chosen fix: `surface_extension_tool_panel` politely activates the
+   app (activateWithOptions:0 — in float mode Folyn has no ordinary visible
+   window, so no perceived switch) + iframe onLoad re-asserts outer-document
+   focus. The global-monitor route (mouse-hovers gating, passive, no
+   accessibility permission for MOUSE events but keyDown needs TCC
+   input-monitoring trust — silently delivers nothing untrusted) was
+   removed as dead code; revisit only if activation ever proves
+   insufficient.
 
-**Debug loop** (temporary, grep `DEBUG-toolwin` to remove): `open_extension_tool_window`
-probes to `/tmp/folyn-toolwin-debug.log` (command entry, singleton hit, build,
-raise + level/behavior/isOnActiveSpace readback); `scripts/inspect-toolwin.sh`
-dumps that log plus the live CGWindowList state (layer 1000 = ScreenSaver raise
-applied, 3 = Floating = raise failed) — run it with the app running to see
-where the chain broke.
+**Debug loop** (REMOVED 2026-09-18 after the feature stabilized): the
+`[DEBUG-toolwin]` probes (open/surface/hide readbacks, the frontend
+mount/css/pointer/key traces, `debug_toolwin_log` bridge command) and
+`scripts/inspect-toolwin.sh` were stripped in the cleanup commit. If the
+popup chain ever needs instrumenting again, re-add a `/tmp` append-only
+probe fn + a CGWindowList dumper — the crash ledger above is the map of
+where it previously broke.
 
 ---
 
