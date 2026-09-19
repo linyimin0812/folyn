@@ -28,6 +28,13 @@
  *
  * The gap is `aria-hidden` and carries no content — purely a vertical
  * spacer so layout matches the editor.
+ *
+ * NOTE: these static heights are only the pre-measurement approximation.
+ * MarkdownPreview's useLayoutEffect re-sizes each gap at runtime so the
+ * block AFTER it lands on the editor's line grid — the static calc cannot
+ * know rendered block heights (re-wrapped paragraphs, capped code blocks),
+ * and the accumulated shortfall is what left short docs unaligned. See the
+ * "runtime blank-gap compensation" effect in MarkdownPreview.tsx.
  */
 const BLOCK_TAGS = new Set([
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -45,13 +52,24 @@ const BLOCK_TAGS = new Set([
 // has measured (editorLineHeight === 0).
 const EM_PER_LINE = 1.6;
 
-export function rehypeBlankGap(options: { offset?: number } = {}) {
+export function rehypeBlankGap(options: { offset?: number; totalLines?: number } = {}) {
   const offset = options.offset ?? 0;
+  const totalLines = options.totalLines;
   return (tree: any) => {
     const kids = Array.isArray(tree.children) ? tree.children : [];
     if (kids.length === 0) return;
     const next: any[] = [];
     let prevEndLine: number | null = null;
+    const gapDiv = (gap: number) => ({
+      type: 'element',
+      tagName: 'div',
+      properties: {
+        className: ['md-blank-gap'],
+        style: `height:calc(${gap} * var(--md-gap-line, ${EM_PER_LINE}em))`,
+        ariaHidden: true,
+      },
+      children: [],
+    });
     for (const node of kids) {
       if (
         node?.type === 'element' &&
@@ -63,22 +81,23 @@ export function rehypeBlankGap(options: { offset?: number } = {}) {
         const endLine = node.position.end.line + offset;
         if (prevEndLine != null) {
           const gap = startLine - prevEndLine - 1;
-          if (gap > 0) {
-            next.push({
-              type: 'element',
-              tagName: 'div',
-              properties: {
-                className: ['md-blank-gap'],
-                style: `height:calc(${gap} * var(--md-gap-line, ${EM_PER_LINE}em))`,
-                ariaHidden: true,
-              },
-              children: [],
-            });
-          }
+          if (gap > 0) next.push(gapDiv(gap));
         }
         prevEndLine = Math.max(prevEndLine ?? 0, endLine);
       }
       next.push(node);
+    }
+    // Trailing EOF blanks: the region below the last block is where the
+    // editor cursor sits after every Enter (the new line is blank until its
+    // first char). No div is rendered there by the loop above (it needs a
+    // NEXT block), so the cursor-sync's EOF-gap align-point extension had
+    // no scroll height to land in — the old transform push-down (blank band
+    // at the top) was covering it. Render the trailing blank lines as a
+    // gap div too: the preview descends past the last block at the editor's
+    // line rate, exactly like between-block blanks.
+    if (totalLines != null && prevEndLine != null) {
+      const trailing = Math.max(0, totalLines - prevEndLine);
+      if (trailing > 0) next.push(gapDiv(trailing));
     }
     tree.children = next;
   };

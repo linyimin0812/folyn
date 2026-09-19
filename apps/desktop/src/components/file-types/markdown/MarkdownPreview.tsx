@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useCallback, useState, createElement, Fragment } from 'react';
+import { useMemo, useRef, useEffect, useLayoutEffect, useCallback, useState, createElement, Fragment } from 'react';
 import { Code2, Eye } from 'lucide-react';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
@@ -876,24 +876,6 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // implemented; only cursor -> preview. The effect never re-parses the
   // markdown (no cursor prop is in reactContent deps).
   const activeBlockRef = useRef<HTMLElement | null>(null);
-  // ponytail: when the editor cursor sits below the preview block's
-  // rendered position (blank lines in the editor push the cursor down a
-  // full line each, but render 0 height in the preview → the preview block
-  // stacks tighter and ends up ABOVE the cursor), `desired` goes NEGATIVE.
-  // scrollTop can't go below 0, so the alignment scroll is clamped and the
-  // highlight drifts far above the cursor. To still bring the block down to
-  // the cursor, push the preview content down by the shortfall via a
-  // transform on `.md-preview` (GPU, transition-smoothed, no reflow). Used
-  // only when `desired < 0`; the normal `desired >= 0` path keeps offset 0
-  // and scrolls normally.
-  //
-  // The transform shifts every block's getBoundingClientRect, so the effect
-  // must SUBTRACT the current offset when measuring block positions —
-  // otherwise the measurement drifts run-to-run (the transform it just set
-  // pollutes the next read). syncOffsetRef mirrors the state for the
-  // effect to cancel; the state drives the render-time transform.
-  const [syncOffset, setSyncOffset] = useState(0);
-  const syncOffsetRef = useRef(0);
 
   useEffect(() => {
     if (cursorLine == null || cursorLine <= 0) {
@@ -903,8 +885,6 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         activeBlockRef.current.classList.remove('cursor-sync-active');
         activeBlockRef.current = null;
       }
-      setSyncOffset(0);
-      syncOffsetRef.current = 0;
       return;
     }
     if (hasSelection) return;
@@ -1046,16 +1026,14 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // the post-swap layout).
     const containerRect = scrollContainer.getBoundingClientRect();
     const blockRect = el.getBoundingClientRect();
-    // Cancel the transform we applied last run so blockOffset is the
-    // UN-transformed content offset (the transform on .md-preview shifts
-    // blockRect.top by exactly syncOffsetRef.current).
-    const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current;
+    // Cancel nothing: no transform exists (see the desiredRaw comment
+    // below) — rects are already in un-transformed content space.
+    const blockOffset = blockRect.top - containerRect.top + scrollContainer.scrollTop;
     const blockHeight = blockRect.height;
     const blockBottom = blockOffset + blockHeight;
-    // The next block's top, also post-swap (mirrors blockOffset's transform
-    // cancellation).
+    // The next block's top, also un-transformed (mirrors blockOffset).
     const nextBlockOffset = nextBlockEl
-      ? nextBlockEl.getBoundingClientRect().top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current
+      ? nextBlockEl.getBoundingClientRect().top - containerRect.top + scrollContainer.scrollTop
       : null;
 
     // Where the cursor line top sits on screen (editor frame). Computed
@@ -1072,7 +1050,31 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       syncTargetMeasuredLine === blockSrcLine && syncTargetScreenY > 0 ? syncTargetScreenY : null;
     let alignPoint: number;
     if (inGap) {
-      alignPoint = gapAlignPoint(blockBottom, nextBlockOffset);
+      // EOF trailing blanks: no next block exists, so the align point has
+      // no rendered target — extend into the virtual trailing region at the
+      // EDITOR's line rate (the same rate .md-blank-gap renders between
+      // blocks) so the cursor's blank line exists in preview content space.
+      // The base is the block's EDITOR-RATE bottom: the rendered bottom
+      // extended by the block's own shortfall (its source-line span ×
+      // editorLH − rendered height — a re-wrapped paragraph renders fewer
+      // rows than the editor; its gap compensation below only benefits the
+      // NEXT block, so the virtual EOF region must start where the editor's
+      // block ends, not where the shorter preview rendering ends).
+      // Clamping to the rendered bottom left desiredRaw negative by
+      // K×lineHeight → the old syncOffset transform pushed the whole
+      // preview down — the blank band at the preview top + per-keystroke
+      // bounce (the reported 新建文件输入闪动 + 头部大片空白). The
+      // trailing .md-blank-gap div (rehypeBlankGap) extends the scroll
+      // height so the scroll can actually reach the extension.
+      const lh = editorLineHeight > 0 ? editorLineHeight : 0;
+      const span = lastSrcLine - blockSrcLine + 1;
+      const eofSteps = nextBlockOffset == null
+        ? Math.max(0, cursorLine - lastSrcLine - 1)
+        : 0;
+      const gapBase = nextBlockOffset == null
+        ? blockBottom + Math.max(0, span * lh - blockHeight)
+        : blockBottom; // unused when a next block exists (gapAlignPoint takes it)
+      alignPoint = gapAlignPoint(gapBase, nextBlockOffset) + eofSteps * lh;
     } else if (isCodeBlock) {
       const codeEl = el.querySelector('code');
       const padTop = codeEl ? parseFloat(getComputedStyle(codeEl).paddingTop) || 0 : 0;
@@ -1106,7 +1108,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       if (anchorEl) {
         const ar = anchorEl.getBoundingClientRect();
         alignPoint =
-          ar.top - containerRect.top + scrollContainer.scrollTop - syncOffsetRef.current +
+          ar.top - containerRect.top + scrollContainer.scrollTop +
           (useBottom ? ar.height : 0);
       } else {
         alignPoint = anchor.kind === 'tbody-row' ? blockBottom : blockOffset;
@@ -1172,26 +1174,21 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const headingCenter = !inGap && /^H[1-6]$/.test(el.tagName);
     const targetY = headingCenter ? cursorScreenY + (editorLineHeight ?? 0) / 2 : cursorScreenY;
     // Raw align target: the content offset that should land at the cursor's
-    // screen Y. When this is >= 0, scrollTop = desired scrolls the preview so
-    // the block aligns to the cursor (offset stays 0). When < 0 the preview
-    // block is rendered ABOVE the cursor (blank lines in the editor push the
-    // cursor down a line each but render 0 height in the preview → the block
-    // stacks tighter and ends up above the cursor), and scrollTop can't go
-    // below 0 to bring it down. Instead keep scrollTop=0 and push the preview
-    // content down by the shortfall (transform on .md-preview) so the block
-    // still lands at the cursor. See syncOffset state + .md-preview style.
+    // screen Y. scrollTop = desired scrolls the preview so the block aligns
+    // to the cursor. desiredRaw < 0 means the preview content above the
+    // cursor is SHORTER than the editor's (re-wrapped CJK paragraphs render
+    // fewer rows in the wider preview; a bigger editor font; capped code
+    // blocks) — geometry scrollTop cannot fix (it can't go below 0). Degrade
+    // gracefully: clamp to 0 and let the highlight ride above the cursor.
+    // The old fallback pushed the whole preview down via a translateY
+    // transform, but that traded the misalignment for a blank band at the
+    // preview top that GREW as the drift accumulated (the reported
+    // 预览页为了对齐不断下移/头部大片空白) — alignment-by-blank-band is
+    // rejected; a short doc simply sits at its natural top.
     const desiredRaw = alignPoint - (targetY - containerRect.top);
-    if (desiredRaw < 0) {
-      const off = -desiredRaw;
-      syncOffsetRef.current = off;
-      setSyncOffset(off);
-      if (Math.abs(scrollContainer.scrollTop - 0) > 2) scrollContainer.scrollTop = 0;
-    } else {
-      syncOffsetRef.current = 0;
-      setSyncOffset(0);
-      if (Math.abs(scrollContainer.scrollTop - desiredRaw) > 2) {
-        scrollContainer.scrollTop = desiredRaw;
-      }
+    const desired = Math.max(0, desiredRaw);
+    if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
+      scrollContainer.scrollTop = desired;
     }
   }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, cursorBlockLine, syncTargetLine, syncTargetScreenY, syncTargetMeasuredLine, content]);
 
@@ -1396,7 +1393,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         .use(rehypeMarkResultBlock)
         .use(rehypeMathjax)
         .use(rehypeSourceLine, { offset: frontmatterLineCount });
-      if (syncActive) pipeline.use(rehypeBlankGap, { offset: frontmatterLineCount });
+      if (syncActive) pipeline.use(rehypeBlankGap, { offset: frontmatterLineCount, totalLines: content.split('\n').length });
       const result = pipeline
         .use(rehypeReact, {
           jsx,
@@ -1414,6 +1411,62 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     }
   }, [body, componentMap, frontmatterLineCount, syncActive]);
 
+  // ponytail: runtime blank-gap compensation — the last piece of the
+  // "preview descends at the editor's rate" design. rehypeBlankGap sizes
+  // gap divs statically (blank lines × editor line height), which is exact
+  // only when every block renders at the editor's per-line rate. Blocks
+  // that render SHORTER (long CJK paragraphs re-wrap to fewer rows in the
+  // wider preview; a bigger editor font; capped code blocks) leave the
+  // preview falling behind the editor's descent rate, and the shortfall
+  // ACCUMULATES down the doc — that is why short docs sat unaligned (only
+  // >1-page docs aligned: 只有超过一页才对齐) and why the old transform
+  // push-down grew a blank band at the top. Fix the geometry instead:
+  // measure each top-level block and re-size the gap div BEFORE the next
+  // block so every block lands on the editor's line grid (first block's
+  // measured top + (line−1)×editorLineHeight). Then the cursor-sync
+  // desiredRaw stays ≈ 0 at any doc length: scrollTop 0, every block
+  // aligned to its editor line, no content pushed down, no band.
+  // useLayoutEffect (pre-paint) so per-keystroke re-parses never flash the
+  // static gap before the compensated height — that would flicker. One
+  // rect pass, cumulative in-memory adjustment, one write pass (single
+  // reflow). Floor 8px: a block rendering TALLER than its editor span
+  // (tables, code) only shrinks the gap so far — its positive drift is
+  // handled by the normal scroll path, and the natural separation stays.
+  // Gaps only exist between blocks (rehypeBlankGap); adjacency without a
+  // blank line is absorbed at the next gap (the grid math is absolute).
+  useLayoutEffect(() => {
+    if (!syncActive || editorLineHeight == null || editorLineHeight <= 0) return;
+    const rootEl = containerRef.current;
+    const sc = rootEl?.parentElement;
+    if (!rootEl || !sc) return;
+    const contentTop = (el: HTMLElement) =>
+      el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+    const blocks: { el: HTMLElement; line: number; top: number }[] = [];
+    const gapAfter = new Map<number, HTMLElement>(); // block index → the .md-blank-gap following it
+    for (const kid of Array.from(rootEl.children) as HTMLElement[]) {
+      if (kid.classList.contains('md-blank-gap')) {
+        if (blocks.length > 0 && !gapAfter.has(blocks.length - 1)) gapAfter.set(blocks.length - 1, kid);
+        continue;
+      }
+      const line = Number(kid.getAttribute('data-source-line'));
+      if (Number.isFinite(line) && line > 0) blocks.push({ el: kid, line, top: contentTop(kid) });
+    }
+    if (blocks.length < 2) return;
+    const origin = blocks[0].top;
+    let shift = 0; // accumulated downward shift from the adjustments above
+    const writes: Array<[HTMLElement, number]> = [];
+    for (let i = 1; i < blocks.length; i++) {
+      const gapEl = gapAfter.get(i - 1);
+      if (!gapEl) continue; // adjacent blocks (no blank line) — absorbed at the next gap
+      const curH = gapEl.getBoundingClientRect().height;
+      const desired = origin + (blocks[i].line - blocks[0].line) * editorLineHeight;
+      const newH = Math.max(8, curH + desired - (blocks[i].top + shift));
+      writes.push([gapEl, newH]);
+      shift += newH - curH;
+    }
+    for (const [el, h] of writes) el.style.height = `${h}px`;
+  }, [reactContent, editorLineHeight, syncActive]);
+
   // ponytail: memoize VaultContext value — without this, every keystroke
   // (content change → MarkdownPreview re-renders) creates a fresh value object,
   // which made every FilePreviewComponent's useEffect([src, ctx]) re-fire and
@@ -1430,7 +1483,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
 
   return (
     <VaultContext.Provider value={vaultContextValue}>
-      <div className="md-preview" ref={containerRef} style={{ transform: `translateY(${syncOffset}px)`, '--md-gap-line': editorLineHeight > 0 ? `${editorLineHeight}px` : undefined } as React.CSSProperties}>
+      <div className="md-preview" ref={containerRef} style={{ '--md-gap-line': editorLineHeight > 0 ? `${editorLineHeight}px` : undefined } as React.CSSProperties}>
         {meta && <SkillMetaCard meta={meta} />}
         {reactContent}
       </div>
