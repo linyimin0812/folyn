@@ -69,18 +69,95 @@
 const HEADING_RE = /^H[1-6]$/;
 
 /**
- * Last 1-indexed source line of the blank-line-terminated block that starts
- * at blockSrcLine (the block's final non-blank line). Shared by blockAlignPoint
- * (in-block fraction) and the cursor-sync effect (gap detection → gapAlignPoint).
+ * Last 1-indexed source line of the block that starts at blockSrcLine: the
+ * run of non-blank lines, ALSO terminated by a directive fence line (::: /
+ * :::: … at line start) — remark-directive ends a block at a fence even
+ * without a blank line. Shared by blockAlignPoint (in-block fraction) and
+ * the cursor-sync effect (gap detection → gapAlignPoint).
  */
 export function blockLastSrcLine(srcLines: string[], blockSrcLine: number): number {
   let span = 0;
   for (let i = blockSrcLine - 1; i < srcLines.length; i++) {
     if (srcLines[i].trim() === '') break;
+    // A directive line ends the block in the preview's remark-directive
+    // grammar — the blank-run span used to run THROUGH directive lines (a
+    // paragraph inside :::tab counted the whole container into its span),
+    // so a cursor on the scaffolding below never registered as a gap and
+    // the block mis-aligned. The block's own first line is exempt (a
+    // directive-wrapper target's opening line must not terminate it).
+    if (i > blockSrcLine - 1 && /^\s*:::/.test(srcLines[i])) break;
     span++;
   }
   if (span < 1) span = 1;
   return blockSrcLine + span - 1;
+}
+
+/**
+ * Last 1-indexed source line of the container directive OPENED at openLine —
+ * its closing fence. remark-directive closes a container at the first
+ * pure-colon line whose colon count is >= the opening fence's (inner
+ * sub-directives open with FEWER colons — :::tab inside ::::tabs — so their
+ * fences don't close the outer container). Unmatched → the document end
+ * (span to EOF, mirroring blockLastSrcLine's fallback). Used as a
+ * [data-container] block's span: blank-run scanning ended a tabs/carousel
+ * container at its first INTERNAL blank line (or ran its whole body into a
+ * preceding paragraph's span), so a cursor deep inside mis-detected as a
+ * gap and aligned past the container.
+ */
+export function directiveCloseLine(srcLines: string[], openLine: number): number {
+  const open = /^\s*(:{3,})/.exec(srcLines[openLine - 1] ?? '');
+  const openColons = open ? open[1].length : 3;
+  for (let i = openLine; i < srcLines.length; i++) {
+    const fence = /^\s*(:{3,})\s*$/.exec(srcLines[i]);
+    if (fence && fence[1].length >= openColons) return i + 1;
+  }
+  return srcLines.length;
+}
+
+/**
+ * Re-anchor the editor-measured cursor offset (cursorBlockOffsetY, measured
+ * from the editor block anchor line — the syntax-tree block's first line,
+ * published as cursorBlockLine) into the TARGET preview block's frame
+ * (anchored at blockSrcLine). Directives are invisible to the editor's
+ * markdown parser, so inside ::::tabs / ::::carousel the editor's anchor
+ * (the blank-delimited run start, directive lines included) and the preview
+ * block's first line (the content line, scaffolding lines above it) differ
+ * by the lines between them — the un-converted offset stepped the block by
+ * an offset anchored at the wrong line, landing inner content a scaffolding
+ * run BELOW the cursor (the reported 预览整体偏下). Line arithmetic across
+ * the gap is exact for unwrapped lines (directive scaffolding lines never
+ * wrap in practice). anchorLine === blockSrcLine (outside containers) →
+ * no-op.
+ */
+export function blockRelativeOffsetY(
+  cursorBlockOffsetY: number,
+  anchorLine: number,
+  blockSrcLine: number,
+  editorLineHeight: number,
+): number {
+  return cursorBlockOffsetY + (anchorLine - blockSrcLine) * editorLineHeight;
+}
+
+/**
+ * Align point for a show-one-at-a-time container (tabs / carousel) while the
+ * cursor sits on a line its visible content doesn't map to — directive
+ * scaffolding, a hidden sibling's lines, a blank between children. Only ONE
+ * child renders, so there is no per-line pixel map; PIN the container top to
+ * the editor position of the container's first line: blockOffset + rel,
+ * where rel is the cursor's editor Y below that line (the effect resolves it
+ * wrap-exact from the editor's measured container-line screen Y when
+ * available, else blockRelativeOffsetY's line-arithmetic re-anchor), clamped
+ * at the cursor's viewport depth like the paragraph pin. Top-aligning the
+ * container to the cursor's line instead dragged the whole preview down as
+ * the cursor descended (the reported 只有首行对齐 / 预览整体偏下); the pin
+ * keeps the pane still while the cursor walks the container's lines.
+ */
+export function containerAlignPoint(
+  blockOffset: number,
+  rel: number,
+  cursorViewportDepth: number,
+): number {
+  return blockOffset + Math.min(Math.max(0, rel), Math.max(0, cursorViewportDepth));
 }
 
 /**

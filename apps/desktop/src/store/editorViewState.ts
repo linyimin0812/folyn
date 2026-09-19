@@ -57,6 +57,24 @@ interface EditorViewState {
    *  editor-side anchor for pinning the preview's block tops. 0 = on the
    *  block's first line, blank cursor line, or unknown. */
   cursorBlockOffsetY: number;
+  /** The 1-indexed source line cursorBlockOffsetY is anchored at (the
+   *  syntax-tree block's first line; 0 = unknown → the cursor's own line).
+   *  The preview re-anchors the measured offset into each target block's
+   *  frame with it — inside container directives (::::tabs / ::::carousel)
+   *  the editor's paragraph anchor and the preview block's first line
+   *  differ by the directive scaffolding lines between them. */
+  cursorBlockLine: number;
+  /** The source line the preview's cursor-sync wants measured (the ::::tabs
+   *  / ::::carousel line while pinning the container — the preview effect
+   *  writes it). 0 = none. */
+  syncTargetLine: number;
+  /** The wrap-exact screen Y of syncTargetLine, measured by the editor via
+   *  lineBlockAt (includes soft-wrap rows — line arithmetic does not). NaN/0
+   *  = not (yet) measured for that line. */
+  syncTargetScreenY: number;
+  /** Which line syncTargetScreenY was measured for (stale-guard: the preview
+   *  only trusts the Y when this matches its requested line). */
+  syncTargetMeasuredLine: number;
   /** True when the editor has an active (non-empty) text selection.
    *  Previews skip cursor-sync while the user is selecting. */
   hasSelection: boolean;
@@ -94,7 +112,9 @@ interface EditorViewState {
    *  switches + disk persistence). Throttled at the call site. */
   setPreviewScrollTop: (top: number) => void;
   setWordCount: (count: number) => void;
-  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number, blockOffsetY: number) => void;
+  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number, blockOffsetY: number, blockAnchorLine: number) => void;
+  setSyncTargetLine: (line: number) => void;
+  setSyncTargetMeasure: (line: number, screenY: number) => void;
   setHasSelection: (v: boolean) => void;
   toggleOutline: () => void;
   toggleAiPanel: () => void;
@@ -129,6 +149,10 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   editorLineHeight: 0,
   cursorLineFrac: 0,
   cursorBlockOffsetY: 0,
+  cursorBlockLine: 0,
+  syncTargetLine: 0,
+  syncTargetScreenY: 0,
+  syncTargetMeasuredLine: 0,
   hasSelection: false,
   outlineVisible: false,
   aiPanelVisible: false,
@@ -199,7 +223,9 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   },
 
   setWordCount: (count) => set({ wordCount: count }),
-  setCursorViewportY: (y, viewportTop, cursorCol, lineHeight, lineFrac, blockOffsetY) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, editorLineHeight: lineHeight, cursorLineFrac: lineFrac, cursorBlockOffsetY: blockOffsetY }),
+  setCursorViewportY: (y, viewportTop, cursorCol, lineHeight, lineFrac, blockOffsetY, blockAnchorLine) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, editorLineHeight: lineHeight, cursorLineFrac: lineFrac, cursorBlockOffsetY: blockOffsetY, cursorBlockLine: blockAnchorLine }),
+  setSyncTargetLine: (line) => set({ syncTargetLine: line }),
+  setSyncTargetMeasure: (line, screenY) => set({ syncTargetMeasuredLine: line, syncTargetScreenY: screenY }),
   setHasSelection: (v) => set({ hasSelection: v }),
 
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { blockAlignPoint, blockLastSrcLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
+import {
+  blockAlignPoint,
+  blockLastSrcLine,
+  blockRelativeOffsetY,
+  containerAlignPoint,
+  directiveCloseLine,
+  gapAlignPoint,
+  tableRowAnchor,
+} from './blockAlignPoint';
 
 // srcLines are 0-indexed; blockSrcLine is 1-indexed (data-source-line).
 // Signature: (tagName, srcLines, blockSrcLine, blockOffset, blockHeight,
@@ -203,5 +211,94 @@ describe('gapAlignPoint', () => {
     // Multiple blank lines between blocks → next top is the right anchor
     // regardless of how many blank lines the cursor is into the gap.
     expect(gapAlignPoint(100, 999)).toBe(999);
+  });
+});
+
+describe('directiveCloseLine', () => {
+  // The ::::tabs template (TabsExtension / Carousel manifests). 1-indexed
+  // source lines: line 1 opens the container, inner :::tab open at 2/6,
+  // closing fences at 5/8, the container closes at line 9.
+  const tabs = [
+    '::::tabs',
+    ':::tab{label="macOS"}',
+    'macOS 安装说明',
+    'more content',
+    ':::',
+    ':::tab{label="Windows"}',
+    'Windows 安装说明',
+    ':::',
+    '::::',
+    'after the container',
+  ];
+
+  it('closes an outer :::: container at its matching fence (inner ::: do not close it)', () => {
+    expect(directiveCloseLine(tabs, 1)).toBe(9);
+  });
+
+  it('closes an inner ::: directive at its own fence', () => {
+    expect(directiveCloseLine(tabs, 2)).toBe(5);
+    expect(directiveCloseLine(tabs, 6)).toBe(8);
+  });
+
+  it('falls back to the document end when the fence is unmatched', () => {
+    expect(directiveCloseLine(['::::tabs', ':::tab', 'content'], 1)).toBe(3);
+  });
+});
+
+describe('blockLastSrcLine (directive-aware)', () => {
+  it('stops at a directive fence line even without a blank line', () => {
+    // A paragraph's span used to run through the ::: scaffolding below it;
+    // remark-directive ends the block at the fence.
+    expect(blockLastSrcLine(['para', ':::callout', 'content', ':::'], 1)).toBe(1);
+  });
+
+  it('keeps the block own opening line when the block IS the directive', () => {
+    // A directive-wrapper target's own opening line must not terminate it.
+    expect(blockLastSrcLine([':::tab{label="A"}', 'content', ':::'], 1)).toBe(2);
+  });
+
+  it('is unchanged for plain blank-terminated paragraphs', () => {
+    expect(blockLastSrcLine(['a', 'b', '', 'c'], 1)).toBe(2);
+  });
+});
+
+describe('blockRelativeOffsetY', () => {
+  it('is a no-op when the editor anchor equals the block line', () => {
+    expect(blockRelativeOffsetY(48, 3, 3, 24)).toBe(48);
+  });
+
+  it('subtracts the scaffolding lines between the anchor and an inner block', () => {
+    // The editor anchors the whole no-blank directive run at line 1 (offset
+    // 96 = 4 lines); the inner paragraph starts at line 3 → its frame
+    // offset is 2 lines = 48.
+    expect(blockRelativeOffsetY(96, 1, 3, 24)).toBe(48);
+  });
+
+  it('adds the lines above the anchor when the block starts above it', () => {
+    // Blank line inside a container: the editor anchors the block ABOVE
+    // (line 3, offset 72); the container pin (line 1) needs 5 lines = 120.
+    expect(blockRelativeOffsetY(72, 3, 1, 24)).toBe(120);
+  });
+});
+
+describe('containerAlignPoint (tabs / carousel pin)', () => {
+  it('top-aligns when the cursor is on the container first line (rel 0)', () => {
+    expect(containerAlignPoint(100, 0, 400)).toBe(100);
+  });
+
+  it('pins the container top to the editor first-line position for deeper cursor lines', () => {
+    // The reported bug: only the first line aligned; every other line
+    // top-aligned the container to the CURSOR (alignPoint = blockOffset),
+    // dragging the preview down. The pin holds the container top at the
+    // editor's ::::tabs line: cursor 6 lines in → +5 lines of offset.
+    expect(containerAlignPoint(100, 5 * 24, 400)).toBe(100 + 5 * 24);
+  });
+
+  it('clamps the step at the cursor viewport depth (scrolled-off container glues to the viewport top)', () => {
+    expect(containerAlignPoint(100, 5 * 24, 60)).toBe(100 + 60);
+  });
+
+  it('clamps a negative rel to a top-align (measured Y below the container line)', () => {
+    expect(containerAlignPoint(100, -48, 400)).toBe(100);
   });
 });

@@ -18,7 +18,7 @@ import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/ren
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { rehypeBlankGap } from './rehypeBlankGap';
 import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
-import { blockAlignPoint, blockLastSrcLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
+import { blockAlignPoint, blockLastSrcLine, blockRelativeOffsetY, containerAlignPoint, directiveCloseLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
 import { registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -139,11 +139,10 @@ function buildComponentMap(offset: number = 0): Record<string, React.ComponentTy
       // this visible outer block) AND data-hides-inactive (so the promote-
       // to-wrapper step below pins the cursor to it by attribute, not name).
       //
-      // The hidden sub-directives (tab/slide) themselves render display:none
-      // — cursor-sync's selection loop already skips display:none blocks, so
-      // they're harmless (not locatable); no special skip needed. The flag is
-      // declared at the container definition site, so a new container of this
-      // shape just sets hidesInactiveChildren — no host allowlist.
+      // The hidden sub-directives (tab/slide) get data-source-line too (all
+      // wrappers do, above) — cursor-sync's selection loop skips them as
+      // hidden / 0-height, and the promotion step decides per line whether
+      // the ACTIVE child's content aligns directly or the container pins.
       const startLine = node?.position?.start?.line;
       const hides = extension.hidesInactiveChildren === true;
       const dataProps: Record<string, string> = { 'data-container': extension.name };
@@ -830,7 +829,10 @@ function findNextBlockEl(root: HTMLElement, current: HTMLElement): HTMLElement |
   const startIdx = blocks.indexOf(current);
   for (let i = startIdx + 1; i < blocks.length; i++) {
     const el = blocks[i];
-    if (getComputedStyle(el).display === 'none') continue;
+    // Same visibility model as the selection loop: no client rects = the
+    // element itself or an ancestor is display:none (a hidden sibling
+    // tab/slide's blocks must never be the gap's next block).
+    if (el.getClientRects().length === 0) continue;
     if (el.hasAttribute('data-container') && el.offsetHeight === 0) continue;
     return el;
   }
@@ -851,6 +853,20 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // align-point step. Read from the store directly like cursorLineFrac, no
   // prop threading.
   const cursorBlockOffsetY = useEditorViewStateStore((s) => s.cursorBlockOffsetY);
+  // ponytail: the editor-side line cursorBlockOffsetY is measured from (the
+  // syntax-tree block's first line). The effect re-anchors the offset into
+  // each target block's frame with it (blockRelativeOffsetY) — inside
+  // ::::tabs / ::::carousel the anchor and the target block's first line
+  // differ by the directive scaffolding lines between them.
+  const cursorBlockLine = useEditorViewStateStore((s) => s.cursorBlockLine);
+  // ponytail: the wrap-exact editor screen Y of the container line the pin
+  // targets (editor-measured via lineBlockAt on request — see
+  // setSyncTargetLine). The pin subtracts it from the cursor's screen Y
+  // instead of line arithmetic, which missed soft-wrap rows and drifted the
+  // container top a row per wrap (the reported 严重偏下).
+  const syncTargetLine = useEditorViewStateStore((s) => s.syncTargetLine);
+  const syncTargetScreenY = useEditorViewStateStore((s) => s.syncTargetScreenY);
+  const syncTargetMeasuredLine = useEditorViewStateStore((s) => s.syncTargetMeasuredLine);
 
   // ponytail: cursor-driven preview scroll (split mode only). When the
   // editor cursor moves, scroll the preview so the point in the matched
@@ -904,16 +920,25 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       const line = Number(raw);
       if (!Number.isFinite(line)) return;
       // Skip blocks that render hidden OR collapse to 0 height.
-      // - display:none: a paragraph inside a ::::carousel `:::slide` whose
-      //   <div data-is-slide> wrapper is display:none until active.
+      // - getClientRects() === []: the element generates NO boxes — either
+      //   itself display:none OR any display:none ANCESTOR (the hidden
+      //   :::tab/:::slide wrappers). getComputedStyle(el).display can't
+      //   catch the ancestor case — display isn't inherited, so a <p> inside
+      //   display:none computes display:block while rendering nothing.
+      //   Selecting such a block (a hidden sibling's paragraph — the
+      //   greatest line ≤ cursorLine once the cursor is in the hidden
+      //   child) aligned to its ZERO rect and shoved the whole preview
+      //   down via the sync-offset transform (the reported 严重向下偏移;
+      //   the old unconditional promote-to-container papered over it).
       // - offsetHeight===0 on a [data-container] wrapper: the `:::slide` /
       //   `:::tab` DirectiveWrapper div itself is NOT display:none (so the
-      //   check above misses it), but its only child (the component's
-      //   data-is-slide/data-is-tab root) is display:none → the wrapper has
-      //   0 height. Selecting it lands the cursor on a 0-height block →
-      //   line-proportional interpolation drifts. Skipping it falls back to
-      //   the visible `carousel`/`tabs` parent (promoted below).
-      if (getComputedStyle(el).display === 'none') return;
+      //   box check above misses it — it generates a 0×W box), but its only
+      //   child (the component's data-is-slide/data-is-tab root) is
+      //   display:none → the wrapper has 0 height. Selecting it lands the
+      //   cursor on a 0-height block → line-proportional interpolation
+      //   drifts. Skipping it falls back to the visible `carousel`/`tabs`
+      //   parent (promoted below).
+      if (el.getClientRects().length === 0) return;
       if (el.hasAttribute('data-container') && (el as HTMLElement).offsetHeight === 0) return;
       if (line <= cursorLine && line >= bestLine) {
         bestLine = line;
@@ -926,19 +951,39 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    // If the cursor landed inside a container that `hidesInactiveChildren`
-    // (tabs / carousel — and the cursor may be on a hidden sibling item's
-    // source line), promote the target up to that wrapper so the
-    // block-alignment below targets the whole container, not the *active*
-    // item's content (a different source line → drift). The compound selector
-    // [data-hides-inactive][data-source-line] skips the hidden sub-directive
-    // wrappers (tab/slide have no data-source-line) and pins to the outer
-    // container, which carries both. Driven by the declaration, not names.
+    // A show-one-at-a-time container (tabs / carousel). Two cursor kinds:
+    // (a) the cursor's line maps to the ACTIVE child's visible content —
+    // keep the block and align it directly, exactly like a block outside a
+    // container (paragraph pin / code / table paths below); (b) the cursor's
+    // line has no visible counterpart — directive scaffolding, a hidden
+    // sibling's lines, a blank between children — promote to the container
+    // wrapper and PIN it (the data-hides-inactive branch below). The old
+    // unconditional promotion top-aligned the container to the cursor's
+    // line, dragging the whole preview down as the cursor descended (the
+    // reported 只有首行对齐 / 预览整体偏下). Keep the target only when it
+    // is a content block (NOT a directive wrapper) whose source span
+    // reaches the cursor's line, or when the gap's next visible block is
+    // still inside this container (an in-child blank advances to the next
+    // paragraph via the gap path). Driven by the declaration
+    // (data-hides-inactive), not names.
+    const srcLines = contentRef.current.split('\n');
     const containerWrap = (target as HTMLElement).closest('[data-hides-inactive][data-source-line]');
-    if (containerWrap) target = containerWrap;
+    if (containerWrap && target !== containerWrap) {
+      const tLine = Number(target.getAttribute('data-source-line'));
+      const tIsCode = target.tagName === 'PRE' && target.closest('.code-block-wrapper') != null;
+      const tClose = tIsCode
+        ? codeBlockCloseLine(srcLines, tLine)
+        : blockLastSrcLine(srcLines, tLine);
+      const covered = !target.hasAttribute('data-container') && cursorLine <= tClose;
+      let nextInside = false;
+      if (!covered && cursorLine > tClose) {
+        const next = findNextBlockEl(root, target as HTMLElement);
+        nextInside = next != null && containerWrap.contains(next);
+      }
+      if (!covered && !nextInside) target = containerWrap;
+    }
     const el = target as HTMLElement;
     const blockSrcLine = Number(el.getAttribute('data-source-line'));
-    const srcLines = contentRef.current.split('\n');
 
     // ponytail: when the cursor sits on a blank line below the selected block
     // (the gap between this block and the next), blank lines render no preview
@@ -954,9 +999,11 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // height needed — editor vs preview line heights differ, and a guessed
     // value drifted).
     const isCodeBlock = el.tagName === 'PRE' && el.closest('.code-block-wrapper');
-    const lastSrcLine = isCodeBlock
-      ? codeBlockCloseLine(srcLines, blockSrcLine) // closing fence: cursor on/after it is the gap
-      : blockLastSrcLine(srcLines, blockSrcLine);
+    const lastSrcLine = el.hasAttribute('data-container')
+      ? directiveCloseLine(srcLines, blockSrcLine) // a directive block's span = open..closing fence (inner ::: fences don't close it)
+      : isCodeBlock
+        ? codeBlockCloseLine(srcLines, blockSrcLine) // closing fence: cursor on/after it is the gap
+        : blockLastSrcLine(srcLines, blockSrcLine);
     const inGap = cursorLine > lastSrcLine;
     const nextBlockEl = inGap ? findNextBlockEl(root, el) : null;
 
@@ -1015,6 +1062,14 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // before the align point: blockAlignPoint's multi-line path clamps its
     // per-line step at the cursor's depth into the (shared-height) viewport.
     const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
+    // The editor-side line cursorBlockOffsetY is measured from (0/unknown →
+    // the cursor's own line, making the re-anchoring below a no-op).
+    const anchorLine = cursorBlockLine > 0 ? cursorBlockLine : cursorLine;
+    // The wrap-exact screen Y of the pin target's first line, when the
+    // editor has measured it for THIS container (stale-guard: measured for a
+    // different line → not trustworthy → null → line-arithmetic fallback).
+    const targetLineY =
+      syncTargetMeasuredLine === blockSrcLine && syncTargetScreenY > 0 ? syncTargetScreenY : null;
     let alignPoint: number;
     if (inGap) {
       alignPoint = gapAlignPoint(blockBottom, nextBlockOffset);
@@ -1057,14 +1112,29 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         alignPoint = anchor.kind === 'tbody-row' ? blockBottom : blockOffset;
       }
     } else if (el.hasAttribute('data-hides-inactive')) {
-      // A show-one-at-a-time container (carousel/tabs): it renders only ONE
-      // child's content, so its rendered height doesn't scale with its full
-      // source-line span — line-proportional interpolation (intraFrac *
-      // blockHeight) maps the cursor onto a fraction of a too-short height,
-      // leaving a small offset. Top-align instead: the cursor anywhere inside
-      // the container aligns to the container's top, so no interpolation
-      // drift (matches list-item top-align).
-      alignPoint = blockOffset;
+      // A show-one-at-a-time container (carousel/tabs) with the cursor on a
+      // line its visible content doesn't map to (scaffolding / hidden
+      // sibling / blank between children): only ONE child renders, so there
+      // is no per-line pixel map — PIN the container top to the editor
+      // position of its first line: the cursor's screen Y minus the editor's
+      // wrap-exact screen Y of that line (measured via the syncTarget
+      // feedback channel — line arithmetic missed soft-wrap rows and drifted
+      // the container a row per wrap: the reported 严重偏下; it accumulates
+      // across paragraph boundaries when the container has internal blanks).
+      // Falls back to the line-arithmetic re-anchor for the first move into
+      // a container (the measurement lands on the next cursor update).
+      // Top-aligning the container to the cursor's line instead dragged the
+      // whole preview down as the cursor descended (the original 预览整体
+      // 偏下); the pin keeps the container glued to the editor's ::::tabs
+      // line while the cursor walks the container's lines (mirrors the
+      // paragraph pin: the pane doesn't move).
+      // Request the measurement for THIS container (idempotent — the store
+      // write only re-renders selectors that read these fields).
+      if (syncTargetLine !== blockSrcLine) {
+        useEditorViewStateStore.getState().setSyncTargetLine(blockSrcLine);
+      }
+      const rel = targetLineY != null ? cursorScreenY - targetLineY : blockRelativeOffsetY(cursorBlockOffsetY, anchorLine, blockSrcLine, editorLineHeight ?? 0);
+      alignPoint = containerAlignPoint(blockOffset, rel, cursorScreenY - containerRect.top);
     } else {
       // Non-code block: headings center on the cursor line (block center,
       // so the highlight box is symmetric around the cursor instead of
@@ -1078,7 +1148,15 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       // cursor's soft-wrap fraction.
       alignPoint = blockAlignPoint(
         el.tagName, srcLines, blockSrcLine, blockOffset, blockHeight, cursorLineFrac,
-        cursorScreenY - containerRect.top, cursorBlockOffsetY,
+        cursorScreenY - containerRect.top,
+        // Re-anchor the measured offset from the editor's block anchor line
+        // to THIS block's first line — inside container directives the two
+        // differ by the scaffolding lines between them (the editor's parser
+        // doesn't see ::: fences), and the un-converted offset stepped the
+        // block by an offset anchored at the wrong line (content sat a
+        // scaffolding run below the cursor). Outside containers the anchor
+        // equals the block line and this is a no-op.
+        blockRelativeOffsetY(cursorBlockOffsetY, anchorLine, blockSrcLine, editorLineHeight ?? 0),
       );
     }
 
@@ -1115,7 +1193,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         scrollContainer.scrollTop = desiredRaw;
       }
     }
-  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, content]);
+  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, cursorBlockLine, syncTargetLine, syncTargetScreenY, syncTargetMeasuredLine, content]);
 
   // Clean up the active-block marker on unmount.
   useEffect(() => {
