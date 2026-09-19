@@ -141,8 +141,13 @@ replace an entry in `extensions[]`:
 Open the PR against `main`. The Store fetches `catalog.json` via
 `https://raw.githubusercontent.com/linyimin0812/folyn-extensions/main/catalog.json`
 (Rust `fetch_url` proxies it — the webview can't cross-origin to
-`raw.githubusercontent.com` directly). Users see new entries on the Store tab's
-next refresh.
+`raw.githubusercontent.com` directly). Note: GitHub's raw CDN
+(`cache-control: max-age=300`) serves the old file for up to **5 minutes**
+after the merge — the app does no caching of its own, so if the Store tab's
+refresh doesn't show the new entry, just wait ~5 min and refresh again.
+Restarting the app is not needed (it only seemed to help because time had
+passed). Users see new entries on the Store tab's next refresh after that
+window.
 
 ## 5. Update an already-published extension
 
