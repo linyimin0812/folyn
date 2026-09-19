@@ -110,11 +110,21 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // ponytail: restore the saved preview scrollTop when switching tabs.
     // Layout (rendered markdown height, images) isn't settled until after a
     // frame, so apply on rAF — and re-apply on a second rAF to win against
-    // late layout / cursor-sync scrolls that may reset it. Skipped on mount
-    // (no prior position) when previewScrollTop is undefined.
+    // late layout / cursor-sync scrolls that may reset it. On MOUNT the DOM
+    // is fresh (scrollTop 0), so nothing needs resetting — only a saved
+    // value is restored. On TAB SWITCH, reset to 0 when the incoming tab has
+    // no saved position (a newly opened file): the .prev-body DOM is shared
+    // across tabs (no key change), so without the reset it keeps the
+    // previous file's scrollTop and the browser clamps it into the markdown
+    // 100vh bottom pad → a blank preview page on newly opened files (the
+    // reported "新打开一个Markdown文件，预览页留有一大片空白").
+    const isMountRef = useRef(true);
     useEffect(() => {
-      if (typeof activeTab.previewScrollTop !== 'number') return;
-      const target = activeTab.previewScrollTop;
+      const saved = activeTab.previewScrollTop;
+      const isMount = isMountRef.current;
+      isMountRef.current = false;
+      if (saved === undefined && isMount) return;
+      const target = saved ?? 0;
       const apply = () => { if (bodyRef.current) bodyRef.current.scrollTop = target; };
       requestAnimationFrame(() => {
         apply();
