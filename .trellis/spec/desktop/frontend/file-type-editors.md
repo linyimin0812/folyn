@@ -100,6 +100,37 @@ Reference: `apps/desktop/src/editor/EditorView.tsx`, `apps/desktop/src/component
 
 ---
 
+## Markdown Source-Mode Table Editing (Tab/Enter cell navigation)
+
+`MarkdownTableExtension` (`apps/desktop/src/editor/extensions/MarkdownTableExtension.ts`) gives the CodeMirror markdown source editor cell-navigation keys inside piped GFM tables — the piece the paste converter (`detectMarkdownTable` etc.) never covered:
+
+- **Tab** → next cell; row end wraps; past the last row appends an empty row (cursor at its first cell, after `| `). **Shift-Tab** → reverse; before the table's first cell falls through.
+- **Enter** → next row same column; last row appends; an **all-empty body row** is deleted instead and the cursor exits the table (mid-table: into the next row's same column; below the table: onto the following line).
+- Every hijacked key **realigns the whole block**: `markdownTableToMarkdown(table, { pad: true })` pads columns to display width (CJK = 2, `displayWidth`), keeps separator `:---:` markers, fills separators with dashes to column width, re-prefixes the block's common indent (list-item tables survive). One dispatch = one undo step (`userEvent: 'input'`).
+
+### The keymap precedence trap (bit the list extensions)
+
+**Keymap facet order = extension registration order within a precedence level; `buildKeymap` chains same-key handlers in that order and `runHandlers` stops at the first `true`.** `defaultKeymap` (Enter → newline) and `indentWithTab` are registered in `commonExtensions` BEFORE `markdownExtensions` — a plain `keymap.of` registered later for the same key is **dead code** (verified empirically: `listEnterExtension`/`listTabExtension` have never actually hijacked Enter/Tab in the app; their tests only call the handlers directly). Any keymap that must beat a common one needs **`Prec.highest`** — the pattern `EscExitExtension` and `codeBlockKeymap` already use. Autocomplete's completion keymap is also `Prec.highest` but registered earlier, so an open completion tooltip still wins Tab/Enter (desirable).
+
+### Takeover conditions (everything else falls through)
+
+Single cursor (no range), not `state.readOnly`, not inside a fenced/indented code block (`syntaxTree` walk to `FencedCode`/`CodeBlock` — requires `markdown()` to be loaded, which it is in the app), the maximal run of row-like lines around the cursor contains a **first (line, separator) pair** whose line is at/above the cursor (lines above the pair are a paragraph), and the cursor is inside a cell **field** (`splitRowSpans().fields`): `start ≤ c ≤ end` — a cursor ON an interior pipe belongs to the left cell; on the leading pipe or past the line end it falls through (that's the escape hatch). Row-like = `trimStart().startsWith('|')` — bare tables and blockquoted tables (`> | a |`) never hijack.
+
+### Position-aware parsing (`splitRowSpans`)
+
+`markdownTable.ts` exposes `splitRowSpans(line, {allowBare}) → { cells, fields }` — same cell semantics as `parseTableRow` (which now delegates), plus raw `[start, end)` field spans in **passed-line coordinates**. Cursor math never guesses: field spans come from the same escaped-pipe/code-span/emphasis state machine that splits cells. `markdownTableToMarkdown` **never truncates** over-long rows (widest row defines cols — data preservation for realign; GFM renders truncated, source stays a superset).
+
+### Ceilings (ponytail notes)
+
+- Combining marks count 1, ZWJ sequences unmodeled in `displayWidth` — upgrade to a wcwidth port if exotic scripts misalign.
+- Two adjacent tables without a blank line are ONE table (GFM); the later "header" acts as a data row.
+- Prose-with-pipes directly above a table is excluded via the first-pair rule, matching GFM.
+- Enter/Tab inside a table where the syntax tree is unavailable (no language) is not fence-guarded — only relevant outside the app.
+
+Reference: `apps/desktop/src/editor/extensions/MarkdownTableExtension.ts`, `extensions/rich-text/src/markdownTable.ts` (`splitRowSpans`/`displayWidth`/`markdownTableToMarkdown`), `apps/desktop/src/editor/EditorView.tsx` (`markdownExtensions` wiring)
+
+---
+
 ## Draw.io Editor (`.drawio` / `.dio`)
 
 `.drawio` files use `react-drawio`'s `DrawIoEmbed` component, which wraps `https://embed.diagrams.net` in an iframe and communicates via postMessage. Unlike GrapesJS (host-driven canvas), DrawIoEmbed owns its iframe and exposes:

@@ -61,35 +61,63 @@ export function normalizeTableText(text: string): string {
 // code span (`...`). Pipes inside `a | b` or hello \| world must stay in the
 // cell. Tracks escaped + inCodeSpan.
 
-interface ParseRowOptions {
+export interface ParseRowOptions {
   /** Allow a table row with no leading/trailing pipe (bare style: `A | B`). */
   allowBare?: boolean;
 }
 
-export function parseTableRow(line: string, options: ParseRowOptions = {}): string[] {
+/**
+ * Raw cell field span, line-local: [start, end) between two splitting pipes
+ * (or the outer pipes / line edges). In-cell cursor tests use these
+ * inclusive of `end` — a cursor sitting on a pipe belongs to the left cell,
+ * so adjacent fields never overlap.
+ */
+export interface RowField {
+  start: number;
+  end: number;
+}
+
+export interface SplitRowResult {
+  /** Cell texts (escaped pipes unescaped, outer whitespace trimmed). */
+  cells: string[];
+  /** One raw field span per cell, in the coordinates of the passed line. */
+  fields: RowField[];
+}
+
+/**
+ * Split one table row line into cells + raw field spans. The position-aware
+ * sibling of `parseTableRow` (which delegates here); cell text semantics are
+ * identical. `fields` are what the source-mode table editor uses to place
+ * the cursor. Returns null for blank lines.
+ */
+export function splitRowSpans(line: string, options: ParseRowOptions = {}): SplitRowResult | null {
   const { allowBare = false } = options;
-  const trimmed = line.trim();
-  if (trimmed === '') return [];
+  const tStart = line.length - line.trimStart().length;
+  const tEnd = line.trimEnd().length;
+  if (tStart >= tEnd) return null; // blank / whitespace-only line
+  const trimmed = line.slice(tStart, tEnd);
 
   const hasLeadingPipe = trimmed.startsWith('|');
   const hasTrailingPipe = trimmed.endsWith('|') && !trimmed.endsWith('\\|');
 
   // Standard Markdown tables require the row to start with `|` OR, in the
-  // bare style, contain at least one `|` delimiter. A line with no pipes at
-  // all cannot be a row.
+  // bare style, contain at least one `|` delimiter. A line with no pipes
+  // at all cannot be a row.
   if (!hasLeadingPipe && !allowBare) {
     // ponytail: a leading-pipe table that drops the pipe on one row is a
     // malformed row, not a bare row. Treat absence of any pipe as not-a-row
     // so a stray paragraph line under a valid header+separator doesn't get
     // force-split.
-    if (!trimmed.includes('|')) return [];
+    if (!trimmed.includes('|')) return null;
   }
 
   // Strip one leading and one trailing pipe; the content between them holds
   // the real cells. Trailing backslash-pipe is an escaped pipe, not a border.
-  let body = trimmed;
-  if (hasLeadingPipe) body = body.slice(1);
-  if (hasTrailingPipe) body = body.slice(0, -1);
+  // bodyStart/bodyEnd keep span coordinates in the ORIGINAL line so field
+  // spans map to real cursor positions.
+  const bodyStart = tStart + (hasLeadingPipe ? 1 : 0);
+  const bodyEnd = tEnd - (hasTrailingPipe ? 1 : 0);
+  const body = line.slice(bodyStart, bodyEnd);
 
   // ponytail: first pass — mark which character indices are "inside" an
   // inline construct so a pipe at those positions does NOT split a cell.
@@ -144,14 +172,19 @@ export function parseTableRow(line: string, options: ParseRowOptions = {}): stri
     i++;
   }
 
-  // Second pass: split only at pipes whose index is marked splittable.
+  // Second pass: split only at pipes whose index is marked splittable,
+  // tracking each cell's raw field span in passed-line coordinates.
   const cells: string[] = [];
+  const fields: RowField[] = [];
   let current = '';
+  let fieldStart = 0;
   for (let k = 0; k < body.length; k++) {
     const ch = body[k];
     if (ch === '|' && splitHere[k]) {
       cells.push(current);
       current = '';
+      fields.push({ start: bodyStart + fieldStart, end: bodyStart + k });
+      fieldStart = k + 1;
       continue;
     }
     if (ch === '\\' && body[k + 1] === '|') {
@@ -163,10 +196,19 @@ export function parseTableRow(line: string, options: ParseRowOptions = {}): stri
     current += ch;
   }
   cells.push(current);
+  fields.push({ start: bodyStart + fieldStart, end: bodyEnd });
 
   // Trim each cell's surrounding whitespace (Markdown allows padding around
   // cell content) but keep internal whitespace intact.
-  return cells.map((c) => c.trim());
+  return { cells: cells.map((c) => c.trim()), fields };
+}
+
+/**
+ * Parse one table row line into cell texts. Thin wrapper over
+ * `splitRowSpans` — kept for the paste path and existing tests.
+ */
+export function parseTableRow(line: string, options: ParseRowOptions = {}): string[] {
+  return splitRowSpans(line, options)?.cells ?? [];
 }
 
 // ── separator validation ──────────────────────────────────────────────────
@@ -187,7 +229,7 @@ export function separatorAlignment(cell: string): ColumnAlignment | null {
   return null;
 }
 
-function isSeparatorRow(cells: string[]): boolean {
+export function isSeparatorRow(cells: string[]): boolean {
   if (cells.length === 0) return false;
   return cells.every((c) => SEPARATOR_CELL_RE.test(c.trim()));
 }
@@ -555,30 +597,108 @@ function escapePipeInCell(cell: string): string {
   return out;
 }
 
+// ── display width (CJK-aware) ─────────────────────────────────────────────
+
+// ponytail: compact East-Asian Wide/Fullwidth code-point table (plus common
+// emoji). Combining marks count 1 and zero-width joiners aren't modeled —
+// upgrade to a full wcwidth port only if exotic scripts visibly misalign.
+const WIDE_CP_RANGES: Array<[number, number]> = [
+  [0x1100, 0x115f], [0x2329, 0x232a], [0x2e80, 0x303e], [0x3041, 0x33ff],
+  [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xa000, 0xa4cf], [0xa960, 0xa97f],
+  [0xac00, 0xd7a3], [0xf900, 0xfaff], [0xfe10, 0xfe19], [0xfe30, 0xfe6f],
+  [0xff00, 0xff60], [0xffe0, 0xffe6], [0x1f300, 0x1f64f], [0x1f900, 0x1f9ff],
+  [0x20000, 0x2fffd], [0x30000, 0x3fffd],
+];
+
+/** Monospace display width: CJK / fullwidth / common emoji count 2, else 1. */
+export function displayWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)!;
+    w += WIDE_CP_RANGES.some(([a, b]) => cp >= a && cp <= b) ? 2 : 1;
+  }
+  return w;
+}
+
+export interface MarkdownTableFormatOptions {
+  /**
+   * Pad cells to the column's display width (CJK-aware) and fill the
+   * separator with dashes so the pipes stay visually aligned — the format
+   * the source-mode table editor realigns to on every structural edit.
+   * Default false = the compact single-space form used by the paste path.
+   */
+  pad?: boolean;
+}
+
 /**
  * Render a parsed Markdown table back to a canonical Markdown source string
- * (with outer pipes and `| --- |` separator). Used when inserting into the
+ * (with outer pipes and a `| --- |` separator). Used when inserting into the
  * CodeMirror markdown editor, where the storage format is source text.
+ *
+ * Never truncates: a body row with more cells than the header is kept
+ * verbatim (the column count grows to the widest row) — the source-mode
+ * table editor relies on this to realign without losing typed data. GFM
+ * renders such rows truncated, so the source stays a superset of the render.
  */
-export function markdownTableToMarkdown(table: ParsedMarkdownTable): string {
+export function markdownTableToMarkdown(
+  table: ParsedMarkdownTable,
+  options: MarkdownTableFormatOptions = {},
+): string {
   const { header, rows, alignments } = table;
-  const cols = header.length;
-  // ponytail: build the separator from the actual column count, padding a
-  // short alignments array (TSV tables carry no alignment info → all `---`)
-  // so a 3-col table always emits 3 separator cells, never a single empty one.
-  const sepCells: string[] = [];
+  const pad = options.pad === true;
+  // ponytail: the widest row defines the column count, so over-long rows are
+  // padded up to, never cut to, the header (data preservation over GFM render
+  // fidelity — this feeds the source editor, not a renderer).
+  let cols = header.length;
+  for (const row of rows) cols = Math.max(cols, row.length);
+
+  // Alignment per column; a short alignments array (TSV/CSV tables carry
+  // none) means `---` for every column beyond it. widths start at the
+  // separator's minimum and grow to the widest cell in pad mode.
+  const aligns: ColumnAlignment[] = [];
+  const widths: number[] = [];
   for (let i = 0; i < cols; i++) {
     const a = alignments[i] ?? null;
-    sepCells.push(a === 'left' ? ':---' : a === 'center' ? ':---:' : a === 'right' ? '---:' : '---');
+    aligns.push(a);
+    widths.push(3 + (a === 'center' ? 2 : a ? 1 : 0));
   }
-  const sep = sepCells.join(' | ');
-  const head = header.map(escapePipeInCell).join(' | ');
-  const lines = [`| ${head} |`, `| ${sep} |`];
-  for (const row of rows) {
-    const cells = [...row];
+
+  const escHeader = header.map(escapePipeInCell);
+  const escRows = rows.map((r) => r.map(escapePipeInCell));
+  if (pad) {
+    const measure = (text: string, i: number) => {
+      widths[i] = Math.max(widths[i], displayWidth(text));
+    };
+    escHeader.forEach(measure);
+    for (const r of escRows) r.forEach(measure);
+  }
+
+  const renderCell = (text: string, i: number): string => {
+    if (!pad) return text;
+    const spaces = widths[i] - displayWidth(text);
+    const a = aligns[i];
+    if (a === 'right') return ' '.repeat(spaces) + text;
+    if (a === 'center') {
+      const left = Math.floor(spaces / 2);
+      return ' '.repeat(left) + text + ' '.repeat(spaces - left);
+    }
+    return text + ' '.repeat(spaces); // left / unaligned
+  };
+  const renderSep = (i: number): string => {
+    const a = aligns[i];
+    if (!pad) return a === 'left' ? ':---' : a === 'center' ? ':---:' : a === 'right' ? '---:' : '---';
+    const dashes = '-'.repeat(Math.max(3, widths[i] - (a === 'center' ? 2 : a ? 1 : 0)));
+    return a === 'left' ? `:${dashes}` : a === 'right' ? `${dashes}:` : a === 'center' ? `:${dashes}:` : dashes;
+  };
+  const renderRow = (escapedCells: string[]): string => {
+    const cells = [...escapedCells];
     while (cells.length < cols) cells.push('');
-    lines.push(`| ${cells.slice(0, cols).map(escapePipeInCell).join(' | ')} |`);
-  }
+    return `| ${cells.map((t, i) => renderCell(t, i)).join(' | ')} |`;
+  };
+
+  const sep = Array.from({ length: cols }, (_, i) => renderSep(i)).join(' | ');
+  const lines = [renderRow(escHeader), `| ${sep} |`];
+  for (const row of escRows) lines.push(renderRow(row));
   return lines.join('\n');
 }
 

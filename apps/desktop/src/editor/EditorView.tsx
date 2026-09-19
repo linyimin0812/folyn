@@ -94,6 +94,7 @@ import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { mathExtension } from './extensions/MarkdownMathExtension';
 import { listEnterExtension } from './extensions/ListEnterExtension';
 import { listTabExtension } from './extensions/ListTabExtension';
+import { markdownTableExtension } from './extensions/MarkdownTableExtension';
 import { escExitExtension } from './extensions/EscExitExtension';
 import { headingFoldExtension } from './extensions/headingFoldExtension';
 import { json as jsonLanguage } from '@codemirror/lang-json';
@@ -534,6 +535,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         ...orderedListExtension,
         ...listEnterExtension,
         ...listTabExtension,
+        ...markdownTableExtension,
         ...escExitExtension,
         ...headingFoldExtension,
         ...mathExtension,
