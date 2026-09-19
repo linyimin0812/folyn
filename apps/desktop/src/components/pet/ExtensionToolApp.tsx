@@ -80,6 +80,13 @@ interface ExtensionToolOpenPayload {
 
 const PANEL_LABEL = 'extension-tool-panel';
 
+/** Grace window (ms) after an open — blur events within this window are
+ *  ignored by the auto-hide listener. The surface's polite app activation
+ *  and the iframe's onLoad focus re-assert fire spurious tauri://blur
+ *  events that would instantly dismiss the just-opened popup (the "chip
+ *  click opens nothing" bug). Real user blurs land well after. */
+const OPEN_GRACE_MS = 300;
+
 /** Built-in tool ids whose payload renders React content inside this popup
  *  instead of the origin-isolated sandbox iframe — the translation popup
  *  (PRD 09-18-translation-popup-refactor) and the inbox popup (PRD
@@ -93,6 +100,20 @@ function isBuiltinToolId(extensionId: string): boolean {
 
 export function ExtensionToolApp() {
   const [tool, setTool] = useState<ExtensionToolOpenPayload | null>(null);
+  // ponytail: grace window after an open — the surface's polite app
+  // activation, the iframe's onLoad focus re-assert, and the extension
+  // page's own autofocus all make the webview's focus churn right after
+  // the popup surfaces, which tao reports as tauri://blur. Without this
+  // grace the blur-auto-hide kills the popup in its first ~300ms
+  // (the "chip click opens nothing" bug). Real user blurs (clicking
+  // another app) land well after this window. Set to Date.now() on every
+  // tool payload arrival (handler / pre-mount global / fetch fallback).
+  const openedAtRef = useRef(0);
+  // Stamp the open time on every tool payload arrival — the blur listener
+  // (below) reads this to skip blur events within OPEN_GRACE_MS.
+  const markOpened = useCallback(() => {
+    openedAtRef.current = Date.now();
+  }, []);
   // Pin (置顶): when pinned, blur (clicking another app) does NOT hide the
   // popup. Unpinned by default — clicking another app dismisses it; the pin
   // button keeps it up (e.g. diff-viewer side-by-side use). Mirrors
@@ -110,34 +131,39 @@ export function ExtensionToolApp() {
     // with the payload on `window.__extensionToolOpen`. Handle both
     // orderings: the eval can land before this mount (read the global
     // directly) or after (the CustomEvent).
-    const handler = () => {
-      const p = (window as unknown as Record<string, unknown>)[
-        '__extensionToolOpen'
-      ] as ExtensionToolOpenPayload | undefined;
-      if (p) setTool(p);
-    };
-    window.addEventListener('extension-tool-open', handler);
-    // In case the eval ran before mount:
-    const pre = (window as unknown as Record<string, unknown>)[
-      '__extensionToolOpen'
-    ] as ExtensionToolOpenPayload | undefined;
-    if (pre) {
+   const handler = () => {
+     const p = (window as unknown as Record<string, unknown>)[
+       '__extensionToolOpen'
+     ] as ExtensionToolOpenPayload | undefined;
+     if (p) {
+        markOpened();
+        setTool(p);
+     }
+   };
+   window.addEventListener('extension-tool-open', handler);
+   // In case the eval ran before mount:
+   const pre = (window as unknown as Record<string, unknown>)[
+     '__extensionToolOpen'
+     ] as ExtensionToolOpenPayload | undefined;
+   if (pre) {
+      markOpened();
       setTool(pre);
-    }
-    // Mount-time fetch fallback (covers a webview reload that wiped the
-    // window global but not the Rust-side cache).
-    (async () => {
-      try {
-        const last = await invoke<ExtensionToolOpenPayload | null>(
-          'get_last_extension_tool',
-        );
-        if (!cancelled && last) {
+   }
+   // Mount-time fetch fallback (covers a webview reload that wiped the
+   // window global but not the Rust-side cache).
+   (async () => {
+     try {
+       const last = await invoke<ExtensionToolOpenPayload | null>(
+         'get_last_extension_tool',
+       );
+       if (!cancelled && last) {
+          markOpened();
           setTool((prev) => prev ?? last);
-        }
-      } catch {
-        // Non-fatal: the eval/global paths normally carry the payload.
-      }
-    })();
+       }
+     } catch {
+       // Non-fatal: the eval/global paths normally carry the payload.
+     }
+   })();
     // Window transparency (the pet-panel's fix for the gray square corners).
     (async () => {
       try {
@@ -146,11 +172,11 @@ export function ExtensionToolApp() {
         // Non-fatal: the open path re-asserts it after every surface.
       }
     })();
-    return () => {
-      cancelled = true;
-      window.removeEventListener('extension-tool-open', handler);
-    };
-  }, []);
+   return () => {
+     cancelled = true;
+     window.removeEventListener('extension-tool-open', handler);
+   };
+  }, [markOpened]);
 
   const close = useCallback(async () => {
     if (!isTauri()) return;
@@ -191,9 +217,15 @@ export function ExtensionToolApp() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
         const target = { target: { kind: 'Window' as const, label: PANEL_LABEL } };
-        const un = await listen('tauri://blur', () => {
+       const un = await listen('tauri://blur', () => {
+          // Skip blur events within the grace window after an open —
+          // the surface's polite app activation + the iframe's onLoad
+          // focus re-assert fire spurious blurs that would instantly
+          // dismiss the just-opened popup (the "chip click opens
+          // nothing" bug). Real user blurs land well after.
+          if (Date.now() - openedAtRef.current < OPEN_GRACE_MS) return;
           if (!isPinnedRef.current) void close();
-        }, target);
+       }, target);
         if (disposed) un();
         else unBlur = un;
       } catch (err) {
@@ -313,7 +345,7 @@ export function ExtensionToolApp() {
             className="ext-tool-ctrl ext-tool-ctrl-close"
             aria-label="关闭"
             title="关闭"
-            onClick={() => void close()}
+            onClick={() => { void close(); }}
           >
             <X size={14} />
           </button>

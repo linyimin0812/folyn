@@ -38,6 +38,16 @@ describe('normalizeSvg', () => {
     const out = normalizeSvg('<svg style="width:200px;height:200px"></svg>', 16);
     expect(out).toBe('<svg height="16" width="16"></svg>');
   });
+
+  it('does not rewrite stroke-width when no width attribute exists (regression: black-blob icons)', () => {
+    const out = normalizeSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>',
+      16,
+    );
+    expect(out).toContain('stroke-width="2"');
+    expect(out).toContain('width="16"');
+    expect(out).toContain('height="16"');
+  });
 });
 
 describe('IconFromSvg', () => {

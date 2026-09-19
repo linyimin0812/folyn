@@ -91,6 +91,10 @@ export function PetSearchRecents({ onPointerDown }: PetSearchRecentsProps) {
             type="button"
             className="pet-panel-search-chip"
             title={t('pet:search.recentsChip', { name })}
+            // macOS WKWebView doesn't focus buttons on mousedown, so the
+            // input blur (relatedTarget=null) unmounts this row before the
+            // click lands. Swallowing the mousedown keeps focus on the input.
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => pickChip(id)}
           >
             {row ? (

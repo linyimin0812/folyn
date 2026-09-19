@@ -23,11 +23,14 @@ export function normalizeSvg(raw: string, size: number): string {
       .trim();
     return cleaned ? ` style="${cleaned}"` : '';
   });
-  s = /width="[^"]*"/.test(s)
-    ? s.replace(/width="[^"]*"/, `width="${size}"`)
+  // Attribute-name-anchored: `\s` boundary prevents matching the `width="…"`
+  // inside `stroke-width="…"` (an unanchored /width="…"/ rewrote a manifest
+  // icon's stroke-width="2" to stroke-width="16" → solid-black icon blob).
+  s = /\swidth="[^"]*"/.test(s)
+    ? s.replace(/(\s)width="[^"]*"/, `$1width="${size}"`)
     : s.replace(/<svg/, `<svg width="${size}"`);
-  s = /height="[^"]*"/.test(s)
-    ? s.replace(/height="[^"]*"/, `height="${size}"`)
+  s = /\sheight="[^"]*"/.test(s)
+    ? s.replace(/(\s)height="[^"]*"/, `$1height="${size}"`)
     : s.replace(/<svg/, `<svg height="${size}"`);
   return s;
 }

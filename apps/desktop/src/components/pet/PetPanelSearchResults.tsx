@@ -230,13 +230,15 @@ export const PetPanelSearchResults = forwardRef<
       } else if (item.kind === 'command') {
         await emitRunCommand(item.commandId);
         // The inbox command opens the extension-tool popup, which floats
-        // over the user's current app — hide the panel restoring the user's
-        // previous frontmost app (same as the open-extension-tool path
-        // below), so picking it doesn't leave Folyn in the foreground.
+        // over the user's workspace — hide the panel WITHOUT restoring the
+        // previous frontmost app: the popup's own surface activates Folyn
+        // (key window + Esc support), and a post-surface activation of the
+        // user's app would blur the popup and its auto-hide would dismiss
+        // it instantly (same fix as emitOpenExtensionTool below).
         if (item.commandId === 'action.open-inbox' && isTauri()) {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('pet_panel_hide', { restoreFocus: true });
+            await invoke('pet_panel_hide', { restoreFocus: false });
           } catch {
             // Non-fatal — the generic onDone() hide still runs.
           }
@@ -452,19 +454,21 @@ async function emitRunCommand(commandId: string): Promise<void> {
 
 /** Open a extension's tool window (popup) in the main window. Exported for
  *  PetSearchRecents — its chips re-fire the exact same open path (emit
- *  menu-action + hide the panel restoring focus) as a picked search row. */
+ *  menu-action + hide the panel) as a picked search row. */
 export async function emitOpenExtensionTool(extensionId: string): Promise<void> {
   if (!isTauri()) return;
   try {
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://menu-action', { action: 'open-extension-tool', extensionId });
-    // The panel hide for THIS path restores the user's previous frontmost
-    // app: the panel activated Folyn (set_focus for Esc support), but the
-    // tool popup is meant to float over the user's app — Folyn must not
-    // stay in the foreground after the panel hides. The generic onDone()
-    // hide that follows is a no-op (window already hidden).
+    // NO focus restore here: the tool popup's own surface
+    // (surface_extension_tool_panel) activates Folyn so the popup is key and
+    // Esc works. Restoring the user's previous app would deactivate Folyn
+    // AFTER the popup surfaces → the popup blurs → the unpinned blur
+    // auto-hide instantly dismisses it (the "chip click opens nothing" bug).
+    // The popup still floats over the user's workspace either way — it's an
+    // overlay panel.
     const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('pet_panel_hide', { restoreFocus: true });
+    await invoke('pet_panel_hide', { restoreFocus: false });
   } catch {
     // Non-fatal.
   }

@@ -268,7 +268,9 @@ pub fn surface_extension_tool_panel(window: &tauri::WebviewWindow) -> bool {
         crate::pet_panel_macos::convert_window_to_floating_panel(window, true);
     }
     let applied = catch(AssertUnwindSafe(|| unsafe {
-        let Ok(ns_window) = window.ns_window() else { return false };
+        let Ok(ns_window) = window.ns_window() else {
+            return false;
+        };
         let ns = ns_window as *mut AnyObject;
         if ns.is_null() {
             return false;
@@ -282,41 +284,36 @@ pub fn surface_extension_tool_panel(window: &tauri::WebviewWindow) -> bool {
             msg_send![tauri_nspanel::objc2::class!(NSColor), clearColor];
         let _: () = msg_send![ns, setBackgroundColor: clear];
         let _: () = msg_send![ns, setOpaque: false];
-        // Undo the prewarm state (alpha 0 + ignoresMouse) — the prewarm only
-        // runs once at startup, but restoring unconditionally is idempotent.
         let _: () = msg_send![ns, setAlphaValue: 1.0f64];
         let _: () = msg_send![ns, setIgnoresMouseEvents: false];
         let _: () = msg_send![ns, orderFrontRegardless];
-        // Recompute the shadow shape: the prewarm phase ran with alphaValue
-        // 0 (empty alpha shape), and AppKit does NOT recompute a transparent
-        // window's shadow when the content later changes — without this the
-        // shadow stays stale (square/half-baked), reading as gray corner
-        // squares outside the shell's radius.
         let _: () = msg_send![ns, invalidateShadow];
-        // Key WITHOUT app activation (nonactivating panel — same trick as
-        // focus_panel). The key state is what makes tao emit tauri://focus /
-        // tauri://blur when the user clicks another app, which drives the
-        // unpinned blur-auto-hide in ExtensionToolApp (the pin button's
-        // "点击外部不收起" semantics, same as the pet panel).
         let _: () = msg_send![ns, makeKeyWindow];
-        // POLITE app activation (activateWithOptions:0, no force-steal).
-        // Why: macOS routes keyboard events ONLY to the active app — without
-        // this, Esc (and any keystroke) physically cannot reach the popup
-        // until the user clicks something of ours ("只有点 header 才能关").
-        // In pet/float mode Folyn has NO ordinary visible window, so
-        // activating it changes only the menu bar — no visible "jump to
-        // Folyn" (the popup stays floating over the user's workspace).
-        // Politeness (0, not activateIgnoringOtherApps): when no user
-        // gesture is in scope the system may decline — acceptable.
-        // (The earlier focus_panel de-activation was about the pet PANEL
-        // show stealing the frontmost app slot at hotkey time; this one
-        // runs at popup-open time, when the click chain provides a
-        // gesture, and Folyn's frontmost-slot change has no visible cost.)
+        // POLITE app activation (no force-steal). Why: macOS routes keyboard
+        // events ONLY to the active app — without this, Esc (and any
+        // keystroke) physically cannot reach the popup until the user clicks
+        // something of ours ("只有点 header 才能关"). Also critical: if the
+        // app is NOT active, macOS immediately reverts makeKeyWindow — the
+        // popup blurs (tauri://blur) and the frontend auto-hides it, so the
+        // window never visibly appears at all. In pet/float mode Folyn has
+        // NO ordinary visible window, so activating it changes only the menu
+        // bar — no visible "jump to Folyn" (the popup stays floating over
+        // the user's workspace).
+        //
+        // `-activateWithOptions:` (the polite pre-macOS-14 spelling) throws
+        // "unrecognized selector" on TaoApp on modern macOS — use the
+        // macOS 14+ `-activate` when present, else the legacy spelling.
         let ns_app: *mut AnyObject = msg_send![
             tauri_nspanel::objc2::class!(NSApplication),
             sharedApplication
         ];
-        let _: () = msg_send![ns_app, activateWithOptions: 0u64];
+        let has_new = tauri_nspanel::objc2::class!(NSApplication)
+            .responds_to(tauri_nspanel::objc2::sel!(activate));
+        if has_new {
+            let _: () = msg_send![ns_app, activate];
+        } else {
+            let _: () = msg_send![ns_app, activateWithOptions: 0u64];
+        }
         true
     }));
     applied.unwrap_or(false)
