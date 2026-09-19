@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ContainerExtension, ContainerCategory } from '@folyn/container-extensions';
+import { Heading1, Heading2, Heading3, Quote, Code2, Table, Minus } from 'lucide-react';
+import type { ContainerCategory } from '@folyn/container-extensions';
 import { getActiveContainers } from '@/services/containerRegistryService';
 import { IconFromSvg } from '@/components/icons/IconFromSvg';
 
-const CATEGORY_KEYS: Record<ContainerCategory, string> = {
+const CATEGORY_KEYS: Record<ContainerCategory | 'basic', string> = {
+  basic: 'editor:slashMenu.categories.basic',
   layout: 'editor:slashMenu.categories.layout',
   media: 'editor:slashMenu.categories.media',
   ai: 'editor:slashMenu.categories.ai',
@@ -13,28 +15,86 @@ const CATEGORY_KEYS: Record<ContainerCategory, string> = {
   custom: 'editor:slashMenu.categories.custom',
 };
 
+/** One selectable slash-menu entry. Structural subset of ContainerExtension
+ *  (which stays assignable as-is) plus `cursorOffset` for basic blocks. */
+export interface SlashMenuItem {
+  name: string;
+  icon: string | ReactNode;
+  label: string;
+  category: ContainerCategory | 'basic';
+  /** Markdown inserted when selected from the slash menu */
+  template: string;
+  description?: string;
+  /** Offset into `template` where the cursor lands after insert
+ *   (default: end of the template). */
+  cursorOffset?: number;
+}
+
+/** Basic markdown block entries — plain templates, no `:::directive`, so they
+ *  never touch ContainerRegistry (its contract requires a React component).
+ *  Lean core set; code block and table carry `cursorOffset` to land the
+ *  cursor inside the block. */
+const BASIC_BLOCKS: {
+  name: string;
+  icon: ReactNode;
+  labelKey: string;
+  template: string;
+  cursorOffset?: number;
+}[] = [
+  { name: 'heading1', icon: <Heading1 size={16} />, labelKey: 'editor:slashMenu.basic.heading1', template: '# ' },
+  { name: 'heading2', icon: <Heading2 size={16} />, labelKey: 'editor:slashMenu.basic.heading2', template: '## ' },
+  { name: 'heading3', icon: <Heading3 size={16} />, labelKey: 'editor:slashMenu.basic.heading3', template: '### ' },
+  { name: 'blockquote', icon: <Quote size={16} />, labelKey: 'editor:slashMenu.basic.blockquote', template: '> ' },
+  { name: 'code-block', icon: <Code2 size={16} />, labelKey: 'editor:slashMenu.basic.codeBlock', template: '```\n\n```', cursorOffset: 4 },
+  { name: 'table', icon: <Table size={16} />, labelKey: 'editor:slashMenu.basic.table', template: '|  |  |\n| --- | --- |\n|  |  |', cursorOffset: 2 },
+  { name: 'horizontal-rule', icon: <Minus size={16} />, labelKey: 'editor:slashMenu.basic.horizontalRule', template: '---' },
+];
+
 interface SlashMenuProps {
   visible: boolean;
   filter: string;
   position: { top: number; left: number };
-  onSelect: (extension: ContainerExtension) => void;
+  onSelect: (item: SlashMenuItem) => void;
   onClose: () => void;
 }
 
+/** Tokenize the "/" query into character-class runs — non-ASCII
+ *  (CJK/kana/accented) / latin / digits — so "标题1" searches as
+ *  标题 AND 1: "标题" hits the localized label (一级标题), "1" hits the
+ *  ASCII name (heading1). Whole-substring matching alone can never match
+ *  that query — the label ends with 标题 and has no digit, the name has no
+ *  CJK — so typing a level makes the menu vanish with no way to select it. */
+function tokenizeQuery(filter: string): string[] {
+  return filter.toLowerCase().match(/[^\x00-\x7f]+|[a-z]+|[0-9]+/g) ?? [];
+}
+
+/** Search: the text typed after "/" is the query. Every token must hit the
+ *  item's name + label + description (case-insensitive, tokens ANDed, fields
+ *  concatenated — a token can hit in the name while another hits in the
+ *  label, which is exactly what makes "标题1" match). */
+function matchesQuery(item: SlashMenuItem, tokens: string[]): boolean {
+  const haystack = `${item.name} ${item.label} ${item.description ?? ''}`.toLowerCase();
+  return tokens.every((tk) => haystack.includes(tk));
+}
+
 /**
- * Render a container's resolved `icon` string. Inline `<svg>...</svg>` strings
+ * Render a container's resolved `icon`. Inline `<svg>...</svg>` strings
  * (set directly from the manifest, OR pre-resolved from a `.svg` file path by
- * `registerExtensionContainers`) go through `IconFromSvg`; anything else is the
- * emoji/text fallback (preserves the builtin convention).
+ * `registerExtensionContainers`) go through `IconFromSvg`; plain strings are
+ * the emoji/text fallback (preserves the builtin convention); ReactNode icons
+ * (basic-block lucide components) render as-is.
  *
- * ponytail: inline two-branch dispatcher; not worth a shared file — the
+ * ponytail: inline three-branch dispatcher; not worth a shared file — the
  * `featureAdapter` version has a ThemeIcon fallback that doesn't apply here.
  */
-function renderContainerIcon(icon: string): ReactNode {
-  if (icon.trim().startsWith('<svg')) {
-    return <IconFromSvg svg={icon} size={16} />;
+function renderIcon(icon: string | ReactNode): ReactNode {
+  if (typeof icon === 'string') {
+    if (icon.trim().startsWith('<svg')) {
+      return <IconFromSvg svg={icon} size={16} />;
+    }
+    return <span>{icon}</span>;
   }
-  return <span>{icon}</span>;
+  return icon;
 }
 
 export function SlashMenu({ visible, filter, position, onSelect, onClose }: SlashMenuProps) {
@@ -53,28 +113,37 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
   // changes on every keystroke.
   const flippedRef = useRef(false);
 
-  const allExtensions = getActiveContainers()
-    .filter((p) => p.name !== 'step' && p.name !== 'tab');
-  const filtered = filter
-    ? allExtensions.filter(
-        (p) =>
-          p.name.toLowerCase().includes(filter.toLowerCase()) ||
-          p.label.includes(filter),
-      )
-    : allExtensions;
+  // Basic markdown blocks (labels localized here) always come first so the
+  // highest-frequency entries are at the top; containers follow in their
+  // registry categories. `step`/`tab` are sub-directives, not insertable.
+  const basicItems: SlashMenuItem[] = BASIC_BLOCKS.map((b) => ({
+    name: b.name,
+    icon: b.icon,
+    label: t(b.labelKey),
+    category: 'basic',
+    template: b.template,
+    cursorOffset: b.cursorOffset,
+  }));
+  const allItems: SlashMenuItem[] = [
+    ...basicItems,
+    ...getActiveContainers().filter((p) => p.name !== 'step' && p.name !== 'tab'),
+  ];
+
+  const tokens = tokenizeQuery(filter);
+  const filtered = tokens.length ? allItems.filter((p) => matchesQuery(p, tokens)) : allItems;
 
   // Group by category
-  const grouped = new Map<ContainerCategory, ContainerExtension[]>();
-  for (const extension of filtered) {
-    const list = grouped.get(extension.category) || [];
-    list.push(extension);
-    grouped.set(extension.category, list);
+  const grouped = new Map<ContainerCategory | 'basic', SlashMenuItem[]>();
+  for (const item of filtered) {
+    const list = grouped.get(item.category) || [];
+    list.push(item);
+    grouped.set(item.category, list);
   }
 
   // Build flat list in the same order as the grouped rendering
-  const flatList: ContainerExtension[] = [];
-  for (const extensions of grouped.values()) {
-    flatList.push(...extensions);
+  const flatList: SlashMenuItem[] = [];
+  for (const items of grouped.values()) {
+    flatList.push(...items);
   }
 
   // Always start on the first item: reset when the menu reopens AND when the
@@ -204,20 +273,20 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
       ref={menuRef}
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
-      {Array.from(grouped.entries()).map(([category, extensions]) => (
+      {Array.from(grouped.entries()).map(([category, items]) => (
         <div key={category} className="mb-0.5">
           <div className="text-[9px] font-semibold text-t3 uppercase tracking-[.1em] pt-1.5 pb-1 px-2">{t(CATEGORY_KEYS[category])}</div>
-          {extensions.map((extension) => {
+          {items.map((item) => {
             const currentIndex = itemIndex++;
             return (
               <div
-                key={extension.name}
+                key={item.name}
                 className={`slash-menu-item group flex items-center gap-2.5 py-2 px-2 rounded-lg cursor-pointer transition-[background-color,box-shadow] duration-100 ${
                   currentIndex === activeIndex
                     ? 'active bg-accglow shadow-[inset_0_0_0_1px_var(--accdim)]'
                     : 'hover:bg-hov'
                 }`}
-                onClick={() => onSelect(extension)}
+                onClick={() => onSelect(item)}
                 onMouseEnter={() => setActiveIndex(currentIndex)}
               >
                 <span
@@ -225,12 +294,12 @@ export function SlashMenu({ visible, filter, position, onSelect, onClose }: Slas
                     currentIndex === activeIndex ? 'bg-accdim' : ''
                   }`}
                 >
-                  {renderContainerIcon(extension.icon)}
+                  {renderIcon(item.icon)}
                 </span>
                 <div className="flex flex-col gap-px min-w-0">
-                  <span className="text-xs font-medium text-t1 truncate">{extension.label}</span>
-                  {extension.description && (
-                    <span className="text-[10px] text-t3 truncate">{extension.description}</span>
+                  <span className="text-xs font-medium text-t1 truncate">{item.label}</span>
+                  {item.description && (
+                    <span className="text-[10px] text-t3 truncate">{item.description}</span>
                   )}
                 </div>
               </div>

@@ -98,11 +98,21 @@
   },
   "slashMenu": {
     "categories": {
+      "basic": "Basis",
       "layout": "Layout",
       "media": "Medien",
       "ai": "KI",
       "data": "Daten",
       "custom": "Benutzerdefiniert"
+    },
+    "basic": {
+      "heading1": "Überschrift 1",
+      "heading2": "Überschrift 2",
+      "heading3": "Überschrift 3",
+      "blockquote": "Zitatblock",
+      "codeBlock": "Codeblock",
+      "table": "Tabelle",
+      "horizontalRule": "Trennlinie"
     },
     "richText": {
       "triggerButton": "Slash-Befehl einfügen",

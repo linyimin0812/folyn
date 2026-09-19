@@ -98,11 +98,21 @@
   },
   "slashMenu": {
     "categories": {
+      "basic": "Básico",
       "layout": "Disposición",
       "media": "Multimedia",
       "ai": "IA",
       "data": "Datos",
       "custom": "Personalizado"
+    },
+    "basic": {
+      "heading1": "Encabezado 1",
+      "heading2": "Encabezado 2",
+      "heading3": "Encabezado 3",
+      "blockquote": "Cita",
+      "codeBlock": "Bloque de código",
+      "table": "Tabla",
+      "horizontalRule": "Línea horizontal"
     },
     "richText": {
       "triggerButton": "Insertar comando de barra",

@@ -98,11 +98,21 @@
   },
   "slashMenu": {
     "categories": {
+      "basic": "基本",
       "layout": "レイアウト",
       "media": "メディア",
       "ai": "AI",
       "data": "データ",
       "custom": "カスタム"
+    },
+    "basic": {
+      "heading1": "見出し1",
+      "heading2": "見出し2",
+      "heading3": "見出し3",
+      "blockquote": "引用",
+      "codeBlock": "コードブロック",
+      "table": "テーブル",
+      "horizontalRule": "区切り線"
     },
     "richText": {
       "triggerButton": "スラッシュコマンドを挿入",

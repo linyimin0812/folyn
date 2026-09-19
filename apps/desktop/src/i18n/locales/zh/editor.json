@@ -105,11 +105,21 @@
   },
   "slashMenu": {
     "categories": {
+      "basic": "基础",
       "layout": "布局",
       "media": "媒体",
       "ai": "AI",
       "data": "数据",
       "custom": "自定义"
+    },
+    "basic": {
+      "heading1": "一级标题",
+      "heading2": "二级标题",
+      "heading3": "三级标题",
+      "blockquote": "引用",
+      "codeBlock": "代码块",
+      "table": "表格",
+      "horizontalRule": "分隔线"
     },
     "richText": {
       "triggerButton": "插入斜杠命令",

@@ -209,6 +209,51 @@ PetChat uses it with no `@mention` layer.
 
 ---
 
+## Markdown Editor Slash Menu (`components/editor/SlashMenu.tsx`)
+
+The `/` menu in the Markdown (CodeMirror) editor composes **two item
+sources** and must keep them separate:
+
+1. **Basic markdown blocks** — a static `BASIC_BLOCKS` constant *inside
+   `SlashMenu.tsx`* (headings, quote, code block, table, rule). They are
+   plain markdown templates: **never register them in `ContainerRegistry`**
+   — that contract requires a React component + `:::name` directive and its
+   entries also render in preview/export/Settings surfaces where plain
+   blocks make no sense. Labels resolve via `t('editor:slashMenu.basic.*')`
+   at render time (i18n, 6 locales).
+2. **Plugin containers** — `getActiveContainers()` (registry minus
+   Settings-disabled minus `step`/`tab` sub-directives), labels are registry
+   strings.
+
+**Shared item contract**: `SlashMenuItem` (exported from `SlashMenu.tsx`) —
+`{ name, icon, label, category, template, description?, cursorOffset? }`.
+`ContainerExtension` is structurally assignable (its `icon: string` fits
+`icon: string | ReactNode`; lucide icons are used for basic blocks).
+`onSelect` is typed `SlashMenuItem`; `EditorPane.handleSlashSelect` is the
+single insertion site.
+
+**Search**: the text typed after `/` is the query — tokenized into
+character-class runs (non-ASCII / latin / digits), every token must hit the
+item's `name + label + description` (case-insensitive, ANDed across fields).
+This is what makes `标题1` match 一级标题: the CJK token hits the localized
+label, the digit token hits the ASCII name `heading1` — and only that level.
+Do NOT revert to whole-substring matching (label-only matching is
+case-sensitive and misses English labels; whole-substring can never match a
+query that spans label and name, so typing a heading level empties the menu).
+
+**Cursor landing**: basic blocks carry an explicit `cursorOffset` (code
+block → the empty line between fences, table → first header cell);
+containers keep the legacy heuristics (first `""` in the template → between
+the quotes, else end of insert).
+
+**IME safety**: the menu state is derived purely from doc+cursor in
+`computeSlashMenuState` (`editor/extensions/SlashCommandExtension.ts`) —
+never add a StateField/transaction dispatch for menu state; WKWebView drops
+uncommitted pinyin otherwise. Keydown handling ignores keys while a document
+level composition is active.
+
+---
+
 ## Common Mistakes
 
 - Using `useStore()` with no selector — subscribes to everything, causes unnecessary re-renders

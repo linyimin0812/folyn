@@ -1,13 +1,12 @@
 import { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
 import { FolynEditor, type FolynEditorHandle } from '@/editor/EditorView';
-import { SlashMenu } from '../editor/SlashMenu';
+import { SlashMenu, type SlashMenuItem } from '../editor/SlashMenu';
 import { CodeBlockLangMenu } from '../editor/CodeBlockLangMenu';
 import { ImagePasteDialog, type ImageSaveConfig } from '../editor/ImagePasteDialog';
 import { type SlashMenuState } from '@/editor/extensions/SlashCommandExtension';
 import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension';
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
-import type { ContainerExtension } from '@folyn/container-extensions';
 import type { FileTab } from '@/store/editorStore';
 import { DiffReviewBar } from './DiffReviewBar';
 import { DbmlStyleStatusButton } from '../file-types/dbml/DbmlStyleStatusButton';
@@ -125,7 +124,7 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
       }
     }, [getView]);
 
-    const handleSlashSelect = useCallback((extension: ContainerExtension) => {
+    const handleSlashSelect = useCallback((item: SlashMenuItem) => {
       const view = getView();
       if (!view) return;
 
@@ -133,18 +132,21 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
       const line = view.state.doc.lineAt(menuState.pos);
       const slashStart = line.from;
 
-      // ponytail: if template contains an empty "" (e.g. file-preview's src=""),
-      // drop the cursor between the quotes so the user can type the path immediately.
-      // Ceiling: no other extension template uses empty quotes today; if one starts,
-      // the heuristic would jump to the first "" — revisit if/when it bites.
-      const emptyQuoteIdx = extension.template.indexOf('""');
+      // Cursor landing spot, explicit first: basic blocks carry `cursorOffset`
+      // (code block / table land INSIDE the template). Otherwise the legacy
+      // heuristics for container templates: an empty "" (e.g. file-preview's
+      // src="") drops the cursor between the quotes; default is the end.
+      // Ceiling: no other extension template uses empty quotes today; if one
+      // starts, the heuristic would jump to the first "" — revisit if/when it
+      // bites.
+      const emptyQuoteIdx = item.template.indexOf('""');
+      const anchorOffset =
+        item.cursorOffset ?? (emptyQuoteIdx >= 0 ? emptyQuoteIdx + 1 : item.template.length);
 
       dismissedSlashPosRef.current = null;
       view.dispatch({
-        changes: { from: slashStart, to: menuState.pos, insert: extension.template },
-        selection: emptyQuoteIdx >= 0
-          ? { anchor: slashStart + emptyQuoteIdx + 1 }
-          : undefined,
+        changes: { from: slashStart, to: menuState.pos, insert: item.template },
+        selection: { anchor: slashStart + anchorOffset },
       });
       view.focus();
     }, [getView, slashMenu]);

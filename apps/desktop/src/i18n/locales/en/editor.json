@@ -105,11 +105,21 @@
   },
   "slashMenu": {
     "categories": {
+      "basic": "Basic",
       "layout": "Layout",
       "media": "Media",
       "ai": "AI",
       "data": "Data",
       "custom": "Custom"
+    },
+    "basic": {
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "blockquote": "Blockquote",
+      "codeBlock": "Code block",
+      "table": "Table",
+      "horizontalRule": "Horizontal rule"
     },
     "richText": {
       "triggerButton": "Insert slash command",
