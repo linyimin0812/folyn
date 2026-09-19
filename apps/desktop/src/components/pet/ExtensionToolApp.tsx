@@ -9,10 +9,11 @@
  *  - a pet-panel-style chrome: borderless window with a rounded body, a
  *    draggable title bar (pointerdown → `extension_tool_start_drag`), and
  *    the pet-panel window controls (pin / maximize / close);
- *  - for `builtin:translation` (PRD 09-18-translation-popup-refactor):
- *    React content instead of an iframe — `TranslationToolHost` mirrors the
- *    stores this realm needs (providers, settings, locale, theme) and
- *    renders the embedded TranslationPanel. The builtin payload still flows
+ *  - for `builtin:translation` (PRD 09-18-translation-popup-refactor) and
+ *    `builtin:inbox` (PRD 09-19-inbox-command-popup): React content instead
+ *    of an iframe — `TranslationToolHost` / `InboxToolHost` mirror the
+ *    stores these realms need (providers, settings, locale, theme) and
+ *    render the embedded panels. The builtin payloads still flow
  *    through the same `extension-tool://open` event / get_last_extension_tool
  *    fallback; all chrome + window behaviors stay shared below;
  *  - otherwise an `<iframe sandbox="allow-scripts">` loading the extension's
@@ -60,6 +61,7 @@ import { X, Pin, PinOff, Square, Copy } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '@/utils/platform';
 import { TranslationToolHost } from '@/components/translation/TranslationToolHost';
+import { InboxToolHost } from './InboxToolHost';
 
 /** Payload of the `extension-tool://open` event (Rust → this window). */
 interface ExtensionToolOpenPayload {
@@ -76,6 +78,17 @@ interface ExtensionToolOpenPayload {
 }
 
 const PANEL_LABEL = 'extension-tool-panel';
+
+/** Built-in tool ids whose payload renders React content inside this popup
+ *  instead of the origin-isolated sandbox iframe — the translation popup
+ *  (PRD 09-18-translation-popup-refactor) and the inbox popup (PRD
+ *  09-19-inbox-command-popup). Third-party extension ids are kebab-case
+ *  (no colons), so they can never collide with the `builtin:` prefix. */
+const BUILTIN_TOOL_IDS = new Set(['builtin:translation', 'builtin:inbox']);
+
+function isBuiltinToolId(extensionId: string): boolean {
+  return BUILTIN_TOOL_IDS.has(extensionId);
+}
 
 export function ExtensionToolApp() {
   const [tool, setTool] = useState<ExtensionToolOpenPayload | null>(null);
@@ -251,9 +264,10 @@ export function ExtensionToolApp() {
 
   // Same URL shape as the main-window sandbox loader
   // (sandboxLoader.ts): `folyn-extension://localhost/<id>/<entry>`. Only
-  // third-party tools load an iframe — the builtin translation popup renders
-  // React content (TranslationToolHost), so src stays undefined there.
-  const iframeSrc = tool && tool.extensionId !== 'builtin:translation'
+  // third-party tools load an iframe — the builtin popups (translation,
+  // inbox) render React content (TranslationToolHost / InboxToolHost), so
+  // src stays undefined there.
+  const iframeSrc = tool && !isBuiltinToolId(tool.extensionId)
     ? `folyn-extension://localhost/${tool.extensionId}/${tool.entry}`
     : undefined;
 
@@ -304,6 +318,8 @@ export function ExtensionToolApp() {
       </div>
       {tool?.extensionId === 'builtin:translation' ? (
         <TranslationToolHost />
+      ) : tool?.extensionId === 'builtin:inbox' ? (
+        <InboxToolHost />
       ) : iframeSrc ? (
         <iframe
           key={`${iframeSrc}#${tool?.fingerprint ?? ''}`}

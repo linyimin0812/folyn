@@ -40,18 +40,17 @@
     "clickThrough": "Klick-Durchgriff",
     "exitApp": "App beenden"
   },
-  "tabs": {
-    "chat": "Chat",
-    "inbox": "Posteingang"
-  },
   "search": {
     "placeholder": "Dateien / Befehle / Extensions suchen",
+    "recents": "Zuletzt verwendete Dateitypen",
+    "recentsChip": "{{name}} erneut öffnen",
     "files": "Dateien",
     "commands": "Befehle",
     "extensions": "Extensions",
     "noResults": "Keine passenden Ergebnisse",
     "translationMain": "Übersetzung (Haupt-App)",
-    "translationPopup": "Übersetzung (Popup)"
+    "translationPopup": "Übersetzung (Popup)",
+    "recentsInbox": "Posteingang"
   },
   "window": {
     "fullscreen": "Vollbild",

@@ -14,7 +14,7 @@ import {
   type PetWorkArea,
 } from './petPosition';
 import { AiPanel } from '@/components/ai/AiPanel';
-import { PetInbox } from './PetInbox';
+import { PetSearchRecents } from './PetSearchRecents';
 import {
   PetPanelSearchResults,
   type PetPanelSearchResultsHandle,
@@ -30,8 +30,6 @@ import type {
   ProviderSettings,
 } from '@/services/providers/providerConfigStorage';
 import type { Model } from '@/services/modelRegistry/types';
-
-type PetPanelTab = 'chat' | 'inbox';
 
 interface PetCursorProbeResult {
   cursor_x: number;
@@ -51,15 +49,17 @@ const PANEL_PERSIST_INTERVAL_MS = 800;
 
 /**
  * PetPanelApp — mounted only in the `pet-panel` Tauri window (see main.tsx
- * `#/pet-panel` route switch). Hosts a tabbed layout: **Chat** (the embedded
- * `AiPanel`) and **Inbox** (notifications). The built-in translation panel
- * is NOT a tab anymore — it lives in the standalone `extension-tool-panel`
- * popup (PRD 09-18-translation-popup-refactor), reached from the panel's
- * search results as the “翻译（弹窗）” row; the “翻译（主应用）” row opens the
- * main window's ActivityBar translation page. Only one view
- * is mounted at a time; switching tabs unmounts the inactive view — this
- * releases the chat's `CliAdapter` mid-stream, which is acceptable per the
- * PRD's Out-of-Scope "stream-interrupt resume" rule.
+ * `#/pet-panel` route switch). Hosts the unified search box (files /
+ * commands / extensions) above the embedded `AiPanel` chat. The built-in
+ * translation panel and the Inbox are NOT tabs anymore — translation lives
+ * in the standalone `extension-tool-panel` popup (PRD
+ * 09-18-translation-popup-refactor), reached from the search results as the
+ * “翻译（弹窗）” row, and the Inbox opens as the “Open Inbox” command into
+ * the same `extension-tool-panel` popup (PRD
+ * 09-19-inbox-command-popup). While a query is non-empty the body shows the
+ * search results instead of the chat; clearing it unmounts the results —
+ * this releases the chat's `CliAdapter` mid-stream, which is acceptable per
+ * the PRD's Out-of-Scope "stream-interrupt resume" rule.
  *
  * Lifecycle:
  *  - Close button (×) → invoke `pet_panel_hide` to hide the window.
@@ -94,14 +94,18 @@ export function PetPanelApp() {
   // chat needs its own or external links hijack the panel webview.
   useEffect(() => installExternalLinkInterceptor(), []);
 
-  // Default tab is Chat — the panel opens on the embedded AI chat so a
-  // single left-click on the pet drops the user into "ask" mode without an
-  // extra tab switch.
-  const [tab, setTab] = useState<PetPanelTab>('chat');
-  // Unified search (files / commands / extensions) — the input sits above the
-  // tabs; while a query is non-empty the body shows the results instead of
-  // the active tab.
+  // Unified search (files / commands / extensions) — the input sits at the
+  // top of the panel; while a query is non-empty the body shows the results
+  // instead of the chat.
   const [searchQuery, setSearchQuery] = useState('');
+  // Whether focus (caret) is inside the search area (input or a recents
+  // chip). Drives the 最近使用 row below the search box (PRD
+  // 09-19-pet-search-recents): visible while the search box is focused,
+  // hidden when the caret sits in the chat input (or anywhere outside the
+  // search area). Focus-tracking is area-scoped, not input-scoped: clicking
+  // a chip moves focus to the chip button — an input-only check would hide
+  // the row mid-click.
+  const [isSearchFocused, setSearchFocused] = useState(false);
   // ponytail: drives the CSS opacity/transform transition on
   // `.pet-panel-root`. The webview persists across shows (no re-mount), so
   // the fade-in has to be class-driven by an explicit event rather than a
@@ -496,18 +500,28 @@ export function PetPanelApp() {
   // ── Cross-window settings sync ──
   // The panel window holds its own petStore instance; without this listener
   // it would never see writes from the main window (e.g. `addInboxItem` on
-  // `pet://notify`) because those only update the main window's store and
-  // broadcast via `pet://settings-updated`. Mirrors the listener in
-  // PetBubbleApp / PetCornerApp — same channel, same `hydrateAllStores` call.
-  // Without this, the Inbox tab stays empty even after a curl triggers a
-  // notification: the main window recorded the item, but the panel's
-  // petStore.inboxItems was never updated.
+  // `pet://notify`, or the `recordRecentExtension` hook in
+  // editorIoService.openFile) because those only update the main window's
+  // store and broadcast via `pet://settings-updated`. Mirrors the listener
+  // in PetBubbleApp / PetCornerApp — same channel, same `hydrateAllStores`
+  // call. (The inbox list itself no longer lives here — it opens as the “Open
+  // Inbox” command into the extension-tool popup — but the panel's own
+  // petStore state, including `recentExtensionIds` for the 最近使用 chip row,
+  // hydrates through this channel.)
+  //
+  // Request-response: the main window's startup broadcast (loadSettings)
+  // can fire BEFORE this webview registers its listener — the same race
+  // PetApp / InboxToolHost solve — so emit `pet://settings-request` after
+  // registering; the main window's usePetHostBridge answers with the
+  // current merged blob. Without it, a panel that mounted late would keep
+  // default petStore state (panel position/size restore, recentExtensionIds)
+  // until the next setter broadcast.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
-        const { listen } = await import('@tauri-apps/api/event');
+        const { listen, emit } = await import('@tauri-apps/api/event');
         unlisten = await listen<Record<string, unknown>>(
           'pet://settings-updated',
           (event) => {
@@ -522,6 +536,9 @@ export function PetPanelApp() {
             markSettingsHydrated();
           },
         );
+        // Request the current snapshot (the startup broadcast may have been
+        // missed — see the request-response note above).
+        await emit('pet://settings-request', {});
       } catch (err) {
         console.warn('[pet-panel] settings-updated listener failed:', err);
       }
@@ -916,67 +933,57 @@ export function PetPanelApp() {
             </button>
           </div>
         </div>
-        {/* Search row below the title bar — filters files / commands / extensions. */}
-        <div className="pet-panel-search-row" onPointerDown={suppressDrag}>
-          <div className="pet-panel-search-field">
-            <input
-              className="pet-panel-search-input"
-              type="text"
-              placeholder={t('pet:search.placeholder')}
-              value={searchQuery}
-              ref={searchInputRef}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  setSearchQuery('');
-                  return;
-                }
-                // While an IME composition is committing, Enter belongs to
-                // the input method, not to result selection.
-                if (e.nativeEvent.isComposing) return;
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  searchResultsRef.current?.moveNext();
-                } else if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  searchResultsRef.current?.movePrev();
-                } else if (e.key === 'Enter') {
-                  e.preventDefault();
-                  searchResultsRef.current?.activate();
-                }
-              }}
-              aria-label={t('pet:search.placeholder')}
-            />
+        {/* Search area (search row + focus-gated 最近使用 recents row) below
+            the title bar — filters files / commands / extensions. The area
+            wrapper scopes focus tracking: onFocus/onBlur bubble from the
+            input AND the recents chips (focusin/focusout), so the row stays
+            up while the user clicks a chip; the relatedTarget containment
+            check hides it only when focus leaves the area entirely (e.g.
+            into the chat input — the user's “光标在聊天框中聚焦时不显示”
+            rule). */}
+        <div
+          className="pet-panel-search-area"
+          onFocus={() => setSearchFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setSearchFocused(false);
+            }
+          }}
+        >
+          <div className="pet-panel-search-row" onPointerDown={suppressDrag}>
+            <div className="pet-panel-search-field">
+              <input
+                className="pet-panel-search-input"
+                type="text"
+                placeholder={t('pet:search.placeholder')}
+                value={searchQuery}
+                ref={searchInputRef}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                    return;
+                  }
+                  // While an IME composition is committing, Enter belongs to
+                  // the input method, not to result selection.
+                  if (e.nativeEvent.isComposing) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    searchResultsRef.current?.moveNext();
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    searchResultsRef.current?.movePrev();
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchResultsRef.current?.activate();
+                  }
+                }}
+                aria-label={t('pet:search.placeholder')}
+              />
+            </div>
           </div>
+          {isSearchFocused && <PetSearchRecents onPointerDown={suppressDrag} />}
         </div>
-        {searchQuery.trim() === '' && (
-          <div className="pet-panel-header-row" onPointerDown={suppressDrag}>
-            <nav
-              className="pet-panel-tabs"
-              role="tablist"
-              aria-label="Pet panel sections"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'chat'}
-                className={`pet-panel-tab${tab === 'chat' ? ' is-active' : ''}`}
-                onClick={() => setTab('chat')}
-              >
-                {t('pet:tabs.chat')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === 'inbox'}
-                className={`pet-panel-tab${tab === 'inbox' ? ' is-active' : ''}`}
-                onClick={() => setTab('inbox')}
-              >
-                {t('pet:tabs.inbox')}
-              </button>
-            </nav>
-          </div>
-        )}
       </header>
       <main className="pet-panel-body">
         {searchQuery.trim() !== '' ? (
@@ -985,10 +992,8 @@ export function PetPanelApp() {
             query={searchQuery}
             onDone={handleSearchDone}
           />
-        ) : tab === 'chat' ? (
-          <AiPanel embedded />
         ) : (
-          <PetInbox />
+          <AiPanel embedded />
         )}
       </main>
     </div>

@@ -87,12 +87,19 @@ vi.mock('./newItemBridge', () => ({
   requestNewItem: requestNewItemMock,
 }));
 
+// The workspace aliases '@tauri-apps/api/core' to a shared vi.fn mock —
+// import it to assert the inbox command's invoke payload.
+import { invoke } from '@tauri-apps/api/core';
+const invokeMock = invoke as unknown as import('vitest').Mock;
+
 function makeCommand(id: string, run: () => void = vi.fn()): Command {
   return { id, title: id, category: 'action', run };
 }
 
 beforeEach(() => {
   clearCommands();
+  invokeMock.mockClear();
+  invokeMock.mockResolvedValue(undefined);
   toggleThemeMock.mockClear();
   setCurrentPageMock.mockClear();
   setActivePanelMock.mockClear();
@@ -172,6 +179,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.export-html',
       'action.open-global-search',
       'action.toggle-focus-mode',
+      'action.open-inbox',
     ]);
   });
 
@@ -233,6 +241,29 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     registerBuiltinCommands();
     await runCommand('panel.settings');
     expect(setCurrentPageMock).toHaveBeenCalledWith('settings');
+  });
+
+  // The inbox command (PRD 09-19-inbox-command-popup): the pet panel's
+  // Inbox tab was removed — running this command opens the extension-tool
+  // popup with the built-in inbox host (the same open_extension_tool_window
+  // call petHostRouter makes for builtin:translation).
+  it('action.open-inbox opens the extension-tool window with builtin:inbox', async () => {
+    registerBuiltinCommands();
+    await runCommand('action.open-inbox');
+    expect(invokeMock).toHaveBeenCalledWith('open_extension_tool_window', {
+      extensionId: 'builtin:inbox',
+      toolId: 'inbox',
+      entry: 'builtin',
+      title: 'Inbox',
+    });
+  });
+
+  it('action.open-inbox records builtin:inbox as a recently used extension', async () => {
+    registerBuiltinCommands();
+    const { usePetStore } = await import('@/store/petStore');
+    usePetStore.setState({ recentExtensionIds: [] });
+    await runCommand('action.open-inbox');
+    expect(usePetStore.getState().recentExtensionIds).toContain('builtin:inbox');
   });
 });
 

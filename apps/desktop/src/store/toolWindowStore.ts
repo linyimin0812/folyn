@@ -19,6 +19,7 @@
 
 import { create } from 'zustand';
 import { isTauri } from '@/utils/platform';
+import { usePetStore } from '@/store/petStore';
 import type { ToolContribution } from '@folyn/extension-host';
 
 /** macOS check inline (the keybindingAdapter pattern) — the hide-not-
@@ -82,6 +83,12 @@ export const useToolWindowStore = create<ToolWindowState>((set, get) => ({
       console.error(`[extension-host] open_extension_tool_window failed for ${extensionId}/${tool.id}:`, err);
       return;
     }
+    // Track the tool's extension as recently used (pet-panel search's
+    // 最近使用 chip row). Success-only: a failed open never touched a
+    // window. toolWindowStore.open is the single open path for every
+    // third-party tool (the `extension.openTool.*` commands route here),
+    // main-window realm — where petStore persist + broadcast live.
+    usePetStore.getState().recordRecentExtension(extensionId);
     set({
       windows: get().windows.some((w) => w.label === label)
         ? get().windows

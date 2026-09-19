@@ -40,18 +40,17 @@
     "clickThrough": "Click Through",
     "exitApp": "Exit App"
   },
-  "tabs": {
-    "chat": "Chat",
-    "inbox": "Inbox"
-  },
   "search": {
     "placeholder": "Search files / commands / extensions",
+    "recents": "Recently used file types",
+    "recentsChip": "Reopen {{name}}",
     "files": "Files",
     "commands": "Commands",
     "extensions": "Extensions",
     "noResults": "No matching results",
     "translationMain": "Translation (main app)",
-    "translationPopup": "Translation (popup)"
+    "translationPopup": "Translation (popup)",
+    "recentsInbox": "Inbox"
   },
   "window": {
     "fullscreen": "Enter full screen",

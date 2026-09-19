@@ -23,6 +23,10 @@ export interface InboxItem {
  *  unbounded growth from a chatty source. */
 export const INBOX_MAX_ITEMS = 100;
 
+/** Cap on the recent-extensions list (the pet-panel search's 最近使用 chip
+ *  row). Bounds the row to one horizontally-scrollable line. */
+export const RECENT_EXTENSIONS_MAX = 8;
+
 // ponytail: PET_SIZE_VERSION / PET_SIZE_DEFAULT / PET_SIZE_TO_PX / PetSize are
 // owned by petPosition.ts (the pure-math module). petStore imports them — this
 // matches the legacy settingsStore which also imported them from petPosition.
@@ -70,6 +74,7 @@ export const PERSIST_KEYS_PET = [
   'bubbleActiveTemplateId',
   'bubbleAppWhitelist',
   'inboxItems',
+  'recentExtensionIds',
 ] as const;
 
 export interface PetState {
@@ -105,9 +110,24 @@ export interface PetState {
   bubbleActiveTemplateId: string;
   /** Whitelist of macOS app names approved for `launch.type = "app"`. */
   bubbleAppWhitelist: string[];
-  /** Persisted received-notification snapshots for the Inbox tab. Capped to
+  /** Persisted received-notification snapshots for the Inbox popup. Capped to
    *  INBOX_MAX_ITEMS; newest first. */
   inboxItems: InboxItem[];
+  /** Recently used EXTENSION ids (deduped, newest first) for the
+   *  pet-panel search's 最近使用 chip row (PRD 09-19-pet-search-recents).
+   *  Recorded whenever an extension tool window / builtin popup is opened
+   *  (`toolWindowStore.open`, petHostRouter's builtin:translation branch, the
+   *  `action.open-inbox` command) — every open path, main-window realm, and
+   *  the petStore slice syncs the list to the panel realm via the
+   *  `pet://settings-updated` broadcast. Capped to RECENT_EXTENSIONS_MAX.
+   *
+   *  Key intentionally RENAMED from `recentExtensions` when the list's
+   *  semantics changed from file extensions ('md', 'png') to extension IDS
+   *  — the old persisted key held file extensions that would otherwise
+   *  hydrate as bogus "extensions". Hydrate only picks PERSIST_KEYS_PET
+   *  keys, so the old key is ignored on load and dropped from pet.json on
+   *  the next persist (no migration). */
+  recentExtensionIds: string[];
 
   setPetModeEnabled: (enabled: boolean) => void;
   setPetPosition: (x: number, y: number) => void;
@@ -132,6 +152,8 @@ export interface PetState {
   addInboxItem: (payload: PetBubblePayload) => void;
   removeInboxItem: (id: string) => void;
   clearInbox: () => void;
+  recordRecentExtension: (id: string) => void;
+  /** id = extension id (e.g. 'builtin:translation', 'carousel'). */
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -185,6 +207,7 @@ export const usePetStore = create<PetState>((set, get) => ({
   bubbleActiveTemplateId: 'default',
   bubbleAppWhitelist: [],
   inboxItems: [],
+  recentExtensionIds: [],
 
   setPetModeEnabled: (enabled) => { set({ petModeEnabled: enabled }); persist(); },
 
@@ -337,6 +360,22 @@ export const usePetStore = create<PetState>((set, get) => ({
     persist();
   },
 
+  recordRecentExtension: (ext) => {
+    // Move-to-front MRU, deduped, capped. Empty input is a no-op. A repeat
+    // at the front is a full no-op so reopening the same tool doesn't write
+    // disk / broadcast.
+    const trimmed = ext.trim();
+    if (!trimmed) return;
+    const cur = get().recentExtensionIds;
+    if (cur[0] === trimmed) return;
+    const next = [trimmed, ...cur.filter((e) => e !== trimmed)].slice(
+      0,
+      RECENT_EXTENSIONS_MAX,
+    );
+    set({ recentExtensionIds: next });
+    persist();
+  },
+
   hydrate: (blob) => {
     // Mirror the legacy settingsStore hydrate: build a working copy of the
     // persisted fields, run the migrations in-place (so a later migration
@@ -485,6 +524,15 @@ export const usePetStore = create<PetState>((set, get) => ({
             typeof (o.payload as { text?: unknown }).text === 'string';
         },
       );
+    }
+
+    // Coerce `recentExtensionIds` to a string[] (defensive — corrupt blob).
+    if (!Array.isArray(saved.recentExtensionIds)) {
+      saved.recentExtensionIds = [];
+    } else {
+      saved.recentExtensionIds = saved.recentExtensionIds
+        .filter((e: unknown): e is string => typeof e === 'string')
+        .slice(0, RECENT_EXTENSIONS_MAX);
     }
 
     // Apply the migrated working copy as a patch. The cast is safe — every

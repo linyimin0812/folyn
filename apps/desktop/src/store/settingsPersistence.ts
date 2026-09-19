@@ -55,7 +55,7 @@ export function __resetSettingsHydrationForTesting(): void {
 // Mirrors storageClient's 300ms debounce (FLUSH_DELAY not exported; hardcode
 // + comment names the coupling). Without this, secondary Tauri windows
 // (pet-panel / pet-bubble / pet-corner) hold their own store instances and
-// only see writes on quit / startup — so e.g. the Inbox tab stays empty
+// only see writes on quit / startup — so e.g. the Inbox popup stays empty
 // after a curl notification lands in the main window's petStore.
 const BROADCAST_DELAY = 300;
 function broadcastSettingsImpl(): void {

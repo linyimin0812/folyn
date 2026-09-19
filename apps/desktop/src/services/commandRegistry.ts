@@ -17,6 +17,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
 import { useSearchStore } from '@/store/searchStore';
+import { usePetStore } from '@/store/petStore';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
 import {
   exportActiveMarkdown,
@@ -241,6 +242,34 @@ export function registerBuiltinCommands(): void {
       run: () => {
         useNavStore.getState().setCurrentPage('editor');
         useEditorViewStateStore.getState().toggleFocusMode();
+      },
+    },
+
+    // ── Pet inbox popup (PRD 09-19-inbox-command-popup) ──
+    // The inbox is no longer a pet-panel tab — this command is the entry
+    // point. It surfaces the extension-tool popup window with the built-in
+    // React inbox host (same machinery as the builtin:translation popup,
+    // which petHostRouter invokes the same way). Runs from BOTH the main
+    // palette and the pet-panel search (the registry is realm-static; the
+    // panel routes execution to the main window via run-command).
+    {
+      id: 'action.open-inbox',
+      title: 'Open Inbox',
+      category: 'action',
+      keywords: ['inbox', 'notifications', 'notify', '收件箱', '通知'],
+      run: async () => {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('open_extension_tool_window', {
+          extensionId: 'builtin:inbox',
+          toolId: 'inbox',
+          entry: 'builtin',
+          title: 'Inbox',
+        });
+        // Track as recently used (pet-panel search's 最近使用 chip row). The
+        // command's run() is the single owner of this open — petHostRouter's
+        // open-extension-tool builtin:inbox branch routes here for the same
+        // reason.
+        usePetStore.getState().recordRecentExtension('builtin:inbox');
       },
     },
   ]);

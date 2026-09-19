@@ -193,6 +193,53 @@ describe('routePetMenuAction', () => {
     });
     expect(run).not.toHaveBeenCalled();
     expect(showMock).not.toHaveBeenCalled();
+    // The open is tracked as a recently used extension (pet-panel search's
+    // 最近使用 chip row).
+    expect(usePetStore.getState().recentExtensionIds).toContain('builtin:translation');
+    for (const d of disposables) d.dispose();
+  });
+
+  it('open-extension-tool for builtin:inbox runs the action.open-inbox command (no command lookup fallback)', async () => {
+    // The inbox popup is a builtin tool with no on-disk extension and no
+    // extension.openTool.* command — the router routes to the registered
+    // `action.open-inbox` command, whose run() owns the window open AND the
+    // recent-extensions recording. A decoy tool command proves the builtin
+    // branch is taken before any lookup.
+    const { registerCommand } = await import('@/services/commandRegistry');
+    const decoy = vi.fn(async () => undefined);
+    const inboxRun = vi.fn(async () => {
+      const { usePetStore } = await import('@/store/petStore');
+      usePetStore.getState().recordRecentExtension('builtin:inbox');
+    });
+    const disposables = [
+      registerCommand({
+        id: 'extension.openTool.builtin:inbox.inbox',
+        title: 'Open: Decoy',
+        category: 'action',
+        run: decoy,
+      }),
+      registerCommand({
+        id: 'action.open-inbox',
+        title: 'Open Inbox',
+        category: 'action',
+        run: inboxRun,
+      }),
+    ];
+    await routePetMenuAction(
+      'open-extension-tool',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'builtin:inbox',
+    );
+    expect(inboxRun).toHaveBeenCalledTimes(1);
+    expect(decoy).not.toHaveBeenCalled();
+    // The command (stubbed here) is the sole owner of the open — no direct
+    // invoke from the router on this path.
+    expect(invokeMock).not.toHaveBeenCalledWith('open_extension_tool_window', expect.objectContaining({
+      extensionId: 'builtin:inbox',
+    }));
     for (const d of disposables) d.dispose();
   });
 });

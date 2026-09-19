@@ -40,18 +40,17 @@
     "clickThrough": "クリックスルー",
     "exitApp": "アプリを終了"
   },
-  "tabs": {
-    "chat": "チャット",
-    "inbox": "受信箱"
-  },
   "search": {
     "placeholder": "ファイル / コマンド / 拡張機能を検索",
+    "recents": "最近使用したファイル形式",
+    "recentsChip": "{{name}} を再び開く",
     "files": "ファイル",
     "commands": "コマンド",
     "extensions": "拡張機能",
     "noResults": "一致する結果はありません",
     "translationMain": "翻訳（メインアプリ）",
-    "translationPopup": "翻訳（ポップアップ）"
+    "translationPopup": "翻訳（ポップアップ）",
+    "recentsInbox": "受信箱"
   },
   "window": {
     "fullscreen": "全画面表示",

@@ -40,18 +40,17 @@
     "clickThrough": "桌宠穿透",
     "exitApp": "退出应用"
   },
-  "tabs": {
-    "chat": "对话",
-    "inbox": "收件箱"
-  },
   "search": {
     "placeholder": "搜索文件 / 命令 / 扩展",
+    "recents": "最近使用的文件类型",
+    "recentsChip": "重新打开 {{name}}",
     "files": "文件",
     "commands": "命令",
     "extensions": "扩展",
     "noResults": "无匹配结果",
     "translationMain": "翻译（主应用）",
-    "translationPopup": "翻译（弹窗）"
+    "translationPopup": "翻译（弹窗）",
+    "recentsInbox": "收件箱"
   },
   "window": {
     "fullscreen": "全屏",

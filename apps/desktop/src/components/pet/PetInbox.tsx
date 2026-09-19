@@ -1,12 +1,15 @@
-// Inbox tab for the pet-panel window (PRD: pet inbox).
+// Inbox list for the extension-tool popup window (PRD: pet inbox →
+// 09-19-inbox-command-popup).
 //
-// Lists notifications received via `pet://notify` and captured by
-// `petNotifyDispatcher.dispatchNotification` into `petStore.inboxItems`.
-// Each row mirrors what the bubble/corner toast showed, and re-fires the
-// same jump on click via `pet://bubble-action` (the MAIN window's jump
-// router handles it exactly like a bubble title-click).
+// Rendered by InboxToolHost inside the `extension-tool-panel` popup, opened
+// via the `action.open-inbox` command. Lists notifications received via
+// `pet://notify` and captured by `petNotifyDispatcher.dispatchNotification`
+// into `petStore.inboxItems`. Each row mirrors what the bubble/corner toast
+// showed, and re-fires the same jump on click via `pet://bubble-action`
+// (the MAIN window's jump router handles it exactly like a bubble
+// title-click).
 //
-// State is persisted to `settings:all` and synced to the pet-panel window
+// State is persisted to `settings:all` and synced across window realms
 // via the shared `pet://settings-updated` channel — no separate IPC needed.
 
 import { useCallback } from 'react';

@@ -354,22 +354,45 @@ html.is-pet-panel-window body {
   box-shadow: 0 0 0 1px var(--acc, #3a6ef0), 0 0 0 3px var(--accglow, rgba(58, 110, 240, 0.12));
 }
 
-/* Tabs + close row (kept as its own row so the search row can sit above). */
-.pet-panel-header-row {
+/* ── 最近使用 row (recently used EXTENSIONS, PRD 09-19-pet-search-recents) ──
+ * Rendered below the search row ONLY while focus sits inside the search
+ * area (PetPanelApp gates rendering on isSearchFocused). One horizontal
+ * line: nowrap + overflow-x auto keeps it a single row at any panel width;
+ * the scrollbar is hidden (still scrollable/keyboard-accessible). */
+.pet-panel-search-recents {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  padding: 0 10px;
+  gap: 4px;
+  padding: 0 10px 8px; /* aligns with the search row's horizontal padding */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-
-.pet-panel-tabs {
-  /* Tabs live inside the header (left of the close button); the header
-   * provides padding, background, and the bottom border, so the nav itself
-   * is just a flex row for the tab buttons. */
-  display: flex;
-  align-items: stretch;
-  gap: 0;
+.pet-panel-search-recents::-webkit-scrollbar {
+  display: none;
+}
+.pet-panel-search-chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--t2, #5a6275);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pet-panel-search-chip:hover {
+  background: var(--hov, #eef0f5);
+  color: var(--t1, #1f2330);
+}
+.pet-panel-search-chip:focus-visible {
+  outline: 2px solid var(--acc, #3a6ef0);
+  outline-offset: -1px;
 }
 
 /* Top-right window controls: pin / fullscreen / close. The row sits
@@ -413,28 +436,6 @@ html.is-pet-panel-window body {
 .pet-panel-ctrl.pet-panel-ctrl-close:hover {
   background: rgba(220, 70, 70, 0.12);
   color: #d6463c;
-}
-
-.pet-panel-tab {
-  appearance: none;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--t2, #5a6275);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
-}
-.pet-panel-tab:hover {
-  color: var(--t1, #1f2330);
-  background: var(--hov, #eef0f5);
-}
-.pet-panel-tab.is-active {
-  color: var(--acc, #3a6ef0);
-  border-bottom-color: var(--acc, #3a6ef0);
 }
 
 /* Unified search results (files / commands / plugins). */
@@ -548,7 +549,7 @@ html.is-pet-panel-window body {
   font-size: 13px;
 }
 
-/* ── Inbox tab ──
+/* ── Inbox popup (extension-tool-panel window) ──
  * Scrollable list of received-notification snapshots. Each row is a button
  * that re-fires the original payload's jump. Toolbar holds a count + Clear. */
 .pet-inbox {

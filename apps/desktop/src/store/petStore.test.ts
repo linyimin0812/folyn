@@ -235,3 +235,78 @@ describe('usePetStore.hydrate', () => {
     expect(s.notificationForm).toBe('corner');
   });
 });
+
+// ── recordRecentExtension (PRD 09-19-pet-search-recents) ──
+// MRU list of recently used EXTENSION ids (builtin:translation, carousel, …)
+// feeding the pet-panel search's 最近使用 chip row: move-to-front, dedupe,
+// cap, and a no-op when the id already sits at the front (reopening the same
+// tool doesn't write disk / broadcast).
+describe('usePetStore.recordRecentExtension', () => {
+  beforeEach(() => {
+    usePetStore.setState({ recentExtensionIds: [] });
+  });
+
+  it('records a new extension id at the front', () => {
+    usePetStore.getState().recordRecentExtension('builtin:translation');
+    expect(usePetStore.getState().recentExtensionIds).toEqual(['builtin:translation']);
+    usePetStore.getState().recordRecentExtension('carousel');
+    expect(usePetStore.getState().recentExtensionIds).toEqual(['carousel', 'builtin:translation']);
+  });
+
+  it('moves an existing id to the front (dedupe)', () => {
+    usePetStore.setState({ recentExtensionIds: ['builtin:translation', 'builtin:inbox', 'carousel'] });
+    usePetStore.getState().recordRecentExtension('builtin:translation');
+    expect(usePetStore.getState().recentExtensionIds).toEqual(['builtin:translation', 'builtin:inbox', 'carousel']);
+  });
+
+  it('trims, ignores empty input', () => {
+    usePetStore.getState().recordRecentExtension('  carousel ');
+    expect(usePetStore.getState().recentExtensionIds).toEqual(['carousel']);
+    usePetStore.getState().recordRecentExtension('');
+    expect(usePetStore.getState().recentExtensionIds).toEqual(['carousel']);
+  });
+
+  it('caps the list at RECENT_EXTENSIONS_MAX, dropping the oldest', () => {
+    for (let i = 1; i <= 10; i++) usePetStore.getState().recordRecentExtension(`ext${i}`);
+    const list = usePetStore.getState().recentExtensionIds;
+    expect(list).toHaveLength(8);
+    expect(list[0]).toBe('ext10');
+    expect(list).not.toContain('ext1');
+    expect(list).not.toContain('ext2');
+  });
+
+  it('no-ops (no persist) when the id is already at the front', () => {
+    usePetStore.setState({ recentExtensionIds: ['builtin:inbox', 'carousel'] });
+    const setSpy = vi.spyOn(storageClient, 'set');
+    usePetStore.getState().recordRecentExtension('builtin:inbox');
+    expect(usePetStore.getState().recentExtensionIds).toEqual(['builtin:inbox', 'carousel']);
+    expect(setSpy).not.toHaveBeenCalled();
+    setSpy.mockRestore();
+  });
+
+  it('recentExtensionIds is a persisted pet-slice key', async () => {
+    const persistKeys = (await import('./petStore')).PERSIST_KEYS_PET;
+    expect(persistKeys).toContain('recentExtensionIds');
+  });
+
+  it('hydrate coerces non-string entries and caps the list', () => {
+    usePetStore.getState().hydrate({
+      recentExtensionIds: ['builtin:translation', 42, null, 'carousel', ...Array.from({ length: 12 }, (_, i) => `x${i}`)],
+    });
+    const list = usePetStore.getState().recentExtensionIds;
+    expect(list.every((e) => typeof e === 'string')).toBe(true);
+    expect(list).toHaveLength(8);
+    expect(list).toContain('builtin:translation');
+    expect(list).toContain('carousel');
+  });
+
+  it('ignores the legacy `recentExtensions` key (file extensions from the old semantics)', () => {
+    // The list used to hold FILE extensions ('md', 'png') under the key
+    // `recentExtensions`. When the semantics changed to extension ids the
+    // key was renamed so stale file extensions can't hydrate as bogus
+    // "extensions" — hydrate only picks PERSIST_KEYS_PET keys, and the old
+    // key is dropped from pet.json on the next persist.
+    usePetStore.getState().hydrate({ recentExtensions: ['md', 'png'] });
+    expect(usePetStore.getState().recentExtensionIds).toEqual([]);
+  });
+});

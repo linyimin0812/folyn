@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act, waitFor } from '@testing-library/react';
 
-// Mock the heavy builtin host (TranslationPanel + the realm-mirror effects)
-// so this test focuses purely on ExtensionToolApp's branch switching — the
-// same discipline PetPanelApp.test.tsx applies to AiPanel. The stub's root
-// class name matches the contract the branch asserts on.
+// Mock the heavy builtin hosts (TranslationPanel / PetInbox + the
+// realm-mirror effects) so this test focuses purely on ExtensionToolApp's
+// branch switching — the same discipline PetPanelApp.test.tsx applies to
+// AiPanel. Each stub's root class name matches the contract its branch
+// asserts on.
 vi.mock('@/components/translation/TranslationToolHost', () => ({
   TranslationToolHost: () => <div className="translation-tool-host" />,
+}));
+vi.mock('./InboxToolHost', () => ({
+  InboxToolHost: () => <div className="inbox-tool-host" />,
 }));
 
 import { ExtensionToolApp } from './ExtensionToolApp';
@@ -57,6 +61,22 @@ describe('ExtensionToolApp', () => {
     expect(container.querySelector('.translation-tool-host')).toBeTruthy();
     // The builtin branch must NOT render the sandboxed extension iframe.
     expect(container.querySelector('iframe')).toBeNull();
+  });
+
+  // Builtin inbox payload (action.open-inbox command →
+  // open_extension_tool_window, PRD 09-19-inbox-command-popup): same React
+  // branch as translation — the popup hosts PetInbox via InboxToolHost.
+  it('renders the builtin inbox host (no iframe) for builtin:inbox', () => {
+    seedToolPayload({
+      extensionId: 'builtin:inbox',
+      toolId: 'inbox',
+      entry: 'builtin',
+      title: 'Inbox',
+    });
+    const { container } = render(<ExtensionToolApp />);
+    expect(container.querySelector('.inbox-tool-host')).toBeTruthy();
+    expect(container.querySelector('iframe')).toBeNull();
+    expect(container.querySelector('.translation-tool-host')).toBeNull();
   });
 
   // Third-party payload: the origin-isolated sandbox iframe, never the

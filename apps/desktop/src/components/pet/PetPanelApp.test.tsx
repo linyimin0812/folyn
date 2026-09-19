@@ -33,6 +33,8 @@ vi.mock('@/components/ai/AiPanel', () => ({
 import { PetPanelApp } from './PetPanelApp';
 import { useExtensionStore } from '@/store/extensionStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import { useVaultStore } from '@/store/vaultStore';
+import { usePetStore } from '@/store/petStore';
 
 // Resolve the aliased core/event mocks AFTER `vi.mock('@tauri-apps/api/window')`
 // is hoisted — importing these statically before the hoisted window mock was
@@ -68,16 +70,15 @@ afterEach(() => {
 });
 
 describe('PetPanelApp', () => {
-  it('defaults to the Chat tab with a search box above the tabs (no Actions tab)', () => {
+  it('renders the chat body with a search box and no tab row', () => {
     const { container } = render(<PetPanelApp />);
     expect(container.querySelector('.ai-panel')).toBeTruthy();
-    // The search input sits above the tabs; the Actions tab was removed.
     expect(container.querySelector('.pet-panel-search-input')).toBeTruthy();
-    // Only Chat + Inbox remain (tab labels are locale-dependent — index 0
-    // is Chat, the default tab).
-    const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(2);
-    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+    // The tab row was removed with the Inbox tab (PRD
+    // 09-19-inbox-command-popup) — the inbox opens as the “Open Inbox”
+    // command into the extension-tool popup, and Chat is the only body.
+    expect(container.querySelector('.pet-panel-tabs')).toBeNull();
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
   });
 
   it('typing in the search box replaces the body with search results', () => {
@@ -85,11 +86,9 @@ describe('PetPanelApp', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'readme' } });
     expect(container.querySelector('.pet-panel-search-results')).toBeTruthy();
     expect(container.querySelector('.ai-panel')).toBeNull();
-    // Tabs are removed while searching — results take over the body.
-    expect(container.querySelector('.pet-panel-tabs')).toBeNull();
   });
 
-  it('search hides the tabs and supports arrow/enter keyboard navigation', async () => {
+  it('search results support arrow/enter keyboard navigation', async () => {
     const { registerCommand } = await import('@/services/commandRegistry');
     const disposables = [
       registerCommand({
@@ -109,8 +108,7 @@ describe('PetPanelApp', () => {
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: 'readme' } });
 
-    // Tabs are removed while searching — only results remain.
-    expect(container.querySelector('.pet-panel-tabs')).toBeNull();
+    // Results take over the body while searching.
     const items = container.querySelectorAll('.pet-panel-search-item');
     expect(items.length).toBeGreaterThanOrEqual(2);
     // First result is highlighted by default.
@@ -131,24 +129,6 @@ describe('PetPanelApp', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide'));
 
     for (const d of disposables) d.dispose();
-  });
-
-  it('clicking the Inbox tab mounts the inbox and unmounts AiPanel', () => {
-    const { container } = render(<PetPanelApp />);
-    fireEvent.click(screen.getAllByRole('tab')[1]);
-    expect(container.querySelector('.pet-inbox-empty')).toBeTruthy();
-    expect(container.querySelector('.ai-panel')).toBeNull();
-    expect(screen.getAllByRole('tab')[1].getAttribute('aria-selected')).toBe('true');
-    expect(screen.getAllByRole('tab')[0].getAttribute('aria-selected')).toBe('false');
-  });
-
-  it('clicking Chat tab reverses back to the chat', () => {
-    const { container } = render(<PetPanelApp />);
-    fireEvent.click(screen.getAllByRole('tab')[1]);
-    expect(container.querySelector('.pet-inbox-empty')).toBeTruthy();
-    fireEvent.click(screen.getAllByRole('tab')[0]);
-    expect(container.querySelector('.ai-panel')).toBeTruthy();
-    expect(container.querySelector('.pet-inbox-empty')).toBeNull();
   });
 
   it('close button hides the panel via pet_panel_hide', async () => {
@@ -278,9 +258,11 @@ describe('PetPanelApp', () => {
     expect(startDraggingMock).not.toHaveBeenCalled();
   });
 
-  it('clicking a tab button does NOT start a drag', async () => {
+  it('pointerdown on a search row does NOT start a drag (stopPropagation)', async () => {
     render(<PetPanelApp />);
-    await fireEvent.pointerDown(screen.getAllByRole('tab')[0], { button: 0 });
+    const searchRow = document.querySelector('.pet-panel-search-row')!;
+    expect(searchRow).toBeTruthy();
+    await fireEvent.pointerDown(searchRow, { button: 0 });
     await Promise.resolve();
     expect(startDraggingMock).not.toHaveBeenCalled();
   });
@@ -467,5 +449,360 @@ describe('PetPanelApp', () => {
       );
       restore();
     });
+  });
+
+  // ── Inbox command row (PRD: 09-19-inbox-command-popup) ──
+  // The Inbox tab was removed — the “Open Inbox” command is the in-panel
+  // entry point. Searching 收件箱 surfaces it in the Commands group; picking
+  // it routes run-command to the main window (which runs the registered
+  // action.open-inbox → open_extension_tool_window builtin:inbox) and hides
+  // the panel with restoreFocus so the popup floats over the user's app.
+  // The real command is registered by App.tsx's registerBuiltinCommands
+  // (not run in tests) — seed a stand-in with the same id/title/keywords.
+  describe('inbox command row', () => {
+    it('searching 收件箱 surfaces the Open Inbox command row', async () => {
+      const { registerCommand } = await import('@/services/commandRegistry');
+      const d = registerCommand({
+        id: 'action.open-inbox',
+        title: 'Open Inbox',
+        category: 'action',
+        keywords: ['inbox', 'notifications', 'notify', '收件箱', '通知'],
+        run: async () => undefined,
+      });
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '收件箱' } });
+      const items = container.querySelectorAll('.pet-panel-search-item');
+      expect(items).toHaveLength(1);
+      expect(items[0].textContent).toContain('Open Inbox');
+      d.dispose();
+    });
+
+    it('picking the row emits run-command action.open-inbox and hides with restoreFocus', async () => {
+      const { registerCommand } = await import('@/services/commandRegistry');
+      const d = registerCommand({
+        id: 'action.open-inbox',
+        title: 'Open Inbox',
+        category: 'action',
+        keywords: ['inbox', 'notifications', 'notify', '收件箱', '通知'],
+        run: async () => undefined,
+      });
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '收件箱' } });
+      await fireEvent.click(container.querySelectorAll('.pet-panel-search-item')[0]);
+      await waitFor(() =>
+        expect(emitMock).toHaveBeenCalledWith('pet://menu-action', {
+          action: 'run-command',
+          commandId: 'action.open-inbox',
+        }),
+      );
+      // The inbox-command path hides the panel restoring the user's
+      // previous frontmost app (translation-popup parity — the popup floats
+      // over the user's app, Folyn must not stay foreground).
+      await waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: true }),
+      );
+      d.dispose();
+    });
+  });
+
+  // ── All-file-types search (PRD: 09-19-pet-search-all-files) ──
+  // The Files group lists EVERY vault file, not just .md — the tree already
+  // carries all types; picking a non-markdown row routes through the same
+  // pet://bubble-action jump (editorIoService.openFile handles any type).
+  describe('all file types search', () => {
+    const prevTree = useVaultStore.getState().fileTree;
+
+    afterEach(() => {
+      useVaultStore.setState({ fileTree: prevTree });
+    });
+
+    it('matches non-markdown files (png/csv) with per-type icons', () => {
+      useVaultStore.setState({
+        fileTree: [
+          { path: 'assets', name: 'assets', type: 'dir', children: [
+            { path: 'assets/logo.png', name: 'logo.png', type: 'file' },
+            { path: 'assets/data.csv', name: 'data.csv', type: 'file' },
+          ] },
+          { path: 'readme.md', name: 'readme.md', type: 'file' },
+        ],
+      });
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'assets/' } });
+      const items = container.querySelectorAll('.pet-panel-search-item');
+      // Both non-markdown files surface (logo.png + data.csv).
+      expect(items).toHaveLength(2);
+      expect(items[0].textContent).toContain('logo.png');
+      expect(items[1].textContent).toContain('data.csv');
+      // Per-type icons (FileIcon) instead of the old hardcoded markdown
+      // one: each row renders an icon (ThemeIcon = <img> with the svg data
+      // URI; distinct types map to distinct icon files, e.g. image vs
+      // spreadsheet).
+      const imgs = items[0].querySelectorAll('img');
+      expect(imgs.length).toBeGreaterThanOrEqual(1);
+      expect(items[1].querySelector('img')).toBeTruthy();
+      expect(items[0].querySelector('img')!.getAttribute('src'))
+        .not.toBe(items[1].querySelector('img')!.getAttribute('src'));
+    });
+
+    it('clicking a non-markdown file emits the same navigate jump', async () => {
+      useVaultStore.setState({
+        fileTree: [
+          { path: 'assets', name: 'assets', type: 'dir', children: [
+            { path: 'assets/logo.png', name: 'logo.png', type: 'file' },
+          ] },
+        ],
+      });
+      const { container } = render(<PetPanelApp />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'logo' } });
+      await fireEvent.click(container.querySelectorAll('.pet-panel-search-item')[0]);
+      await waitFor(() =>
+        expect(emitMock).toHaveBeenCalledWith('pet://bubble-action', {
+          type: 'navigate',
+          target: { kind: 'file', id: 'assets/logo.png' },
+          source: 'pet-panel-search',
+        }),
+      );
+    });
+  });
+});
+
+// ── 最近使用 recents row (PRD: 09-19-pet-search-recents, reworked to
+// extensions) ──
+// Focus-gated row of recently used EXTENSION chips (icon + display name)
+// below the search box: visible while focus sits in the search area (input
+// or chip), hidden when the caret is elsewhere (chat input). Chip click
+// re-opens that tool via the same open-extension-tool path as a picked
+// search row (emit + panel hide restoring focus). React focus handlers ride
+// on focusin/focusout — jsdom needs those dispatched explicitly
+// (fireEvent.focus/blur emit non-bubbling native events React's delegation
+// doesn't see for container handlers).
+describe('search recents row', () => {
+  const prevRecents = usePetStore.getState().recentExtensionIds;
+  const prevRows = useExtensionStore.getState().rows;
+
+  afterEach(() => {
+    usePetStore.setState({ recentExtensionIds: prevRecents });
+    useExtensionStore.setState({ rows: prevRows });
+  });
+
+  function focusSearch(container: HTMLElement) {
+    const input = container.querySelector<HTMLInputElement>('.pet-panel-search-input')!;
+    fireEvent(input, new Event('focusin', { bubbles: true }));
+  }
+
+  it('is hidden when the search input is not focused (chat caret case)', () => {
+    usePetStore.setState({ recentExtensionIds: ['builtin:translation'] });
+    const { container } = render(<PetPanelApp />);
+    expect(container.querySelector('.pet-panel-search-recents')).toBeNull();
+  });
+
+  it('appears with icon+name chips for recently used extensions', () => {
+    usePetStore.setState({ recentExtensionIds: ['builtin:translation', 'builtin:inbox'] });
+    // Seed the builtin:translation row so the chip resolves its i18n name.
+    useExtensionStore.setState({
+      rows: [
+        {
+          entry: {
+            id: 'builtin:translation',
+            name: 'builtin:translation',
+            version: '—',
+            tier: 'sandbox',
+            trusted: true,
+            integrity: {},
+            enabled: true,
+          },
+          state: 'active',
+          builtin: true,
+          nameKey: 'settings:appearance.panels.translation.label',
+        },
+      ],
+    });
+    const { container } = render(<PetPanelApp />);
+    focusSearch(container);
+    const row = container.querySelector('.pet-panel-search-recents');
+    expect(row).toBeTruthy();
+    const chips = row!.querySelectorAll('.pet-panel-search-chip');
+    expect(chips).toHaveLength(2);
+    // builtin:translation chip resolves its name from the row's nameKey;
+    // builtin:inbox (no row) falls back to the static recentsInbox label.
+    expect(chips[0].textContent).toContain('翻译');
+    expect(chips[1].textContent).toContain('收件箱');
+    expect(row!.getAttribute('role')).toBe('toolbar');
+  });
+
+  it('hides when focus moves out of the search area (relatedTarget outside)', () => {
+    usePetStore.setState({ recentExtensionIds: ['builtin:inbox'] });
+    const { container } = render(<PetPanelApp />);
+    focusSearch(container);
+    expect(container.querySelector('.pet-panel-search-recents')).toBeTruthy();
+    const input = container.querySelector<HTMLInputElement>('.pet-panel-search-input')!;
+    // Focus lands in the chat body — outside the search area.
+    const outside = document.createElement('input');
+    container.querySelector('.pet-panel-body')!.appendChild(outside);
+    const ev = new Event('focusout', { bubbles: true });
+    Object.defineProperty(ev, 'relatedTarget', { value: outside, configurable: true });
+    fireEvent(input, ev);
+    expect(container.querySelector('.pet-panel-search-recents')).toBeNull();
+  });
+
+  it('stays visible when focus moves onto a chip (relatedTarget inside)', () => {
+    usePetStore.setState({ recentExtensionIds: ['builtin:inbox'] });
+    const { container } = render(<PetPanelApp />);
+    focusSearch(container);
+    const input = container.querySelector<HTMLInputElement>('.pet-panel-search-input')!;
+    const chip = container.querySelector<HTMLButtonElement>('.pet-panel-search-chip')!;
+    const ev = new Event('focusout', { bubbles: true });
+    Object.defineProperty(ev, 'relatedTarget', { value: chip, configurable: true });
+    fireEvent(input, ev);
+    expect(container.querySelector('.pet-panel-search-recents')).toBeTruthy();
+  });
+
+  it('clicking a chip emits open-extension-tool for that extension and hides with restoreFocus', async () => {
+    usePetStore.setState({ recentExtensionIds: ['builtin:translation', 'builtin:inbox'] });
+    const { container } = render(<PetPanelApp />);
+    focusSearch(container);
+    // The second chip is builtin:inbox (no row → fallback label).
+    const chips = container.querySelectorAll<HTMLButtonElement>('.pet-panel-search-chip');
+    fireEvent.click(chips[1]);
+    await waitFor(() =>
+      expect(emitMock).toHaveBeenCalledWith('pet://menu-action', {
+        action: 'open-extension-tool',
+        extensionId: 'builtin:inbox',
+      }),
+    );
+    // Same hide-with-restoreFocus as a picked search row: the tool popup
+    // floats over the user's app, Folyn must not stay foreground.
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: true }),
+    );
+  });
+
+  it('renders no row when there are no recently used extensions', () => {
+    usePetStore.setState({ recentExtensionIds: [] });
+    const { container } = render(<PetPanelApp />);
+    focusSearch(container);
+    expect(container.querySelector('.pet-panel-search-recents')).toBeNull();
+  });
+});
+
+// ── `/` extension browse mode (PRD: 09-19-pet-search-recents follow-up) ──
+// A bare `/` lists EVERY extension (fixing the partial match) while files /
+// commands keep their normal whole-query substring matching — a bare `/`
+// still matches every file inside a directory (its path contains `/`), so
+// the scrollable mixed extensions+files list stays (user-confirmed behavior).
+// `/xyz` filters extensions by `xyz`; files match the FULL query (`/xyz` in
+// name/path — e.g. `assets/logo.png` matches `/logo`).
+describe('search `/` extension browse mode', () => {
+  const prevRows = useExtensionStore.getState().rows;
+  const prevTree = useVaultStore.getState().fileTree;
+
+  const extRow = (id: string, name: string, description?: string) => ({
+    entry: {
+      id,
+      name,
+      version: '1.0.0',
+      tier: 'sandbox' as const,
+      trusted: true,
+      integrity: {},
+      enabled: true,
+    },
+    state: 'active' as const,
+    description,
+  });
+
+  afterEach(() => {
+    useExtensionStore.setState({ rows: prevRows });
+    useVaultStore.setState({ fileTree: prevTree });
+    useAppearanceStore.getState().setEnableTranslationPanel(true);
+  });
+
+  it('bare `/` lists every extension AND directory files (mixed list)', () => {
+    useVaultStore.setState({
+      fileTree: [
+        { path: 'assets', name: 'assets', type: 'dir', children: [
+          { path: 'assets/logo.png', name: 'logo.png', type: 'file' },
+        ] },
+        { path: 'readme.md', name: 'readme.md', type: 'file' },
+      ],
+    });
+    useExtensionStore.setState({
+      rows: [extRow('carousel', 'Carousel'), extRow('dbml', 'DBML'), extRow('store', 'Store')],
+    });
+    const { container } = render(<PetPanelApp />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '/' } });
+    const items = container.querySelectorAll('.pet-panel-search-item');
+    // 3 extension rows + the directory file (its path contains `/`).
+    expect(items).toHaveLength(4);
+    expect(items[0].textContent).toContain('Carousel');
+    expect(container.textContent).toContain('logo.png');
+    // Root-level files (no `/` in name or path) don't match a bare `/`.
+    expect(container.textContent).not.toContain('readme.md');
+  });
+
+  it('`/xyz` filters extensions by xyz; files match the full query', () => {
+    useVaultStore.setState({
+      fileTree: [
+        { path: 'assets', name: 'assets', type: 'dir', children: [
+          { path: 'assets/car.png', name: 'car.png', type: 'file' },
+        ] },
+        { path: 'carousel-notes.md', name: 'carousel-notes.md', type: 'file' },
+      ],
+    });
+    useExtensionStore.setState({
+      rows: [extRow('carousel', 'Carousel'), extRow('dbml', 'DBML')],
+    });
+    const { container } = render(<PetPanelApp />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '/car' } });
+    const items = container.querySelectorAll('.pet-panel-search-item');
+    // Carousel (extension filter `car`) + `assets/car.png` (its path
+    // contains the literal `/car`). `carousel-notes.md` matches `car` but
+    // NOT the full query `/car` — it stays hidden.
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toContain('Carousel');
+    expect(container.textContent).toContain('car.png');
+    expect(container.textContent).not.toContain('carousel-notes.md');
+  });
+
+  it('`/` respects the translation panel gate (row hidden when disabled)', () => {
+    useAppearanceStore.getState().setEnableTranslationPanel(false);
+    useExtensionStore.setState({
+      rows: [
+        {
+          entry: {
+            id: 'builtin:translation',
+            name: 'builtin:translation',
+            version: '—',
+            tier: 'sandbox' as const,
+            trusted: true,
+            integrity: {},
+            enabled: true,
+          },
+          state: 'active' as const,
+          builtin: true,
+          nameKey: 'settings:appearance.panels.translation.label',
+          descKey: 'settings:appearance.panels.translation.description',
+        },
+        extRow('carousel', 'Carousel'),
+      ],
+    });
+    const { container } = render(<PetPanelApp />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '/' } });
+    // The gated translation row (which would render TWO rows) is absent;
+    // only carousel remains.
+    const items = container.querySelectorAll('.pet-panel-search-item');
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain('Carousel');
+  });
+
+  it('a mid-string slash is NOT browse mode (normal substring matching)', () => {
+    useVaultStore.setState({
+      fileTree: [{ path: 'notes/readme.md', name: 'readme.md', type: 'file' }],
+    });
+    const { container } = render(<PetPanelApp />);
+    // `翻译/` — trailing slash, not a leading one: normal matching (nothing
+    // contains that literal string) → empty results.
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '翻译/' } });
+    expect(container.querySelectorAll('.pet-panel-search-item')).toHaveLength(0);
+    expect(container.querySelector('.pet-panel-search-empty')).toBeTruthy();
   });
 });

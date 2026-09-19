@@ -169,12 +169,19 @@ export async function routePetMenuAction(
       // (the panel is a separate realm whose store instances cannot execute
       // main-window commands). `runCommand` falls back to the registry when
       // the id isn't in the current palette list, so any registered command
-      // works. Focus main so the user sees the effect.
+      // works. Focus main so the user sees the effect — EXCEPT the inbox
+      // popup command: it opens the extension-tool popup, which floats over
+      // the user's current app without activation (the same reason the
+      // open-extension-tool case below skips focusMain). Focusing main here
+      // would both app-switch and risk a focus race that blur-closes the
+      // just-opened popup.
       if (commandId) {
         const { useCommandPaletteStore } = await import('@/store/commandPaletteStore');
         useCommandPaletteStore.getState().runCommand(commandId);
       }
-      await focusMain();
+      if (commandId !== 'action.open-inbox') {
+        await focusMain();
+      }
       break;
     case 'open-extensions-settings':
       // Pet-panel search → open the Extensions settings tab in the main window.
@@ -213,11 +220,23 @@ export async function routePetMenuAction(
               entry: 'builtin',
               title: 'Translation',
             });
+            // Track as recently used (pet-panel search's 最近使用 chip row).
+            usePetStore.getState().recordRecentExtension('builtin:translation');
           } catch (err) {
             // Non-fatal — mirrors the other invoke branches; the user can
             // retry from the panel search.
             console.warn('[pet-host] open builtin translation tool failed:', err);
           }
+          break;
+        }
+        // Same story for the built-in inbox popup (PRD
+        // 09-19-inbox-command-popup): no on-disk extension, no
+        // `extension.openTool.*` command — route to the registered
+        // `action.open-inbox` command, whose run() opens the window AND
+        // records the recent-extension entry (single owner of that open).
+        if (extensionId === 'builtin:inbox') {
+          const { runCommand } = await import('@/services/commandRegistry');
+          await runCommand('action.open-inbox');
           break;
         }
         const { getCommands, runCommand } = await import('@/services/commandRegistry');

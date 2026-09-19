@@ -30,13 +30,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Terminal } from 'lucide-react';
 import { useVaultStore } from '@/store/vaultStore';
-import { flattenMarkdownFiles } from '@/services/fileCommands';
 import { getCommands } from '@/services/commandRegistry';
 import { useExtensionStore, type ExtensionRow } from '@/store/extensionStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { ExtensionIcon } from '@/components/settings/ExtensionsSettings';
-import { ThemeIcon } from '@/components/icons/ThemeIcon';
+import { FileIcon } from '@/components/icons/FileIcon';
 import { isTauri } from '@/utils/platform';
+import { flattenFileTree } from '@/utils/treeUtils';
 
 /** Max results per group — bounds DOM size for large vaults. */
 const MAX_PER_GROUP = 20;
@@ -100,8 +100,15 @@ export const PetPanelSearchResults = forwardRef<
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Vault files (the panel receives the tree via `pet://file-tree-updated`).
-  const files = useMemo(() => flattenMarkdownFiles(fileTree), [fileTree]);
+  // Vault files, ALL types (PRD 09-19-pet-search-all-files) — the tree the
+  // panel mirrors via `pet://file-tree-updated` contains every file; the
+  // previous `.md`-only filter (flattenMarkdownFiles) was inherited from
+  // fileCommands.ts, not a panel decision. Picking any file routes through
+  // the main window's editorIoService.openFile, which handles every type
+  // (handler registry / file viewers; unknown extensions open as
+  // unsupported/text views). Mirrors the all-files flatten the AiPanel's
+  // @-mention uses.
+  const files = useMemo(() => flattenFileTree(fileTree), [fileTree]);
   // Registered commands (static registry is available in this realm too).
   const commands = useMemo(
     () => getCommands().filter((c) => !c.enabled || c.enabled()),
@@ -116,6 +123,16 @@ export const PetPanelSearchResults = forwardRef<
   }, [refreshRows]);
 
   const q = query.trim();
+  // `/` prefix = extension browse mode for the EXTENSIONS group only (user
+  // convention 2026-09-19): a bare `/` lists EVERY extension; `/xyz`
+  // filters extensions by `xyz`. Files / commands keep their NORMAL
+  // whole-query substring matching (a bare `/` still matches every file in
+  // a directory — its path contains `/` — so the scrollable mixed
+  // extensions+files list stays; that's the behavior the user asked to
+  // keep). `matches('')` is true for any candidate, so the bare-`/` case
+  // falls out of the same filter.
+  const isExtMode = q.startsWith('/');
+  const extQ = isExtMode ? q.slice(1).trim() : q;
   const fileHits = q
     ? files
         .filter((f) => matches(q, f.name, f.path))
@@ -143,7 +160,7 @@ export const PetPanelSearchResults = forwardRef<
           // searching "翻译" hits the translation panel via its zh label.
           const name = r.nameKey ? t(r.nameKey) : r.entry.name;
           const desc = r.descKey ? t(r.descKey) : (r.description ?? '');
-          return matches(q, name, r.entry.id, r.entry.name, desc);
+          return matches(isExtMode ? extQ : q, name, r.entry.id, r.entry.name, desc);
         })
         .slice(0, MAX_PER_GROUP)
     : [];
@@ -212,6 +229,18 @@ export const PetPanelSearchResults = forwardRef<
         await emitNavigateFile(item.path);
       } else if (item.kind === 'command') {
         await emitRunCommand(item.commandId);
+        // The inbox command opens the extension-tool popup, which floats
+        // over the user's current app — hide the panel restoring the user's
+        // previous frontmost app (same as the open-extension-tool path
+        // below), so picking it doesn't leave Folyn in the foreground.
+        if (item.commandId === 'action.open-inbox' && isTauri()) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('pet_panel_hide', { restoreFocus: true });
+          } catch {
+            // Non-fatal — the generic onDone() hide still runs.
+          }
+        }
       } else if (item.kind === 'builtin-translation') {
         // The translation hit's two rows: "main app" runs the registered
         // `panel.translation` command in the main window (ActivityBar page
@@ -381,7 +410,7 @@ export const PetPanelSearchResults = forwardRef<
               aria-selected={index === activeIndex}
               onClick={() => activateItem({ kind: 'file', path: f.path })}
             >
-              <ThemeIcon name="markdown" />
+              <FileIcon filename={f.name} />
               <span className="pet-panel-search-item-text">
                 <span className="pet-panel-search-item-title">{f.name}</span>
                 <span className="pet-panel-search-item-sub">{f.path}</span>
@@ -421,8 +450,10 @@ async function emitRunCommand(commandId: string): Promise<void> {
   }
 }
 
-/** Open a extension's tool window (popup) in the main window. */
-async function emitOpenExtensionTool(extensionId: string): Promise<void> {
+/** Open a extension's tool window (popup) in the main window. Exported for
+ *  PetSearchRecents — its chips re-fire the exact same open path (emit
+ *  menu-action + hide the panel restoring focus) as a picked search row. */
+export async function emitOpenExtensionTool(extensionId: string): Promise<void> {
   if (!isTauri()) return;
   try {
     const { emit } = await import('@tauri-apps/api/event');

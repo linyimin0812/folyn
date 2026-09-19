@@ -40,18 +40,17 @@
     "clickThrough": "Traversée des clics",
     "exitApp": "Quitter l'application"
   },
-  "tabs": {
-    "chat": "Chat",
-    "inbox": "Boîte de réception"
-  },
   "search": {
     "placeholder": "Rechercher fichiers / commandes / extensions",
+    "recents": "Types de fichiers récemment utilisés",
+    "recentsChip": "Rouvrir {{name}}",
     "files": "Fichiers",
     "commands": "Commandes",
     "extensions": "Extensions",
     "noResults": "Aucun résultat correspondant",
     "translationMain": "Traduction (app principale)",
-    "translationPopup": "Traduction (fenêtre)"
+    "translationPopup": "Traduction (fenêtre)",
+    "recentsInbox": "Boîte de réception"
   },
   "window": {
     "fullscreen": "Plein écran",
