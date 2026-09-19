@@ -163,6 +163,37 @@ export function normalizeHeaders(
 }
 
 /**
+ * Check whether an error thrown by the clipboard-manager plugin is arboard's
+ * `ContentNotAvailable` — the clipboard holds no payload in the requested
+ * flavor (e.g. an image was copied, so there is no text; or the clipboard is
+ * empty). Callers map this to `null` instead of surfacing an error.
+ */
+function isContentNotAvailable(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('not available in the requested format');
+}
+
+/** Uint8Array → base64 in the main webview (chunked to avoid arg limits). */
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(bin);
+}
+
+/** Change-count gate state for `clipboard:read-image` (see that case). */
+const imageCache: { count: number; payload: unknown } = { count: -1, payload: null };
+
+/** base64 → Uint8Array in the main webview (for clipboard:write-image). */
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/**
  * Check whether the manifest grants a specific capability. Used by the bridge
  * to gate methods that require a boolean permission flag.
  */
@@ -438,14 +469,17 @@ export class RpcBridge {
     }
   }
 
-  /** Resolve a extension-relative path to an absolute filesystem path. */
+  /** Resolve a extension-relative path to an absolute filesystem path.
+   * Data files resolve under the DATA dir (`~/.folyn/extensions-data/<id>/`),
+   * NOT the install dir — install/uninstall wipes the code dir, so anything
+   * stored there dies on every re-install. The override stays for tests. */
   private async resolvePath(relativePath: string): Promise<string> {
     if (this.opts.resolveExtensionPath) {
       return this.opts.resolveExtensionPath(relativePath);
     }
     const { homeDir, join } = await import('@tauri-apps/api/path');
     const home = await homeDir();
-    return join(home, '.folyn', 'extensions', this.opts.extensionId, relativePath);
+    return join(home, '.folyn', 'extensions-data', this.opts.extensionId, relativePath);
   }
 }
 
@@ -468,8 +502,11 @@ export class RpcBridge {
  * @param extensionId      The extension id (used for path resolution + logging).
  * @param method        RPC method name (e.g. `vault:insert-content`).
  * @param params        Method params object.
- * @param resolvePath   Resolves a extension-relative path to an absolute path.
- *                      Both transports use `~/.folyn/extensions/<extensionId>/<rel>`.
+ * @param resolvePath   Resolves a extension-relative path (data file) to an
+ *                      absolute path. Both transports use
+ *                      `~/.folyn/extensions-data/<extensionId>/<rel>` — the
+ *                      data dir, separate from the code dir so re-installs
+ *                      (which wipe the code dir) cannot destroy data.
  * @param stream        Streaming-event callback (sandbox iframe transport
  *                      only). Pushed once per `ExtensionAiStreamEvent` during a
  *                      long-running `ai:chat` call. Tool-window fetch transport
@@ -562,6 +599,62 @@ export async function dispatchExtensionRpc(
       }
       const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
       return writeText(text);
+    }
+    case 'clipboard:read-image': {
+      if (!hasPermission(manifest, 'clipboard')) {
+        throw new Error('clipboard:read-image denied: clipboard permission not granted');
+      }
+      // Change-count gate: while an image sits UNCHANGED on the clipboard,
+      // a naive poll re-decodes + re-base64s + re-IPCs the full image every
+      // second (observed: multi-MB screenshot → CPU spike). NSPasteboard's
+      // changeCount is a microsecond no-payload read — when it matches the
+      // count at our last full read, return `{ unchanged: true }` instead.
+      // `params.full` forces a full read (a fresh extension realm has no
+      // copy of the previous image and must fetch it once). -1 (non-macOS /
+      // command missing on an older binary) = no gate, always full read.
+      // ponytail: module-level cache is shared across extensions — correct,
+      // it mirrors global clipboard state, not per-extension state.
+      const wantsFull = (params as { full?: boolean } | undefined)?.full === true;
+      const { invoke } = await import('@tauri-apps/api/core');
+      const count = await invoke<number>('clipboard_change_count').catch(() => -1);
+      if (!wantsFull && count >= 0 && imageCache.count === count) {
+        return { unchanged: true };
+      }
+      const { readImage } = await import('@tauri-apps/plugin-clipboard-manager');
+      let img: Awaited<ReturnType<typeof readImage>>;
+      try {
+        img = await readImage();
+      } catch (err) {
+        // arboard ContentNotAvailable: no image flavor on the clipboard
+        // (e.g. text was copied). That is a normal state, not an error —
+        // `null` keeps the RPC contract total.
+        if (isContentNotAvailable(err)) return null;
+        throw err;
+      }
+      const [rgba, size] = await Promise.all([img.rgba(), img.size()]);
+      const payload = { rgba: bytesToBase64(rgba), w: size.width, h: size.height };
+      imageCache.count = count;
+      imageCache.payload = payload;
+      return payload;
+    }
+
+    case 'clipboard:write-image': {
+      // Takes { png } — base64 PNG, the storage form extensions keep. The
+      // DECODE happens Rust-side (JsImage::Bytes → Image::from_bytes, enabled
+      // by tauri's image-png feature) — JS-side canvas decoding proved
+      // unreliable for large images (wrong rgba lengths / engine hangs), and
+      // this avoids transferring raw RGBA (4× PNG size) over the bridge at all.
+      const p = (params ?? {}) as { png?: unknown };
+      if (typeof p.png !== 'string' || p.png.length < 8) {
+        throw new Error('clipboard:write-image requires { png }');
+      }
+      if (!hasPermission(manifest, 'clipboard')) {
+        throw new Error('clipboard:write-image denied: clipboard permission not granted');
+      }
+      const bytes = base64ToBytes(p.png);
+      const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+      // Uint8Array → JsImage::Bytes (serde untagged) → Rust PNG decode.
+      return writeImage(bytes);
     }
 
     // ── dialog ──

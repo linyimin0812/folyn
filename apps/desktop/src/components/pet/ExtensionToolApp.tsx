@@ -67,6 +67,12 @@ interface ExtensionToolOpenPayload {
   toolId: string;
   entry: string;
   title: string;
+  /** Code-dir change fingerprint (name+size+mtime fold, Rust-side). Keys
+   *  the sandboxed iframe: unchanged → re-surface the running page (state
+   *  kept, no flicker); changed (re-install / update) → iframe remounts and
+   *  the new code loads. Without it the hide-not-destroy lifecycle replays
+   *  stale code forever. */
+  fingerprint?: string;
 }
 
 const PANEL_LABEL = 'extension-tool-panel';
@@ -300,7 +306,7 @@ export function ExtensionToolApp() {
         <TranslationToolHost />
       ) : iframeSrc ? (
         <iframe
-          key={iframeSrc}
+          key={`${iframeSrc}#${tool?.fingerprint ?? ''}`}
           src={iframeSrc}
           title={tool?.title ?? 'Extension tool'}
           sandbox="allow-scripts"

@@ -574,6 +574,11 @@ pub fn run() {
                     .status(200)
                     .header("Content-Type", ct)
                     .header("Content-Security-Policy", EXTENSION_CSP)
+                    // Extensions are re-installed in place (files swapped under
+                    // a stable URL); without no-store WKWebView heuristic-caches
+                    // the first response and keeps replaying stale code after
+                    // every reinstall until the app restarts.
+                    .header("Cache-Control", "no-store")
                     .body(bytes)
                     .unwrap_or_else(|_| http::Response::new(b"error".to_vec())),
             );
@@ -1080,6 +1085,7 @@ pub fn run() {
             commands::drain_pending_open_files,
             commands::save_file,
             commands::read_clipboard_files,
+            commands::clipboard_change_count,
             commands::create_webview,
             commands::open_extension_tool_window,
             commands::hide_extension_tool_window,

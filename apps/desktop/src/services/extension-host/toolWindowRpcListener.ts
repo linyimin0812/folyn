@@ -33,14 +33,17 @@ export interface ExtensionRpcRequest {
   body: string;
 }
 
-/** Resolve `~/.folyn/extensions/<extensionId>/<rel>` via Tauri path APIs. */
+/** Resolve `~/.folyn/extensions-data/<extensionId>/<rel>` via Tauri path APIs.
+ * The DATA dir, deliberately outside the install dir: install/uninstall
+ * wipes `~/.folyn/extensions/<id>/`, so data stored there would die on every
+ * re-install (observed: paste-history lost its history.json each update). */
 async function defaultResolvePath(
   extensionId: string,
   relativePath: string,
 ): Promise<string> {
   const { homeDir, join } = await import('@tauri-apps/api/path');
   const home = await homeDir();
-  return join(home, '.folyn', 'extensions', extensionId, relativePath);
+  return join(home, '.folyn', 'extensions-data', extensionId, relativePath);
 }
 
 /**

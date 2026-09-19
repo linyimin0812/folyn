@@ -341,6 +341,61 @@ pub fn tool_key_from_label(label: &str) -> Option<&str> {
     Some(base)
 }
 
+/// Fold (name, size, mtime) of every file under the extension's install dir
+/// into a change fingerprint (FNV-1a over the SORTED entries — read_dir order
+/// is not stable, and spurious changes would remount the iframe needlessly).
+/// The frontend keys the sandboxed iframe on it: same fingerprint → the
+/// hidden panel re-surfaces the running page (state preserved, no flicker);
+/// changed (re-install / file update) → the iframe remounts and new code
+/// loads. Without it, the hide-not-destroy lifecycle replays stale code
+/// forever (observed: extension icon/CSS changes invisible until app
+/// restart). Dotfiles are skipped — macOS drops .DS_Store into folders at
+/// will and that must not count as a code change. Returns "" when the dir
+/// is unreadable (builtins have no dir; the frontend treats "" as stable).
+fn extension_dir_fingerprint(app: &tauri::AppHandle, extension_id: &str) -> String {
+    let dir = match crate::extension_commands::extensions_dir(app) {
+        Ok(d) => d.join(extension_id),
+        Err(_) => return String::new(),
+    };
+    let mut entries: Vec<(String, u64, u64)> = Vec::new();
+    collect_fingerprint_entries(&dir, &mut entries);
+    entries.sort();
+    let mut h: u64 = 0xcbf29ce484222325;
+    for (name, len, mt) in &entries {
+        let mut bytes: Vec<u8> = name.as_bytes().to_vec();
+        bytes.push(0);
+        bytes.extend_from_slice(&len.to_le_bytes());
+        bytes.extend_from_slice(&mt.to_le_bytes());
+        for b in bytes {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x100000001b3);
+        }
+    }
+    format!("{h:016x}")
+}
+
+fn collect_fingerprint_entries(dir: &std::path::Path, out: &mut Vec<(String, u64, u64)>) {
+    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    for e in rd.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        if name.starts_with('.') {
+            continue;
+        }
+        let Ok(md) = e.metadata() else { continue };
+        let mt = md
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0);
+        if md.is_dir() {
+            collect_fingerprint_entries(&e.path(), out);
+        } else {
+            out.push((name, md.len(), mt));
+        }
+    }
+}
+
 /// Open an extension tool window — the pet-panel machinery ("桌宠弹窗同款"):
 /// the `extension-tool-panel` window is statically declared in
 /// tauri.conf.json and converted to an NSPanel at startup
@@ -382,6 +437,7 @@ pub async fn open_extension_tool_window(
         "toolId": tool_id,
         "entry": entry,
         "title": title,
+        "fingerprint": extension_dir_fingerprint(&app, &extension_id),
     });
     if let Some(w) = app.get_webview_window("extension-tool-panel") {
         let js = format!(

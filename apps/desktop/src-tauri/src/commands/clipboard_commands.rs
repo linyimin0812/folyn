@@ -24,6 +24,57 @@ use arboard::Clipboard;
 /// `pet_rebuild_app_menu` / `voice_insert_text` `run_on_main_thread` pattern.
 /// The main-thread read blocks the UI for only the brief pasteboard lock;
 /// preferable to aborting the whole process.
+/// macOS NSPasteboard change count — increments on EVERY clipboard
+/// modification (even re-copying identical data). Microseconds, reads no
+/// payload. This is the canonical cheap clipboard-change detector: the
+/// extension RPC bridge gates `clipboard:read-image` on it so an unchanged
+/// image is not re-decoded / re-transferred (observed: a multi-MB screenshot
+/// on the clipboard re-decoded + base64'd + IPC'd every poll second → CPU
+/// spike).
+///
+/// Returns -1 on non-macOS (no cheap change signal) — callers treat that as
+/// "always changed" (full read every time, the pre-gate behavior).
+///
+/// Same main-thread requirement as `read_clipboard_files`: NSPasteboard calls
+/// via objc belong on the main thread.
+#[tauri::command]
+pub async fn clipboard_change_count(app: tauri::AppHandle) -> Result<i64, String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = &app; // silence unused on non-macOS builds
+        return Ok(-1);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::mpsc::channel;
+        let (tx, rx) = channel::<i64>();
+        app.run_on_main_thread(move || {
+            use objc2::runtime::AnyClass;
+            use objc2::msg_send;
+            let count = unsafe {
+                let cls = match AnyClass::get("NSPasteboard") {
+                    Some(c) => c,
+                    None => {
+                        let _ = tx.send(-1);
+                        return;
+                    }
+                };
+                let pb: *mut objc2::runtime::AnyObject = msg_send![cls, generalPasteboard];
+                if pb.is_null() {
+                    let _ = tx.send(-1);
+                    return;
+                }
+                // generalPasteboard returns the shared singleton — do NOT release.
+                let cnt: i64 = msg_send![pb, changeCount];
+                cnt
+            };
+            let _ = tx.send(count);
+        })
+        .map_err(|e| format!("clipboard_change_count dispatch failed: {e}"))?;
+        rx.recv().map_err(|e| format!("clipboard_change_count channel closed: {e}"))
+    }
+}
+
 #[tauri::command]
 pub async fn read_clipboard_files(app: tauri::AppHandle) -> Result<Vec<String>, String> {
     use std::sync::mpsc::channel;
