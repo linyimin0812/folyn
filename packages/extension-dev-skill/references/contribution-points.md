@@ -94,5 +94,9 @@ export default {
   `manifest.permissions`. `src/index.ts` (scaffolded) wires the bridge — copy the
   `rpc()` helper pattern. Methods: `fs:*`, `http:fetch`, `clipboard:*`,
   `dialog:*`, `vault:read-active-doc`, `vault:insert-content`, `window:open`,
-  `ai:chat`, `env:get` + pushed `env-event` (theme/locale).
+  `ai:chat` (+ `ai:chat-poll` on the tool-window fetch transport, which has no
+  stream channel — `ai:chat` returns `{ jobId }`, poll it for text/thinking
+  deltas), `storage:get`/`storage:set` (same `ext:<id>:` namespace as trusted
+  `api.storage` — share one data set across surfaces), `env:get` + pushed
+  `env-event` (theme/locale).
 - `html` field is required (the iframe entry).

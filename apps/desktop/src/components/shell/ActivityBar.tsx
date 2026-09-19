@@ -8,19 +8,22 @@
  * `registerBuiltinPanels`'s one-way editorStore→featurePanelStore subscription
  * then mirrors the new id so the active button + Sidebar follow.
  *
- * The daily / settings page-nav buttons stay hardcoded (Decision Q3:
- * page-nav data-driving is out of scope). Settings is pinned to the
- * bottom via a `flex-1` spacer.
+ * The daily / settings page-nav buttons stay hardcoded, EXCEPT extension
+ * pages, which are data-driven from {@link useVisiblePages}
+ * (`extensionPageStore`, nav id `ext:<extId>.<pageId>`). Settings is pinned
+ * to the bottom via a `flex-1` spacer.
  *
  * Active-state rules:
  * - Panel button: `active` when `activePanel === id` AND not on a page-nav
- *   page (translation) — mirrors the pre-PR2 `!onPage && ...` gate.
- * - Page-nav button: `active` when `currentPage === 'translation'`.
+ *   page (translation or an `ext:` page) — mirrors the pre-PR2 `!onPage && ...`
+ *   gate.
+ * - Page-nav button: `active` when `currentPage === <page id>`.
  */
 import { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useVisiblePanels } from '@/store/featurePanelStore';
+import { useVisiblePages } from '@/store/extensionPageStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +57,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const isGithubVault = currentVault?.providerType === 'github';
 
   const onTranslation = currentPage === 'translation';
-  const onPage = onTranslation;
+  const onPage = onTranslation || currentPage.startsWith('ext:');
 
   // Visible panels sorted by (order, registration seq). The store selector
   // returns a useShallow-stabilized array — re-renders only on real content
@@ -63,6 +66,10 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   // very top of the bar, then any extension panels.
   const visiblePanels = useVisiblePanels();
   const [filesPanel, ...restPanels] = visiblePanels;
+
+  // Extension full pages (contributes.pages[]), rendered after the
+  // translation page-nav button.
+  const visiblePages = useVisiblePages();
 
   const renderPanelButton = (p: typeof filesPanel) => (
     <button
@@ -109,6 +116,17 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
           <TranslationIcon size={14} active={onTranslation} />
         </button>
       )}
+
+      {visiblePages.map((p) => (
+        <button
+          key={p.id}
+          className={`activity-icon ${currentPage === p.id ? 'active' : ''}`}
+          onClick={() => setCurrentPage(p.id)}
+          title={p.title}
+        >
+          {p.icon}
+        </button>
+      ))}
 
       {restPanels.map(renderPanelButton)}
 

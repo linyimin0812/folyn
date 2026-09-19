@@ -1,6 +1,6 @@
 {
   "name": "folyn-extension-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Folyn Extension SDK — manifest schema, contribution points, contracts, and dev helpers. Type-only at runtime; publishable to npm.",
   "type": "module",
   "main": "./dist/index.js",

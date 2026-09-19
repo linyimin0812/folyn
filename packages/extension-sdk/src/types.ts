@@ -149,8 +149,9 @@ export interface ExtensionEnv {
 // Extension authors call `ctx.ai.chat` / `ctx.ai.agent`. The host implementation
 // (PR2: trusted — wraps runRigChat / runFeatureAgent; PR3: sandbox — same
 // methods over rpcBridge postMessage) enforces manifest.permissions.ai before
-// forwarding to the shared AI chokepoints. Provider/model/apiKey are never
-// exposed — host uses the user's configured defaults.
+// forwarding to the shared AI chokepoints. The apiKey is never exposed — the
+// host resolves it from its own settings; extensions may list configured
+// (provider, model) pairs via `ctx.ai.pairs()` and pass one as a chat override.
 
 /** Subset of {@link CliStreamEvent} a extension may observe. Tool / file-change
  * events are filtered out by the host before delivery. */
@@ -163,6 +164,17 @@ export interface ExtensionAiStreamEvent {
 
 export type ExtensionAiEventHandler = (event: ExtensionAiStreamEvent) => void;
 
+/** A selectable (provider, model) pair from the host's AI settings. The apiKey
+ * never leaves the host — `chat` re-resolves it from the provider slot. */
+export interface ExtensionAiPair {
+  provider: string;
+  model: string;
+  /** Provider display label (already localized host-side). */
+  label?: string;
+  /** Host asset URL for the provider logo, when one exists. */
+  iconUrl?: string;
+}
+
 export interface ExtensionAiChatParams {
   /** Extension-managed session id (extension owns persistence/history). */
   sessionId: string;
@@ -171,6 +183,15 @@ export interface ExtensionAiChatParams {
   /** When true, the host also surfaces the turn in aiPanel (aiStore session).
    * Defaults to false (extension-only, not in UI). */
   useSharedSession?: boolean;
+  /** Optional pair override from {@link ExtensionAiCapability.pairs}. Omitted →
+   * the host's extensionPair (Extensions Settings) default. The provider slot
+   * must exist and be configured, else the call rejects. */
+  provider?: string;
+  model?: string;
+  /** Image attachments for this turn (base64 bytes, no `data:` prefix). Only
+   * sent to multimodal-capable models; the host forwards them as rig image
+   * content blocks. */
+  images?: { data: string; mediaType: string }[];
 }
 
 export interface ExtensionAiAgentParams {
@@ -202,6 +223,10 @@ export interface ExtensionAiCapability {
   /** Stream a multi-turn chat turn through the host's configured provider.
    * Rejects if `permissions.ai.chat` is not declared. */
   chat(params: ExtensionAiChatParams): Promise<void>;
+  /** List the user's configured (provider, model) pairs (enabled providers ×
+   * selected models). Ids only — apiKeys stay in the host. Rejects if
+   * `permissions.ai.chat` is not declared. */
+  pairs(): Promise<ExtensionAiPair[]>;
   /** Drive a registered feature agent (trusted tier only). Rejects if the
    * feature is not in `permissions.ai.agents`. */
   agent(params: ExtensionAiAgentParams): Promise<void>;
@@ -296,6 +321,21 @@ export interface FeatureContribution {
   order?: number;
   /** Optional badge rendered as a small text dot when present. */
   badge?: string | number;
+}
+
+export interface PageContribution {
+  id: string;
+  /** Entry ref to the page component (resolved via `ExtensionModule.pages`). */
+  component: string;
+  /**
+   * Page-nav button icon — REQUIRED. Raw inline SVG string (rendered via
+   * `IconFromSvg`) or a `ThemeIcon` name (host `assets/icons/*.svg`).
+   */
+  icon: string;
+  /** Page title (activity bar tooltip + accessibility label). Raw string, not i18n'd. */
+  title?: string;
+  /** Sort key among extension page-nav buttons (default: registration order from 100). */
+  order?: number;
 }
 
 export interface ToolContribution {
@@ -452,6 +492,8 @@ export interface ContributionPoints {
   fileTypes?: FileTypeContribution[];
   containers?: ContainerContribution[];
   features?: FeatureContribution[];
+  /** Full pages rendered like the built-in translation page (trusted only). */
+  pages?: PageContribution[];
   tools?: ToolContribution[];
   /** Custom export formats added to the export menu. */
   exporters?: ExporterContribution[];

@@ -18,6 +18,16 @@ const { runRigChatMock, aiConfigGetMock, aiStoreMock, vaultStoreMock } = vi.hois
 });
 
 vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
+vi.mock('@/services/providers/catalog', () => ({
+  allProviders: (customerProviders: Record<string, unknown> = {}) => [
+    { id: 'anthropic' },
+    { id: 'openai' },
+    ...Object.keys(customerProviders).map((id) => ({ id })),
+  ],
+  providerDisplayName: (e: { id: string }) => `Label:${e.id}`,
+}));
+vi.mock('@/services/providers/icon', () => ({ providerIconUrl: (id: string) => (id === 'anthropic' ? '/assets/providers/anthropic.svg' : undefined) }));
+vi.mock('@/i18n', () => ({ default: { t: (k: string) => k } }));
 // PR5: aiCapability reads extensionPair + providerSettings[extensionPair.provider]
 // (NOT global chatProvider/chatModel/chatApiKey). The mock state is seeded
 // per-test via aiConfigGetMock.mockReturnValue({...}).
@@ -62,7 +72,8 @@ function configuredState() {
   return {
     extensionPair: { provider: 'anthropic', model: 'sonnet' },
     providerSettings: {
-      anthropic: { apiKey: 'sk-test', baseUrl: '' },
+      anthropic: { apiKey: 'sk-test', baseUrl: '', enabled: true, selectedModelIds: ['sonnet', 'opus'] },
+      openai: { apiKey: 'sk-oai', baseUrl: '', enabled: true, selectedModelIds: ['gpt-x'] },
     },
     customerProviders: {},
   };
@@ -187,6 +198,56 @@ describe('buildExtensionAi / ai.chat', () => {
       ai.chat({ sessionId: 's', prompt: 'p', onEvent: (e) => seen.push(`${e.type}:${e.content ?? ''}`) }),
     ).rejects.toThrow('boom');
     expect(seen).toContain('error:boom');
+  });
+
+  it('passes an explicit provider/model override to runRigChat', async () => {
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: CliStreamEvent) => void }) => {
+      p.onEvent({ type: 'done' });
+    });
+    const ai = buildExtensionAi(manifest({ permissions: { ai: { chat: true } } }));
+    await ai.chat({ sessionId: 's', prompt: 'p', onEvent: vi.fn(), provider: 'openai', model: 'gpt-x' });
+    const params = runRigChatMock.mock.calls[0][0] as { provider: string; model: string; apiKey: string };
+    expect(params.provider).toBe('openai');
+    expect(params.model).toBe('gpt-x');
+    expect(params.apiKey).toBe('sk-oai');
+  });
+
+  it('rejects an explicit pair with no configured slot', async () => {
+    const ai = buildExtensionAi(manifest({ permissions: { ai: { chat: true } } }));
+    await expect(
+      ai.chat({ sessionId: 's', prompt: 'p', onEvent: vi.fn(), provider: 'nope', model: 'm' }),
+    ).rejects.toThrow(/pair \(nope, m\) is not configured/);
+    expect(runRigChatMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildExtensionAi / ai.pairs', () => {
+  it('rejects when manifest does not declare permissions.ai.chat', async () => {
+    const ai = buildExtensionAi(manifest());
+    await expect(ai.pairs()).rejects.toThrow(/permissions\.ai\.chat/);
+  });
+
+  it('lists enabled providers × selected models', async () => {
+    const ai = buildExtensionAi(manifest({ permissions: { ai: { chat: true } } }));
+    const pairs = await ai.pairs();
+    expect(pairs).toEqual([
+      { provider: 'anthropic', model: 'sonnet', label: 'Label:anthropic', iconUrl: '/assets/providers/anthropic.svg' },
+      { provider: 'anthropic', model: 'opus', label: 'Label:anthropic', iconUrl: '/assets/providers/anthropic.svg' },
+      { provider: 'openai', model: 'gpt-x', label: 'Label:openai' },
+    ]);
+  });
+
+  it('skips disabled providers and providers without models', async () => {
+    aiConfigGetMock.mockReturnValue({
+      extensionPair: { provider: 'anthropic', model: 'sonnet' },
+      providerSettings: {
+        anthropic: { apiKey: 'sk-test', baseUrl: '', enabled: false, selectedModelIds: ['sonnet'] },
+        openai: { apiKey: 'sk-oai', baseUrl: '', enabled: true, selectedModelIds: [] },
+      },
+      customerProviders: {},
+    });
+    const ai = buildExtensionAi(manifest({ permissions: { ai: { chat: true } } }));
+    expect(await ai.pairs()).toEqual([]);
   });
 });
 

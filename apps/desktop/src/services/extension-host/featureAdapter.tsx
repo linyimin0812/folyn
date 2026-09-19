@@ -45,10 +45,12 @@ export function renderIcon(icon: string): ReactNode {
   // ponytail: a raw `<svg>` string is the common case for extension authors (inline,
   // self-contained). A `ThemeIcon` name (e.g. "folder") is the convenience path
   // for built-in host icons. Both return ReactNode; the activity bar renders it.
+  // 16px matches ThemeIcon's default and the built-in bar icons (14-18px) — the
+  // old 12px rendered stroke-based lucide icons as an unreadable dark smudge.
   if (icon.trim().startsWith('<svg')) {
-    return <IconFromSvg svg={icon} size={12} />;
+    return <IconFromSvg svg={icon} size={16} />;
   }
-  return <ThemeIcon name={icon} size={12} />;
+  return <ThemeIcon name={icon} size={16} />;
 }
 
 export function registerExtensionFeatures(

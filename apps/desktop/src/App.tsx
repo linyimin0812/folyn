@@ -12,6 +12,7 @@ import { CommandPalette } from './components/shell/CommandPalette';
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
 import { TranslationPanel } from './components/translation/TranslationPanel';
+import { ExtensionPageView } from './components/shell/ExtensionPageView';
 import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
 import { usePetHostBridge } from './hooks/usePetHostBridge';
@@ -86,7 +87,33 @@ extensionHost.setHooks({
     manifest: record.manifest,
     vault: { name: 'default', path: 'default' },
     ui: {
-      dialogs: { async info() {}, async confirm() { return false; } },
+      // Real Tauri dialogs, gated on permissions.dialog (matches the other
+      // capability grants). window.confirm fallback covers non-Tauri (tests,
+      // browser dev) where the plugin import rejects.
+      dialogs: {
+        async info(message: string) {
+          if (!record.manifest.permissions?.dialog) {
+            throw new Error(`extension "${record.manifest.id}" lacks permissions.dialog — call refused`);
+          }
+          try {
+            const { message: showMessage } = await import('@tauri-apps/plugin-dialog');
+            await showMessage(message, { kind: 'info' });
+          } catch {
+            window.alert(message);
+          }
+        },
+        async confirm(message: string) {
+          if (!record.manifest.permissions?.dialog) {
+            throw new Error(`extension "${record.manifest.id}" lacks permissions.dialog — call refused`);
+          }
+          try {
+            const { confirm } = await import('@tauri-apps/plugin-dialog');
+            return await confirm(message, { kind: 'warning' });
+          } catch {
+            return window.confirm(message);
+          }
+        },
+      },
       notifications: { show() {} },
       workspace: workspaceApi,
     } as ToolExtensionUIContext,
@@ -1168,6 +1195,13 @@ export default function App() {
         <div className="body-row flex-1 flex overflow-hidden">
           {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
           <TranslationPanel />
+        </div>
+      )}
+
+      {currentPage.startsWith('ext:') && (
+        <div className="body-row flex-1 flex overflow-hidden">
+          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+          <ExtensionPageView />
         </div>
       )}
 

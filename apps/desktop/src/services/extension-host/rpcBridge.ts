@@ -18,6 +18,7 @@
 import type { ExtensionAiStreamEvent, ExtensionManifest, ExtensionPermissions } from '@folyn/extension-host';
 import type { CliStreamEvent } from '@folyn/cli-adapter';
 import { runRigChat } from '@/services/rigChat';
+import { extensionStoragePrefix } from './extensionStoragePrefix';
 
 // ── Pure capability-checking helpers (exported for unit testing) ─────────────
 
@@ -494,6 +495,27 @@ export class RpcBridge {
 // Keeping the table in one place ensures both transports enforce the same
 // permission checks and resolve paths the same way.
 
+// ── Tool-window chat jobs (poll-based streaming) ─────────────────────────────
+//
+// The tool-window fetch transport has no push channel (no postMessage to a
+// separate native window, no Tauri events injected into extension webviews),
+// so `ai:chat` there starts the rig chat as a background job and returns
+// `{ jobId }` immediately. The client drains undrained text/thinking deltas
+// via `ai:chat-poll` (~150ms cadence) — token streaming without a stream
+// callback. The poll that observes `done` deletes the job; a 10-min TTL
+// reaps jobs that are never polled to completion (window closed mid-chat).
+
+interface ChatJob {
+  /** Undrained text deltas since the last poll. */
+  text: string;
+  /** Undrained thinking deltas since the last poll. */
+  thinking: string;
+  done: boolean;
+  error?: string;
+}
+
+const CHAT_JOBS = new Map<string, ChatJob>();
+
 /**
  * Dispatch an RPC method to the matching host capability, gated by the
  * extension's declared `permissions`.
@@ -510,7 +532,9 @@ export class RpcBridge {
  * @param stream        Streaming-event callback (sandbox iframe transport
  *                      only). Pushed once per `ExtensionAiStreamEvent` during a
  *                      long-running `ai:chat` call. Tool-window fetch transport
- *                      passes `undefined` → `ai:chat` rejects.
+ *                      passes `undefined` → `ai:chat` starts a background
+ *                      chat job and returns `{ jobId }`; the caller drains
+ *                      deltas via `ai:chat-poll` until `done`.
  */
 export async function dispatchExtensionRpc(
   manifest: ExtensionManifest,
@@ -658,6 +682,15 @@ export async function dispatchExtensionRpc(
     }
 
     // ── dialog ──
+    case 'dialog:confirm': {
+      const { message } = (params ?? {}) as { message?: string };
+      if (typeof message !== 'string') throw new Error('dialog:confirm requires { message }');
+      if (!hasPermission(manifest, 'dialog')) {
+        throw new Error('dialog:confirm denied: dialog permission not granted');
+      }
+      const { confirm } = await import('@tauri-apps/plugin-dialog');
+      return confirm(message, { kind: 'warning' });
+    }
     case 'dialog:open': {
       if (!hasPermission(manifest, 'dialog')) {
         throw new Error('dialog:open denied: dialog permission not granted');
@@ -737,6 +770,22 @@ export async function dispatchExtensionRpc(
       return { opened: true, toolId };
     }
 
+    // ── storage (same backend + namespace as the trusted api.storage slot;
+    //    non-sensitive own-namespace data, no permission flag — like env) ──
+    case 'storage:get': {
+      const { key } = (params ?? {}) as { key?: string };
+      if (typeof key !== 'string') throw new Error('storage:get requires { key }');
+      const { storageClient } = await import('@/utils/storageClient');
+      return storageClient.get(extensionStoragePrefix(extensionId) + key);
+    }
+    case 'storage:set': {
+      const { key, value } = (params ?? {}) as { key?: string; value?: unknown };
+      if (typeof key !== 'string') throw new Error('storage:set requires { key, value }');
+      const { storageClient } = await import('@/utils/storageClient');
+      await storageClient.set(extensionStoragePrefix(extensionId) + key, value ?? null);
+      return { ok: true };
+    }
+
     // ── env (host theme + locale; non-sensitive, no permission flag) ──
     case 'env:get': {
       const [{ useAppearanceStore }, { useLocaleStore }] = await Promise.all([
@@ -748,37 +797,144 @@ export async function dispatchExtensionRpc(
       return { theme, locale };
     }
 
-    // ── ai (sandbox streaming over postMessage; trusted uses ExtensionContext.ai) ──
+    // ── ai (sandbox streaming over postMessage; poll-based job streaming for
+    //    the tool-window fetch transport, which has no stream channel) ──
+    case 'ai:pairs': {
+      if (!perms?.ai?.chat) {
+        throw new Error('ai:pairs denied: permissions.ai.chat not granted');
+      }
+      const [{ useAiConfigStore }, { allProviders, providerDisplayName }, { default: i18n }, { providerIconUrl }] =
+        await Promise.all([
+          import('@/store/aiConfigStore'),
+          import('@/services/providers/catalog'),
+          import('@/i18n'),
+          import('@/services/providers/icon'),
+        ]);
+      const state = useAiConfigStore.getState();
+      const t = (k: string) => i18n.t(k);
+      const pairs: { provider: string; model: string; label?: string; iconUrl?: string }[] = [];
+      for (const entry of allProviders(state.customerProviders)) {
+        const slot = state.providerSettings[entry.id];
+        if (!slot || !slot.enabled) continue;
+        const label = providerDisplayName(entry, t);
+        const iconUrl = providerIconUrl(entry.id);
+        for (const model of slot.selectedModelIds) {
+          pairs.push({ provider: entry.id, model, ...(label ? { label } : {}), ...(iconUrl ? { iconUrl } : {}) });
+        }
+      }
+      // The RPC transports serve origins that cannot load host-relative asset
+      // URLs (tool windows: folyn-extension://, sandbox iframes: opaque) —
+      // inline the SVG as a data URL so <img src> works everywhere.
+      return Promise.all(pairs.map(async (p) => {
+        if (!p.iconUrl) return p;
+        try {
+          const svg = await (await fetch(p.iconUrl)).text();
+          return { ...p, iconUrl: `data:image/svg+xml,${encodeURIComponent(svg)}` };
+        } catch {
+          const copy = { ...p };
+          delete copy.iconUrl;
+          return copy;
+        }
+      }));
+    }
     case 'ai:chat': {
       if (!perms?.ai?.chat) {
         throw new Error('ai:chat denied: permissions.ai.chat not granted');
       }
-      const { sessionId, prompt } = (params ?? {}) as { sessionId?: string; prompt?: string };
+      const { sessionId, prompt, provider, model, images } = (params ?? {}) as {
+        sessionId?: string; prompt?: string; provider?: string; model?: string;
+        images?: { data?: unknown; mediaType?: unknown }[];
+      };
       if (typeof sessionId !== 'string' || typeof prompt !== 'string') {
         throw new Error('ai:chat requires { sessionId, prompt }');
       }
-      if (!stream) {
-        throw new Error('ai:chat requires a streaming transport (sandbox iframe only)');
+      if (
+        images !== undefined && (!Array.isArray(images) || images.some((i) =>
+          typeof i?.data !== 'string' || typeof i?.mediaType !== 'string'))
+      ) {
+        throw new Error('ai:chat images must be { data: base64, mediaType }[]');
       }
-      const { useAiConfigStore } = await import('@/store/aiConfigStore');
-      const { chatProvider, chatModel, chatApiKey, chatBaseUrl, chatThinkingBudget } = useAiConfigStore.getState();
-      if (!chatApiKey) {
-        throw new Error('host AI not configured — set chatApiKey in settings');
+      const imgs = images && images.length > 0
+        ? images.map((i) => ({ data: i.data as string, mediaType: i.mediaType as string }))
+        : undefined;
+      const { useAiConfigStore, resolvePairConfig } = await import('@/store/aiConfigStore');
+      // Explicit (provider, model) override from the extension, else the
+      // per-caller extensionPair. Same resolution as the trusted capability.
+      const override = provider && model ? { provider, model } : null;
+      const cfg = resolvePairConfig(override ?? useAiConfigStore.getState().extensionPair ?? null);
+      if (!cfg) {
+        throw new Error(
+          override
+            ? `pair (${provider}, ${model}) is not configured — pick one from ai:pairs`
+            : 'host AI not configured — pick a (provider, model) pair in Extensions Settings',
+        );
       }
-      await runRigChat({
+      const rigParams = {
         sessionId,
         prompt,
-        provider: chatProvider,
-        model: chatModel,
-        apiKey: chatApiKey,
-        ...(chatBaseUrl ? { baseUrl: chatBaseUrl } : {}),
-        ...(chatThinkingBudget != null ? { thinkingBudget: chatThinkingBudget } : {}),
+        provider: cfg.provider,
+        model: cfg.model,
+        apiKey: cfg.apiKey,
+        ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
+        ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
+        ...(cfg.adapterFamily ? { adapterFamily: cfg.adapterFamily } : {}),
+        ...(imgs ? { images: imgs } : {}),
+      };
+      // Iframe transport: forward every event as it arrives.
+      if (stream) {
+        await runRigChat({
+          ...rigParams,
+          onEvent: (e: CliStreamEvent) => {
+            const mapped = mapSandboxEvent(e);
+            if (mapped) stream(mapped);
+          },
+        });
+        return undefined;
+      }
+      // Tool-window fetch transport: no stream channel — start the chat as a
+      // pollable job and return immediately. Deltas accumulate on the job;
+      // `ai:chat-poll` drains them. runRigChat rejects on error events, so the
+      // catch + finally cover both the error and done flags.
+      const jobId = crypto.randomUUID();
+      const job: ChatJob = { text: '', thinking: '', done: false };
+      CHAT_JOBS.set(jobId, job);
+      void runRigChat({
+        ...rigParams,
         onEvent: (e: CliStreamEvent) => {
-          const mapped = mapSandboxEvent(e);
-          if (mapped) stream(mapped);
+          if (e.type === 'text' && e.content) job.text += e.content;
+          else if (e.type === 'thinking' && e.content) job.thinking += e.content;
+          else if (e.type === 'error') job.error = e.content ?? 'chat error';
         },
-      });
-      return undefined;
+      })
+        .catch((err: unknown) => {
+          job.error = err instanceof Error ? err.message : String(err);
+        })
+        .finally(() => {
+          job.done = true;
+          setTimeout(() => CHAT_JOBS.delete(jobId), 600_000);
+        });
+      return { jobId };
+    }
+    case 'ai:chat-poll': {
+      if (!perms?.ai?.chat) {
+        throw new Error('ai:chat-poll denied: permissions.ai.chat not granted');
+      }
+      const { jobId } = (params ?? {}) as { jobId?: string };
+      if (typeof jobId !== 'string') throw new Error('ai:chat-poll requires { jobId }');
+      const job = CHAT_JOBS.get(jobId);
+      // Unknown jobId (already drained + deleted, or never existed): report
+      // done so a caller that lost the final poll response doesn't hang.
+      if (!job) return { done: true };
+      const out = {
+        done: job.done,
+        ...(job.error ? { error: job.error } : {}),
+        text: job.text,
+        thinking: job.thinking,
+      };
+      job.text = '';
+      job.thinking = '';
+      if (job.done) CHAT_JOBS.delete(jobId);
+      return out;
     }
 
     default:

@@ -78,7 +78,10 @@ resolution.
 | `vault:read-active-doc` | `{}`                    | `vault.readActive: true`        | `{ path, content } \| null`                                                              |
 | `vault:insert-content`  | `{ content }`           | `vault.insertContent: true`     | `{ ok: true }`                                                                           |
 | `window:open`           | `{ toolId }`            | `window: true`                  | `{ opened: true, toolId }`                                                               |
-| `ai:chat`               | `{ sessionId, prompt }` | `ai.chat: true`                 | streams `ai-stream` events, final `response` (sandbox only — trusted uses `ctx.ai.chat`) |
+| `ai:chat`               | `{ sessionId, prompt, provider?, model?, images? }` | `ai.chat: true` | iframe: streams `ai-stream` events, final `response`; tool window: `{ jobId }` (poll `ai:chat-poll`) |
+| `ai:chat-poll`          | `{ jobId }`             | `ai.chat: true`                 | tool window only: `{ done, error?, text, thinking }` (deltas since last poll) |
+| `storage:get`           | `{ key }`               | _(none — own-namespace)_        | stored value or `null` — same keys as trusted `api.storage`              |
+| `storage:set`           | `{ key, value }`        | _(none — own-namespace)_        | `{ ok: true }` — shares the trusted `api.storage` backend               |
 | `env:get`               | `{}`                    | _(none — env is non-sensitive)_ | `{ theme: 'light'\|'dark', locale: string }`                                             |
 
 **Host-pushed env events** (no request needed; the host pushes these to the
@@ -507,6 +510,13 @@ adapts it into the matching app registry when the extension activates.
   checks + path resolution as the iframe bridge). See "At a glance" above for
   the method table and "Sandbox RPC protocol" below for protocol details. No
   Tauri SDK dependency in the extension bundle — plain `fetch()` only.
+
+  **Streaming chat from a tool window**: the fetch transport has no push
+  channel (no `ai-stream` events), so `ai:chat` there starts the chat as a
+  host-side job and returns `{ jobId }` immediately. Poll `ai:chat-poll` every
+  ~150ms and append the returned `text` / `thinking` deltas to the UI until
+  `done` (or `error`). This also sidesteps the 30s fetch timeout — long turns
+  no longer hold a single request open.
 
 - Closing the WebviewWindow (user OS-close or extension deactivate) destroys
   the window. Extension deactivate closes ALL of that extension's open tool
@@ -1059,6 +1069,26 @@ Sandbox extensions cannot call feature agents (canonical agent files live
 under the vault's `__<feature>__/` directory; sandbox isolation makes
 exposing them safely out-of-scope). Use the trusted tier if you need
 `ai.agent`.
+
+**Tool windows** (fetch transport, no postMessage): `ai:chat` returns
+`{ jobId }` immediately and the chat streams via polling:
+
+```js
+const { jobId } = await rpc("ai:chat", { sessionId: "s", prompt: "hello" });
+for (;;) {
+  await sleep(150);
+  const p = await rpc("ai:chat-poll", { jobId });
+  // p: { done: boolean, error?: string, text: string, thinking: string }
+  // text/thinking are NEW deltas since the last poll — append, don't replace.
+  appendToBubble(p.text, p.thinking);
+  if (p.error) throw new Error(p.error);
+  if (p.done) break;
+}
+```
+
+The poll that observes `done` deletes the job server-side; a lost final poll
+response resolves as `{ done: true }` on the next call, so the loop always
+terminates.
 
 ### Examples
 

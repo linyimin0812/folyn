@@ -6,14 +6,42 @@ import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { invoke } from '@tauri-apps/api/core';
 
 // ── AI capability mocks ─────────────────────────────────────────────────────
-const { runRigChatMock, aiConfigGetMock } = vi.hoisted(() => {
+const { runRigChatMock, aiConfigGetMock, storageGetMock, storageSetMock } = vi.hoisted(() => {
   return {
     runRigChatMock: vi.fn(),
     aiConfigGetMock: vi.fn(),
+    storageGetMock: vi.fn(),
+    storageSetMock: vi.fn(),
   };
 });
 vi.mock('@/services/rigChat', () => ({ runRigChat: runRigChatMock }));
-vi.mock('@/store/aiConfigStore', () => ({ useAiConfigStore: { getState: aiConfigGetMock } }));
+vi.mock('@/utils/storageClient', () => ({
+  storageClient: { get: storageGetMock, set: storageSetMock },
+}));
+vi.mock('@/store/aiConfigStore', () => ({
+  useAiConfigStore: { getState: aiConfigGetMock },
+  resolvePairConfig: (pair: { provider: string; model: string } | null, state = aiConfigGetMock()) => {
+    if (!pair) return null;
+    const slot = state.providerSettings?.[pair.provider];
+    if (!slot || !slot.apiKey) return null;
+    return {
+      provider: pair.provider,
+      model: pair.model,
+      apiKey: slot.apiKey,
+      baseUrl: slot.baseUrl ?? '',
+      thinkingBudget: null,
+    };
+  },
+}));
+vi.mock('@/services/providers/catalog', () => ({
+  allProviders: (customerProviders: Record<string, unknown> = {}) => [
+    { id: 'anthropic' },
+    { id: 'openai' },
+    ...Object.keys(customerProviders).map((id) => ({ id })),
+  ],
+  providerDisplayName: (e: { id: string }) => `Label:${e.id}`,
+}));
+vi.mock('@/services/providers/icon', () => ({ providerIconUrl: () => undefined }));
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -52,8 +80,14 @@ beforeEach(() => {
   fsInternals.reset();
   runRigChatMock.mockReset();
   aiConfigGetMock.mockReset();
+  storageGetMock.mockReset();
+  storageSetMock.mockReset();
   aiConfigGetMock.mockReturnValue({
-    chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: 'sk-test', chatBaseUrl: '',
+    extensionPair: { provider: 'anthropic', model: 'sonnet' },
+    providerSettings: {
+      anthropic: { apiKey: 'sk-test', baseUrl: '', enabled: true, selectedModelIds: ['sonnet', 'opus'] },
+    },
+    customerProviders: {},
   });
 });
 
@@ -546,19 +580,125 @@ describe('dispatchExtensionRpc / ai:chat', () => {
     expect(runRigChatMock).not.toHaveBeenCalled();
   });
 
-  it('rejects when stream transport absent (tool-window fetch path)', async () => {
+  it('returns { jobId } and streams deltas via ai:chat-poll (tool-window fetch path)', async () => {
     const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
-    await expect(
-      dispatchExtensionRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p),
-    ).rejects.toThrow(/streaming transport/);
+    runRigChatMock.mockImplementation(async (p: { onEvent: (e: { type: string; content?: string }) => void }) => {
+      p.onEvent({ type: 'text', content: 'hello' });
+      p.onEvent({ type: 'text', content: ' world' });
+      p.onEvent({ type: 'done' });
+    });
+    const result = await dispatchExtensionRpc(
+      manifest, 'demo', 'ai:chat',
+      { sessionId: 's', prompt: 'p' },
+      async (p) => p,
+    );
+    const jobId = (result as { jobId?: string }).jobId;
+    expect(typeof jobId).toBe('string');
+    // Let the fire-and-forget chat promise settle before polling.
+    await new Promise((r) => setTimeout(r, 0));
+    const poll = await dispatchExtensionRpc(
+      manifest, 'demo', 'ai:chat-poll', { jobId }, async (p) => p,
+    );
+    expect(poll).toEqual({ done: true, text: 'hello world', thinking: '' });
+    // The job was deleted after the done poll — a repeat poll reports done.
+    const repeat = await dispatchExtensionRpc(
+      manifest, 'demo', 'ai:chat-poll', { jobId }, async (p) => p,
+    );
+    expect(repeat).toEqual({ done: true });
   });
 
-  it('rejects when chatApiKey missing', async () => {
-    aiConfigGetMock.mockReturnValue({ chatProvider: 'anthropic', chatModel: 'sonnet', chatApiKey: '', chatBaseUrl: '' });
+  it('ai:chat-poll rejects without permissions and on bad params', async () => {
+    const denied = sandboxManifest({ permissions: {} });
+    await expect(
+      dispatchExtensionRpc(denied, 'demo', 'ai:chat-poll', { jobId: 'j' }, async (p) => p),
+    ).rejects.toThrow(/permissions\.ai\.chat/);
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await expect(
+      dispatchExtensionRpc(manifest, 'demo', 'ai:chat-poll', {}, async (p) => p),
+    ).rejects.toThrow(/ai:chat-poll requires/);
+  });
+
+  it('storage:get/set share the ext:<id>: namespace with trusted api.storage', async () => {
+    const manifest = sandboxManifest();
+    storageGetMock.mockResolvedValue({ hello: 1 });
+    const v = await dispatchExtensionRpc(
+      manifest, 'demo', 'storage:get', { key: 'ai-assistant:messages' }, async (p) => p,
+    );
+    expect(v).toEqual({ hello: 1 });
+    expect(storageGetMock).toHaveBeenCalledWith('ext:demo-extension:ai-assistant:messages');
+
+    await dispatchExtensionRpc(
+      manifest, 'demo', 'storage:set', { key: 'pair', value: { provider: 'openai' } }, async (p) => p,
+    );
+    expect(storageSetMock).toHaveBeenCalledWith('ext:demo-extension:pair', { provider: 'openai' });
+  });
+
+  it('storage RPC validates params and treats a missing value as null', async () => {
+    const manifest = sandboxManifest();
+    await expect(
+      dispatchExtensionRpc(manifest, 'demo', 'storage:get', {}, async (p) => p),
+    ).rejects.toThrow(/storage:get requires/);
+    await dispatchExtensionRpc(
+      manifest, 'demo', 'storage:set', { key: 'k' }, async (p) => p,
+    );
+    expect(storageSetMock).toHaveBeenCalledWith('ext:demo-extension:k', null);
+  });
+
+  it('ai:chat-poll surfaces the job error from runRigChat rejection', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    runRigChatMock.mockRejectedValue(new Error('boom'));
+    const result = await dispatchExtensionRpc(
+      manifest, 'demo', 'ai:chat',
+      { sessionId: 's', prompt: 'p' },
+      async (p) => p,
+    );
+    const jobId = (result as { jobId?: string }).jobId;
+    await new Promise((r) => setTimeout(r, 0));
+    const poll = await dispatchExtensionRpc(
+      manifest, 'demo', 'ai:chat-poll', { jobId }, async (p) => p,
+    );
+    expect(poll).toEqual({ done: true, error: 'boom', text: '', thinking: '' });
+  });
+
+  it('rejects when no pair is configured', async () => {
+    aiConfigGetMock.mockReturnValue({ extensionPair: null, providerSettings: {}, customerProviders: {} });
     const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
     await expect(
       dispatchExtensionRpc(manifest, 'demo', 'ai:chat', { sessionId: 's', prompt: 'p' }, async (p) => p, () => {}),
-    ).rejects.toThrow(/chatApiKey/);
+    ).rejects.toThrow(/pick a \(provider, model\) pair/);
+  });
+
+  it('rejects an explicit pair that is not configured', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await expect(
+      dispatchExtensionRpc(
+        manifest, 'demo', 'ai:chat',
+        { sessionId: 's', prompt: 'p', provider: 'openai', model: 'gpt-x' },
+        async (p) => p, () => {},
+      ),
+    ).rejects.toThrow(/pair \(openai, gpt-x\) is not configured/);
+    expect(runRigChatMock).not.toHaveBeenCalled();
+  });
+
+  it('passes an explicit provider/model override to runRigChat', async () => {
+    const state = aiConfigGetMock();
+    aiConfigGetMock.mockReturnValue({
+      ...state,
+      providerSettings: {
+        ...state.providerSettings,
+        openai: { apiKey: 'sk-oai', baseUrl: 'https://api.openai.com/v1', enabled: true, selectedModelIds: ['gpt-x'] },
+      },
+    });
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await dispatchExtensionRpc(
+      manifest, 'demo', 'ai:chat',
+      { sessionId: 's', prompt: 'p', provider: 'openai', model: 'gpt-x' },
+      async (p) => p, () => {},
+    );
+    const params = runRigChatMock.mock.calls[0][0] as { provider: string; model: string; apiKey: string };
+    expect(params.provider).toBe('openai');
+    expect(params.model).toBe('gpt-x');
+    expect(params.apiKey).toBe('sk-oai');
   });
 
   it('pushes ai-stream events then resolves; filters tool/file_change', async () => {
@@ -663,6 +803,51 @@ describe('RpcBridge / ai:chat streaming end-to-end', () => {
     expect(runRigChatMock).not.toHaveBeenCalled();
 
     bridge.dispose();
+  });
+});
+
+describe('dispatchExtensionRpc / ai:pairs', () => {
+  it('lists enabled providers × selected models', async () => {
+    const state = aiConfigGetMock();
+    aiConfigGetMock.mockReturnValue({
+      ...state,
+      customerProviders: { custom: {} },
+      providerSettings: {
+        ...state.providerSettings,
+        openai: { apiKey: 'sk-oai', baseUrl: '', enabled: true, selectedModelIds: ['gpt-a', 'gpt-b'] },
+        custom: { apiKey: 'sk-c', baseUrl: '', enabled: true, selectedModelIds: ['c-1'] },
+      },
+    });
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    const result = await dispatchExtensionRpc(manifest, 'demo', 'ai:pairs', {}, async (p) => p);
+    expect(result).toEqual([
+      { provider: 'anthropic', model: 'sonnet', label: 'Label:anthropic' },
+      { provider: 'anthropic', model: 'opus', label: 'Label:anthropic' },
+      { provider: 'openai', model: 'gpt-a', label: 'Label:openai' },
+      { provider: 'openai', model: 'gpt-b', label: 'Label:openai' },
+      { provider: 'custom', model: 'c-1', label: 'Label:custom' },
+    ]);
+  });
+
+  it('skips disabled providers and providers without selected models', async () => {
+    const state = aiConfigGetMock();
+    aiConfigGetMock.mockReturnValue({
+      ...state,
+      providerSettings: {
+        anthropic: { apiKey: 'sk-test', baseUrl: '', enabled: false, selectedModelIds: ['sonnet'] },
+        openai: { apiKey: 'sk-oai', baseUrl: '', enabled: true, selectedModelIds: [] },
+      },
+    });
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    const result = await dispatchExtensionRpc(manifest, 'demo', 'ai:pairs', {}, async (p) => p);
+    expect(result).toEqual([]);
+  });
+
+  it('rejects without permissions.ai.chat', async () => {
+    const manifest = sandboxManifest({ permissions: {} });
+    await expect(
+      dispatchExtensionRpc(manifest, 'demo', 'ai:pairs', {}, async (p) => p),
+    ).rejects.toThrow(/ai:pairs denied/);
   });
 });
 

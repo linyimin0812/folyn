@@ -11,7 +11,10 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { ActivityBar } from './ActivityBar';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useVaultStore } from '@/store/vaultStore';
+import { useExtensionPageStore } from '@/store/extensionPageStore';
+import { useNavStore } from '@/store/navStore';
 import type { PanelEntry } from '@/store/featurePanelStore';
+import type { PageEntry } from '@/store/extensionPageStore';
 
 function panel(id: string, overrides: Partial<PanelEntry> = {}): PanelEntry {
   return {
@@ -29,11 +32,15 @@ function panel(id: string, overrides: Partial<PanelEntry> = {}): PanelEntry {
 
 beforeEach(() => {
   useFeaturePanelStore.setState({ panels: [], activePanelId: null });
+  useExtensionPageStore.setState({ pages: [] });
+  useNavStore.setState({ currentPage: 'editor' });
 });
 
 afterEach(() => {
   cleanup();
   useFeaturePanelStore.setState({ panels: [], activePanelId: null });
+  useExtensionPageStore.setState({ pages: [] });
+  useNavStore.setState({ currentPage: 'editor' });
   useVaultStore.setState({ currentVault: null });
 });
 
@@ -46,12 +53,14 @@ describe('ActivityBar (data-driven)', () => {
     render(<ActivityBar activePanel="a" onPanelChange={() => {}} />);
 
     // Three panel buttons + 2 page-nav buttons (translation/settings) = 5.
+    // DOM order: first panel (files slot), translation, restPanels, settings.
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(5);
     // First panel button (by DOM order) is the lowest-order panel: 'b'.
     expect(buttons[0].getAttribute('title')).toBe('Panel-B');
-    expect(buttons[1].getAttribute('title')).toBe('Panel-C');
-    expect(buttons[2].getAttribute('title')).toBe('Panel-A');
+    expect(buttons[1].getAttribute('title')).toBe('翻译');
+    expect(buttons[2].getAttribute('title')).toBe('Panel-C');
+    expect(buttons[3].getAttribute('title')).toBe('Panel-A');
   });
 
   it('does not render invisible panels', () => {
@@ -104,6 +113,57 @@ describe('ActivityBar (data-driven)', () => {
     // The badge text '3' lives inside the panel button (title Panel-A).
     const btn = screen.getByTitle('Panel-A');
     expect(btn.textContent).toContain('3');
+  });
+});
+
+describe('ActivityBar (extension pages)', () => {
+  function page(id: string, overrides: Partial<PageEntry> = {}): PageEntry {
+    return {
+      id,
+      title: `ExtPage-${id}`,
+      icon: <svg />,
+      component: () => null,
+      order: 60,
+      ...overrides,
+    };
+  }
+
+  it('renders one page-nav button per registered extension page', () => {
+    useExtensionPageStore.getState().register(page('ext:x.p1'));
+    useExtensionPageStore.getState().register(page('ext:x.p2'));
+
+    render(<ActivityBar activePanel="files" onPanelChange={() => {}} />);
+
+    expect(screen.getByTitle('ExtPage-ext:x.p1')).toBeTruthy();
+    expect(screen.getByTitle('ExtPage-ext:x.p2')).toBeTruthy();
+  });
+
+  it('clicking a page-nav button sets navStore.currentPage to the ext: id', () => {
+    useExtensionPageStore.getState().register(page('ext:x.p1'));
+
+    render(<ActivityBar activePanel="files" onPanelChange={() => {}} />);
+
+    fireEvent.click(screen.getByTitle('ExtPage-ext:x.p1'));
+    expect(useNavStore.getState().currentPage).toBe('ext:x.p1');
+  });
+
+  it('marks the page-nav button active when currentPage is its ext: id', () => {
+    useExtensionPageStore.getState().register(page('ext:x.p1'));
+    useNavStore.setState({ currentPage: 'ext:x.p1' });
+
+    render(<ActivityBar activePanel="files" onPanelChange={() => {}} />);
+
+    expect(screen.getByTitle('ExtPage-ext:x.p1').className).toContain('active');
+    expect(screen.getByTitle('设置').className).not.toContain('active');
+  });
+
+  it('de-highlights panel buttons when on an ext: page', () => {
+    useFeaturePanelStore.getState().register(panel('a'));
+    useNavStore.setState({ currentPage: 'ext:x.p1' });
+
+    render(<ActivityBar activePanel="a" onPanelChange={() => {}} />);
+
+    expect(screen.getByTitle('Panel-A').className).not.toContain('active');
   });
 });
 

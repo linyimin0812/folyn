@@ -163,6 +163,12 @@ export interface ExtensionModule {
    * to mount trusted-tier sidebar panels.
    */
   features?: Record<string, ComponentType>;
+  /**
+   * Entry-ref → React component. Keys match `contributes.pages[].component`.
+   * Used by `registerExtensionPages` (services/extension-host/pageAdapter.tsx)
+   * to mount trusted-tier full pages (nav id `ext:<extensionId>.<pageId>`).
+   */
+  pages?: Record<string, ComponentType>;
   /** Entry-ref → command handler. Keys match `contributes.commands[].run`. */
   commands?: Record<string, () => void | Promise<void>>;
   /** Entry-ref → exporter function. Keys match `contributes.exporters[].run`. */

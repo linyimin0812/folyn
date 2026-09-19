@@ -140,10 +140,13 @@ function createVaultConfigApi(): VaultConfigApi {
   };
 }
 
+import { extensionStoragePrefix } from './extensionStoragePrefix';
+
 /** Build a real ExtensionStorageApi namespaced per extension id (so extensions
- * can't collide on keys). Backed by the shared storageClient (per-vault JSON). */
+ * can't collide on keys). Backed by the shared storageClient (global JSON cache
+ * with a debounced disk flush). */
 function createStorageApi(manifest: ExtensionManifest): ExtensionStorageApi {
-  const ns = `ext:${manifest.id}:`;
+  const ns = extensionStoragePrefix(manifest.id);
   return {
     async get(key) {
       return storageClient.get(`${ns}${key}`);

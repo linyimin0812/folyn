@@ -17,6 +17,7 @@ import type {
   ExtensionAiChatParams,
   ExtensionAiCreateFileParams,
   ExtensionAiEditFileParams,
+  ExtensionAiPair,
   ExtensionAiStreamEvent,
   ExtensionManifest,
 } from '@folyn/extension-host';
@@ -70,12 +71,19 @@ export function buildExtensionAi(manifest: ExtensionManifest): ExtensionAiCapabi
         import('@/store/aiConfigStore'),
         import('@/store/aiStore'),
       ]);
-      // PR5: read extensionPair (per-caller pair, independent of global
-      // chatProvider/chatModel per PRD ADR). Null → caller hasn't picked a
-      // pair in ExtensionsSettings yet; surface a clear error to the extension.
-      const cfg = resolvePairConfig(useAiConfigStore.getState().extensionPair);
+      // Pair resolution: explicit (provider, model) from the extension first,
+      // else extensionPair (the per-caller pair picked in Extensions Settings).
+      // Either way the apiKey is resolved host-side from the provider slot.
+      const override: ExtensionAiPair | null =
+        params.provider && params.model ? { provider: params.provider, model: params.model } : null;
+      const pair = override ?? useAiConfigStore.getState().extensionPair ?? null;
+      const cfg = resolvePairConfig(pair);
       if (!cfg) {
-        throw new Error('host AI not configured — pick a (provider, model) pair in Extensions Settings');
+        throw new Error(
+          override
+            ? `pair (${params.provider}, ${params.model}) is not configured — pick one from ai.pairs()`
+            : 'host AI not configured — pick a (provider, model) pair in Extensions Settings',
+        );
       }
 
       let sharedSid: string | null = null;
@@ -100,6 +108,7 @@ export function buildExtensionAi(manifest: ExtensionManifest): ExtensionAiCapabi
           ...(cfg.baseUrl ? { baseUrl: cfg.baseUrl } : {}),
           ...(cfg.thinkingBudget != null ? { thinkingBudget: cfg.thinkingBudget } : {}),
           adapterFamily: cfg.adapterFamily,
+          ...(params.images && params.images.length > 0 ? { images: params.images } : {}),
           onEvent: (event: CliStreamEvent) => {
             const mapped = mapEvent(event);
             if (!mapped) return;
@@ -116,6 +125,33 @@ export function buildExtensionAi(manifest: ExtensionManifest): ExtensionAiCapabi
         finalize(false);
         throw err;
       }
+    },
+
+    async pairs(): Promise<ExtensionAiPair[]> {
+      assertChatPermission(manifest);
+      const [{ useAiConfigStore }, { allProviders, providerDisplayName }, { default: i18n }, { providerIconUrl }] =
+        await Promise.all([
+          import('@/store/aiConfigStore'),
+          import('@/services/providers/catalog'),
+          import('@/i18n'),
+          import('@/services/providers/icon'),
+        ]);
+      const state = useAiConfigStore.getState();
+      // Same enumeration PairSelector uses (enabled providers × selected
+      // models) — ids + display label + logo URL only, apiKeys never cross
+      // the boundary.
+      const t = (k: string) => i18n.t(k);
+      const out: ExtensionAiPair[] = [];
+      for (const entry of allProviders(state.customerProviders)) {
+        const slot = state.providerSettings[entry.id];
+        if (!slot || !slot.enabled) continue;
+        const label = providerDisplayName(entry, t);
+        const iconUrl = providerIconUrl(entry.id);
+        for (const model of slot.selectedModelIds) {
+          out.push({ provider: entry.id, model, ...(label ? { label } : {}), ...(iconUrl ? { iconUrl } : {}) });
+        }
+      }
+      return out;
     },
 
     async agent(params: ExtensionAiAgentParams): Promise<void> {

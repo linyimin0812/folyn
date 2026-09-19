@@ -3,7 +3,11 @@ import { create } from 'zustand';
 // ponytail: navStore owns AppPage/SettingsTab type ownership (migrated
 // from legacy settingsStore). These are nav-domain discriminators.
 
-export type AppPage = 'editor' | 'vault' | 'settings' | 'translation';
+// `(string & {})` open tail (same trick as SDK PresentationModeId): extension
+// pages register `ext:<extensionId>.<pageId>` ids at runtime. Literal
+// comparisons (`currentPage === 'editor'`) keep narrowing; there is no
+// exhaustive switch on AppPage.
+export type AppPage = 'editor' | 'vault' | 'settings' | 'translation' | (string & {});
 export type SettingsTab = 'appearance' | 'editor' | 'shortcuts' | 'vault' | 'sync' | 'cli' | 'models' | 'voice' | 'templates' | 'pet' | 'extensions' | 'notifications' | 'storage' | 'about';
 
 export interface NavState {

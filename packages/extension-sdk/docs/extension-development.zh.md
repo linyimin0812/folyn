@@ -121,6 +121,10 @@ Sandbox 插件通过 `postMessage`（iframe 传输）或
 | `vault:read-active-doc` | `{}`                | `vault.readActive: true`    | `{ path, content } \| null`                  |
 | `vault:insert-content`  | `{ content }`       | `vault.insertContent: true` | `{ ok: true }`                               |
 | `window:open`           | `{ toolId }`        | `window: true`              | `{ opened: true, toolId }`                   |
+| `ai:chat`               | `{ sessionId, prompt, provider?, model?, images? }` | `ai.chat: true` | iframe：推 `ai-stream` 事件 + 最终 `response`；工具窗口：`{ jobId }`（用 `ai:chat-poll` 轮询） |
+| `ai:chat-poll`          | `{ jobId }`         | `ai.chat: true`             | 仅工具窗口：`{ done, error?, text, thinking }`（自上次轮询以来的增量） |
+| `storage:get`           | `{ key }`           | _（无——自命名空间）_        | 存储值或 `null`——与 trusted `api.storage` 同 key 空间            |
+| `storage:set`           | `{ key, value }`    | _（无——自命名空间）_        | `{ ok: true }`——与 trusted `api.storage` 共用后端              |
 | `env:get`               | `{}`                | _（无——env 非敏感）_        | `{ theme: 'light'\|'dark', locale: string }` |
 
 **Host 主动推送的 env 事件**（无需请求;用户切换 theme 或 locale 时 host 推送到 iframe）:
@@ -939,6 +943,26 @@ await ctx.ai.createFile({
 Sandbox 插件无法调 feature agent（canonical agent 文件位于 vault 的
 `__<feature>__/` 目录；sandbox 隔离下安全暴露它们超出范围）。需要 `ai.agent`
 请用 trusted tier。
+
+**工具窗口**（fetch 传输，无 postMessage）：`ai:chat` 立即返回 `{ jobId }`，
+对话通过轮询流式呈现：
+
+```js
+const { jobId } = await rpc("ai:chat", { sessionId: "s", prompt: "hello" });
+for (;;) {
+  await sleep(150);
+  const p = await rpc("ai:chat-poll", { jobId });
+  // p: { done: boolean, error?: string, text: string, thinking: string }
+  // text/thinking 是自上次轮询以来的新增量——追加渲染，不要整体替换。
+  appendToBubble(p.text, p.thinking);
+  if (p.error) throw new Error(p.error);
+  if (p.done) break;
+}
+```
+
+观察到 `done` 的那次轮询会在 host 侧删除 job；即使最后一次轮询的响应丢了，
+下次轮询也返回 `{ done: true }`，循环总会终止。这也避开了 30s fetch 超时——
+长对话不再长时间占住单个请求。
 
 ---
 

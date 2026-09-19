@@ -24,6 +24,7 @@ import {
 } from './contributionAdapters';
 import { registerExtensionTools } from './toolAdapter';
 import { registerExtensionFeatures } from './featureAdapter';
+import { registerExtensionPages } from './pageAdapter';
 import { registerExtensionExporters } from './exporterAdapter';
 import { registerExtensionFileTemplates } from './fileTemplateAdapter';
 import { registerExtensionKeybindings } from './keybindingAdapter';
@@ -55,6 +56,10 @@ registerContributionAdapter({
 registerContributionAdapter({
   moduleKey: 'features',
   register: (m, mod) => registerExtensionFeatures(m, mod),
+});
+registerContributionAdapter({
+  moduleKey: 'pages',
+  register: (m, mod) => registerExtensionPages(m, mod),
 });
 registerContributionAdapter({
   moduleKey: 'exporters',
