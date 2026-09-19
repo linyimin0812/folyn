@@ -60,6 +60,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Pin, PinOff, Square, Copy } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '@/utils/platform';
+import { extensionAssetUrl } from '@/services/extension-host/extensionUrl';
 import { TranslationToolHost } from '@/components/translation/TranslationToolHost';
 import { InboxToolHost } from './InboxToolHost';
 
@@ -263,12 +264,14 @@ export function ExtensionToolApp() {
   }, []);
 
   // Same URL shape as the main-window sandbox loader
-  // (sandboxLoader.ts): `folyn-extension://localhost/<id>/<entry>`. Only
-  // third-party tools load an iframe — the builtin popups (translation,
-  // inbox) render React content (TranslationToolHost / InboxToolHost), so
-  // src stays undefined there.
+  // (sandboxLoader.ts) — extensionAssetUrl picks the WebView2
+  // `http://folyn-extension.localhost` form on Windows (the raw scheme://
+  // URL is an external protocol there and the sandboxed iframe navigation
+  // gets blocked). Only third-party tools load an iframe — the builtin
+  // popups (translation, inbox) render React content (TranslationToolHost /
+  // InboxToolHost), so src stays undefined there.
   const iframeSrc = tool && !isBuiltinToolId(tool.extensionId)
-    ? `folyn-extension://localhost/${tool.extensionId}/${tool.entry}`
+    ? extensionAssetUrl(tool.extensionId, tool.entry)
     : undefined;
 
   return (

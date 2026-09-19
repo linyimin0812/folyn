@@ -126,6 +126,12 @@ pub fn handle_extension_rpc_request(
             _ => http::Response::builder()
                 .status(504)
                 .header("Content-Type", "application/json")
+                // Same CORS allowance as the 200 path: the fetch comes from
+                // an opaque-origin sandbox iframe, and without ACAO a
+                // timeout would surface as an opaque "Failed to fetch"
+                // (Chromium/WebView2 enforces CORS on the http form of the
+                // scheme) instead of the readable rpc-timeout error.
+                .header("Access-Control-Allow-Origin", "*")
                 .body(br#"{"error":"rpc timeout"}"#.to_vec())
                 .unwrap_or_else(|_| http::Response::new(br#"{"error":"rpc timeout"}"#.to_vec())),
         };

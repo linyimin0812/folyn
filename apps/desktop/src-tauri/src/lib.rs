@@ -490,6 +490,30 @@ pub fn run() {
                 }
             };
 
+            // CORS preflight for the fetch-RPC endpoint. Sandbox extension
+            // pages live in iframes with OPAQUE origins
+            // (`sandbox="allow-scripts"`, no allow-same-origin), so every RPC
+            // fetch is cross-origin. macOS/WebKit does not enforce CORS on
+            // WKURLSchemeHandler schemes, but Windows/WebView2 serves the
+            // extension origin as `http://folyn-extension.localhost`, where
+            // Chromium enforces CORS — the `application/json` POST then
+            // preflights with OPTIONS. Answer it with the same permissive
+            // CORS the POST response carries (capability/permission checks
+            // happen in the RPC dispatch, not here).
+            if request.method() == "OPTIONS" && (file_path == "rpc" || file_path.ends_with("/rpc")) {
+                responder.respond(
+                    http::Response::builder()
+                        .status(204)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "POST, OPTIONS")
+                        .header("Access-Control-Allow-Headers", "Content-Type")
+                        .header("Access-Control-Max-Age", "86400")
+                        .body(Vec::new())
+                        .unwrap_or_else(|_| http::Response::new(Vec::new())),
+                );
+                return;
+            }
+
             // POST `<id>/rpc` → fetch-RPC bridge.
             if request.method() == "POST" && (file_path == "rpc" || file_path.ends_with("/rpc")) {
                 let body = String::from_utf8_lossy(request.body()).to_string();

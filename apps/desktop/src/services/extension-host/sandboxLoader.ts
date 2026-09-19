@@ -26,6 +26,7 @@ import type {
 } from '@folyn/extension-host';
 import { disposable } from '@folyn/extension-host';
 import { RpcBridge } from './rpcBridge';
+import { extensionAssetUrl } from './extensionUrl';
 import { registerExtensionCommands } from './commandAdapter';
 import { registerExtensionTools } from './toolAdapter';
 
@@ -84,7 +85,10 @@ export const sandboxLoader: ExtensionLoader = {
  */
 function createExtensionIframe(manifest: ExtensionManifest): HTMLIFrameElement {
   const html = manifest.html ?? 'index.html';
-  const src = `folyn-extension://localhost/${manifest.id}/${html}`;
+  // Windows/WebView2 cannot navigate to the raw `folyn-extension://` form
+  // (external-protocol sandbox block) — extensionAssetUrl picks the
+  // `http://folyn-extension.localhost` virtual-host form there.
+  const src = extensionAssetUrl(manifest.id, html);
 
   const iframe = document.createElement('iframe');
   // `allow-scripts` lets the extension run JS; NO `allow-same-origin` gives a
