@@ -17,7 +17,9 @@ use tauri::{AppHandle, Manager};
 
 use rig_core::agent::MultiTurnStreamItem;
 use rig_core::client::CompletionClient;
-use rig_core::completion::message::{ImageMediaType, MimeType, UserContent};
+use rig_core::completion::message::{
+    Document, DocumentMediaType, DocumentSourceKind, ImageMediaType, MimeType, UserContent,
+};
 use rig_core::message::{Message, ReasoningContent, Text};
 use rig_core::prelude::*;
 use rig_core::agent::AgentBuilder;
@@ -81,9 +83,10 @@ pub struct AssistantImage {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageInput {
-    /// Base64-encoded image bytes (no `data:` URL prefix).
+    /// Base64-encoded bytes (no `data:` URL prefix) — an image, or a PDF
+    /// (`media_type = "application/pdf"`, mapped to a rig Document block).
     pub data: String,
-    /// MIME type, e.g. `"image/png"`, `"image/jpeg"`.
+    /// MIME type, e.g. `"image/png"`, `"image/jpeg"`, `"application/pdf"`.
     pub media_type: String,
 }
 
@@ -262,6 +265,18 @@ fn build_user_message(
     let mut content = rig_core::one_or_many::OneOrMany::one(UserContent::text(prompt));
     if let Some(imgs) = images {
         for img in imgs {
+            if img.media_type == "application/pdf" {
+                // PDFs are documents, not images — rig serializes
+                // `UserContent::Document` as Anthropic document blocks /
+                // OpenAI file inputs. Supported by rig 0.40's anthropic,
+                // openai and openrouter providers.
+                content.push(UserContent::Document(Document {
+                    data: DocumentSourceKind::Base64(img.data.clone()),
+                    media_type: Some(DocumentMediaType::PDF),
+                    additional_params: None,
+                }));
+                continue;
+            }
             match ImageMediaType::from_mime_type(&img.media_type) {
                 Some(mt) => content.push(UserContent::image_base64(
                     &img.data,
