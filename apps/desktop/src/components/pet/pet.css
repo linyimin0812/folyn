@@ -1363,11 +1363,15 @@ html.is-extension-tool-window .ext-tool-root {
   color: var(--t1, #1f2330);
   /* Slight radius (user: "设置一点弧度"): 6px — small enough that the
    * corner-triangle transparency/shadow issues that plagued the 12px
-   * version stay invisible at this scale; border line keeps the edge
-   * crisp. Native shadow stays OFF (conf) — the shadow shape never
-   * survived the prewarm+convert chain on this window. */
+   * version stay invisible at this scale. Native shadow stays OFF (conf)
+   * — the shadow shape never survived the prewarm+convert chain on this
+   * window, so the border alone carries the "this is a popup" edge.
+   * Sharpened (user: "Border 锐化明显一点，能明显区分出是一个弹窗",
+   * then "Border 细一点"): 1px + a decisive color — the old 1px
+   * rgba(0,0,0,0.18) was faint on light and invisible on dark panels
+   * (black-on-black). Dark override below. */
   border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(31, 35, 48, 0.5);
   overflow: hidden;
   font-family: var(--ui-font, system-ui, sans-serif);
   font-size: 14px;
@@ -1375,6 +1379,14 @@ html.is-extension-tool-window .ext-tool-root {
    * hugging the shell edge (read as "粗灰 Border" once the corners went
    * square). The native NSWindow shadow (shadow:true + invalidateShadow on
    * surface) provides the drop shadow — same as the pet panel. */
+}
+
+/* Dark appearance: black-alpha borders vanish on the near-black panel
+ * (#0f1219) — switch to a light hairline so the popup edge reads in both
+ * appearances (same data-theme keying as the pet-menu dark block; set by
+ * useTheme() in the builtin tool hosts). */
+html.is-extension-tool-window[data-theme="dark"] .ext-tool-root {
+  border-color: rgba(226, 232, 248, 0.38);
 }
 
 html.is-extension-tool-window .ext-tool-titlebar {
@@ -1386,7 +1398,7 @@ html.is-extension-tool-window .ext-tool-titlebar {
   gap: 8px;
   padding: 0 6px 0 12px;
   background: var(--panel, #ffffff);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid var(--brd, #e2e5ee);
   user-select: none;
   -webkit-user-select: none;
   cursor: grab;
