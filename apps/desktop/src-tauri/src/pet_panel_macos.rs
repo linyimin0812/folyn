@@ -241,6 +241,72 @@ pub fn prewarm_extension_tool_panel(app: &AppHandle) {
 /// insurance against AppKit/tauri downgrades — attribute-only, NEVER
 /// `to_panel`/`object_setClass` here (one class swap per window, ever — see
 /// the crash ledger in the spec).
+/// Temporarily drop the tool popup below app-modal dialogs
+/// (NSModalPanelWindowLevel = 8; the popup's Dock level = 20 would sit ON
+/// TOP of `<input type="file">` runModal panels and dialog:* RPC sheets,
+/// blocking them). No-ops off-macOS. Restored by
+/// `restore_extension_tool_panel_level` / `surface_extension_tool_panel`.
+pub fn lower_extension_tool_panel_level(window: &tauri::WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    {
+        use std::panic::AssertUnwindSafe;
+        use tauri_nspanel::objc2::exception::catch;
+        use tauri_nspanel::objc2::msg_send;
+        use tauri_nspanel::objc2::runtime::AnyObject;
+        let _ = catch(AssertUnwindSafe(|| unsafe {
+            let Ok(ns_window) = window.ns_window() else { return };
+            let ns = ns_window as *mut AnyObject;
+            if ns.is_null() {
+                return;
+            }
+            // 64-bit setLevel: takes NSInteger — Normal (0), below any modal panel.
+            let _: () = msg_send![ns, setLevel: 0isize];
+        }));
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+    }
+}
+
+/// Re-assert the tool popup's floating Dock level + bring it back to the
+/// front. Called when the popup re-gains key (tauri://focus) after a modal
+/// dialog ends (the level was lowered by
+/// `lower_extension_tool_panel_level`), and from `surface_extension_tool_panel`
+/// on every (re)open so a reopen also self-heals a lowered level.
+pub fn restore_extension_tool_panel_level(window: &tauri::WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    {
+        use std::panic::AssertUnwindSafe;
+        use tauri_nspanel::objc2::exception::catch;
+        use tauri_nspanel::objc2::msg_send;
+        use tauri_nspanel::objc2::runtime::AnyObject;
+        use tauri_nspanel::ManagerExt;
+        let app = window.app_handle();
+        let _ = catch(AssertUnwindSafe(|| {
+            // Panel store path (the normal case — the tool window is a
+            // converted panel): set_level through the store.
+            if let Ok(panel) = app.get_webview_panel(window.label()) {
+                panel.set_level(tauri_nspanel::PanelLevel::Dock.value());
+            }
+        }));
+        let _ = catch(AssertUnwindSafe(|| unsafe {
+            let Ok(ns_window) = window.ns_window() else { return };
+            let ns = ns_window as *mut AnyObject;
+            if ns.is_null() {
+                return;
+            }
+            // Raw fallback (store miss / legacy backend) + order front.
+            let _: () = msg_send![ns, setLevel: 20isize];
+            let _: () = msg_send![ns, orderFrontRegardless];
+        }));
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+    }
+}
+
 pub fn surface_extension_tool_panel(window: &tauri::WebviewWindow) -> bool {
     use std::panic::AssertUnwindSafe;
     use tauri_nspanel::objc2::exception::catch;
@@ -254,6 +320,10 @@ pub fn surface_extension_tool_panel(window: &tauri::WebviewWindow) -> bool {
     // plain-window raise.
     if let Ok(panel) = app.get_webview_panel(window.label()) {
         let _ = catch(AssertUnwindSafe(|| {
+            // Floating Dock level — a previous dialog session may have
+            // lowered it (lower_extension_tool_panel_level); every surface
+            // re-asserts so reopen self-heals.
+            panel.set_level(PanelLevel::Dock.value());
             // 273 = CanJoinAllSpaces(1) | Stationary(16) | FullScreenAuxiliary(256)
             panel.set_collection_behavior(
                 CollectionBehavior::new()

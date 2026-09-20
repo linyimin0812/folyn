@@ -497,6 +497,33 @@ pub async fn open_extension_tool_window(
 /// `open_extension_tool_window`). Called by the frontend's
 /// `toolWindowStore.close` / `closeAllForExtension`.
 #[tauri::command]
+/// If a native modal dialog is up (app-modal session, or a sheet on any
+/// app window), drop the tool popup's floating Dock level below it so the
+/// dialog stays clickable (the popup would otherwise sit on top —
+/// 遮挡文件弹窗). Returns true when lowered. The popup re-gains key when
+/// the dialog ends; the frontend's `tauri://focus` listener invokes
+/// `extension_tool_restore_level` to float it back. Shared by
+/// `hide_extension_tool_window` (unpinned blur path) and
+/// `extension_tool_lower_if_dialog` (pinned blur path — no hide there, but
+/// the same dialog must not be covered).
+fn extension_tool_lower_below_dialog_if_any(app: &tauri::AppHandle, label: &str) -> bool {
+    let Some(w) = app.get_webview_window(label) else {
+        return false;
+    };
+    let modal = crate::commands::pet_common::window_has_modal_dialog(&w)
+        || crate::commands::pet_common::app_has_any_modal_dialog(app);
+    if modal {
+        crate::pet_panel_macos::lower_extension_tool_panel_level(&w);
+    }
+    modal
+}
+
+#[tauri::command]
+pub async fn extension_tool_lower_if_dialog(app: tauri::AppHandle, label: String) -> Result<bool, String> {
+    Ok(extension_tool_lower_below_dialog_if_any(&app, &label))
+}
+
+#[tauri::command]
 pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
     let Some(w) = app.get_webview_window(&label) else {
         return Ok(()); // already gone — nothing to hide
@@ -508,11 +535,11 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
     // fetch-RPC `dialog:*` bridge parents its plugin sheets to the MAIN
     // window (its listener runs there). Hiding now would tear the dialog
     // down with the popup (ai-assistant: 非置顶模式下点击附件图标弹窗
-    // 直接隐藏，无法选文件). Skip; the dialog ending re-focuses the popup
-    // and re-arms the blur-auto-hide.
-    if crate::commands::pet_common::window_has_modal_dialog(&w)
-        || crate::commands::pet_common::app_has_any_modal_dialog(&app)
-    {
+    // 直接隐藏，无法选文件). Instead keep the popup alive but drop it
+    // BELOW the dialog; the dialog ending re-focuses the popup and the
+    // frontend's tauri://focus listener re-asserts the floating level, so
+    // the blur-auto-hide re-arms for the next real blur.
+    if extension_tool_lower_below_dialog_if_any(&app, &label) {
         return Ok(());
     }
     let fullscreen = w.is_fullscreen().unwrap_or(false);
@@ -524,6 +551,29 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
         return Ok(());
     }
     let _ = w.hide();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn extension_tool_restore_level(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    let Some(w) = app.get_webview_window(&label) else {
+        return Ok(());
+    };
+    // Re-assert the floating Dock level. The hide guard lowers the popup
+    // below an in-flight modal dialog (file picker / dialog:* RPC sheet);
+    // when the dialog ends the popup re-gains key → the frontend's
+    // tauri://focus listener invokes this to float it back on top.
+    // Idempotent: safe on every focus event, even when never lowered.
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app.run_on_main_thread(move || {
+            crate::pet_panel_macos::restore_extension_tool_panel_level(&w);
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = w;
+    }
     Ok(())
 }
 

@@ -1113,6 +1113,8 @@ pub fn run() {
             commands::create_webview,
             commands::open_extension_tool_window,
             commands::hide_extension_tool_window,
+            commands::extension_tool_lower_if_dialog,
+            commands::extension_tool_restore_level,
             commands::get_last_extension_tool,
             commands::extension_tool_start_drag,
             commands::navigate_webview,

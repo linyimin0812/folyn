@@ -212,6 +212,7 @@ export function ExtensionToolApp() {
   useEffect(() => {
     if (!isTauri()) return undefined;
     let unBlur: (() => void) | undefined;
+    let unFocus: (() => void) | undefined;
     let disposed = false;
     (async () => {
       try {
@@ -224,10 +225,26 @@ export function ExtensionToolApp() {
           // dismiss the just-opened popup (the "chip click opens
           // nothing" bug). Real user blurs land well after.
           if (Date.now() - openedAtRef.current < OPEN_GRACE_MS) return;
-          if (!isPinnedRef.current) void close();
+          if (!isPinnedRef.current) {
+            void close();
+          } else {
+            // Pinned: no auto-hide, but the same dialog must not be covered
+            // — drop below it while it runs (restore on tauri://focus).
+            void invoke('extension_tool_lower_if_dialog', { label: PANEL_LABEL }).catch(
+              (err: unknown) => console.warn('[extension-tool] lower-if-dialog failed:', err),
+            );
+          }
        }, target);
-        if (disposed) un();
-        else unBlur = un;
+        // Re-gaining key (a modal dialog the hide guard dropped us below
+        // just ended, or any re-focus): float back to the Dock level.
+        // Idempotent when the level was never lowered.
+        const unFocusLocal = await listen('tauri://focus', () => {
+          void invoke('extension_tool_restore_level', { label: PANEL_LABEL }).catch(
+            (err: unknown) => console.warn('[extension-tool] restore level failed:', err),
+          );
+        }, target);
+        if (disposed) { un(); unFocusLocal(); }
+        else { unBlur = un; unFocus = unFocusLocal; }
       } catch (err) {
         console.warn('[extension-tool] blur listener failed:', err);
       }
@@ -235,6 +252,7 @@ export function ExtensionToolApp() {
     return () => {
       disposed = true;
       unBlur?.();
+      unFocus?.();
     };
   }, [close]);
 
