@@ -513,6 +513,7 @@ fn extension_tool_lower_below_dialog_if_any(app: &tauri::AppHandle, label: &str)
     let modal = crate::commands::pet_common::window_has_modal_dialog(&w)
         || crate::commands::pet_common::app_has_any_modal_dialog(app);
     if modal {
+        #[cfg(target_os = "macos")]
         crate::pet_panel_macos::lower_extension_tool_panel_level(&w);
     }
     modal
