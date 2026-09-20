@@ -118,8 +118,25 @@ export const PetPanelSearchResults = forwardRef<
   // Installed + built-in extensions — refreshed once on mount (the panel window
   // lives as long as the app, and installs happen in the main window's
   // settings; `extension://installed` listeners in App.tsx call refresh too).
+  // `extension://state-changed` is Rust-emitted globally (set_extension_enabled,
+  // activate/deactivate) so it reaches this realm too — re-read rows so a
+  // just-disabled extension drops out of search AND the recents chips (both
+  // subscribe to this store) without restarting the panel.
   useEffect(() => {
     void refreshRows();
+    if (!isTauri()) return;
+    let unlisten: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen('extension://state-changed', () => {
+          void refreshRows();
+        });
+      } catch {
+        // Non-fatal — rows stay at the mount snapshot.
+      }
+    })();
+    return () => unlisten?.();
   }, [refreshRows]);
 
   const q = query.trim();
@@ -146,6 +163,13 @@ export const PetPanelSearchResults = forwardRef<
   const extensionHits = q
     ? rows
         .filter((r) => {
+          // Disabled third-party extensions must not surface: their
+          // `extension.openTool.*` commands are unregistered while inactive,
+          // so picking the hit would open nothing (the "searchable but
+          // unopenable" bug). Built-ins are gated by appearance flags instead.
+          if (!r.builtin && !r.entry.enabled) {
+            return false;
+          }
           // The builtin:translation row is gated on the appearance flag
           // (above); other built-ins keep current behavior.
           if (

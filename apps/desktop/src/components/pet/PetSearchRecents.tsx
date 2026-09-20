@@ -77,6 +77,9 @@ export function PetSearchRecents({ onPointerDown }: PetSearchRecentsProps) {
     >
       {recentExtensionIds.map((id) => {
         const row = rows.find((r) => r.entry.id === id);
+        // Same gate as the search results: a disabled third-party extension's
+        // open command is unregistered, so its chip would open nothing.
+        if (row && !row.builtin && !row.entry.enabled) return null;
         const fallback = BUILTIN_TOOL_FALLBACKS[id];
         const name = row
           ? row.nameKey
