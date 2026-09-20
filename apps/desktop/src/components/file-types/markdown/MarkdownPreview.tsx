@@ -894,11 +894,11 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     if (blocks.length === 0) return;
     let target: Element | null = null;
     let bestLine = 0;
-    blocks.forEach((el) => {
+    for (const el of blocks) {
       const raw = el.getAttribute('data-source-line');
-      if (raw == null) return;
+      if (raw == null) continue;
       const line = Number(raw);
-      if (!Number.isFinite(line)) return;
+      if (!Number.isFinite(line)) continue;
       // Skip blocks that render hidden OR collapse to 0 height.
       // - getClientRects() === []: the element generates NO boxes — either
       //   itself display:none OR any display:none ANCESTOR (the hidden
@@ -918,13 +918,13 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       //   cursor on a 0-height block → line-proportional interpolation
       //   drifts. Skipping it falls back to the visible `carousel`/`tabs`
       //   parent (promoted below).
-      if (el.getClientRects().length === 0) return;
-      if (el.hasAttribute('data-container') && (el as HTMLElement).offsetHeight === 0) return;
+      if (el.getClientRects().length === 0) continue;
+      if (el.hasAttribute('data-container') && (el as HTMLElement).offsetHeight === 0) continue;
       if (line <= cursorLine && line >= bestLine) {
         bestLine = line;
         target = el;
       }
-    });
+    }
     const scrollContainer = root.parentElement;
     if (!scrollContainer) return;
     if (!target) {
