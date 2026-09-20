@@ -110,3 +110,80 @@ pub async fn read_clipboard_files(app: tauri::AppHandle) -> Result<Vec<String>, 
     .map_err(|e| format!("clipboard main-thread dispatch failed: {e}"))?;
     rx.recv().map_err(|e| format!("clipboard result channel closed: {e}"))?
 }
+
+// ── image read/write with Rust-side base64 ──
+//
+// Why these exist instead of the clipboard-manager plugin's readImage/
+// writeImage: tauri's default command serialization is JSON, and binary
+// payloads do NOT get the raw IPC channel — only an explicit
+// `ipc::Response` does. `plugin:image|rgba` returns a plain `Vec<u8>` →
+// serialized as a JSON ARRAY OF NUMBERS (~12 bytes/pixel-byte), so a 1440p
+// screenshot becomes a ~50 MB JSON string parsed on the MAIN webview's JS
+// thread (~200 ms on an M-series Mac, seconds on typical Windows) — on
+// every image copy. The JS-side mirror is equally bad: rpcBridge's
+// bytesToBase64 chunk loop (another main-thread stall) and writeImage's
+// Uint8Array argument, which JSON.stringify renders as a {"0":255,...}
+// object (~400 MB for 4K). Keeping the payload as a base64 STRING end to
+// end (decoded/encoded only in Rust, on a blocking thread) collapses the
+// whole class: one JSON string, no per-byte JS work, no number arrays.
+// arboard runs off the main thread exactly like the plugin's own async
+// commands do (the macOS file_list crash was specific to
+// readObjectsForClasses; get_image/set_image run off-main in the plugin
+// today and are proven in production on this app).
+
+/// Clipboard image read for the extension RPC bridge (`clipboard:read-image`).
+/// Returns `{ rgba, w, h }` where `rgba` is base64 of the raw RGBA pixels,
+/// or `None` when the clipboard has no image flavor (normal state, not an
+/// error — mirrors the ContentNotAvailable mapping the JS side used to do).
+#[derive(serde::Serialize)]
+pub struct ClipboardImageB64 {
+    pub rgba: String,
+    pub w: u32,
+    pub h: u32,
+}
+
+#[tauri::command]
+pub async fn clipboard_read_image_b64() -> Result<Option<ClipboardImageB64>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        use arboard::ImageData;
+        use base64::Engine;
+        let mut cb = Clipboard::new().map_err(|e| e.to_string())?;
+        match cb.get_image() {
+            Ok(ImageData { width, height, bytes }) => Ok(Some(ClipboardImageB64 {
+                rgba: base64::engine::general_purpose::STANDARD.encode(bytes.as_ref()),
+                w: width as u32,
+                h: height as u32,
+            })),
+            // No image flavor on the clipboard (text copied / empty) — normal.
+            Err(arboard::Error::ContentNotAvailable) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
+    })
+    .await
+    .map_err(|e| format!("clipboard_read_image_b64 join error: {e}"))?
+}
+
+/// Clipboard image write for the extension RPC bridge (`clipboard:write-image`).
+/// Takes the PNG as base64 (the storage form extensions keep) and decodes it
+/// Rust-side (tauri `image-png` feature, same JsImage::Bytes path the plugin
+/// used) — no Uint8Array ever crosses the webview IPC.
+#[tauri::command]
+pub async fn clipboard_write_image_b64(png: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        use base64::Engine;
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(png.as_bytes())
+            .map_err(|e| format!("invalid base64 png: {e}"))?;
+        let img = tauri::image::Image::from_bytes(&bytes)
+            .map_err(|e| format!("png decode failed: {e}"))?;
+        let mut cb = Clipboard::new().map_err(|e| e.to_string())?;
+        cb.set_image(arboard::ImageData {
+            bytes: std::borrow::Cow::Borrowed(img.rgba()),
+            width: img.width() as usize,
+            height: img.height() as usize,
+        })
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("clipboard_write_image_b64 join error: {e}"))?
+}

@@ -1110,6 +1110,8 @@ pub fn run() {
             commands::save_file,
             commands::read_clipboard_files,
             commands::clipboard_change_count,
+            commands::clipboard_read_image_b64,
+            commands::clipboard_write_image_b64,
             commands::create_webview,
             commands::open_extension_tool_window,
             commands::hide_extension_tool_window,

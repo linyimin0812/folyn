@@ -163,36 +163,8 @@ export function normalizeHeaders(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-/**
- * Check whether an error thrown by the clipboard-manager plugin is arboard's
- * `ContentNotAvailable` — the clipboard holds no payload in the requested
- * flavor (e.g. an image was copied, so there is no text; or the clipboard is
- * empty). Callers map this to `null` instead of surfacing an error.
- */
-function isContentNotAvailable(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return msg.includes('not available in the requested format');
-}
-
-/** Uint8Array → base64 in the main webview (chunked to avoid arg limits). */
-function bytesToBase64(bytes: Uint8Array): string {
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  }
-  return btoa(bin);
-}
-
 /** Change-count gate state for `clipboard:read-image` (see that case). */
 const imageCache: { count: number; payload: unknown } = { count: -1, payload: null };
-
-/** base64 → Uint8Array in the main webview (for clipboard:write-image). */
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
 
 /**
  * Check whether the manifest grants a specific capability. Used by the bridge
@@ -629,9 +601,8 @@ export async function dispatchExtensionRpc(
         throw new Error('clipboard:read-image denied: clipboard permission not granted');
       }
       // Change-count gate: while an image sits UNCHANGED on the clipboard,
-      // a naive poll re-decodes + re-base64s + re-IPCs the full image every
-      // second (observed on Windows: multi-MB screenshot → the main webview
-      // (this window's UI thread) saturated → whole-app freeze). The count is
+      // a naive poll re-reads + re-IPCs the full image every second (observed
+      // on Windows: multi-MB screenshot → whole-app freeze). The count is
       // NSPasteboard changeCount (macOS) / GetClipboardSequenceNumber
       // (Windows) — a microsecond no-payload read; when it matches the count
       // at our last full read, return `{ unchanged: true }` instead.
@@ -646,30 +617,28 @@ export async function dispatchExtensionRpc(
       if (!wantsFull && count >= 0 && imageCache.count === count) {
         return { unchanged: true };
       }
-      const { readImage } = await import('@tauri-apps/plugin-clipboard-manager');
-      let img: Awaited<ReturnType<typeof readImage>>;
-      try {
-        img = await readImage();
-      } catch (err) {
-        // arboard ContentNotAvailable: no image flavor on the clipboard
-        // (e.g. text was copied). That is a normal state, not an error —
-        // `null` keeps the RPC contract total.
-        if (isContentNotAvailable(err)) return null;
-        throw err;
-      }
-      const [rgba, size] = await Promise.all([img.rgba(), img.size()]);
-      const payload = { rgba: bytesToBase64(rgba), w: size.width, h: size.height };
+      // Read + base64 happen Rust-side (clipboard_read_image_b64): tauri's
+      // default IPC serialization turns a `Vec<u8>` command return into a
+      // JSON array of numbers (~50 MB for a 1440p screenshot, parsed on THIS
+      // window's JS thread — seconds of whole-app freeze per copy on
+      // Windows), and the JS bytesToBase64 chunk loop cost a second stall.
+      // A base64 STRING crosses as one JSON string; the extension contract
+      // `{ rgba: b64, w, h } | null` is unchanged. `null` = no image flavor
+      // (normal state, the Rust side maps ContentNotAvailable itself).
+      const payload = await invoke<{ rgba: string; w: number; h: number } | null>(
+        'clipboard_read_image_b64',
+      );
       imageCache.count = count;
       imageCache.payload = payload;
       return payload;
     }
 
     case 'clipboard:write-image': {
-      // Takes { png } — base64 PNG, the storage form extensions keep. The
-      // DECODE happens Rust-side (JsImage::Bytes → Image::from_bytes, enabled
-      // by tauri's image-png feature) — JS-side canvas decoding proved
-      // unreliable for large images (wrong rgba lengths / engine hangs), and
-      // this avoids transferring raw RGBA (4× PNG size) over the bridge at all.
+      // Takes { png } — base64 PNG, the storage form extensions keep. Base64
+      // decode + PNG decode + clipboard write all happen Rust-side
+      // (clipboard_write_image_b64) — a Uint8Array argument would cross the
+      // IPC as JSON.stringify's {"0":255,...} object (~400 MB for 4K) and
+      // freeze this window's JS thread; the string crosses as one JSON string.
       const p = (params ?? {}) as { png?: unknown };
       if (typeof p.png !== 'string' || p.png.length < 8) {
         throw new Error('clipboard:write-image requires { png }');
@@ -677,10 +646,8 @@ export async function dispatchExtensionRpc(
       if (!hasPermission(manifest, 'clipboard')) {
         throw new Error('clipboard:write-image denied: clipboard permission not granted');
       }
-      const bytes = base64ToBytes(p.png);
-      const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
-      // Uint8Array → JsImage::Bytes (serde untagged) → Rust PNG decode.
-      return writeImage(bytes);
+      const { invoke } = await import('@tauri-apps/api/core');
+      return invoke('clipboard_write_image_b64', { png: p.png });
     }
 
     // ── dialog ──
