@@ -630,11 +630,13 @@ export async function dispatchExtensionRpc(
       }
       // Change-count gate: while an image sits UNCHANGED on the clipboard,
       // a naive poll re-decodes + re-base64s + re-IPCs the full image every
-      // second (observed: multi-MB screenshot → CPU spike). NSPasteboard's
-      // changeCount is a microsecond no-payload read — when it matches the
-      // count at our last full read, return `{ unchanged: true }` instead.
+      // second (observed on Windows: multi-MB screenshot → the main webview
+      // (this window's UI thread) saturated → whole-app freeze). The count is
+      // NSPasteboard changeCount (macOS) / GetClipboardSequenceNumber
+      // (Windows) — a microsecond no-payload read; when it matches the count
+      // at our last full read, return `{ unchanged: true }` instead.
       // `params.full` forces a full read (a fresh extension realm has no
-      // copy of the previous image and must fetch it once). -1 (non-macOS /
+      // copy of the previous image and must fetch it once). -1 (Linux /
       // command missing on an older binary) = no gate, always full read.
       // ponytail: module-level cache is shared across extensions — correct,
       // it mirrors global clipboard state, not per-extension state.

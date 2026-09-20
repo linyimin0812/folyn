@@ -164,6 +164,10 @@ windows-sys = { version = "0.59", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_HiDpi",
   "Win32_Graphics_Gdi",
+  # GetClipboardSequenceNumber for clipboard_change_count (Windows analog
+  # of NSPasteboard changeCount — gates clipboard:read-image re-reads; see
+  # commands/clipboard_commands.rs).
+  "Win32_System_DataExchange",
   # SendInput / KEYBDINPUT / VK_CONTROL / VK_V for voice insert (PRD R15);
   # also SetFocus for pet_panel's focus_panel (WebView2 child focus — the
   # Windows equivalent of macOS makeFirstResponder(wkwebview)).
