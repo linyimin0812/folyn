@@ -527,6 +527,65 @@ pub(crate) fn window_has_modal_dialog(window: &tauri::WebviewWindow) -> bool {
     }
 }
 
+/// True while ANY native modal dialog is up app-wide: an app-modal session
+/// (`NSApp.modalWindow` — wry runs the WKWebView `<input type="file">`
+/// panel via `NSOpenPanel.runModal`, no sheet is attached to any window) or
+/// a sheet on any app window.
+///
+/// Why the tool-popup hide needs the app-wide check (and not just
+/// `window_has_modal_dialog(&tool_window)`): the extension tool popup's
+/// blur-auto-hide fires for dialogs the popup itself didn't get attached —
+/// 1) the `<input type="file">` panel is app-modal (modalWindow, no sheet
+/// anywhere), and 2) the fetch-RPC `dialog:confirm`/`dialog:open` bridge
+/// runs in the MAIN window's listener, so tauri-plugin-dialog parents those
+/// sheets to the main window while the blur fires on the tool popup. Both
+/// would tear the popup out from under a dialog the user is still answering
+/// (ai-assistant: 非置顶模式下点击附件图标弹窗直接隐藏，无法选文件).
+/// When the dialog ends the owner re-gains key → `tauri://focus` re-arms
+/// the blur-auto-hide, so the popup still hides on the next real blur.
+pub(crate) fn app_has_any_modal_dialog(app: &tauri::AppHandle) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri_nspanel::objc2::msg_send;
+        use tauri_nspanel::objc2::runtime::AnyObject;
+        let (tx, rx) = std::sync::mpsc::channel();
+        let dispatched = app.run_on_main_thread(move || {
+            // SAFETY: sharedApplication returns the NSApplication singleton
+            // on the main thread; modalWindow returns the app-modal dialog
+            // window or nil.
+            let ns_app: *mut AnyObject = unsafe {
+                msg_send![tauri_nspanel::objc2::class!(NSApplication), sharedApplication]
+            };
+            let modal: *mut AnyObject = if ns_app.is_null() {
+                std::ptr::null_mut()
+            } else {
+                unsafe { msg_send![ns_app, modalWindow] }
+            };
+            let _ = tx.send(!modal.is_null());
+        });
+        if dispatched.is_err() {
+            return false;
+        }
+        if rx.recv().unwrap_or(false) {
+            return true;
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: the tool window never becomes key there (focus:false, no
+        // set_focus path), so the blur-auto-hide listener is inert — no
+        // dialog guard needed.
+        let _ = app;
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = app;
+    }
+    // Any window carrying a sheet (plugin dialogs parented to the main
+    // window while the tool popup blurs). Reuses the per-window check.
+    app.webview_windows().values().any(|w| window_has_modal_dialog(w))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

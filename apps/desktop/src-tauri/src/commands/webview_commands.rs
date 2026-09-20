@@ -501,12 +501,18 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
     let Some(w) = app.get_webview_window(&label) else {
         return Ok(()); // already gone — nothing to hide
     };
-    // Same guard as `pet_panel_hide`: a native modal dialog attached to this
-    // window (extension tools open file dialogs via the rpc bridge, parented
-    // here) fired the blur that invoked this hide — hide would tear the
-    // dialog down with the window. Skip; the dialog ending re-focuses the
-    // popup and re-arms the blur-auto-hide.
-    if crate::commands::pet_common::window_has_modal_dialog(&w) {
+    // Same guard as `pet_panel_hide`, but app-wide: a native modal dialog
+    // ANYWHERE fired the blur that invoked this hide — the tool popup itself
+    // opens dialogs it never gets attached: the WKWebView `<input
+    // type="file">` panel runs app-modal (no sheet on any window), and the
+    // fetch-RPC `dialog:*` bridge parents its plugin sheets to the MAIN
+    // window (its listener runs there). Hiding now would tear the dialog
+    // down with the popup (ai-assistant: 非置顶模式下点击附件图标弹窗
+    // 直接隐藏，无法选文件). Skip; the dialog ending re-focuses the popup
+    // and re-arms the blur-auto-hide.
+    if crate::commands::pet_common::window_has_modal_dialog(&w)
+        || crate::commands::pet_common::app_has_any_modal_dialog(&app)
+    {
         return Ok(());
     }
     let fullscreen = w.is_fullscreen().unwrap_or(false);
