@@ -253,15 +253,29 @@ pub fn lower_extension_tool_panel_level(window: &tauri::WebviewWindow) {
         use tauri_nspanel::objc2::exception::catch;
         use tauri_nspanel::objc2::msg_send;
         use tauri_nspanel::objc2::runtime::AnyObject;
-        let _ = catch(AssertUnwindSafe(|| unsafe {
-            let Ok(ns_window) = window.ns_window() else { return };
-            let ns = ns_window as *mut AnyObject;
-            if ns.is_null() {
-                return;
-            }
-            // 64-bit setLevel: takes NSInteger — Normal (0), below any modal panel.
-            let _: () = msg_send![ns, setLevel: 0isize];
-        }));
+        // Main-thread dispatch + wait — setLevel: (and ns_window()) are
+        // main-thread-only AppKit; the async command this runs from sits on
+        // a tokio worker, and objc2 traps (EXC_BREAKPOINT, "Must only be
+        // used from the main thread") when called off-main. Same pattern as
+        // pet_common::window_has_modal_dialog.
+        let (tx, rx) = std::sync::mpsc::channel();
+        let w = window.clone();
+        let dispatched = window.app_handle().run_on_main_thread(move || {
+            let _ = catch(AssertUnwindSafe(|| unsafe {
+                let Ok(ns_window) = w.ns_window() else { return };
+                let ns = ns_window as *mut AnyObject;
+                if ns.is_null() {
+                    return;
+                }
+                // 64-bit setLevel: takes NSInteger — Normal (0), below any
+                // modal panel.
+                let _: () = msg_send![ns, setLevel: 0isize];
+            }));
+            let _ = tx.send(());
+        });
+        if dispatched.is_ok() {
+            rx.recv().unwrap_or(());
+        }
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -282,24 +296,35 @@ pub fn restore_extension_tool_panel_level(window: &tauri::WebviewWindow) {
         use tauri_nspanel::objc2::msg_send;
         use tauri_nspanel::objc2::runtime::AnyObject;
         use tauri_nspanel::ManagerExt;
-        let app = window.app_handle();
-        let _ = catch(AssertUnwindSafe(|| {
-            // Panel store path (the normal case — the tool window is a
-            // converted panel): set_level through the store.
-            if let Ok(panel) = app.get_webview_panel(window.label()) {
-                panel.set_level(tauri_nspanel::PanelLevel::Dock.value());
-            }
-        }));
-        let _ = catch(AssertUnwindSafe(|| unsafe {
-            let Ok(ns_window) = window.ns_window() else { return };
-            let ns = ns_window as *mut AnyObject;
-            if ns.is_null() {
-                return;
-            }
-            // Raw fallback (store miss / legacy backend) + order front.
-            let _: () = msg_send![ns, setLevel: 20isize];
-            let _: () = msg_send![ns, orderFrontRegardless];
-        }));
+        // Main-thread dispatch + wait (see lower_extension_tool_panel_level
+        // for why) — setLevel:/orderFrontRegardless/ns_window() are
+        // main-thread-only AppKit.
+        let (tx, rx) = std::sync::mpsc::channel();
+        let w = window.clone();
+        let dispatched = window.app_handle().run_on_main_thread(move || {
+            let app = w.app_handle();
+            let _ = catch(AssertUnwindSafe(|| {
+                // Panel store path (the normal case — the tool window is a
+                // converted panel): set_level through the store.
+                if let Ok(panel) = app.get_webview_panel(w.label()) {
+                    panel.set_level(tauri_nspanel::PanelLevel::Dock.value());
+                }
+            }));
+            let _ = catch(AssertUnwindSafe(|| unsafe {
+                let Ok(ns_window) = w.ns_window() else { return };
+                let ns = ns_window as *mut AnyObject;
+                if ns.is_null() {
+                    return;
+                }
+                // Raw fallback (store miss / legacy backend) + order front.
+                let _: () = msg_send![ns, setLevel: 20isize];
+                let _: () = msg_send![ns, orderFrontRegardless];
+            }));
+            let _ = tx.send(());
+        });
+        if dispatched.is_ok() {
+            rx.recv().unwrap_or(());
+        }
     }
     #[cfg(not(target_os = "macos"))]
     {

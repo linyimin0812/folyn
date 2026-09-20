@@ -566,9 +566,11 @@ pub async fn extension_tool_restore_level(app: tauri::AppHandle, label: String) 
     // Idempotent: safe on every focus event, even when never lowered.
     #[cfg(target_os = "macos")]
     {
-        let _ = app.run_on_main_thread(move || {
-            crate::pet_panel_macos::restore_extension_tool_panel_level(&w);
-        });
+        // restore_extension_tool_panel_level dispatches to the main thread
+        // and waits itself (async commands run on a tokio worker; AppKit
+        // setLevel:/orderFront trap off-main) — no wrapper here, a nested
+        // dispatch + blocking wait would deadlock the main thread on itself.
+        crate::pet_panel_macos::restore_extension_tool_panel_level(&w);
     }
     #[cfg(not(target_os = "macos"))]
     {
