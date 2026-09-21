@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { PhysicalPosition, PhysicalSize, Position, Size } from '@tauri-apps/api/dpi';
 import { useTranslation } from 'react-i18next';
 import { Square, Copy, Pin, PinOff, X } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
@@ -369,7 +370,7 @@ export function PetPanelApp() {
   }, []);
 
   // ── Shortcut-summon: focus the search box ──
-  // The global-shortcut path (`openPetPanelCentered` in PetApp.tsx) emits
+  // The global-shortcut path (`openPetPanelAtCursor` in PetApp.tsx) emits
   // `pet://panel-focus-search` AFTER `pet://panel-fade-in`. By then
   // `pet_panel_show` has run `set_focus()` + `makeFirstResponder(wkwebview)`,
   // so the panel is the key window and the webview is first responder —
@@ -717,54 +718,51 @@ export function PetPanelApp() {
           petPanelSizeVersion,
         } = usePetStore.getState();
 
-        // 1. Resolve the SIZE (logical points). `resolvePanelSize` returns
-        //    the clamped saved size when the version matches, or the current
-        //    default when it doesn't (version mismatch / first-ever open).
-        //    The clamped size is reused by `clampPanelPosition` so the
-        //    position clamp respects the actual panel dimensions, not the
-        //    default 440×620.
+        // 1. Restore the default or user-selected logical size. Only the
+        // position is clamped to the current monitor; size stays unchanged.
         const savedMatchesVersion = petPanelSizeVersion === PET_PANEL_SIZE_VERSION;
-        const clampedSize = resolvePanelSize(
+        const resolvedSize = resolvePanelSize(
           { width: petPanelWidth, height: petPanelHeight },
           petPanelSizeVersion,
-          workArea,
         );
-        // Persist corrections: (a) version mismatch → write new default +
-        //    new version; (b) version matched but clamp shrunk the saved
-        //    size to fit the current work area → write the clamped value.
+        // Persist the resolved default or minimum-size correction.
         if (
           !savedMatchesVersion ||
-          petPanelWidth !== clampedSize.width ||
-          petPanelHeight !== clampedSize.height
+          petPanelWidth !== resolvedSize.width ||
+          petPanelHeight !== resolvedSize.height
         ) {
-          setPetPanelSize(clampedSize.width, clampedSize.height);
+          setPetPanelSize(resolvedSize.width, resolvedSize.height);
         }
         if (!savedMatchesVersion) {
           usePetStore.getState().setPetPanelSizeVersion(PET_PANEL_SIZE_VERSION);
         }
         await invoke('pet_panel_set_size', {
-          width: Math.round(clampedSize.width * winSf),
-          height: Math.round(clampedSize.height * winSf),
+          size: new Size(new PhysicalSize(
+            Math.round(resolvedSize.width * winSf),
+            Math.round(resolvedSize.height * winSf),
+          )),
         });
 
-        // 2. Clamp the saved POSITION against the clamped size (logical points).
+        // 2. Clamp the saved POSITION against the resolved size (logical points).
         if (petPanelX >= 0 && petPanelY >= 0) {
           const pos = clampPanelPosition(
             { x: petPanelX, y: petPanelY },
             workArea,
-            clampedSize,
+            resolvedSize,
           );
           if (pos.x !== petPanelX || pos.y !== petPanelY) {
             setPetPanelPosition(pos.x, pos.y);
           }
           await invoke('pet_panel_set_position', {
-            x: Math.round(pos.x * winSf),
-            y: Math.round(pos.y * winSf),
+            position: new Position(new PhysicalPosition(
+              Math.round(pos.x * winSf),
+              Math.round(pos.y * winSf),
+            )),
           });
         } else {
           // First-ever open: position next to the pet (probe gives pet pos
           // in PHYSICAL px — divide by `sf` to get logical for the math).
-          // Pass the clamped size (which equals the defaults here, since
+          // Pass the resolved size (which equals the defaults here, since
           // first-ever open has no saved size) so `computePanelPosition`
           // attaches the panel's actual corner to the pet icon.
           const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
@@ -776,12 +774,14 @@ export function PetPanelApp() {
           const pos = computePanelPosition(
             { x: probe.window_x / screenSf, y: probe.window_y / screenSf },
             workArea,
-            clampedSize,
+            resolvedSize,
             petSize,
           );
           await invoke('pet_panel_set_position', {
-            x: Math.round(pos.x * winSf),
-            y: Math.round(pos.y * winSf),
+            position: new Position(new PhysicalPosition(
+              Math.round(pos.x * winSf),
+              Math.round(pos.y * winSf),
+            )),
           });
           setPetPanelPosition(pos.x, pos.y);
         }
@@ -800,11 +800,10 @@ export function PetPanelApp() {
   //
   // Unit boundary: `pet_panel_get_position` returns PHYSICAL px; the saved
   // `petPanelX/Y` is stored in LOGICAL points (matches the work-area math at
-  // restore), so divide by `sf` before persisting. `sf` is cached once from
-  // `pet_get_work_area` (a single-monitor panel window never changes DPI).
-  // Panel SIZE is also persisted in LOGICAL points (mirrors position): divide
-  // by `sf` before `setPetPanelSize` so the saved value matches the logical
-  // work-area math at restore.
+  // restore), so divide by the panel's CURRENT scale on every poll. The
+  // shortcut can move the panel between different-DPI displays. Never cache
+  // this scale: doing so records an OS scale change as a user resize.
+  // Hidden-window geometry is not a user size choice and is not persisted.
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
@@ -812,7 +811,6 @@ export function PetPanelApp() {
     let lastY = -1;
     let lastW = -1;
     let lastH = -1;
-    let sf = 1;
 
     const persist = async () => {
       if (cancelled) return;
@@ -822,17 +820,13 @@ export function PetPanelApp() {
       if (isMaximizedRef.current) return;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        if (sf === 1) {
-          // The PANEL window's own scale — pet_panel_get_position/get_size
-          // return PHYSICAL px in this window's frame; dividing by its own
-          // scale yields the logical points stored in petStore. (Using the
-          // pet screen's scale would be wrong while the panel window sits on
-          // a different-DPI display.)
-          const { getCurrentWindow } = await import('@tauri-apps/api/window');
-          sf = (await getCurrentWindow().scaleFactor()) || 1;
-        }
+        if (!(await invoke<boolean>('pet_panel_is_visible'))) return;
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const panel = getCurrentWindow();
+        const sf = await panel.scaleFactor();
         const pos = await invoke<{ x: number; y: number }>('pet_panel_get_position');
         const size = await invoke<PetPanelSizePayload>('pet_panel_get_size');
+        if (cancelled || await panel.scaleFactor() !== sf) return;
         const x = Math.round(pos.x / sf);
         const y = Math.round(pos.y / sf);
         const w = Math.round(size.width / sf);

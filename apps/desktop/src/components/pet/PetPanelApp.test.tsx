@@ -11,16 +11,19 @@ const {
   startDraggingMock,
   toggleMaximizeMock,
   isMaximizedMock,
+  scaleFactorMock,
 } = vi.hoisted(() => ({
   startDraggingMock: vi.fn(async () => undefined),
   toggleMaximizeMock: vi.fn(async () => undefined),
   isMaximizedMock: vi.fn(async () => false),
+  scaleFactorMock: vi.fn(async () => 2),
 }));
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({
     startDragging: startDraggingMock,
     toggleMaximize: toggleMaximizeMock,
     isMaximized: isMaximizedMock,
+    scaleFactor: scaleFactorMock,
   }),
 }));
 
@@ -63,6 +66,7 @@ beforeEach(() => {
   toggleMaximizeMock.mockResolvedValue(undefined);
   isMaximizedMock.mockClear();
   isMaximizedMock.mockResolvedValue(false);
+  scaleFactorMock.mockResolvedValue(2);
 });
 
 afterEach(() => {
@@ -70,6 +74,48 @@ afterEach(() => {
 });
 
 describe('PetPanelApp', () => {
+  it('keeps logical size across DPI changes and persists manual resizing only while visible', async () => {
+    const intervalSpy = vi.spyOn(window, 'setInterval');
+    let physicalSize = { width: 880, height: 1240 };
+    let visible = true;
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === 'pet_get_work_area') return { x: 0, y: 25, width: 1680, height: 1025, scale_factor: 2 };
+      if (command === 'pet_window_scale') return 2;
+      if (command === 'pet_panel_is_visible') return visible;
+      if (command === 'pet_panel_get_size') return physicalSize;
+      if (command === 'pet_panel_get_position') return { x: 100, y: 100 };
+      if (command === 'pet_cursor_probe') return { window_x: 100, window_y: 100 };
+    });
+    usePetStore.setState({ petPanelWidth: 440, petPanelHeight: 620, petPanelSizeVersion: 1 });
+    try {
+      render(<PetPanelApp />);
+      await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pet_panel_set_size', expect.anything()));
+      const persist = intervalSpy.mock.calls.find(([, delay]) => delay === 800)?.[0];
+      if (typeof persist !== 'function') throw new Error('Panel persistence timer not installed');
+      await act(async () => { await persist(); });
+      expect(usePetStore.getState().petPanelWidth).toBe(440);
+
+      // Move the same logical window from a 2x screen to a 1x screen.
+      scaleFactorMock.mockResolvedValue(1);
+      physicalSize = { width: 440, height: 620 };
+      await act(async () => { await persist(); });
+      expect(usePetStore.getState()).toMatchObject({ petPanelWidth: 440, petPanelHeight: 620 });
+
+      // A real user resize is remembered for the next open.
+      physicalSize = { width: 500, height: 700 };
+      await act(async () => { await persist(); });
+      expect(usePetStore.getState()).toMatchObject({ petPanelWidth: 500, petPanelHeight: 700 });
+
+      // Hidden-window frame changes must not replace the user's choice.
+      visible = false;
+      physicalSize = { width: 280, height: 360 };
+      await act(async () => { await persist(); });
+      expect(usePetStore.getState()).toMatchObject({ petPanelWidth: 500, petPanelHeight: 700 });
+    } finally {
+      intervalSpy.mockRestore();
+    }
+  });
+
   it('renders the chat body with a search box and no tab row', () => {
     const { container } = render(<PetPanelApp />);
     expect(container.querySelector('.ai-panel')).toBeTruthy();
@@ -300,7 +346,7 @@ describe('PetPanelApp', () => {
   });
 
   // ── Shortcut-summon: focus the search box ──
-  // The global-shortcut path (`openPetPanelCentered` in PetApp.tsx) emits
+  // The global-shortcut path (`openPetPanelAtCursor` in PetApp.tsx) emits
   // `pet://panel-focus-search` after the panel is shown. The click path
   // does NOT emit it, so this is shortcut-only behavior.
   it('pet://panel-focus-search event focuses the search input', async () => {

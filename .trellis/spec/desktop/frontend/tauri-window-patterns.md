@@ -750,14 +750,45 @@ area rect and the scale factor.
   on the diagonal side in degenerate cases but never overlaps the icon (it CAN overlap the
   window's transparent 16px margin — that margin is transparent and click-through).
   `computePanelPosition` takes the **actual panel size** as a third arg (default constants for
-  first-ever open, the clamped saved size for subsequent opens) so a user-resized panel's corner
+  first-ever open, the saved logical size for subsequent opens) so a user-resized panel's corner
   still tracks the pet — passing the hardcoded default 600×840 when the panel has been resized
   larger would leave the corner drifting off the pet.
+- **Shortcut panel placement**: `openPetPanelAtCursor` uses `getPetCursorContext`
+  to obtain logical cursor coordinates and its monitor's logical work area.
+  On macOS, Tao scales `cursorPosition()` by the **primary** monitor's factor,
+  but `monitorFromPoint(x, y)` compares with **logical** `CGDisplayBounds`.
+  Divide the cursor by `primaryMonitor().scaleFactor` BEFORE querying the
+  monitor. Divide the returned work area by the **destination** factor.
+  On Windows/Linux, query with physical cursor coordinates and then divide
+  cursor + work area by the destination factor. Passing Retina physical
+  coordinates straight to the macOS query only works in part of the screen.
+  Missing monitor information throws into the existing logged open-error handler.
+  Position is cursor + 12 logical points, clamped to the work area.
+  The frame IPC accepts explicit units: `pet_panel_set_position(position: Position)`
+  and `pet_panel_set_size(size: Size)`, serialized with the SDK's `Position` /
+  `Size` wrappers. The macOS shortcut sends Logical values, so the panel's
+  previous screen scale cannot distort the first open or post-show reassertion.
+  Other paths send Physical values. Do not send bare x/y or width/height args.
+  `resolveAndPersistPanelSize` only updates the store; native resizing belongs
+  to `applyPanelFrame`, after the units have been resolved.
+  Tests: `petCursor.test.ts` covers the whole Retina display, mixed-DPI negative
+  screen origins and Windows queries; `petPosition.test.ts` covers edge clamping
+  and oversized panels. Native screen queries can be verified with a standalone
+  Tao probe linked to existing build artifacts; full popup behavior needs a
+  desktop smoke test.
+- **Stable panel size**: the default is 440×620 logical points; a user resize is
+  retained on subsequent opens. Work-area bounds affect **position only**.
+  Never shrink or overwrite the saved dimensions to fit a different screen.
+  The visible-panel persistence poll reads the panel's current scale each tick,
+  and discards samples spanning a scale change. Never cache the first 2x scale:
+  moving to a 1x display would record 440×620 as 220×310. Skip hidden and maximized
+  frames so those cannot overwrite normal user dimensions. The regression in
+  `PetPanelApp.test.tsx` exercises 2x → 1x, manual resize, and hidden-frame changes.
 - **Panel size version-gate (auto-invalidation on default bump)**: the saved `petPanelWidth/Height`
   in `settingsStore` is **version-gated** by `petPanelSizeVersion` (persisted) vs the
   `PET_PANEL_SIZE_VERSION` constant in `petPosition.ts`. The open gesture (`PetApp.tsx`) and the
-  panel mount-restore (`PetPanelApp.tsx`) both call `resolvePanelSize(saved, savedVersion, workArea)`
-  — a pure helper that returns the clamped saved size when the version matches, or the current
+  panel mount-restore (`PetPanelApp.tsx`) both call `resolvePanelSize(saved, savedVersion)`
+  — a pure helper that returns the saved logical size (with native minimums) when the version matches, or the current
   default (`PET_PANEL_WIDTH`/`PET_PANEL_HEIGHT`) when it doesn't (mismatch or first-ever open with
   `saved.width <= 0`). After applying the default, the caller persists the new size + new version so
   subsequent opens are stable. The persist poll saves the version alongside the size so a user

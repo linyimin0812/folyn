@@ -3,9 +3,8 @@ import {
   computeDefaultPetPosition,
   clampPetPosition,
   computePanelPosition,
-  computeCenteredPanelPosition,
+  computeCursorPanelPosition,
   clampPanelPosition,
-  clampPanelSize,
   resolvePanelSize,
   computeBubblePosition,
   computeCornerToastPosition,
@@ -351,89 +350,13 @@ describe('clampPanelPosition', () => {
   });
 });
 
-describe('clampPanelSize', () => {
-  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
-
-  it('returns the saved size unchanged when it fits the work area', () => {
-    const size = clampPanelSize({ width: 380, height: 520 }, workArea);
-    expect(size).toEqual({ width: 380, height: 520 });
-  });
-
-  it('enforces the minimum width', () => {
-    const size = clampPanelSize({ width: 100, height: 400 }, workArea);
-    expect(size.width).toBe(PET_PANEL_MIN_WIDTH);
-    expect(size.height).toBe(400);
-  });
-
-  it('enforces the minimum height', () => {
-    const size = clampPanelSize({ width: 300, height: 50 }, workArea);
-    expect(size.width).toBe(300);
-    expect(size.height).toBe(PET_PANEL_MIN_HEIGHT);
-  });
-
-  it('shrinks a saved size that exceeds the work area width', () => {
-    const size = clampPanelSize({ width: 99999, height: 500 }, workArea);
-    expect(size.width).toBe(workArea.width);
-    expect(size.height).toBe(500);
-  });
-
-  it('shrinks a saved size that exceeds the work area height', () => {
-    const size = clampPanelSize({ width: 380, height: 99999 }, workArea);
-    expect(size.width).toBe(380);
-    expect(size.height).toBe(workArea.height);
-  });
-
-  it('falls back to minimums for a degenerate (zero) work area', () => {
-    const tiny: PetWorkArea = { x: 0, y: 0, width: 0, height: 0 };
-    const size = clampPanelSize({ width: 99999, height: 99999 }, tiny);
-    expect(size).toEqual({ width: PET_PANEL_MIN_WIDTH, height: PET_PANEL_MIN_HEIGHT });
-  });
-
-  it('does NOT shrink a logical saved size on a 2x DPI (Retina) work area', () => {
-    // Regression: on a 2x DPI display the work area is 1440×900 LOGICAL points
-    // (scale_factor=2). A user who resized the panel to 450×600 logical must
-    // get 450×600 back — NOT 450×450 (which happened when `saved` was
-    // PHYSICAL px and the height was clamped against the LOGICAL work-area
-    // height of 900). After the unit-cleanup fix, `saved` is logical and
-    // compares directly to the logical work area.
-    const retina: PetWorkArea = {
-      x: 0,
-      y: 0,
-      width: 1440,
-      height: 900,
-      scale_factor: 2,
-    };
-    const size = clampPanelSize({ width: 450, height: 600 }, retina);
-    expect(size).toEqual({ width: 450, height: 600 });
-  });
-
-  it('clamps a saved logical size that exceeds the work area on 2x DPI', () => {
-    // User resized to 1500×1000 logical on a 1440×900 logical Retina work
-    // area → clamp shrinks to fit. (Pre-fix, a physical-px saved value of
-    // 1500 was min'd against logical workArea.width=1440 → 1440, then passed
-    // to pet_panel_set_size as physical → 720 logical, half-size.)
-    const retina: PetWorkArea = {
-      x: 0,
-      y: 0,
-      width: 1440,
-      height: 900,
-      scale_factor: 2,
-    };
-    const size = clampPanelSize({ width: 1500, height: 1000 }, retina);
-    expect(size).toEqual({ width: 1440, height: 900 });
-  });
-});
-
 describe('resolvePanelSize', () => {
-  const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875 };
 
-  it('returns the clamped saved size when the version matches', () => {
-    // Saved 380×520 with the current version → clamped to fit the work area
-    // (no shrinkage needed since 380×520 fits inside 1440×875) and returned.
+  it('returns the user-selected size when the version matches', () => {
+    // User dimensions stay in logical points regardless of monitor scale.
     const size = resolvePanelSize(
       { width: 380, height: 520 },
       PET_PANEL_SIZE_VERSION,
-      workArea,
     );
     expect(size).toEqual({ width: 380, height: 520 });
   });
@@ -446,7 +369,6 @@ describe('resolvePanelSize', () => {
     const size = resolvePanelSize(
       { width: 380, height: 520 },
       0, // pre-versioning / mismatched
-      workArea,
     );
     expect(size).toEqual({ width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
   });
@@ -459,21 +381,17 @@ describe('resolvePanelSize', () => {
     const size = resolvePanelSize(
       { width: -1, height: -1 },
       PET_PANEL_SIZE_VERSION,
-      workArea,
     );
     expect(size).toEqual({ width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
   });
 
-  it('clamps (shrinks) the saved size when version matches but size exceeds the work area', () => {
-    // User resized the panel to 2000×1500 logical on a 1440×875 work area
-    // and saved it with the current version. The clamped size shrinks to
-    // fit the work area — the saved size is respected but bounded.
+  it('preserves the user size even when it exceeds the current screen', () => {
+    // No monitor-dependent maximum: screen bounds only affect position.
     const size = resolvePanelSize(
       { width: 2000, height: 1500 },
       PET_PANEL_SIZE_VERSION,
-      workArea,
     );
-    expect(size).toEqual({ width: 1440, height: 875 });
+    expect(size).toEqual({ width: 2000, height: 1500 });
   });
 
   it('ignores the saved size even if it fits the work area when the version mismatches', () => {
@@ -484,45 +402,52 @@ describe('resolvePanelSize', () => {
     const size = resolvePanelSize(
       { width: 500, height: 700 }, // fits 1440×875
       0, // mismatched version
-      workArea,
     );
     expect(size).toEqual({ width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
   });
 
   it('enforces minimums on a saved size that drops below PET_PANEL_MIN_*', () => {
-    // Saved 100×100 with matching version → clampPanelSize enforces the
-    // minimum width/height. Mirrors the clampPanelSize contract.
+    // Match the native window's minimum resize dimensions.
     const size = resolvePanelSize(
       { width: 100, height: 100 },
       PET_PANEL_SIZE_VERSION,
-      workArea,
     );
     expect(size.width).toBe(PET_PANEL_MIN_WIDTH);
     expect(size.height).toBe(PET_PANEL_MIN_HEIGHT);
   });
 });
 
-describe('computeCenteredPanelPosition', () => {
+describe('computeCursorPanelPosition', () => {
   const workArea: PetWorkArea = { x: 0, y: 25, width: 1440, height: 875, scale_factor: 2 };
+  const size = { width: 400, height: 600 };
 
-  it('centers the panel in the work area (logical points)', () => {
-    const pos = computeCenteredPanelPosition(workArea, { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT });
-    expect(pos.x).toBe(Math.round((1440 - PET_PANEL_WIDTH) / 2));
-    expect(pos.y).toBe(Math.round(25 + (875 - PET_PANEL_HEIGHT) / 2));
+  it('opens next to the current cursor instead of the screen center', () => {
+    expect(computeCursorPanelPosition({ x: 100, y: 150 }, workArea, size))
+      .toEqual({ x: 112, y: 162 });
+    expect(computeCursorPanelPosition({ x: 300, y: 200 }, workArea, size))
+      .toEqual({ x: 312, y: 212 });
   });
 
-  it('offsets by a nonzero work-area origin', () => {
-    const wa: PetWorkArea = { x: 100, y: 50, width: 1000, height: 600, scale_factor: 2 };
-    const pos = computeCenteredPanelPosition(wa, { width: 200, height: 400 });
-    expect(pos.x).toBe(Math.round(100 + (1000 - 200) / 2));
-    expect(pos.y).toBe(Math.round(50 + (600 - 400) / 2));
+  it('keeps the whole panel inside the right and bottom edges', () => {
+    expect(computeCursorPanelPosition({ x: 1439, y: 899 }, workArea, size))
+      .toEqual({ x: 1040, y: 300 });
   });
 
-  it('pins to work-area top-left when panel is larger than the work area', () => {
-    const wa: PetWorkArea = { x: 0, y: 0, width: 100, height: 100, scale_factor: 2 };
-    const pos = computeCenteredPanelPosition(wa, { width: 500, height: 700 });
-    expect(pos.x).toBe(0);
-    expect(pos.y).toBe(0);
+  it('clamps a cursor in the menu bar to the work area', () => {
+    expect(computeCursorPanelPosition({ x: 0, y: 0 }, workArea, size))
+      .toEqual({ x: 12, y: 25 });
+  });
+
+  it('uses negative screen origins on a secondary monitor', () => {
+    const area = { x: -1920, y: -1080, width: 1920, height: 1040 };
+    expect(computeCursorPanelPosition({ x: -1800, y: -900 }, area, size))
+      .toEqual({ x: -1788, y: -888 });
+  });
+
+  it('pins oversized panels to the work-area origin', () => {
+    const area = { x: 100, y: 50, width: 100, height: 100 };
+    expect(computeCursorPanelPosition({ x: 180, y: 100 }, area, size))
+      .toEqual({ x: 100, y: 50 });
   });
 });
 

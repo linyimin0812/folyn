@@ -184,24 +184,20 @@ export function computeDefaultPetPosition(
   return { x, y };
 }
 
-/**
- * Compute the panel position (logical points, absolute screen coords) so the
- * panel opens **centered in the work area** — used by the global-shortcut
- * toggle path. The click-open path uses `computePanelPosition` (pet-adjacent
- * corner); the shortcut path uses this so the panel lands mid-screen instead
- * of next to the (possibly obscured) pet icon.
- *
- * The result is clamped so the whole panel stays inside the work area on
- * either axis: when the panel is larger than the work area (degenerate case),
- * it is placed at the work-area top-left and overflows downward/rightward.
- */
-export function computeCenteredPanelPosition(
+/** Place the shortcut panel near the cursor, clamped to its monitor's work
+ * area. All inputs and the result are logical screen coordinates. */
+export function computeCursorPanelPosition(
+  cursor: PetPosition,
   workArea: PetWorkArea,
   panelSize: { width: number; height: number },
 ): PetPosition {
-  const x = workArea.x + Math.max(0, (workArea.width - panelSize.width) / 2);
-  const y = workArea.y + Math.max(0, (workArea.height - panelSize.height) / 2);
-  return { x: Math.round(x), y: Math.round(y) };
+  const gap = 12;
+  const maxX = workArea.x + Math.max(0, workArea.width - panelSize.width);
+  const maxY = workArea.y + Math.max(0, workArea.height - panelSize.height);
+  return {
+    x: Math.round(Math.max(workArea.x, Math.min(cursor.x + gap, maxX))),
+    y: Math.round(Math.max(workArea.y, Math.min(cursor.y + gap, maxY))),
+  };
 }
 
 /**
@@ -369,7 +365,7 @@ export function computePanelPosition(
  *
  * `panelSize` is in LOGICAL points (matches the work area). The caller is
  * responsible for the unit boundary: pass the same logical size you computed
- * via `clampPanelSize` (which also runs in logical space). If the work area is
+ * via `resolvePanelSize` (which also runs in logical space). If the work area is
  * smaller than the panel (degenerate case) the panel is placed at the work
  * area's top-left.
  */
@@ -394,54 +390,19 @@ export interface PetPanelSize {
   height: number;
 }
 
-/**
- * Resolve the panel size to apply on open, given the saved size + version.
- * If the saved version matches `PET_PANEL_SIZE_VERSION`, the saved size is
- * clamped to the work area and returned. Otherwise (version mismatch or
- * first-ever open with `saved.width <= 0`), the current default is returned.
- * The caller is responsible for persisting the resolved size + current
- * version when the saved values were stale (see PetApp.tsx open gesture +
- * PetPanelApp.tsx mount restore).
- *
- * Extracted as a pure function so the version-gate logic is unit-testable
- * without mounting the panel component (which spins up Tauri-window effect
- * loops impractical to test). Mirrors the existing `clampPanelSize` pattern.
- */
+/** Resolve the default or user-selected logical size. Screen dimensions
+ * affect placement only; moving between monitors must not resize the panel. */
 export function resolvePanelSize(
   saved: PetPanelSize,
   savedVersion: number,
-  workArea: PetWorkArea,
 ): PetPanelSize {
   if (saved.width > 0 && saved.height > 0 && savedVersion === PET_PANEL_SIZE_VERSION) {
-    return clampPanelSize(saved, workArea);
+    return {
+      width: Math.max(saved.width, PET_PANEL_MIN_WIDTH),
+      height: Math.max(saved.height, PET_PANEL_MIN_HEIGHT),
+    };
   }
   return { width: PET_PANEL_WIDTH, height: PET_PANEL_HEIGHT };
-}
-
-/**
- * Clamp a saved panel size (LOGICAL points) so the panel never exceeds the work
- * area (also logical) and never drops below `PET_PANEL_MIN_*` (logical). A size
- * that was saved on a larger monitor is shrunk to fit the current work area; a
- * degenerate work area falls back to the minimum. The `tauri.conf.json`
- * `minWidth`/`minHeight` already enforce a floor at the OS level — this is the
- * JS-side mirror so `setSize` calls don't fight the clamp. The caller is
- * responsible for the unit boundary: divide by `scale_factor` after
- * `pet_panel_get_size` (physical → logical) before passing `saved`, and
- * multiply by `scale_factor` before `pet_panel_set_size` (logical → physical).
- */
-export function clampPanelSize(
-  saved: PetPanelSize,
-  workArea: PetWorkArea,
-): PetPanelSize {
-  const width = Math.min(
-    Math.max(saved.width, PET_PANEL_MIN_WIDTH),
-    Math.max(PET_PANEL_MIN_WIDTH, workArea.width),
-  );
-  const height = Math.min(
-    Math.max(saved.height, PET_PANEL_MIN_HEIGHT),
-    Math.max(PET_PANEL_MIN_HEIGHT, workArea.height),
-  );
-  return { width, height };
 }
 
 // ────────────────────────────────────────────────────────────────────────────

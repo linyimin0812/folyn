@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-use tauri::{Emitter, Manager, PhysicalPosition, PhysicalSize};
+use tauri::{Emitter, Manager, Position, Size};
 
 use crate::commands::pet_common::*;
 use crate::errors::AppError;
@@ -424,21 +424,19 @@ pub async fn pet_panel_set_shortcut(app: tauri::AppHandle, accelerator: String) 
     Ok(())
 }
 
-/// Set the pet-panel window's screen position (physical pixels). The pet
-/// frontend computes a clamped position next to the pet (using
-/// `pet_get_work_area`) and passes it here so Rust stays the single source of
-/// truth for window mutation.
+/// Set the panel position with explicit coordinate units. Cursor opens on
+/// macOS use logical points so moving across DPI boundaries never depends
+/// on the panel's previous screen scale.
 #[tauri::command]
 pub async fn pet_panel_set_position(
     app: tauri::AppHandle,
-    x: i32,
-    y: i32,
+    position: Position,
 ) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel
-        .set_position(PhysicalPosition::new(x, y))
+        .set_position(position)
         .map_err(|e| AppError::from(e.to_string()))
 }
 
@@ -452,20 +450,19 @@ pub async fn pet_panel_get_position(app: tauri::AppHandle) -> Result<PetPosition
     Ok(PetPosition { x: pos.x, y: pos.y })
 }
 
-/// Set the pet-panel window's size (physical pixels). Used to restore a
+/// Set the pet-panel window's size with explicit units. Used to restore a
 /// persisted size on panel open. The window is declared `resizable: true`
 /// with `minWidth/minHeight` in tauri.conf.json, so the OS enforces a floor.
 #[tauri::command]
 pub async fn pet_panel_set_size(
     app: tauri::AppHandle,
-    width: i32,
-    height: i32,
+    size: Size,
 ) -> Result<(), AppError> {
     let panel = app
         .get_webview_window(PET_PANEL_LABEL)
         .ok_or_else(|| "pet-panel window not found".to_string())?;
     panel
-        .set_size(PhysicalSize::new(width, height))
+        .set_size(size)
         .map_err(|e| AppError::from(e.to_string()))
 }
 

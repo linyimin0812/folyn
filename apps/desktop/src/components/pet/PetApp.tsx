@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position, Size } from '@tauri-apps/api/dpi';
+import { getPetCursorContext } from './petCursor';
+import { isMacPlatform } from '@/utils/shellSidecar';
 import { PetMascot } from './PetMascot';
 import { openPetContextMenu } from './PetContextMenu';
-import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCenteredPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx, type PetSize } from './petPosition';
+import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCursorPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx, type PetSize } from './petPosition';
 import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
 import { currentWindowScaleFactor } from '@/utils/windowScale';
@@ -85,12 +88,10 @@ interface PetWorkAreaResult {
  * Returns the resolved logical size. Shared by the click-open and
  * shortcut-open paths so they cannot drift on size-resolution behavior.
  *
- * Pure w.r.t. petStore + invoke('pet_panel_set_size'): no position
- * computation, no show, no post-show re-assert. Callers feed the returned
- * size into their own position computation + `applyPanelFrame`.
+ * Persists logical dimensions without mutating the native window. Callers
+ * feed the returned size into position computation + `applyPanelFrame`.
  */
-async function resolveAndPersistPanelSize(workArea: PetWorkAreaResult): Promise<{ width: number; height: number }> {
-  const { invoke } = await import('@tauri-apps/api/core');
+async function resolveAndPersistPanelSize(): Promise<{ width: number; height: number }> {
   const { usePetStore } = await import('@/store/petStore');
   const { petPanelWidth, petPanelHeight, petPanelSizeVersion } = usePetStore.getState();
 
@@ -98,9 +99,7 @@ async function resolveAndPersistPanelSize(workArea: PetWorkAreaResult): Promise<
   const size = resolvePanelSize(
     { width: petPanelWidth, height: petPanelHeight },
     petPanelSizeVersion,
-    { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
   );
-  await invoke('pet_panel_set_size', { width: size.width, height: size.height });
 
   if (!savedMatchesVersion || petPanelWidth !== size.width || petPanelHeight !== size.height) {
     const { setPetPanelSize, setPetPanelSizeVersion } = usePetStore.getState();
@@ -121,20 +120,20 @@ async function resolveAndPersistPanelSize(workArea: PetWorkAreaResult): Promise<
  * visible jump. Shared by both open paths so neither can regress on the
  * NSPanel frame-deferral workaround.
  *
- * `panelPosPhysical` and `panelSizePhysical` are PHYSICAL px (the caller
- * multiplies logical by `scale_factor` before calling).
+ * Frame values carry their units through IPC. macOS cursor opens use
+ * logical points so both reassertions survive a change of display scale.
  */
 async function applyPanelFrame(
-  panelPosPhysical: { x: number; y: number },
-  panelSizePhysical: { width: number; height: number },
+  position: LogicalPosition | PhysicalPosition,
+  size: LogicalSize | PhysicalSize,
 ): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   const { emit } = await import('@tauri-apps/api/event');
-  await invoke('pet_panel_set_position', panelPosPhysical);
-  await invoke('pet_panel_set_size', panelSizePhysical);
+  await invoke('pet_panel_set_position', { position: new Position(position) });
+  await invoke('pet_panel_set_size', { size: new Size(size) });
   await invoke('pet_panel_show');
-  await invoke('pet_panel_set_position', panelPosPhysical);
-  await invoke('pet_panel_set_size', panelSizePhysical);
+  await invoke('pet_panel_set_position', { position: new Position(position) });
+  await invoke('pet_panel_set_size', { size: new Size(size) });
   // Re-focus as the LAST step of the open gesture. On Windows, opening via
   // a `pet` (focus:false) click leaves Folyn non-foreground, so the
   // `set_focus()` inside `pet_panel_show` can hit Windows' SetForegroundWindow
@@ -242,7 +241,7 @@ async function openOrTogglePetPanel(): Promise<void> {
     // open after the pet moves to a different-DPI screen must not mix them.
     const screenSf = workArea.scale_factor || 1;
     const winSf = await currentWindowScaleFactor(screenSf);
-    const size = await resolveAndPersistPanelSize(workArea);
+    const size = await resolveAndPersistPanelSize();
 
     // Read the current pet size level from petStore so the panel anchor
     // tracks the actual mascot bounds (a large/ small pet shifts where the
@@ -264,8 +263,8 @@ async function openOrTogglePetPanel(): Promise<void> {
       x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: screenSf,
     }, size, petSize);
     await applyPanelFrame(
-      { x: Math.round(panelPosLogical.x * winSf), y: Math.round(panelPosLogical.y * winSf) },
-      { width: Math.round(size.width * winSf), height: Math.round(size.height * winSf) },
+      new PhysicalPosition(Math.round(panelPosLogical.x * winSf), Math.round(panelPosLogical.y * winSf)),
+      new PhysicalSize(Math.round(size.width * winSf), Math.round(size.height * winSf)),
     );
   } catch (err) {
     console.warn('[pet] openOrTogglePetPanel failed:', err);
@@ -273,36 +272,24 @@ async function openOrTogglePetPanel(): Promise<void> {
 }
 
 /**
- * Open the pet-panel window **centered in the work area**, or hide it if it
- * is already visible (toggle semantics, matching the click path). Invoked
- * exclusively by the global-shortcut handler (Rust emits `pet://shortcut-toggle`
- * → this function). Distinct from `openOrTogglePetPanel` (which positions
- * the panel next to the pet icon) because the shortcut is meant to summon
- * the panel from any app — the pet icon may be obscured or off-screen, so
- * anchoring to it is unreliable; work-area center is the predictable spot.
- *
- * Reuses `resolveAndPersistPanelSize` + `applyPanelFrame` so size-resolution,
- * the version-gate migration, and the post-show NSPanel frame re-assert stay
- * unified with the click path. Only the position computation differs
- * (`computeCenteredPanelPosition` instead of `computePanelPosition`).
+ * Toggle the panel near the cursor on its current monitor. Share sizing,
+ * focus and post-show frame reassertion with the mascot-click path.
  */
-async function openPetPanelCentered(): Promise<void> {
+async function openPetPanelAtCursor(): Promise<void> {
   try {
     if (await hideIfVisible()) return;
 
-    const { invoke } = await import('@tauri-apps/api/core');
-    const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
-    const screenSf = workArea.scale_factor || 1;
-    const winSf = await currentWindowScaleFactor(screenSf);
-    const size = await resolveAndPersistPanelSize(workArea);
-
-    const panelPosLogical = computeCenteredPanelPosition(
-      { x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height },
-      size,
-    );
+    const { cursor, workArea } = await getPetCursorContext();
+    const size = await resolveAndPersistPanelSize();
+    const position = computeCursorPanelPosition(cursor, workArea, size);
+    const sf = workArea.scale_factor;
     await applyPanelFrame(
-      { x: Math.round(panelPosLogical.x * winSf), y: Math.round(panelPosLogical.y * winSf) },
-      { width: Math.round(size.width * winSf), height: Math.round(size.height * winSf) },
+      isMacPlatform()
+        ? new LogicalPosition(position)
+        : new PhysicalPosition(Math.round(position.x * sf), Math.round(position.y * sf)),
+      isMacPlatform()
+        ? new LogicalSize(size)
+        : new PhysicalSize(Math.round(size.width * sf), Math.round(size.height * sf)),
     );
     // Summoned via the global shortcut → focus the search box so the user
     // can type immediately (Spotlight/Raycast behavior). Emitted AFTER
@@ -314,7 +301,7 @@ async function openPetPanelCentered(): Promise<void> {
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://panel-focus-search');
   } catch (err) {
-    console.warn('[pet] openPetPanelCentered failed:', err);
+    console.warn('[pet] openPetPanelAtCursor failed:', err);
   }
 }
 
@@ -816,7 +803,7 @@ export function PetApp() {
   //      the user persisted, so the stale registration happens to bind the
   //      right combo.
   //
-  //   2. LISTEN for `pet://shortcut-toggle` and call `openPetPanelCentered`.
+  //   2. LISTEN for `pet://shortcut-toggle` and call `openPetPanelAtCursor`.
   //      Runs once on mount — the listener is key-combo-agnostic, so it
   //      needs no re-registration when keys change.
   //
@@ -846,7 +833,7 @@ export function PetApp() {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('pet://shortcut-toggle', () => {
           console.info('[pet] pet://shortcut-toggle event received');
-          void openPetPanelCentered();
+          void openPetPanelAtCursor();
         });
       } catch (err) {
         console.warn('[pet] shortcut-toggle listen failed:', err);
