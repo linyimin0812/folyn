@@ -598,3 +598,37 @@ Fix closing the extension-tool popup jumping back into the Folyn app: surface's 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 18: Markdown split mode: giant blank gap between list and code block
+
+**Date**: 2026-09-22
+**Task**: Markdown split mode: giant blank gap between list and code block
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed intermittent giant blank gap in markdown split preview. Root cause: CodeBlockWrapper root div lacked data-source-line, so capped (420px) code blocks were invisible to the blank-gap grid compensation — the next block's grid target counted the code block's full source-line span and dumped the shortfall into the preceding gap. Wrapper now carries data-source-line; gap compensation (extracted to gapCompensation.ts) exempts code-block shortfall from gap dumping and re-anchors the grid at the code block's rendered bottom. 86 tests pass, tsc clean.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ef1b7d4e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
