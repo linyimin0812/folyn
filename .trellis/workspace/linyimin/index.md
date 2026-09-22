@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
+- **Total Sessions**: 17
 - **Last Active**: 2026-09-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~566 | Active |
+| `journal-1.md` | ~600 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-09-22 | Extension popup close focus restore | `948cb939` | `master` |
 | 16 | 2026-09-22 | Translation popup input: Cmd+A select-all and left-align | `738cd13c` | `master` |
 | 15 | 2026-09-22 | Fix fullscreen webview shrink after screen lock | `e1660132` | `master` |
 | 14 | 2026-09-19 | Fix: pet-panel unpinned delete-session confirm dialog killed by blur auto-hide | - | `master` |

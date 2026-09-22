@@ -564,3 +564,37 @@ Fixed the extension-tool translation popup: added Cmd/Ctrl+A select-all for inpu
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: Extension popup close focus restore
+
+**Date**: 2026-09-22
+**Task**: Extension popup close focus restore
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fix closing the extension-tool popup jumping back into the Folyn app: surface's activation made the panel Folyn's key window, so hide handed key to the main window. Reused the pet-panel frontmost-pid machinery — new extension_tool_adopt_frontmost command adopts pet_panel_show's pre-activation pid at the panel's tool-open sites; hide_extension_tool_window takes it and re-activates the user's app 150ms after hide when Folyn is still frontmost. Blur auto-hide skips restore; non-macOS untouched.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `948cb939` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
