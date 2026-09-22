@@ -264,6 +264,17 @@ export function ExtensionToolApp() {
         e.preventDefault();
         void close();
       }
+      // This realm is a separate webview — the main window's App.tsx Cmd/Ctrl+A
+      // fallback (for native input/textarea) never fires here, and Tauri's Edit
+      // menu deliberately has no Select All item (it would shadow CodeMirror's
+      // Mod-a in the main window). Same guard as App.tsx, scoped to this window.
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
+        const el = e.target as HTMLElement | null;
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          e.preventDefault();
+          el.select();
+        }
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);

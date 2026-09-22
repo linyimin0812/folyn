@@ -208,7 +208,7 @@ export function TranslationPanel({ embedded = false }: { embedded?: boolean } = 
         {/* Input pane */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-brd">
           <textarea
-            className={`flex-1 w-full resize-none outline-none bg-transparent text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] text-justify ${embedded ? 'px-3 py-2' : 'px-6 py-3'}`}
+            className={`flex-1 w-full resize-none outline-none bg-transparent text-left text-t1 font-ui text-[length:calc(var(--ui-font-size)+0px)] leading-[1.6] ${embedded ? 'px-3 py-2' : 'px-6 py-3'}`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('settings:translation.inputPlaceholder')}
