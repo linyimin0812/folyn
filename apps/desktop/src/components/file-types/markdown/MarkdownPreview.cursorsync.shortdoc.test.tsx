@@ -285,4 +285,49 @@ describe('MarkdownPreview cursor-sync — short doc typing (new file)', () => {
 
     cleanup();
   });
+
+  // list → blank → capped code block → blank → paragraph: a 30-line fence
+  // spans 32 editor lines (768px at LH=24) but renders capped at 420px. The
+  // wrapper div must carry data-source-line so the grid loop sees it and the
+  // planGapHeights code-block exemption applies — otherwise the gap before
+  // the wrapper absorbs the whole ~348px shortfall as a giant blank band.
+  const GAP_CODE_DOC = [
+    '- item one',
+    '- item two',
+    '',
+    '```',
+    ...Array.from({ length: 30 }, (_, i) => `line ${i + 1}`),
+    '```',
+    '',
+    'after the code block',
+  ].join('\n');
+
+  it('capped code block: both gaps keep their static 1-blank height (no giant blank band)', () => {
+    const utils = render(
+      <MarkdownPreview content={GAP_CODE_DOC} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+    );
+    scrollContainerEl = scrollEl(utils);
+    HEIGHTS.clear();
+    HEIGHTS.set(1, 2 * LH); // ul: 2 items, renders at the editor rate
+    HEIGHTS.set(4, 420); // .code-block-wrapper: capped (source span is 32×24=768)
+    HEIGHTS.set(37, LH); // paragraph
+    act(() => {
+      utils.rerender(
+        <MarkdownPreview content={GAP_CODE_DOC} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={37} cursorViewportY={EDITOR_PAD + 36 * LH} editorViewportTop={VIEWPORT_TOP} hasSelection={false} />,
+      );
+      useEditorViewStateStore.getState().setCursorViewportY(EDITOR_PAD + 36 * LH, VIEWPORT_TOP, 0, LH, 0, 0, 37);
+    });
+    const gaps = Array.from(root(utils).querySelectorAll(':scope > .md-blank-gap')) as HTMLElement[];
+    expect(gaps.length).toBe(2);
+    // gap before the code wrapper (after the list) and gap after it: both
+    // stay ≈ the static 1-blank height — the pre-fix run wrote ~792px into
+    // the first gap (the reported 数百px 空白带).
+    for (const g of gaps) {
+      const h = gapHeightOf(g);
+      expect(h).toBeGreaterThanOrEqual(8);
+      expect(h).toBeLessThan(2 * LH);
+    }
+
+    cleanup();
+  });
 });

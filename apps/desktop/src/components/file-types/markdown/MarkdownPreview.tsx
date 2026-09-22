@@ -19,6 +19,7 @@ import { rehypeSourceLine } from './rehypeSourceLine';
 import { rehypeBlankGap } from './rehypeBlankGap';
 import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
 import { blockAlignPoint, blockLastSrcLine, blockRelativeOffsetY, containerAlignPoint, directiveCloseLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
+import { planGapHeights } from './gapCompensation';
 import { registerBuiltinExtensions, VaultContext } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -560,8 +561,9 @@ function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange,
   // Applies in both source and preview views so toggling doesn't resize.
   const isEmptyHtml = isHtml && lineCount === 0;
 
+  // the grid must see capped code blocks: rootEl.children counts only data-source-line
   return (
-    <div className={`code-block-wrapper${isHtml && htmlView === 'preview' && !isEmptyHtml ? ' code-block-wrapper--no-height-cap' : ''}${isEmptyHtml ? ' code-block-wrapper--empty-html' : ''}`}>
+    <div className={`code-block-wrapper${isHtml && htmlView === 'preview' && !isEmptyHtml ? ' code-block-wrapper--no-height-cap' : ''}${isEmptyHtml ? ' code-block-wrapper--empty-html' : ''}`} data-source-line={sourceLine}>
       {isEmptyHtml ? (
         <div className="code-block-empty-html" />
       ) : htmlView === 'source' || !isHtml ? (
@@ -1442,29 +1444,19 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const contentTop = (el: HTMLElement) =>
       el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
     const blocks: { el: HTMLElement; line: number; top: number }[] = [];
-    const gapAfter = new Map<number, HTMLElement>(); // block index → the .md-blank-gap following it
+    const gapAfter = new Map<number, { el: HTMLElement; curH: number }>(); // block index → the .md-blank-gap following it (measured)
     for (const kid of Array.from(rootEl.children) as HTMLElement[]) {
       if (kid.classList.contains('md-blank-gap')) {
-        if (blocks.length > 0 && !gapAfter.has(blocks.length - 1)) gapAfter.set(blocks.length - 1, kid);
+        if (blocks.length > 0 && !gapAfter.has(blocks.length - 1))
+          gapAfter.set(blocks.length - 1, { el: kid, curH: kid.getBoundingClientRect().height });
         continue;
       }
       const line = Number(kid.getAttribute('data-source-line'));
       if (Number.isFinite(line) && line > 0) blocks.push({ el: kid, line, top: contentTop(kid) });
     }
     if (blocks.length < 2) return;
-    const origin = blocks[0].top;
-    let shift = 0; // accumulated downward shift from the adjustments above
-    const writes: Array<[HTMLElement, number]> = [];
-    for (let i = 1; i < blocks.length; i++) {
-      const gapEl = gapAfter.get(i - 1);
-      if (!gapEl) continue; // adjacent blocks (no blank line) — absorbed at the next gap
-      const curH = gapEl.getBoundingClientRect().height;
-      const desired = origin + (blocks[i].line - blocks[0].line) * editorLineHeight;
-      const newH = Math.max(8, curH + desired - (blocks[i].top + shift));
-      writes.push([gapEl, newH]);
-      shift += newH - curH;
-    }
-    for (const [el, h] of writes) el.style.height = `${h}px`;
+    const { writes } = planGapHeights(blocks, gapAfter, editorLineHeight);
+    for (const [el, h] of writes) (el as HTMLElement).style.height = `${h}px`;
   }, [reactContent, editorLineHeight, syncActive]);
 
   // ponytail: memoize VaultContext value — without this, every keystroke
