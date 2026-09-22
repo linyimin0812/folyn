@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
-- **Last Active**: 2026-09-19
+- **Total Sessions**: 15
+- **Last Active**: 2026-09-22
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~498 | Active |
+| `journal-1.md` | ~532 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-09-22 | Fix fullscreen webview shrink after screen lock | `e1660132` | `master` |
 | 14 | 2026-09-19 | Fix: pet-panel unpinned delete-session confirm dialog killed by blur auto-hide | - | `master` |
 | 13 | 2026-09-15 | Extension platform-service registration seams | `fdd2abda` | `master` |
 | 12 | 2026-09-14 | Vault 导出 unsupported 类型 + dbml SVG exporter + unsupported-text file type | `f30af5c6`, `6f797a98`, `0d03f56a`, `f9980a10`, `92ff86ae` | `master` |

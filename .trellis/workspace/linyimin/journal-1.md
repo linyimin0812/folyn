@@ -496,3 +496,37 @@ Root cause: tauri-plugin-dialog parents native confirm() to the calling window; 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: Fix fullscreen webview shrink after screen lock
+
+**Date**: 2026-09-22
+**Task**: Fix fullscreen webview shrink after screen lock
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+修复 macOS 锁屏解锁后全屏窗口内容缩到左上角：visibilitychange/focus 触发 relayout_main_webview 命令，主线程 objc setFrame 把 WKWebView 重设为 contentView bounds（wry set_size 路径无效）。带 [relayout] 诊断日志。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e1660132` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
