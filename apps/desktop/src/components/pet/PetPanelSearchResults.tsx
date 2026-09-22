@@ -262,6 +262,10 @@ export const PetPanelSearchResults = forwardRef<
         if (item.commandId === 'action.open-inbox' && isTauri()) {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
+            // Adopt the pet panel's frontmost pid as the popup's close-restore
+            // target — the popup opens after the panel already activated
+            // Folyn, so its own open-time capture has nothing to store.
+            await invoke('extension_tool_adopt_frontmost');
             await invoke('pet_panel_hide', { restoreFocus: false });
           } catch {
             // Non-fatal — the generic onDone() hide still runs.
@@ -488,6 +492,10 @@ export async function emitOpenExtensionTool(extensionId: string): Promise<void> 
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('extension_tool_match_pet_panel');
+    // Adopt the pet panel's frontmost pid as the popup's close-restore target
+    // — the popup opens after the panel already activated Folyn, so its own
+    // open-time capture has nothing to store.
+    await invoke('extension_tool_adopt_frontmost');
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://menu-action', { action: 'open-extension-tool', extensionId });
     // NO focus restore here: the tool popup's own surface

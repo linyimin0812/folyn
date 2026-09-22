@@ -12,11 +12,16 @@ use crate::errors::AppError;
 /// to float over the user's app, not steal the foreground).
 pub struct PreviousFrontmostApp(pub Mutex<Option<i32>>);
 
+/// Frontmost app pid captured at extension-tool OPEN (separate from
+/// `PreviousFrontmostApp` so the two features never clobber each other's
+/// restore target). Consumed by `hide_extension_tool_window`.
+pub struct ExtensionToolFrontmostApp(pub Mutex<Option<i32>>);
+
 /// Capture the frontmost app pid (main-thread safe via msg_send — same
 /// pattern as voice.rs's frontmostApplication probe). None when the
 /// frontmost app is Folyn itself (pid match) or the probe fails.
 #[cfg(target_os = "macos")]
-fn capture_frontmost_pid() -> Option<i32> {
+pub(crate) fn capture_frontmost_pid() -> Option<i32> {
     use tauri_nspanel::objc2::msg_send;
     unsafe {
         let cls: *mut tauri_nspanel::objc2::runtime::AnyObject =
@@ -35,7 +40,7 @@ fn capture_frontmost_pid() -> Option<i32> {
 }
 
 #[cfg(not(target_os = "macos"))]
-fn capture_frontmost_pid() -> Option<i32> {
+pub(crate) fn capture_frontmost_pid() -> Option<i32> {
     None
 }
 
@@ -43,7 +48,7 @@ fn capture_frontmost_pid() -> Option<i32> {
 /// panel-show time). No-op if the app exited. Runs on the main thread
 /// shortly after the hide so the panel teardown settles first.
 #[cfg(target_os = "macos")]
-fn restore_frontmost_app(app: &tauri::AppHandle, pid: i32) {
+pub(crate) fn restore_frontmost_app(app: &tauri::AppHandle, pid: i32) {
     use tauri_nspanel::objc2::msg_send;
     let _ = app.run_on_main_thread(move || unsafe {
         let cls: *mut tauri_nspanel::objc2::runtime::AnyObject =
@@ -60,7 +65,7 @@ fn restore_frontmost_app(app: &tauri::AppHandle, pid: i32) {
 }
 
 #[cfg(not(target_os = "macos"))]
-fn restore_frontmost_app(_app: &tauri::AppHandle, _pid: i32) {}
+pub(crate) fn restore_frontmost_app(_app: &tauri::AppHandle, _pid: i32) {}
 
 /// Show the pet-panel window and set focus. The caller sets the window's
 /// position via `pet_panel_set_position` first (or right after) so the panel

@@ -961,6 +961,12 @@ pub fn run() {
             ))
         })
         .manage({
+            startup_log("[builder] manage ExtensionToolFrontmostApp");
+            commands::ExtensionToolFrontmostApp(std::sync::Mutex::new(
+                None,
+            ))
+        })
+        .manage({
             startup_log("[builder] manage MainWindowFullscreenRestore");
             commands::MainWindowFullscreenRestore::new()
         })
@@ -1114,6 +1120,7 @@ pub fn run() {
             commands::clipboard_write_image_b64,
             commands::create_webview,
             commands::open_extension_tool_window,
+            commands::extension_tool_adopt_frontmost,
             commands::extension_tool_match_pet_panel,
             commands::hide_extension_tool_window,
             commands::extension_tool_lower_if_dialog,

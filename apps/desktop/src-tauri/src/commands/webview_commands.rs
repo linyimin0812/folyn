@@ -614,6 +614,21 @@ pub async fn open_extension_tool_window(
     //    already set level/behavior; re-asserting `orderFrontRegardless`
     //    here is idempotent and covers the hidden→shown transition (the
     //    one ordering call that never activates a nonactivating panel).
+    //    BEFORE the surface's NSApp activate: capture the frontmost pid so
+    //    the close path can give the user's app its foreground back. Write
+    //    only on Some — a None capture (Folyn already frontmost, e.g. a
+    //    tool-switch while the popup is open) must not erase the pid from
+    //    the original open. NSWorkspace frontmostApplication is safe to
+    //    probe off-main (same pattern as voice.rs:1109).
+    #[cfg(target_os = "macos")]
+    {
+        let pid = crate::commands::capture_frontmost_pid();
+        if pid.is_some() {
+            if let Some(state) = app.try_state::<crate::commands::ExtensionToolFrontmostApp>() {
+                *state.0.lock().unwrap() = pid;
+            }
+        }
+    }
     #[cfg(target_os = "macos")]
     {
         let app2 = app.clone();
@@ -683,6 +698,29 @@ pub async fn extension_tool_lower_if_dialog(app: tauri::AppHandle, label: String
     Ok(extension_tool_lower_below_dialog_if_any(&app, &label))
 }
 
+/// Adopt the pet panel's captured frontmost pid as the extension-tool
+/// popup's close-restore target. Every pet-panel tool-open path opens the
+/// popup AFTER the panel already activated Folyn (`pet_panel_show`'s
+/// `set_focus`), so `open_extension_tool_window`'s own capture sees Folyn
+/// frontmost and stores nothing. But `pet_panel_show` captured the user's
+/// app into `PreviousFrontmostApp` BEFORE that activation, and the panel's
+/// tool-open sites deliberately skip its restore (`restoreFocus:false`) —
+/// the popup is the intended owner of the foreground. This moves that pid
+/// to `ExtensionToolFrontmostApp` so `hide_extension_tool_window` restores
+/// the user's app on close.
+#[tauri::command]
+pub async fn extension_tool_adopt_frontmost(app: tauri::AppHandle) -> Result<(), String> {
+    let pid = app
+        .try_state::<crate::commands::PreviousFrontmostApp>()
+        .and_then(|s| *s.0.lock().ok()?);
+    if let Some(pid) = pid {
+        if let Some(state) = app.try_state::<crate::commands::ExtensionToolFrontmostApp>() {
+            *state.0.lock().unwrap() = Some(pid);
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
     let Some(w) = app.get_webview_window(&label) else {
@@ -711,6 +749,33 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
         return Ok(());
     }
     let _ = w.hide();
+    // Closing the popup while Folyn is the active app would otherwise hand
+    // the key window to the Folyn main window and raise it over the user's
+    // workspace (the "关闭弹窗跳转回 folyn" bug). Give the activation back
+    // to the app the popup took it from (captured at open, or adopted from
+    // the pet panel — see `extension_tool_adopt_frontmost`). Blur auto-hide
+    // skips the restore: the user is already in another app (frontmost !=
+    // Folyn, so capture_frontmost_pid returns Some), and re-activating the
+    // OLD app would steal focus from their current one. The take (not peek)
+    // consumes the pid on every hide so a stale target never survives into
+    // a later popup session.
+    #[cfg(target_os = "macos")]
+    {
+        let prev = app
+            .try_state::<crate::commands::ExtensionToolFrontmostApp>()
+            .and_then(|s| s.0.lock().ok().and_then(|mut g| g.take()));
+        if let Some(pid) = prev {
+            if crate::commands::capture_frontmost_pid().is_none() {
+                let app2 = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    // Delayed ~150ms so the hide's window-server state
+                    // settles first (same race guard as pet_panel_hide).
+                    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                    crate::commands::restore_frontmost_app(&app2, pid);
+                });
+            }
+        }
+    }
     Ok(())
 }
 
