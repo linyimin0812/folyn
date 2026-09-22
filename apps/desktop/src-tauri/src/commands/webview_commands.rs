@@ -201,6 +201,88 @@ pub async fn close_webview(app: tauri::AppHandle, label: String) -> Result<(), A
     Ok(())
 }
 
+/// Force the main webview to re-layout after the screen locks and wakes back
+/// up. On macOS the display reconfigures during lock; the NSWindow keeps its
+/// fullscreen frame but the WKWebView's backing layer is never told to resize
+/// (tao sees no window-size change → no resize event), so the page composites
+/// at the stale pre-lock size anchored top-left. The JS side calls this on
+/// `visibilitychange → visible` and `window` focus. The first fix went through
+/// wry's `set_size`, which silently did nothing (it computes the frame from
+/// the same stale state); here we set the WKWebView's frame directly, in
+/// contentView coordinates, from the contentView's own bounds.
+#[tauri::command]
+pub async fn relayout_main_webview(app: tauri::AppHandle) -> Result<(), AppError> {
+    let wv = app
+        .get_webview("main")
+        .ok_or_else(|| "Main webview not found".to_string())?;
+    let inner = wv.window().inner_size().map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "macos")]
+    {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        // AppKit setFrame must run on the main thread (async commands run on
+        // a tokio worker; off-main msg_send can trap).
+        let app2 = app.clone();
+        app.run_on_main_thread(move || {
+            use cocoa::base::id;
+            use cocoa::foundation::NSRect;
+            use objc::{msg_send, sel, sel_impl};
+
+            let result = (|| -> Result<(), String> {
+                let win = app2
+                    .get_webview("main")
+                    .map(|w| w.window())
+                    .ok_or_else(|| "Main webview not found".to_string())?;
+                let ns = win.ns_window().map_err(|e| e.to_string())? as id;
+                unsafe {
+                    let cv: id = msg_send![ns, contentView];
+                    if cv.is_null() {
+                        return Err("contentView is null".to_string());
+                    }
+                    // wry may make the WKWebView the contentView directly or a
+                    // container subview — take subview 0 if there is one.
+                    let webview: id = {
+                        let subs: id = msg_send![cv, subviews];
+                        let count: usize = msg_send![subs, count];
+                        if count > 0 {
+                            msg_send![subs, objectAtIndex: 0]
+                        } else {
+                            cv
+                        }
+                    };
+                    let bounds: NSRect = msg_send![cv, bounds];
+                    let wf: NSRect = msg_send![ns, frame];
+                    let cur: NSRect = msg_send![webview, frame];
+                    eprintln!(
+                        "[relayout] inner={:?}x{:?} window_frame=({},{},{}x{}) bounds=({},{},{}x{}) webview_frame=({},{},{}x{})",
+                        inner.width, inner.height,
+                        wf.origin.x, wf.origin.y, wf.size.width, wf.size.height,
+                        bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height,
+                        cur.origin.x, cur.origin.y, cur.size.width, cur.size.height
+                    );
+                    // Subview frame lives in the superview's coordinate space;
+                    // bounds origin is (0,0), so pin top-left at 0,0 and cover
+                    // the full bounds.
+                    let frame = NSRect {
+                        origin: cocoa::foundation::NSPoint { x: 0.0, y: 0.0 },
+                        size: bounds.size,
+                    };
+                    let _: () = msg_send![webview, setFrame: frame];
+                }
+                Ok(())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+        rx.await.map_err(|e| e.to_string())??;
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = inner;
+    }
+    Ok(())
+}
+
 /// Whether the main window should be restored to fullscreen on its next
 /// show. Set by the app-level `on_window_event` handler when the pet-mode
 /// close-to-hide path hides the main window while it was fullscreen, and

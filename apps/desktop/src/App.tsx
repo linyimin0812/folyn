@@ -16,6 +16,7 @@ import { ExtensionPageView } from './components/shell/ExtensionPageView';
 import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
 import { usePetHostBridge } from './hooks/usePetHostBridge';
+import { useScreenWakeRelayout } from './hooks/useScreenWakeRelayout';
 import { installExternalLinkInterceptor } from './services/externalLinks';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
@@ -181,6 +182,7 @@ export default function App() {
   useTheme();
   useDisableAutoCapitalize();
   usePetHostBridge();
+  useScreenWakeRelayout();
   const { t } = useTranslation();
 
   useEffect(() => installExternalLinkInterceptor(), []);

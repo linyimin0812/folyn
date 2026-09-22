@@ -1122,6 +1122,7 @@ pub fn run() {
             commands::extension_tool_start_drag,
             commands::navigate_webview,
             commands::close_webview,
+            commands::relayout_main_webview,
             commands::set_webview_position,
             commands::hide_all_webviews,
             commands::load_url_webview,
