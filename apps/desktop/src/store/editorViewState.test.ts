@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useEditorViewStateStore } from './editorViewState';
 import { useEditorStore } from './editorStore';
 
@@ -85,24 +85,35 @@ describe('useEditorViewStateStore', () => {
     expect(useEditorViewStateStore.getState().aiPanelVisible).toBe(false);
   });
 
-  it('setCursorPosition updates cursor fields and writes the active tab cursor', () => {
-    useEditorStore.setState({
-      tabs: [
-        { id: 't1', name: 'a.md', path: 'a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
-        { id: 't2', name: 'b.md', path: 'b.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
-      ],
-      activeTabId: 't1',
-    });
+  it('setCursorPosition updates cursor fields immediately and writes the active tab cursor (debounced)', () => {
+    vi.useFakeTimers();
+    try {
+      useEditorStore.setState({
+        tabs: [
+          { id: 't1', name: 'a.md', path: 'a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+          { id: 't2', name: 'b.md', path: 'b.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
+        ],
+        activeTabId: 't1',
+      });
 
-    useEditorViewStateStore.getState().setCursorPosition(7, 3);
+      useEditorViewStateStore.getState().setCursorPosition(7, 3);
 
-    expect(useEditorViewStateStore.getState().cursorLine).toBe(7);
-    expect(useEditorViewStateStore.getState().cursorCol).toBe(3);
+      // Runtime fields are synchronous (status bar + cursor-sync read them
+      // per move); the per-tab restore write is debounced — every keystroke
+      // used to map the whole tabs array and re-render the TabBar.
+      expect(useEditorViewStateStore.getState().cursorLine).toBe(7);
+      expect(useEditorViewStateStore.getState().cursorCol).toBe(3);
+      expect(useEditorStore.getState().tabs[0].cursorLine).toBeUndefined();
 
-    const tabs = useEditorStore.getState().tabs;
-    expect(tabs[0].cursorLine).toBe(7);
-    expect(tabs[0].cursorCol).toBe(3);
-    expect(tabs[1].cursorLine).toBeUndefined();
+      vi.advanceTimersByTime(400);
+
+      const tabs = useEditorStore.getState().tabs;
+      expect(tabs[0].cursorLine).toBe(7);
+      expect(tabs[0].cursorCol).toBe(3);
+      expect(tabs[1].cursorLine).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('setCursorPosition is a no-op on tabs when no active tab', () => {

@@ -233,6 +233,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     const setCursorPosition = useEditorViewStateStore((s) => s.setCursorPosition);
     const setWordCount = useEditorViewStateStore((s) => s.setWordCount);
     const setCursorViewportY = useEditorViewStateStore((s) => s.setCursorViewportY);
+    const setEditorContentPadTop = useEditorViewStateStore((s) => s.setEditorContentPadTop);
     const setSyncTargetMeasure = useEditorViewStateStore((s) => s.setSyncTargetMeasure);
     const setHasSelection = useEditorViewStateStore((s) => s.setHasSelection);
     const editorFont = useEditorPrefsStore((s) => s.editorFont);
@@ -340,6 +341,160 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       },
     }));
 
+    // ponytail: coalesced post-layout cursor-metric measurement — THE
+    // cursor-sync timing fix. CodeMirror applies scrollIntoView effects
+    // (outline jumps, preview-heading clicks, search results, AND the
+    // auto-scroll that keeps the cursor in view while typing at the
+    // viewport bottom) inside its measure() rAF, which requestMeasure()
+    // schedules BEFORE the update listeners run. Measuring synchronously
+    // in the listener therefore read the PRE-scroll screen Y: the preview
+    // aligned to where the cursor was a frame ago and stayed off by the
+    // scroll delta until the next cursor move (the persistent typing-at-
+    // the-bottom / jump misalignment). Scheduling our own rAF from the
+    // listener registers it AFTER CM's (rAFs run in request order), so it
+    // executes after measure() → after the scroll → on the final layout.
+    // Coalesced: reads the CURRENT selection at run time, so a burst of
+    // updates between frames costs one measurement on the latest state.
+    const measureScheduledRef = useRef(false);
+    const scheduleCursorMeasure = useCallback(() => {
+      if (measureScheduledRef.current) return;
+      measureScheduledRef.current = true;
+      requestAnimationFrame(() => {
+        measureScheduledRef.current = false;
+        const v = viewRef.current;
+        if (!v) return;
+        try {
+          const sel = v.state.selection.main;
+          const pos = sel.head;
+          const line = v.state.doc.lineAt(pos);
+          setCursorPosition(line.number, pos - line.from + 1);
+          // Skip cursor-sync metrics entirely while the user has an active
+          // selection (drag select, multi-line select) — the sync is for
+          // single-cursor navigation only; selection moves cause rapid
+          // preview jitter. Cursor position (status bar) still updates so
+          // the user sees where they are.
+          setHasSelection(sel.from !== sel.to);
+          if (sel.from !== sel.to) return;
+          const sd = v.scrollDOM;
+          if (!sd) return;
+          const coords = v.coordsAtPos(pos);
+          if (!coords) return;
+          const r = sd.getBoundingClientRect();
+          // ponytail: lineFrac = the cursor's vertical position within its
+          // SOURCE line's soft-wrapped block (0 at the first visual line,
+          // 1 at the last). A long single-line paragraph soft-wraps in the
+          // editor into N visual lines; as the cursor moves down the wraps,
+          // its screen Y drops, but the preview renders one block —
+          // top-aligning it (blockLineSpan=1) left the preview stuck at the
+          // block top while the cursor drifted down, one visual line per
+          // wrap (the reported soft-wrap drift). lineFrac maps the cursor's
+          // wrap position onto the preview block height so the preview
+          // tracks it. Unwrapped lines: the cursor stays on the only visual
+          // line → lineFrac≈0 → top-align (no horizontal drift either,
+          // since left/right movement on a single visual line never
+          // changes coords.top).
+          let lineFrac = 0;
+          const startCoords = v.coordsAtPos(line.from);
+          const endCoords = v.coordsAtPos(line.to);
+          if (startCoords && endCoords) {
+            const span = endCoords.bottom - startCoords.top;
+            if (span > 0) {
+              lineFrac = Math.min(1, Math.max(0, (coords.top - startCoords.top) / span));
+            }
+          }
+          // ponytail: the cursor's measured Y offset below the top of the
+          // FIRST line of its containing markdown BLOCK (the same block the
+          // preview's cursor-sync targets). Measured, so it includes the
+          // soft-wrap rows of every earlier line (line arithmetic missed
+          // those and drifted the preview down one line per wrap). Anchored
+          // via the syntax tree's block node, NOT a blank-line run scan: a
+          // paragraph directly after a code fence / list / blockquote (no
+          // blank line) shares a run with the taller block above, and the
+          // run scan misattributed that whole block's editor height to the
+          // paragraph's offset — the preview pinned the paragraph far ABOVE
+          // the cursor (the reported 从代码块移到段落预览偏上). Resolve
+          // TWICE: a pos at a block EDGE falls between nodes — side -1
+          // anchors the block ENDING there (cursor at a line END, e.g. the
+          // paragraph's last line — the common typing position; +1 alone
+          // resolved Document there → offset 0 → the block dropped to the
+          // cursor: the reported 非首行整体往下偏移，行尾对不齐、行中又对
+          // 齐), and falls back to +1 when -1 lands on Document (pos at a
+          // block's FIRST char, e.g. after Home). Mid-line pos resolves
+          // inside the block with either side.
+          let blockOffsetY = 0;
+          // The 1-indexed line the offset above is anchored at (defaults to
+          // the cursor's own line → offset 0/unknown). The preview
+          // re-anchors the offset into each target block's frame with it —
+          // inside container directives (::::tabs / ::::carousel) the
+          // editor's paragraph anchor and the preview block's first line
+          // differ by the directive scaffolding lines between them.
+          let blockAnchorLine = line.number;
+          // ponytail: the block's wrap-exact HEIGHT (first line top → last
+          // line bottom) + its last source line — the multi-line
+          // align-point's denominator. The preview maps the cursor's
+          // RELATIVE depth (offset / height) onto the preview block because
+          // the panes re-wrap differently (editor narrower, preview 800px):
+          // an absolute editor-px offset applied to preview px drifted the
+          // mapped text earlier in the paragraph as it grew. lineBlockAt
+          // works for lines outside the rendered viewport (coordsAtPos
+          // returns null there), so tall blocks partially scrolled
+          // off-screen still measure; documentTop maps doc-space → screen
+          // including .cm-content's padding (r.top + block.top misses it by
+          // paddingTop — an ~16px constant drift measured in the user's log).
+          let blockHeight = 0;
+          let blockEndLine = 0;
+          // any: SyntaxNode isn't exported by this @codemirror/language version;
+          // the loop's null guard keeps the walk safe.
+          let blockNode: any = syntaxTree(v.state).resolveInner(pos, -1);
+          if (blockNode && blockNode.name === 'Document') {
+            blockNode = syntaxTree(v.state).resolveInner(pos, 1);
+          }
+          while (blockNode && blockNode.name !== 'Document' && !MD_BLOCK_NODES.has(blockNode.name)) {
+            blockNode = blockNode.parent;
+          }
+          if (blockNode && blockNode.name !== 'Document') {
+            const blockLine = v.state.doc.lineAt(blockNode.from);
+            if (blockLine.number < line.number) {
+              const startBlock = v.lineBlockAt(blockLine.from);
+              const topY = v.documentTop + startBlock.top - sd.scrollTop;
+              blockOffsetY = Math.max(0, coords.top - topY);
+              blockAnchorLine = blockLine.number;
+              // ponytail: to−1 = the block's LAST char — some node ranges
+              // (ListItem) end at the NEXT line's start; lineAt(to) would
+              // return that line and over-count the height by one row.
+              const endLine = v.state.doc.lineAt(Math.max(blockNode.from, blockNode.to - 1));
+              const endBlock = v.lineBlockAt(endLine.to);
+              blockHeight = Math.max(0, v.documentTop + endBlock.top + endBlock.height - sd.scrollTop - topY);
+              blockEndLine = endLine.number;
+            }
+          }
+          setCursorViewportY(coords.top - r.top, r.top, pos - line.from, coords.bottom - coords.top, lineFrac, blockOffsetY, blockAnchorLine, blockHeight, blockEndLine);
+          // ponytail: the editor's line-1 phase in content space (the
+          // .cm-content padding-top — scrollTop cancels out of documentTop −
+          // scrollDOM-top, so this is scroll-independent). The preview's gap
+          // grid pins block 0 onto it: without the phase, leading blank lines
+          // / frontmatter left the first block lines ABOVE the cursor
+          // (desiredRaw clamped at 0).
+          setEditorContentPadTop(v.documentTop - r.top);
+          // ponytail: wrap-exact screen Y of the line the preview's
+          // cursor-sync requested (the ::::tabs/::::carousel line it pins).
+          // lineBlockAt is wrap-exact (line arithmetic missed soft-wrap
+          // rows — the pin drifted a row per wrap, the reported 严重偏下).
+          // Reads the request via getState (this runs outside render);
+          // measured every cursor/viewport update so the response stays
+          // fresh for the effect.
+          const syncLine = useEditorViewStateStore.getState().syncTargetLine;
+          if (syncLine > 0 && syncLine <= v.state.doc.lines) {
+            const block = v.lineBlockAt(v.state.doc.line(syncLine).from);
+            const screenY = v.documentTop + block.top - sd.scrollTop;
+            setSyncTargetMeasure(syncLine, screenY);
+          }
+        } catch {
+          // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
+        }
+      });
+    }, [setCursorPosition, setCursorViewportY, setHasSelection, setSyncTargetMeasure, setEditorContentPadTop]);
+
     const handleUpdate = useCallback(
       (update: any) => {
         try {
@@ -365,6 +520,11 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
             const sd = update.view.scrollDOM;
             const tabId = useEditorStore.getState().activeTabId;
             if (sd && tabId) persistScrollTopRef.current?.(sd.scrollTop, tabId);
+            // ponytail: intentionally NO cursor re-measure here — pure editor
+            // scrolls (wheel) must NOT drag the preview: true synchronized
+            // scrolling isn't achievable (the panes re-wrap differently), so
+            // the sync tracks only the CURSOR. Metrics re-publish on the next
+            // selectionSet / the mount & tab-switch schedules.
           }
           if (update.docChanged) {
             const content = update.state.doc.toString();
@@ -373,116 +533,15 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
             setWordCount(words);
           }
           if (update.selectionSet) {
-            const sel = update.state.selection.main;
-            // Skip cursor-sync entirely when the user has an active
-            // selection (drag select, multi-line select) — the sync is
-            // for single-cursor navigation only; selection moves cause
-            // rapid preview jitter. Cursor position (status bar) still
-            // updates so the user sees where they are.
-            const pos = sel.head;
-            const line = update.state.doc.lineAt(pos);
-            setCursorPosition(line.number, pos - line.from + 1);
-            setHasSelection(sel.from !== sel.to);
-            if (sel.from === sel.to) {
-              const v = update.view;
-              const sd = v.scrollDOM;
-              if (sd) {
-                const coords = v.coordsAtPos(pos);
-                if (coords) {
-                  const r = sd.getBoundingClientRect();
-                  // ponytail: lineFrac = the cursor's vertical position
-                  // within its SOURCE line's soft-wrapped block (0 at the
-                  // first visual line, 1 at the last). A long single-line
-                  // paragraph soft-wraps in the editor into N visual lines;
-                  // as the cursor moves down the wraps, its screen Y drops,
-                  // but the preview renders one block — top-aligning it
-                  // (blockLineSpan=1) left the preview stuck at the block top
-                  // while the cursor drifted down, one visual line per wrap
-                  // (the reported soft-wrap drift). lineFrac maps the
-                  // cursor's wrap position onto the preview block height so
-                  // the preview tracks it. Unwrapped lines: the cursor stays
-                  // on the only visual line → lineFrac≈0 → top-align (no
-                  // horizontal drift either, since left/right movement on a
-                  // single visual line never changes coords.top).
-                  let lineFrac = 0;
-                  const startCoords = v.coordsAtPos(line.from);
-                  const endCoords = v.coordsAtPos(line.to);
-                  if (startCoords && endCoords) {
-                    const span = endCoords.bottom - startCoords.top;
-                    if (span > 0) {
-                      lineFrac = Math.min(1, Math.max(0, (coords.top - startCoords.top) / span));
-                    }
-                  }
-                  // ponytail: the cursor's measured Y offset below the top
-                  // of the FIRST line of its containing markdown BLOCK (the
-                  // same block the preview's cursor-sync targets). Measured,
-                  // so it includes the soft-wrap rows of every earlier line
-                  // (line arithmetic missed those and drifted the preview
-                  // down one line per wrap). Anchored via the syntax tree's
-                  // block node, NOT a blank-line run scan: a paragraph
-                  // directly after a code fence / list / blockquote (no
-                  // blank line) shares a run with the taller block above,
-                  // and the run scan misattributed that whole block's
-                  // editor height to the paragraph's offset — the preview
-                  // pinned the paragraph far ABOVE the cursor (the reported
-                  // 从代码块移到段落预览偏上). Resolve TWICE: a pos at a
-                  // block EDGE falls between nodes — side -1 anchors the
-                  // block ENDING there (cursor at a line END, e.g. the
-                  // paragraph's last line — the common typing position;
-                  // +1 alone resolved Document there → offset 0 → the
-                  // block dropped to the cursor: the reported 非首行
-                  // 整体往下偏移，行尾对不齐、行中又对齐), and falls back
-                  // to +1 when -1 lands on Document (pos at a block's
-                  // FIRST char, e.g. after Home). Mid-line pos resolves
-                  // inside the block with either side.
-                  let blockOffsetY = 0;
-                  // The 1-indexed line the offset above is anchored at
-                  // (defaults to the cursor's own line → offset 0/unknown).
-                  // The preview re-anchors the offset into each target
-                  // block's frame with it — inside container directives
-                  // (::::tabs / ::::carousel) the editor's paragraph anchor
-                  // and the preview block's first line differ by the
-                  // directive scaffolding lines between them.
-                  let blockAnchorLine = line.number;
-                  // any: SyntaxNode isn't exported by this @codemirror/language version;
-                  // the loop's null guard keeps the walk safe.
-                  let blockNode: any = syntaxTree(v.state).resolveInner(pos, -1);
-                  if (blockNode && blockNode.name === 'Document') {
-                    blockNode = syntaxTree(v.state).resolveInner(pos, 1);
-                  }
-                  while (blockNode && blockNode.name !== 'Document' && !MD_BLOCK_NODES.has(blockNode.name)) {
-                    blockNode = blockNode.parent;
-                  }
-                  if (blockNode && blockNode.name !== 'Document') {
-                    const blockLine = v.state.doc.lineAt(blockNode.from);
-                    if (blockLine.number < line.number) {
-                      const blockTop = v.coordsAtPos(blockLine.from);
-                      if (blockTop) {
-                        blockOffsetY = Math.max(0, coords.top - blockTop.top);
-                        blockAnchorLine = blockLine.number;
-                      }
-                    }
-                  }
-                  setCursorViewportY(coords.top - r.top, r.top, pos - line.from, coords.bottom - coords.top, lineFrac, blockOffsetY, blockAnchorLine);
-                  // ponytail: wrap-exact screen Y of the line the preview's
-                  // cursor-sync requested (the ::::tabs/::::carousel line it
-                  // pins). lineBlockAt is wrap-exact (line arithmetic missed
-                  // soft-wrap rows — the pin drifted a row per wrap, the
-                  // reported 严重偏下). Reads the request via getState (the
-                  // listener runs outside render); measured every cursor/doc
-                  // update so the response stays fresh for the effect.
-                  const syncLine = useEditorViewStateStore.getState().syncTargetLine;
-                  if (syncLine > 0 && syncLine <= v.state.doc.lines) {
-                    const block = v.lineBlockAt(v.state.doc.line(syncLine).from);
-                    // documentTop maps doc-space → screen including .cm-content's
-                    // padding (r.top + block.top misses it by paddingTop — an
-                    // ~16px constant drift measured in the user's log).
-                    const screenY = v.documentTop + block.top - sd.scrollTop;
-                    setSyncTargetMeasure(syncLine, screenY);
-                  }
-                }
-              }
-            }
+            // ponytail: all cursor metrics are measured in the coalesced
+            // post-layout rAF (see scheduleCursorMeasure) — measuring here
+            // read the PRE-scroll screen Y because CM applies scrollIntoView
+            // in its measure() rAF, which runs after this listener but before
+            // ours (the persistent typing-at-the-bottom misalignment).
+            // setCursorPosition/setHasSelection move with the metrics so the
+            // store updates atomically — the cursor-sync effect otherwise
+            // ran on new-line/old-Y mixes and scrolled to a wrong spot first.
+            scheduleCursorMeasure();
           }
           // Notify parent about slash menu state changes. Derived purely from
           // the document + cursor (no CodeMirror transaction, no state field),
@@ -496,7 +555,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
         }
       },
-      [setCursorPosition, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick],
+      [setCursorPosition, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick, scheduleCursorMeasure],
     );
 
     // Build a fresh EditorState for the given doc + file path. Shared by
@@ -756,6 +815,10 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
 
       restoreCursorScroll(view);
       loadLanguage(view, filePath);
+      // ponytail: publish initial cursor metrics (post-layout rAF) so the
+      // preview's gap grid + sync have editorLineHeight from the first
+      // paint, not only after the first cursor move.
+      scheduleCursorMeasure();
 
       // Initial word count
       const words = initialContent.trim().split(/\s+/).filter(Boolean).length;
@@ -784,6 +847,10 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       view.setState(buildState(initialContent, filePath));
       restoreCursorScroll(view);
       loadLanguage(view, filePath);
+      // ponytail: the swap silences the updateListener, so the restore
+      // dispatch published nothing — measure the restored tab's cursor now
+      // (the rAF runs after swapRef clears, on the new doc's layout).
+      scheduleCursorMeasure();
       const words = initialContent.trim().split(/\s+/).filter(Boolean).length;
       setWordCount(words);
       // Clear swap on the next tick so the setState + restore dispatches

@@ -60,12 +60,35 @@ describe('rehypeBlankGap', () => {
     expect(kids[0].tagName).not.toBe('div');
   });
 
+  it('renders leading blank lines as a gap before the first block', () => {
+    // lines 1-2 blank, "a" at line 3: the editor descends 2 lines before the
+    // first block — without a leading gap the preview lacked that height and
+    // the first block sat ABOVE the cursor (desiredRaw clamped at 0).
+    const tree = hastOf('\n\na\n\nb');
+    const kids = topChildren(tree);
+    const gaps = kids.filter((k) => k.properties?.className?.includes('md-blank-gap'));
+    expect(gaps.length).toBe(2); // leading (2) + between (1)
+    expect(kids[0].properties.style).toBe('height:calc(2 * var(--md-gap-line, 1.6em))');
+    expect(gaps[1].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
+  });
+
+  it('renders frontmatter lines as the leading gap (offset shifts line 1)', () => {
+    // 3 frontmatter lines → the body's first block is editor line 4; the
+    // leading gap covers the 3 lines above it.
+    const tree = hastOf('a', /*offset*/ 3);
+    const kids = topChildren(tree);
+    expect(kids[0].properties?.className?.includes('md-blank-gap')).toBe(true);
+    expect(kids[0].properties.style).toBe('height:calc(3 * var(--md-gap-line, 1.6em))');
+  });
+
   it('respects frontmatter offset in the gap math', () => {
-    // With offset, both start/end lines shift by the same amount → gap
-    // (start - prevEnd - 1) is unchanged. Sanity check it still works.
+    // With offset 3 (3 frontmatter lines), the first block sits at editor
+    // line 4 → a leading gap of 3 covers the frontmatter; the BETWEEN gap
+    // (start − prevEnd − 1) is still offset-independent (both ends shift).
     const tree = hastOf('a\n\nb', /*offset*/ 3);
     const gaps = topChildren(tree).filter((k) => k.properties?.className?.includes('md-blank-gap'));
-    expect(gaps.length).toBe(1);
-    expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
+    expect(gaps.length).toBe(2);
+    expect(gaps[0].properties.style).toBe('height:calc(3 * var(--md-gap-line, 1.6em))');
+    expect(gaps[1].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
   });
 });

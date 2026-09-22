@@ -101,10 +101,65 @@ describe('planGapHeights', () => {
     );
     expect(writes).toEqual([[gap2.el, 30]]);
   });
+
+  it('absolute grid: the leading gap pins block 0 onto the editor line-1 phase', () => {
+    // Leading blanks / frontmatter: block 0 starts at line 3. Editor phase 16
+    // (cm-content padding-top). Static leading gap 2·L=40 → block 0 measured
+    // top 40; target = 16 + 2·L = 56 → the gap grows by 16. Follow-on blocks
+    // then use the ABSOLUTE grid (16 + (line−1)·L), not block-0-relative.
+    const leading = { el: { id: 'lead' }, curH: 40 };
+    const gap = { el: { id: 'g' }, curH: 20 };
+    const { writes } = planGapHeights(
+      [
+        { el: {}, line: 3, top: 40 },
+        { el: {}, line: 5, top: 100 },
+      ] as any,
+      new Map([[0, gap]] as any),
+      L,
+      isCode as any,
+      { top: 16, leadingGap: leading as any },
+    );
+    // pin: 40 + (56 − 40) = 56. B (line 5): target 16 + 4·L = 96, actual
+    // 100 + shift(16) = 116 → gap 20 + (96 − 116) = 0 → floored at 8.
+    expect(writes).toEqual([[leading.el, 56], [gap.el, 8]]);
+  });
+
+  it('absolute grid: a leading gap floors at 0 when the content above is taller than the phase', () => {
+    // Frontmatter card (say 100px) + 3 frontmatter lines: block 0's measured
+    // top (100 + 60 = 160) is already past the target (16 + 3·L = 76) → the
+    // gap collapses to 0, no negative height.
+    const leading = { el: { id: 'lead' }, curH: 60 };
+    const { writes } = planGapHeights(
+      [{ el: {}, line: 4, top: 160 }] as any,
+      new Map() as any,
+      L,
+      isCode as any,
+      { top: 16, leadingGap: leading as any },
+    );
+    expect(writes).toEqual([[leading.el, 0]]);
+  });
+
+  it('absolute grid without a leading gap: block 0 keeps its measured top as-is', () => {
+    // No leading blanks → no pin write; later blocks still target the
+    // absolute grid (16 + (line−1)·L).
+    const gap = { el: {}, curH: 20 };
+    const { writes } = planGapHeights(
+      [
+        { el: {}, line: 1, top: 16 },
+        { el: {}, line: 3, top: 30 },
+      ] as any,
+      new Map([[0, gap]] as any),
+      L,
+      isCode as any,
+      { top: 16 },
+    );
+    // B target = 16 + 2·L = 56, actual 30 → gap 20 + 26 = 46.
+    expect(writes).toEqual([[gap.el, 46]]);
+  });
 });
 
 describe('isCodeBlockEl', () => {
-  it('matches .code-block-wrapper and top-level pre, not prose', () => {
+  it('matches .code-block-wrapper, top-level pre, and .resizable-media (extension code fences), not prose', () => {
     const mk = (html: string) => {
       const t = document.createElement('template');
       t.innerHTML = html;
@@ -112,6 +167,7 @@ describe('isCodeBlockEl', () => {
     };
     expect(isCodeBlockEl(mk('<div class="code-block-wrapper"></div>'))).toBe(true);
     expect(isCodeBlockEl(mk('<pre><code></code></pre>'))).toBe(true);
+    expect(isCodeBlockEl(mk('<div class="resizable-media"></div>'))).toBe(true);
     expect(isCodeBlockEl(mk('<p>text</p>'))).toBe(false);
     expect(isCodeBlockEl(mk('<ul><li></li></ul>'))).toBe(false);
   });

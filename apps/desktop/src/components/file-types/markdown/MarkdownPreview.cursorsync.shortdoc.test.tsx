@@ -33,12 +33,19 @@
  * reflected in subsequent rect reads, exactly like a real browser.
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import { render, act, cleanup } from '@testing-library/react';
+import { render, act, cleanup, waitFor } from '@testing-library/react';
+import { createElement } from 'react';
 
 vi.mock('../excalidraw/ExcalidrawPreview', () => ({ ExcalidrawPreview: () => null }));
 
 import { MarkdownPreview } from './MarkdownPreview';
 import { useEditorViewStateStore } from '@/store/editorViewState';
+import { registerMarkdownCodeRenderer } from '@/services/extension-host/markdownCodeRendererAdapter';
+
+// ponytail: a unique-language dummy renderer — exercises map['pre']'s
+// renderer branch (extension code fences) without mounting real mermaid.
+registerMarkdownCodeRenderer('test', 'zzztestfence', 'zzztestfence',
+  ({ source }: any) => createElement('div', null, source));
 
 const LH = 24; // editor line height (14px × 1.7)
 const EDITOR_PAD = 16; // .cm-content padding-top — editor line 1's top
@@ -48,6 +55,8 @@ const CONTENT_TOP = 16; // prev-body pt-2 + first p margin — matches EDITOR_PA
 
 // Block heights by data-source-line (the mini layout engine's registry).
 const HEIGHTS = new Map<number, number>();
+// The SkillMetaCard's height (frontmatter docs) — 0 = not modeled.
+let CARD_H = 0;
 let scrollContainerEl: HTMLElement | null = null;
 
 /** A gap div's live height: 'NNpx' (compensated) or calc(N × var(…)) → N×LH. */
@@ -61,7 +70,9 @@ const gapHeightOf = (el: HTMLElement): number => {
 const childHeight = (el: HTMLElement): number =>
   el.classList.contains('md-blank-gap')
     ? gapHeightOf(el)
-    : (HEIGHTS.get(Number(el.getAttribute('data-source-line'))) ?? 0);
+    : el.classList.contains('skill-meta-card')
+      ? CARD_H
+      : (HEIGHTS.get(Number(el.getAttribute('data-source-line'))) ?? 0);
 
 /** Content-space top of an element inside .md-preview: walk the children,
  *  accumulating block/gap heights (margin-collapsing is modeled by the
@@ -115,14 +126,18 @@ function drive(
   utils: ReturnType<typeof render>,
   content: string,
   line: number,
-  opts: { blockOffsetY?: number; anchor?: number } = {},
+  opts: { blockOffsetY?: number; anchor?: number; cardH?: number } = {},
 ) {
   HEIGHTS.clear();
+  CARD_H = opts.cardH ?? 0;
   const lines = content.split('\n');
   lines.forEach((t, i) => {
     if (t.trim() !== '') HEIGHTS.set(i + 1, LH); // one-line paragraphs
   });
   act(() => {
+    // The editor's line-1 phase (cm-content padding-top) — the absolute
+    // grid origin for the gap-compensation pin.
+    useEditorViewStateStore.getState().setEditorContentPadTop(EDITOR_PAD);
     utils.rerender(
       <MarkdownPreview content={content} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={line} cursorViewportY={EDITOR_PAD + (line - 1) * LH} editorViewportTop={VIEWPORT_TOP} hasSelection={false} />,
     );
@@ -327,6 +342,90 @@ describe('MarkdownPreview cursor-sync — short doc typing (new file)', () => {
       expect(h).toBeGreaterThanOrEqual(8);
       expect(h).toBeLessThan(2 * LH);
     }
+
+    cleanup();
+  });
+
+  it('leading blank lines: the first block pins onto the editor grid — aligned at the doc top (no clamp drift)', () => {
+    // lines 1-2 blank, p1 at line 3, p2 at line 5. RED pre-fix: no leading
+    // gap → p1 sat at content 16 while the cursor (line 3) was 2·LH deeper →
+    // desiredRaw = −48 clamped at 0 → p1 48px ABOVE the cursor.
+    const DOC = '\n\np1\n\np2';
+    const utils = render(
+      <MarkdownPreview content={DOC} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+    );
+    scrollContainerEl = scrollEl(utils);
+    drive(utils, DOC, 3);
+    expect(transformY(utils)).toBe(0);
+    expect(scrollEl(utils).scrollTop).toBe(0);
+    // p1's top sits at the editor grid position of line 3 = the cursor's
+    // screen Y — aligned, not clamped.
+    const p1 = root(utils).querySelector('[data-source-line="3"]') as HTMLElement;
+    expect(Math.abs(p1.getBoundingClientRect().top - (VIEWPORT_TOP + EDITOR_PAD + 2 * LH))).toBeLessThan(4);
+
+    cleanup();
+  });
+
+  it('frontmatter: the leading gap absorbs the SkillMetaCard so the first body block aligns', () => {
+    // 3 frontmatter lines + SkillMetaCard (40px, shorter than 3·LH=72) +
+    // body at line 4. The pin sizes the leading gap so the body block lands
+    // on the editor grid (16 + 3·LH). RED pre-fix: no leading gap → block
+    // top 56 vs cursor 88 → 32px off (desiredRaw clamped).
+    const DOC = '---\nname: x\n---\nbody';
+    const utils = render(
+      <MarkdownPreview content={DOC} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+    );
+    scrollContainerEl = scrollEl(utils);
+    drive(utils, DOC, 4, { cardH: 40 });
+    expect(transformY(utils)).toBe(0);
+    expect(scrollEl(utils).scrollTop).toBe(0);
+    const body = root(utils).querySelector('[data-source-line="4"]') as HTMLElement;
+    expect(Math.abs(body.getBoundingClientRect().top - (VIEWPORT_TOP + EDITOR_PAD + 3 * LH))).toBeLessThan(4);
+
+    cleanup();
+  });
+
+  it('extension-rendered code fences carry data-source-line (cursor-sync target + grid exemption)', () => {
+    // The map['pre'] renderer branch (mermaid/plantuml/…) used to DROP the
+    // source line — those blocks had no alignment/highlight target.
+    const DOC = 'p1\n\n```zzztestfence\na\nb\n```\n';
+    const utils = render(
+      <MarkdownPreview content={DOC} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+    );
+    const wrapper = root(utils).querySelector('.resizable-media') as HTMLElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper.getAttribute('data-source-line')).toBe('3');
+
+    cleanup();
+  });
+
+  it('large-doc parse is debounced: keystrokes coalesce, the preview catches up after the pause', async () => {
+    // > PARSE_DEBOUNCE_CHARS (6000): the first parse is immediate (mount),
+    // but a content change is deferred — the OLD rendering stays until the
+    // debounce fires (150ms), then the new text appears. Small docs (the
+    // rest of this suite) parse per keystroke and stay synchronous.
+    const BIG = 'x'.repeat(6001);
+    const DOC1 = BIG + '\n\nold-marker';
+    const DOC2 = BIG + '\n\nnew-marker';
+    const utils = render(
+      <MarkdownPreview content={DOC1} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+    );
+    scrollContainerEl = scrollEl(utils);
+    // Immediate first parse: the marker block exists.
+    const markerOf = () => root(utils).querySelector('[data-source-line="3"]')?.textContent ?? '';
+    expect(markerOf()).toBe('old-marker');
+
+    // A keystroke-equivalent rerender: the OLD parse is still shown (the
+    // per-keystroke processSync is what lagged typing on long docs).
+    act(() => {
+      utils.rerender(
+        <MarkdownPreview content={DOC2} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+      );
+    });
+    expect(markerOf()).toBe('old-marker');
+
+    // After the debounce window, the new parse lands.
+    await waitFor(() => expect(markerOf()).toBe('new-marker'), { timeout: 1000 });
 
     cleanup();
   });

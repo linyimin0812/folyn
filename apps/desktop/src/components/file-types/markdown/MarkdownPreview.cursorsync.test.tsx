@@ -86,7 +86,7 @@ function driveCursor(
   utils: ReturnType<typeof render>,
   content: string,
   line: number,
-  cursor: { offset: number; anchor: number; viewportY: number },
+  cursor: { offset: number; anchor: number; viewportY: number; blockHeight?: number; blockEndLine?: number },
   measured?: { line: number; screenY: number },
 ) {
   act(() => {
@@ -94,7 +94,7 @@ function driveCursor(
       <MarkdownPreview content={content} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={line} cursorViewportY={cursor.viewportY} editorViewportTop={VIEWPORT_TOP} hasSelection={false} />,
     );
     const s = useEditorViewStateStore.getState();
-    s.setCursorViewportY(cursor.viewportY, VIEWPORT_TOP, 0, LH, 0, cursor.offset, cursor.anchor);
+    s.setCursorViewportY(cursor.viewportY, VIEWPORT_TOP, 0, LH, 0, cursor.offset, cursor.anchor, cursor.blockHeight ?? 0, cursor.blockEndLine ?? 0);
     if (measured) s.setSyncTargetMeasure(measured.line, measured.screenY);
   });
 }
@@ -217,6 +217,36 @@ describe('MarkdownPreview cursor-sync (tabs)', () => {
     driveCursor(utils, TALL_DOC, 47, { offset: 144, anchor: TALL_TABS_LINE, viewportY: CURSOR_DEPTH }, measure(47));
     const wrapTopDepth = wrap.getBoundingClientRect().top - VIEWPORT_TOP;
     expect(Math.abs(wrapTopDepth - (CURSOR_DEPTH - 6 * LH))).toBeLessThan(4);
+
+    cleanup();
+  });
+
+  it('TALL doc: multi-line paragraph maps the cursor\u2019s relative depth proportionally (editor px \u2192 fraction, not preview px)', () => {
+    // Cursor on line 44 — the 2nd line of p3 (the ACTIVE tab paragraph
+    // spanning source lines 43-44). Editor model: the whole directive run
+    // 41-49 is ONE 216px paragraph (9 lines × LH — the editor parser is
+    // directive-blind); offset (Y44−Y41) = 72, re-anchored to line 43 → 24;
+    // height 216 re-anchored → 216 − 48 (scaffolding above) − 120 (lines
+    // 45-49 below p3's span) = 48 → frac 0.5. The preview p3 (48px) sits
+    // so its MIDPOINT (top+24) lands at the cursor's screen Y — the old
+    // absolute-px step would put the block top 72 editor px above the
+    // cursor, i.e. the mapped text sits a quarter of the block off.
+    const utils = render(
+      <MarkdownPreview content={TALL_DOC} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+    );
+    const root = utils.container.querySelector('.md-preview') as HTMLElement;
+    const scrollContainer = root.parentElement as HTMLElement;
+    const layout = layoutTallDoc(root);
+    stubGeometry(root, scrollContainer, layout);
+    const p3 = root.querySelector('[data-source-line="43"]') as HTMLElement;
+    const CURSOR_DEPTH = 200;
+
+    driveCursor(utils, TALL_DOC, 44, {
+      offset: 72, anchor: TALL_TABS_LINE, viewportY: CURSOR_DEPTH,
+      blockHeight: 9 * LH, blockEndLine: 49,
+    });
+    const midDepth = p3.getBoundingClientRect().top - VIEWPORT_TOP + 24;
+    expect(Math.abs(midDepth - CURSOR_DEPTH)).toBeLessThan(4);
 
     cleanup();
   });

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useEditorStore } from './editorStore';
+import { debounce } from '@/utils/debounce';
 
 /**
  * Editor view-state split out of the legacy editorStore god-store (PR1).
@@ -44,6 +45,14 @@ interface EditorViewState {
    *  preview blocks on the cursor LINE center, not just its top — coordsAtPos
    *  gives the line top, so half of this offsets to the line center. */
   editorLineHeight: number;
+  /** The editor's content-space Y of line 1's top (px) — the .cm-content
+   *  padding-top, measured as documentTop − scrollDOM top so any padding
+   *  stack is included. The preview's gap-compensation grid pins block 0
+   *  onto THIS phase (blockTop = padTop + (line−1)·lineHeight), so a doc
+   *  with leading blank lines / frontmatter aligns at the very top instead
+   *  of clamping desiredRaw at 0 and sitting lines below the cursor.
+   *  0 = not yet measured. */
+  editorContentPadTop: number;
   /** Vertical fraction (0..1) of the cursor within its soft-wrapped source
    *  line (0 = first visual line, 1 = last). Lets the preview track the
    *  cursor down a wrapped single-line paragraph. ≈0 when the line isn't
@@ -64,6 +73,21 @@ interface EditorViewState {
    *  the editor's paragraph anchor and the preview block's first line
    *  differ by the directive scaffolding lines between them. */
   cursorBlockLine: number;
+  /** The wrap-exact HEIGHT of the cursor's containing markdown BLOCK in
+   *  editor px (first line top → last line bottom, measured via lineBlockAt
+   *  so blocks partially scrolled off-screen still measure). Published
+   *  with cursorBlockOffsetY — the preview maps the cursor's RELATIVE depth
+   *  (offset / height) onto the preview block, because the two panes
+   *  re-wrap the same paragraph at different widths and an absolute
+   *  editor-px offset mis-maps onto preview px. 0 = unknown. */
+  cursorBlockHeight: number;
+  /** The 1-indexed LAST source line of the editor's syntax-tree block
+   *  (0 = unknown). The editor parser is directive-blind, so inside
+   *  containers its "paragraph" run extends past the preview block's span
+   *  (fences + hidden siblings); the preview subtracts that below-span at
+   *  one editor line height per line so the fraction's denominator matches
+   *  the preview block's own line span. */
+  cursorBlockEndLine: number;
   /** The source line the preview's cursor-sync wants measured (the ::::tabs
    *  / ::::carousel line while pinning the container — the preview effect
    *  writes it). 0 = none. */
@@ -112,7 +136,8 @@ interface EditorViewState {
    *  switches + disk persistence). Throttled at the call site. */
   setPreviewScrollTop: (top: number) => void;
   setWordCount: (count: number) => void;
-  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number, blockOffsetY: number, blockAnchorLine: number) => void;
+  setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number, blockOffsetY: number, blockAnchorLine: number, blockHeight?: number, blockEndLine?: number) => void;
+  setEditorContentPadTop: (px: number) => void;
   setSyncTargetLine: (line: number) => void;
   setSyncTargetMeasure: (line: number, screenY: number) => void;
   setHasSelection: (v: boolean) => void;
@@ -140,7 +165,21 @@ interface EditorViewState {
   setFocusMode: (v: boolean) => void;
 }
 
-export const useEditorViewStateStore = create<EditorViewState>((set) => ({
+// ponytail: P2 — the per-tab cursor persistence is debounced (trailing,
+// 400ms). setCursorPosition fires on EVERY cursor move (per rAF while
+// typing / arrow keys); mapping the whole tabs array per move re-rendered
+// every editorStore `tabs` subscriber (the TabBar) on each keystroke. The
+// runtime cursorLine/Col (status bar, cursor-sync) stay synchronous — only
+// the restore-on-reopen write is delayed; the tabId is captured at schedule
+// time so a flush after a tab switch still writes the tab the cursor was
+// in (same pattern as the debounced editorScrollTop persistence).
+const persistTabCursor = debounce((tabId: string, line: number, col: number) => {
+  useEditorStore.setState((state) => ({
+    tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, cursorLine: line, cursorCol: col } : t)),
+  }));
+}, 400);
+
+export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
   cursorLine: 1,
   cursorCol: 1,
   wordCount: 0,
@@ -148,8 +187,11 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   editorViewportTop: 0,
   editorLineHeight: 0,
   cursorLineFrac: 0,
+  editorContentPadTop: 0,
   cursorBlockOffsetY: 0,
   cursorBlockLine: 0,
+  cursorBlockHeight: 0,
+  cursorBlockEndLine: 0,
   syncTargetLine: 0,
   syncTargetScreenY: 0,
   syncTargetMeasuredLine: 0,
@@ -166,18 +208,11 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
     // switches. The tab still lives in editorStore (PR2 keeps tabs there), so we
-    // delegate the tab write. Equivalent to old editorStore.setCursorPosition,
-    // just split across stores — the cursor fields move here, the tab-shaped
-    // write stays on editorStore until PR2 reconciles.
+    // delegate the tab write — debounced (see persistTabCursor above). The
+    // store's own fields stay synchronous for the status bar + cursor-sync.
     const activeTabId = useEditorStore.getState().activeTabId;
     set({ cursorLine: line, cursorCol: col });
-    if (activeTabId) {
-      useEditorStore.setState((state) => ({
-        tabs: state.tabs.map((t) =>
-          t.id === activeTabId ? { ...t, cursorLine: line, cursorCol: col } : t,
-        ),
-      }));
-    }
+    if (activeTabId) persistTabCursor(activeTabId, line, col);
   },
 
   setEditorScrollTop: (top) => {
@@ -223,9 +258,21 @@ export const useEditorViewStateStore = create<EditorViewState>((set) => ({
   },
 
   setWordCount: (count) => set({ wordCount: count }),
-  setCursorViewportY: (y, viewportTop, cursorCol, lineHeight, lineFrac, blockOffsetY, blockAnchorLine) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, editorLineHeight: lineHeight, cursorLineFrac: lineFrac, cursorBlockOffsetY: blockOffsetY, cursorBlockLine: blockAnchorLine }),
+  setCursorViewportY: (y, viewportTop, cursorCol, lineHeight, lineFrac, blockOffsetY, blockAnchorLine, blockHeight = 0, blockEndLine = 0) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, editorLineHeight: lineHeight, cursorLineFrac: lineFrac, cursorBlockOffsetY: blockOffsetY, cursorBlockLine: blockAnchorLine, cursorBlockHeight: blockHeight, cursorBlockEndLine: blockEndLine }),
   setSyncTargetLine: (line) => set({ syncTargetLine: line }),
-  setSyncTargetMeasure: (line, screenY) => set({ syncTargetMeasuredLine: line, syncTargetScreenY: screenY }),
+  setEditorContentPadTop: (px) => {
+    // ponytail: no-op guard — republished every cursor measure; a store write
+    // re-renders the preview + re-runs the gap-compensation effect.
+    if (get().editorContentPadTop === px) return;
+    set({ editorContentPadTop: px });
+  },
+  setSyncTargetMeasure: (line, screenY) => {
+    // ponytail: skip no-op writes — the editor re-measures on every cursor
+    // update (the post-layout rAF publisher), and each store write re-renders
+    // the preview + re-runs the cursor-sync effect.
+    if (get().syncTargetMeasuredLine === line && get().syncTargetScreenY === screenY) return;
+    set({ syncTargetMeasuredLine: line, syncTargetScreenY: screenY });
+  },
   setHasSelection: (v) => set({ hasSelection: v }),
 
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),

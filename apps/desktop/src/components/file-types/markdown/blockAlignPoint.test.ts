@@ -11,11 +11,12 @@ import {
 
 // srcLines are 0-indexed; blockSrcLine is 1-indexed (data-source-line).
 // Signature: (tagName, srcLines, blockSrcLine, blockOffset, blockHeight,
-// lineFrac, cursorViewportDepth, cursorBlockOffsetY).
-// cursorBlockOffsetY = the cursor's MEASURED Y below its paragraph's first
+// lineFrac, cursorBlockOffsetY, cursorBlockHeight).
+// cursorBlockOffsetY = the cursor's MEASURED Y below its block's first
 // line in the editor (EditorView publishes it — includes earlier lines'
-// soft-wrap rows). cursorViewportDepth = the cursor's depth into the shared
-// preview viewport. Both default to 0 (→ top-align).
+// soft-wrap rows). cursorBlockHeight = the same block's MEASURED height
+// (first line top → last line bottom) — the multi-line fraction's
+// denominator. Both default to 0 (→ top-align).
 function src(lines: string[]): string[] {
   return lines;
 }
@@ -38,48 +39,45 @@ describe('blockAlignPoint', () => {
     });
   });
 
-  describe('multi-line blocks', () => {
+  describe('multi-line blocks (pixel-fraction mapping)', () => {
     const lines = src(['line one', 'line two', 'line three', '']);
 
-    it('aligns the block top when the cursor is on the first line (offset 0)', () => {
-      expect(blockAlignPoint('P', lines, 1, 0, 90, 0, 500, 0)).toBe(0);
+    it('top-aligns when the cursor is on the first line (offset 0)', () => {
+      // Editor block 90px tall; cursor on line 1 → offset 0 → frac 0.
+      expect(blockAlignPoint('P', lines, 1, 0, 90, 0, 0, 90)).toBe(0);
     });
 
-    it('steps by the measured offset (one editor line down → 30px)', () => {
-      expect(blockAlignPoint('P', lines, 1, 0, 90, 0, 500, 30)).toBe(30);
+    it('maps the cursor\u2019s relative depth proportionally (1/3 down → 1/3 of the block)', () => {
+      // Editor: 3-line block, 90px; cursor 30px below the top (line 2).
+      // Preview renders 90px → the point at 30px.
+      expect(blockAlignPoint('P', lines, 1, 0, 90, 0, 30, 90)).toBe(30);
     });
 
-    it('uses the wrap-aware measured offset, not (K-1)·lineHeight', () => {
-      // The reported bug: 3 source lines; lines 1-2 each soft-wrap into 2
-      // visual rows in the editor; the cursor on line 3's first visual row
-      // sits 4 rows (120px) below the paragraph top. The (K-1)·lineHeight
-      // estimate said 60 — the missing 60px drifted the preview block top
-      // BELOW the editor paragraph top, one line per wrap, worst on the
-      // last line. The measured offset pins the tops exactly.
-      const wrapped = src(['l1 l1', 'l2 l2', 'line three', '']);
-      expect(blockAlignPoint('P', wrapped, 1, 0, 90, 0, 500, 120)).toBe(120);
+    it('is scale-free: editor 200px, preview 60px — 50% depth lands at 30px', () => {
+      // The old absolute-px step applied 100 EDITOR px to the PREVIEW,
+      // overshooting a 60px block (the two panes re-wrap differently —
+      // editor px has no valid scale in preview px). The fraction lands
+      // the halfway point at the halfway point.
+      expect(blockAlignPoint('P', lines, 1, 0, 60, 0, 100, 200)).toBe(30);
     });
 
-    it('runs the align point past a short joined block on purpose (tops pinned)', () => {
-      // 5 source lines join into ONE preview row (H=20) while the editor
-      // shows 5 lines (26px each): the measured offset (26 / 104px) is
-      // where the cursor's line sits in the editor's frame — the scroll
-      // target need not stay inside the block; the block TOP stays pinned
-      // to the editor paragraph top (no pane drift as the cursor descends).
-      const joined = src(['一', '二', '三', '四', '五', '']);
-      expect(blockAlignPoint('P', joined, 1, 100, 20, 0, 500, 26)).toBe(126);
-      expect(blockAlignPoint('P', joined, 1, 100, 20, 0, 500, 104)).toBe(204);
+    it('keeps the point inside the block when the editor wraps more than the preview', () => {
+      // 3 source lines: 5 editor rows (150px — soft-wrap), 2 preview rows
+      // (48px). Cursor on the 3rd row (60px down) → frac 0.4 → 19.2px: the
+      // preview text at the cursor's height corresponds to the cursor's
+      // relative place in the paragraph (the reported 没完全对齐).
+      expect(blockAlignPoint('P', lines, 1, 100, 48, 0, 60, 150)).toBeCloseTo(100 + 19.2, 5);
     });
 
-    it('clamps the step at the cursor viewport depth so the pinned top stays visible', () => {
-      // Paragraph top scrolled above the viewport: the cursor sits 40px
-      // into the viewport, the measured offset is 104 → clamped to 40, so
-      // the block glues to the viewport top instead of disappearing above.
-      const joined = src(['一', '二', '三', '四', '五', '']);
-      expect(blockAlignPoint('P', joined, 1, 100, 20, 0, 40, 104)).toBe(140);
+    it('clamps the fraction to [0, 1]', () => {
+      // Offset past the block end (stale measurement) → bottom; negative → top.
+      expect(blockAlignPoint('P', lines, 1, 100, 40, 0, 500, 200)).toBe(140);
+      expect(blockAlignPoint('P', lines, 1, 100, 40, 0, -12, 200)).toBe(100);
     });
 
-    it('top-aligns when the offset is unknown (0)', () => {
+    it('top-aligns when the editor block height is unknown (0)', () => {
+      // Unknown denominator → the fallback is the first-line fraction (0).
+      expect(blockAlignPoint('P', lines, 1, 0, 90, 0, 30, 0)).toBe(0);
       expect(blockAlignPoint('P', lines, 1, 0, 90)).toBe(0);
     });
   });
@@ -123,9 +121,10 @@ describe('blockAlignPoint', () => {
 
   it('treats a block with no trailing blank line as spanning to EOF', () => {
     // No blank line terminates the paragraph → span runs to the last line
-    // (multi-line path). The measured offset steps 30px.
+    // (multi-line path). Editor block 60px, cursor halfway (30px) → the
+    // preview point at 30px of 60.
     const lines = src(['line one', 'line two']);
-    const ap = blockAlignPoint('P', lines, 1, 0, 60, 0, 500, 30);
+    const ap = blockAlignPoint('P', lines, 1, 0, 60, 0, 30, 60);
     expect(ap).toBeCloseTo(30, 5);
   });
 

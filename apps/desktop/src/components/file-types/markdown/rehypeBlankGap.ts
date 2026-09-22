@@ -82,6 +82,18 @@ export function rehypeBlankGap(options: { offset?: number; totalLines?: number }
         if (prevEndLine != null) {
           const gap = startLine - prevEndLine - 1;
           if (gap > 0) next.push(gapDiv(gap));
+        } else {
+          // Leading gap: the editor renders EVERY line from 1 — leading
+          // blanks AND frontmatter lines (the body starts at editor line
+          // offset+1) — but the preview rendered nothing above the first
+          // block. The cursor in the first content block then had N·lh of
+          // editor content above it that the preview lacked: desiredRaw went
+          // negative, scrollTop clamped at 0, and the block sat N lines ABOVE
+          // the cursor (short docs / doc tops never aligned). Render those
+          // lines as a leading gap div; the runtime compensation pins block 0
+          // onto the editor's line-1 phase (planGapHeights' grid).
+          const leading = startLine - 1;
+          if (leading > 0) next.push(gapDiv(leading));
         }
         prevEndLine = Math.max(prevEndLine ?? 0, endLine);
       }

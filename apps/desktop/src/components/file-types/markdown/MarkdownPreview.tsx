@@ -44,6 +44,16 @@ import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
 import { getResizedMediaWidth } from './mediaResize';
+
+// ponytail: P2 — large-doc parse debounce knobs. Docs above
+// PARSE_DEBOUNCE_CHARS re-parse at most every PARSE_DEBOUNCE_MS after the
+// last keystroke, never stalling longer than PARSE_MAX_WAIT_MS during a
+// continuous typing burst. Below the threshold, per-keystroke parsing is
+// cheap and stays instant.
+const PARSE_DEBOUNCE_CHARS = 6_000;
+const PARSE_DEBOUNCE_MS = 150;
+const PARSE_MAX_WAIT_MS = 500;
+
 /**
  * Rehype extension: remove <br> nodes inside <code> elements (within <pre> blocks).
  * remark-breaks converts soft line breaks to <br> in paragraphs,
@@ -412,6 +422,13 @@ function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }:
     <div
       className="resizable-media"
       ref={wrapperRef}
+      // ponytail: stamp the source line so extension-rendered code fences
+      // (mermaid/plantuml/dot — the renderer path in map['pre']) participate
+      // in cursor-sync selection/highlight and the gap-compensation grid;
+      // without it they had NO alignment target (the CodeBlockWrapper path
+      // stamps its own div). For images this duplicates the inner <img>'s
+      // stamp — same line, the later-in-DOM img wins the selection, harmless.
+      data-source-line={sourceLine}
       style={width != null ? { width: `${width}px`, height: 'auto' } : undefined}
     >
       {children}
@@ -855,6 +872,19 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // align-point step. Read from the store directly like cursorLineFrac, no
   // prop threading.
   const cursorBlockOffsetY = useEditorViewStateStore((s) => s.cursorBlockOffsetY);
+  // ponytail: the cursor's block MEASURED HEIGHT + last line — the
+  // multi-line align-point's DENOMINATOR. The preview maps the cursor's
+  // relative depth (offset / height) onto the preview block because the
+  // two panes re-wrap the same paragraph at different widths: an absolute
+  // editor-px offset has no valid scale in preview px.
+  const cursorBlockHeight = useEditorViewStateStore((s) => s.cursorBlockHeight);
+  const cursorBlockEndLine = useEditorViewStateStore((s) => s.cursorBlockEndLine);
+  // ponytail: the editor's line-1 phase in content space (cm-content
+  // padding-top) — the gap-compensation grid's absolute origin. With it,
+  // leading blank lines / frontmatter lines render as a leading gap and
+  // block 0 pins onto the editor's line grid, so doc tops align instead of
+  // clamping desiredRaw at 0 (the reported 短文档/文档顶部对不齐).
+  const editorContentPadTop = useEditorViewStateStore((s) => s.editorContentPadTop);
   // ponytail: the editor-side line cursorBlockOffsetY is measured from (the
   // syntax-tree block's first line). The effect re-anchors the offset into
   // each target block's frame with it (blockRelativeOffsetY) — inside
@@ -870,13 +900,55 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   const syncTargetScreenY = useEditorViewStateStore((s) => s.syncTargetScreenY);
   const syncTargetMeasuredLine = useEditorViewStateStore((s) => s.syncTargetMeasuredLine);
 
+  // ponytail: P2 — deferred markdown parse for LARGE docs. Per-keystroke
+  // processSync + a full React reconcile of the preview tree is what made
+  // typing lag on long docs; small docs (< PARSE_DEBOUNCE_CHARS) parse per
+  // keystroke (cheap, keeps the preview instantly live). Large docs:
+  // trailing debounce (150ms after the last edit) capped by a max wait
+  // (500ms — a long typing burst still updates ~2×/sec instead of stalling
+  // indefinitely). Tab switches / different files parse immediately — never
+  // flash the previous doc while a debounce window runs. parsedContent is
+  // what the DOM shows, so the cursor-sync effect and its srcLines read it
+  // (not the live content, which can be a few keystrokes ahead).
+  const [parsedContent, setParsedContent] = useState(content);
+  const parseRef = useRef(parsedContent);
+  parseRef.current = parsedContent;
+  const lastParsedPathRef = useRef(filePath);
+  const pendingSinceRef = useRef(0);
+  useEffect(() => {
+    if (filePath !== lastParsedPathRef.current) {
+      lastParsedPathRef.current = filePath;
+      pendingSinceRef.current = 0;
+      setParsedContent(content);
+      return;
+    }
+    if (content === parsedContent) return;
+    if (content.length <= PARSE_DEBOUNCE_CHARS) {
+      pendingSinceRef.current = 0;
+      setParsedContent(content);
+      return;
+    }
+    const now = Date.now();
+    if (!pendingSinceRef.current) pendingSinceRef.current = now;
+    const wait = Math.max(0, Math.min(
+      PARSE_DEBOUNCE_MS,
+      PARSE_MAX_WAIT_MS - (now - pendingSinceRef.current),
+    ));
+    const t = setTimeout(() => {
+      pendingSinceRef.current = 0;
+      setParsedContent(content);
+    }, wait);
+    return () => clearTimeout(t);
+  }, [content, filePath, parsedContent]);
+
   // ponytail: cursor-driven preview scroll (split mode only). When the
   // editor cursor moves, scroll the preview so the point in the matched
   // block that corresponds to the cursor line aligns to the same
   // vertical viewport position as the cursor. Both panes share the same
   // flex-row height. Scroll-sync (preview scroll -> editor) is NOT
-  // implemented; only cursor -> preview. The effect never re-parses the
-  // markdown (no cursor prop is in reactContent deps).
+  // implemented; only cursor -> preview. The effect never parses anything
+  // itself — it re-runs on parsedContent, i.e. once per actual re-parse,
+  // not per keystroke (see the deferred-parse effect above).
   const activeBlockRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -948,7 +1020,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     // still inside this container (an in-child blank advances to the next
     // paragraph via the gap path). Driven by the declaration
     // (data-hides-inactive), not names.
-    const srcLines = contentRef.current.split('\n');
+    const srcLines = parseRef.current.split('\n');
     const containerWrap = (target as HTMLElement).closest('[data-hides-inactive][data-source-line]');
     if (containerWrap && target !== containerWrap) {
       const tLine = Number(target.getAttribute('data-source-line'));
@@ -1038,9 +1110,9 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       ? nextBlockEl.getBoundingClientRect().top - containerRect.top + scrollContainer.scrollTop
       : null;
 
-    // Where the cursor line top sits on screen (editor frame). Computed
-    // before the align point: blockAlignPoint's multi-line path clamps its
-    // per-line step at the cursor's depth into the (shared-height) viewport.
+    // Where the cursor line top sits on screen (editor frame) — the align
+    // target: the scroll puts the preview's align point at this screen Y
+    // (both panes' scroll containers share the viewport top in split mode).
     const cursorScreenY = (editorViewportTop ?? 0) + (cursorViewportY ?? 0);
     // The editor-side line cursorBlockOffsetY is measured from (0/unknown →
     // the cursor's own line, making the re-anchoring below a no-op).
@@ -1144,23 +1216,35 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       // so the highlight box is symmetric around the cursor instead of
       // top-aligned with the box hanging below); list items top-align to
       // the cursor line (one line each, independent — the whole <ul> is
-      // no longer treated as one block); multi-line blocks step by the
-      // cursor's MEASURED offset below its paragraph's first line
-      // (cursorBlockOffsetY — wrap-exact) so the block top stays pinned
-      // to the editor paragraph top (no pane drift as the cursor walks
-      // the lines); a single source line that renders tall tracks the
-      // cursor's soft-wrap fraction.
+      // no longer treated as one block); multi-line blocks map the
+      // cursor's RELATIVE depth in its editor block (offset / height,
+      // both wrap-exact editor measurements) proportionally onto the
+      // preview block — first line pins the tops together, last line
+      // rides at the block bottom, middle lands at the matching relative
+      // place, so the text at the cursor's screen height corresponds to
+      // the cursor's line even when the panes re-wrap differently (the
+      // old absolute-px step had no valid scale and drifted — the
+      // reported 没完全对齐 on long paragraphs). A single source line
+      // that renders tall tracks the cursor's soft-wrap fraction.
+      //
+      // Both editor metrics are re-anchored into THIS block's frame first:
+      // the editor parser is directive-blind, so inside ::::tabs / ::::carousel
+      // its paragraph run starts ABOVE the preview block's first line
+      // (scaffolding — subtract via blockRelativeOffsetY) and ends BELOW
+      // the preview block's span (fences + hidden siblings — subtract at
+      // one editor line height per line, so the fraction's denominator
+      // matches the preview block's own line range). Outside containers
+      // both corrections are 0.
+      const relOffsetY = blockRelativeOffsetY(cursorBlockOffsetY, anchorLine, blockSrcLine, editorLineHeight ?? 0);
+      const belowScaffolding = cursorBlockEndLine > 0
+        ? Math.max(0, cursorBlockEndLine - lastSrcLine) * (editorLineHeight ?? 0)
+        : 0;
+      const relHeight = Math.max(0,
+        blockRelativeOffsetY(cursorBlockHeight, anchorLine, blockSrcLine, editorLineHeight ?? 0) - belowScaffolding);
       alignPoint = blockAlignPoint(
         el.tagName, srcLines, blockSrcLine, blockOffset, blockHeight, cursorLineFrac,
-        cursorScreenY - containerRect.top,
-        // Re-anchor the measured offset from the editor's block anchor line
-        // to THIS block's first line — inside container directives the two
-        // differ by the scaffolding lines between them (the editor's parser
-        // doesn't see ::: fences), and the un-converted offset stepped the
-        // block by an offset anchored at the wrong line (content sat a
-        // scaffolding run below the cursor). Outside containers the anchor
-        // equals the block line and this is a no-op.
-        blockRelativeOffsetY(cursorBlockOffsetY, anchorLine, blockSrcLine, editorLineHeight ?? 0),
+        relOffsetY,
+        relHeight,
       );
     }
 
@@ -1192,7 +1276,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
       scrollContainer.scrollTop = desired;
     }
-  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, cursorBlockLine, syncTargetLine, syncTargetScreenY, syncTargetMeasuredLine, content]);
+  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, cursorBlockLine, cursorBlockHeight, cursorBlockEndLine, syncTargetLine, syncTargetScreenY, syncTargetMeasuredLine, parsedContent]);
 
   // Clean up the active-block marker on unmount.
   useEffect(() => {
@@ -1256,7 +1340,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // Parse frontmatter before building the component map so the directive
   // wrappers can stamp a frontmatter-offset-adjusted `data-source-line`
   // (matches rehypeSourceLine's offset, so cursor sync lines up).
-  const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(content), [content]);
+  const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(parsedContent), [parsedContent]);
 
   const componentMap = useMemo(() => {
     const map = buildComponentMap(frontmatterLineCount);
@@ -1395,7 +1479,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         .use(rehypeMarkResultBlock)
         .use(rehypeMathjax)
         .use(rehypeSourceLine, { offset: frontmatterLineCount });
-      if (syncActive) pipeline.use(rehypeBlankGap, { offset: frontmatterLineCount, totalLines: content.split('\n').length });
+      if (syncActive) pipeline.use(rehypeBlankGap, { offset: frontmatterLineCount, totalLines: parsedContent.split('\n').length });
       const result = pipeline
         .use(rehypeReact, {
           jsx,
@@ -1411,7 +1495,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       console.error('[MarkdownPreview] render error:', error);
       return createElement('p', null, '渲染错误');
     }
-  }, [body, componentMap, frontmatterLineCount, syncActive]);
+  }, [body, componentMap, frontmatterLineCount, syncActive, parsedContent]);
 
   // ponytail: runtime blank-gap compensation — the last piece of the
   // "preview descends at the editor's rate" design. rehypeBlankGap sizes
@@ -1424,10 +1508,15 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // >1-page docs aligned: 只有超过一页才对齐) and why the old transform
   // push-down grew a blank band at the top. Fix the geometry instead:
   // measure each top-level block and re-size the gap div BEFORE the next
-  // block so every block lands on the editor's line grid (first block's
-  // measured top + (line−1)×editorLineHeight). Then the cursor-sync
-  // desiredRaw stays ≈ 0 at any doc length: scrollTop 0, every block
-  // aligned to its editor line, no content pushed down, no band.
+  // block so every block lands on the editor's line grid. The grid is
+  // ABSOLUTE when the editor publishes its line-1 phase (editorContentPadTop
+  // — grid.top + (line−1)·editorLineHeight): the leading blank / frontmatter
+  // gap renders above block 0 and gets pinned so the FIRST block also sits
+  // on the grid (doc tops + short docs with leading blanks align); without
+  // the phase (not yet measured) it falls back to the relative grid (first
+  // block's measured top as origin). Then the cursor-sync desiredRaw stays
+  // ≈ 0 at any doc length: scrollTop 0, every block aligned to its editor
+  // line, no content pushed down, no band.
   // useLayoutEffect (pre-paint) so per-keystroke re-parses never flash the
   // static gap before the compensated height — that would flicker. One
   // rect pass, cumulative in-memory adjustment, one write pass (single
@@ -1445,19 +1534,30 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
     const blocks: { el: HTMLElement; line: number; top: number }[] = [];
     const gapAfter = new Map<number, { el: HTMLElement; curH: number }>(); // block index → the .md-blank-gap following it (measured)
+    // The leading .md-blank-gap (before block 0 — leading blanks /
+    // frontmatter lines; rehypeBlankGap inserts it). Resized by the grid pin
+    // so block 0 lands on the editor's line-1 phase, absorbing whatever sits
+    // above (the SkillMetaCard for frontmatter docs).
+    let leadingGap: { el: HTMLElement; curH: number } | null = null;
     for (const kid of Array.from(rootEl.children) as HTMLElement[]) {
       if (kid.classList.contains('md-blank-gap')) {
-        if (blocks.length > 0 && !gapAfter.has(blocks.length - 1))
+        if (blocks.length === 0) {
+          if (!leadingGap) leadingGap = { el: kid, curH: kid.getBoundingClientRect().height };
+        } else if (!gapAfter.has(blocks.length - 1)) {
           gapAfter.set(blocks.length - 1, { el: kid, curH: kid.getBoundingClientRect().height });
+        }
         continue;
       }
       const line = Number(kid.getAttribute('data-source-line'));
       if (Number.isFinite(line) && line > 0) blocks.push({ el: kid, line, top: contentTop(kid) });
     }
-    if (blocks.length < 2) return;
-    const { writes } = planGapHeights(blocks, gapAfter, editorLineHeight);
+    if (blocks.length < 1) return;
+    // Absolute grid (editor's line-1 phase) when the editor has published
+    // it; before that (or non-split) fall back to the relative grid.
+    const grid = editorContentPadTop > 0 ? { top: editorContentPadTop, leadingGap: leadingGap ?? undefined } : undefined;
+    const { writes } = planGapHeights(blocks, gapAfter, editorLineHeight, undefined, grid);
     for (const [el, h] of writes) (el as HTMLElement).style.height = `${h}px`;
-  }, [reactContent, editorLineHeight, syncActive]);
+  }, [reactContent, editorLineHeight, syncActive, editorContentPadTop]);
 
   // ponytail: memoize VaultContext value — without this, every keystroke
   // (content change → MarkdownPreview re-renders) creates a fresh value object,
