@@ -74,6 +74,17 @@ afterEach(() => {
 });
 
 describe('PetPanelApp', () => {
+  it('positions an extension over the pet panel before dispatching its open event', async () => {
+    const { emitOpenExtensionTool } = await import('./PetPanelSearchResults');
+    await emitOpenExtensionTool('example-extension');
+    const placement = invokeMock.mock.calls.findIndex(([command]) => command === 'extension_tool_match_pet_panel');
+    expect(placement).toBeGreaterThanOrEqual(0);
+    const open = emitMock.mock.calls.findIndex(([event, payload]) =>
+      event === 'pet://menu-action' && payload.extensionId === 'example-extension',
+    );
+    expect(open).toBeGreaterThanOrEqual(0);
+    expect(invokeMock.mock.invocationCallOrder[placement]).toBeLessThan(emitMock.mock.invocationCallOrder[open]);
+  });
   it('keeps logical size across DPI changes and persists manual resizing only while visible', async () => {
     const intervalSpy = vi.spyOn(window, 'setInterval');
     let physicalSize = { width: 880, height: 1240 };
@@ -445,10 +456,10 @@ describe('PetPanelApp', () => {
           extensionId: 'builtin:translation',
         }),
       );
-      // The open-extension-tool path hides the panel with restoreFocus so
-      // the popup floats over the user's app (not Folyn).
+      // Place before the open event, then hide without deactivating the new popup.
+      expect(invokeMock).toHaveBeenCalledWith('extension_tool_match_pet_panel');
       await waitFor(() =>
-        expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: true }),
+        expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: false }),
       );
       restore();
     });
@@ -502,7 +513,7 @@ describe('PetPanelApp', () => {
   // entry point. Searching 收件箱 surfaces it in the Commands group; picking
   // it routes run-command to the main window (which runs the registered
   // action.open-inbox → open_extension_tool_window builtin:inbox) and hides
-  // the panel with restoreFocus so the popup floats over the user's app.
+  // the panel without restoring focus so the popup remains active.
   // The real command is registered by App.tsx's registerBuiltinCommands
   // (not run in tests) — seed a stand-in with the same id/title/keywords.
   describe('inbox command row', () => {
@@ -523,7 +534,7 @@ describe('PetPanelApp', () => {
       d.dispose();
     });
 
-    it('picking the row emits run-command action.open-inbox and hides with restoreFocus', async () => {
+    it('picking the row emits run-command action.open-inbox and hides without restoring focus', async () => {
       const { registerCommand } = await import('@/services/commandRegistry');
       const d = registerCommand({
         id: 'action.open-inbox',
@@ -541,11 +552,10 @@ describe('PetPanelApp', () => {
           commandId: 'action.open-inbox',
         }),
       );
-      // The inbox-command path hides the panel restoring the user's
-      // previous frontmost app (translation-popup parity — the popup floats
-      // over the user's app, Folyn must not stay foreground).
+      // The inbox command follows the same in-place replacement path.
+      expect(invokeMock).toHaveBeenCalledWith('extension_tool_match_pet_panel');
       await waitFor(() =>
-        expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: true }),
+        expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: false }),
       );
       d.dispose();
     });
@@ -703,7 +713,7 @@ describe('search recents row', () => {
     expect(container.querySelector('.pet-panel-search-recents')).toBeTruthy();
   });
 
-  it('clicking a chip emits open-extension-tool for that extension and hides with restoreFocus', async () => {
+  it('clicking a chip emits open-extension-tool for that extension and hides without restoring focus', async () => {
     usePetStore.setState({ recentExtensionIds: ['builtin:translation', 'builtin:inbox'] });
     const { container } = render(<PetPanelApp />);
     focusSearch(container);
@@ -716,10 +726,10 @@ describe('search recents row', () => {
         extensionId: 'builtin:inbox',
       }),
     );
-    // Same hide-with-restoreFocus as a picked search row: the tool popup
-    // floats over the user's app, Folyn must not stay foreground.
+    // Recent chips reuse the in-place replacement and preserve popup focus.
+    expect(invokeMock).toHaveBeenCalledWith('extension_tool_match_pet_panel');
     await waitFor(() =>
-      expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: true }),
+      expect(invokeMock).toHaveBeenCalledWith('pet_panel_hide', { restoreFocus: false }),
     );
   });
 

@@ -7,7 +7,6 @@ import { openPetContextMenu } from './PetContextMenu';
 import { clampPetPosition, computeDefaultPetPosition, computePanelPosition, computeCursorPanelPosition, resolvePanelSize, PET_PANEL_SIZE_VERSION, petSizeToPx, type PetSize } from './petPosition';
 import { keysToAccelerator } from '@/utils/shortcutAccelerator';
 import { isTauri } from '@/utils/platform';
-import { currentWindowScaleFactor } from '@/utils/windowScale';
 import { usePetStore } from '@/store/petStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { hydrateAllStores } from '@/store/settingsPersistence';
@@ -218,7 +217,7 @@ async function applyPetSizeAndClamp(size: PetSize): Promise<void> {
  * outer position at open time via `computePanelPosition` (the panel's corner
  * attaches to the pet icon's diagonally-opposite corner with `PET_PANEL_GAP`
  * clearance on BOTH axes; the corner is chosen by work-area quadrant so the
- * panel extends into the open quadrant and never covers the pet icon). The
+ * panel extends into the open quadrant, then shifts inward at screen edges). The
  * saved `petPanelX/Y` is NOT restored — even if the user dragged the panel
  * to a new spot while it was open, the next open snaps back to the
  * pet-relative position. (The panel can still be dragged while open; that
@@ -235,12 +234,16 @@ async function openOrTogglePetPanel(): Promise<void> {
 
     const { invoke } = await import('@tauri-apps/api/core');
     const probe = await invoke<PetCursorProbeResult>('pet_cursor_probe');
-    const workArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
-    // Pet screen's scale (pet position → logical) vs the PANEL window's own
-    // scale (frame → physical) — see currentWindowScaleFactor. The first
-    // open after the pet moves to a different-DPI screen must not mix them.
-    const screenSf = workArea.scale_factor || 1;
-    const winSf = await currentWindowScaleFactor(screenSf);
+    const rawWorkArea = await invoke<PetWorkAreaResult>('pet_get_work_area');
+    const screenSf = rawWorkArea.scale_factor || 1;
+    // Native work areas are logical on macOS and physical elsewhere.
+    const workArea = isMacPlatform() ? rawWorkArea : {
+      ...rawWorkArea,
+      x: rawWorkArea.x / screenSf,
+      y: rawWorkArea.y / screenSf,
+      width: rawWorkArea.width / screenSf,
+      height: rawWorkArea.height / screenSf,
+    };
     const size = await resolveAndPersistPanelSize();
 
     // Read the current pet size level from petStore so the panel anchor
@@ -257,14 +260,18 @@ async function openOrTogglePetPanel(): Promise<void> {
     //
     // Unit boundary: `probe.window_x/y` is PHYSICAL px; `computePanelPosition`
     // runs in LOGICAL points. Divide by `screenSf` to get logical, compute,
-    // then multiply by `winSf` for `pet_panel_set_position` (physical px).
+    // then retain logical units on macOS; other platforms use screen pixels.
     const petPosLogical = { x: probe.window_x / screenSf, y: probe.window_y / screenSf };
     const panelPosLogical = computePanelPosition(petPosLogical, {
       x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height, scale_factor: screenSf,
     }, size, petSize);
     await applyPanelFrame(
-      new PhysicalPosition(Math.round(panelPosLogical.x * winSf), Math.round(panelPosLogical.y * winSf)),
-      new PhysicalSize(Math.round(size.width * winSf), Math.round(size.height * winSf)),
+      isMacPlatform()
+        ? new LogicalPosition(panelPosLogical)
+        : new PhysicalPosition(Math.round(panelPosLogical.x * screenSf), Math.round(panelPosLogical.y * screenSf)),
+      isMacPlatform()
+        ? new LogicalSize(size)
+        : new PhysicalSize(Math.round(size.width * screenSf), Math.round(size.height * screenSf)),
     );
   } catch (err) {
     console.warn('[pet] openOrTogglePetPanel failed:', err);

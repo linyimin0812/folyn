@@ -287,6 +287,32 @@ empirically proven to float over every app/Space:
   the old comments' constant values were wrong, e.g. "stationary(2)" is
   really MoveToActiveSpace, real Stationary is 16), `hidesOnDeactivate: NO`).
   One class swap per window, EVER, at the one proven-safe moment.
+- **Replace the pet panel in place**: pet search tool results and recent chips
+  await `extension_tool_match_pet_panel()` before emitting `pet://menu-action`.
+  The inbox/extension-tool command path does the same before command dispatch.
+  This command reads the LIVE pet-panel frame while it is still available,
+  before the frontend hides it. macOS aligns top-left corners using `NSWindow.frame`
+  and `setFrame:display:` on the main thread and awaits completion; AppKit uses
+  global logical coordinates, so no old target-window DPI enters the copy.
+  Other platforms copy physical position, restoring a maximized target first.
+  The extension popup defaults to 720×560 logical points and retains its own
+  user-resized dimensions on subsequent opens. Never shrink it to the pet-panel
+  dimensions. For AppKit, preserve target size and set y = source y + source
+  height - target height so the top-left stays aligned as heights differ.
+  Clamp that preferred origin against the source screen work area using the
+  TOOL size. macOS uses `NSScreen.visibleFrame` (excludes menu bar/Dock); other
+  platforms use `Monitor.work_area` and the destination physical scale. Exact
+  top-left alignment yields to full visibility near an edge. Keep dimensions
+  unchanged. Oversized windows are anchored at the work-area origin.
+  Use `NSWindow::frame(id)` explicitly when NSScreen is also imported: both
+  cocoa traits expose `frame()` on the same raw Obj-C pointer type.
+  Missing windows / dispatch / native geometry errors reject the command and
+  prevent tool dispatch. Direct main-window launches do not call this command.
+  No pending global origin flag or persisted position is used. Keep the existing
+  `restoreFocus: false` hide after dispatch so the replacement does not lose focus.
+  Validate that placement precedes the open event, and cover translation,
+  inbox and recent chips in `PetPanelApp.test.tsx`; native frame probes cover
+  normal, negative-origin and minimum-sized windows.
 - **Host route + iframe**: the window loads `/#/extension-tool`
   (main.tsx hash routing → `ExtensionToolApp`), which renders a
   pet-panel-style shell (drag region, title, close X) and a
@@ -746,9 +772,9 @@ area rect and the scale factor.
   transparent margin on each side; see `.pet-mascot` in `pet.css`), so attaching to the icon's
   corner (not the window's) makes the panel visually touch the mascot. The corner is picked by
   comparing the pet's center to the work-area center on each axis (4 quadrants), so the
-  panel always extends into the quadrant with more room. The panel may overflow the work-area edge
-  on the diagonal side in degenerate cases but never overlaps the icon (it CAN overlap the
-  window's transparent 16px margin — that margin is transparent and click-through).
+  panel prefers the quadrant with more room. `computePanelPosition` then calls
+  `clampPanelPosition` with the actual size; visibility takes priority over
+  avoiding the mascot. Never leave a fitting panel off-screen just to keep the icon gap.
   `computePanelPosition` takes the **actual panel size** as a third arg (default constants for
   first-ever open, the saved logical size for subsequent opens) so a user-resized panel's corner
   still tracks the pet — passing the hardcoded default 600×840 when the panel has been resized
@@ -768,7 +794,9 @@ area rect and the scale factor.
   and `pet_panel_set_size(size: Size)`, serialized with the SDK's `Position` /
   `Size` wrappers. The macOS shortcut sends Logical values, so the panel's
   previous screen scale cannot distort the first open or post-show reassertion.
-  Other paths send Physical values. Do not send bare x/y or width/height args.
+  Mascot-click opens also send Logical values on macOS, avoiding the old
+  popup screen scale during a cross-monitor move. Other platforms send
+  Physical values. Do not send bare x/y or width/height args.
   `resolveAndPersistPanelSize` only updates the store; native resizing belongs
   to `applyPanelFrame`, after the units have been resolved.
   Tests: `petCursor.test.ts` covers the whole Retina display, mixed-DPI negative

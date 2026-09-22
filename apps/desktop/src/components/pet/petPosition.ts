@@ -288,15 +288,9 @@ export const PET_PANEL_GAP = 2;
  * deterministic default that matches the most common "pet at bottom-right"
  * placement.
  *
- * No-overlap invariant: because the panel's pet-ward edge is exactly
- * `PET_PANEL_GAP` away from the **icon's** opposite edge on each axis, the
- * panel bounding box never intersects the icon's
- * `[iconLeft, iconRight] × [iconTop, iconBottom]` rect. The panel CAN overlap
- * the window's transparent 16px margin around the icon — that margin is
- * transparent and click-through, so the visual overlap is harmless. This holds
- * even in the degenerate case where the work area is smaller than the panel —
- * the panel overflows the work-area edge on the diagonal side but still does
- * not cover the icon.
+ * Keep the preferred gap when there is room, then clamp to the work area.
+ * Full panel visibility takes priority over avoiding the mascot when the
+ * preferred corner would push content off-screen. Size is unchanged.
  *
  * The pet window's outer position (`petPos`) and the returned panel position
  * are both in logical points. The caller must divide `petPos` by
@@ -306,7 +300,7 @@ export const PET_PANEL_GAP = 2;
  *
  * `panelSize` is the **actual** panel size in LOGICAL points (matches the
  * work area). The caller must pass the actual size — default constants for
- * first-ever open, the clamped saved size for subsequent opens — so a
+ * first-ever open, the saved logical size for subsequent opens — so a
  * user-resized panel's corner still tracks the pet. Passing the hardcoded
  * `PET_PANEL_WIDTH`/`PET_PANEL_HEIGHT` here when the panel has been resized
  * larger would place the corner at the wrong spot (the corner drifts off the
@@ -351,7 +345,7 @@ export function computePanelPosition(
       ? iconTop - PET_PANEL_GAP - panelSize.height
       : iconBottom + PET_PANEL_GAP;
 
-  return { x, y };
+  return clampPanelPosition({ x, y }, workArea, panelSize);
 }
 
 /**

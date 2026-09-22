@@ -396,6 +396,83 @@ fn collect_fingerprint_entries(dir: &std::path::Path, out: &mut Vec<(String, u64
     }
 }
 
+/// Prepare a pet-panel tool launch before its open event is dispatched.
+/// Align live top-left positions, moving inward at screen edges while
+/// retaining the tool's own size.
+#[tauri::command]
+pub async fn extension_tool_match_pet_panel(app: tauri::AppHandle) -> Result<(), String> {
+    let source = app
+        .get_webview_window("pet-panel")
+        .ok_or_else(|| "pet-panel window not found".to_string())?;
+    let target = app
+        .get_webview_window("extension-tool-panel")
+        .ok_or_else(|| "extension-tool-panel window not found".to_string())?;
+
+    #[cfg(target_os = "macos")]
+    {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        app.run_on_main_thread(move || {
+            use cocoa::appkit::{NSScreen, NSWindow};
+            use cocoa::base::{id, NO};
+
+            let result = (|| -> Result<(), String> {
+                let source = source.ns_window().map_err(|e| e.to_string())? as id;
+                let target = target.ns_window().map_err(|e| e.to_string())? as id;
+                // AppKit uses a bottom-left origin. Keep the tool's default
+                // or user-resized dimensions, aligning its TOP-left corner
+                // with the pet panel without any per-screen DPI conversion.
+                unsafe {
+                    let source_frame = NSWindow::frame(source);
+                    let mut frame = NSWindow::frame(target);
+                    frame.origin.x = source_frame.origin.x;
+                    frame.origin.y = source_frame.origin.y + source_frame.size.height
+                        - frame.size.height;
+                    let screen = source.screen();
+                    if screen.is_null() {
+                        return Err("pet-panel screen not found".to_string());
+                    }
+                    // The larger tool must fit its own bounds, not merely
+                    // inherit an origin that fit the smaller pet panel.
+                    // visibleFrame excludes the Dock and menu bar.
+                    let work = NSScreen::visibleFrame(screen);
+                    frame.origin.x = frame.origin.x.clamp(
+                        work.origin.x,
+                        work.origin.x + (work.size.width - frame.size.width).max(0.0),
+                    );
+                    frame.origin.y = frame.origin.y.clamp(
+                        work.origin.y,
+                        work.origin.y + (work.size.height - frame.size.height).max(0.0),
+                    );
+                    target.setFrame_display_(frame, NO);
+                }
+                Ok(())
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+        rx.await.map_err(|e| e.to_string())?
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let position = source.outer_position().map_err(|e| e.to_string())?;
+        if target.is_maximized().map_err(|e| e.to_string())? {
+            target.unmaximize().map_err(|e| e.to_string())?;
+        }
+        let monitor = source.current_monitor().map_err(|e| e.to_string())?
+            .ok_or_else(|| "pet-panel screen not found".to_string())?;
+        let work = monitor.work_area();
+        let size = target.inner_size().map_err(|e| e.to_string())?
+            .to_logical::<f64>(target.scale_factor().map_err(|e| e.to_string())?)
+            .to_physical::<u32>(monitor.scale_factor());
+        let position = tauri::PhysicalPosition::new(
+            position.x.clamp(work.position.x, work.position.x + work.size.width.saturating_sub(size.width) as i32),
+            position.y.clamp(work.position.y, work.position.y + work.size.height.saturating_sub(size.height) as i32),
+        );
+        target.set_position(position).map_err(|e| e.to_string())?;
+        target.set_size(size).map_err(|e| e.to_string())
+    }
+}
+
 /// Open an extension tool window — the pet-panel machinery ("桌宠弹窗同款"):
 /// the `extension-tool-panel` window is statically declared in
 /// tauri.conf.json and converted to an NSPanel at startup

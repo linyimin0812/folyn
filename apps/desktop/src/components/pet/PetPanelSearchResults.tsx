@@ -469,6 +469,10 @@ async function emitNavigateFile(path: string): Promise<void> {
 async function emitRunCommand(commandId: string): Promise<void> {
   if (!isTauri()) return;
   try {
+    if (commandId === 'action.open-inbox' || commandId.startsWith('extension.openTool.')) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('extension_tool_match_pet_panel');
+    }
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://menu-action', { action: 'run-command', commandId });
   } catch {
@@ -482,6 +486,8 @@ async function emitRunCommand(commandId: string): Promise<void> {
 export async function emitOpenExtensionTool(extensionId: string): Promise<void> {
   if (!isTauri()) return;
   try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('extension_tool_match_pet_panel');
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://menu-action', { action: 'open-extension-tool', extensionId });
     // NO focus restore here: the tool popup's own surface
@@ -491,7 +497,6 @@ export async function emitOpenExtensionTool(extensionId: string): Promise<void> 
     // auto-hide instantly dismisses it (the "chip click opens nothing" bug).
     // The popup still floats over the user's workspace either way — it's an
     // overlay panel.
-    const { invoke } = await import('@tauri-apps/api/core');
     await invoke('pet_panel_hide', { restoreFocus: false });
   } catch {
     // Non-fatal.

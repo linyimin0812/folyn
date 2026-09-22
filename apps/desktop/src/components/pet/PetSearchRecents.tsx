@@ -6,7 +6,7 @@
  * icon + display name, nothing else. Clicking a chip re-opens that tool via
  * the exact same path as a picked search result row (`emitOpenExtensionTool`:
  * `pet://menu-action open-extension-tool` → the main window's petHostRouter,
- * then the panel hides restoring the user's frontmost app).
+ * then the panel hides without deactivating the replacement popup).
  *
  * Mounted by PetPanelApp ONLY while focus sits inside the search area (input
  * or chip) — the focus gating lives in the parent; this component is purely

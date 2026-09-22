@@ -1114,6 +1114,7 @@ pub fn run() {
             commands::clipboard_write_image_b64,
             commands::create_webview,
             commands::open_extension_tool_window,
+            commands::extension_tool_match_pet_panel,
             commands::hide_extension_tool_window,
             commands::extension_tool_lower_if_dialog,
             commands::extension_tool_restore_level,
