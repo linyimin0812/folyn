@@ -530,3 +530,37 @@ Root cause: tauri-plugin-dialog parents native confirm() to the calling window; 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 16: Translation popup input: Cmd+A select-all and left-align
+
+**Date**: 2026-09-22
+**Task**: Translation popup input: Cmd+A select-all and left-align
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Fixed the extension-tool translation popup: added Cmd/Ctrl+A select-all for input/textarea in ExtensionToolApp's document keydown handler (the popup webview realm never sees the main window's App.tsx fallback, and Tauri's Edit menu has no Select All by design), and switched the shared TranslationPanel textarea from text-justify to text-left (covers both the popup and the main app's translation page).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `738cd13c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
