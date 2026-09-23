@@ -176,9 +176,11 @@ export function ActivityPage() {
       }`}
     >
       <div
-        className={`max-w-[1200px] mx-auto p-8 ${
-          isGraph ? 'h-full flex flex-col min-h-0' : ''
-        }`}
+        className={
+          isGraph
+            ? 'max-w-[1200px] mx-auto h-full flex flex-col min-h-0 px-8 pt-8 pb-0'
+            : 'max-w-[1200px] mx-auto p-8'
+        }
       >
         {/* Page title row: title + period description on the left, actions right. */}
         <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-7 flex-wrap shrink-0">

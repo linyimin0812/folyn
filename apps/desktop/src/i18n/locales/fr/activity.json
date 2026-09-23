@@ -59,8 +59,6 @@
     "centerInfo": "Centre : {{name}} · {{count}} relations",
     "noRelations": "{{name}} n'a pas encore de relations",
     "groupCount": "{{count}}",
-    "expand": "Afficher le chemin complet",
-    "collapse": "Replier",
     "groupPanel": "{{label}} · {{count}}"
   },
   "entityType": {

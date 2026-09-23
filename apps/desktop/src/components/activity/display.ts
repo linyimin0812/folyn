@@ -38,15 +38,17 @@ export const BUILTIN_METRIC_IDS = new Set([
   'task_update_count',
 ]);
 
-/** Palette key → icon color + tint (design §3.1: fixed keys, no free hex). */
+/** Palette key → icon color + tint (design §3.1: fixed keys, no free hex).
+ *  Colors reference the app theme tokens so light/dark switch with the rest
+ *  of the UI (tints via color-mix over --panel, same pattern as index.css). */
 export const ACTIVITY_PALETTE: Record<ActivityPalette, { color: string; bg: string }> = {
-  blue: { color: '#1f5fa8', bg: '#e3eefb' },
-  green: { color: '#3b6d11', bg: '#eaf5e2' },
-  amber: { color: '#854f0b', bg: '#fdf1dd' },
-  red: { color: '#a13a2a', bg: '#faece7' },
-  purple: { color: '#534ab7', bg: '#eeedfe' },
-  teal: { color: '#0f6e56', bg: '#e1f5ee' },
-  gray: { color: '#5f5e5a', bg: '#f1efe8' },
+  blue: { color: 'var(--acc)', bg: 'color-mix(in srgb, var(--acc) 12%, var(--panel))' },
+  green: { color: 'var(--green)', bg: 'var(--gdim)' },
+  amber: { color: 'var(--amber)', bg: 'color-mix(in srgb, var(--amber) 14%, var(--panel))' },
+  red: { color: 'var(--red)', bg: 'color-mix(in srgb, var(--red) 13%, var(--panel))' },
+  purple: { color: 'var(--purple)', bg: 'color-mix(in srgb, var(--purple) 12%, var(--panel))' },
+  teal: { color: 'var(--cyan)', bg: 'color-mix(in srgb, var(--cyan) 14%, var(--panel))' },
+  gray: { color: 'var(--t3)', bg: 'var(--surf2)' },
 };
 
 /** Resolve a palette key with the gray fallback for unknown/missing keys. */
@@ -162,7 +164,7 @@ export function formatDetailValue(value: unknown, format: ActivityDetailFormat):
   }
 }
 
-// ── Entity graph: grouping + layout + breadcrumb (design §7.2) ──────────────
+// ── Entity graph: grouping + layout (design §7.2) ───────────────────────────
 
 /** Group neighbors by entity type; ≥2 of a type collapse into one node. */
 export interface GraphGroup<T> {
@@ -183,24 +185,4 @@ export function groupNeighborsByType<T>(
     else groups.set(t, [n]);
   }
   return [...groups.entries()].map(([entityType, items]) => ({ entityType, items }));
-}
-
-/** Radial layout knobs (prototype-validated): >8 display items → smaller
- * nodes on a wider orbit. Elliptical orbit (rx > ry) fills the wide
- * 1100×600 canvas — a circle was height-limited to ~2×175. */
-export function radialLayoutKnobs(slots: number): { nodeRadius: number; orbitRx: number; orbitRy: number } {
-  return {
-    nodeRadius: slots > 8 ? 44 : 56,
-    orbitRx: 430 + Math.max(0, slots - 8) * 10,
-    orbitRy: 190 + Math.max(0, slots - 8) * 6,
-  };
-}
-
-/** Breadcrumb collapse: >3 levels → show only [n-2, n-1] plus an ellipsis
- * (design §7.2); expand shows all indices. */
-export function breadcrumbIndices(length: number, expanded: boolean): number[] {
-  if (expanded || length <= 3) {
-    return Array.from({ length }, (_, i) => i);
-  }
-  return [length - 2, length - 1];
 }

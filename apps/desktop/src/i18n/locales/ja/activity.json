@@ -59,8 +59,6 @@
     "centerInfo": "中心：{{name}} · {{count}} 件の関連",
     "noRelations": "{{name}} には関連がありません",
     "groupCount": "{{count}} 件",
-    "expand": "フルパスを表示",
-    "collapse": "折りたたむ",
     "groupPanel": "{{label}} · {{count}} 件"
   },
   "entityType": {

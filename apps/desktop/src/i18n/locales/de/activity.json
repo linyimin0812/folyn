@@ -59,8 +59,6 @@
     "centerInfo": "Zentrum: {{name}} · {{count}} Beziehungen",
     "noRelations": "{{name}} hat noch keine Beziehungen",
     "groupCount": "{{count}}",
-    "expand": "Vollständigen Pfad zeigen",
-    "collapse": "Einklappen",
     "groupPanel": "{{label}} · {{count}}"
   },
   "entityType": {

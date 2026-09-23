@@ -59,8 +59,6 @@
     "centerInfo": "当前中心：{{name}} · 共 {{count}} 个关联",
     "noRelations": "{{name}} 暂无关联记录",
     "groupCount": "{{count}} 个",
-    "expand": "展开完整路径",
-    "collapse": "收起",
     "groupPanel": "{{label}} · {{count}} 个"
   },
   "entityType": {

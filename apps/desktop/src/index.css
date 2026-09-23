@@ -89,7 +89,10 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--t1);
   font-family: var(--font-ui); font-size: var(--ui-font-size); -webkit-font-smoothing: antialiased; }
-button { font-family: var(--font-ui); cursor: pointer; border: none; background: none; color: inherit; }
+/* border-style must stay solid (Tailwind preflight sets it on *, but this
+   button reset would otherwise win and silently hide every border utility —
+   e.g. the entity-graph node cards). Width 0 keeps unstyled buttons flat. */
+button { font-family: var(--font-ui); cursor: pointer; border: 0 solid; background: none; color: inherit; }
 
 /* ── Sidebar resize utility ── */
 html.is-resizing, html.is-resizing * { user-select: none !important; -webkit-user-select: none !important; }

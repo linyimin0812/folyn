@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  breadcrumbIndices,
   effectivePinned,
   formatDetailValue,
   groupNeighborsByType,
   isExternalUrl,
   metricCardsFromRows,
   paletteOf,
-  radialLayoutKnobs,
   togglePinOverride,
 } from './display';
 import type { ActivityMetricRow } from '@/services/activity/api';
@@ -80,7 +78,7 @@ describe('detail formatters', () => {
   });
 });
 
-describe('entity graph grouping + layout + breadcrumb', () => {
+describe('entity graph grouping + layout', () => {
   const neighbors = [
     { id: 'm1', type: 'meeting' },
     { id: 'm2', type: 'meeting' },
@@ -92,17 +90,6 @@ describe('entity graph grouping + layout + breadcrumb', () => {
     const groups = groupNeighborsByType(neighbors, (n) => n.type);
     const byType = Object.fromEntries(groups.map((g) => [g.entityType, g.items.length]));
     expect(byType).toEqual({ meeting: 2, person: 1, weird_type: 1 });
-  });
-
-  it('radial knobs shrink nodes and widen the elliptical orbit beyond 8 slots', () => {
-    expect(radialLayoutKnobs(8)).toEqual({ nodeRadius: 56, orbitRx: 430, orbitRy: 190 });
-    expect(radialLayoutKnobs(10)).toEqual({ nodeRadius: 44, orbitRx: 450, orbitRy: 202 });
-  });
-
-  it('breadcrumb collapses beyond 3 levels to the last two, expand shows all', () => {
-    expect(breadcrumbIndices(3, false)).toEqual([0, 1, 2]);
-    expect(breadcrumbIndices(5, false)).toEqual([3, 4]);
-    expect(breadcrumbIndices(5, true)).toEqual([0, 1, 2, 3, 4]);
   });
 
   it('paletteOf falls back to gray for unknown keys', () => {
