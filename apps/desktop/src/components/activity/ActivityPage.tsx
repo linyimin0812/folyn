@@ -69,7 +69,7 @@ function ReportMarkdown({ markdown }: { markdown: string }) {
       return markdown;
     }
   }, [markdown]);
-  return <div className="msg-md max-h-[280px] overflow-y-auto text-[13px] text-t2">{node}</div>;
+  return <div className="md-preview max-h-[280px] overflow-y-auto">{node}</div>;
 }
 
 export function ActivityPage() {
