@@ -49,10 +49,11 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     [vaultRoot],
   );
 
-  // Measured svg box — the canvas fills the pane left of the reserved
-  // sidebar column (fixed 260px, no reflow whether the panel is open or
-  // closed). The orbit itself is sized by node count (below), not by the
-  // container — that was what made few-neighbor graphs sprawl.
+  // Measured svg box — the canvas always exactly fills the available pane
+  // (same width behavior as the timeline), so the group sidebar opening
+  // shrinks the graph instead of expanding anything. The orbit itself is
+  // sized by node count (below), not by the container — that was what made
+  // few-neighbor graphs sprawl.
   const wrapRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 1100, h: 600 });
   useEffect(() => {
@@ -278,12 +279,12 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
         }
       }}
     >
-      <div className="flex flex-1 min-h-0 min-w-0">
+      <div className="relative flex flex-1 min-h-0 min-w-0">
         <div className="flex flex-1 min-w-0 min-h-0 flex-col">{graph}</div>
-        {/* Fixed 260px column reserved whether the panel is open or closed —
-            the graph never reflows and is never occluded. */}
-        {groupPanel != null ? (
-          <aside className="flex w-[260px] max-w-full shrink-0 flex-col border-l border-brd bg-bg">
+        {/* Overlay panel: the graph keeps a fixed width; the panel overlays
+            the canvas's right edge, full height. */}
+        {groupPanel != null && (
+          <aside className="absolute inset-y-0 right-0 flex w-[260px] max-w-full flex-col border-l border-brd bg-bg shadow-lg">
             <div className="flex items-center justify-between gap-2 border-b border-brd px-3 py-2">
               <p className="m-0 min-w-0 text-xs font-medium text-t1">
                 {t('activity:graph.groupPanel', { label: typeLabelOf(groupPanel), count: panelItems.length })}
@@ -314,8 +315,6 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               ))}
             </div>
           </aside>
-        ) : (
-          <div className="w-[260px] shrink-0" aria-hidden="true" />
         )}
       </div>
     </div>
