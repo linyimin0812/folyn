@@ -34,7 +34,26 @@
     "loading": "Cargando…",
     "empty": "Sin actividad en este periodo",
     "viewSource": "Ver origen",
-    "aiSummary": "Resumen · generado por IA"
+    "aiSummary": "Resumen · generado por IA",
+    "aiSummaryLoading": "Generando resumen…"
+  },
+  "report": {
+    "daily": "Informe diario",
+    "weekly": "Informe semanal",
+    "monthly": "Informe mensual",
+    "generate": "Generar {{label}}",
+    "generating": "Generando…",
+    "savedTo": "Guardado en {{path}}",
+    "openInEditor": "Abrir en el editor",
+    "metrics": "Métricas",
+    "metricCol": "Métrica",
+    "valueCol": "Valor",
+    "timeline": "Cronología",
+    "empty": "Sin actividad en este periodo",
+    "updatedTask": "Tarea {{name}} completada o actualizada",
+    "ongoingTask": "En curso: {{name}} (día {{current}}/{{total}}, sin novedades)",
+    "regeneratedAt": "Regenerado a las {{time}}",
+    "notifyText": "{{label}} listo — haz clic para verlo"
   },
   "graph": {
     "hint": "Haz clic en un nodo para convertirlo en el centro y ver sus relaciones",

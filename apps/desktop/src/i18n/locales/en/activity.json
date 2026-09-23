@@ -34,7 +34,26 @@
     "loading": "Loading…",
     "empty": "No activity in this period",
     "viewSource": "View source",
-    "aiSummary": "Summary · AI generated"
+    "aiSummary": "Summary · AI generated",
+    "aiSummaryLoading": "Generating summary…"
+  },
+  "report": {
+    "daily": "Daily report",
+    "weekly": "Weekly report",
+    "monthly": "Monthly report",
+    "generate": "Generate {{label}}",
+    "generating": "Generating…",
+    "savedTo": "Saved to {{path}}",
+    "openInEditor": "Open in editor",
+    "metrics": "Metrics",
+    "metricCol": "Metric",
+    "valueCol": "Value",
+    "timeline": "Timeline",
+    "empty": "No activity in this period",
+    "updatedTask": "Completed or updated task {{name}}",
+    "ongoingTask": "In progress: {{name}} (day {{current}}/{{total}}, no new updates)",
+    "regeneratedAt": "Regenerated at {{time}}",
+    "notifyText": "{{label}} is ready — click to view"
   },
   "graph": {
     "hint": "Click a node to make it the new center and inspect its relations",

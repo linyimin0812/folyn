@@ -34,7 +34,26 @@
     "loading": "加载中…",
     "empty": "本期暂无活动记录",
     "viewSource": "查看原文",
-    "aiSummary": "摘要 · AI 生成"
+    "aiSummary": "摘要 · AI 生成",
+    "aiSummaryLoading": "生成摘要中…"
+  },
+  "report": {
+    "daily": "日报",
+    "weekly": "周报",
+    "monthly": "月报",
+    "generate": "生成{{label}}",
+    "generating": "生成中…",
+    "savedTo": "已保存至 {{path}}",
+    "openInEditor": "在编辑器中打开",
+    "metrics": "指标",
+    "metricCol": "指标",
+    "valueCol": "数值",
+    "timeline": "时间线",
+    "empty": "本期暂无活动记录",
+    "updatedTask": "完成或更新了任务 {{name}}",
+    "ongoingTask": "推进中：{{name}}（第 {{current}}/{{total}} 天，无新增更新）",
+    "regeneratedAt": "重新生成于 {{time}}",
+    "notifyText": "{{label}}已生成，点击查看"
   },
   "graph": {
     "hint": "点击图谱中的节点，切换中心并查看关联",

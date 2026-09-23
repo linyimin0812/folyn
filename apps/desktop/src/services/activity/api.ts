@@ -107,3 +107,12 @@ export async function getActivityDailyDigestInput(
     date: dateKey,
   });
 }
+
+/** Cache a generated AI summary onto the event row (design §6). */
+export async function setActivityEventSummary(
+  vaultRoot: string,
+  eventId: string,
+  summary: string,
+): Promise<boolean> {
+  return invoke<boolean>('activity_set_event_summary', { vaultRoot, eventId, summary });
+}

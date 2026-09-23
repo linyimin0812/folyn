@@ -34,7 +34,26 @@
     "loading": "読み込み中…",
     "empty": "この期間のアクティビティはありません",
     "viewSource": "原文を見る",
-    "aiSummary": "要約 · AI 生成"
+    "aiSummary": "要約 · AI 生成",
+    "aiSummaryLoading": "要約を生成中…"
+  },
+  "report": {
+    "daily": "日報",
+    "weekly": "週報",
+    "monthly": "月報",
+    "generate": "{{label}}を生成",
+    "generating": "生成中…",
+    "savedTo": "{{path}} に保存しました",
+    "openInEditor": "エディタで開く",
+    "metrics": "指標",
+    "metricCol": "指標",
+    "valueCol": "値",
+    "timeline": "タイムライン",
+    "empty": "この期間のアクティビティはありません",
+    "updatedTask": "タスク {{name}} を完了・更新しました",
+    "ongoingTask": "進行中：{{name}}（{{current}}/{{total}} 日目、新規更新なし）",
+    "regeneratedAt": "{{time}} に再生成",
+    "notifyText": "{{label}}が生成されました。クリックして表示"
   },
   "graph": {
     "hint": "ノードをクリックすると中心を切り替えて関連を表示します",

@@ -21,6 +21,7 @@ export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
   'collectors',
   'configs',
   'pinnedMetrics',
+  'reportHashes',
 ] as const;
 
 /** Per-collector user preferences. Missing record = all defaults (on). */
@@ -67,6 +68,9 @@ export interface ActivityCollectorState {
    * default pinned, custom ones default collapsed — the override map only
    * records deviations, so an absent key keeps the default. */
   pinnedMetrics: Record<string, boolean>;
+  /** report path → content hash of the last content WE wrote (design §7.5
+   * conflict rule). Sidecar only — never stored inside the note itself. */
+  reportHashes: Record<string, string>;
   /** Runtime-only last-sync info per collectorId (NOT persisted — refreshed
    *  on every collect). */
   lastSync: Record<string, { at: number; accepted: number }>;
@@ -81,6 +85,8 @@ export interface ActivityCollectorState {
    *  setter; the flip semantics live in the pure helper
    *  `components/activity/display.ts togglePinOverride`. */
   setPinnedMetrics: (v: Record<string, boolean>) => void;
+  /** Record the hash of the report content we just wrote (§7.5). */
+  setReportHash: (path: string, hash: string) => void;
   /** Runtime-only — called by runCollect after a successful push. */
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
 
@@ -95,6 +101,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   collectors: {},
   configs: {},
   pinnedMetrics: {},
+  reportHashes: {},
   lastSync: {},
 
   setPollOn: (v) => { set({ pollOn: v }); persist(); },
@@ -118,6 +125,11 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     persist();
   },
 
+  setReportHash: (path, hash) => {
+    set({ reportHashes: { ...get().reportHashes, [path]: hash } });
+    persist();
+  },
+
   setLastSync: (collectorId, at, accepted) => {
     set({ lastSync: { ...get().lastSync, [collectorId]: { at, accepted } } });
   },
@@ -133,6 +145,13 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
         if (typeof v === 'boolean') pinnedMetrics[id] = v;
       }
       patch.pinnedMetrics = pinnedMetrics;
+    }
+    if (blob.reportHashes && typeof blob.reportHashes === 'object') {
+      const reportHashes: Record<string, string> = {};
+      for (const [p, v] of Object.entries(blob.reportHashes as Record<string, unknown>)) {
+        if (typeof v === 'string') reportHashes[p] = v;
+      }
+      patch.reportHashes = reportHashes;
     }
     if (Array.isArray(blob.redactPatterns)) {
       patch.redactPatterns = blob.redactPatterns.filter((p): p is string => typeof p === 'string');

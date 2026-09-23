@@ -1,12 +1,12 @@
 /**
- * Native「活动」page (design §7.1–§7.4): timeline + metrics + ongoing module +
- * calendar period picker, with the entity-relation browser as a second tab.
- * Out of scope this pass (subtask 4): report generation, AI summary
- * generation, pet notification.
+ * Native「活动」page (design §7.1–§7.5): timeline + metrics + ongoing module +
+ * calendar period picker, with the entity-relation browser as a second tab,
+ * plus report generation (日/周/月 written into the vault, §7.5).
  */
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileText, Sparkles } from 'lucide-react';
 import {
   type Period,
   dateKey,
@@ -21,6 +21,12 @@ import {
   getActivityDailyDigestInput,
   listActivityEvents,
 } from '@/services/activity/api';
+import {
+  type GeneratedReport,
+  type ReportPeriod,
+  type ReportStrings,
+  generateReport,
+} from '@/services/activity/reports';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
 import { useAsync, useVaultRoot } from './useActivityData';
 import { PeriodPicker } from './PeriodPicker';
@@ -29,12 +35,22 @@ import { MetricsGrid } from './MetricsGrid';
 import { TimelineList } from './TimelineList';
 import { EntityGraphView } from './EntityGraphView';
 
+/** Map the picker's period mode to the report kind (custom ranges: no report). */
+function reportModeOf(mode: Period['mode']): ReportPeriod | null {
+  if (mode === 'today') return 'daily';
+  if (mode === 'week') return 'weekly';
+  if (mode === 'month') return 'monthly';
+  return null;
+}
+
 export function ActivityPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const vaultRoot = useVaultRoot();
   const [tab, setTab] = useState<'timeline' | 'graph'>('timeline');
   const [period, setPeriod] = useState<Period>(() => quickRange('today', new Date()));
   const displayByType = useCollectorRegistryStore((s) => s.displayByType);
+  const [report, setReport] = useState<GeneratedReport | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const today = new Date();
   const current = isCurrentPeriod(period, today);
@@ -75,6 +91,65 @@ export function ActivityPage() {
     (id) => metricLabel(t, id),
   );
 
+  const reportMode = reportModeOf(period.mode);
+  const reportLabel = reportMode ? t(`activity:report.${reportMode}`) : '';
+  const timeFmt = new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' });
+  const dateTimeFmt = new Intl.DateTimeFormat(i18n.language, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const reportStrings: ReportStrings = {
+    label: reportLabel,
+    metricsHeading: t('activity:report.metrics'),
+    metricCol: t('activity:report.metricCol'),
+    valueCol: t('activity:report.valueCol'),
+    timelineHeading: t('activity:report.timeline'),
+    emptyTimeline: t('activity:report.empty'),
+    ongoingHeading: t('activity:ongoing.title'),
+    updatedTask: (name) => t('activity:report.updatedTask', { name }),
+    ongoingTask: (name, current, total) =>
+      t('activity:report.ongoingTask', { name, current, total }),
+    regeneratedAt: (time) => t('activity:report.regeneratedAt', { time }),
+    notifyText: (label) => t('activity:report.notifyText', { label }),
+  };
+
+  const onGenerate = async () => {
+    if (!vaultRoot || !reportMode || generating) return;
+    setGenerating(true);
+    try {
+      const result = await generateReport({
+        vaultRoot,
+        mode: reportMode,
+        start: period.start,
+        end: period.end,
+        displayByType,
+        metricLabel: (id) => metricLabel(t, id),
+        formatTime: (ms) => timeFmt.format(new Date(ms)),
+        formatDateTime: (ms) => dateTimeFmt.format(new Date(ms)),
+        s: reportStrings,
+      });
+      setReport(result);
+    } catch (err) {
+      console.warn('[activity] report generation failed:', err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const openReportInEditor = async () => {
+    if (!report) return;
+    try {
+      const { openFile } = await import('@/services/editorIoService');
+      const name = report.path.split('/').pop() ?? report.path;
+      await openFile(report.path, name);
+    } catch (err) {
+      console.warn('[activity] open report failed:', err);
+    }
+  };
+
   return (
     <div className="flex-1 min-w-0 overflow-y-auto">
       <div className="max-w-[860px] mx-auto p-6">
@@ -92,8 +167,42 @@ export function ActivityPage() {
               </button>
             ))}
           </div>
-          <PeriodPicker period={period} onPeriodChange={setPeriod} />
+          <div className="flex items-center gap-2 flex-wrap">
+            {reportMode && (
+              <button
+                className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+                disabled={generating || !vaultRoot}
+                onClick={() => void onGenerate()}
+              >
+                <Sparkles size={14} className="text-acc" />
+                {generating
+                  ? t('activity:report.generating')
+                  : t('activity:report.generate', { label: reportLabel })}
+              </button>
+            )}
+            <PeriodPicker period={period} onPeriodChange={setPeriod} />
+          </div>
         </div>
+
+        {report && (
+          <div className="border border-brd2 rounded-lg p-3 mb-5 bg-surf2">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+              <p className="m-0 text-[11px] text-acc">
+                {t('activity:report.savedTo', { path: report.path })}
+              </p>
+              <button
+                className="btn btn-g btn-sm inline-flex items-center gap-1"
+                onClick={() => void openReportInEditor()}
+              >
+                <FileText size={12} />
+                {t('activity:report.openInEditor')}
+              </button>
+            </div>
+            <pre className="m-0 p-2.5 rounded-md bg-panel border border-brd text-[11px] text-t2 whitespace-pre-wrap break-words max-h-[280px] overflow-y-auto">
+              {report.markdown}
+            </pre>
+          </div>
+        )}
 
         {tab === 'timeline' ? (
           !vaultRoot ? (
@@ -104,7 +213,11 @@ export function ActivityPage() {
             <>
               {current && <OngoingTasks tasks={digest?.ongoingTasks ?? []} />}
               <MetricsGrid cards={cards} />
-              <TimelineList events={events ?? []} displayByType={displayByType} />
+              <TimelineList
+                events={events ?? []}
+                displayByType={displayByType}
+                vaultRoot={vaultRoot}
+              />
             </>
           )
         ) : (

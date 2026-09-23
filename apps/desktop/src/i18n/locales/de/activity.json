@@ -34,7 +34,26 @@
     "loading": "Lädt…",
     "empty": "Keine Aktivität in diesem Zeitraum",
     "viewSource": "Quelle ansehen",
-    "aiSummary": "Zusammenfassung · KI-generiert"
+    "aiSummary": "Zusammenfassung · KI-generiert",
+    "aiSummaryLoading": "Zusammenfassung wird erstellt…"
+  },
+  "report": {
+    "daily": "Tagesbericht",
+    "weekly": "Wochenbericht",
+    "monthly": "Monatsbericht",
+    "generate": "{{label}} erstellen",
+    "generating": "Wird erstellt…",
+    "savedTo": "Gespeichert unter {{path}}",
+    "openInEditor": "Im Editor öffnen",
+    "metrics": "Metriken",
+    "metricCol": "Metrik",
+    "valueCol": "Wert",
+    "timeline": "Zeitverlauf",
+    "empty": "Keine Aktivität in diesem Zeitraum",
+    "updatedTask": "Aufgabe {{name}} abgeschlossen oder aktualisiert",
+    "ongoingTask": "Laufend: {{name}} (Tag {{current}}/{{total}}, keine neuen Updates)",
+    "regeneratedAt": "Neu erstellt um {{time}}",
+    "notifyText": "{{label}} ist fertig — zum Anzeigen klicken"
   },
   "graph": {
     "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",
