@@ -13,9 +13,12 @@ import { useActivityCollectorStore } from '@/store/activityCollectorStore';
 
 interface MetricsGridProps {
   cards: MetricCard[];
+  /** Selecting a card filters the timeline to that event type; null clears. */
+  selectedType?: string | null;
+  onSelectType?: (t: string | null) => void;
 }
 
-export function MetricsGrid({ cards }: MetricsGridProps) {
+export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const pinnedMetrics = useActivityCollectorStore((s) => s.pinnedMetrics);
@@ -30,13 +33,23 @@ export function MetricsGrid({ cards }: MetricsGridProps) {
 
   const renderCard = (c: MetricCard) => {
     const isPinned = effectivePinned(c, pinnedMetrics);
+    const selected = selectedType != null && selectedType === c.type;
     return (
-      <div key={c.id} className="relative bg-panel border border-brd rounded-lg p-4 min-w-[130px]">
+      <div
+        key={c.id}
+        className={`relative bg-panel border rounded-lg p-4 min-w-[130px] ${
+          selected ? 'border-transparent ring-1 ring-[var(--acc, #6366f1)]' : 'border-brd'
+        } ${onSelectType ? 'cursor-pointer hover:bg-hov' : ''}`}
+        onClick={() => onSelectType?.(selected ? null : c.type)}
+      >
         <button
           className="absolute top-2 right-2 p-0.5 border-0 bg-transparent cursor-pointer leading-none"
           style={{ color: isPinned ? 'var(--acc, #6366f1)' : 'var(--t3)' }}
           title={isPinned ? t('activity:metric.unpin') : t('activity:metric.pin')}
-          onClick={() => setPinnedMetrics(togglePinOverride(c, pinnedMetrics))}
+          onClick={(e) => {
+            e.stopPropagation();
+            setPinnedMetrics(togglePinOverride(c, pinnedMetrics));
+          }}
         >
           <Pin size={12} />
         </button>

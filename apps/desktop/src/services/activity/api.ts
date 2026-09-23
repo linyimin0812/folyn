@@ -55,11 +55,13 @@ export interface ActivityDigestInput {
 export async function listActivityEvents(
   vaultRoot: string,
   range: { from: number; to: number },
+  types?: string[],
 ): Promise<ActivityEventRow[]> {
   return invoke<ActivityEventRow[]>('activity_list_events', {
     vaultRoot,
     from: range.from,
     to: range.to,
+    types,
   });
 }
 

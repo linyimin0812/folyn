@@ -70,6 +70,8 @@ export interface MetricCard {
   id: string;
   label: string;
   value: number;
+  /** Event type this card filters the timeline to when selected. */
+  type: string;
   /** Builtin 6 default pinned; collector-declared default collapsed. */
   defaultPinned: boolean;
 }
@@ -97,6 +99,7 @@ export function metricCardsFromRows(
       id: metricId,
       label,
       value: row.count,
+      type: row.type,
       defaultPinned: isBuiltin,
     });
     if (row.totalMinutes != null) {
@@ -105,6 +108,7 @@ export function metricCardsFromRows(
         id: minutesId,
         label: minutesLabel(minutesId),
         value: Math.round(row.totalMinutes),
+        type: row.type,
         // meeting_minutes is one of the builtin 6 — pinned by default.
         defaultPinned: BUILTIN_METRIC_IDS.has(minutesId),
       });

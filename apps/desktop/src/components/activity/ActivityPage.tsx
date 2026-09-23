@@ -54,6 +54,7 @@ export function ActivityPage() {
   const displayByType = useCollectorRegistryStore((s) => s.displayByType);
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const today = new Date();
   const current = isCurrentPeriod(period, today);
@@ -66,9 +67,9 @@ export function ActivityPage() {
   const { data: events } = useAsync(
     () =>
       vaultRoot
-        ? listActivityEvents(vaultRoot, range)
+        ? listActivityEvents(vaultRoot, range, typeFilter ? [typeFilter] : undefined)
         : Promise.resolve([] as Awaited<ReturnType<typeof listActivityEvents>>),
-    [vaultRoot, periodKey],
+    [vaultRoot, periodKey, typeFilter],
   );
   const { data: metricRows } = useAsync(
     () =>
@@ -240,7 +241,11 @@ export function ActivityPage() {
           ) : (
             <>
               {current && <OngoingTasks tasks={digest?.ongoingTasks ?? []} />}
-              <MetricsGrid cards={cards} />
+              <MetricsGrid
+                cards={cards}
+                selectedType={typeFilter}
+                onSelectType={setTypeFilter}
+              />
               <TimelineList
                 events={events ?? []}
                 displayByType={displayByType}
