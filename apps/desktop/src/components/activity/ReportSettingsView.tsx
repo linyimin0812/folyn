@@ -81,7 +81,7 @@ export function ReportSettingsView() {
         <PairSelector
           value={reportConfig.modelOverride ?? null}
           onChange={(pair) => setReportModelOverride(pair)}
-          className="w-full"
+          className="w-full max-w-[360px]"
           dropDirection="down"
           panelAlign="right"
         />
