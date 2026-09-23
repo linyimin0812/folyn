@@ -126,7 +126,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   /* Breadcrumb path — collapsed to「… › prev › current」beyond 3 levels. */
   const breadcrumb = (
-    <div className="mb-3 text-[length:calc(var(--ui-font-size)-1px)] flex items-center gap-1 flex-wrap">
+    <div className="mb-3 text-[length:calc(var(--ui-font-size)-1px)] flex items-center gap-1 flex-wrap shrink-0">
       {history.length > 3 && !bcExpanded && (
         <>
           <button
@@ -166,7 +166,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   );
 
   const graph = (
-    <svg viewBox="0 0 680 560" className="w-full h-auto select-none" role="img">
+    // ponytail: preserveAspectRatio default (xMidYMid meet) fits the viewBox
+    // to the available box — no overflow regardless of container aspect.
+    <div className="flex-1 min-h-0">
+      <svg viewBox="0 0 680 560" className="w-full h-full select-none" role="img">
       <defs>
         <marker
           id="activity-arrow"
@@ -237,7 +240,8 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 
   /* Center info / no-relations / hint — always under the graph (left column). */
@@ -260,13 +264,13 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   if (groupPanel != null) {
     const items = groups.find((g) => g.entityType === groupPanel)?.items ?? [];
     return (
-      <div className="flex gap-3 items-start flex-wrap">
-        <div className="flex-1 min-w-0">
-          {breadcrumb}
-          {graph}
-          <div className="border border-brd rounded-lg p-4 bg-panel">{infoPanel}</div>
-        </div>
-        <div className="w-[320px] shrink-0 border border-brd rounded-lg p-4 bg-panel self-stretch">
+      <div className="h-full flex gap-3 min-h-0">
+        <div className="flex-1 min-w-0 flex flex-col min-h-0">
+            {breadcrumb}
+            {graph}
+            <div className="border border-brd rounded-lg p-4 bg-panel shrink-0">{infoPanel}</div>
+          </div>
+          <div className="w-[320px] shrink-0 border border-brd rounded-lg p-4 bg-panel h-full overflow-y-auto">
           <p className="m-0 mb-3 text-[13px] text-t2">
             {t('activity:graph.groupPanel', {
               label: typeLabelOf(groupPanel),
@@ -290,11 +294,11 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   }
 
   return (
-    <div>
+    <div className="h-full flex flex-col min-h-0">
       {breadcrumb}
       {graph}
       {/* Detail panel: center info / hint (full width, no group open) */}
-      <div className="border border-brd rounded-lg p-4 bg-panel">{infoPanel}</div>
+      <div className="border border-brd rounded-lg p-4 bg-panel shrink-0">{infoPanel}</div>
     </div>
   );
 }

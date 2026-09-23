@@ -167,11 +167,21 @@ export function ActivityPage() {
     }
   };
 
+  // Graph tab claims the full page height (no page scroll); timeline scrolls.
+  const isGraph = tab === 'graph';
   return (
-    <div className="flex-1 min-w-0 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto p-8">
+    <div
+      className={`flex-1 min-w-0 ${
+        isGraph ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'
+      }`}
+    >
+      <div
+        className={`max-w-[1200px] mx-auto p-8 ${
+          isGraph ? 'h-full flex flex-col min-h-0' : ''
+        }`}
+      >
         {/* Page title row: title + period description on the left, actions right. */}
-        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-7 flex-wrap">
+        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-7 flex-wrap shrink-0">
           <div className="min-w-0">
             <h1 className="m-0 text-[17px] font-semibold text-t1">{t('activity:title')}</h1>
             <p className="m-0 mt-1 text-[12px] text-t3">{periodDesc}</p>
@@ -217,7 +227,7 @@ export function ActivityPage() {
         </div>
 
         {report && (
-          <div className="border border-brd rounded-lg p-4 mb-5 bg-panel">
+          <div className="border border-brd rounded-lg p-4 mb-5 bg-panel shrink-0">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
               <p className="m-0 text-[11px] text-acc">
                 {t('activity:report.savedTo', { path: report.path })}
@@ -259,7 +269,9 @@ export function ActivityPage() {
             </>
           )
         ) : (
-          <EntityGraphView vaultRoot={vaultRoot} />
+          <div className="flex-1 min-h-0 flex flex-col">
+            <EntityGraphView vaultRoot={vaultRoot} />
+          </div>
         )}
       </div>
     </div>
