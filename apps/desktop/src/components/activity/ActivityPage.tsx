@@ -209,8 +209,6 @@ export function ActivityPage() {
     }
   };
 
-  // Graph tab claims the full page height (no page scroll); timeline scrolls.
-  const isGraph = tab === 'graph';
   return (
     <div className="flex-1 min-w-0 flex">
       {/* Secondary left rail — page-local, a sibling of the global ActivityBar
@@ -233,20 +231,14 @@ export function ActivityPage() {
       </div>
 
       {view === 'main' ? (
-      <div
-        className={`flex-1 min-w-0 ${
-          isGraph ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'
-        }`}
-      >
-      <div
-        className={
-          isGraph
-            ? 'max-w-[1200px] mx-auto h-full flex flex-col min-h-0 px-8 pt-8 pb-0'
-            : 'max-w-[1200px] mx-auto p-8'
-        }
-      >
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        {/* Fixed header block — identical for both tabs, so switching tabs never
+            re-layouts it. Full-width so the divider spans the pane; inner content
+            keeps the 1200px alignment. */}
+        <div className="shrink-0 border-b border-brd pt-8">
+          <div className="max-w-[1200px] mx-auto px-8">
         {/* Page title row: title + period description on the left, actions right. */}
-        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-7 flex-wrap shrink-0">
+        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-4 flex-wrap shrink-0">
           <div className="min-w-0">
             <h1 className="m-0 text-[17px] font-semibold text-t1">{t('activity:title')}</h1>
             <p className="m-0 mt-1 text-[12px] text-t3">{periodDesc}</p>
@@ -308,7 +300,7 @@ export function ActivityPage() {
         )}
 
         {report && (
-          <div className="border border-brd rounded-lg p-4 mb-5 bg-panel shrink-0">
+          <div className="border border-brd rounded-lg p-4 mb-6 bg-panel shrink-0">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
               <p className="m-0 text-[11px] text-acc">
                 {t('activity:report.savedTo', { path: report.path })}
@@ -342,32 +334,40 @@ export function ActivityPage() {
           </div>
         )}
 
+          </div>
+        </div>
+
+        {/* Timeline scrolls its own region (header stays pinned); graph fills
+            the remaining height. */}
         {tab === 'timeline' ? (
-          !vaultRoot ? (
-            <div className="text-[13px] text-t3 bg-panel border border-brd rounded-lg p-8 text-center">
-              {t('activity:noVault')}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="max-w-[1200px] mx-auto px-8 py-6">
+              {!vaultRoot ? (
+                <div className="text-[13px] text-t3 bg-panel border border-brd rounded-lg p-8 text-center">
+                  {t('activity:noVault')}
+                </div>
+              ) : (
+                <>
+                  {current && <OngoingTasks tasks={digest?.ongoingTasks ?? []} />}
+                  <MetricsGrid
+                    cards={cards}
+                    selectedType={typeFilter}
+                    onSelectType={setTypeFilter}
+                  />
+                  <TimelineList
+                    events={events ?? []}
+                    displayByType={displayByType}
+                    vaultRoot={vaultRoot}
+                  />
+                </>
+              )}
             </div>
-          ) : (
-            <>
-              {current && <OngoingTasks tasks={digest?.ongoingTasks ?? []} />}
-              <MetricsGrid
-                cards={cards}
-                selectedType={typeFilter}
-                onSelectType={setTypeFilter}
-              />
-              <TimelineList
-                events={events ?? []}
-                displayByType={displayByType}
-                vaultRoot={vaultRoot}
-              />
-            </>
-          )
+          </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden max-w-[1200px] w-full mx-auto px-8">
             <EntityGraphView vaultRoot={vaultRoot} />
           </div>
         )}
-      </div>
       </div>
       ) : (
         <div className="flex-1 min-w-0 overflow-y-auto">
