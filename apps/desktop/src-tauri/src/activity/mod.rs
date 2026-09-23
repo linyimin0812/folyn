@@ -1,6 +1,7 @@
 //! Activity collection (design: folyn-activity-collection-design.md §4–§6).
 //! Commands are stateless: the vault root is passed in by the frontend (same
-//! contract as `scan_file_tree`), the SQLite connection is cached per path.
+//! contract as `scan_file_tree`), the SQLite connection is cached per DB path
+//! (under `~/.folyn`, see `db::conn`).
 
 pub mod db;
 pub mod ingest;
