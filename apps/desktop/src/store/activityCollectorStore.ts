@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { registerPersistSlice } from './settingsPersistence';
 
 /**
- * Activity collector user settings (design §2.1/§8): global polling
- * kill-switch, per-collector enable/poll toggles + interval overrides, the
- * keepRaw/redact privacy switches, and the authSchema-rendered config values
- * keyed by collector id. The declaration side (what collectors exist) lives in
+ * Activity collector user settings (design §2.1/§8): per-collector
+ * enable/poll toggles + interval overrides, the keepRaw/redact privacy
+ * switches, and the authSchema-rendered config values keyed by collector id
+ * (including each collector's own `allowAiSummary` opt-in). The declaration
+ * side (what collectors exist) lives in
  * `services/activity/registry.ts` — this store owns only user preferences.
  */
 
@@ -14,9 +15,7 @@ import { registerPersistSlice } from './settingsPersistence';
 // keychain-first encryption — swap this slice's persist/get seam for a
 // keychain client in part B; the store shape stays unchanged.
 export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
-  'pollOn',
   'keepRaw',
-  'allowAiSummary',
   'redactPatterns',
   'collectors',
   'configs',
@@ -64,14 +63,8 @@ export const DEFAULT_REPORT_CONFIG: ReportConfig = {
 };
 
 export interface ActivityCollectorState {
-  /** Global polling kill-switch (design §2.1). Off = every collector is
-   *  manual-only until flipped back on. */
-  pollOn: boolean;
   /** Privacy switch (design §8): keep the events' `raw` payload. */
   keepRaw: boolean;
-  /** Privacy switch (design §8, default off): allow AI to read activity data
-   *  to generate summaries. When off, the detail panel omits the AI block. */
-  allowAiSummary: boolean;
   /** Privacy redaction (design §4.3 step 2): user regexes applied to event
    *  title/summary before ingest. Invalid regexes are skipped at apply time. */
   redactPatterns: string[];
@@ -93,9 +86,7 @@ export interface ActivityCollectorState {
    *  on every collect). */
   lastSync: Record<string, { at: number; accepted: number }>;
 
-  setPollOn: (v: boolean) => void;
   setKeepRaw: (v: boolean) => void;
-  setAllowAiSummary: (v: boolean) => void;
   setRedactPatterns: (v: string[]) => void;
   setCollectorSettings: (collectorId: string, patch: Partial<CollectorSettings>) => void;
   setCollectorConfig: (collectorId: string, config: Record<string, unknown>) => void;
@@ -143,9 +134,7 @@ export function parseReportConfig(blob: unknown): ReportConfig {
 }
 
 export const useActivityCollectorStore = create<ActivityCollectorState>((set, get) => ({
-  pollOn: true,
   keepRaw: false,
-  allowAiSummary: false,
   redactPatterns: [],
   collectors: {},
   configs: {},
@@ -154,9 +143,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   reportConfig: DEFAULT_REPORT_CONFIG,
   lastSync: {},
 
-  setPollOn: (v) => { set({ pollOn: v }); persist(); },
   setKeepRaw: (v) => { set({ keepRaw: v }); persist(); },
-  setAllowAiSummary: (v) => { set({ allowAiSummary: v }); persist(); },
   setRedactPatterns: (v) => { set({ redactPatterns: v }); persist(); },
 
   setCollectorSettings: (collectorId, patch) => {
@@ -202,9 +189,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
 
   hydrate: (blob) => {
     const patch: Partial<ActivityCollectorState> = {};
-    if (typeof blob.pollOn === 'boolean') patch.pollOn = blob.pollOn;
     if (typeof blob.keepRaw === 'boolean') patch.keepRaw = blob.keepRaw;
-    if (typeof blob.allowAiSummary === 'boolean') patch.allowAiSummary = blob.allowAiSummary;
     if (blob.pinnedMetrics && typeof blob.pinnedMetrics === 'object') {
       const pinnedMetrics: Record<string, boolean> = {};
       for (const [id, v] of Object.entries(blob.pinnedMetrics as Record<string, unknown>)) {

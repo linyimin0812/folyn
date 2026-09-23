@@ -89,7 +89,6 @@
   "collectors": {
     "tab": "コレクター",
     "empty": "有効なコレクターはありません。collectors 貢献を宣言した拡張をインストールするとここで管理できます。",
-    "globalPoll": "グローバルポーリング",
     "enabled": "有効",
     "disabled": "無効",
     "modePoll": "ポーリング",
@@ -106,7 +105,6 @@
     "configTitle": "設定",
     "save": "保存",
     "conflictBadge": "タイプ登録の競合",
-    "allowAiSummary": "AI が要約のためにアクティビティデータを読むことを許可",
     "noImpl": "宣言型コレクター（ランタイムコードなし）"
   }
 }

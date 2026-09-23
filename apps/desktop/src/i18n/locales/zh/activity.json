@@ -89,7 +89,6 @@
   "collectors": {
     "tab": "采集器",
     "empty": "暂无已启用的采集器。安装声明了 collectors 贡献点的扩展后，在此配置与管理。",
-    "globalPoll": "全局轮询",
     "enabled": "已启用",
     "disabled": "已停用",
     "modePoll": "轮询",
@@ -106,7 +105,6 @@
     "configTitle": "配置",
     "save": "保存",
     "conflictBadge": "类型注册冲突",
-    "allowAiSummary": "允许 AI 读取活动数据生成摘要",
     "noImpl": "声明式采集器（无运行时代码）"
   }
 }

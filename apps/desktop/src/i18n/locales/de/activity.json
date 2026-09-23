@@ -89,7 +89,6 @@
   "collectors": {
     "tab": "Kollektoren",
     "empty": "Keine aktiven Kollektoren. Installiere eine Erweiterung mit dem Contribution Point collectors, um sie hier zu verwalten.",
-    "globalPoll": "Globales Polling",
     "enabled": "Aktiviert",
     "disabled": "Deaktiviert",
     "modePoll": "Polling",
@@ -106,7 +105,6 @@
     "configTitle": "Konfiguration",
     "save": "Speichern",
     "conflictBadge": "Typ-Registrierungskonflikt",
-    "allowAiSummary": "KI darf Aktivitätsdaten für Zusammenfassungen lesen",
     "noImpl": "Deklarativer Kollektor (kein Runtime-Code)"
   }
 }

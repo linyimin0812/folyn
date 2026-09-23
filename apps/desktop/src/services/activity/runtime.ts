@@ -257,8 +257,7 @@ let runtimeStarted = false;
 
 /** Is this collector currently wanted on the poll schedule? */
 function isScheduled(collectorId: string): boolean {
-  const { pollOn, collectors } = useActivityCollectorStore.getState();
-  if (!pollOn) return false;
+  const { collectors } = useActivityCollectorStore.getState();
   const reg = useCollectorRegistryStore.getState().collectors.find((c) => c.collectorId === collectorId);
   if (!reg || reg.mode !== 'poll' || !reg.impl?.collect) return false;
   return getCollectorSettings({ collectors }, collectorId).pollOn;

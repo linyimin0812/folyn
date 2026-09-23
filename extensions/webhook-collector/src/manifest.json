@@ -30,7 +30,13 @@
             "titleField": { "type": "string", "title": "标题字段名", "default": "title", "description": "必填——映射不出标题则丢弃该事件" },
             "timestampField": { "type": "string", "title": "时间字段名", "default": "timestamp", "description": "epoch 毫秒/秒或 ISO 字符串；缺省用当前时间" },
             "typeField": { "type": "string", "title": "类型字段名", "default": "type", "description": "事件类型，需在声明的类型范围内（默认 external）" },
-            "urlField": { "type": "string", "title": "链接字段名", "default": "url", "description": "详情面板「查看原文」跳转链接" }
+            "urlField": { "type": "string", "title": "链接字段名", "default": "url", "description": "详情面板「查看原文」跳转链接" },
+            "allowAiSummary": {
+              "type": "boolean",
+              "title": "允许 AI 读取活动数据生成摘要",
+              "description": "开启后，时间线详情面板可为该采集器的事件懒生成 AI 摘要",
+              "default": false
+            }
           }
         },
         "hostAllowlist": []

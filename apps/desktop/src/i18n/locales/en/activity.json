@@ -89,7 +89,6 @@
   "collectors": {
     "tab": "Collectors",
     "empty": "No active collectors. Install an extension that declares the collectors contribution point to manage it here.",
-    "globalPoll": "Global polling",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "modePoll": "Poll",
@@ -106,7 +105,6 @@
     "configTitle": "Configuration",
     "save": "Save",
     "conflictBadge": "Type registration conflict",
-    "allowAiSummary": "Allow AI to read activity data for summaries",
     "noImpl": "Declarative collector (no runtime code)"
   }
 }

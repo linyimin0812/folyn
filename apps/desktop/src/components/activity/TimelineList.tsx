@@ -3,8 +3,9 @@
  * come from the activityDisplay index (collector declaration → builtin table
  * → gray-dot fallback); clicking a row expands the detail panel with
  * declared detailFields (or the raw payload flat-list fallback), the cached
- * AI summary (lazily generated on first expand when the privacy switch allows
- * it, then served from the ai_summary cache), and a「查看原文」link that
+ * AI summary (lazily generated on first expand when the event's collector
+ * opted in via its own `allowAiSummary` config, then served from the
+ * ai_summary cache), and a「查看原文」link that
  * only renders when the event carries a url.
  */
 
@@ -50,7 +51,11 @@ function openExternalUrl(u: string) {
 export function TimelineList({ events, displayByType, vaultRoot }: TimelineListProps) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const allowAiSummary = useActivityCollectorStore((s) => s.allowAiSummary);
+  // Per-collector AI opt-in: `event.source` is the collector id (validated
+  // Rust-side to equal it), which keys the authSchema-rendered config values.
+  const configs = useActivityCollectorStore((s) => s.configs);
+  const aiAllowed = (e: ActivityEventRow) =>
+    configs[e.source]?.allowAiSummary === true;
   // Lazy summaries (§6): first expand generates + caches into ai_summary;
   // later expands read this session map (row prop stays stale until refetch).
   const [generated, setGenerated] = useState<Record<string, string>>({});
@@ -74,8 +79,8 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
     });
     const event = events.find((e) => e.id === id);
     if (
-      allowAiSummary &&
       event &&
+      aiAllowed(event) &&
       !event.aiSummary &&
       !generated[id] &&
       !tried.current.has(id)
@@ -202,7 +207,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                         </div>
                       )}
 
-                      {allowAiSummary &&
+                      {aiAllowed(e) &&
                         (e.aiSummary || generated[e.id] || pendingSummary.has(e.id)) && (
                           <div className="mt-3">
                             <p className="m-0 text-[12px] text-acc">{t('activity:timeline.aiSummary')}</p>

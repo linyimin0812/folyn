@@ -222,10 +222,6 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
 export function CollectorsSettings() {
   const { t } = useTranslation();
   const collectors = useCollectorRegistryStore((s) => s.collectors);
-  const globalPollOn = useActivityCollectorStore((s) => s.pollOn);
-  const setPollOn = useActivityCollectorStore((s) => s.setPollOn);
-  const allowAiSummary = useActivityCollectorStore((s) => s.allowAiSummary);
-  const setAllowAiSummary = useActivityCollectorStore((s) => s.setAllowAiSummary);
   // Webhook endpoint (Rust activity_webhook_info) — only shown for
   // webhook-mode collectors; empty when the local server isn't running.
   const hasWebhook = collectors.some((c) => c.mode === 'webhook');
@@ -237,17 +233,6 @@ export function CollectorsSettings() {
 
   return (
     <div>
-      <div className="flex flex-col gap-2 mb-3">
-        <label className="flex items-center gap-2 text-[length:calc(var(--ui-font-size)-1px)] text-t1 cursor-pointer m-0">
-          <Toggle value={globalPollOn} onChange={setPollOn} />
-          {t('activity:collectors.globalPoll')}
-        </label>
-        <label className="flex items-center gap-2 text-[length:calc(var(--ui-font-size)-1px)] text-t1 cursor-pointer m-0">
-          <Toggle value={allowAiSummary} onChange={setAllowAiSummary} />
-          {t('activity:collectors.allowAiSummary')}
-        </label>
-      </div>
-
       {collectors.length === 0 ? (
         <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
           {t('activity:collectors.empty')}
