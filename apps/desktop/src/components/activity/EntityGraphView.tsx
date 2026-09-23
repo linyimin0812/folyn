@@ -284,7 +284,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
         {/* In-flow column: the graph area shrinks and the layout re-centers
             via the container's ResizeObserver. */}
         {groupPanel != null && (
-          <aside className="flex w-[260px] shrink-0 flex-col border-l border-r border-brd bg-white">
+          <aside className="flex w-[260px] shrink-0 flex-col border-l border-r border-brd bg-panel">
             <div className="flex items-center justify-between gap-2 border-b border-brd px-3 py-2">
               <p className="m-0 min-w-0 text-xs font-medium text-t1">
                 {t('activity:graph.groupPanel', { label: typeLabelOf(groupPanel), count: panelItems.length })}
