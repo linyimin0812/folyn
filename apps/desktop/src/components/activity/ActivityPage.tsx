@@ -215,19 +215,19 @@ export function ActivityPage() {
     <div className="flex-1 min-w-0 flex">
       {/* Secondary left rail — page-local, a sibling of the global ActivityBar
           (NOT a modification of it). Switching views swaps the page content. */}
-      <div className="w-11 shrink-0 border-r border-brd flex flex-col items-center gap-1 py-3">
+      <div className="w-28 shrink-0 border-r border-brd flex flex-col gap-1 py-3 px-2">
         {RAIL_VIEWS.map((v) => (
           <button
             key={v.id}
             type="button"
-            className={`flex size-8 items-center justify-center rounded cursor-pointer ${
+            className={`flex w-full items-center gap-2 px-2.5 py-2 rounded cursor-pointer ${
               view === v.id ? 'bg-accdim text-acc' : 'text-t3 hover:text-t2 hover:bg-hov'
             }`}
             aria-label={t(v.key)}
-            title={t(v.key)}
             onClick={() => setView(v.id)}
           >
             <v.icon size={16} />
+            <span className="text-[12px] truncate">{t(v.key)}</span>
           </button>
         ))}
       </div>
