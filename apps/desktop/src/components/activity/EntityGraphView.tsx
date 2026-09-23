@@ -200,74 +200,88 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     </div>
   );
 
+  // Layout per display item: line endpoints + node card center. Cards are
+  // absolutely-positioned HTML overlaid on the svg — foreignObject content
+  // doesn't paint reliably in Tauri macOS WKWebView.
+  const nodeLayouts = displayItems.map((di, i) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(1, slots);
+    const nx = CX + RX * Math.cos(angle);
+    const ny = CY + RY * Math.sin(angle);
+    const dx = nx - CX;
+    const dy = ny - CY;
+    const len = Math.hypot(dx, dy);
+    const ux = dx / len;
+    const uy = dy / len;
+    const start = borderDistance(ux, uy, CENTER_W, CENTER_H) + 3;
+    const end = borderDistance(ux, uy, NODE_W, NODE_H) + 5;
+    return {
+      di,
+      nx,
+      ny,
+      startX: CX + start * ux,
+      startY: CY + start * uy,
+      endX: nx - end * ux,
+      endY: ny - end * uy,
+    };
+  });
+
   const graph = (
     <div ref={wrapRef} className="flex-1 min-h-0 min-w-0 overflow-auto">
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none">
-        <defs>
-          <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
-          </marker>
-        </defs>
-
-        {displayItems.map((di, i) => {
-          const angle = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(1, slots);
-          const nx = CX + RX * Math.cos(angle);
-          const ny = CY + RY * Math.sin(angle);
-          const dx = nx - CX;
-          const dy = ny - CY;
-          const len = Math.hypot(dx, dy);
-          const ux = dx / len;
-          const uy = dy / len;
-          const start = borderDistance(ux, uy, CENTER_W, CENTER_H) + 3;
-          const end = borderDistance(ux, uy, NODE_W, NODE_H) + 5;
-          const startX = CX + start * ux;
-          const startY = CY + start * uy;
-          const endX = nx - end * ux;
-          const endY = ny - end * uy;
-          const rel = di.items[0]?.relation ?? '';
-          const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
-          const selected = groupPanel === di.entityType;
-          return (
+      <div className="relative" style={{ width: W, height: H }}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none" aria-hidden="true">
+          <defs>
+            <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
+            </marker>
+          </defs>
+          {nodeLayouts.map(({ di, startX, startY, endX, endY }) => (
             <g key={di.entityType}>
               <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="var(--brd2)" strokeWidth="1" markerEnd={`url(#${arrowId})`} />
               <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 8} textAnchor="middle" fontSize="11" fill="var(--t3)" stroke="var(--panel)" strokeWidth="5" paintOrder="stroke">
-                {rel}
+                {di.items[0]?.relation ?? ''}
               </text>
-              <foreignObject x={nx - NODE_W / 2 - 4} y={ny - NODE_H / 2 - 4} width={NODE_W + 8} height={NODE_H + 8}>
-                <button
-                  type="button"
-                  title={label}
-                  aria-expanded={di.aggregate ? selected : undefined}
-                  className={`m-1 flex h-16 w-[168px] flex-col justify-center gap-1 rounded-md border px-3 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
-                  onClick={(event) => {
-                    if (di.aggregate) {
-                      groupButtonRef.current = event.currentTarget;
-                      setGroupPanel(selected ? null : di.entityType);
-                    } else {
-                      navigateTo(di.items[0]!.neighborId);
-                    }
-                  }}
-                >
-                  <span className="block w-full truncate text-[13px] font-medium text-t1">{label}</span>
-                  <span className="flex w-full items-center justify-between gap-2 text-[11px] text-t3">
-                    <span className="truncate">{di.aggregate ? t('activity:graph.groupCount', { count: di.items.length }) : typeLabelOf(di.entityType)}</span>
-                    {di.aggregate && <span aria-hidden="true">›</span>}
-                  </span>
-                </button>
-              </foreignObject>
             </g>
+          ))}
+        </svg>
+        {nodeLayouts.map(({ di, nx, ny }) => {
+          const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
+          const selected = groupPanel === di.entityType;
+          return (
+            <button
+              key={di.entityType}
+              type="button"
+              title={label}
+              aria-expanded={di.aggregate ? selected : undefined}
+              style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W }}
+              className={`flex h-16 flex-col justify-center gap-1 rounded-md border px-3 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
+              onClick={(event) => {
+                if (di.aggregate) {
+                  groupButtonRef.current = event.currentTarget;
+                  setGroupPanel(selected ? null : di.entityType);
+                } else {
+                  navigateTo(di.items[0]!.neighborId);
+                }
+              }}
+            >
+              <span className="block w-full truncate text-[13px] font-medium text-t1">{label}</span>
+              <span className="flex w-full items-center justify-between gap-2 text-[11px] text-t3">
+                <span className="truncate">{di.aggregate ? t('activity:graph.groupCount', { count: di.items.length }) : typeLabelOf(di.entityType)}</span>
+                {di.aggregate && <span aria-hidden="true">›</span>}
+              </span>
+            </button>
           );
         })}
-
         {center && (
-          <foreignObject x={CX - CENTER_W / 2} y={CY - CENTER_H / 2} width={CENTER_W} height={CENTER_H}>
-            <div className="flex h-full flex-col justify-center gap-1 rounded-md border border-acc bg-panel px-4" title={nameOf(center.id)}>
-              <span className="truncate text-[13px] font-semibold text-t1">{nameOf(center.id)}</span>
-              <span className="truncate text-[11px] text-t2">{typeLabelOf(center.type)}</span>
-            </div>
-          </foreignObject>
+          <div
+            style={{ position: 'absolute', left: CX, top: CY, transform: 'translate(-50%, -50%)', width: CENTER_W }}
+            className="flex h-[72px] flex-col justify-center gap-1 rounded-md border border-acc bg-panel px-4"
+            title={nameOf(center.id)}
+          >
+            <span className="truncate text-[13px] font-semibold text-t1">{nameOf(center.id)}</span>
+            <span className="truncate text-[11px] text-t2">{typeLabelOf(center.type)}</span>
+          </div>
         )}
-      </svg>
+      </div>
     </div>
   );
 
