@@ -70,7 +70,8 @@
     "followGlobal": "Globalem Chat-Modell folgen",
     "followGlobalHint": "Folgt derzeit dem globalen Chat-Modell",
     "rootDirLabel": "Bericht-Stammordner",
-    "rootDirPlaceholder": "活动记录"
+    "rootDirPlaceholder": "活动记录",
+    "browse": "Durchsuchen"
   },
   "graph": {
     "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",

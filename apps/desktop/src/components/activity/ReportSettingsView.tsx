@@ -8,7 +8,11 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FolderOpen } from 'lucide-react';
+import { MoveDialog } from '@/components/sidebar/SidebarActions';
+import type { VaultEntry } from '@folyn/vault-provider';
 import { PairSelector } from '@/components/ai/PairSelector';
+import { useVaultStore } from '@/store/vaultStore';
 import { useActivityCollectorStore } from '@/store/activityCollectorStore';
 
 const PERIODS = ['daily', 'weekly', 'monthly'] as const;
@@ -21,6 +25,9 @@ export function ReportSettingsView() {
   const setReportModelOverride = useActivityCollectorStore((s) => s.setReportModelOverride);
   const setReportRootDir = useActivityCollectorStore((s) => s.setReportRootDir);
   const [period, setPeriod] = useState<Period>('daily');
+  // fileTree snapshot taken at open time (App.tsx paste-picker pattern).
+  const [pickerFileTree, setPickerFileTree] = useState<VaultEntry[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
     <div className="max-w-[720px]">
@@ -74,8 +81,9 @@ export function ReportSettingsView() {
         <PairSelector
           value={reportConfig.modelOverride ?? null}
           onChange={(pair) => setReportModelOverride(pair)}
-          className="w-full max-w-[360px]"
+          className="w-full"
           dropDirection="down"
+          panelAlign="right"
         />
       </div>
 
@@ -83,13 +91,39 @@ export function ReportSettingsView() {
         <span className="block text-[13px] text-t1 mb-1.5">
           {t('activity:reportSettings.rootDirLabel')}
         </span>
-        <input
-          className="w-full max-w-[360px] text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-1.5 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
-          value={reportConfig.rootDir}
-          placeholder={t('activity:reportSettings.rootDirPlaceholder')}
-          onChange={(e) => setReportRootDir(e.target.value)}
-        />
+        <div className="flex items-center gap-2">
+          <input
+            className="w-full max-w-[360px] text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-1.5 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
+            value={reportConfig.rootDir}
+            placeholder={t('activity:reportSettings.rootDirPlaceholder')}
+            onChange={(e) => setReportRootDir(e.target.value)}
+          />
+          <button
+            className="btn btn-sm"
+            aria-label={t('activity:reportSettings.browse')}
+            title={t('activity:reportSettings.browse')}
+            onClick={() => {
+              setPickerFileTree(useVaultStore.getState().fileTree);
+              setPickerOpen(true);
+            }}
+          >
+            <FolderOpen size={14} />
+          </button>
+        </div>
       </label>
+
+      {pickerOpen && (
+        <MoveDialog
+          sources={[]}
+          fileTree={pickerFileTree}
+          mode="copy"
+          onCancel={() => setPickerOpen(false)}
+          onConfirm={async (dir) => {
+            setPickerOpen(false);
+            setReportRootDir(dir);
+          }}
+        />
+      )}
     </div>
   );
 }
