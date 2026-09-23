@@ -4,9 +4,11 @@
  * plus report generation (日/周/月 written into the vault, §7.5).
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sparkles } from 'lucide-react';
+import remarkGfm from 'remark-gfm';
+import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
 import { useNavStore } from '@/store/navStore';
 import { FileIcon } from '@/components/icons/FileIcon';
 import {
@@ -46,6 +48,18 @@ function reportModeOf(mode: Period['mode']): ReportPeriod | null {
   if (mode === 'week') return 'weekly';
   if (mode === 'month') return 'monthly';
   return null;
+}
+
+/** Report preview — same markdown pipeline the chat uses, memoized per text. */
+function ReportMarkdown({ markdown }: { markdown: string }) {
+  const node = useMemo(() => {
+    try {
+      return renderMarkdownToReact(markdown, { remarkExtensions: [remarkGfm] });
+    } catch {
+      return markdown;
+    }
+  }, [markdown]);
+  return <div className="msg-md max-h-[280px] overflow-y-auto text-[13px] text-t2">{node}</div>;
 }
 
 export function ActivityPage() {
@@ -243,10 +257,19 @@ export function ActivityPage() {
                 </span>
                 {t('activity:report.openInEditor')}
               </button>
+              <button
+                type="button"
+                className="flex size-7 shrink-0 items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc cursor-pointer"
+                aria-label={t('common:common.close')}
+                title={t('common:common.close')}
+                onClick={() => setReport(null)}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+                  <path d="m4 4 8 8M12 4l-8 8" />
+                </svg>
+              </button>
             </div>
-            <pre className="m-0 p-2.5 rounded-md bg-surf2 border border-brd text-[11px] text-t2 whitespace-pre-wrap break-words max-h-[280px] overflow-y-auto">
-              {report.markdown}
-            </pre>
+            <ReportMarkdown markdown={report.markdown} />
           </div>
         )}
 
