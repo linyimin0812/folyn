@@ -20,6 +20,7 @@ mod chat;
 mod list_models;
 mod voice;
 mod pet_api;
+mod activity;
 
 #[cfg(target_os = "macos")]
 mod pet_panel_macos;
@@ -1178,6 +1179,17 @@ pub fn run() {
             commands::set_pet_click_through,
             commands::exit_app,
             commands::tray_set_enabled,
+            activity::activity_push_events,
+            activity::activity_get_cursor,
+            activity::activity_set_cursor,
+            activity::activity_list_events,
+            activity::activity_aggregate_metrics,
+            activity::activity_list_entities,
+            activity::activity_get_entity,
+            activity::activity_get_entity_neighbors,
+            activity::activity_daily_digest_input,
+            activity::activity_get_event_summary,
+            activity::activity_set_event_summary,
             pet_api::get_pet_api_info,
             pet_api::open_external,
             chat::chat_stream,

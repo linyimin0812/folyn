@@ -54,17 +54,17 @@ fn is_base64_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '='
 }
 
-struct DataUrlPrefixMatch {
-    prefix_start: usize,
-    prefix_end: usize,
-    media_type: String,
+pub(super) struct DataUrlPrefixMatch {
+    pub(super) prefix_start: usize,
+    pub(super) prefix_end: usize,
+    pub(super) media_type: String,
 }
 
 /// Find the first `data:image/<mt>;base64,` prefix in `s`. Returns its
 /// byte range and the parsed media type (e.g. `"image/png"`). The media type
 /// must be at least one char; `+`/`-`/`.`/alnum are accepted (covers png,
 /// jpeg, webp, svg+xml, etc.). Returns `None` on no match.
-fn find_data_url_prefix(s: &str) -> Option<DataUrlPrefixMatch> {
+pub(super) fn find_data_url_prefix(s: &str) -> Option<DataUrlPrefixMatch> {
     let mut cursor = 0;
     loop {
         let start = match s[cursor..].find("data:image/") {
@@ -105,7 +105,7 @@ fn find_data_url_prefix(s: &str) -> Option<DataUrlPrefixMatch> {
 /// ponytail: iterate char boundary positions so suffix slices stay on UTF-8
 /// boundaries — byte-indexed `&s[s.len()-n..]` panics on CJK chars (3 bytes
 /// each). Capped at 30 bytes; 4-byte floor still skips spurious single letters.
-fn partial_data_url_prefix_len(s: &str) -> usize {
+pub(super) fn partial_data_url_prefix_len(s: &str) -> usize {
     let mut best = 0;
     for (i, _) in s.char_indices() {
         let suffix_len = s.len() - i;
@@ -123,7 +123,7 @@ fn partial_data_url_prefix_len(s: &str) -> usize {
 /// `s` is a strict prefix of `"data:image/"`, OR matches the partial pattern
 /// `data:image/<mt>[;base64[,]]` shape. The empty string returns false —
 /// holding back zero-length "prefixes" serves no purpose.
-fn could_start_data_url(s: &str) -> bool {
+pub(super) fn could_start_data_url(s: &str) -> bool {
     if s.is_empty() {
         return false;
     }

@@ -888,6 +888,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::image_scanner::{
+        could_start_data_url, find_data_url_prefix, partial_data_url_prefix_len,
+    };
 
     // T07: thinking_params pure function — provider dispatch + JSON shape.
     #[test]
