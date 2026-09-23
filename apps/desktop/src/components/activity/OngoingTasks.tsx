@@ -25,8 +25,8 @@ export function OngoingTasks({ tasks }: OngoingTasksProps) {
   const today = new Date();
 
   return (
-    <div className="mb-5">
-      <p className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 m-0 mb-2">
+    <div className="mb-6">
+      <p className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 m-0 mb-3">
         {t('activity:ongoing.title')}
       </p>
       {tasks.map((task) => {
@@ -44,11 +44,11 @@ export function OngoingTasks({ tasks }: OngoingTasksProps) {
             : 0;
         const clampedPct = Math.min(100, Math.max(0, pct));
         return (
-          <div key={task.id} className="border border-brd rounded-lg p-2.5 mb-2 bg-panel">
-            <div className="flex items-baseline justify-between gap-2 mb-2">
-              <p className="m-0 text-[length:calc(var(--ui-font-size)] text-t1 truncate">{name}</p>
+          <div key={task.id} className="border border-brd rounded-lg p-3.5 mb-3 bg-panel">
+            <div className="flex items-baseline justify-between gap-2 mb-3">
+              <p className="m-0 text-[length:calc(var(--ui-font-size)+1px)] text-t1 truncate">{name}</p>
               {startDate != null && dueDate != null && (
-                <p className="m-0 text-[11px] text-t3 whitespace-nowrap">
+                <p className="m-0 text-[12px] text-t3 whitespace-nowrap">
                   {(() => {
                     const { current, total } = taskDayProgress(startDate, dueDate, today);
                     return t('activity:ongoing.dayN', { current, total });
@@ -56,10 +56,10 @@ export function OngoingTasks({ tasks }: OngoingTasksProps) {
                 </p>
               )}
             </div>
-            <div className="h-1 rounded bg-surf2 overflow-hidden mb-1.5">
+            <div className="h-1.5 rounded bg-surf2 overflow-hidden mb-2">
               <div className="h-full bg-acc" style={{ width: `${clampedPct}%` }} />
             </div>
-            <p className="m-0 text-[11px] text-t3 truncate" title={note}>
+            <p className="m-0 text-[12px] text-t3 truncate" title={note}>
               {note}
             </p>
           </div>

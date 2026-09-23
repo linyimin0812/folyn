@@ -58,7 +58,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
 
   if (events.length === 0) {
     return (
-      <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+      <div className="text-[13px] text-t3 bg-surf2 border border-brd2 rounded-md p-6 text-center">
         {t('activity:timeline.empty')}
       </div>
     );
@@ -112,42 +112,42 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
         const payload = e.payload ?? {};
         const url = isExternalUrl(e.url) ? e.url : null;
         return (
-          <div key={e.id} className="border border-brd rounded-lg mb-2 bg-panel">
+          <div key={e.id} className="border border-brd rounded-lg mb-3 bg-panel">
             <button
-              className="w-full flex items-center gap-2.5 p-2.5 text-left cursor-pointer bg-transparent border-0"
+              className="w-full flex items-center gap-3 p-3.5 text-left cursor-pointer bg-transparent border-0"
               onClick={() => toggle(e.id)}
             >
               <span
-                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                 style={{ background: pal.bg, color: pal.color }}
               >
                 {icon ? (
-                  <LucideNameIcon name={icon} size={14} />
+                  <LucideNameIcon name={icon} size={16} />
                 ) : (
                   <span className="w-2 h-2 rounded-full" style={{ background: pal.color }} />
                 )}
               </span>
               <span className="flex-1 min-w-0">
-                <span className="block text-[length:calc(var(--ui-font-size)] text-t1 truncate">
+                <span className="block text-[length:calc(var(--ui-font-size)+1px)] text-t1 truncate">
                   {e.title || e.id}
                 </span>
-                <span className="block text-[11px] text-t3 truncate">
+                <span className="block text-[12px] text-t3 truncate">
                   {timeFmt.format(new Date(e.occurredAt))} · {e.type}
                 </span>
               </span>
               <ChevronDown
-                size={14}
+                size={16}
                 className="text-t3 shrink-0"
                 style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}
               />
             </button>
 
             {isOpen && (
-              <div className="px-3 pb-2.5 pt-2 border-t border-brd text-[length:calc(var(--ui-font-size)-1px)] text-t2">
-                {e.summary && <p className="m-0 mb-1.5">{e.summary}</p>}
+              <div className="px-4 pb-3.5 pt-3 border-t border-brd text-[length:var(--ui-font-size)] text-t2">
+                {e.summary && <p className="m-0 mb-2">{e.summary}</p>}
 
                 {detailFields && detailFields.length > 0 ? (
-                  <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                  <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
                     {detailFields.map((f) => {
                       const raw = (payload as Record<string, unknown>)[f.key];
                       const text = formatDetailValue(raw, f.format);
@@ -161,7 +161,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                     })}
                   </dl>
                 ) : (
-                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
                     {Object.entries(payload as Record<string, unknown>).map(([k, v]) => (
                       <div key={k} className="contents">
                         <span className="text-t3">{k}</span>
@@ -172,8 +172,8 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                 )}
 
                 {allowAiSummary && (e.aiSummary || generated[e.id] || pendingSummary.has(e.id)) && (
-                  <div className="mt-2">
-                    <p className="m-0 text-[11px] text-acc">{t('activity:timeline.aiSummary')}</p>
+                  <div className="mt-3">
+                    <p className="m-0 text-[12px] text-acc">{t('activity:timeline.aiSummary')}</p>
                     {pendingSummary.has(e.id) && !e.aiSummary && !generated[e.id] ? (
                       <p className="m-0 mt-0.5 text-t3">{t('activity:timeline.aiSummaryLoading')}</p>
                     ) : (
@@ -189,14 +189,14 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 mt-2 text-[11px] text-acc no-underline hover:underline"
+                    className="inline-flex items-center gap-1 mt-3 text-[12px] text-acc no-underline hover:underline"
                     onClick={(ev) => {
                       ev.preventDefault();
                       openExternalUrl(url);
                     }}
                   >
                     {t('activity:timeline.viewSource')}
-                    <ExternalLink size={11} />
+                    <ExternalLink size={12} />
                   </a>
                 )}
               </div>

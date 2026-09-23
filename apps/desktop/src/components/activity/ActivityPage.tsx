@@ -153,13 +153,13 @@ export function ActivityPage() {
 
   return (
     <div className="flex-1 min-w-0 overflow-y-auto">
-      <div className="max-w-[860px] mx-auto p-6">
-        <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+      <div className="max-w-[1200px] mx-auto p-8">
+        <div className="flex items-center justify-between gap-3 mb-7 flex-wrap">
           <div className="inline-flex rounded-md border border-brd overflow-hidden">
             {(['timeline', 'graph'] as const).map((m) => (
               <button
                 key={m}
-                className={`px-4 py-1.5 text-[length:calc(var(--ui-font-size)-1px)] border-l border-brd first:border-l-0 ${
+                className={`px-5 py-2 text-[length:var(--ui-font-size)] border-l border-brd first:border-l-0 ${
                   tab === m ? 'bg-accdim text-acc' : 'bg-panel text-t2 hover:bg-hov'
                 }`}
                 onClick={() => setTab(m)}
@@ -194,7 +194,7 @@ export function ActivityPage() {
         </div>
 
         {report && (
-          <div className="border border-brd2 rounded-lg p-3 mb-5 bg-surf2">
+          <div className="border border-brd2 rounded-lg p-4 mb-5 bg-surf2">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
               <p className="m-0 text-[11px] text-acc">
                 {t('activity:report.savedTo', { path: report.path })}

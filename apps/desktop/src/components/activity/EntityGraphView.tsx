@@ -242,7 +242,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   /* Center info / no-relations / hint — always under the graph (left column). */
   const infoPanel = center ? (
-    <p className="m-0 text-[length:calc(var(--ui-font-size)-1px)] text-t3">
+    <p className="m-0 text-[13px] text-t3">
       {neighbors && neighbors.length === 0
         ? t('activity:graph.noRelations', { name: nameOf(center.id) })
         : t('activity:graph.centerInfo', {
@@ -251,7 +251,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
           })}
     </p>
   ) : (
-    <p className="m-0 text-[length:calc(var(--ui-font-size)-1px)] text-t3">
+    <p className="m-0 text-[13px] text-t3">
       {t('activity:graph.hint')}
     </p>
   );
@@ -264,20 +264,20 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
         <div className="flex-1 min-w-0">
           {breadcrumb}
           {graph}
-          <div className="border border-brd rounded-lg p-3 bg-panel">{infoPanel}</div>
+          <div className="border border-brd rounded-lg p-4 bg-panel">{infoPanel}</div>
         </div>
-        <div className="w-[280px] shrink-0 border border-brd rounded-lg p-3 bg-panel self-stretch">
-          <p className="m-0 mb-2 text-[length:calc(var(--ui-font-size)-1px)] text-t2">
+        <div className="w-[320px] shrink-0 border border-brd rounded-lg p-4 bg-panel self-stretch">
+          <p className="m-0 mb-3 text-[13px] text-t2">
             {t('activity:graph.groupPanel', {
               label: typeLabelOf(groupPanel),
               count: items.length,
             })}
           </p>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             {items.map((n) => (
               <button
                 key={n.neighborId}
-                className="text-left text-[length:calc(var(--ui-font-size)-1px)] text-t1 px-2.5 py-1.5 bg-surf2 rounded cursor-pointer border-0 hover:bg-hov"
+                className="text-left text-[length:var(--ui-font-size)] text-t1 px-3 py-2 bg-surf2 rounded cursor-pointer border-0 hover:bg-hov"
                 onClick={() => navigateTo(n.neighborId)}
               >
                 {nameOf(n.neighborId)} · {n.relation}
@@ -294,7 +294,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
       {breadcrumb}
       {graph}
       {/* Detail panel: center info / hint (full width, no group open) */}
-      <div className="border border-brd rounded-lg p-3 bg-panel">{infoPanel}</div>
+      <div className="border border-brd rounded-lg p-4 bg-panel">{infoPanel}</div>
     </div>
   );
 }
