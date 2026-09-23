@@ -17,6 +17,7 @@ import type { DisplayIndexEntry } from '@/services/activity/registry';
 import { useActivityCollectorStore } from '@/store/activityCollectorStore';
 import { generateEventSummary } from '@/services/activity/eventSummary';
 import { LucideNameIcon } from '@/components/icons/LucideNameIcon';
+import { dateKey } from './period';
 import { ACTIVITY_PALETTE, BUILTIN_EVENT_DISPLAY, formatDetailValue, isExternalUrl, paletteOf } from './display';
 
 interface TimelineListProps {
@@ -58,7 +59,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
 
   if (events.length === 0) {
     return (
-      <div className="text-[13px] text-t3 bg-surf2 border border-brd2 rounded-md p-6 text-center">
+      <div className="text-[13px] text-t3 bg-panel border border-brd rounded-lg p-8 text-center">
         {t('activity:timeline.empty')}
       </div>
     );
@@ -95,115 +96,151 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
     }
   };
 
-  const timeFmt = new Intl.DateTimeFormat(i18n.language, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  // Day-group formatting (spec: Intl only, no new i18n key) — group header
+  // carries the date, each row shows only the time of day.
+  const todayKeyStr = dateKey(new Date());
+  const dayFmt = new Intl.DateTimeFormat(i18n.language, { month: '2-digit', day: '2-digit' });
+  const weekdayFmt = new Intl.DateTimeFormat(i18n.language, { weekday: 'short' });
+  const timeFmt = new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' });
+  const dayLabelOf = (d: Date) =>
+    dateKey(d) === todayKeyStr
+      ? `${t('activity:period.today')} · ${dayFmt.format(d)}`
+      : `${dayFmt.format(d)} ${weekdayFmt.format(d)}`;
+
+  // Events arrive reverse-chronological; group consecutive same-day rows.
+  const groups: { key: string; dayLabel: string; events: ActivityEventRow[] }[] = [];
+  for (const e of events) {
+    const d = new Date(e.occurredAt);
+    const key = dateKey(d);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.events.push(e);
+    else groups.push({ key, dayLabel: dayLabelOf(d), events: [e] });
+  }
 
   return (
     <div>
-      {events.map((e) => {
-        const pal = ACTIVITY_PALETTE[eventPalette(e, displayByType)];
-        const icon = eventIcon(e, displayByType);
-        const isOpen = expanded.has(e.id);
-        const detailFields = displayByType[e.type]?.detailFields;
-        const payload = e.payload ?? {};
-        const url = isExternalUrl(e.url) ? e.url : null;
-        return (
-          <div key={e.id} className="border border-brd rounded-lg mb-3 bg-panel">
-            <button
-              className="w-full flex items-center gap-3 p-3.5 text-left cursor-pointer bg-transparent border-0"
-              onClick={() => toggle(e.id)}
-            >
-              <span
-                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: pal.bg, color: pal.color }}
-              >
-                {icon ? (
-                  <LucideNameIcon name={icon} size={16} />
-                ) : (
-                  <span className="w-2 h-2 rounded-full" style={{ background: pal.color }} />
-                )}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[length:calc(var(--ui-font-size)+1px)] text-t1 truncate">
-                  {e.title || e.id}
-                </span>
-                <span className="block text-[12px] text-t3 truncate">
-                  {timeFmt.format(new Date(e.occurredAt))} · {e.type}
-                </span>
-              </span>
-              <ChevronDown
-                size={16}
-                className="text-t3 shrink-0"
-                style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}
-              />
-            </button>
-
-            {isOpen && (
-              <div className="px-4 pb-3.5 pt-3 border-t border-brd text-[length:var(--ui-font-size)] text-t2">
-                {e.summary && <p className="m-0 mb-2">{e.summary}</p>}
-
-                {detailFields && detailFields.length > 0 ? (
-                  <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-                    {detailFields.map((f) => {
-                      const raw = (payload as Record<string, unknown>)[f.key];
-                      const text = formatDetailValue(raw, f.format);
-                      if (!text) return null;
-                      return (
-                        <div key={f.key} className="contents">
-                          <dt className="text-t3">{f.label}</dt>
-                          <dd className="m-0 text-t1">{text}</dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                ) : (
-                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-                    {Object.entries(payload as Record<string, unknown>).map(([k, v]) => (
-                      <div key={k} className="contents">
-                        <span className="text-t3">{k}</span>
-                        <span className="text-t1 break-words">{formatDetailValue(v, 'text')}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {allowAiSummary && (e.aiSummary || generated[e.id] || pendingSummary.has(e.id)) && (
-                  <div className="mt-3">
-                    <p className="m-0 text-[12px] text-acc">{t('activity:timeline.aiSummary')}</p>
-                    {pendingSummary.has(e.id) && !e.aiSummary && !generated[e.id] ? (
-                      <p className="m-0 mt-0.5 text-t3">{t('activity:timeline.aiSummaryLoading')}</p>
-                    ) : (
-                      <p className="m-0 mt-0.5 text-t1 leading-relaxed">
-                        {e.aiSummary || generated[e.id]}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {url && (
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 mt-3 text-[12px] text-acc no-underline hover:underline"
-                    onClick={(ev) => {
-                      ev.preventDefault();
-                      openExternalUrl(url);
-                    }}
-                  >
-                    {t('activity:timeline.viewSource')}
-                    <ExternalLink size={12} />
-                  </a>
-                )}
-              </div>
-            )}
+      {groups.map((g, gi) => (
+        <div key={g.key} className={gi === 0 ? '' : 'mt-5'}>
+          <div className={gi === 0 ? 'pb-2' : 'pt-3 pb-2 border-t border-brd'}>
+            <p className="m-0 text-[12px] text-t3">{g.dayLabel}</p>
           </div>
-        );
-      })}
+          <div className="relative">
+            {/* Vertical rail behind the icon bubbles (centered on bubble column). */}
+            <span
+              className="absolute left-[15px] top-2 bottom-2 w-[2px] rounded-full"
+              style={{ background: 'var(--brd)' }}
+              aria-hidden="true"
+            />
+            {g.events.map((e) => {
+              const pal = ACTIVITY_PALETTE[eventPalette(e, displayByType)];
+              const icon = eventIcon(e, displayByType);
+              const isOpen = expanded.has(e.id);
+              const detailFields = displayByType[e.type]?.detailFields;
+              const payload = e.payload ?? {};
+              const url = isExternalUrl(e.url) ? e.url : null;
+              const sub = e.summary || e.type;
+              return (
+                <div key={e.id}>
+                  <button
+                    className="relative w-full flex items-start gap-3 py-2 pr-2 rounded-md text-left cursor-pointer bg-transparent border-0 hover:bg-hov"
+                    onClick={() => toggle(e.id)}
+                  >
+                    <span
+                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: pal.bg, color: pal.color }}
+                    >
+                      {icon ? (
+                        <LucideNameIcon name={icon} size={16} />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full" style={{ background: pal.color }} />
+                      )}
+                    </span>
+                    <span className="flex-1 min-w-0 mt-0.5">
+                      <span className="block text-[13px] font-medium text-t1 truncate">
+                        {e.title || e.id}
+                      </span>
+                      <span className="block text-[12px] text-t2 truncate">{sub}</span>
+                    </span>
+                    <span className="mt-1 shrink-0 text-[12px] text-t3">
+                      {timeFmt.format(new Date(e.occurredAt))}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className="mt-1 text-t3 shrink-0"
+                      style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}
+                    />
+                  </button>
+
+                  {isOpen && (
+                    <div className="ml-11 mr-2 mb-2 rounded-md bg-surf2 border border-brd p-3 text-[13px] text-t2">
+                      {e.summary && <p className="m-0 mb-2">{e.summary}</p>}
+
+                      {detailFields && detailFields.length > 0 ? (
+                        <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                          {detailFields.map((f) => {
+                            const raw = (payload as Record<string, unknown>)[f.key];
+                            const text = formatDetailValue(raw, f.format);
+                            if (!text) return null;
+                            return (
+                              <div key={f.key} className="contents">
+                                <dt className="text-t3">{f.label}</dt>
+                                <dd className="m-0 text-t1">{text}</dd>
+                              </div>
+                            );
+                          })}
+                        </dl>
+                      ) : (
+                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                          {Object.entries(payload as Record<string, unknown>).map(([k, v]) => (
+                            <div key={k} className="contents">
+                              <span className="text-t3">{k}</span>
+                              <span className="text-t1 break-words">
+                                {formatDetailValue(v, 'text')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {allowAiSummary &&
+                        (e.aiSummary || generated[e.id] || pendingSummary.has(e.id)) && (
+                          <div className="mt-3">
+                            <p className="m-0 text-[12px] text-acc">{t('activity:timeline.aiSummary')}</p>
+                            {pendingSummary.has(e.id) && !e.aiSummary && !generated[e.id] ? (
+                              <p className="m-0 mt-0.5 text-t3">
+                                {t('activity:timeline.aiSummaryLoading')}
+                              </p>
+                            ) : (
+                              <p className="m-0 mt-0.5 text-t1 leading-relaxed">
+                                {e.aiSummary || generated[e.id]}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                      {url && (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-3 text-[12px] text-acc no-underline hover:underline"
+                          onClick={(ev) => {
+                            ev.preventDefault();
+                            openExternalUrl(url);
+                          }}
+                        >
+                          {t('activity:timeline.viewSource')}
+                          <ExternalLink size={12} />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

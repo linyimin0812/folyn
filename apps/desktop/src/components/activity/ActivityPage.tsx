@@ -11,8 +11,10 @@ import {
   type Period,
   dateKey,
   endOfDay,
+  formatPeriodRange,
   isCurrentPeriod,
   quickRange,
+  sameDay,
   startOfDay,
 } from './period';
 import { metricCardsFromRows } from './display';
@@ -101,6 +103,16 @@ export function ActivityPage() {
     hour: '2-digit',
     minute: '2-digit',
   });
+  // Period description under the page title — pure Intl formatting, no i18n key.
+  const ymdFmt = new Intl.DateTimeFormat(i18n.language, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const weekdayFmt = new Intl.DateTimeFormat(i18n.language, { weekday: 'long' });
+  const periodDesc = sameDay(period.start, period.end)
+    ? `${ymdFmt.format(period.start)} · ${weekdayFmt.format(period.start)}`
+    : formatPeriodRange(period, i18n.language);
 
   const reportStrings: ReportStrings = {
     label: reportLabel,
@@ -154,21 +166,28 @@ export function ActivityPage() {
   return (
     <div className="flex-1 min-w-0 overflow-y-auto">
       <div className="max-w-[1200px] mx-auto p-8">
-        <div className="flex items-center justify-between gap-3 mb-7 flex-wrap">
-          <div className="inline-flex rounded-md border border-brd overflow-hidden">
-            {(['timeline', 'graph'] as const).map((m) => (
-              <button
-                key={m}
-                className={`px-5 py-2 text-[length:var(--ui-font-size)] border-l border-brd first:border-l-0 ${
-                  tab === m ? 'bg-accdim text-acc' : 'bg-panel text-t2 hover:bg-hov'
-                }`}
-                onClick={() => setTab(m)}
-              >
-                {t(`activity:tabs.${m}`)}
-              </button>
-            ))}
+        {/* Page title row: title + period description on the left, actions right. */}
+        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-7 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="m-0 text-[17px] font-semibold text-t1">{t('activity:title')}</h1>
+            <p className="m-0 mt-1 text-[12px] text-t3">{periodDesc}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex gap-1">
+              {(['timeline', 'graph'] as const).map((m) => (
+                <button
+                  key={m}
+                  className={`px-4 py-1.5 rounded-full text-[13px] border cursor-pointer ${
+                    tab === m
+                      ? 'border-transparent bg-accdim text-acc'
+                      : 'border-brd bg-transparent text-t2 hover:bg-hov'
+                  }`}
+                  onClick={() => setTab(m)}
+                >
+                  {t(`activity:tabs.${m}`)}
+                </button>
+              ))}
+            </div>
             {reportMode && (
               <button
                 className="btn btn-g btn-sm inline-flex items-center gap-1.5"
@@ -194,7 +213,7 @@ export function ActivityPage() {
         </div>
 
         {report && (
-          <div className="border border-brd2 rounded-lg p-4 mb-5 bg-surf2">
+          <div className="border border-brd rounded-lg p-4 mb-5 bg-panel">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
               <p className="m-0 text-[11px] text-acc">
                 {t('activity:report.savedTo', { path: report.path })}
@@ -207,7 +226,7 @@ export function ActivityPage() {
                 {t('activity:report.openInEditor')}
               </button>
             </div>
-            <pre className="m-0 p-2.5 rounded-md bg-panel border border-brd text-[11px] text-t2 whitespace-pre-wrap break-words max-h-[280px] overflow-y-auto">
+            <pre className="m-0 p-2.5 rounded-md bg-surf2 border border-brd text-[11px] text-t2 whitespace-pre-wrap break-words max-h-[280px] overflow-y-auto">
               {report.markdown}
             </pre>
           </div>
@@ -215,7 +234,7 @@ export function ActivityPage() {
 
         {tab === 'timeline' ? (
           !vaultRoot ? (
-            <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+            <div className="text-[13px] text-t3 bg-panel border border-brd rounded-lg p-8 text-center">
               {t('activity:noVault')}
             </div>
           ) : (

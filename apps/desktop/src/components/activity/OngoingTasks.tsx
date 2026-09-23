@@ -26,9 +26,7 @@ export function OngoingTasks({ tasks }: OngoingTasksProps) {
 
   return (
     <div className="mb-6">
-      <p className="text-[length:calc(var(--ui-font-size)-2px)] text-t3 m-0 mb-3">
-        {t('activity:ongoing.title')}
-      </p>
+      <p className="text-[12px] text-t3 m-0 mb-3">{t('activity:ongoing.title')}</p>
       {tasks.map((task) => {
         const meta = (task.metadata ?? {}) as TaskMeta;
         const startDate = typeof meta.startDate === 'number' ? meta.startDate : null;
@@ -44,20 +42,20 @@ export function OngoingTasks({ tasks }: OngoingTasksProps) {
             : 0;
         const clampedPct = Math.min(100, Math.max(0, pct));
         return (
-          <div key={task.id} className="border border-brd rounded-lg p-3.5 mb-3 bg-panel">
-            <div className="flex items-baseline justify-between gap-2 mb-3">
-              <p className="m-0 text-[length:calc(var(--ui-font-size)+1px)] text-t1 truncate">{name}</p>
+          <div key={task.id} className="border border-brd rounded-lg p-4 mb-2 bg-panel">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <p className="m-0 text-[13px] font-medium text-t1 truncate">{name}</p>
               {startDate != null && dueDate != null && (
-                <p className="m-0 text-[12px] text-t3 whitespace-nowrap">
+                <span className="text-[11px] leading-none px-2 py-1 rounded-full bg-surf2 text-t2 whitespace-nowrap">
                   {(() => {
                     const { current, total } = taskDayProgress(startDate, dueDate, today);
                     return t('activity:ongoing.dayN', { current, total });
                   })()}
-                </p>
+                </span>
               )}
             </div>
-            <div className="h-1.5 rounded bg-surf2 overflow-hidden mb-2">
-              <div className="h-full bg-acc" style={{ width: `${clampedPct}%` }} />
+            <div className="h-1.5 rounded-full bg-surf2 overflow-hidden mb-2">
+              <div className="h-full rounded-full bg-acc" style={{ width: `${clampedPct}%` }} />
             </div>
             <p className="m-0 text-[12px] text-t3 truncate" title={note}>
               {note}

@@ -107,7 +107,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   if (entities?.length === 0) {
     return (
-      <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+      <div className="text-[13px] text-t3 bg-panel border border-brd rounded-lg p-8 text-center">
         {t('activity:timeline.empty')}
       </div>
     );
@@ -115,7 +115,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   if (!vaultRoot) {
     return (
-      <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+      <div className="text-[13px] text-t3 bg-panel border border-brd rounded-lg p-8 text-center">
         {t('activity:noVault')}
       </div>
     );
@@ -156,7 +156,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
       ))}
       {bcExpanded && history.length > 3 && (
         <button
-          className="text-t3 text-[11px] px-1.5 py-0.5 ml-2 border border-brd rounded cursor-pointer bg-panel"
+          className="text-t3 text-[11px] px-1.5 py-0.5 ml-2 border border-brd rounded-md cursor-pointer bg-panel"
           onClick={() => setBcExpanded(false)}
         >
           {t('activity:graph.collapse')}
@@ -277,7 +277,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
             {items.map((n) => (
               <button
                 key={n.neighborId}
-                className="text-left text-[length:var(--ui-font-size)] text-t1 px-3 py-2 bg-surf2 rounded cursor-pointer border-0 hover:bg-hov"
+                className="text-left text-[length:var(--ui-font-size)] text-t1 px-3 py-2 bg-surf2 rounded-md cursor-pointer border-0 hover:bg-hov"
                 onClick={() => navigateTo(n.neighborId)}
               >
                 {nameOf(n.neighborId)} · {n.relation}
