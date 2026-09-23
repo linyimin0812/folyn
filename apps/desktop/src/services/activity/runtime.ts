@@ -169,6 +169,7 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       cursor,
       config,
       exec: collectorExec,
+      http: collectorHttp(reg.hostAllowlist),
     });
     const outcome = await pushCollectorEvents(collectorId, events);
     if (!outcome) return null;
@@ -200,6 +201,26 @@ async function collectorExec(
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke('activity_exec', { program, args, cwd });
+}
+
+/**
+ * Host-provided HTTP fetch injected into `CollectorContext`. Enforces the
+ * collector's manifest `hostAllowlist` (exact origin match) before the request
+ * leaves — the runtime counterpart of the install-time permission confirm.
+ * Exported for tests (origin denial / parse failure).
+ */
+export function collectorHttp(hostAllowlist: string[]) {
+  return async (
+    url: string,
+    init?: { method?: string; headers?: Record<string, string>; body?: string },
+  ): Promise<{ status: number; body: string }> => {
+    const origin = new URL(url).origin;
+    if (!hostAllowlist.includes(origin)) {
+      throw new Error(`collector http denied: ${origin} not in hostAllowlist`);
+    }
+    const res = await fetch(url, init);
+    return { status: res.status, body: await res.text() };
+  };
 }
 
 /**

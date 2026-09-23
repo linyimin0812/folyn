@@ -213,6 +213,17 @@ export interface CollectorContext {
     stderr: string;
     exitCode: number;
   }>;
+  /**
+   * Host-provided HTTP fetch for remote sources (e.g. api.github.com). Origin
+   * must be listed in the collector's manifest `hostAllowlist` — the host
+   * rejects anything else before the request leaves. Absent in tests/embedded
+   * hosts. Returns status + text body.
+   */
+  http?: (url: string, init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }) => Promise<{ status: number; body: string }>;
 }
 
 /** The extension-side collector interface (design §2.2). Exported by a

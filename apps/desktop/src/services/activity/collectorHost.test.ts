@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { CollectorBundle } from './registry';
 import { buildActivityRegistry, useCollectorRegistryStore } from './registry';
-import { applyPrivacy, effectiveIntervalMs, MIN_POLL_INTERVAL_MS } from './runtime';
+import { applyPrivacy, collectorHttp, effectiveIntervalMs, MIN_POLL_INTERVAL_MS } from './runtime';
 
 function bundle(extensionId: string, overrides: Partial<CollectorBundle> = {}): CollectorBundle {
   return {
@@ -99,6 +99,61 @@ describe('collector registry store', () => {
     expect(after.entityTypes.find((t) => t.id === 'customer')?.owner).toBe('ext.b');
     // Cleanup for other tests in this file.
     useCollectorRegistryStore.getState().unregister('ext.b');
+  });
+});
+
+describe('collectorHttp', () => {
+  const ALLOW = ['https://api.github.com'];
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    // Structural Response stand-in — collectorHttp only reads status + text().
+    fetchMock = vi.fn(async () => ({ status: 200, text: async () => 'ok' }));
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('passes an exact-origin request through and returns status + body', async () => {
+    const http = collectorHttp(ALLOW);
+    const res = await http('https://api.github.com/users/octocat/events?per_page=100&page=1', {
+      headers: { Authorization: 'Bearer ghp_secret' },
+    });
+    expect(res).toEqual({ status: 200, body: 'ok' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('denies any origin not in the allowlist, before fetch leaves', async () => {
+    const http = collectorHttp(ALLOW);
+    // Lookalike host, userinfo trick, plain other origin, and an allowlist
+    // string smuggled into the path/query — all resolve to a different origin.
+    const urls = [
+      'https://api.github.com.evil.com/users/octocat/events',
+      'https://api.github.com@evil.com/users/octocat/events',
+      'https://evil.com/redirect?to=https://api.github.com',
+    ];
+    for (const url of urls) {
+      await expect(http(url)).rejects.toThrow(/not in hostAllowlist/);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('throws on an unparseable URL instead of fetching', async () => {
+    const http = collectorHttp(ALLOW);
+    await expect(http('not a url')).rejects.toThrow();
+    await expect(http('https:///missing-host/events')).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not substring-match: an allowlist entry with a path never matches', async () => {
+    // Defensive: even if a manifest ships "https://api.github.com/some/path",
+    // origin equality keeps it from ever authorizing the bare origin.
+    const http = collectorHttp(['https://api.github.com/some/path']);
+    await expect(http('https://api.github.com/users/octocat/events')).rejects.toThrow(
+      /not in hostAllowlist/,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
