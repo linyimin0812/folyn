@@ -46,6 +46,13 @@ export interface PairSelectorProps {
    * clipped by an `overflow-hidden` ancestor.
    */
   panelAlign?: 'left' | 'right';
+  /**
+   * Stretch the panel to at least the trigger's width (min-w-full of the
+   * relative wrapper) instead of the fixed min-w-[220px]. For full-width
+   * triggers (settings rows); the icon-trigger variant's wrapper is ~28px,
+   * so leave it false there.
+   */
+  panelMatchWidth?: boolean;
 }
 
 /**
@@ -111,6 +118,7 @@ export function PairSelector({
   trigger = 'full',
   dropDirection = 'down',
   panelAlign = 'right',
+  panelMatchWidth = false,
 }: PairSelectorProps) {
   const { t } = useTranslation();
   const { pairs, hasAny } = useEnabledPairs();
@@ -197,7 +205,7 @@ export function PairSelector({
 
   const panel = open && (
     <div
-      className={`absolute ${panelAlign === 'left' ? 'left-0' : 'right-0'} ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} w-max min-w-[220px] max-w-[520px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1`}
+      className={`absolute ${panelAlign === 'left' ? 'left-0' : 'right-0'} ${dropDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'} w-max ${panelMatchWidth ? 'min-w-full' : 'min-w-[220px]'} max-w-[520px] max-h-[300px] overflow-y-auto bg-panel border border-brd rounded-lg shadow-[0_8px_24px_rgba(0,0,0,.14)] z-[100] p-1`}
       role="listbox"
       data-testid="pair-selector-panel"
     >

@@ -78,6 +78,7 @@ export function ReportSettingsView() {
             onChange={(pair) => setReportModelOverride(pair)}
             dropDirection="down"
             panelAlign="right"
+            panelMatchWidth
           />
         </div>
       </div>
