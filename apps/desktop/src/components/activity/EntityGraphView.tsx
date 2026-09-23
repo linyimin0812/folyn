@@ -281,11 +281,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     >
       <div className="relative flex flex-1 min-h-0 min-w-0">
         <div className="flex flex-1 min-w-0 min-h-0 flex-col">{graph}</div>
-        {/* In-flow column: the graph shrinks + recenters (page width is fixed
-            by the outer container), and the border-l runs the full row height
-            — no overlay, no gap at the bottom. */}
+        {/* Overlay panel: the graph keeps a fixed width; the panel overlays
+            the canvas's right edge, full height. */}
         {groupPanel != null && (
-          <aside className="flex w-[260px] max-w-full shrink-0 flex-col self-stretch border-l border-brd bg-bg">
+          <aside className="absolute inset-y-0 right-0 flex w-[260px] max-w-full flex-col border-l border-brd bg-bg shadow-lg">
             <div className="flex items-center justify-between gap-2 border-b border-brd px-3 py-2">
               <p className="m-0 min-w-0 text-xs font-medium text-t1">
                 {t('activity:graph.groupPanel', { label: typeLabelOf(groupPanel), count: panelItems.length })}
