@@ -235,10 +235,10 @@ export function ActivityPage() {
         {/* Fixed header block — identical for both tabs, so switching tabs never
             re-layouts it. Full-width so the divider spans the pane; inner content
             keeps the 1200px alignment. */}
-        <div className="shrink-0 border-b border-brd pt-3">
+        <div className="shrink-0 border-b border-brd pt-3 pb-3">
           <div className="max-w-[1200px] mx-auto px-8">
         {/* Page title row: title + period description on the left, actions right. */}
-        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-2 flex-wrap shrink-0">
+        <div className="flex items-end justify-between gap-x-6 gap-y-3 flex-wrap shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <h1 className="m-0 text-[17px] font-semibold text-t1">{t('activity:title')}</h1>
             <p className="m-0 text-[12px] text-t3 truncate">{periodDesc}</p>
@@ -284,7 +284,7 @@ export function ActivityPage() {
         </div>
 
         {reportError && (
-          <div className="flex items-center justify-between gap-2 mb-4 border border-red-500/40 rounded-md px-3 py-2 bg-red-500/5 shrink-0">
+          <div className="flex items-center justify-between gap-2 mt-3 border border-red-500/40 rounded-md px-3 py-2 bg-red-500/5 shrink-0">
             <span className="text-[12px] text-red-700 dark:text-red-400 min-w-0">{reportError}</span>
             <button
               type="button"
@@ -300,7 +300,7 @@ export function ActivityPage() {
         )}
 
         {report && (
-          <div className="border border-brd rounded-lg p-4 mb-6 bg-panel shrink-0">
+          <div className="border border-brd rounded-lg p-4 mt-4 mb-0 bg-panel shrink-0">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
               <p className="m-0 text-[11px] text-acc">
                 {t('activity:report.savedTo', { path: report.path })}
