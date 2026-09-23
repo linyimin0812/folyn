@@ -22,7 +22,11 @@ export function MetricsGrid({ cards }: MetricsGridProps) {
   const setPinnedMetrics = useActivityCollectorStore((s) => s.setPinnedMetrics);
 
   const pinned = cards.filter((c) => effectivePinned(c, pinnedMetrics));
-  const rest = cards.filter((c) => !effectivePinned(c, pinnedMetrics));
+  const unpinned = cards.filter((c) => !effectivePinned(c, pinnedMetrics));
+  // ponytail: two full rows of the 6-col grid; pinned never collapse, extra pinned just wrap
+  const MAX_VISIBLE = 12;
+  const unpinnedVisible = unpinned.slice(0, Math.max(0, MAX_VISIBLE - pinned.length));
+  const collapsed = unpinned.slice(unpinnedVisible.length);
 
   const renderCard = (c: MetricCard) => {
     const isPinned = effectivePinned(c, pinnedMetrics);
@@ -34,7 +38,7 @@ export function MetricsGrid({ cards }: MetricsGridProps) {
           title={isPinned ? t('activity:metric.unpin') : t('activity:metric.pin')}
           onClick={() => setPinnedMetrics(togglePinOverride(c, pinnedMetrics))}
         >
-          <Pin size={12} style={{ transform: isPinned ? 'rotate(35deg)' : 'none' }} />
+          <Pin size={12} />
         </button>
         <p className="m-0 mb-1.5 text-[12px] text-t3 pr-5 truncate">{c.label}</p>
         <p className="m-0 text-[22px] font-semibold text-t1 leading-tight">{c.value}</p>
@@ -45,20 +49,21 @@ export function MetricsGrid({ cards }: MetricsGridProps) {
   if (cards.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-3 mb-6">
+    <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mb-6">
       {pinned.map(renderCard)}
-      {rest.length > 0 && (
+      {unpinnedVisible.map(renderCard)}
+      {collapsed.length > 0 && (
         <div className="col-span-full">
           <button
             className="btn btn-g btn-sm inline-flex items-center gap-1.5"
             onClick={() => setExpanded(!expanded)}
           >
-            {t('activity:metric.more', { count: rest.length })}
+            {t('activity:metric.more', { count: collapsed.length })}
             {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
           {expanded && (
             <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
-              {rest.map(renderCard)}
+              {collapsed.map(renderCard)}
             </div>
           )}
         </div>
