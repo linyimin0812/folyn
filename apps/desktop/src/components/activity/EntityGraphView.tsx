@@ -1,14 +1,14 @@
 /**
  * Dynamic entity-relation browser (design §7.2): one-hop neighbors of the
  * selected center, same-type neighbors (≥2) collapsed into aggregate nodes,
- * prototype-validated static radial layout (elliptical orbit fills the wide
- * 1100×600 canvas). Clicking a neighbor makes it the
+ * prototype-validated static radial layout (elliptical orbit sized to the
+ * measured container so the graph fills any window aspect). Clicking a neighbor makes it the
  * new center (refetch); clicking an aggregate node opens the instance list
  * in the right sidebar. Unregistered entity types render as gray nodes with
  * the raw type string.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type ActivityEntityRow,
@@ -20,8 +20,6 @@ import { useCollectorRegistryStore } from '@/services/activity/registry';
 import { useAsync } from './useActivityData';
 import { ACTIVITY_PALETTE, breadcrumbIndices, groupNeighborsByType, paletteOf, radialLayoutKnobs } from './display';
 
-const CX = 550;
-const CY = 300;
 const CENTER_R = 64;
 
 function truncateLabel(s: string, n: number): string {
@@ -45,6 +43,21 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     () => (vaultRoot ? listActivityEntities(vaultRoot) : Promise.resolve([] as ActivityEntityRow[])),
     [vaultRoot],
   );
+
+  // Measured svg box — layout derives from the actual container so the graph
+  // fills any window aspect (a static viewBox + `meet` letterboxes instead).
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 1100, h: 600 });
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    setBox({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
+    // Re-attach when the graph wrapper actually mounts (early-return states
+    // render no wrapper).
+  }, [vaultRoot, entities?.length]);
 
   // ponytail: entity index capped at 500 rows (api.ts) — one fetch resolves
   // every neighbor label; batch-resolve when vaults exceed the cap.
@@ -94,7 +107,16 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     aggregate: g.items.length > 1,
   }));
   const slots = displayItems.length;
-  const { nodeRadius: rN, orbitRx: RX, orbitRy: RY } = radialLayoutKnobs(slots);
+  const { nodeRadius: rN } = radialLayoutKnobs(slots);
+  const W = Math.max(320, box.w);
+  const H = Math.max(240, box.h);
+  const CX = W / 2;
+  const CY = H / 2;
+  // Orbit radii from the measured box so nodes fill it; horizontal margin 90
+  // keeps relation labels inside, vertical 60.
+  const RX = W / 2 - rN - 90;
+  const RY = Math.max(80, H / 2 - rN - 60);
+  const fs = Math.max(1, W / 1100);
 
   const navigateTo = (id: string) => {
     setGroupPanel(null);
@@ -167,10 +189,8 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   );
 
   const graph = (
-    // ponytail: preserveAspectRatio default (xMidYMid meet) fits the viewBox
-    // to the available box — no overflow regardless of container aspect.
-    <div className="flex-1 min-h-0">
-      <svg viewBox="0 0 1100 600" className="w-full h-full select-none" role="img">
+    <div ref={wrapRef} className="flex-1 min-h-0">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full select-none" role="img">
       <defs>
         <marker
           id="activity-arrow"
@@ -189,10 +209,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
       {center && (
         <g>
           <circle cx={CX} cy={CY} r={CENTER_R} fill={ACTIVITY_PALETTE[paletteOf('blue')].bg} stroke={ACTIVITY_PALETTE[paletteOf('blue')].color} strokeWidth="0.5" />
-          <text x={CX} y={CY - 11} textAnchor="middle" dominantBaseline="central" fontSize="18" fontWeight="500" fill="var(--t1, #201f1c)">
+          <text x={CX} y={CY - 11} textAnchor="middle" dominantBaseline="central" fontSize={18 * fs} fontWeight="500" fill="var(--t1, #201f1c)">
             {truncateLabel(nameOf(center.id), 7)}
           </text>
-          <text x={CX} y={CY + 13} textAnchor="middle" dominantBaseline="central" fontSize="14" fill="var(--t2, #5f5e5a)">
+          <text x={CX} y={CY + 13} textAnchor="middle" dominantBaseline="central" fontSize={14 * fs} fill="var(--t2, #5f5e5a)">
             {typeLabelOf(center.type)}
           </text>
         </g>
@@ -223,7 +243,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
         return (
           <g key={di.entityType}>
             <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="#8b8a83" strokeWidth="1" markerEnd="url(#activity-arrow)" />
-            <text x={labelX} y={labelY} textAnchor="middle" fontSize="13" fill="var(--t2, #5f5e5a)" fontStyle="italic">
+            <text x={labelX} y={labelY} textAnchor="middle" fontSize={13 * fs} fill="var(--t2, #5f5e5a)" fontStyle="italic">
               {rel}
             </text>
             <g
@@ -233,12 +253,12 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               }
             >
               <circle cx={nx} cy={ny} r={rN} fill={pal.bg} stroke={pal.color} strokeWidth="0.5" />
-              <text x={nx} y={ny - 11} textAnchor="middle" dominantBaseline="central" fontSize="18" fontWeight="500" fill="var(--t1, #201f1c)">
+              <text x={nx} y={ny - 11} textAnchor="middle" dominantBaseline="central" fontSize={18 * fs} fontWeight="500" fill="var(--t1, #201f1c)">
                 {di.aggregate
                   ? truncateLabel(typeLabelOf(di.entityType), rN <= 44 ? 3 : 5)
                   : truncateLabel(nameOf(di.items[0]!.neighborId), rN <= 44 ? 3 : 5)}
               </text>
-              <text x={nx} y={ny + 13} textAnchor="middle" dominantBaseline="central" fontSize="14" fill="var(--t2, #5f5e5a)">
+              <text x={nx} y={ny + 13} textAnchor="middle" dominantBaseline="central" fontSize={14 * fs} fill="var(--t2, #5f5e5a)">
                 {di.aggregate
                   ? t('activity:graph.groupCount', { count: di.items.length })
                   : typeLabelOf(di.entityType)}
