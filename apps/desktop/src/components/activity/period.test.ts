@@ -48,8 +48,8 @@ describe('period math', () => {
 });
 
 describe('unified range label (calendar trigger)', () => {
-  it('every mode renders the same numeric format — single day short, range full', () => {
-    expect(formatPeriodRange(quickRange('today', ref), 'zh-CN')).toBe('2026/09/23');
+  it('every mode renders the same numeric format — always start – end', () => {
+    expect(formatPeriodRange(quickRange('today', ref), 'zh-CN')).toBe('2026/09/23 – 2026/09/23');
     const w = quickRange('week', ref);
     expect(formatPeriodRange(w, 'zh-CN')).toBe('2026/09/21 – 2026/09/27');
     expect(formatPeriodRange(quickRange('month', ref), 'zh-CN')).toBe('2026/09/01 – 2026/09/30');

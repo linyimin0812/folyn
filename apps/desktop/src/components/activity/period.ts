@@ -112,8 +112,8 @@ export function pickDay(
 /**
  * Unified range label for the calendar trigger — ONE numeric format for every
  * mode (today/week/month/custom) so the button width never jumps between
- * selections: single day → `2026/09/23`; any range → `2026/09/21 – 2026/09/27`
- * (both sides always full y-m-d, one formatter). Mode is conveyed by the
+ * selections: always `start – end`, both sides full y-m-d, one formatter
+ * (single day renders `2026/09/23 – 2026/09/23`). Mode is conveyed by the
  * quick tabs; report labels live in i18n `activity:report.*` and are unaffected.
  */
 export function formatPeriodRange(p: Period, locale: string): string {
@@ -122,9 +122,7 @@ export function formatPeriodRange(p: Period, locale: string): string {
     month: '2-digit',
     day: '2-digit',
   });
-  const start = ymd.format(p.start);
-  if (sameDay(p.start, p.end)) return start;
-  return `${start} – ${ymd.format(p.end)}`;
+  return `${ymd.format(p.start)} – ${ymd.format(p.end)}`;
 }
 
 /** "第 X/Y 天" progress for an ongoing task (metadata start/due, epoch ms). */
