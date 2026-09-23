@@ -119,7 +119,7 @@ export function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-30 bg-panel border border-brd2 rounded-lg p-3 shadow-xl w-[280px]">
+        <div className="absolute right-0 top-[calc(100%+6px)] z-30 bg-panel border border-brd2 rounded-lg p-2 shadow-xl w-[266px]">
           <div className="flex items-center justify-between mb-2">
             <button className="btn btn-g btn-sm px-1.5 py-0.5" onClick={() => shiftMonth(-1)}>
               <ChevronLeft size={14} />
