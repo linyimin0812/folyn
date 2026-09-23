@@ -94,9 +94,9 @@ describe('entity graph grouping + layout + breadcrumb', () => {
     expect(byType).toEqual({ meeting: 2, person: 1, weird_type: 1 });
   });
 
-  it('radial knobs shrink nodes and widen the orbit beyond 8 slots', () => {
-    expect(radialLayoutKnobs(8)).toEqual({ nodeRadius: 42, orbitRadius: 175 });
-    expect(radialLayoutKnobs(10)).toEqual({ nodeRadius: 32, orbitRadius: 191 });
+  it('radial knobs shrink nodes and widen the elliptical orbit beyond 8 slots', () => {
+    expect(radialLayoutKnobs(8)).toEqual({ nodeRadius: 56, orbitRx: 430, orbitRy: 190 });
+    expect(radialLayoutKnobs(10)).toEqual({ nodeRadius: 44, orbitRx: 450, orbitRy: 202 });
   });
 
   it('breadcrumb collapses beyond 3 levels to the last two, expand shows all', () => {

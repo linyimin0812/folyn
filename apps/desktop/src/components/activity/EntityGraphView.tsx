@@ -1,7 +1,8 @@
 /**
  * Dynamic entity-relation browser (design §7.2): one-hop neighbors of the
  * selected center, same-type neighbors (≥2) collapsed into aggregate nodes,
- * prototype-validated static radial layout. Clicking a neighbor makes it the
+ * prototype-validated static radial layout (elliptical orbit fills the wide
+ * 1100×600 canvas). Clicking a neighbor makes it the
  * new center (refetch); clicking an aggregate node opens the instance list
  * in the right sidebar. Unregistered entity types render as gray nodes with
  * the raw type string.
@@ -21,7 +22,7 @@ import { ACTIVITY_PALETTE, breadcrumbIndices, groupNeighborsByType, paletteOf, r
 
 const CX = 550;
 const CY = 300;
-const CENTER_R = 50;
+const CENTER_R = 64;
 
 function truncateLabel(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n)}…` : s;
@@ -93,7 +94,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     aggregate: g.items.length > 1,
   }));
   const slots = displayItems.length;
-  const { nodeRadius: rN, orbitRadius: R } = radialLayoutKnobs(slots);
+  const { nodeRadius: rN, orbitRx: RX, orbitRy: RY } = radialLayoutKnobs(slots);
 
   const navigateTo = (id: string) => {
     setGroupPanel(null);
@@ -188,35 +189,41 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
       {center && (
         <g>
           <circle cx={CX} cy={CY} r={CENTER_R} fill={ACTIVITY_PALETTE[paletteOf('blue')].bg} stroke={ACTIVITY_PALETTE[paletteOf('blue')].color} strokeWidth="0.5" />
-          <text x={CX} y={CY - 9} textAnchor="middle" dominantBaseline="central" fontSize="14" fontWeight="500" fill="var(--t1, #201f1c)">
-            {truncateLabel(nameOf(center.id), 5)}
+          <text x={CX} y={CY - 11} textAnchor="middle" dominantBaseline="central" fontSize="18" fontWeight="500" fill="var(--t1, #201f1c)">
+            {truncateLabel(nameOf(center.id), 7)}
           </text>
-          <text x={CX} y={CY + 11} textAnchor="middle" dominantBaseline="central" fontSize="12" fill="var(--t2, #5f5e5a)">
+          <text x={CX} y={CY + 13} textAnchor="middle" dominantBaseline="central" fontSize="14" fill="var(--t2, #5f5e5a)">
             {typeLabelOf(center.type)}
           </text>
         </g>
       )}
 
-      {/* Neighbor nodes on the radial orbit */}
+      {/* Neighbor nodes on the elliptical radial orbit */}
       {displayItems.map((di, i) => {
         const angle = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(1, slots);
         const cosA = Math.cos(angle);
         const sinA = Math.sin(angle);
-        const nx = CX + R * cosA;
-        const ny = CY + R * sinA;
-        const startX = CX + CENTER_R * cosA;
-        const startY = CY + CENTER_R * sinA;
-        const endX = nx - rN * cosA;
-        const endY = ny - rN * sinA;
+        const nx = CX + RX * cosA;
+        const ny = CY + RY * sinA;
+        // Ellipse direction ≠ angle direction — follow the actual center→node vector.
+        const dx = nx - CX;
+        const dy = ny - CY;
+        const len = Math.hypot(dx, dy);
+        const ux = dx / len;
+        const uy = dy / len;
+        const startX = CX + CENTER_R * ux;
+        const startY = CY + CENTER_R * uy;
+        const endX = nx - rN * ux;
+        const endY = ny - rN * uy;
         const rel = di.items[0]?.relation ?? '';
-        const labelX = (startX + endX) / 2 - sinA * 10;
-        const labelY = (startY + endY) / 2 + cosA * 10;
+        const labelX = (startX + endX) / 2 - uy * 10;
+        const labelY = (startY + endY) / 2 + ux * 10;
         const reg = entityTypes.find((et) => et.id === di.entityType);
         const pal = ACTIVITY_PALETTE[paletteOf(reg?.color)];
         return (
           <g key={di.entityType}>
             <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="#8b8a83" strokeWidth="1" markerEnd="url(#activity-arrow)" />
-            <text x={labelX} y={labelY} textAnchor="middle" fontSize="11" fill="var(--t2, #5f5e5a)" fontStyle="italic">
+            <text x={labelX} y={labelY} textAnchor="middle" fontSize="13" fill="var(--t2, #5f5e5a)" fontStyle="italic">
               {rel}
             </text>
             <g
@@ -226,12 +233,12 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               }
             >
               <circle cx={nx} cy={ny} r={rN} fill={pal.bg} stroke={pal.color} strokeWidth="0.5" />
-              <text x={nx} y={ny - 9} textAnchor="middle" dominantBaseline="central" fontSize="14" fontWeight="500" fill="var(--t1, #201f1c)">
+              <text x={nx} y={ny - 11} textAnchor="middle" dominantBaseline="central" fontSize="18" fontWeight="500" fill="var(--t1, #201f1c)">
                 {di.aggregate
-                  ? truncateLabel(typeLabelOf(di.entityType), rN <= 36 ? 3 : 5)
-                  : truncateLabel(nameOf(di.items[0]!.neighborId), rN <= 36 ? 3 : 5)}
+                  ? truncateLabel(typeLabelOf(di.entityType), rN <= 44 ? 3 : 5)
+                  : truncateLabel(nameOf(di.items[0]!.neighborId), rN <= 44 ? 3 : 5)}
               </text>
-              <text x={nx} y={ny + 11} textAnchor="middle" dominantBaseline="central" fontSize="12" fill="var(--t2, #5f5e5a)">
+              <text x={nx} y={ny + 13} textAnchor="middle" dominantBaseline="central" fontSize="14" fill="var(--t2, #5f5e5a)">
                 {di.aggregate
                   ? t('activity:graph.groupCount', { count: di.items.length })
                   : typeLabelOf(di.entityType)}

@@ -186,11 +186,13 @@ export function groupNeighborsByType<T>(
 }
 
 /** Radial layout knobs (prototype-validated): >8 display items → smaller
- * nodes on a wider orbit. */
-export function radialLayoutKnobs(slots: number): { nodeRadius: number; orbitRadius: number } {
+ * nodes on a wider orbit. Elliptical orbit (rx > ry) fills the wide
+ * 1100×600 canvas — a circle was height-limited to ~2×175. */
+export function radialLayoutKnobs(slots: number): { nodeRadius: number; orbitRx: number; orbitRy: number } {
   return {
-    nodeRadius: slots > 8 ? 32 : 42,
-    orbitRadius: 175 + Math.max(0, slots - 8) * 8,
+    nodeRadius: slots > 8 ? 44 : 56,
+    orbitRx: 430 + Math.max(0, slots - 8) * 10,
+    orbitRy: 190 + Math.max(0, slots - 8) * 6,
   };
 }
 
