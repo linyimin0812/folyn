@@ -10,8 +10,7 @@
     "week": "This week",
     "month": "This month",
     "backToToday": "Back to today",
-    "rangeHint": "Click a date to select that day; click a later date to select a range",
-    "weekN": "Week {{week}}"
+    "rangeHint": "Click a date to select that day; click a later date to select a range"
   },
   "ongoing": {
     "title": "In progress",

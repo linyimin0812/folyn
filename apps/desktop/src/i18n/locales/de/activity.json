@@ -10,8 +10,7 @@
     "week": "Diese Woche",
     "month": "Dieser Monat",
     "backToToday": "Zurück zu heute",
-    "rangeHint": "Klicke ein Datum an, um den Tag zu wählen; ein späteres Datum wählt einen Zeitraum",
-    "weekN": "Woche {{week}}"
+    "rangeHint": "Klicke ein Datum an, um den Tag zu wählen; ein späteres Datum wählt einen Zeitraum"
   },
   "ongoing": {
     "title": "Laufend",

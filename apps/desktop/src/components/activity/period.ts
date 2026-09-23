@@ -1,7 +1,7 @@
 /**
  * Period + calendar math for the activity page (design §7.1). Pure date
  * helpers — no React, no i18n side effects. Locale-dependent LABELS are built
- * via `formatPeriodLabel` with an injected locale + week-label formatter.
+ * via `formatPeriodRange` with an injected locale.
  */
 
 export type PeriodMode = 'today' | 'week' | 'month' | 'custom';
@@ -110,28 +110,21 @@ export function pickDay(
 }
 
 /**
- * Human label for the current period. `weekLabel` renders "第N周/Week N"
- * (i18n-owned); the date spans use Intl with the passed locale.
+ * Unified range label for the calendar trigger — ONE numeric format for every
+ * mode (today/week/month/custom) so the button width never jumps between
+ * selections: single day → `2026/09/23`; any range → `2026/09/21 – 2026/09/27`
+ * (both sides always full y-m-d, one formatter). Mode is conveyed by the
+ * quick tabs; report labels live in i18n `activity:report.*` and are unaffected.
  */
-export function formatPeriodLabel(
-  p: Period,
-  locale: string,
-  weekLabel: (n: number) => string,
-): string {
-  const sameYear = p.start.getFullYear() === p.end.getFullYear();
-  const md = new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' });
-  const m = new Intl.DateTimeFormat(locale, { month: 'long' });
-  if (p.mode === 'week') {
-    return `${weekLabel(weekNumber(p.start))} · ${md.format(p.start)} – ${md.format(p.end)}`;
-  }
-  if (p.mode === 'month') {
-    const y = new Intl.DateTimeFormat(locale, { year: 'numeric' });
-    return `${y.format(p.start)} ${m.format(p.start)}`;
-  }
-  if (sameDay(p.start, p.end)) return md.format(p.start);
-  if (sameYear) return `${md.format(p.start)} – ${md.format(p.end)}`;
-  const ymd = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' });
-  return `${ymd.format(p.start)} – ${ymd.format(p.end)}`;
+export function formatPeriodRange(p: Period, locale: string): string {
+  const ymd = new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const start = ymd.format(p.start);
+  if (sameDay(p.start, p.end)) return start;
+  return `${start} – ${ymd.format(p.end)}`;
 }
 
 /** "第 X/Y 天" progress for an ongoing task (metadata start/due, epoch ms). */

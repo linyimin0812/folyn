@@ -3,6 +3,7 @@ import {
   addDays,
   calendarGrid,
   dateKey,
+  formatPeriodRange,
   isCurrentPeriod,
   pickDay,
   quickRange,
@@ -43,6 +44,22 @@ describe('period math', () => {
     expect(isCurrentPeriod(quickRange('week', addDays(ref, -14)), ref)).toBe(false);
     expect(isCurrentPeriod({ mode: 'custom', start: addDays(ref, -2), end: addDays(ref, -1) }, ref)).toBe(false);
     expect(isCurrentPeriod({ mode: 'custom', start: addDays(ref, -2), end: addDays(ref, 2) }, ref)).toBe(true);
+  });
+});
+
+describe('unified range label (calendar trigger)', () => {
+  it('every mode renders the same numeric format — single day short, range full', () => {
+    expect(formatPeriodRange(quickRange('today', ref), 'zh-CN')).toBe('2026/09/23');
+    const w = quickRange('week', ref);
+    expect(formatPeriodRange(w, 'zh-CN')).toBe('2026/09/21 – 2026/09/27');
+    expect(formatPeriodRange(quickRange('month', ref), 'zh-CN')).toBe('2026/09/01 – 2026/09/30');
+    expect(
+      formatPeriodRange({ mode: 'custom', start: new Date(2026, 8, 10), end: new Date(2026, 8, 18) }, 'zh-CN'),
+    ).toBe('2026/09/10 – 2026/09/18');
+    // Ranges spanning years repeat the year on the end side (same formatter).
+    expect(
+      formatPeriodRange({ mode: 'custom', start: new Date(2025, 11, 28), end: new Date(2026, 0, 3) }, 'zh-CN'),
+    ).toBe('2025/12/28 – 2026/01/03');
   });
 });
 

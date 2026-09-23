@@ -10,7 +10,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   type Period,
   calendarGrid,
-  formatPeriodLabel,
+  formatPeriodRange,
   isCurrentPeriod,
   pickDay,
   quickRange,
@@ -98,8 +98,11 @@ export function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
           </button>
         ))}
       </div>
+      {/* Fixed width so the row (and the right-anchored popover) never shifts
+          when the label changes between modes. Sized to the longest label
+          (start – end in full y-m-d); truncate as ceiling. */}
       <button
-        className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+        className="btn btn-g btn-sm inline-flex items-center justify-center gap-1.5 w-[200px]"
         onClick={(e) => {
           e.stopPropagation();
           if (!open) {
@@ -109,10 +112,10 @@ export function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
           setOpen(!open);
         }}
       >
-        <span className="text-t2">
-          {formatPeriodLabel(period, i18n.language, (n) => t('activity:period.weekN', { week: n }))}
+        <span className="text-t2 truncate">
+          {formatPeriodRange(period, i18n.language)}
         </span>
-        <CalendarDays size={14} className="text-t3" />
+        <CalendarDays size={14} className="text-t3 shrink-0" />
       </button>
 
       {open && (

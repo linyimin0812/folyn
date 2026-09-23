@@ -10,8 +10,7 @@
     "week": "本周",
     "month": "本月",
     "backToToday": "回到今天",
-    "rangeHint": "点击日期选择当天，再点另一日期选择区间",
-    "weekN": "第{{week}}周"
+    "rangeHint": "点击日期选择当天，再点另一日期选择区间"
   },
   "ongoing": {
     "title": "进行中",
