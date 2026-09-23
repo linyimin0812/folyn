@@ -52,7 +52,25 @@
     "updatedTask": "Tarea {{name}} completada o actualizada",
     "ongoingTask": "En curso: {{name}} (día {{current}}/{{total}}, sin novedades)",
     "regeneratedAt": "Regenerado a las {{time}}",
-    "notifyText": "{{label}} listo — haz clic para verlo"
+    "notifyText": "{{label}} listo — haz clic para verlo",
+    "generateFailed": "Error al generar el informe",
+    "noModel": "No hay un modelo de informes utilizable (falta proveedor o clave de API) — configura uno primero en Ajustes"
+  },
+  "rail": {
+    "main": "Actividad",
+    "collectors": "Colectores",
+    "reportSettings": "Ajustes de informes"
+  },
+  "reportSettings": {
+    "title": "Ajustes de informes",
+    "promptLabel": "Prompt de generación",
+    "promptPlaceholder": "Deja vacío para usar la plantilla integrada",
+    "promptHint": "Si se define, el cuerpo del informe lo genera un LLM; los datos de actividad del periodo se añaden después del prompt",
+    "modelLabel": "Modelo de informes",
+    "followGlobal": "Seguir el modelo de chat global",
+    "followGlobalHint": "Actualmente siguiendo el modelo de chat global",
+    "rootDirLabel": "Directorio raíz de informes",
+    "rootDirPlaceholder": "活动记录"
   },
   "graph": {
     "hint": "Haz clic en un nodo para convertirlo en el centro y ver sus relaciones",

@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sparkles } from 'lucide-react';
+import { Activity, Plug, SlidersHorizontal, Sparkles } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -40,6 +40,8 @@ import {
   stripFrontmatter,
 } from '@/services/activity/reports';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
+import { CollectorsSettings } from '@/components/settings/CollectorsSettings';
+import { ReportSettingsView } from './ReportSettingsView';
 import { seedDemoActivity } from './demoSeed';
 import { useAsync, useVaultRoot } from './useActivityData';
 import { PeriodPicker } from './PeriodPicker';
@@ -55,6 +57,14 @@ function reportModeOf(mode: Period['mode']): ReportPeriod | null {
   if (mode === 'month') return 'monthly';
   return null;
 }
+
+/** Secondary rail views (activity page-local — NOT the global ActivityBar). */
+type ActivityView = 'main' | 'collectors' | 'reportSettings';
+const RAIL_VIEWS: { id: ActivityView; icon: typeof Activity; key: string }[] = [
+  { id: 'main', icon: Activity, key: 'activity:rail.main' },
+  { id: 'collectors', icon: Plug, key: 'activity:rail.collectors' },
+  { id: 'reportSettings', icon: SlidersHorizontal, key: 'activity:rail.reportSettings' },
+];
 
 /** Report preview — same plugin set as the editor's markdown preview (memoized per text). */
 function ReportMarkdown({ markdown }: { markdown: string }) {
@@ -77,10 +87,12 @@ export function ActivityPage() {
   const { t, i18n } = useTranslation();
   const vaultRoot = useVaultRoot();
   const [tab, setTab] = useState<'timeline' | 'graph'>('timeline');
+  const [view, setView] = useState<ActivityView>('main');
   const [period, setPeriod] = useState<Period>(() => quickRange('today', new Date()));
   const displayByType = useCollectorRegistryStore((s) => s.displayByType);
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const today = new Date();
@@ -160,6 +172,7 @@ export function ActivityPage() {
   const onGenerate = async () => {
     if (!vaultRoot || !reportMode || generating) return;
     setGenerating(true);
+    setReportError(null);
     try {
       const result = await generateReport({
         vaultRoot,
@@ -174,6 +187,10 @@ export function ActivityPage() {
       });
       setReport(result);
     } catch (err) {
+      // reports.ts throws i18n keys for typed errors (e.g. NO_MODEL_ERROR);
+      // anything else is a generic generation failure.
+      const msg = err instanceof Error ? err.message : String(err);
+      setReportError(msg.startsWith('activity:') ? t(msg) : t('activity:report.generateFailed'));
       console.warn('[activity] report generation failed:', err);
     } finally {
       setGenerating(false);
@@ -195,11 +212,32 @@ export function ActivityPage() {
   // Graph tab claims the full page height (no page scroll); timeline scrolls.
   const isGraph = tab === 'graph';
   return (
-    <div
-      className={`flex-1 min-w-0 ${
-        isGraph ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'
-      }`}
-    >
+    <div className="flex-1 min-w-0 flex">
+      {/* Secondary left rail — page-local, a sibling of the global ActivityBar
+          (NOT a modification of it). Switching views swaps the page content. */}
+      <div className="w-11 shrink-0 border-r border-brd flex flex-col items-center gap-1 py-3">
+        {RAIL_VIEWS.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            className={`flex size-8 items-center justify-center rounded cursor-pointer ${
+              view === v.id ? 'bg-accdim text-acc' : 'text-t3 hover:text-t2 hover:bg-hov'
+            }`}
+            aria-label={t(v.key)}
+            title={t(v.key)}
+            onClick={() => setView(v.id)}
+          >
+            <v.icon size={16} />
+          </button>
+        ))}
+      </div>
+
+      {view === 'main' ? (
+      <div
+        className={`flex-1 min-w-0 ${
+          isGraph ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'
+        }`}
+      >
       <div
         className={
           isGraph
@@ -252,6 +290,22 @@ export function ActivityPage() {
             <PeriodPicker period={period} onPeriodChange={setPeriod} />
           </div>
         </div>
+
+        {reportError && (
+          <div className="flex items-center justify-between gap-2 mb-4 border border-red-500/40 rounded-md px-3 py-2 bg-red-500/5 shrink-0">
+            <span className="text-[12px] text-red-700 dark:text-red-400 min-w-0">{reportError}</span>
+            <button
+              type="button"
+              className="flex size-6 shrink-0 items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov cursor-pointer"
+              aria-label={t('common:common.close')}
+              onClick={() => setReportError(null)}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+                <path d="m4 4 8 8M12 4l-8 8" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {report && (
           <div className="border border-brd rounded-lg p-4 mb-5 bg-panel shrink-0">
@@ -314,6 +368,17 @@ export function ActivityPage() {
           </div>
         )}
       </div>
+      </div>
+      ) : (
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <div className="max-w-[1200px] mx-auto p-8">
+            <h1 className="m-0 mb-6 text-[17px] font-semibold text-t1">
+              {t(view === 'collectors' ? 'activity:rail.collectors' : 'activity:rail.reportSettings')}
+            </h1>
+            {view === 'collectors' ? <CollectorsSettings /> : <ReportSettingsView />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -52,7 +52,25 @@
     "updatedTask": "タスク {{name}} を完了・更新しました",
     "ongoingTask": "進行中：{{name}}（{{current}}/{{total}} 日目、新規更新なし）",
     "regeneratedAt": "{{time}} に再生成",
-    "notifyText": "{{label}}が生成されました。クリックして表示"
+    "notifyText": "{{label}}が生成されました。クリックして表示",
+    "generateFailed": "レポートの生成に失敗しました",
+    "noModel": "利用可能なレポートモデルがありません（プロバイダー未設定または API キーなし）— 先に設定で構成してください"
+  },
+  "rail": {
+    "main": "アクティビティ",
+    "collectors": "コレクター",
+    "reportSettings": "レポート設定"
+  },
+  "reportSettings": {
+    "title": "レポート設定",
+    "promptLabel": "生成プロンプト",
+    "promptPlaceholder": "空欄の場合は内蔵テンプレートを使用します",
+    "promptHint": "設定するとレポート本文は LLM が生成します。期間のアクティビティデータはプロンプトの後に付加されます",
+    "modelLabel": "レポートモデル",
+    "followGlobal": "グローバルのチャットモデルに従う",
+    "followGlobalHint": "現在：グローバルのチャットモデルに従う",
+    "rootDirLabel": "レポートのルートフォルダ",
+    "rootDirPlaceholder": "活动记录"
   },
   "graph": {
     "hint": "ノードをクリックすると中心を切り替えて関連を表示します",

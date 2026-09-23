@@ -7,7 +7,9 @@
  * unchanged file → overwrite, against a hand-edited (or unknown) file → append
  * a「重新生成于」section below the original.
  *
- * Report prose is plain templates — no LLM on this path.
+ * Default path is plain deterministic templates. When a per-period prompt is
+ * configured (activityCollectorStore.reportConfig), the body comes from a
+ * one-shot LLM call instead — frontmatter/write/notify pipeline is shared.
  * // ponytail: design's diagram notes cli-adapter for 日报生成, but the
  * structure (metrics table / timeline / ongoing wording) is fixed either way;
  * wiring a CLI agent only to rephrase deterministic sections costs a process
@@ -49,9 +51,21 @@ export function reportPeriodKey(mode: ReportPeriod, start: Date): string {
   return dateKey(start);
 }
 
-/** Vault-relative note path: 活动记录/日报/2026-09-23.md etc. */
-export function reportRelPath(mode: ReportPeriod, start: Date): string {
-  return `${REPORT_ROOT}/${PERIOD_DIRS[mode]}/${reportPeriodKey(mode, start)}.md`;
+/** Vault-relative note path: 活动记录/日报/2026-09-23.md etc.
+ *  `rootDir` ('' / undefined) → default '活动记录'; slash segments trimmed. */
+export function reportRelPath(mode: ReportPeriod, start: Date, rootDir?: string): string {
+  const root = sanitizeRootDir(rootDir);
+  return `${root}/${PERIOD_DIRS[mode]}/${reportPeriodKey(mode, start)}.md`;
+}
+
+/** Trim leading/trailing slashes + empty segments; '' → default root. */
+export function sanitizeRootDir(rootDir?: string): string {
+  const trimmed = (rootDir ?? '')
+    .split('/')
+    .map((seg) => seg.trim())
+    .filter(Boolean)
+    .join('/');
+  return trimmed || REPORT_ROOT;
 }
 
 // ── Markdown composition (pure, unit-tested) ─────────────────────────────────
@@ -154,6 +168,68 @@ export function composeReportMarkdown(input: {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+// ── LLM path (pure pieces unit-tested; the call itself is I/O) ───────────────
+
+/** i18n key thrown when the report model can't be resolved (no configured
+ *  provider pair / key). ActivityPage translates message starting with
+ *  'activity:' instead of the generic failure key. */
+export const NO_MODEL_ERROR = 'activity:report.noModel';
+
+/** Non-empty trimmed prompt for the period → LLM path; '' → deterministic. */
+export function llmPromptFor(
+  mode: ReportPeriod,
+  prompts: { daily: string; weekly: string; monthly: string },
+): string {
+  return (prompts[mode] ?? '').trim();
+}
+
+/**
+ * Data context for the LLM — the SAME inputs `composeReportMarkdown` uses
+ * (metrics cards, events, daily ongoing tasks), serialized to plain
+ * markdown. The user's prompt is the instruction; this is appended verbatim
+ * (no template variables, per the grilling consensus).
+ */
+export function buildLlmContext(input: {
+  metrics: Pick<MetricCard, 'label' | 'value'>[];
+  events: ReportEventInput[];
+  ongoingTasks: ReportOngoingTask[];
+  formatTime: (ms: number) => string;
+}): string {
+  const lines: string[] = ['### Metrics'];
+  if (input.metrics.length === 0) {
+    lines.push('(none)');
+  } else {
+    for (const m of input.metrics) lines.push(`- ${m.label}: ${m.value}`);
+  }
+  lines.push('', '### Events');
+  const sorted = [...input.events].sort((a, b) => a.occurredAt - b.occurredAt);
+  if (sorted.length === 0) {
+    lines.push('(none)');
+  } else {
+    for (const e of sorted) {
+      const head = `- ${input.formatTime(e.occurredAt)} ${e.type}${e.title ? ` ${e.title}` : ''}`;
+      lines.push(e.summary ? `${head}: ${e.summary}` : head);
+    }
+  }
+  if (input.ongoingTasks.length > 0) {
+    lines.push('', '### Ongoing tasks');
+    for (const t of input.ongoingTasks) {
+      lines.push(`- ${t.name} (day ${t.current}/${t.total}, ${t.updatedToday ? 'updated' : 'no update'})`);
+    }
+  }
+  return lines.join('\n');
+}
+
+/** LLM body → full report: same frontmatter, then the model's output. */
+export function assembleLlmReport(
+  mode: ReportPeriod,
+  periodKey: string,
+  generatedAt: string,
+  llmOutput: string,
+): string {
+  return `${frontmatterBlock(mode, periodKey, generatedAt)}\n\n${llmOutput.trim()}\n`;
 }
 
 // ── Conflict handling (pure) ─────────────────────────────────────────────────
@@ -264,23 +340,40 @@ export async function generateReport(opts: GenerateReportOptions): Promise<Gener
   const metricRows: ActivityMetricRow[] = await aggregateActivityMetrics(vaultRoot, range);
   const metrics = metricCardsFromRows(metricRows, displayByType, metricLabel, metricLabel);
 
+  // Report customization (prompts / model / rootDir) — read here, same
+  // getState seam as reportHashes below.
+  const { useActivityCollectorStore } = await import('@/store/activityCollectorStore');
+  const reportConfig = useActivityCollectorStore.getState().reportConfig;
+
   const generatedAt = new Date();
-  const path = reportRelPath(mode, start);
+  const path = reportRelPath(mode, start, reportConfig.rootDir);
   const periodKey = reportPeriodKey(mode, start);
-  const markdown = composeReportMarkdown({
-    mode,
-    periodKey,
-    generatedAt: generatedAt.toISOString(),
-    metrics,
-    events,
-    ongoingTasks: ongoing,
-    formatTime: opts.formatTime,
-    s,
-  });
+  const prompt = llmPromptFor(mode, reportConfig.prompts);
+  const markdown = prompt
+    ? assembleLlmReport(
+        mode,
+        periodKey,
+        generatedAt.toISOString(),
+        await runReportLlm(prompt, buildLlmContext({
+          metrics,
+          events,
+          ongoingTasks: mode === 'daily' ? ongoing : [],
+          formatTime: opts.formatTime,
+        }), reportConfig),
+      )
+    : composeReportMarkdown({
+        mode,
+        periodKey,
+        generatedAt: generatedAt.toISOString(),
+        metrics,
+        events,
+        ongoingTasks: ongoing,
+        formatTime: opts.formatTime,
+        s,
+      });
 
   // ── write via the vault's own chokepoint (design §7.5: 核心直连 vault) ──
   const { useVaultStore } = await import('@/store/vaultStore');
-  const { useActivityCollectorStore } = await import('@/store/activityCollectorStore');
   let existing: string | null = null;
   try {
     existing = await useVaultStore.getState().readFile(path);
@@ -305,6 +398,50 @@ export async function generateReport(opts: GenerateReportOptions): Promise<Gener
 
   void notifyReportGenerated(s, path);
   return { path, mode: writeMode, markdown: content };
+}
+
+/**
+ * One-shot LLM report body (I/O): user prompt (instruction) + data context
+ * through `runRigChat`. Pair = reportConfig.modelOverride ?? global chat
+ * pair; unresolvable pair (missing provider slot / key) → NO_MODEL_ERROR
+ * (typed key ActivityPage translates). `historyMode: 'none'` + a fixed
+ * sessionId — no session persistence wanted. Rejects on stream 'error'
+ * events; no file is written on any failure.
+ */
+async function runReportLlm(
+  prompt: string,
+  context: string,
+  reportConfig: { modelOverride?: { provider: string; model: string } },
+): Promise<string> {
+  const { useAiConfigStore, resolvePairConfig } = await import('@/store/aiConfigStore');
+  const aiState = useAiConfigStore.getState();
+  const pair = reportConfig.modelOverride ?? {
+    provider: aiState.chatProvider,
+    model: aiState.chatModel,
+  };
+  const cfg = resolvePairConfig(pair, aiState);
+  if (!cfg) throw new Error(NO_MODEL_ERROR);
+
+  const { runRigChat } = await import('@/services/rigChat');
+  let text = '';
+  let failure: string | null = null;
+  await runRigChat({
+    sessionId: 'activity-report',
+    prompt: `${prompt}\n\n${context}`,
+    provider: cfg.provider,
+    model: cfg.model,
+    apiKey: cfg.apiKey,
+    baseUrl: cfg.baseUrl || undefined,
+    thinkingBudget: cfg.thinkingBudget,
+    adapterFamily: cfg.adapterFamily,
+    historyMode: 'none',
+    onEvent: (e) => {
+      if (e.type === 'text' && e.content) text += e.content;
+      else if (e.type === 'error') failure = e.content ?? 'LLM error';
+    },
+  });
+  if (failure != null) throw new Error(failure);
+  return text;
 }
 
 /**

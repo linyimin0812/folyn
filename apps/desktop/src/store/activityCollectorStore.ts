@@ -22,6 +22,7 @@ export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
   'configs',
   'pinnedMetrics',
   'reportHashes',
+  'reportConfig',
 ] as const;
 
 /** Per-collector user preferences. Missing record = all defaults (on). */
@@ -47,6 +48,21 @@ export function getCollectorSettings(
   return state.collectors[collectorId] ?? DEFAULT_COLLECTOR_SETTINGS;
 }
 
+/** Report generation config (design §7.5 customization): per-period LLM
+ *  prompts (empty string = deterministic template path), an optional
+ *  (provider, model) override (undefined = follow global chat config), and
+ *  the vault-relative report root dir (empty = '活动记录'). */
+export interface ReportConfig {
+  prompts: { daily: string; weekly: string; monthly: string };
+  modelOverride?: { provider: string; model: string };
+  rootDir: string;
+}
+
+export const DEFAULT_REPORT_CONFIG: ReportConfig = {
+  prompts: { daily: '', weekly: '', monthly: '' },
+  rootDir: '',
+};
+
 export interface ActivityCollectorState {
   /** Global polling kill-switch (design §2.1). Off = every collector is
    *  manual-only until flipped back on. */
@@ -71,6 +87,8 @@ export interface ActivityCollectorState {
   /** report path → content hash of the last content WE wrote (design §7.5
    * conflict rule). Sidecar only — never stored inside the note itself. */
   reportHashes: Record<string, string>;
+  /** Report customization (prompts / model / root dir). */
+  reportConfig: ReportConfig;
   /** Runtime-only last-sync info per collectorId (NOT persisted — refreshed
    *  on every collect). */
   lastSync: Record<string, { at: number; accepted: number }>;
@@ -87,10 +105,41 @@ export interface ActivityCollectorState {
   setPinnedMetrics: (v: Record<string, boolean>) => void;
   /** Record the hash of the report content we just wrote (§7.5). */
   setReportHash: (path: string, hash: string) => void;
+  /** Set one period's LLM prompt ('' = deterministic template). */
+  setReportPrompt: (period: 'daily' | 'weekly' | 'monthly', v: string) => void;
+  /** Set/clear the report model override (null = follow global chat config). */
+  setReportModelOverride: (pair: { provider: string; model: string } | null) => void;
+  /** Set the vault-relative report root dir ('' = '活动记录'). */
+  setReportRootDir: (v: string) => void;
   /** Runtime-only — called by runCollect after a successful push. */
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
 
   hydrate: (blob: Record<string, unknown>) => void;
+}
+
+/** Type-guarded parse of a persisted reportConfig blob → defaults on anything malformed. */
+export function parseReportConfig(blob: unknown): ReportConfig {
+  if (!blob || typeof blob !== 'object' || Array.isArray(blob)) return DEFAULT_REPORT_CONFIG;
+  const r = blob as Record<string, unknown>;
+  const prompts = { ...DEFAULT_REPORT_CONFIG.prompts };
+  if (r.prompts && typeof r.prompts === 'object' && !Array.isArray(r.prompts)) {
+    for (const k of ['daily', 'weekly', 'monthly'] as const) {
+      const v = (r.prompts as Record<string, unknown>)[k];
+      if (typeof v === 'string') prompts[k] = v;
+    }
+  }
+  const mo = r.modelOverride;
+  const modelOverride =
+    mo && typeof mo === 'object' && !Array.isArray(mo) &&
+    typeof (mo as Record<string, unknown>).provider === 'string' &&
+    typeof (mo as Record<string, unknown>).model === 'string'
+      ? { provider: (mo as Record<string, unknown>).provider as string, model: (mo as Record<string, unknown>).model as string }
+      : undefined;
+  return {
+    prompts,
+    rootDir: typeof r.rootDir === 'string' ? r.rootDir : '',
+    ...(modelOverride ? { modelOverride } : {}),
+  };
 }
 
 export const useActivityCollectorStore = create<ActivityCollectorState>((set, get) => ({
@@ -102,6 +151,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   configs: {},
   pinnedMetrics: {},
   reportHashes: {},
+  reportConfig: DEFAULT_REPORT_CONFIG,
   lastSync: {},
 
   setPollOn: (v) => { set({ pollOn: v }); persist(); },
@@ -130,6 +180,22 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     persist();
   },
 
+  setReportPrompt: (period, v) => {
+    set({ reportConfig: { ...get().reportConfig, prompts: { ...get().reportConfig.prompts, [period]: v } } });
+    persist();
+  },
+
+  setReportModelOverride: (pair) => {
+    const prev = get().reportConfig;
+    set({ reportConfig: { ...prev, ...(pair ? { modelOverride: pair } : { modelOverride: undefined }) } });
+    persist();
+  },
+
+  setReportRootDir: (v) => {
+    set({ reportConfig: { ...get().reportConfig, rootDir: v } });
+    persist();
+  },
+
   setLastSync: (collectorId, at, accepted) => {
     set({ lastSync: { ...get().lastSync, [collectorId]: { at, accepted } } });
   },
@@ -152,6 +218,9 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
         if (typeof v === 'string') reportHashes[p] = v;
       }
       patch.reportHashes = reportHashes;
+    }
+    if (blob.reportConfig && typeof blob.reportConfig === 'object' && !Array.isArray(blob.reportConfig)) {
+      patch.reportConfig = parseReportConfig(blob.reportConfig);
     }
     if (Array.isArray(blob.redactPatterns)) {
       patch.redactPatterns = blob.redactPatterns.filter((p): p is string => typeof p === 'string');

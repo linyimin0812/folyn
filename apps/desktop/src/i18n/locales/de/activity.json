@@ -52,7 +52,25 @@
     "updatedTask": "Aufgabe {{name}} abgeschlossen oder aktualisiert",
     "ongoingTask": "Laufend: {{name}} (Tag {{current}}/{{total}}, keine neuen Updates)",
     "regeneratedAt": "Neu erstellt um {{time}}",
-    "notifyText": "{{label}} ist fertig — zum Anzeigen klicken"
+    "notifyText": "{{label}} ist fertig — zum Anzeigen klicken",
+    "generateFailed": "Berichterstellung fehlgeschlagen",
+    "noModel": "Kein nutzbares Berichtsmodell (Anbieter fehlt oder kein API-Schlüssel) — zuerst in den Einstellungen konfigurieren"
+  },
+  "rail": {
+    "main": "Aktivität",
+    "collectors": "Kollektoren",
+    "reportSettings": "Berichtseinstellungen"
+  },
+  "reportSettings": {
+    "title": "Berichtseinstellungen",
+    "promptLabel": "Generierungs-Prompt",
+    "promptPlaceholder": "Leer lassen, um die eingebaute Vorlage zu verwenden",
+    "promptHint": "Wenn gesetzt, wird der Berichtstext von einem LLM erzeugt; die Aktivitätsdaten des Zeitraums werden nach dem Prompt angehängt",
+    "modelLabel": "Berichtsmodell",
+    "followGlobal": "Globalem Chat-Modell folgen",
+    "followGlobalHint": "Folgt derzeit dem globalen Chat-Modell",
+    "rootDirLabel": "Bericht-Stammordner",
+    "rootDirPlaceholder": "活动记录"
   },
   "graph": {
     "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",

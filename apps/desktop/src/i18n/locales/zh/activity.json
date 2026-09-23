@@ -52,7 +52,25 @@
     "updatedTask": "完成或更新了任务 {{name}}",
     "ongoingTask": "推进中：{{name}}（第 {{current}}/{{total}} 天，无新增更新）",
     "regeneratedAt": "重新生成于 {{time}}",
-    "notifyText": "{{label}}已生成，点击查看"
+    "notifyText": "{{label}}已生成，点击查看",
+    "generateFailed": "报告生成失败",
+    "noModel": "报告模型未配置或缺少密钥，请先在设置中完成配置"
+  },
+  "rail": {
+    "main": "活动",
+    "collectors": "采集器",
+    "reportSettings": "报告设置"
+  },
+  "reportSettings": {
+    "title": "报告设置",
+    "promptLabel": "生成提示词",
+    "promptPlaceholder": "留空则使用内置模板",
+    "promptHint": "填写后报告正文由大模型生成，本期活动数据会附加在提示词之后",
+    "modelLabel": "报告模型",
+    "followGlobal": "跟随全局对话模型",
+    "followGlobalHint": "当前：跟随全局对话模型",
+    "rootDirLabel": "报告根目录",
+    "rootDirPlaceholder": "活动记录"
   },
   "graph": {
     "hint": "点击图谱中的节点，切换中心并查看关联",

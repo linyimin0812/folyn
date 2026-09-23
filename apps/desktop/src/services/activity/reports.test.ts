@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   appendRegeneration,
+  assembleLlmReport,
+  buildLlmContext,
   composeReportMarkdown,
   decideWriteMode,
   frontmatterBlock,
   hashContent,
+  llmPromptFor,
   reportPeriodKey,
   reportRelPath,
   type ReportStrings,
@@ -45,6 +48,13 @@ describe('report path rules (design §7.5)', () => {
     expect(reportPeriodKey('daily', ref)).toBe('2026-09-23');
     expect(reportPeriodKey('weekly', ref)).toBe('2026-W39');
     expect(reportPeriodKey('monthly', ref)).toBe('2026-09');
+  });
+
+  it('custom rootDir replaces the default and trims slash segments', () => {
+    expect(reportRelPath('daily', ref, 'Reports')).toBe('Reports/日报/2026-09-23.md');
+    expect(reportRelPath('daily', ref, ' /Reports/周报/ ')).toBe('Reports/周报/日报/2026-09-23.md');
+    expect(reportRelPath('daily', ref, '')).toBe('活动记录/日报/2026-09-23.md');
+    expect(reportRelPath('daily', ref, '///')).toBe('活动记录/日报/2026-09-23.md');
   });
 });
 
@@ -158,5 +168,43 @@ describe('appendRegeneration', () => {
     // Exactly one frontmatter block — the appended copy is stripped.
     expect(out.match(/^---$/gm)?.length).toBe(2); // opening + closing of the original
     expect(out.endsWith('\n')).toBe(true);
+  });
+});
+
+describe('LLM path (report customization)', () => {
+  it('llmPromptFor: empty/whitespace prompt → deterministic path, else trimmed', () => {
+    expect(llmPromptFor('daily', { daily: '', weekly: '', monthly: '' })).toBe('');
+    expect(llmPromptFor('weekly', { daily: '  \n ', weekly: '', monthly: 'x' })).toBe('');
+    expect(llmPromptFor('monthly', { daily: '', weekly: '', monthly: ' 汇总本周 ' })).toBe('汇总本周');
+  });
+
+  it('buildLlmContext serializes metrics, events (chronological), ongoing tasks', () => {
+    const ctx = buildLlmContext({
+      metrics: [{ label: '代码提交', value: 3 }],
+      events: [
+        { occurredAt: Date.UTC(2026, 8, 23, 9, 0), type: 'commit', title: 'b', summary: 's2' },
+        { occurredAt: Date.UTC(2026, 8, 23, 2, 30), type: 'commit', title: 'a' },
+      ],
+      ongoingTasks: [{ name: '采集器', current: 3, total: 10, updatedToday: false }],
+      formatTime: (ms) => new Date(ms).toISOString().slice(11, 16),
+    });
+    expect(ctx).toContain('### Metrics');
+    expect(ctx).toContain('- 代码提交: 3');
+    expect(ctx.indexOf('02:30 commit a')).toBeLessThan(ctx.indexOf('09:00 commit b: s2'));
+    expect(ctx).toContain('### Ongoing tasks');
+    expect(ctx).toContain('- 采集器 (day 3/10, no update)');
+  });
+
+  it('buildLlmContext renders (none) for empty sections, omits ongoing when empty', () => {
+    const ctx = buildLlmContext({ metrics: [], events: [], ongoingTasks: [], formatTime: () => '' });
+    expect(ctx).toContain('### Metrics\n(none)');
+    expect(ctx).toContain('### Events\n(none)');
+    expect(ctx).not.toContain('### Ongoing tasks');
+  });
+
+  it('assembleLlmReport prepends the same frontmatter to the LLM output', () => {
+    const out = assembleLlmReport('daily', '2026-09-23', '2026-09-23T08:52:00.000Z', '  摘要正文\n\n');
+    expect(out.startsWith(frontmatterBlock('daily', '2026-09-23', '2026-09-23T08:52:00.000Z') + '\n\n')).toBe(true);
+    expect(out.endsWith('摘要正文\n')).toBe(true);
   });
 });

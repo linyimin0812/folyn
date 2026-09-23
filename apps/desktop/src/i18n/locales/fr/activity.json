@@ -52,7 +52,25 @@
     "updatedTask": "Tâche {{name}} terminée ou mise à jour",
     "ongoingTask": "En cours : {{name}} (jour {{current}}/{{total}}, sans nouvelle mise à jour)",
     "regeneratedAt": "Régénéré à {{time}}",
-    "notifyText": "{{label}} prêt — cliquez pour l'ouvrir"
+    "notifyText": "{{label}} prêt — cliquez pour l'ouvrir",
+    "generateFailed": "Échec de la génération du rapport",
+    "noModel": "Aucun modèle utilisable pour les rapports (fournisseur manquant ou pas de clé API) — configurez-en un dans les Réglages d'abord"
+  },
+  "rail": {
+    "main": "Activité",
+    "collectors": "Collecteurs",
+    "reportSettings": "Réglages des rapports"
+  },
+  "reportSettings": {
+    "title": "Réglages des rapports",
+    "promptLabel": "Prompt de génération",
+    "promptPlaceholder": "Laisser vide pour utiliser le modèle intégré",
+    "promptHint": "Si défini, le corps du rapport est généré par un LLM ; les données d'activité de la période sont ajoutées après le prompt",
+    "modelLabel": "Modèle des rapports",
+    "followGlobal": "Suivre le modèle de chat global",
+    "followGlobalHint": "Suit actuellement le modèle de chat global",
+    "rootDirLabel": "Dossier racine des rapports",
+    "rootDirPlaceholder": "活动记录"
   },
   "graph": {
     "hint": "Cliquez un nœud pour en faire le centre et voir ses relations",
