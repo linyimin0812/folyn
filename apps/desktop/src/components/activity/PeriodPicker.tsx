@@ -1,7 +1,8 @@
 /**
- * Period picker (design §7.1): 今天/本周/本月 quick tabs + a calendar popover
- * with month navigation and click-to-pick range selection (prototype-validated
- * semantics — see period.ts `pickDay`). Future days are disabled.
+ * Period picker (design §7.1): a calendar popover with 今天/本周/本月 quick
+ * tabs as its top row (matching the prototype layout), month navigation and
+ * click-to-pick range selection (prototype-validated semantics — see period.ts
+ * `pickDay`). Future days are disabled.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -11,7 +12,6 @@ import {
   type Period,
   calendarGrid,
   formatPeriodRange,
-  isCurrentPeriod,
   pickDay,
   quickRange,
   sameDay,
@@ -70,34 +70,9 @@ export function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
       new Date(2024, 0, d), // 2024-01-01 is a Monday
     ),
   );
-  const cur = !isCurrentPeriod(period, today);
 
   return (
     <div className="flex items-center gap-2 relative" ref={wrapRef}>
-      {cur && (
-        <button
-          className="btn btn-g btn-sm"
-          onClick={() => quick('today')}
-          title={t('activity:period.backToToday')}
-        >
-          {t('activity:period.backToToday')}
-        </button>
-      )}
-      <div className="inline-flex rounded-md border border-brd overflow-hidden">
-        {(['today', 'week', 'month'] as const).map((m) => (
-          <button
-            key={m}
-            className={`px-3 py-1 text-[length:calc(var(--ui-font-size)-1px)] border-l border-brd first:border-l-0 ${
-              period.mode === m
-                ? 'bg-accdim text-acc'
-                : 'bg-panel text-t2 hover:bg-hov'
-            }`}
-            onClick={() => quick(m)}
-          >
-            {t(`activity:period.${m}`)}
-          </button>
-        ))}
-      </div>
       {/* Fixed width so the row (and the right-anchored popover) never shifts
           when the label changes between modes. Sized to the longest label
           (start – end in full y-m-d); truncate as ceiling. */}
@@ -120,6 +95,21 @@ export function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
 
       {open && (
         <div className="absolute right-0 top-[calc(100%+6px)] z-30 bg-panel border border-brd2 rounded-lg p-2 shadow-xl w-[266px]">
+          <div className="flex rounded-md border border-brd overflow-hidden mb-2">
+            {(['today', 'week', 'month'] as const).map((m) => (
+              <button
+                key={m}
+                className={`flex-1 px-3 py-1 text-[length:calc(var(--ui-font-size)-1px)] border-l border-brd first:border-l-0 ${
+                  period.mode === m
+                    ? 'bg-accdim text-acc'
+                    : 'bg-panel text-t2 hover:bg-hov'
+                }`}
+                onClick={() => quick(m)}
+              >
+                {t(`activity:period.${m}`)}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center justify-between mb-2">
             <button className="btn btn-g btn-sm px-1.5 py-0.5" onClick={() => shiftMonth(-1)}>
               <ChevronLeft size={14} />
