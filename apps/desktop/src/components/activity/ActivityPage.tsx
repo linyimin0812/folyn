@@ -239,9 +239,9 @@ export function ActivityPage() {
           <div className="max-w-[1200px] mx-auto px-8">
         {/* Page title row: title + period description on the left, actions right. */}
         <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-4 flex-wrap shrink-0">
-          <div className="min-w-0">
+          <div className="flex items-baseline gap-2.5 min-w-0">
             <h1 className="m-0 text-[17px] font-semibold text-t1">{t('activity:title')}</h1>
-            <p className="m-0 mt-1 text-[12px] text-t3">{periodDesc}</p>
+            <p className="m-0 text-[12px] text-t3 truncate">{periodDesc}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="inline-flex gap-1">
