@@ -261,13 +261,15 @@ export function ActivityPage() {
               </p>
               <div className="flex items-center gap-2">
                 <button
-                  className="btn btn-g btn-sm inline-flex items-center gap-1"
+                  type="button"
+                  className="flex size-7 shrink-0 items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc cursor-pointer"
+                  aria-label={t('activity:report.openInEditor')}
+                  title={t('activity:report.openInEditor')}
                   onClick={() => void openReportInEditor()}
                 >
-                  <span className="inline-flex items-center shrink-0 [&>svg]:w-3 [&>svg]:h-3">
+                  <span className="inline-flex items-center justify-center [&>svg]:w-3.5 [&>svg]:h-3.5">
                     <FileIcon filename={report.path.split('/').pop() ?? report.path} />
                   </span>
-                  {t('activity:report.openInEditor')}
                 </button>
                 <button
                   type="button"
