@@ -27,7 +27,8 @@
     "minutesSuffix": "minutes",
     "more": "Plus de métriques · {{count}}",
     "pin": "Épingler dans les métriques",
-    "unpin": "Désépingler"
+    "unpin": "Désépingler",
+    "title": "Résumé"
   },
   "timeline": {
     "loading": "Chargement…",

@@ -62,25 +62,28 @@ export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridPr
   if (cards.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mb-6">
-      {pinned.map(renderCard)}
-      {unpinnedVisible.map(renderCard)}
-      {collapsed.length > 0 && (
-        <div className="col-span-full">
-          <button
-            className="btn btn-g btn-sm inline-flex items-center gap-1.5"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {t('activity:metric.more', { count: collapsed.length })}
-            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-          {expanded && (
-            <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
-              {collapsed.map(renderCard)}
-            </div>
-          )}
-        </div>
-      )}
+    <div className="mb-6">
+      <p className="m-0 mb-3 text-[12px] text-t3">{t('activity:metric.title')}</p>
+      <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3">
+        {pinned.map(renderCard)}
+        {unpinnedVisible.map(renderCard)}
+        {collapsed.length > 0 && (
+          <div className="col-span-full">
+            <button
+              className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {t('activity:metric.more', { count: collapsed.length })}
+              {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+            {expanded && (
+              <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
+                {collapsed.map(renderCard)}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -27,7 +27,8 @@
     "minutesSuffix": "minutes",
     "more": "More metrics · {{count}}",
     "pin": "Pin to metrics row",
-    "unpin": "Unpin"
+    "unpin": "Unpin",
+    "title": "Summary"
   },
   "timeline": {
     "loading": "Loading…",

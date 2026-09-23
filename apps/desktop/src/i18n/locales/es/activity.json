@@ -27,7 +27,8 @@
     "minutesSuffix": "minutos",
     "more": "Más métricas · {{count}}",
     "pin": "Fijar en métricas",
-    "unpin": "Quitar fijado"
+    "unpin": "Quitar fijado",
+    "title": "Resumen"
   },
   "timeline": {
     "loading": "Cargando…",

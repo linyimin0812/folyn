@@ -27,7 +27,8 @@
     "minutesSuffix": "Minuten",
     "more": "Weitere Metriken · {{count}}",
     "pin": "In Metrikleiste anheften",
-    "unpin": "Lösen"
+    "unpin": "Lösen",
+    "title": "Zusammenfassung"
   },
   "timeline": {
     "loading": "Lädt…",

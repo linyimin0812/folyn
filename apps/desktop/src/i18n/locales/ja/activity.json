@@ -27,7 +27,8 @@
     "minutesSuffix": "時間（分）",
     "more": "その他の指標 · {{count}}",
     "pin": "指標エリアに固定",
-    "unpin": "固定解除"
+    "unpin": "固定解除",
+    "title": "概要"
   },
   "timeline": {
     "loading": "読み込み中…",

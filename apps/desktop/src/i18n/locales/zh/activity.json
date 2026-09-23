@@ -27,7 +27,8 @@
     "minutesSuffix": "时长（分钟）",
     "more": "更多指标 · {{count}}",
     "pin": "常驻指标区",
-    "unpin": "取消常驻"
+    "unpin": "取消常驻",
+    "title": "汇总信息"
   },
   "timeline": {
     "loading": "加载中…",
