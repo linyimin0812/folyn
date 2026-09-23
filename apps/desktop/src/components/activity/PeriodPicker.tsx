@@ -48,6 +48,7 @@ export function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
   const quick = (mode: 'today' | 'week' | 'month') => {
     setPickStart(null);
     onPeriodChange(quickRange(mode, today));
+    setOpen(false); // choice is done — auto-close
   };
 
   const onPick = (day: Date) => {
@@ -55,6 +56,7 @@ export function PeriodPicker({ period, onPeriodChange }: PeriodPickerProps) {
     const { pickStart: next, period: p } = pickDay(pickStart, day);
     setPickStart(next);
     onPeriodChange(p);
+    if (next === null) setOpen(false); // range completed — auto-close; first click stays open
   };
 
   const shiftMonth = (delta: number) => {
