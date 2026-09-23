@@ -278,10 +278,10 @@ export function MoveDialog({ sources, fileTree, onCancel, onConfirm, mode = 'mov
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/35 flex items-center justify-center" onClick={onCancel}>
-      <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[480px] max-w-[640px] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="text-[15px] font-semibold text-t1 mb-3">{t(titleKey)}{countLabel}</div>
+      <div className="bg-panel rounded-[10px] py-5 px-6 min-w-[480px] max-w-[640px] max-h-[85vh] shadow-[0_8px_32px_rgba(0,0,0,0.18)] border border-brd flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="shrink-0 text-[15px] font-semibold text-t1 mb-3">{t(titleKey)}{countLabel}</div>
         {hasValidTargets ? (
-          <div className="max-h-[55vh] overflow-y-auto py-1 mb-4 border border-brd rounded-md">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-1 mb-4 border border-brd rounded-md">
             <button
               type="button"
               disabled={isDisabled('')}
@@ -335,7 +335,7 @@ export function MoveDialog({ sources, fileTree, onCancel, onConfirm, mode = 'mov
         ) : (
           <div className="text-[13px] text-t3 mb-4">{t('sidebar:sidebarActions.moveDialog.noTargets')}</div>
         )}
-        <div className="flex justify-end gap-2">
+        <div className="shrink-0 flex justify-end gap-2">
           <button className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-brd font-ui transition-all duration-[140ms] bg-panel text-t2 hover:bg-hov" onClick={onCancel}>{t('sidebar:sidebarActions.cancel')}</button>
           <button
             className="py-1.5 px-4 rounded-md text-[13px] cursor-pointer border border-acc font-ui transition-all duration-[140ms] bg-acc text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
