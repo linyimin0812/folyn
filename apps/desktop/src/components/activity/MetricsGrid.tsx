@@ -57,7 +57,7 @@ export function MetricsGrid({ cards }: MetricsGridProps) {
             {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
           {expanded && (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-3 mt-3">
+            <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
               {rest.map(renderCard)}
             </div>
           )}
