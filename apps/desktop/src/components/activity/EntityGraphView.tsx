@@ -4,11 +4,10 @@
  * prototype-validated static radial layout (elliptical orbit sized to the
  * measured container so the graph fills any window aspect). Clicking a neighbor makes it the
  * new center (refetch); clicking an aggregate node opens the instance list
- * in the right sidebar. Unregistered entity types render as gray nodes with
- * the raw type string.
+ * in the right sidebar. Unregistered entity types use the raw type string.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type ActivityEntityRow,
@@ -18,12 +17,16 @@ import {
 } from '@/services/activity/api';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
 import { useAsync } from './useActivityData';
-import { ACTIVITY_PALETTE, breadcrumbIndices, groupNeighborsByType, paletteOf, radialLayoutKnobs } from './display';
+import { breadcrumbIndices, groupNeighborsByType } from './display';
 
-const CENTER_R = 64;
+const NODE_W = 168;
+const NODE_H = 64;
+const CENTER_W = 184;
+const CENTER_H = 72;
 
-function truncateLabel(s: string, n: number): string {
-  return s.length > n ? `${s.slice(0, n)}…` : s;
+// Distance from a rectangle's center to its border along a unit vector.
+function borderDistance(ux: number, uy: number, width: number, height: number): number {
+  return Math.min(width / 2 / Math.abs(ux), height / 2 / Math.abs(uy));
 }
 
 interface EntityGraphViewProps {
@@ -32,6 +35,8 @@ interface EntityGraphViewProps {
 
 export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   const { t } = useTranslation();
+  const arrowId = useId();
+  const groupButtonRef = useRef<HTMLButtonElement | null>(null);
   // centerHistory holds entity ids; the last entry is the current center.
   const [history, setHistory] = useState<string[]>([]);
   const [bcExpanded, setBcExpanded] = useState(false);
@@ -107,16 +112,22 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     aggregate: g.items.length > 1,
   }));
   const slots = displayItems.length;
-  const { nodeRadius: rN } = radialLayoutKnobs(slots);
-  const W = Math.max(320, box.w);
-  const H = Math.max(240, box.h);
+  // Keep nodes readable in narrow panes; scroll the canvas instead of shrinking it.
+  // A minimum circular orbit also leaves room between adjacent rectangular nodes.
+  const orbitMin = slots > 1
+    ? Math.max(140, (Math.hypot(NODE_W, NODE_H) + 24) / (2 * Math.sin(Math.PI / slots)))
+    : 140;
+  const W = Math.max(640, box.w, orbitMin * 2 + NODE_W + 64);
+  const H = Math.max(400, box.h, orbitMin * 2 + NODE_H + 64);
   const CX = W / 2;
   const CY = H / 2;
-  // Orbit radii from the measured box so nodes fill it; horizontal margin 90
-  // keeps relation labels inside, vertical 60.
-  const RX = W / 2 - rN - 90;
-  const RY = Math.max(80, H / 2 - rN - 60);
-  const fs = Math.max(1, W / 1100);
+  const RX = W / 2 - NODE_W / 2 - 32;
+  const RY = H / 2 - NODE_H / 2 - 32;
+
+  const closeGroupPanel = () => {
+    setGroupPanel(null);
+    groupButtonRef.current?.focus();
+  };
 
   const navigateTo = (id: string) => {
     setGroupPanel(null);
@@ -149,11 +160,11 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   /* Breadcrumb path — collapsed to「… › prev › current」beyond 3 levels. */
   const breadcrumb = (
-    <div className="mb-3 text-[length:calc(var(--ui-font-size)-1px)] flex items-center gap-1 flex-wrap shrink-0">
+    <div className="min-h-10 px-4 py-2 text-xs flex items-center gap-1 flex-wrap shrink-0 border-b border-brd">
       {history.length > 3 && !bcExpanded && (
         <>
           <button
-            className="text-t3 px-1 cursor-pointer bg-transparent border-0"
+            className="text-t3 px-2 py-1 rounded hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc cursor-pointer bg-transparent border-0"
             title={t('activity:graph.expand')}
             onClick={() => setBcExpanded(true)}
           >
@@ -166,20 +177,21 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
         <span key={i} className="flex items-center gap-1">
           {i < history.length - 1 ? (
             <button
-              className="text-t3 hover:text-t1 cursor-pointer bg-transparent border-0"
+              className="max-w-48 truncate text-t2 hover:text-t1 hover:bg-hov px-1.5 py-1 rounded focus-visible:outline-2 focus-visible:outline-acc cursor-pointer bg-transparent border-0"
+              title={nameOf(history[i])}
               onClick={() => jumpTo(i)}
             >
               {nameOf(history[i])}
             </button>
           ) : (
-            <span className="text-t1">{nameOf(history[i])}</span>
+            <span className="max-w-56 truncate px-1.5 font-medium text-t1" title={nameOf(history[i])} aria-current="page">{nameOf(history[i])}</span>
           )}
           {i < history.length - 1 && <span className="text-t3">›</span>}
         </span>
       ))}
       {bcExpanded && history.length > 3 && (
         <button
-          className="text-t3 text-[11px] px-1.5 py-0.5 ml-2 border border-brd rounded-md cursor-pointer bg-panel"
+          className="text-t3 text-[11px] px-1.5 py-0.5 ml-2 border border-brd rounded-md cursor-pointer bg-panel hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc"
           onClick={() => setBcExpanded(false)}
         >
           {t('activity:graph.collapse')}
@@ -189,91 +201,79 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   );
 
   const graph = (
-    <div ref={wrapRef} className="flex-1 min-h-0">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full select-none" role="img">
-      <defs>
-        <marker
-          id="activity-arrow"
-          viewBox="0 0 10 10"
-          refX="8"
-          refY={5}
-          markerWidth="6"
-          markerHeight="6"
-          orient="auto-start-reverse"
-        >
-          <path d="M2 1L8 5L2 9" fill="none" stroke="#8b8a83" strokeWidth="1.5" strokeLinecap="round" />
-        </marker>
-      </defs>
+    <div ref={wrapRef} className="flex-1 min-h-0 min-w-0 overflow-auto">
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none">
+        <defs>
+          <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
+          </marker>
+        </defs>
 
-      {/* Center node */}
-      {center && (
-        <g>
-          <circle cx={CX} cy={CY} r={CENTER_R} fill={ACTIVITY_PALETTE[paletteOf('blue')].bg} stroke={ACTIVITY_PALETTE[paletteOf('blue')].color} strokeWidth="0.5" />
-          <text x={CX} y={CY - 11} textAnchor="middle" dominantBaseline="central" fontSize={18 * fs} fontWeight="500" fill="var(--t1, #201f1c)">
-            {truncateLabel(nameOf(center.id), 7)}
-          </text>
-          <text x={CX} y={CY + 13} textAnchor="middle" dominantBaseline="central" fontSize={14 * fs} fill="var(--t2, #5f5e5a)">
-            {typeLabelOf(center.type)}
-          </text>
-        </g>
-      )}
-
-      {/* Neighbor nodes on the elliptical radial orbit */}
-      {displayItems.map((di, i) => {
-        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(1, slots);
-        const cosA = Math.cos(angle);
-        const sinA = Math.sin(angle);
-        const nx = CX + RX * cosA;
-        const ny = CY + RY * sinA;
-        // Ellipse direction ≠ angle direction — follow the actual center→node vector.
-        const dx = nx - CX;
-        const dy = ny - CY;
-        const len = Math.hypot(dx, dy);
-        const ux = dx / len;
-        const uy = dy / len;
-        const startX = CX + CENTER_R * ux;
-        const startY = CY + CENTER_R * uy;
-        const endX = nx - rN * ux;
-        const endY = ny - rN * uy;
-        const rel = di.items[0]?.relation ?? '';
-        const labelX = (startX + endX) / 2 - uy * 10;
-        const labelY = (startY + endY) / 2 + ux * 10;
-        const reg = entityTypes.find((et) => et.id === di.entityType);
-        const pal = ACTIVITY_PALETTE[paletteOf(reg?.color)];
-        return (
-          <g key={di.entityType}>
-            <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="#8b8a83" strokeWidth="1" markerEnd="url(#activity-arrow)" />
-            <text x={labelX} y={labelY} textAnchor="middle" fontSize={13 * fs} fill="var(--t2, #5f5e5a)" fontStyle="italic">
-              {rel}
-            </text>
-            <g
-              className="cursor-pointer"
-              onClick={() =>
-                di.aggregate ? setGroupPanel(di.entityType) : navigateTo(di.items[0]!.neighborId)
-              }
-            >
-              <circle cx={nx} cy={ny} r={rN} fill={pal.bg} stroke={pal.color} strokeWidth="0.5" />
-              <text x={nx} y={ny - 11} textAnchor="middle" dominantBaseline="central" fontSize={18 * fs} fontWeight="500" fill="var(--t1, #201f1c)">
-                {di.aggregate
-                  ? truncateLabel(typeLabelOf(di.entityType), rN <= 44 ? 3 : 5)
-                  : truncateLabel(nameOf(di.items[0]!.neighborId), rN <= 44 ? 3 : 5)}
+        {displayItems.map((di, i) => {
+          const angle = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(1, slots);
+          const nx = CX + RX * Math.cos(angle);
+          const ny = CY + RY * Math.sin(angle);
+          const dx = nx - CX;
+          const dy = ny - CY;
+          const len = Math.hypot(dx, dy);
+          const ux = dx / len;
+          const uy = dy / len;
+          const start = borderDistance(ux, uy, CENTER_W, CENTER_H) + 3;
+          const end = borderDistance(ux, uy, NODE_W, NODE_H) + 5;
+          const startX = CX + start * ux;
+          const startY = CY + start * uy;
+          const endX = nx - end * ux;
+          const endY = ny - end * uy;
+          const rel = di.items[0]?.relation ?? '';
+          const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
+          const selected = groupPanel === di.entityType;
+          return (
+            <g key={di.entityType}>
+              <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="var(--brd2)" strokeWidth="1" markerEnd={`url(#${arrowId})`} />
+              <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 8} textAnchor="middle" fontSize="11" fill="var(--t3)" stroke="var(--panel)" strokeWidth="5" paintOrder="stroke">
+                {rel}
               </text>
-              <text x={nx} y={ny + 13} textAnchor="middle" dominantBaseline="central" fontSize={14 * fs} fill="var(--t2, #5f5e5a)">
-                {di.aggregate
-                  ? t('activity:graph.groupCount', { count: di.items.length })
-                  : typeLabelOf(di.entityType)}
-              </text>
+              <foreignObject x={nx - NODE_W / 2 - 4} y={ny - NODE_H / 2 - 4} width={NODE_W + 8} height={NODE_H + 8}>
+                <button
+                  type="button"
+                  title={label}
+                  aria-expanded={di.aggregate ? selected : undefined}
+                  className={`m-1 flex h-16 w-[168px] flex-col justify-center gap-1 rounded-md border px-3 text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
+                  onClick={(event) => {
+                    if (di.aggregate) {
+                      groupButtonRef.current = event.currentTarget;
+                      setGroupPanel(selected ? null : di.entityType);
+                    } else {
+                      navigateTo(di.items[0]!.neighborId);
+                    }
+                  }}
+                >
+                  <span className="block w-full truncate text-[13px] font-medium text-t1">{label}</span>
+                  <span className="flex w-full items-center justify-between gap-2 text-[11px] text-t3">
+                    <span className="truncate">{di.aggregate ? t('activity:graph.groupCount', { count: di.items.length }) : typeLabelOf(di.entityType)}</span>
+                    {di.aggregate && <span aria-hidden="true">›</span>}
+                  </span>
+                </button>
+              </foreignObject>
             </g>
-          </g>
-        );
-      })}
+          );
+        })}
+
+        {center && (
+          <foreignObject x={CX - CENTER_W / 2} y={CY - CENTER_H / 2} width={CENTER_W} height={CENTER_H}>
+            <div className="flex h-full flex-col justify-center gap-1 rounded-md border border-acc bg-panel px-4" title={nameOf(center.id)}>
+              <span className="truncate text-[13px] font-semibold text-t1">{nameOf(center.id)}</span>
+              <span className="truncate text-[11px] text-t2">{typeLabelOf(center.type)}</span>
+            </div>
+          </foreignObject>
+        )}
       </svg>
     </div>
   );
 
   /* Center info / no-relations / hint — always under the graph (left column). */
   const infoPanel = center ? (
-    <p className="m-0 text-[13px] text-t3">
+    <p className="m-0 text-xs leading-5 text-t3">
       {neighbors && neighbors.length === 0
         ? t('activity:graph.noRelations', { name: nameOf(center.id) })
         : t('activity:graph.centerInfo', {
@@ -282,50 +282,65 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
           })}
     </p>
   ) : (
-    <p className="m-0 text-[13px] text-t3">
+    <p className="m-0 text-xs leading-5 text-t3">
       {t('activity:graph.hint')}
     </p>
   );
 
-  // Aggregate instance list — right sidebar when a group is open.
-  if (groupPanel != null) {
-    const items = groups.find((g) => g.entityType === groupPanel)?.items ?? [];
-    return (
-      <div className="h-full flex gap-3 min-h-0">
-        <div className="flex-1 min-w-0 flex flex-col min-h-0">
-            {breadcrumb}
-            {graph}
-            <div className="border border-brd rounded-lg p-4 bg-panel shrink-0">{infoPanel}</div>
-          </div>
-          <div className="w-[320px] shrink-0 border border-brd rounded-lg p-4 bg-panel h-full overflow-y-auto">
-          <p className="m-0 mb-3 text-[13px] text-t2">
-            {t('activity:graph.groupPanel', {
-              label: typeLabelOf(groupPanel),
-              count: items.length,
-            })}
-          </p>
-          <div className="flex flex-col gap-2">
-            {items.map((n) => (
-              <button
-                key={n.neighborId}
-                className="text-left text-[length:var(--ui-font-size)] text-t1 px-3 py-2 bg-surf2 rounded-md cursor-pointer border-0 hover:bg-hov"
-                onClick={() => navigateTo(n.neighborId)}
-              >
-                {nameOf(n.neighborId)} · {n.relation}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const panelItems = groups.find((g) => g.entityType === groupPanel)?.items ?? [];
 
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div
+      className="h-full min-h-0 overflow-hidden rounded-lg border border-brd bg-panel flex flex-col"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && groupPanel != null) {
+          event.stopPropagation();
+          closeGroupPanel();
+        }
+      }}
+    >
       {breadcrumb}
-      {graph}
-      {/* Detail panel: center info / hint (full width, no group open) */}
-      <div className="border border-brd rounded-lg p-4 bg-panel shrink-0">{infoPanel}</div>
+      <div className="relative flex flex-1 min-h-0 min-w-0">
+        <div className="flex flex-1 min-w-0 min-h-0 flex-col">
+          {graph}
+          <div className="shrink-0 border-t border-brd px-4 py-2">{infoPanel}</div>
+        </div>
+        {groupPanel != null && (
+          <aside
+            className="absolute inset-y-0 right-0 z-10 flex w-[260px] max-w-full flex-col border-l border-brd bg-panel min-[1100px]:static min-[1100px]:shrink-0"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-brd px-3 py-2">
+              <p className="m-0 min-w-0 text-xs font-medium text-t1">
+                {t('activity:graph.groupPanel', { label: typeLabelOf(groupPanel), count: panelItems.length })}
+              </p>
+              <button
+                type="button"
+                className="flex size-7 shrink-0 items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc cursor-pointer"
+                aria-label={t('common:common.close')}
+                title={t('common:common.close')}
+                onClick={closeGroupPanel}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+                  <path d="m4 4 8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            </div>
+            <div className="min-h-0 overflow-y-auto p-1.5">
+              {panelItems.map((n) => (
+                <button
+                  key={n.neighborId}
+                  type="button"
+                  className="flex w-full flex-col gap-1 rounded px-2.5 py-2.5 text-left cursor-pointer hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc"
+                  onClick={() => navigateTo(n.neighborId)}
+                >
+                  <span className="text-xs leading-5 text-t1 break-all">{nameOf(n.neighborId)}</span>
+                  <span className="text-[11px] leading-4 text-t3 break-all">{n.relation}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
+        )}
+      </div>
     </div>
   );
 }
