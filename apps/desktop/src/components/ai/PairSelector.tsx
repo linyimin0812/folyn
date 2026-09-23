@@ -275,7 +275,7 @@ export function PairSelector({
       <button
         type="button"
         data-testid="pair-selector"
-        className="fi2 h-[28px] py-[3px] px-2 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui flex items-center gap-1.5 max-w-full cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        className="fi2 w-full h-[28px] py-[3px] px-2 rounded-md border border-brd bg-inp text-t1 text-[length:calc(var(--ui-font-size)-2px)] outline-none font-ui flex items-center gap-1.5 max-w-full cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
       >
