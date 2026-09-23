@@ -19,8 +19,8 @@ import { useCollectorRegistryStore } from '@/services/activity/registry';
 import { useAsync } from './useActivityData';
 import { ACTIVITY_PALETTE, breadcrumbIndices, groupNeighborsByType, paletteOf, radialLayoutKnobs } from './display';
 
-const CX = 340;
-const CY = 270;
+const CX = 550;
+const CY = 300;
 const CENTER_R = 50;
 
 function truncateLabel(s: string, n: number): string {
@@ -169,7 +169,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     // ponytail: preserveAspectRatio default (xMidYMid meet) fits the viewBox
     // to the available box — no overflow regardless of container aspect.
     <div className="flex-1 min-h-0">
-      <svg viewBox="0 0 680 560" className="w-full h-full select-none" role="img">
+      <svg viewBox="0 0 1100 600" className="w-full h-full select-none" role="img">
       <defs>
         <marker
           id="activity-arrow"
