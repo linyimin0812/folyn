@@ -71,16 +71,14 @@ export function ReportSettingsView() {
             <span className="text-[11px] text-t3">{t('activity:reportSettings.followGlobalHint')}</span>
           )}
         </div>
-        <div className="w-[360px] max-w-full">
-          <PairSelector
-            className="w-full"
-            value={reportConfig.modelOverride ?? null}
-            onChange={(pair) => setReportModelOverride(pair)}
-            dropDirection="down"
-            panelAlign="right"
-            panelMatchWidth
-          />
-        </div>
+        <PairSelector
+          className="w-[360px]"
+          value={reportConfig.modelOverride ?? null}
+          onChange={(pair) => setReportModelOverride(pair)}
+          dropDirection="down"
+          panelAlign="right"
+          panelMatchWidth
+        />
       </div>
 
       <label className="block">
