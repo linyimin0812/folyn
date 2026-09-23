@@ -6,7 +6,9 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { useNavStore } from '@/store/navStore';
+import { FileIcon } from '@/components/icons/FileIcon';
 import {
   type Period,
   dateKey,
@@ -159,6 +161,7 @@ export function ActivityPage() {
       const { openFile } = await import('@/services/editorIoService');
       const name = report.path.split('/').pop() ?? report.path;
       await openFile(report.path, name);
+      useNavStore.getState().setCurrentPage('editor');
     } catch (err) {
       console.warn('[activity] open report failed:', err);
     }
@@ -223,7 +226,9 @@ export function ActivityPage() {
                 className="btn btn-g btn-sm inline-flex items-center gap-1"
                 onClick={() => void openReportInEditor()}
               >
-                <FileText size={12} />
+                <span className="inline-flex items-center shrink-0 [&>svg]:w-3 [&>svg]:h-3">
+                  <FileIcon filename={report.path.split('/').pop() ?? report.path} />
+                </span>
                 {t('activity:report.openInEditor')}
               </button>
             </div>
