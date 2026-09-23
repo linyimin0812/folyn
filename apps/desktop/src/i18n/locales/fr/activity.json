@@ -70,8 +70,7 @@
     "followGlobal": "Suivre le modèle de chat global",
     "followGlobalHint": "Suit actuellement le modèle de chat global",
     "rootDirLabel": "Dossier racine des rapports",
-    "rootDirPlaceholder": "activity_collection",
-    "browse": "Parcourir"
+    "rootDirPlaceholder": "activity_collection"
   },
   "graph": {
     "hint": "Cliquez un nœud pour en faire le centre et voir ses relations",

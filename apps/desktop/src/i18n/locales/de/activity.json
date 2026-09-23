@@ -70,8 +70,7 @@
     "followGlobal": "Globalem Chat-Modell folgen",
     "followGlobalHint": "Folgt derzeit dem globalen Chat-Modell",
     "rootDirLabel": "Bericht-Stammordner",
-    "rootDirPlaceholder": "activity_collection",
-    "browse": "Durchsuchen"
+    "rootDirPlaceholder": "activity_collection"
   },
   "graph": {
     "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",
