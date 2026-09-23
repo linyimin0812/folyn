@@ -8,6 +8,11 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sparkles } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import remarkDirective from 'remark-directive';
+import remarkDirectiveRehype from 'remark-directive-rehype';
+import rehypeHighlight from 'rehype-highlight';
+import { all as allLowlightGrammars } from 'lowlight';
 import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
 import { useNavStore } from '@/store/navStore';
 import { FileIcon } from '@/components/icons/FileIcon';
@@ -50,11 +55,16 @@ function reportModeOf(mode: Period['mode']): ReportPeriod | null {
   return null;
 }
 
-/** Report preview — same markdown pipeline the chat uses, memoized per text. */
+/** Report preview — same plugin set as the editor's markdown preview (memoized per text). */
 function ReportMarkdown({ markdown }: { markdown: string }) {
   const node = useMemo(() => {
     try {
-      return renderMarkdownToReact(markdown, { remarkExtensions: [remarkGfm] });
+      return renderMarkdownToReact(markdown, {
+        // ponytail: editor-only features skipped (scroll-sync, script runner/containers, code-break cleanup)
+        remarkExtensions: [remarkGfm, remarkBreaks, remarkDirective, remarkDirectiveRehype],
+        allowDangerousHtml: true,
+        rehypeExtensions: [[rehypeHighlight, { languages: allLowlightGrammars, ignoreMissing: true } as any]],
+      });
     } catch {
       return markdown;
     }
@@ -248,26 +258,28 @@ export function ActivityPage() {
               <p className="m-0 text-[11px] text-acc">
                 {t('activity:report.savedTo', { path: report.path })}
               </p>
-              <button
-                className="btn btn-g btn-sm inline-flex items-center gap-1"
-                onClick={() => void openReportInEditor()}
-              >
-                <span className="inline-flex items-center shrink-0 [&>svg]:w-3 [&>svg]:h-3">
-                  <FileIcon filename={report.path.split('/').pop() ?? report.path} />
-                </span>
-                {t('activity:report.openInEditor')}
-              </button>
-              <button
-                type="button"
-                className="flex size-7 shrink-0 items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc cursor-pointer"
-                aria-label={t('common:common.close')}
-                title={t('common:common.close')}
-                onClick={() => setReport(null)}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
-                  <path d="m4 4 8 8M12 4l-8 8" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="btn btn-g btn-sm inline-flex items-center gap-1"
+                  onClick={() => void openReportInEditor()}
+                >
+                  <span className="inline-flex items-center shrink-0 [&>svg]:w-3 [&>svg]:h-3">
+                    <FileIcon filename={report.path.split('/').pop() ?? report.path} />
+                  </span>
+                  {t('activity:report.openInEditor')}
+                </button>
+                <button
+                  type="button"
+                  className="flex size-7 shrink-0 items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov focus-visible:outline-2 focus-visible:outline-acc cursor-pointer"
+                  aria-label={t('common:common.close')}
+                  title={t('common:common.close')}
+                  onClick={() => setReport(null)}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+                    <path d="m4 4 8 8M12 4l-8 8" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <ReportMarkdown markdown={report.markdown} />
           </div>
