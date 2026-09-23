@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Cursor-sync regression tests for SHORT documents (new-file typing) — the
  * reported 新建 Markdown 文件输入内容预览闪动 + 内容超过页面后不闪 +
@@ -35,6 +36,17 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { render, act, cleanup, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
+
+vi.mock('../excalidraw/ExcalidrawPreview', () => ({ ExcalidrawPreview: () => null }));
+// ponytail: mock the registry + ai store so the import graph skips the heavy
+// file-type components (excalidraw dist → open-color JSON, markmap →
+// window.katex) — these tests only exercise the markdown pipeline.
+vi.mock('@/components/file-types/registry', () => ({
+  getHandlerByExtension: () => null,
+  getHandlerById: () => null,
+  getModeComponent: () => null,
+}));
+vi.mock('@/store/aiConfigStore', () => ({ useAiConfigStore: () => ({}) }));
 
 vi.mock('../excalidraw/ExcalidrawPreview', () => ({ ExcalidrawPreview: () => null }));
 

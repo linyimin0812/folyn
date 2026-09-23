@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Cursor-sync regression tests: mount the real MarkdownPreview with ::::tabs
  * documents, stub element geometry (jsdom has no layout engine — block
@@ -22,6 +23,15 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 
 vi.mock('../excalidraw/ExcalidrawPreview', () => ({ ExcalidrawPreview: () => null }));
+// ponytail: mock the registry + ai store so the import graph skips the heavy
+// file-type components (markmap → window.katex, provider catalog) — these
+// tests only exercise the markdown pipeline.
+vi.mock('@/components/file-types/registry', () => ({
+  getHandlerByExtension: () => null,
+  getHandlerById: () => null,
+  getModeComponent: () => null,
+}));
+vi.mock('@/store/aiConfigStore', () => ({ useAiConfigStore: () => ({}) }));
 
 import { MarkdownPreview } from './MarkdownPreview';
 import { useEditorViewStateStore } from '@/store/editorViewState';

@@ -218,12 +218,16 @@ function parseFrontmatter(content: string): { meta: FrontmatterMeta | null; body
   return { meta: Object.keys(meta).length > 0 ? meta : null, body: content.slice(match[0].length), frontmatterLineCount };
 }
 
-/** Render SKILL frontmatter meta as a styled card */
+// ponytail: skill = the two required skill-file frontmatter keys; only that
+// case gets the SKILL badge. Plain frontmatter still renders the meta card.
+const isSkillMeta = (meta: FrontmatterMeta) => Boolean(meta.name && meta.description);
+
+/** Render frontmatter meta as a styled card (SKILL badge only for skill files) */
 function SkillMetaCard({ meta }: { meta: FrontmatterMeta }) {
   return (
     <div className="skill-meta-card">
       <div className="skill-meta-header">
-        <span className="skill-meta-badge">SKILL</span>
+        {isSkillMeta(meta) && <span className="skill-meta-badge">SKILL</span>}
         {meta.name && <span className="skill-meta-name">{meta.name}</span>}
       </div>
       {meta.description && (
