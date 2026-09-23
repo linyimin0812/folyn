@@ -46,7 +46,7 @@ export function ReportSettingsView() {
           {t('activity:reportSettings.promptLabel')}
         </span>
         <textarea
-          className="w-full text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-2 text-t1 leading-relaxed resize-y"
+          className="w-full text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-2 text-t1 leading-relaxed resize-y outline-none transition-[border-color] duration-100 focus:border-acc"
           rows={10}
           value={reportConfig.prompts[period]}
           placeholder={t('activity:reportSettings.promptPlaceholder')}
@@ -83,7 +83,7 @@ export function ReportSettingsView() {
           {t('activity:reportSettings.rootDirLabel')}
         </span>
         <input
-          className="w-full max-w-[360px] text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-1.5 text-t1"
+          className="w-full max-w-[360px] text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-1.5 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
           value={reportConfig.rootDir}
           placeholder={t('activity:reportSettings.rootDirPlaceholder')}
           onChange={(e) => setReportRootDir(e.target.value)}
