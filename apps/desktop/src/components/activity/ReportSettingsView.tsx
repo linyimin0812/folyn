@@ -41,7 +41,7 @@ export function ReportSettingsView() {
         ))}
       </div>
 
-      <label className="block mb-6">
+      <label className="block border-t border-brd pt-4 mb-6">
         <span className="block text-[13px] text-t1 mb-1.5">
           {t('activity:reportSettings.promptLabel')}
         </span>
@@ -57,7 +57,7 @@ export function ReportSettingsView() {
         </span>
       </label>
 
-      <div className="py-4 border-t border-b border-brd mb-6">
+      <div className="py-4 border-t border-brd mb-6">
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
           <span className="text-[13px] text-t1">{t('activity:reportSettings.modelLabel')}</span>
           {reportConfig.modelOverride ? (
@@ -81,7 +81,7 @@ export function ReportSettingsView() {
         />
       </div>
 
-      <label className="block">
+      <label className="block border-t border-brd pt-4">
         <span className="block text-[13px] text-t1 mb-1.5">
           {t('activity:reportSettings.rootDirLabel')}
         </span>
