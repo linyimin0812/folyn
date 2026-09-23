@@ -1,6 +1,7 @@
 {
   "title": "Actividad",
   "noVault": "Abre un vault para ver los registros de actividad",
+  "seedDemo": "Datos de demostración",
   "tabs": {
     "timeline": "Cronología",
     "graph": "Relaciones"

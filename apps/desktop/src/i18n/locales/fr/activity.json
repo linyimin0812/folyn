@@ -1,6 +1,7 @@
 {
   "title": "Activité",
   "noVault": "Ouvrez un vault pour voir les enregistrements d'activité",
+  "seedDemo": "Données de démo",
   "tabs": {
     "timeline": "Chronologie",
     "graph": "Relations"

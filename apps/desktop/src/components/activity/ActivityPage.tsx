@@ -28,6 +28,7 @@ import {
   generateReport,
 } from '@/services/activity/reports';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
+import { seedDemoActivity } from './demoSeed';
 import { useAsync, useVaultRoot } from './useActivityData';
 import { PeriodPicker } from './PeriodPicker';
 import { OngoingTasks } from './OngoingTasks';
@@ -178,6 +179,14 @@ export function ActivityPage() {
                 {generating
                   ? t('activity:report.generating')
                   : t('activity:report.generate', { label: reportLabel })}
+              </button>
+            )}
+            {import.meta.env.DEV && vaultRoot && (
+              <button
+                className="btn btn-sm"
+                onClick={() => void seedDemoActivity(vaultRoot).then(() => window.location.reload())}
+              >
+                {t('activity:seedDemo')}
               </button>
             )}
             <PeriodPicker period={period} onPeriodChange={setPeriod} />
