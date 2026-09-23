@@ -52,15 +52,16 @@ describe('ActivityBar (data-driven)', () => {
 
     render(<ActivityBar activePanel="a" onPanelChange={() => {}} />);
 
-    // Three panel buttons + 2 page-nav buttons (translation/settings) = 5.
-    // DOM order: first panel (files slot), translation, restPanels, settings.
+    // Three panel buttons + 3 page-nav buttons (activity/translation/settings) = 6.
+    // DOM order: first panel (files slot), activity, translation, restPanels, settings.
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(6);
     // First panel button (by DOM order) is the lowest-order panel: 'b'.
     expect(buttons[0].getAttribute('title')).toBe('Panel-B');
-    expect(buttons[1].getAttribute('title')).toBe('翻译');
-    expect(buttons[2].getAttribute('title')).toBe('Panel-C');
-    expect(buttons[3].getAttribute('title')).toBe('Panel-A');
+    expect(buttons[1].getAttribute('title')).toBe('活动');
+    expect(buttons[2].getAttribute('title')).toBe('翻译');
+    expect(buttons[3].getAttribute('title')).toBe('Panel-C');
+    expect(buttons[4].getAttribute('title')).toBe('Panel-A');
   });
 
   it('does not render invisible panels', () => {

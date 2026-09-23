@@ -1,0 +1,78 @@
+{
+  "title": "Actividad",
+  "noVault": "Abre un vault para ver los registros de actividad",
+  "tabs": {
+    "timeline": "Cronología",
+    "graph": "Relaciones"
+  },
+  "period": {
+    "today": "Hoy",
+    "week": "Esta semana",
+    "month": "Este mes",
+    "backToToday": "Volver a hoy",
+    "rangeHint": "Haz clic en una fecha para seleccionar ese día; clic en una fecha posterior para seleccionar un rango",
+    "weekN": "Semana {{week}}"
+  },
+  "ongoing": {
+    "title": "En curso",
+    "dayN": "Día {{current}}/{{total}}",
+    "noUpdate": "Sin novedades hoy"
+  },
+  "metric": {
+    "commit": "Commits",
+    "meeting": "Reuniones",
+    "meetingMinutes": "Minutos de reunión",
+    "message": "Conversaciones",
+    "docEdit": "Ediciones de docs",
+    "task": "Actualizaciones de tareas",
+    "minutesSuffix": "minutos",
+    "more": "Más métricas · {{count}}",
+    "pin": "Fijar en métricas",
+    "unpin": "Quitar fijado"
+  },
+  "timeline": {
+    "loading": "Cargando…",
+    "empty": "Sin actividad en este periodo",
+    "viewSource": "Ver origen",
+    "aiSummary": "Resumen · generado por IA"
+  },
+  "graph": {
+    "hint": "Haz clic en un nodo para convertirlo en el centro y ver sus relaciones",
+    "centerInfo": "Centro: {{name}} · {{count}} relaciones",
+    "noRelations": "{{name}} aún no tiene relaciones",
+    "groupCount": "{{count}}",
+    "expand": "Mostrar ruta completa",
+    "collapse": "Plegar",
+    "groupPanel": "{{label}} · {{count}}"
+  },
+  "entityType": {
+    "person": "Persona",
+    "meeting": "Reunión",
+    "repository": "Repositorio",
+    "document": "Documento",
+    "task": "Tarea"
+  },
+  "collectors": {
+    "tab": "Colectores",
+    "empty": "No hay colectores activos. Instala una extensión que declare el punto de contribución collectors para gestionarla aquí.",
+    "globalPoll": "Polling global",
+    "enabled": "Activado",
+    "disabled": "Desactivado",
+    "modePoll": "Polling",
+    "modeWebhook": "Webhook",
+    "webhookEndpoint": "Endpoint del webhook",
+    "pollLabel": "Polling programado",
+    "pollEvery": "Cada {{min}} min",
+    "pollOff": "Desactivado — solo recopilación manual",
+    "intervalMinutes": "Intervalo (min)",
+    "collectNow": "Recopilar ahora",
+    "lastSync": "Última sincronización: {{time}} · {{count}} eventos",
+    "neverSynced": "Nunca sincronizado",
+    "justNow": "ahora mismo",
+    "configTitle": "Configuración",
+    "save": "Guardar",
+    "conflictBadge": "Conflicto de registro de tipo",
+    "allowAiSummary": "Permitir que la IA lea los datos de actividad para resúmenes",
+    "noImpl": "Colector declarativo (sin código en runtime)"
+  }
+}

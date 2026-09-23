@@ -5,6 +5,7 @@
     "close": "Close panel"
   },
   "nav": {
+    "activity": "Activity",
     "translation": "Translate",
     "settings": "Settings",
     "git": "Git"

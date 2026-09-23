@@ -5,6 +5,7 @@
     "close": "关闭面板"
   },
   "nav": {
+    "activity": "活动",
     "translation": "翻译",
     "settings": "设置",
     "git": "Git 操作"

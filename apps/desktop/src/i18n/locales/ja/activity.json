@@ -1,0 +1,78 @@
+{
+  "title": "アクティビティ",
+  "noVault": "Vault を開くとアクティビティ記録を表示できます",
+  "tabs": {
+    "timeline": "タイムライン",
+    "graph": "エンティティ関係"
+  },
+  "period": {
+    "today": "今日",
+    "week": "今週",
+    "month": "今月",
+    "backToToday": "今日に戻る",
+    "rangeHint": "日付をクリックしてその日を選択、後の日付をクリックして範囲を選択",
+    "weekN": "第{{week}}週"
+  },
+  "ongoing": {
+    "title": "進行中",
+    "dayN": "{{current}}/{{total}} 日目",
+    "noUpdate": "今日の更新なし"
+  },
+  "metric": {
+    "commit": "コミット",
+    "meeting": "会議回数",
+    "meetingMinutes": "会議時間（分）",
+    "message": "やり取り",
+    "docEdit": "ドキュメント編集",
+    "task": "タスク更新",
+    "minutesSuffix": "時間（分）",
+    "more": "その他の指標 · {{count}}",
+    "pin": "指標エリアに固定",
+    "unpin": "固定解除"
+  },
+  "timeline": {
+    "loading": "読み込み中…",
+    "empty": "この期間のアクティビティはありません",
+    "viewSource": "原文を見る",
+    "aiSummary": "要約 · AI 生成"
+  },
+  "graph": {
+    "hint": "ノードをクリックすると中心を切り替えて関連を表示します",
+    "centerInfo": "中心：{{name}} · {{count}} 件の関連",
+    "noRelations": "{{name}} には関連がありません",
+    "groupCount": "{{count}} 件",
+    "expand": "フルパスを表示",
+    "collapse": "折りたたむ",
+    "groupPanel": "{{label}} · {{count}} 件"
+  },
+  "entityType": {
+    "person": "人物",
+    "meeting": "会議",
+    "repository": "リポジトリ",
+    "document": "ドキュメント",
+    "task": "タスク"
+  },
+  "collectors": {
+    "tab": "コレクター",
+    "empty": "有効なコレクターはありません。collectors 貢献を宣言した拡張をインストールするとここで管理できます。",
+    "globalPoll": "グローバルポーリング",
+    "enabled": "有効",
+    "disabled": "無効",
+    "modePoll": "ポーリング",
+    "modeWebhook": "Webhook",
+    "webhookEndpoint": "Webhook 受信アドレス",
+    "pollLabel": "定期ポーリング",
+    "pollEvery": "{{min}} 分ごと",
+    "pollOff": "オフ — 手動収集のみ",
+    "intervalMinutes": "間隔（分）",
+    "collectNow": "今すぐ収集",
+    "lastSync": "前回の同期：{{time}} · {{count}} 件",
+    "neverSynced": "未同期",
+    "justNow": "たった今",
+    "configTitle": "設定",
+    "save": "保存",
+    "conflictBadge": "タイプ登録の競合",
+    "allowAiSummary": "AI が要約のためにアクティビティデータを読むことを許可",
+    "noImpl": "宣言型コレクター（ランタイムコードなし）"
+  }
+}

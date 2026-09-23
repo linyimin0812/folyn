@@ -10,8 +10,9 @@
  *
  * The daily / settings page-nav buttons stay hardcoded, EXCEPT extension
  * pages, which are data-driven from {@link useVisiblePages}
- * (`extensionPageStore`, nav id `ext:<extId>.<pageId>`). Settings is pinned
- * to the bottom via a `flex-1` spacer.
+ * (`extensionPageStore`, nav id `ext:<extId>.<pageId>`). The native activity
+ * page (design §7.1) is a hardcoded page-nav button like translation's.
+ * Settings is pinned to the bottom via a `flex-1` spacer.
  *
  * Active-state rules:
  * - Panel button: `active` when `activePanel === id` AND not on a page-nav
@@ -20,7 +21,7 @@
  * - Page-nav button: `active` when `currentPage === <page id>`.
  */
 import { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Activity, Settings } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useVisiblePanels } from '@/store/featurePanelStore';
 import { useVisiblePages } from '@/store/extensionPageStore';
@@ -57,7 +58,8 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const isGithubVault = currentVault?.providerType === 'github';
 
   const onTranslation = currentPage === 'translation';
-  const onPage = onTranslation || currentPage.startsWith('ext:');
+  const onActivity = currentPage === 'activity';
+  const onPage = onActivity || onTranslation || currentPage.startsWith('ext:');
 
   // Visible panels sorted by (order, registration seq). The store selector
   // returns a useShallow-stabilized array — re-renders only on real content
@@ -106,6 +108,15 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   return (
     <div className="activity-bar">
       {filesPanel && renderPanelButton(filesPanel)}
+
+      {/* Activity page-nav (native「活动」tab, design §7.1). */}
+      <button
+        className={`activity-icon ${onActivity ? 'active' : ''}`}
+        onClick={() => setCurrentPage('activity')}
+        title={t('shell:nav.activity')}
+      >
+        <Activity size={16} />
+      </button>
 
       {enableTranslationPanel && (
         <button

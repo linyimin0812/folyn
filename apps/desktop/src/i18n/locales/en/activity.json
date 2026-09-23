@@ -1,0 +1,78 @@
+{
+  "title": "Activity",
+  "noVault": "Open a vault to see activity records",
+  "tabs": {
+    "timeline": "Timeline",
+    "graph": "Relations"
+  },
+  "period": {
+    "today": "Today",
+    "week": "This week",
+    "month": "This month",
+    "backToToday": "Back to today",
+    "rangeHint": "Click a date to select that day; click a later date to select a range",
+    "weekN": "Week {{week}}"
+  },
+  "ongoing": {
+    "title": "In progress",
+    "dayN": "Day {{current}}/{{total}}",
+    "noUpdate": "No updates today"
+  },
+  "metric": {
+    "commit": "Commits",
+    "meeting": "Meetings",
+    "meetingMinutes": "Meeting minutes",
+    "message": "Conversations",
+    "docEdit": "Doc edits",
+    "task": "Task updates",
+    "minutesSuffix": "minutes",
+    "more": "More metrics · {{count}}",
+    "pin": "Pin to metrics row",
+    "unpin": "Unpin"
+  },
+  "timeline": {
+    "loading": "Loading…",
+    "empty": "No activity in this period",
+    "viewSource": "View source",
+    "aiSummary": "Summary · AI generated"
+  },
+  "graph": {
+    "hint": "Click a node to make it the new center and inspect its relations",
+    "centerInfo": "Center: {{name}} · {{count}} relations",
+    "noRelations": "{{name}} has no relations yet",
+    "groupCount": "{{count}}",
+    "expand": "Show full path",
+    "collapse": "Collapse",
+    "groupPanel": "{{label}} · {{count}}"
+  },
+  "entityType": {
+    "person": "Person",
+    "meeting": "Meeting",
+    "repository": "Repository",
+    "document": "Document",
+    "task": "Task"
+  },
+  "collectors": {
+    "tab": "Collectors",
+    "empty": "No active collectors. Install an extension that declares the collectors contribution point to manage it here.",
+    "globalPoll": "Global polling",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "modePoll": "Poll",
+    "modeWebhook": "Webhook",
+    "webhookEndpoint": "Webhook endpoint",
+    "pollLabel": "Scheduled polling",
+    "pollEvery": "Every {{min}} min",
+    "pollOff": "Off — manual collect only",
+    "intervalMinutes": "Interval (min)",
+    "collectNow": "Collect now",
+    "lastSync": "Last sync: {{time}} · {{count}} events",
+    "neverSynced": "Never synced",
+    "justNow": "just now",
+    "configTitle": "Configuration",
+    "save": "Save",
+    "conflictBadge": "Type registration conflict",
+    "allowAiSummary": "Allow AI to read activity data for summaries",
+    "noImpl": "Declarative collector (no runtime code)"
+  }
+}

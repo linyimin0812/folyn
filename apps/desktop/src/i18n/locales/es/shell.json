@@ -6,6 +6,7 @@
   },
   "nav": {
     "settings": "Ajustes",
+    "activity": "Actividad",
     "git": "Git"
   },
   "statusBar": {

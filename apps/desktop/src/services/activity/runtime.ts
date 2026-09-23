@@ -95,8 +95,10 @@ function toEventIn(collectorId: string, e: CollectorEvent) {
 
 /** Resolve the current vault root for the activity db (empty string when no
  *  vault is open — callers skip the run). Lazy imports keep the pure helpers
- *  above testable without dragging vaultStore's module graph in. */
-async function currentVaultRoot(): Promise<string> {
+ *  above testable without dragging vaultStore's module graph in. Exported for
+ *  the activity query API (`services/activity/api.ts`), which resolves the
+ *  same root for every read command. */
+export async function currentVaultRoot(): Promise<string> {
   const { useVaultStore } = await import('@/store/vaultStore');
   const basePath = useVaultStore.getState().currentVault?.basePath;
   if (!basePath) return '';
@@ -171,6 +173,7 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
     const outcome = await pushCollectorEvents(collectorId, events);
     if (!outcome) return null;
     await invoke('activity_set_cursor', { vaultRoot, collectorId, cursor: nextCursor });
+    useActivityCollectorStore.getState().setLastSync(collectorId, Date.now(), outcome.accepted);
     return outcome;
   } catch (err) {
     console.warn(`[activity] collector "${collectorId}" collect failed:`, err);

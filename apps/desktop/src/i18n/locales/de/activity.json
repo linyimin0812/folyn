@@ -1,0 +1,78 @@
+{
+  "title": "Aktivität",
+  "noVault": "Öffne einen Vault, um Aktivitätsaufzeichnungen zu sehen",
+  "tabs": {
+    "timeline": "Zeitlinie",
+    "graph": "Beziehungen"
+  },
+  "period": {
+    "today": "Heute",
+    "week": "Diese Woche",
+    "month": "Dieser Monat",
+    "backToToday": "Zurück zu heute",
+    "rangeHint": "Klicke ein Datum an, um den Tag zu wählen; ein späteres Datum wählt einen Zeitraum",
+    "weekN": "Woche {{week}}"
+  },
+  "ongoing": {
+    "title": "Laufend",
+    "dayN": "Tag {{current}}/{{total}}",
+    "noUpdate": "Heute keine Updates"
+  },
+  "metric": {
+    "commit": "Commits",
+    "meeting": "Meetings",
+    "meetingMinutes": "Meeting-Minuten",
+    "message": "Unterhaltungen",
+    "docEdit": "Dokumentbearbeitungen",
+    "task": "Task-Updates",
+    "minutesSuffix": "Minuten",
+    "more": "Weitere Metriken · {{count}}",
+    "pin": "In Metrikleiste anheften",
+    "unpin": "Lösen"
+  },
+  "timeline": {
+    "loading": "Lädt…",
+    "empty": "Keine Aktivität in diesem Zeitraum",
+    "viewSource": "Quelle ansehen",
+    "aiSummary": "Zusammenfassung · KI-generiert"
+  },
+  "graph": {
+    "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",
+    "centerInfo": "Zentrum: {{name}} · {{count}} Beziehungen",
+    "noRelations": "{{name}} hat noch keine Beziehungen",
+    "groupCount": "{{count}}",
+    "expand": "Vollständigen Pfad zeigen",
+    "collapse": "Einklappen",
+    "groupPanel": "{{label}} · {{count}}"
+  },
+  "entityType": {
+    "person": "Person",
+    "meeting": "Meeting",
+    "repository": "Repository",
+    "document": "Dokument",
+    "task": "Task"
+  },
+  "collectors": {
+    "tab": "Kollektoren",
+    "empty": "Keine aktiven Kollektoren. Installiere eine Erweiterung mit dem Contribution Point collectors, um sie hier zu verwalten.",
+    "globalPoll": "Globales Polling",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "modePoll": "Polling",
+    "modeWebhook": "Webhook",
+    "webhookEndpoint": "Webhook-Endpunkt",
+    "pollLabel": "Geplantes Polling",
+    "pollEvery": "Alle {{min}} Min.",
+    "pollOff": "Aus — nur manuelles Sammeln",
+    "intervalMinutes": "Intervall (Min.)",
+    "collectNow": "Jetzt sammeln",
+    "lastSync": "Letzte Synchronisierung: {{time}} · {{count}} Ereignisse",
+    "neverSynced": "Nie synchronisiert",
+    "justNow": "gerade eben",
+    "configTitle": "Konfiguration",
+    "save": "Speichern",
+    "conflictBadge": "Typ-Registrierungskonflikt",
+    "allowAiSummary": "KI darf Aktivitätsdaten für Zusammenfassungen lesen",
+    "noImpl": "Deklarativer Kollektor (kein Runtime-Code)"
+  }
+}

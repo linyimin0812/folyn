@@ -1,0 +1,78 @@
+{
+  "title": "活动",
+  "noVault": "打开一个 vault 后即可查看活动记录",
+  "tabs": {
+    "timeline": "时间线",
+    "graph": "实体关系"
+  },
+  "period": {
+    "today": "今天",
+    "week": "本周",
+    "month": "本月",
+    "backToToday": "回到今天",
+    "rangeHint": "点击日期选择当天，再点另一日期选择区间",
+    "weekN": "第{{week}}周"
+  },
+  "ongoing": {
+    "title": "进行中",
+    "dayN": "第 {{current}}/{{total}} 天",
+    "noUpdate": "今日无新增更新"
+  },
+  "metric": {
+    "commit": "代码提交",
+    "meeting": "会议次数",
+    "meetingMinutes": "会议时长（分钟）",
+    "message": "有效沟通",
+    "docEdit": "文档编辑",
+    "task": "任务更新",
+    "minutesSuffix": "时长（分钟）",
+    "more": "更多指标 · {{count}}",
+    "pin": "常驻指标区",
+    "unpin": "取消常驻"
+  },
+  "timeline": {
+    "loading": "加载中…",
+    "empty": "本期暂无活动记录",
+    "viewSource": "查看原文",
+    "aiSummary": "摘要 · AI 生成"
+  },
+  "graph": {
+    "hint": "点击图谱中的节点，切换中心并查看关联",
+    "centerInfo": "当前中心：{{name}} · 共 {{count}} 个关联",
+    "noRelations": "{{name}} 暂无关联记录",
+    "groupCount": "{{count}} 个",
+    "expand": "展开完整路径",
+    "collapse": "收起",
+    "groupPanel": "{{label}} · {{count}} 个"
+  },
+  "entityType": {
+    "person": "人物",
+    "meeting": "会议",
+    "repository": "仓库",
+    "document": "文档",
+    "task": "任务"
+  },
+  "collectors": {
+    "tab": "采集器",
+    "empty": "暂无已启用的采集器。安装声明了 collectors 贡献点的扩展后，在此配置与管理。",
+    "globalPoll": "全局轮询",
+    "enabled": "已启用",
+    "disabled": "已停用",
+    "modePoll": "轮询",
+    "modeWebhook": "Webhook",
+    "webhookEndpoint": "Webhook 接收地址",
+    "pollLabel": "定时轮询",
+    "pollEvery": "每 {{min}} 分钟",
+    "pollOff": "已关闭，仅手动采集",
+    "intervalMinutes": "间隔（分钟）",
+    "collectNow": "立即采集",
+    "lastSync": "上次同步：{{time}} · 采集 {{count}} 条",
+    "neverSynced": "尚未同步",
+    "justNow": "刚刚",
+    "configTitle": "配置",
+    "save": "保存",
+    "conflictBadge": "类型注册冲突",
+    "allowAiSummary": "允许 AI 读取活动数据生成摘要",
+    "noImpl": "声明式采集器（无运行时代码）"
+  }
+}

@@ -16,9 +16,11 @@ import { registerPersistSlice } from './settingsPersistence';
 export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
   'pollOn',
   'keepRaw',
+  'allowAiSummary',
   'redactPatterns',
   'collectors',
   'configs',
+  'pinnedMetrics',
 ] as const;
 
 /** Per-collector user preferences. Missing record = all defaults (on). */
@@ -50,6 +52,9 @@ export interface ActivityCollectorState {
   pollOn: boolean;
   /** Privacy switch (design §8): keep the events' `raw` payload. */
   keepRaw: boolean;
+  /** Privacy switch (design §8, default off): allow AI to read activity data
+   *  to generate summaries. When off, the detail panel omits the AI block. */
+  allowAiSummary: boolean;
   /** Privacy redaction (design §4.3 step 2): user regexes applied to event
    *  title/summary before ingest. Invalid regexes are skipped at apply time. */
   redactPatterns: string[];
@@ -58,12 +63,26 @@ export interface ActivityCollectorState {
   /** collectorId → authSchema form values (secrets included — see the
    *  ponytail note on the persist seam above). */
   configs: Record<string, Record<string, unknown>>;
+  /** metricId → explicit pin override (design §3.3). Built-in metrics
+   * default pinned, custom ones default collapsed — the override map only
+   * records deviations, so an absent key keeps the default. */
+  pinnedMetrics: Record<string, boolean>;
+  /** Runtime-only last-sync info per collectorId (NOT persisted — refreshed
+   *  on every collect). */
+  lastSync: Record<string, { at: number; accepted: number }>;
 
   setPollOn: (v: boolean) => void;
   setKeepRaw: (v: boolean) => void;
+  setAllowAiSummary: (v: boolean) => void;
   setRedactPatterns: (v: string[]) => void;
   setCollectorSettings: (collectorId: string, patch: Partial<CollectorSettings>) => void;
   setCollectorConfig: (collectorId: string, config: Record<string, unknown>) => void;
+  /** Replace the metric pin override map (design §3.3) — one dedicated
+   *  setter; the flip semantics live in the pure helper
+   *  `components/activity/display.ts togglePinOverride`. */
+  setPinnedMetrics: (v: Record<string, boolean>) => void;
+  /** Runtime-only — called by runCollect after a successful push. */
+  setLastSync: (collectorId: string, at: number, accepted: number) => void;
 
   hydrate: (blob: Record<string, unknown>) => void;
 }
@@ -71,12 +90,16 @@ export interface ActivityCollectorState {
 export const useActivityCollectorStore = create<ActivityCollectorState>((set, get) => ({
   pollOn: true,
   keepRaw: false,
+  allowAiSummary: false,
   redactPatterns: [],
   collectors: {},
   configs: {},
+  pinnedMetrics: {},
+  lastSync: {},
 
   setPollOn: (v) => { set({ pollOn: v }); persist(); },
   setKeepRaw: (v) => { set({ keepRaw: v }); persist(); },
+  setAllowAiSummary: (v) => { set({ allowAiSummary: v }); persist(); },
   setRedactPatterns: (v) => { set({ redactPatterns: v }); persist(); },
 
   setCollectorSettings: (collectorId, patch) => {
@@ -90,10 +113,27 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     persist();
   },
 
+  setPinnedMetrics: (v) => {
+    set({ pinnedMetrics: v });
+    persist();
+  },
+
+  setLastSync: (collectorId, at, accepted) => {
+    set({ lastSync: { ...get().lastSync, [collectorId]: { at, accepted } } });
+  },
+
   hydrate: (blob) => {
     const patch: Partial<ActivityCollectorState> = {};
     if (typeof blob.pollOn === 'boolean') patch.pollOn = blob.pollOn;
     if (typeof blob.keepRaw === 'boolean') patch.keepRaw = blob.keepRaw;
+    if (typeof blob.allowAiSummary === 'boolean') patch.allowAiSummary = blob.allowAiSummary;
+    if (blob.pinnedMetrics && typeof blob.pinnedMetrics === 'object') {
+      const pinnedMetrics: Record<string, boolean> = {};
+      for (const [id, v] of Object.entries(blob.pinnedMetrics as Record<string, unknown>)) {
+        if (typeof v === 'boolean') pinnedMetrics[id] = v;
+      }
+      patch.pinnedMetrics = pinnedMetrics;
+    }
     if (Array.isArray(blob.redactPatterns)) {
       patch.redactPatterns = blob.redactPatterns.filter((p): p is string => typeof p === 'string');
     }

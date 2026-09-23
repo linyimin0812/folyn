@@ -12,6 +12,7 @@ import { CommandPalette } from './components/shell/CommandPalette';
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
 import { TranslationPanel } from './components/translation/TranslationPanel';
+import { ActivityPage } from './components/activity/ActivityPage';
 import { ExtensionPageView } from './components/shell/ExtensionPageView';
 import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
@@ -1190,6 +1191,13 @@ export default function App() {
       {currentPage === 'settings' && (
         <div className="body-row flex-1 flex overflow-hidden">
           <SettingsPage />
+        </div>
+      )}
+
+      {currentPage === 'activity' && (
+        <div className="body-row flex-1 flex overflow-hidden">
+          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+          <ActivityPage />
         </div>
       )}
 
