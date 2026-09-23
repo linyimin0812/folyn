@@ -213,7 +213,7 @@ export function ActivityPage() {
     <div className="flex-1 min-w-0 flex">
       {/* Secondary left rail — page-local, a sibling of the global ActivityBar
           (NOT a modification of it). Switching views swaps the page content. */}
-      <div className="w-44 shrink-0 border-r border-brd flex flex-col gap-1 py-3 px-2">
+      <div className="w-56 shrink-0 border-r border-brd bg-white flex flex-col gap-1 py-3 px-2">
         {RAIL_VIEWS.map((v) => (
           <button
             key={v.id}
