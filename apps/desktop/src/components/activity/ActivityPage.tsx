@@ -371,8 +371,8 @@ export function ActivityPage() {
       </div>
       ) : (
         <div className="flex-1 min-w-0 overflow-y-auto">
-          <div className="max-w-[1200px] mx-auto p-8">
-            <h1 className="m-0 mb-6 pb-4 border-b border-brd text-[17px] font-semibold text-t1">
+          <div className="max-w-[1200px] mx-auto px-8 py-5">
+            <h1 className="m-0 mb-4 pb-3 border-b border-brd text-[17px] font-semibold text-t1">
               {t(view === 'collectors' ? 'activity:rail.collectors' : 'activity:rail.reportSettings')}
             </h1>
             {view === 'collectors' ? <CollectorsSettings /> : <ReportSettingsView />}
