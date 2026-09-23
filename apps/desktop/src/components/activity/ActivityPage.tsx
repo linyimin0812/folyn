@@ -235,10 +235,10 @@ export function ActivityPage() {
         {/* Fixed header block — identical for both tabs, so switching tabs never
             re-layouts it. Full-width so the divider spans the pane; inner content
             keeps the 1200px alignment. */}
-        <div className="shrink-0 border-b border-brd pt-8">
+        <div className="shrink-0 border-b border-brd pt-5">
           <div className="max-w-[1200px] mx-auto px-8">
         {/* Page title row: title + period description on the left, actions right. */}
-        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-4 flex-wrap shrink-0">
+        <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-3 flex-wrap shrink-0">
           <div className="flex items-baseline gap-2.5 min-w-0">
             <h1 className="m-0 text-[17px] font-semibold text-t1">{t('activity:title')}</h1>
             <p className="m-0 text-[12px] text-t3 truncate">{periodDesc}</p>
