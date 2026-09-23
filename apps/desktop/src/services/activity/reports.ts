@@ -179,7 +179,7 @@ export function decideWriteMode(
   return 'appended';
 }
 
-function stripFrontmatter(md: string): string {
+export function stripFrontmatter(md: string): string {
   return md.replace(/^---\n[\s\S]*?\n---\n/, '');
 }
 

@@ -37,6 +37,7 @@ import {
   type ReportPeriod,
   type ReportStrings,
   generateReport,
+  stripFrontmatter,
 } from '@/services/activity/reports';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
 import { seedDemoActivity } from './demoSeed';
@@ -59,7 +60,7 @@ function reportModeOf(mode: Period['mode']): ReportPeriod | null {
 function ReportMarkdown({ markdown }: { markdown: string }) {
   const node = useMemo(() => {
     try {
-      return renderMarkdownToReact(markdown, {
+      return renderMarkdownToReact(stripFrontmatter(markdown), {
         // ponytail: editor-only features skipped (scroll-sync, script runner/containers, code-break cleanup)
         remarkExtensions: [remarkGfm, remarkBreaks, remarkDirective, remarkDirectiveRehype],
         allowDangerousHtml: true,
