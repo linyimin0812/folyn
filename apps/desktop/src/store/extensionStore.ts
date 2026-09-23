@@ -176,6 +176,11 @@ export interface ConsentPrompt {
   name: string;
   /** Human-readable summary of declared permissions (parsed from manifest). */
   permissions: string[];
+  /** Domains the extension's collectors want to reach (`hostAllowlist`,
+   *  design §2.1/§7.3). Non-empty → the consent modal shows a dedicated
+   *  "将访问的域名" section; approving merges them into the effective http
+   *  origins (Rust `approve_extension`). */
+  hostAllowlist: string[];
 }
 
 /**
@@ -363,16 +368,50 @@ async function fetchRows(): Promise<ExtensionRow[]> {
   return [...builtinRows, ...rows];
 }
 
-/** Parse a extension's manifest permissions into human-readable summary lines. */
-async function readManifestPermissions(id: string): Promise<string[]> {
-  if (!isTauri()) return [];
+/** Parse a extension's manifest into consent-prompt data: human-readable
+ *  permission summary lines + the collector `hostAllowlist` domains (one read
+ *  of manifest.json — the consent modal needs both at once). */
+async function readManifestConsent(id: string): Promise<{
+  permissions: string[];
+  hostAllowlist: string[];
+}> {
+  if (!isTauri()) return { permissions: [], hostAllowlist: [] };
   const { invoke } = await import('@tauri-apps/api/core');
   const manifestText = await invoke<string>('read_extension_file', { id, path: 'manifest.json' });
   const manifest = JSON.parse(manifestText) as {
     permissions?: Record<string, unknown>;
     tier?: string;
-    contributes?: Record<string, unknown>;
+    contributes?: {
+      collectors?: Array<{ hostAllowlist?: string[] }>;
+      commands?: unknown[];
+      fileTypes?: unknown[];
+      containers?: unknown[];
+      features?: unknown[];
+      tools?: unknown[];
+    };
   };
+  const permissions = parsePermissionLines(manifest);
+  const hostAllowlist = [
+    ...new Set(
+      (manifest.contributes?.collectors ?? []).flatMap((c) => c.hostAllowlist ?? []),
+    ),
+  ];
+  return { permissions, hostAllowlist };
+}
+
+/** Human-readable summary lines from a manifest's `permissions` +
+ *  `contributes` blocks (tier line first). Pure. */
+function parsePermissionLines(manifest: {
+  permissions?: Record<string, unknown>;
+  tier?: string;
+  contributes?: {
+    commands?: unknown[];
+    fileTypes?: unknown[];
+    containers?: unknown[];
+    features?: unknown[];
+    tools?: unknown[];
+  };
+}): string[] {
   const out: string[] = [];
   const perms = manifest.permissions;
   if (perms) {
@@ -548,8 +587,8 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
     const row = get().rows.find((r) => r.entry.id === id);
     const name = row?.entry.name ?? id;
     try {
-      const permissions = await readManifestPermissions(id);
-      set({ consent: { id, name, permissions } });
+      const { permissions, hostAllowlist } = await readManifestConsent(id);
+      set({ consent: { id, name, permissions, hostAllowlist } });
     } catch (err) {
       set({ error: fmtErr(err) });
     }

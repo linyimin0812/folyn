@@ -1,0 +1,19 @@
+{
+  "name": "@folyn/extension-git-commit-collector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Folyn Git Commit activity collector — polls a local repo's commits into the activity timeline (trusted tier, poll mode)",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "folyn-extension-sdk": "workspace:*",
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
+  }
+}

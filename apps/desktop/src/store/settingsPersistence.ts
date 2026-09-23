@@ -79,7 +79,7 @@ const scheduleBroadcast = debounce(broadcastSettingsImpl, BROADCAST_DELAY);
 const EXPECTED_SLICES = [
   'prefs', 'editorPrefs', 'pet', 'appearance', 'voice',
   'vault', 'modelRegistry', 'aiConfig', 'storage',
-  'translation',
+  'translation', 'activityCollectors',
 ] as const;
 
 /** Register a store's persisted slice. Called at module init by each

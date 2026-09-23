@@ -736,6 +736,7 @@
       "title": "Trusted拡張機能を承認",
       "intro": "以下を承認しようとしています",
       "permissionsLabel": "宣言された権限とコントリビューションポイント:",
+      "hostsLabel": "この拡張機能のコレクタは以下のドメインにアクセスします（hostAllowlist）：",
       "noPermissions": "なし",
       "warning": "Trusted拡張機能はメインプロセスで動作し、ホストの全機能を使用できます（Vaultの読み書き、Tauriコマンドの呼び出し、すべてのReact状態へのアクセス）。承認は完全信頼と同義です — 信頼するソースの拡張機能のみ承認してください。",
       "cancel": "キャンセル",

@@ -355,6 +355,21 @@ function ConsentModal() {
           )}
         </div>
 
+        {/* Collector hostAllowlist (design §2.1/§7.3): one-time domain consent.
+            Only rendered when non-empty — an empty allowlist shows nothing. */}
+        {consent.hostAllowlist.length > 0 && (
+          <div className="bg-red-500/5 border border-red-500/30 rounded-md p-2.5 mb-3">
+            <div className="text-[11px] font-semibold text-t2 mb-1.5">
+              {t('settings:extensions.consent.hostsLabel')}
+            </div>
+            <ul className="text-[11px] text-t2 space-y-0.5 list-disc list-inside">
+              {consent.hostAllowlist.map((h) => (
+                <li key={h} className="font-mono">{h}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="bg-amber/10 border border-amber/40 rounded-md p-2.5 mb-3">
           <div className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed flex gap-1.5">
             <TriangleAlert size={13} className="shrink-0 mt-0.5" />

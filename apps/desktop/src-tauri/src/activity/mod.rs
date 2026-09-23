@@ -12,6 +12,48 @@ use query::{
     DigestInput, EntityRow, EventRow, MetricRow, NeighborRow,
 };
 use rusqlite::Connection;
+use serde::Serialize;
+
+// ── collector exec (design §2.2 — collectors pull local sources) ──────────────
+// Trusted blob modules cannot import `@tauri-apps/api` (bare specifiers don't
+// resolve from a blob URL), and the shell plugin is sidecar-scoped — so the
+// host hands collectors a tiny `ctx.exec` backed by this command.
+// ponytail: program allowlist — exactly the binaries the reference collectors
+// need. Extend the list when a collector legitimately needs another tool; a
+// generic exec would be an unbounded code-execution surface for extension code.
+const EXEC_ALLOWED_PROGRAMS: &[&str] = &["git"];
+
+/// Result of `activity_exec` — stdout + stderr + exit code; the collector
+/// decides what a non-zero exit means (git returns 128 on bad repo, etc.).
+#[derive(Serialize, Debug)]
+pub struct ExecOutput {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: i32,
+}
+
+/// Run an allowlisted program with separated args (no shell → no injection)
+/// in `cwd`. Backs the `ctx.exec` the collector runtime passes to `collect()`.
+#[tauri::command]
+pub fn activity_exec(
+    program: String,
+    args: Vec<String>,
+    cwd: String,
+) -> Result<ExecOutput, AppError> {
+    if !EXEC_ALLOWED_PROGRAMS.contains(&program.as_str()) {
+        return Err(format!("activity_exec denied: program not allowlisted: {program}").into());
+    }
+    let out = std::process::Command::new(&program)
+        .args(&args)
+        .current_dir(&cwd)
+        .output()
+        .map_err(|e| format!("activity_exec failed to run {program}: {e}"))?;
+    Ok(ExecOutput {
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        exit_code: out.status.code().unwrap_or(-1),
+    })
+}
 
 fn with_conn<T>(vault_root: &str, f: impl FnOnce(&Connection) -> T) -> Result<T, AppError> {
     let shared = db::conn(vault_root)?;

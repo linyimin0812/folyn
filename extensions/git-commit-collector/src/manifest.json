@@ -1,0 +1,57 @@
+{
+  "id": "folyn-git-commit-collector",
+  "name": "Git Commit Collector",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "icon": "G",
+  "description": "Git 提交采集器 —— 轮询读取本地仓库的新提交，写入活动时间线（poll 模式标杆实现）",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false, "readBinary": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "collectors": [
+      {
+        "id": "git-commit",
+        "activityTypes": ["commit"],
+        "mode": "poll",
+        "pollIntervalMs": 300000,
+        "authSchema": {
+          "type": "object",
+          "properties": {
+            "repoPath": {
+              "type": "string",
+              "title": "本地仓库路径",
+              "description": "要采集的 git 仓库的绝对路径",
+              "default": ""
+            }
+          },
+          "required": ["repoPath"]
+        },
+        "hostAllowlist": []
+      }
+    ],
+    "activityDisplay": [
+      {
+        "type": "commit",
+        "icon": "git-commit",
+        "color": "teal",
+        "detailFields": [
+          { "key": "author", "label": "作者", "format": "text" },
+          { "key": "sha", "label": "SHA", "format": "text" },
+          { "key": "authoredAt", "label": "提交时间", "format": "date" }
+        ],
+        "metric": { "id": "commit_count", "label": "提交", "aggregate": "count" },
+        "entity": { "role": "repository", "relationLabel": "提交" }
+      }
+    ]
+  }
+}

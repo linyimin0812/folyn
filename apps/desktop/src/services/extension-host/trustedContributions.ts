@@ -33,6 +33,7 @@ import { registerExtensionMarkdownCodeRenderers } from './markdownCodeRendererAd
 import { registerExtensionEditorLanguages } from './editorLanguageAdapter';
 import { registerExtensionHighlightGrammars } from './highlightGrammarAdapter';
 import { registerExtensionStorageProviders } from './storageProviderAdapter';
+import { registerExtensionCollectors } from './collectorAdapter';
 
 // Registration order = activation order. Adapters are independent (each reads
 // its own `contributes.*` array), so order is not load-bearing; it mirrors the
@@ -95,4 +96,8 @@ registerContributionAdapter({
 registerContributionAdapter({
   moduleKey: 'storageProviders',
   register: (m, mod) => registerExtensionStorageProviders(m, mod),
+});
+registerContributionAdapter({
+  moduleKey: 'collectors',
+  register: (m, mod) => registerExtensionCollectors(m, mod),
 });

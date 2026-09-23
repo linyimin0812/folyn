@@ -152,6 +152,81 @@ export interface StorageConfigFormProps {
   onRemove: () => Promise<void>;
 }
 
+// ── Activity collector contracts (design §2.2) ─────────────────────────────
+// A collector module pulls/receives raw data and converts it to standard
+// ActivityEvents. It never touches storage, dedup, or entity resolution —
+// the host owns the ingest pipeline. The host stamps `source` itself, so
+// collectors omit it.
+
+/** Entity reference for lookup-or-create (`(type, identityKey)` is the key). */
+export interface CollectorEntityRef {
+  /** Builtin (`person`/`meeting`/`repository`/`document`/`task`) or a type
+   *  registered via `contributes.entityTypes`. */
+  type: string;
+  identityKey: string;
+  displayName?: string;
+}
+
+/** An entity the event relates, plus the relation label written on the edge. */
+export interface CollectorEventEntity extends CollectorEntityRef {
+  relation: string;
+}
+
+/** Standard activity event (design §4.1), collector-facing shape. `source` is
+ *  stamped host-side from the collector id — events carrying a wrong/missing
+ *  source are still accepted (the host overwrites). */
+export interface CollectorEvent {
+  /** Stable dedup id, conventionally `${source}:${externalId}`. */
+  id: string;
+  /** Event type — must be in the collector's declared `activityTypes`. */
+  type: string;
+  /** Epoch ms. */
+  occurredAt: number;
+  title?: string;
+  summary?: string;
+  url?: string;
+  /** Type-specific structured payload (e.g. task status/dates, design §4.1). */
+  payload?: Record<string, unknown>;
+  /** Original raw payload — subject to the host's keepRaw privacy switch. */
+  raw?: unknown;
+  /** Actor entity (usually a person). */
+  actor?: CollectorEntityRef;
+  /** Related entities + relation labels (edges are actor → entity). */
+  entities?: CollectorEventEntity[];
+}
+
+/** Context handed to `collect()` on each poll / manual run. */
+export interface CollectorContext {
+  /** Last persisted cursor (opaque string owned by the collector), `null` on
+   *  first run. The host stores/advances it via `activity_get/set_cursor`. */
+  cursor: string | null;
+  /** Values captured from the authSchema-rendered settings form. */
+  config: Record<string, unknown>;
+  /**
+   * Host-provided exec for reading local sources (e.g. `git log` in the
+   * configured repo path). Trusted blob modules cannot import the Tauri APIs
+   * themselves, so the host injects this one capability. Program-allowlisted
+   * host-side (`activity_exec`); absent in tests/embedded hosts.
+   */
+  exec?: (program: string, args: string[], cwd: string) => Promise<{
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+  }>;
+}
+
+/** The extension-side collector interface (design §2.2). Exported by a
+ *  trusted extension bundle as `export const collectors = { '<id>': {...} }`,
+ *  keyed by the `contributes.collectors[].id`. */
+export interface CollectorExtension {
+  id: string;
+  /** Pull a batch since the cursor. Poll mode + manual「立即采集」call this. */
+  collect?(ctx: CollectorContext): Promise<{ events: CollectorEvent[]; nextCursor: string }>;
+  /** Convert an inbound webhook payload. Wired host-side (local webhook
+   *  server routes here); absent for poll-mode collectors. */
+  onWebhook?(payload: unknown, config: Record<string, unknown>): Promise<CollectorEvent[]>;
+}
+
 export interface ExtensionModule {
   /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
   handlers?: Record<string, FileTypeHandler>;
@@ -188,6 +263,10 @@ export interface ExtensionModule {
    *  (React component / predicate / upload fn); the SDK is React-free at the
    *  map level, though the form entry resolves to a `ComponentType<StorageConfigFormProps>`. */
   storageProviders?: Record<string, unknown>;
+  /** Collector id → {@link CollectorExtension}. Keys match
+   *  `contributes.collectors[].id`; the collector adapter + poll runtime
+   *  resolve `collect`/`onWebhook` through this map. */
+  collectors?: Record<string, CollectorExtension>;
   /** Optional lifecycle hook; receives the same (api, ctx) the loader passes
    * to {@link Extension.activate}. */
   activate?: (api: ExtensionApi, ctx: ExtensionContext) => void | Promise<void>;

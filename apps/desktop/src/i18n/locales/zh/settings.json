@@ -752,6 +752,7 @@
       "title": "批准可信扩展",
       "intro": "即将批准",
       "permissionsLabel": "声明的权限与贡献点：",
+      "hostsLabel": "采集器将访问以下域名（hostAllowlist）：",
       "noPermissions": "无",
       "warning": "可信扩展运行在主进程中，拥有完整的宿主能力（可读写 vault、调用 Tauri 命令、访问所有 React 状态）。批准等同于完全信任——仅批准来自你信任的来源的扩展。",
       "cancel": "取消",

@@ -1,0 +1,51 @@
+{
+  "id": "folyn-webhook-collector",
+  "name": "Webhook Collector",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "icon": "W",
+  "description": "通用 Webhook 采集器 —— 外部系统向本地回调地址 POST 任意 JSON，按配置的字段名映射产出一条活动事件（webhook 模式标杆实现）",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false, "readBinary": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "collectors": [
+      {
+        "id": "webhook",
+        "activityTypes": ["external", "message", "task", "meeting", "doc_edit"],
+        "mode": "webhook",
+        "authSchema": {
+          "type": "object",
+          "properties": {
+            "idField": { "type": "string", "title": "ID 字段名", "default": "id", "description": "事件去重 id 的来源字段；缺省时用 payload 哈希" },
+            "titleField": { "type": "string", "title": "标题字段名", "default": "title", "description": "必填——映射不出标题则丢弃该事件" },
+            "timestampField": { "type": "string", "title": "时间字段名", "default": "timestamp", "description": "epoch 毫秒/秒或 ISO 字符串；缺省用当前时间" },
+            "typeField": { "type": "string", "title": "类型字段名", "default": "type", "description": "事件类型，需在声明的类型范围内（默认 external）" },
+            "urlField": { "type": "string", "title": "链接字段名", "default": "url", "description": "详情面板「查看原文」跳转链接" }
+          }
+        },
+        "hostAllowlist": []
+      }
+    ],
+    "activityDisplay": [
+      {
+        "type": "external",
+        "icon": "webhook",
+        "color": "purple",
+        "detailFields": [
+          { "key": "title", "label": "标题", "format": "text" },
+          { "key": "url", "label": "链接", "format": "text" }
+        ]
+      }
+    ]
+  }
+}

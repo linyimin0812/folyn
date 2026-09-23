@@ -752,6 +752,7 @@
       "title": "Approve trusted extension",
       "intro": "About to approve",
       "permissionsLabel": "Declared permissions & contribution points:",
+      "hostsLabel": "This extension's collectors will contact these domains (hostAllowlist):",
       "noPermissions": "None",
       "warning": "Trusted extensions run in the main process and have full host capabilities (read/write the vault, invoke Tauri commands, access all React state). Approval equals full trust — only approve extensions from sources you trust.",
       "cancel": "Cancel",

@@ -450,6 +450,24 @@ importers:
         specifier: ^6.0.0
         version: 6.4.2(@types/node@22.19.17)(jiti@1.21.7)(sass@1.51.0)(terser@5.46.1)(yaml@2.9.0)
 
+  extensions/git-commit-collector:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.17
+      esbuild:
+        specifier: ^0.23.0
+        version: 0.23.1
+      folyn-extension-sdk:
+        specifier: workspace:*
+        version: link:../../packages/extension-sdk
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.17)(happy-dom@15.11.7)(jsdom@25.0.1)(sass@1.51.0)(terser@5.46.1)
+
   extensions/github-jsdelivr:
     devDependencies:
       '@types/react':
@@ -574,6 +592,24 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.17)(happy-dom@15.11.7)(jsdom@25.0.1)(sass@1.51.0)(terser@5.46.1)
 
+  extensions/webhook-collector:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.17
+      esbuild:
+        specifier: ^0.23.0
+        version: 0.23.1
+      folyn-extension-sdk:
+        specifier: workspace:*
+        version: link:../../packages/extension-sdk
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.17)(happy-dom@15.11.7)(jsdom@25.0.1)(sass@1.51.0)(terser@5.46.1)
+
   packages/cli-adapter:
     dependencies:
       '@tauri-apps/api':
@@ -619,6 +655,8 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+
+  packages/extension-dev-skill: {}
 
   packages/extension-host:
     dependencies:

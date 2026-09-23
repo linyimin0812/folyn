@@ -730,6 +730,7 @@
       "title": "Aprobar extension trusted",
       "intro": "A punto de aprobar",
       "permissionsLabel": "Permisos declarados y puntos de contribución:",
+      "hostsLabel": "Los recolectores de esta extensión accederán a estos dominios (hostAllowlist):",
       "noPermissions": "Ninguno",
       "warning": "Los extensions trusted se ejecutan en el proceso principal y tienen todas las capacidades del host (leer/escribir el vault, invocar comandos Tauri, acceder a todo el estado de React). Aprobar es confianza total — solo aprueba extensions de fuentes de confianza.",
       "cancel": "Cancelar",

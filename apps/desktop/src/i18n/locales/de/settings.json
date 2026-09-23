@@ -730,6 +730,7 @@
       "title": "Trusted Extension genehmigen",
       "intro": "Zur Genehmigung anstehend",
       "permissionsLabel": "Deklarierte Berechtigungen und Beitragspunkte:",
+      "hostsLabel": "Die Collector dieser Erweiterung greifen auf diese Domänen zu (hostAllowlist):",
       "noPermissions": "Keine",
       "warning": "Trusted Extensions laufen im Hauptprozess und haben volle Host-Fähigkeiten (Vault lesen/schreiben, Tauri-Befehle aufrufen, auf den gesamten React-State zugreifen). Genehmigung bedeutet volles Vertrauen — nur Extensions aus vertrauten Quellen genehmigen.",
       "cancel": "Abbrechen",

@@ -487,6 +487,90 @@ export interface StorageProviderContribution {
   defaultConfig: Record<string, unknown>;
 }
 
+// ── Activity-collection contributions (design folyn-activity-collection-design.md §2/§3) ──
+// Trusted-tier only. Collectors produce standard ActivityEvents + declarative
+// display metadata; storage/ingest/render stay host-native. The host validates
+// constraints (icon from the loaded set, palette-key colors, builtin formatters)
+// at registration — the types below express what is cheap to union-ize.
+
+/** Collector run mode: host-polled (`collect()` on a timer) or host-routed
+ *  webhook (`onWebhook` on a local callback). */
+export type ActivityCollectorMode = 'poll' | 'webhook';
+
+/**
+ * Loose JSON-Schema-ish config schema for a collector's settings form.
+ * The host auto-renders a form from `properties` + `required`; values are
+ * stored host-side (never in the extension). Only a subset of JSON Schema is
+ * honored — extra keys are ignored, not rejected.
+ */
+export interface CollectorAuthSchema {
+  type: 'object';
+  properties: Record<string, {
+    type: 'string' | 'number' | 'boolean';
+    title?: string;
+    description?: string;
+    /** Input placeholder / prefilled value. */
+    default?: unknown;
+    /** Restricted values → the form renders a dropdown. */
+    enum?: string[];
+  }>;
+  required?: string[];
+}
+
+/** `contributes.collectors[]` — one collectable activity source (design §2.1). */
+export interface CollectorContribution {
+  /** Collector id, e.g. `git-commit`. Unique across all enabled collectors;
+   *  the value stored in `activity_events.source` and in the cursor table. */
+  id: string;
+  /** Event `type` values this collector is allowed to push (validated
+   *  host-side by `activity_push_events`'s declaredTypes check). */
+  activityTypes: string[];
+  mode: ActivityCollectorMode;
+  /** Declared default poll interval. Host floors at 60s; the user can raise
+   *  it or turn polling off entirely in Settings (design §2.1). */
+  pollIntervalMs?: number;
+  /** Config form schema — host renders + persists the values (design §2.1). */
+  authSchema?: CollectorAuthSchema;
+  /** Hosts the collector's outbound requests target. Confirmed once at
+   *  install/enable; enforced at runtime on outbound calls. */
+  hostAllowlist: string[];
+}
+
+/** Built-in detail-field formatters (design §3.1). No templates, no HTML. */
+export type ActivityDetailFormat = 'text' | 'number' | 'currency' | 'date' | 'badge' | 'list';
+/** Metric-card aggregations (design §3.1). No custom expressions. */
+export type ActivityMetricAggregate = 'count' | 'sum';
+/** Palette keys the host accepts (no arbitrary hex, design §3.1). */
+export type ActivityPaletteColor = 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'teal';
+
+/** `contributes.activityDisplay[]` — how one event `type` renders (design §3.1). */
+export interface ActivityDisplayContribution {
+  /** The event `type` this display entry indexes. */
+  type: string;
+  /** Icon name from the host's loaded icon set (e.g. a lucide name). */
+  icon?: string;
+  color?: ActivityPaletteColor;
+  /** Fields shown in the expanded detail panel. */
+  detailFields?: { key: string; label: string; format: ActivityDetailFormat }[];
+  /** When present, adds a metric card for this type. */
+  metric?: { id: string; label: string; aggregate: ActivityMetricAggregate };
+  /** When present, this event type's entities join the relation graph. */
+  entity?: { role: string; relationLabel: string };
+}
+
+/** `contributes.entityTypes[]` — registers a custom entity type (design §3.4).
+ *  Conflicts (builtin 5 or an already-registered type) are skipped + logged +
+ *  surfaced as a conflict badge in the extension store; first registrant wins. */
+export interface EntityTypeContribution {
+  /** Type id, e.g. `customer`. Valid within the declaring collector's scope;
+   *  referenced by `activityDisplay[].entity.role`. */
+  id: string;
+  /** Free text label shown in the entity graph. */
+  label: string;
+  color?: ActivityPaletteColor;
+  icon?: string;
+}
+
 export interface ContributionPoints {
   commands?: CommandContribution[];
   fileTypes?: FileTypeContribution[];
@@ -511,4 +595,11 @@ export interface ContributionPoints {
   highlightGrammars?: HighlightGrammarContribution[];
   /** Cloud object-storage providers added to Settings → Storage & Sharing. */
   storageProviders?: StorageProviderContribution[];
+  /** Activity collectors (trusted only, design §2). Poll/webhook sources
+   *  that push standard ActivityEvents through the host ingest pipeline. */
+  collectors?: CollectorContribution[];
+  /** Declarative display metadata per event type (design §3.1). */
+  activityDisplay?: ActivityDisplayContribution[];
+  /** Custom entity-type registrations for the activity relation graph (design §3.4). */
+  entityTypes?: EntityTypeContribution[];
 }

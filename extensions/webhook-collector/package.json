@@ -1,0 +1,19 @@
+{
+  "name": "@folyn/extension-webhook-collector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Folyn generic Webhook activity collector — receives arbitrary JSON on the local webhook server and maps it to one activity event via configured field names (trusted tier, webhook mode)",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "folyn-extension-sdk": "workspace:*",
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
+  }
+}

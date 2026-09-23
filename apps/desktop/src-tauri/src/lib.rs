@@ -21,6 +21,7 @@ mod list_models;
 mod voice;
 mod pet_api;
 mod activity;
+mod activity_webhook;
 
 #[cfg(target_os = "macos")]
 mod pet_panel_macos;
@@ -1006,6 +1007,10 @@ pub fn run() {
             pet_api::PetApiState(std::sync::Mutex::new(None))
         })
         .manage({
+            startup_log("[builder] manage ActivityWebhookState");
+            activity_webhook::ActivityWebhookState(std::sync::Mutex::new(None))
+        })
+        .manage({
             startup_log("[builder] manage PendingOpenFiles");
             pending_open_files
         })
@@ -1026,6 +1031,12 @@ pub fn run() {
             // spawn the server thread. Non-fatal if no port is free.
             startup_log("[setup] pet_api::spawn");
             pet_api::spawn(app.handle().clone());
+
+            // Activity collector webhook server (design §2.1 webhook mode).
+            // Same 127.0.0.1-only + bind-retry contract as pet_api; the state
+            // is registered on the Builder chain above. Non-fatal on failure.
+            startup_log("[setup] activity_webhook::spawn");
+            activity_webhook::spawn(app.handle().clone());
 
             // ponytail: app menu bar is a macOS-only concept (Folyn / Edit /
             // Window submenus with `services`/`hide_others`/`show_all`
@@ -1182,6 +1193,7 @@ pub fn run() {
             activity::activity_push_events,
             activity::activity_get_cursor,
             activity::activity_set_cursor,
+            activity::activity_exec,
             activity::activity_list_events,
             activity::activity_aggregate_metrics,
             activity::activity_list_entities,
@@ -1192,6 +1204,7 @@ pub fn run() {
             activity::activity_set_event_summary,
             pet_api::get_pet_api_info,
             pet_api::open_external,
+            activity_webhook::activity_webhook_info,
             chat::chat_stream,
             list_models::list_models,
             extension_install::install_extension,
