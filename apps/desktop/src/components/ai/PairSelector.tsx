@@ -289,7 +289,7 @@ export function PairSelector({
         ) : (
           <span className="text-t3 truncate">{t(`${i18nPrefix}.placeholder`)}</span>
         )}
-        <svg className={`shrink-0 text-t3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg className={`shrink-0 ml-auto text-t3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
