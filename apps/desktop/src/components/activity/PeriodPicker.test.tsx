@@ -1,8 +1,13 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import i18n from '@/i18n';
 import { PeriodPicker } from './PeriodPicker';
 import { quickRange, addDays, startOfDay, formatPeriodRange } from './period';
+
+// Locale-dependent assertions (今天/本周): force zh like PetContextMenu.test.tsx,
+// since direct vitest runs from apps/desktop skip test/setup.desktop.ts.
+void i18n.changeLanguage('zh');
 
 const today = new Date();
 
