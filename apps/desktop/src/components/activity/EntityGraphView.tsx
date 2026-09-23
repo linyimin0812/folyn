@@ -104,6 +104,14 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     setHistory((h) => h.slice(0, idx + 1));
   };
 
+  if (entities?.length === 0) {
+    return (
+      <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+        {t('activity:timeline.empty')}
+      </div>
+    );
+  }
+
   if (!vaultRoot) {
     return (
       <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
