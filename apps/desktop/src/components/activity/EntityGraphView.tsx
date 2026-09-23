@@ -284,7 +284,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
         {/* Overlay panel: the graph keeps a fixed width; the panel overlays
             the canvas's right edge, full height. */}
         {groupPanel != null && (
-          <aside className="absolute inset-y-0 right-0 flex w-[260px] max-w-full flex-col border-l border-brd bg-bg shadow-lg">
+          <aside className="absolute inset-y-0 right-0 flex w-[260px] max-w-full flex-col border-l border-r border-brd bg-white shadow-lg">
             <div className="flex items-center justify-between gap-2 border-b border-brd px-3 py-2">
               <p className="m-0 min-w-0 text-xs font-medium text-t1">
                 {t('activity:graph.groupPanel', { label: typeLabelOf(groupPanel), count: panelItems.length })}
