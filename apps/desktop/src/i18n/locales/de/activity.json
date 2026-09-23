@@ -106,6 +106,7 @@
     "configTitle": "Konfiguration",
     "save": "Speichern",
     "conflictBadge": "Typ-Registrierungskonflikt",
-    "noImpl": "Deklarativer Kollektor (kein Runtime-Code)"
+    "noImpl": "Deklarativer Kollektor (kein Runtime-Code)",
+    "install": "Collector-Erweiterung installieren…"
   }
 }

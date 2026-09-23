@@ -8,10 +8,12 @@
  * ACTIVE extensions only.
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { Play, TriangleAlert } from 'lucide-react';
+import { isTauri } from '@/utils/platform';
+import { useExtensionStore } from '@/store/extensionStore';
 import { useCollectorRegistryStore, type CollectorRegistration } from '@/services/activity/registry';
 import { collectNow, effectiveIntervalMs } from '@/services/activity/runtime';
 import {
@@ -222,6 +224,32 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
 export function CollectorsSettings() {
   const { t } = useTranslation();
   const collectors = useCollectorRegistryStore((s) => s.collectors);
+  const installing = useExtensionStore((s) => s.installing);
+  const error = useExtensionStore((s) => s.error);
+  const clearError = useExtensionStore((s) => s.clearError);
+  const installFromFolder = useExtensionStore((s) => s.installFromFolder);
+  const refresh = useExtensionStore((s) => s.refresh);
+  const [folderOpen, setFolderOpen] = useState(false);
+
+  const handleInstallFromFolder = useCallback(async () => {
+    if (folderOpen) return;
+    setFolderOpen(true);
+    clearError();
+    try {
+      if (!isTauri()) {
+        return;
+      }
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const picked = await open({ directory: true, multiple: false });
+      if (!picked || Array.isArray(picked)) return;
+      await installFromFolder(picked as string);
+      // Refresh so a newly activated collector's registration shows up here.
+      await refresh();
+    } finally {
+      setFolderOpen(false);
+    }
+  }, [folderOpen, installFromFolder, clearError, refresh]);
+
   // Webhook endpoint (Rust activity_webhook_info) — only shown for
   // webhook-mode collectors; empty when the local server isn't running.
   const hasWebhook = collectors.some((c) => c.mode === 'webhook');
@@ -233,6 +261,22 @@ export function CollectorsSettings() {
 
   return (
     <div>
+      <div className="mb-3">
+        <button
+          className="btn btn-p btn-sm"
+          disabled={!!installing || folderOpen || !isTauri()}
+          onClick={handleInstallFromFolder}
+        >
+          {installing
+            ? t('settings:extensions.installing', { id: installing.id })
+            : t('activity:collectors.install')}
+        </button>
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
+            {error}
+          </div>
+        )}
+      </div>
       {collectors.length === 0 ? (
         <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
           {t('activity:collectors.empty')}

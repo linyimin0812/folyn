@@ -106,6 +106,7 @@
     "configTitle": "Configuration",
     "save": "Save",
     "conflictBadge": "Type registration conflict",
-    "noImpl": "Declarative collector (no runtime code)"
+    "noImpl": "Declarative collector (no runtime code)",
+    "install": "Install collector extension…"
   }
 }

@@ -106,6 +106,7 @@
     "configTitle": "Configuration",
     "save": "Enregistrer",
     "conflictBadge": "Conflit d'enregistrement de type",
-    "noImpl": "Collecteur déclaratif (sans code d'exécution)"
+    "noImpl": "Collecteur déclaratif (sans code d'exécution)",
+    "install": "Installer une extension de collecteur…"
   }
 }

@@ -106,6 +106,7 @@
     "configTitle": "Configuración",
     "save": "Guardar",
     "conflictBadge": "Conflicto de registro de tipo",
-    "noImpl": "Colector declarativo (sin código en runtime)"
+    "noImpl": "Colector declarativo (sin código en runtime)",
+    "install": "Instalar extensión de recopilador…"
   }
 }

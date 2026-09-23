@@ -106,6 +106,7 @@
     "configTitle": "配置",
     "save": "保存",
     "conflictBadge": "类型注册冲突",
-    "noImpl": "声明式采集器（无运行时代码）"
+    "noImpl": "声明式采集器（无运行时代码）",
+    "install": "安装采集器扩展…"
   }
 }
