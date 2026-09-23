@@ -91,15 +91,15 @@ export function ReportSettingsView() {
         <span className="block text-[13px] text-t1 mb-1.5">
           {t('activity:reportSettings.rootDirLabel')}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="relative w-full max-w-[360px]">
           <input
-            className="w-full max-w-[360px] text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-1.5 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
+            className="w-full pr-8 text-[13px] bg-surf2 border border-brd2 rounded-md px-3 py-1.5 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
             value={reportConfig.rootDir}
             placeholder={t('activity:reportSettings.rootDirPlaceholder')}
             onChange={(e) => setReportRootDir(e.target.value)}
           />
           <button
-            className="btn btn-sm"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-t3 hover:text-t1"
             aria-label={t('activity:reportSettings.browse')}
             title={t('activity:reportSettings.browse')}
             onClick={() => {

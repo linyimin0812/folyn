@@ -70,7 +70,7 @@
     "followGlobal": "Seguir el modelo de chat global",
     "followGlobalHint": "Actualmente siguiendo el modelo de chat global",
     "rootDirLabel": "Directorio raíz de informes",
-    "rootDirPlaceholder": "活动记录",
+    "rootDirPlaceholder": "activity_collection",
     "browse": "Examinar"
   },
   "graph": {

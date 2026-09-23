@@ -51,7 +51,7 @@ export function getCollectorSettings(
 /** Report generation config (design §7.5 customization): per-period LLM
  *  prompts (empty string = deterministic template path), an optional
  *  (provider, model) override (undefined = follow global chat config), and
- *  the vault-relative report root dir (empty = '活动记录'). */
+ *  the vault-relative report root dir (empty = 'activity_collection'). */
 export interface ReportConfig {
   prompts: { daily: string; weekly: string; monthly: string };
   modelOverride?: { provider: string; model: string };
@@ -109,7 +109,7 @@ export interface ActivityCollectorState {
   setReportPrompt: (period: 'daily' | 'weekly' | 'monthly', v: string) => void;
   /** Set/clear the report model override (null = follow global chat config). */
   setReportModelOverride: (pair: { provider: string; model: string } | null) => void;
-  /** Set the vault-relative report root dir ('' = '活动记录'). */
+  /** Set the vault-relative report root dir ('' = 'activity_collection'). */
   setReportRootDir: (v: string) => void;
   /** Runtime-only — called by runCollect after a successful push. */
   setLastSync: (collectorId: string, at: number, accepted: number) => void;

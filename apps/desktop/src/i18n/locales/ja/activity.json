@@ -70,7 +70,7 @@
     "followGlobal": "グローバルのチャットモデルに従う",
     "followGlobalHint": "現在：グローバルのチャットモデルに従う",
     "rootDirLabel": "レポートのルートフォルダ",
-    "rootDirPlaceholder": "活动记录",
+    "rootDirPlaceholder": "activity_collection",
     "browse": "参照"
   },
   "graph": {

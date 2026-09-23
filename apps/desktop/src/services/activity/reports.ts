@@ -1,7 +1,7 @@
 /**
  * Report generation + vault write (design §7.5): deterministic markdown
  * composition from the activity queries (§4.4 double input for daily), written
- * as a real vault note under 活动记录/{日报|周报|月报}/. Conflict rule: the
+ * as a real vault note under activity_collection/{日报|周报|月报}/. Conflict rule: the
  * content hash of the last thing WE wrote is kept in the activity-collector
  * settings slice (sidecar, never inside the note); regenerate against an
  * unchanged file → overwrite, against a hand-edited (or unknown) file → append
@@ -28,10 +28,12 @@ import type { DisplayIndexEntry } from './registry';
 export type ReportPeriod = 'daily' | 'weekly' | 'monthly';
 export type ReportWriteMode = 'created' | 'overwritten' | 'appended';
 
-/** Vault root folder for all activity reports (design §7.5 default). */
-// ponytail: fixed folder — a user-configurable root is a settings field away
-// when someone asks for it; locale-independent so paths survive a switch.
-export const REPORT_ROOT = '活动记录';
+/** Vault root folder for all activity reports. */
+// ponytail: fixed folder — the default is user-chosen (activity_collection,
+// locale-independent so paths survive a language switch); a per-report
+// override lives in reportConfig.rootDir, a custom root beyond that is a
+// settings field away when someone asks for it.
+export const REPORT_ROOT = 'activity_collection';
 
 const PERIOD_DIRS: Record<ReportPeriod, string> = {
   daily: '日报',
@@ -51,8 +53,8 @@ export function reportPeriodKey(mode: ReportPeriod, start: Date): string {
   return dateKey(start);
 }
 
-/** Vault-relative note path: 活动记录/日报/2026-09-23.md etc.
- *  `rootDir` ('' / undefined) → default '活动记录'; slash segments trimmed. */
+/** Vault-relative note path: activity_collection/日报/2026-09-23.md etc.
+ *  `rootDir` ('' / undefined) → default 'activity_collection'; slash segments trimmed. */
 export function reportRelPath(mode: ReportPeriod, start: Date, rootDir?: string): string {
   const root = sanitizeRootDir(rootDir);
   return `${root}/${PERIOD_DIRS[mode]}/${reportPeriodKey(mode, start)}.md`;

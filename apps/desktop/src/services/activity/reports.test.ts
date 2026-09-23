@@ -30,18 +30,18 @@ const s: ReportStrings = {
 };
 
 describe('report path rules (design §7.5)', () => {
-  it('daily: 活动记录/日报/YYYY-MM-DD.md', () => {
-    expect(reportRelPath('daily', ref)).toBe('活动记录/日报/2026-09-23.md');
+  it('daily: activity_collection/日报/YYYY-MM-DD.md', () => {
+    expect(reportRelPath('daily', ref)).toBe('activity_collection/日报/2026-09-23.md');
   });
 
-  it('weekly: 活动记录/周报/YYYY-WWW.md (zero-padded)', () => {
+  it('weekly: activity_collection/周报/YYYY-WWW.md (zero-padded)', () => {
     // Week 1 of the year must pad to W01.
-    expect(reportRelPath('weekly', new Date(2026, 0, 1))).toBe('活动记录/周报/2026-W01.md');
-    expect(reportRelPath('weekly', ref)).toBe('活动记录/周报/2026-W39.md');
+    expect(reportRelPath('weekly', new Date(2026, 0, 1))).toBe('activity_collection/周报/2026-W01.md');
+    expect(reportRelPath('weekly', ref)).toBe('activity_collection/周报/2026-W39.md');
   });
 
-  it('monthly: 活动记录/月报/YYYY-MM.md', () => {
-    expect(reportRelPath('monthly', ref)).toBe('活动记录/月报/2026-09.md');
+  it('monthly: activity_collection/月报/YYYY-MM.md', () => {
+    expect(reportRelPath('monthly', ref)).toBe('activity_collection/月报/2026-09.md');
   });
 
   it('periodKey matches the filename key', () => {
@@ -53,8 +53,8 @@ describe('report path rules (design §7.5)', () => {
   it('custom rootDir replaces the default and trims slash segments', () => {
     expect(reportRelPath('daily', ref, 'Reports')).toBe('Reports/日报/2026-09-23.md');
     expect(reportRelPath('daily', ref, ' /Reports/周报/ ')).toBe('Reports/周报/日报/2026-09-23.md');
-    expect(reportRelPath('daily', ref, '')).toBe('活动记录/日报/2026-09-23.md');
-    expect(reportRelPath('daily', ref, '///')).toBe('活动记录/日报/2026-09-23.md');
+    expect(reportRelPath('daily', ref, '')).toBe('activity_collection/日报/2026-09-23.md');
+    expect(reportRelPath('daily', ref, '///')).toBe('activity_collection/日报/2026-09-23.md');
   });
 });
 

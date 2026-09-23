@@ -70,7 +70,7 @@
     "followGlobal": "跟随全局对话模型",
     "followGlobalHint": "当前：跟随全局对话模型",
     "rootDirLabel": "报告根目录",
-    "rootDirPlaceholder": "活动记录",
+    "rootDirPlaceholder": "activity_collection",
     "browse": "浏览"
   },
   "graph": {
