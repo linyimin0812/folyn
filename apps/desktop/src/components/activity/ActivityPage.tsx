@@ -233,10 +233,9 @@ export function ActivityPage() {
       {view === 'main' ? (
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Fixed header block — identical for both tabs, so switching tabs never
-            re-layouts it. Full-width so the divider spans the pane; inner content
-            keeps the 1200px alignment. */}
-        <div className="shrink-0 border-b border-brd pt-8">
-          <div className="max-w-[1200px] mx-auto px-8">
+            re-layouts it. Width-constrained so the header + divider align with
+            the 1200px content column. */}
+        <div className="shrink-0 border-b border-brd pt-8 max-w-[1200px] w-full mx-auto px-8">
         {/* Page title row: title + period description on the left, actions right. */}
         <div className="flex items-end justify-between gap-x-6 gap-y-3 mb-4 flex-wrap shrink-0">
           <div className="flex items-baseline gap-2.5 min-w-0">
@@ -333,8 +332,6 @@ export function ActivityPage() {
             <ReportMarkdown markdown={report.markdown} />
           </div>
         )}
-
-          </div>
         </div>
 
         {/* Timeline scrolls its own region (header stays pinned); graph fills
