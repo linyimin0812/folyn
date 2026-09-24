@@ -111,5 +111,12 @@
     "installZip": "从 zip 安装扩展…",
     "collectFailed": "采集失败（未安装/未启用/无打开的仓库，或采集异常）",
     "collectResult": "本次新增 {{accepted}} 条，去重 {{deduped}} 条"
+  },
+  "collectAll": {
+    "action": "采集",
+    "title": "采集进度",
+    "running": "采集中…",
+    "done": "本次共新增 {{count}} 条",
+    "none": "没有已启用的采集器"
   }
 }

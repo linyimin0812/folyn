@@ -111,5 +111,12 @@
     "installZip": "Instalar desde zip…",
     "collectFailed": "La recopilación falló (no instalada/activada, sin bóveda abierta o error de recopilación)",
     "collectResult": "{{accepted}} eventos nuevos, {{deduped}} deduplicados"
+  },
+  "collectAll": {
+    "action": "Recopilar",
+    "title": "Progreso de recopilación",
+    "running": "Recopilando…",
+    "done": "{{count}} eventos añadidos en total",
+    "none": "No hay recopiladores activados"
   }
 }

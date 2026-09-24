@@ -111,5 +111,12 @@
     "installZip": "Aus zip installieren…",
     "collectFailed": "Sammlung fehlgeschlagen (nicht installiert/aktiviert, kein offener Vault oder Sammelfehler)",
     "collectResult": "{{accepted}} neue Ereignisse, {{deduped}} dedupliziert"
+  },
+  "collectAll": {
+    "action": "Sammeln",
+    "title": "Sammelstatus",
+    "running": "Sammeln…",
+    "done": "Insgesamt {{count}} Ereignisse hinzugefügt",
+    "none": "Keine aktivierten Sammler"
   }
 }

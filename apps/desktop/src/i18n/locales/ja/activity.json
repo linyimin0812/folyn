@@ -111,5 +111,12 @@
     "installZip": "zip からインストール…",
     "collectFailed": "収集に失敗しました（未インストール・無効、開いているボールトなし、または収集エラー）",
     "collectResult": "新規 {{accepted}} 件、重複 {{deduped}} 件"
+  },
+  "collectAll": {
+    "action": "収集",
+    "title": "収集状況",
+    "running": "収集中…",
+    "done": "今回の合計 {{count}} 件を追加",
+    "none": "有効なコレクターがありません"
   }
 }

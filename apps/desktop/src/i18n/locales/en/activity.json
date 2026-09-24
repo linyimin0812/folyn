@@ -111,5 +111,12 @@
     "installZip": "Install from zip…",
     "collectFailed": "Collection failed (not installed/enabled, no open vault, or a collection error)",
     "collectResult": "{{accepted}} new events, {{deduped}} deduplicated"
+  },
+  "collectAll": {
+    "action": "Collect",
+    "title": "Collection progress",
+    "running": "Collecting…",
+    "done": "Added {{count}} events total",
+    "none": "No enabled collectors"
   }
 }

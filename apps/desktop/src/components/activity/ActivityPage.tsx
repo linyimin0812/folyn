@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, List, Network, Plug, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Activity, List, Network, Plug, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -40,6 +40,8 @@ import {
   stripFrontmatter,
 } from '@/services/activity/reports';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
+import { collectNow } from '@/services/activity/runtime';
+import { getCollectorSettings, useActivityCollectorStore } from '@/store/activityCollectorStore';
 import { CollectorsSettings } from '@/components/settings/CollectorsSettings';
 import { ReportSettingsView } from './ReportSettingsView';
 import { useAsync, useVaultRoot } from './useActivityData';
@@ -47,6 +49,7 @@ import { PeriodPicker } from './PeriodPicker';
 import { OngoingTasks } from './OngoingTasks';
 import { MetricsGrid } from './MetricsGrid';
 import { TimelineList } from './TimelineList';
+import { CollectAllModal, type CollectAllRun } from './CollectAllModal';
 import { EntityGraphView } from './EntityGraphView';
 
 /** Map the picker's period mode to the report kind (custom ranges: no report). */
@@ -93,6 +96,10 @@ export function ActivityPage() {
   const [generating, setGenerating] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  // 「采集」run — component-local view state (NOT a store): the modal can be
+  // closed and reopened while a run continues in the background.
+  const [collectRun, setCollectRun] = useState<CollectAllRun | null>(null);
+  const [collectModalOpen, setCollectModalOpen] = useState(false);
 
   const today = new Date();
   const current = isCurrentPeriod(period, today);
@@ -196,6 +203,42 @@ export function ActivityPage() {
     }
   };
 
+  /** Open the progress modal; start a fresh run only when none is in flight
+   *  (closing the modal mid-run does NOT stop the run — reopening shows it). */
+  const onCollectAll = () => {
+    setCollectModalOpen(true);
+    if (collectRun?.running) return;
+    const ids = useCollectorRegistryStore
+      .getState()
+      .collectors.filter((c) =>
+        getCollectorSettings(useActivityCollectorStore.getState(), c.collectorId).enabled,
+      )
+      .map((c) => c.collectorId);
+    const results: CollectAllRun['results'] = {};
+    for (const id of ids) results[id] = { status: 'running' };
+    setCollectRun({ running: ids.length > 0, results });
+    if (ids.length === 0) return;
+    void Promise.all(
+      ids.map((id) =>
+        collectNow(id).then((outcome) => {
+          setCollectRun((prev) =>
+            prev && {
+              ...prev,
+              results: {
+                ...prev.results,
+                [id]: outcome
+                  ? { status: 'ok', accepted: outcome.accepted, deduped: outcome.deduped }
+                  : { status: 'failed' },
+              },
+            },
+          );
+        }),
+      ),
+    ).finally(() => {
+      setCollectRun((prev) => prev && { ...prev, running: false });
+    });
+  };
+
   const openReportInEditor = async () => {
     if (!report) return;
     try {
@@ -290,6 +333,13 @@ export function ActivityPage() {
               </button>
             )}
             <PeriodPicker period={period} onPeriodChange={setPeriod} />
+            <button
+              className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+              onClick={onCollectAll}
+            >
+              <Zap size={14} className="text-acc" />
+              {t('activity:collectAll.action')}
+            </button>
           </div>
         </div>
 
@@ -388,6 +438,10 @@ export function ActivityPage() {
             {view === 'collectors' ? <CollectorsSettings /> : <ReportSettingsView />}
           </div>
         </div>
+      )}
+
+      {collectModalOpen && collectRun && (
+        <CollectAllModal run={collectRun} onClose={() => setCollectModalOpen(false)} />
       )}
     </div>
   );
