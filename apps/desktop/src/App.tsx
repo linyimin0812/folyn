@@ -8,6 +8,7 @@ import { StatusBar } from './components/shell/StatusBar';
 import { ToastHost } from './components/shell/ToastHost';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
 import { CommandPalette } from './components/shell/CommandPalette';
+import { ConsentModal } from '@/components/settings/ConsentModal';
 
 import { SettingsPage } from './components/pages/SettingsPage';
 import { VaultPage } from './components/pages/VaultPage';
@@ -1234,6 +1235,7 @@ export default function App() {
       />
       <GlobalSearchPanel />
       <CommandPalette />
+      <ConsentModal />
     </div>
   );
 }

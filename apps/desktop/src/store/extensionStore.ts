@@ -473,12 +473,17 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
     set({ installing: { id, sourcePath }, error: '' });
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('install_extension', { sourcePath });
+      const entry = await invoke<ExtensionEntry>('install_extension', { sourcePath });
       // The `extension://installed` event listener in App.tsx installs the
       // manifest into the in-memory ExtensionHost and activates sandbox
       // extensions. Refresh to pick up the new row.
       await get().refresh();
       set({ installing: false });
+      // ponytail: auto-open consent follows the install trigger wherever it
+      // fires (extensions page, collectors page, …) — the modal is globally
+      // mounted in App.tsx so the prompt can't be orphaned on another page.
+      // Re-install resets `trusted` to false → re-TOFU required.
+      if (entry.tier === 'trusted' && !entry.trusted) await get().openConsent(entry.id);
     } catch (err) {
       set({ installing: false, error: fmtErr(err) });
     }
@@ -496,9 +501,11 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
     set({ installing: { id, sourcePath: filePath }, error: '' });
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('install_extension_zip', { id, zipPath: filePath });
+      const entry = await invoke<ExtensionEntry>('install_extension_zip', { id, zipPath: filePath });
       await get().refresh();
       set({ installing: false });
+      // See installFromFolder: prompt for TOFU approval right after install.
+      if (entry.tier === 'trusted' && !entry.trusted) await get().openConsent(entry.id);
     } catch (err) {
       set({ installing: false, error: fmtErr(err) });
     }
@@ -645,7 +652,7 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
     set({ busy: { ...get().busy, [key]: true }, installing: { id: entry.id, sourcePath: entry.downloadUrl }, error: '' });
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('install_extension_from_url', { id: entry.id, url: entry.downloadUrl });
+      const installedEntry = await invoke<ExtensionEntry>('install_extension_from_url', { id: entry.id, url: entry.downloadUrl });
       // `extension://installed` listener in App.tsx installs the manifest +
       // activates sandbox extensions; refresh to reflect + flip the card.
       await get().refresh();
@@ -654,6 +661,10 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
         delete next[key];
         return { busy: next, installing: false };
       });
+      // See installFromFolder: prompt for TOFU approval right after install.
+      if (installedEntry.tier === 'trusted' && !installedEntry.trusted) {
+        await get().openConsent(installedEntry.id);
+      }
     } catch (err) {
       set((s) => {
         const next = { ...s.busy };
@@ -679,13 +690,15 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core');
       // Empty `id` tells the Rust side to resolve the id from the zip's
       // manifest (see install_extension_from_url + read_manifest_id_from_zip).
-      await invoke('install_extension_from_url', { id: '', url });
+      const entry = await invoke<ExtensionEntry>('install_extension_from_url', { id: '', url });
       await get().refresh();
       set((s) => {
         const next = { ...s.busy };
         delete next[key];
         return { busy: next, installing: false };
       });
+      // See installFromFolder: prompt for TOFU approval right after install.
+      if (entry.tier === 'trusted' && !entry.trusted) await get().openConsent(entry.id);
     } catch (err) {
       set((s) => {
         const next = { ...s.busy };
