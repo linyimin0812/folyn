@@ -1,8 +1,8 @@
 /**
  * Dynamic entity-relation browser (design §7.2): one-hop neighbors of the
  * selected center, same-type neighbors (≥2) collapsed into aggregate nodes,
- * static radial layout (canvas fills the pane; the node-count-sized orbit
- * stays compact and centered within it). Clicking a neighbor makes it the
+ * static radial layout (canvas fills the pane; each node sits on its own
+ * radius so every edge shows the same visible length, centered in it). Clicking a neighbor makes it the
  * new center (refetch); clicking an aggregate node expands its member
  * instances in the graph as a fan around it (click again to collapse).
  * Unregistered entity types use the raw type string.
@@ -35,27 +35,25 @@ function borderDistance(ux: number, uy: number, width: number, height: number): 
   return Math.min(width / 2 / Math.abs(ux), height / 2 / Math.abs(uy));
 }
 
+// Visible line length every center→node edge gets (chord between the trimmed
+// endpoints, before the 3+5 insets cancel out against the +8 below).
+const EDGE_LEN = 110;
+// Center-to-center angular gap between adjacent node cards.
+const GUTTER = 36;
 
-// Arc-length-uniform angles on the ellipse θ→(rx·cosθ, ry·sinθ): uniform
-// *angle* steps cluster nodes at the slow top/bottom vs the fast sides.
-// Samples cumulative arc length (midpoint rule) and inverts it at equal
-// arc fractions so adjacent card centers keep a constant arc gap.
-function ellipseArcAngles(count: number, rx: number, ry: number, startTheta: number): number[] {
-  const N = 720;
-  const dTheta = (2 * Math.PI) / N;
-  const speed = (th: number) => Math.hypot(rx * Math.sin(th), ry * Math.cos(th));
-  const cum = new Float64Array(N + 1);
-  for (let i = 1; i <= N; i++) cum[i] = cum[i - 1] + speed(startTheta + (i - 0.5) * dTheta) * dTheta;
-  const out: number[] = [];
-  let j = 0;
-  for (let i = 0; i < count; i++) {
-    const target = (i / count) * cum[N];
-    while (j < N && cum[j + 1] < target) j++;
-    const seg = cum[j + 1] - cum[j];
-    out.push(startTheta + (j + (seg > 0 ? (target - cum[j]) / seg : 0)) * dTheta);
-  }
-  return out;
-}
+// Node-center radius for a slot direction: center border + visible edge +
+// node border + 8 (absorbs the 3+5 endpoint insets) → every edge shows the
+// same EDGE_LEN regardless of direction, unlike the old fixed ellipse where
+// horizontal edges lost ~164px to card borders and vertical ones only ~62px.
+const slotRadius = (theta: number): number =>
+  borderDistance(Math.cos(theta), Math.sin(theta), CENTER_W, CENTER_H) +
+  EDGE_LEN +
+  borderDistance(Math.cos(theta), Math.sin(theta), NODE_W, NODE_H) +
+  8;
+
+// Half-extent of a node card along the tangent at direction theta.
+const tangentExtent = (theta: number): number =>
+  (NODE_W / 2) * Math.abs(Math.sin(theta)) + (NODE_H / 2) * Math.abs(Math.cos(theta));
 
 interface EntityGraphViewProps {
   vaultRoot: string;
@@ -78,8 +76,8 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   );
 
   // Measured svg box — the canvas always exactly fills the available pane
-  // (same width behavior as the timeline). The orbit itself is
-  // sized by node count (below), not by the container — that was what made
+  // (same width behavior as the timeline). Node radii come from the constant
+  // edge length (below), not the container — container-sized orbits made
   // few-neighbor graphs sprawl.
   const wrapRef = useRef<HTMLDivElement>(null);
   // Drag-to-pan state: panRef carries the drag math; `dragging` only drives
@@ -205,20 +203,36 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     aggregate: g.items.length > 1,
   }));
   const slots = displayItems.length;
-  // Orbit sized to the node count (adjacent cards keep a 40px gutter) and
-  // capped so few-neighbor graphs stay compact instead of being stretched to
-  // the window edges. The canvas hugs the content and centers in the pane.
-  const orbit = slots > 1
-    ? Math.min(400, Math.max(150, (Math.hypot(NODE_W, NODE_H) + 40) / (2 * Math.sin(Math.PI / slots))))
-    : 150;
-  const RX = orbit * 1.15;
-  const RY = orbit;
-  const W = Math.max(box.w, RX * 2 + NODE_W + 48);
-  const H = Math.max(box.h, RY * 2 + NODE_H + 48);
+  // Tangential-footprint-weighted angles: each slot gets a share of 2π
+  // proportional to (card tangential extent + gutter) / radius, so wide
+  // horizontal slots take more angle than narrow vertical ones. First slot
+  // sits at θ=-π/2 (straight up).
+  // ponytail: one-pass proportional — weights are measured at uniform seed
+  // angles, not the final ones, so adjacent gaps are near-constant, not exact.
+  const angles: number[] =
+    slots === 1
+      ? [-Math.PI / 2]
+      : (() => {
+          const seed = Array.from({ length: slots }, (_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / slots);
+          const weights = seed.map((th) => (2 * tangentExtent(th) + GUTTER) / slotRadius(th));
+          const total = weights.reduce((a, b) => a + b, 0);
+          if (total <= 0) return seed; // guard: uniform fallback
+          let acc = -Math.PI / 2;
+          return weights.map((wi) => {
+            const th = acc;
+            acc += (wi / total) * 2 * Math.PI;
+            return th;
+          });
+        })();
+  const radii = angles.map(slotRadius);
+  // Canvas sized from the actual radii: every node (card included) fits W×H
+  // by construction; the canvas also never shrinks below the pane (box).
+  const maxAx = radii.length ? Math.max(...radii.map((r, i) => r * Math.abs(Math.cos(angles[i]!)))) : 0;
+  const maxAy = radii.length ? Math.max(...radii.map((r, i) => r * Math.abs(Math.sin(angles[i]!)))) : 0;
+  const W = Math.max(box.w, 2 * maxAx + NODE_W + 48);
+  const H = Math.max(box.h, 2 * maxAy + NODE_H + 48);
   const CX = W / 2;
   const CY = H / 2;
-  // Arc-length-uniform slot angles (equal arc gaps, not equal angles).
-  const angles = ellipseArcAngles(slots, RX, RY, -Math.PI / 2);
 
   const navigateTo = (id: string) => {
     setExpandedGroups(new Set());
@@ -249,8 +263,9 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   // doesn't paint reliably in Tauri macOS WKWebView.
   const nodeLayouts = displayItems.map((di, i) => {
     const angle = angles[i] ?? -Math.PI / 2;
-    const nx = CX + RX * Math.cos(angle);
-    const ny = CY + RY * Math.sin(angle);
+    const r = radii[i] ?? slotRadius(angle);
+    const nx = CX + r * Math.cos(angle);
+    const ny = CY + r * Math.sin(angle);
     const dx = nx - CX;
     const dy = ny - CY;
     const len = Math.hypot(dx, dy);
@@ -274,9 +289,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   // 170 ≥ 74 (member half-width) + 74 (aggregate half-width) + 22 gutter —
   // members can never overlap the aggregate card and steal its collapse click.
   const FAN_R = 170;
-  // Tighter fan cone: members render after the orbit buttons in DOM, so any
-  // remaining overlap with another aggregate card resolves in favor of the
-  // orbit button via zIndex below (fan members stay clickable otherwise).
+  // Tighter fan cone: members render after the radial node buttons in DOM, so
+  // any remaining overlap with another aggregate card resolves in favor of
+  // the radial node button via zIndex below (fan members stay clickable
+  // otherwise).
   const MAX_SPREAD = (110 * Math.PI) / 180;
   // Fan of member positions around a given expanded aggregate node layout.
   const fanOf = (nl: (typeof nodeLayouts)[number]) => {
@@ -358,6 +374,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               style={{ position: 'absolute', left: -dx, top: -dy }}
             >
               <defs>
+                {/* markerUnits=strokeWidth: 1.5 stroke × 4 = 6px arrow — grows with the thicker line; refX=8 keeps the tip on the node border. */}
                 <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                   <path d="M2 1L8 5L2 9" fill="none" stroke="var(--brd2)" strokeWidth="1.5" strokeLinecap="round" />
                 </marker>
@@ -378,14 +395,17 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                 const my = 0.25 * startY + 0.5 * cyp + 0.25 * endY;
                 // ponytail: CJK chars are ~full-width at 9px — 9px/char + 12
                 // padding; Latin slightly over-estimated, fine.
-                const pillW = relation.length * 9 + 12;
+                // ponytail: pill width capped at 96 (EDGE_LEN=110 keeps the
+                // line visible past it); long relation text overflows the
+                // pill naturally — no truncation added.
+                const pillW = Math.min(96, relation.length * 9 + 12);
                 return (
                   <g key={di.entityType}>
                     <path
                       d={`M${startX} ${startY} Q${cxp} ${cyp} ${endX} ${endY}`}
                       fill="none"
                       stroke="var(--brd2)"
-                      strokeWidth="1"
+                      strokeWidth="1.5"
                       markerEnd={`url(#${arrowId})`}
                     />
                     {relation !== '' && (
@@ -402,7 +422,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               {fans.map(({ nl, members }) =>
                 members.map(({ n, x, y }) => (
                   // Aggregate → member: covered by both HTML cards at the ends.
-                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1" />
+                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1.5" />
                 )),
               )}
             </svg>
