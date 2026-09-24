@@ -36,6 +36,7 @@
     "viewSource": "Quelle ansehen",
     "aiSummary": "Zusammenfassung · KI-generiert",
     "aiSummaryLoading": "Zusammenfassung wird erstellt…",
+    "aiSummaryFailed": "Zusammenfassung fehlgeschlagen – zum Wiederholen erneut aufklappen",
     "sessionTitle": "Fensteraktivität · {{count}}",
     "sessionDuration": "Dauer: {{duration}}"
   },

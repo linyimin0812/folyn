@@ -5,7 +5,8 @@
  * declared detailFields (or the raw payload flat-list fallback), the cached
  * AI summary (lazily generated on first expand when the event's collector
  * opted in via its own `allowAiSummary` config, then served from the
- * ai_summary cache), and a「查看原文」link that
+ * ai_summary cache); failures are shown in the panel and retried on the
+ * next expand, and a「查看原文」link that
  * only renders when the event carries a url.
  *
  * Window-activity events arrive roughly every minute and would flood the
@@ -122,6 +123,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
   // later expands read this session map (row prop stays stale until refetch).
   const [generated, setGenerated] = useState<Record<string, string>>({});
   const [pendingSummary, setPendingSummary] = useState<Set<string>>(new Set());
+  const [failedSummary, setFailedSummary] = useState<Set<string>>(new Set());
   const tried = useRef<Set<string>>(new Set());
 
   if (events.length === 0) {
@@ -152,6 +154,15 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
       void generateEventSummary(vaultRoot, event)
         .then((summary) => {
           if (summary) setGenerated((prev) => ({ ...prev, [id]: summary }));
+          else {
+            // Failure: un-mark tried so the next expand retries.
+            tried.current.delete(id);
+            setFailedSummary((prev) => new Set(prev).add(id));
+          }
+        })
+        .catch(() => {
+          tried.current.delete(id);
+          setFailedSummary((prev) => new Set(prev).add(id));
         })
         .finally(() => {
           setPendingSummary((prev) => {
@@ -275,12 +286,16 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
               )}
 
               {aiAllowed(e) &&
-                (e.aiSummary || generated[e.id] || pendingSummary.has(e.id)) && (
+                (e.aiSummary || generated[e.id] || pendingSummary.has(e.id) || failedSummary.has(e.id)) && (
                   <div className="mt-3">
                     <p className="m-0 text-[12px] text-acc">{t('activity:timeline.aiSummary')}</p>
                     {pendingSummary.has(e.id) && !e.aiSummary && !generated[e.id] ? (
                       <p className="m-0 mt-0.5 text-t3">
                         {t('activity:timeline.aiSummaryLoading')}
+                      </p>
+                    ) : failedSummary.has(e.id) && !e.aiSummary && !generated[e.id] ? (
+                      <p className="m-0 mt-0.5 text-t3">
+                        {t('activity:timeline.aiSummaryFailed')}
                       </p>
                     ) : (
                       <p className="m-0 mt-0.5 text-t1 leading-relaxed">

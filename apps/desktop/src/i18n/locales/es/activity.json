@@ -36,6 +36,7 @@
     "viewSource": "Ver origen",
     "aiSummary": "Resumen · generado por IA",
     "aiSummaryLoading": "Generando resumen…",
+    "aiSummaryFailed": "Error al generar el resumen: vuelve a expandir para reintentar",
     "sessionTitle": "Actividad de ventana · {{count}}",
     "sessionDuration": "Duración: {{duration}}"
   },

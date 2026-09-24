@@ -29,8 +29,9 @@ export function buildEventSummaryPrompt(event: ActivityEventRow): string {
 
 /**
  * Generate + cache the summary. Returns the text, or null when no AI pair is
- * configured (or the chat errors — caller treats null as "unavailable" and
- * does not retry this session).
+ * configured, the chat errored (provider errors arrive as error chunks, not
+ * rejections — captured and logged), or the response was empty. Callers
+ * treat null as a failure and retry on the next expand.
  */
 export async function generateEventSummary(
   vaultRoot: string,
@@ -46,6 +47,7 @@ export async function generateEventSummary(
 
   const { runRigChat } = await import('@/services/rigChat');
   let text = '';
+  let errorText = '';
   try {
     await runRigChat({
       sessionId: `activity-summary:${event.id}`,
@@ -60,6 +62,9 @@ export async function generateEventSummary(
       preamble: 'You summarize activity events concisely. No preamble, no markdown headings.',
       onEvent: (ev) => {
         if (ev.type === 'text' && ev.content) text += ev.content;
+        // runRigChat forwards provider errors as error chunks without
+        // rejecting the promise — capture them or the failure is silent.
+        if (ev.type === 'error') errorText = (errorText ? errorText + '; ' : '') + (ev.content ?? 'chat error');
       },
     });
   } catch (err) {
@@ -67,7 +72,15 @@ export async function generateEventSummary(
     return null;
   }
   const summary = text.trim();
-  if (!summary) return null;
-  await setActivityEventSummary(vaultRoot, event.id, summary);
+  if (!summary) {
+    console.warn('[activity] event summary generation failed:', errorText || 'empty response');
+    return null;
+  }
+  try {
+    await setActivityEventSummary(vaultRoot, event.id, summary);
+  } catch (err) {
+    // Cache-write failure still returns the text — it's displayed this session.
+    console.warn('[activity] event summary cache write failed:', err);
+  }
   return summary;
 }

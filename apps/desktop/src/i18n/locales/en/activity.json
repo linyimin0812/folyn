@@ -36,6 +36,7 @@
     "viewSource": "View source",
     "aiSummary": "Summary · AI generated",
     "aiSummaryLoading": "Generating summary…",
+    "aiSummaryFailed": "Summary generation failed — re-expand to retry",
     "sessionTitle": "Window activity · {{count}}",
     "sessionDuration": "Duration: {{duration}}"
   },
