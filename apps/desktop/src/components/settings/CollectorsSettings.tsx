@@ -9,7 +9,7 @@
  * `type: 'collector'` (reuses StoreEntryCard + the shared extension catalog).
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { Check, Loader2, Play, TriangleAlert } from 'lucide-react';
@@ -34,7 +34,7 @@ interface WebhookInfo {
 }
 
 /** authSchema-rendered config form. Draft + save (prototype interaction). */
-function ConfigForm({ reg }: { reg: CollectorRegistration }) {
+function ConfigForm({ reg, footerExtra }: { reg: CollectorRegistration; footerExtra?: ReactNode }) {
   const { t } = useTranslation();
   const schema = reg.authSchema;
   const config = useActivityCollectorStore((s) => s.configs[reg.collectorId]);
@@ -108,7 +108,8 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
           </label>
         );
       })}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {footerExtra}
         <button className="btn btn-g btn-sm" onClick={onSave}>
           {saved && <Check size={11} />}
           {t('activity:collectors.save')}
@@ -180,6 +181,22 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
     if (!ok) return;
     void uninstall(reg.extensionId);
   }, [reg.extensionId, uninstall, t]);
+
+  // 立即采集 lives in the card footer, left of 保存 (ConfigForm's save). Poll
+  // mode only — webhook collectors push on arrival, no manual trigger.
+  const collectNowButton = reg.mode === 'poll' ? (
+    <button
+      className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+      disabled={busy || !settings.enabled || !reg.impl}
+      onClick={() => void onCollectNow()}
+    >
+      {busy ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />}
+      {t('activity:collectors.collectNow')}
+    </button>
+  ) : null;
+  // ConfigForm returns null when the schema has no properties — a schemaless
+  // poll collector still needs the footer row.
+  const hasConfigFields = !!(reg.authSchema && Object.keys(reg.authSchema.properties).length > 0);
 
   return (
     <div className="border border-brd rounded-lg p-3 mb-2 bg-surf">
@@ -272,14 +289,6 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
               }}
             />
           </label>
-          <button
-            className="btn btn-g btn-sm inline-flex items-center gap-1.5"
-            disabled={busy || !settings.enabled || !reg.impl}
-            onClick={() => void onCollectNow()}
-          >
-            {busy ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />}
-            {t('activity:collectors.collectNow')}
-          </button>
         </div>
       )}
 
@@ -310,7 +319,11 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
         )}
       </div>
 
-      <ConfigForm reg={reg} />
+      {hasConfigFields ? (
+        <ConfigForm reg={reg} footerExtra={collectNowButton} />
+      ) : (
+        collectNowButton && <div className="mt-2 flex justify-end gap-2">{collectNowButton}</div>
+      )}
     </div>
   );
 }
