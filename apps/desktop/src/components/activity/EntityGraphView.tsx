@@ -262,6 +262,17 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     .filter((nl) => expandedGroups.has(nl.di.entityType))
     .map((nl) => ({ nl, members: fanOf(nl) }));
 
+  // Extents are computed from ALL potential fan members, not just the
+  // expanded ones: Tauri's WKWebView leaves stale paint from unmounting fan
+  // cards when the collapse also shifts ancestor geometry (dx/dy, svg size).
+  // Keeping dx/dy/contentW/contentH constant per graph (they only change when
+  // center/neighbors/box change) means toggling a group only mounts/unmounts
+  // member cards — nothing else reflows. Side effect: the scroll region is
+  // always sized for all fans, even fully collapsed.
+  const allFanMembers = nodeLayouts
+    .filter((nl) => nl.di.aggregate)
+    .flatMap((nl) => fanOf(nl));
+
   // No clipping: base layout fits W×H by construction; expanded members may
   // not. Shift all content by (dx,dy) so it clears the origin and grow the
   // scroll area to the required size. One translated wrapper holds svg +
@@ -271,13 +282,11 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const { members } of fans) {
-    for (const m of members) {
-      minX = Math.min(minX, m.x - NODE_W / 2);
-      minY = Math.min(minY, m.y - NODE_H / 2);
-      maxX = Math.max(maxX, m.x + NODE_W / 2);
-      maxY = Math.max(maxY, m.y + NODE_H / 2);
-    }
+  for (const m of allFanMembers) {
+    minX = Math.min(minX, m.x - NODE_W / 2);
+    minY = Math.min(minY, m.y - NODE_H / 2);
+    maxX = Math.max(maxX, m.x + NODE_W / 2);
+    maxY = Math.max(maxY, m.y + NODE_H / 2);
   }
   const dx = Number.isFinite(minX) ? Math.max(0, PAD - minX) : 0;
   const dy = Number.isFinite(minY) ? Math.max(0, PAD - minY) : 0;
