@@ -51,6 +51,9 @@ function openExternalUrl(u: string) {
 export function TimelineList({ events, displayByType, vaultRoot }: TimelineListProps) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // 「收起全部」hides the whole records list (day groups + rows), not the
+  // per-event detail cards — those stay per-row via `toggle` below.
+  const [recordsHidden, setRecordsHidden] = useState(false);
   // Per-collector AI opt-in: `event.source` is the collector id (validated
   // Rust-side to equal it), which keys the authSchema-rendered config values.
   const configs = useActivityCollectorStore((s) => s.configs);
@@ -127,18 +130,14 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
       <div className="pb-2 flex justify-end">
         <button
           className="text-[12px] text-t3 hover:text-t1 cursor-pointer bg-transparent border-0 p-0"
-          onClick={() =>
-            setExpanded(
-              expanded.size > 0 ? new Set() : new Set(events.map((e) => e.id))
-            )
-          }
+          onClick={() => setRecordsHidden((h) => !h)}
         >
-          {expanded.size > 0
-            ? t('activity:timeline.collapseAll')
-            : t('activity:timeline.expandAll')}
+          {recordsHidden
+            ? t('activity:timeline.expandAll')
+            : t('activity:timeline.collapseAll')}
         </button>
       </div>
-      {groups.map((g, gi) => (
+      {!recordsHidden && groups.map((g, gi) => (
         <div key={g.key} className={gi === 0 ? '' : 'mt-5'}>
           <div className={gi === 0 ? 'pb-2' : 'pt-3 pb-2 border-t border-brd'}>
             <p className="m-0 text-[12px] text-t3">{g.dayLabel}</p>
