@@ -147,7 +147,7 @@ describe('collectGithubEvents', () => {
       title: 'first line',
       summary: 'octocat: first line',
       url: 'https://github.com/octocat/hello-world/commit/aaa111',
-      actor: { type: 'person', identityKey: 'octocat', displayName: 'octocat' },
+      actor: { type: 'person', identityKey: 'self', displayName: '我' },
     });
     // Unnamed commit author falls back to the pusher's login.
     expect(e2.payload).toMatchObject({ sha: 'bbb222', author: 'octocat', repo: 'octocat/hello-world' });
@@ -179,7 +179,7 @@ describe('collectGithubEvents', () => {
       occurredAt: Date.parse('2026-01-02T10:00:00Z'),
       title: 'push to main (bbb222)',
       url: 'https://github.com/octocat/hello-world/commit/bbb222',
-      actor: { type: 'person', identityKey: 'octocat' },
+      actor: { type: 'person', identityKey: 'self' },
     });
     expect(e.entities?.[0]).toMatchObject({ type: 'repository', relation: 'commit' });
     expect(e.payload).toMatchObject({ sha: HEAD_2, pushId: 1234, repo: 'octocat/hello-world' });
@@ -220,6 +220,15 @@ describe('collectGithubEvents', () => {
     });
     expect(e.payload).toMatchObject({ issueNumber: 7, action: 'opened', repo: 'octocat/hello-world', state: 'open' });
     expect(e.entities?.[0]).toMatchObject({ type: 'repository', relation: 'issue' });
+  });
+
+  it('an actor other than the configured username keeps their login identity', async () => {
+    // e.g. someone else's PR activity in the polled stream.
+    const other: GhEvent = { ...PR_MERGED, actor: { login: 'octonaut' } };
+    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [other] });
+    const { events } = await collectGithubEvents(ctx);
+    const [e] = events as CollectorEvent[];
+    expect(e.actor).toEqual({ type: 'person', identityKey: 'octonaut', displayName: 'octonaut' });
   });
 
   it('skips events at/before the cursor; nextCursor = newest seen', async () => {

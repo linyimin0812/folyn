@@ -128,9 +128,9 @@ export async function collectGithubEvents(
       const created = Date.parse(ev.created_at);
       if (!Number.isFinite(created)) continue;
       if (ev.type === 'PushEvent') {
-        pushTasks.push(() => mapEvent(ctx, ev, created));
+        pushTasks.push(() => mapEvent(ctx, ev, created, username));
       } else {
-        events.push(...(await mapEvent(ctx, ev, created)));
+        events.push(...(await mapEvent(ctx, ev, created, username)));
       }
       if (!newest || ev.created_at > newest) newest = ev.created_at;
     }
@@ -154,12 +154,20 @@ async function mapEvent(
   ctx: CollectorContext,
   ev: GhEvent,
   occurredAt: number,
+  username: string,
 ): Promise<CollectorEvent[]> {
   const login = ev.actor?.login ?? 'unknown';
   const repoName = ev.repo?.name ?? '';
+  // The polled user IS the local user — anchor on the same 'self' identity
+  // window-activity uses so the entity graph doesn't fork one human into two
+  // person nodes. Other actors keep their login identity.
+  const actor: CollectorEvent['actor'] =
+    login === username
+      ? { type: 'person', identityKey: 'self', displayName: '我' }
+      : { type: 'person', identityKey: login, displayName: login };
 
   if (ev.type === 'PushEvent') {
-    return mapPushEvent(ctx, ev, occurredAt, login, repoName);
+    return mapPushEvent(ctx, ev, occurredAt, login, repoName, actor);
   }
 
   if (ev.type === 'PullRequestEvent') {
@@ -173,7 +181,7 @@ async function mapEvent(
         occurredAt,
         title: `${repoName} · PR #${pr.number} ${action}: ${pr.title ?? ''}`,
         url: pr.html_url,
-        actor: { type: 'person', identityKey: login, displayName: login },
+        actor,
         entities: [
           {
             type: 'repository',
@@ -197,7 +205,7 @@ async function mapEvent(
         occurredAt,
         title: `${repoName} · Issue #${issue.number} ${ev.payload.action}: ${issue.title}`,
         url: issue.html_url,
-        actor: { type: 'person', identityKey: login, displayName: login },
+        actor,
         entities: [
           {
             type: 'repository',
@@ -235,6 +243,7 @@ async function mapPushEvent(
   occurredAt: number,
   login: string,
   repoName: string,
+  actor: CollectorEvent['actor'],
 ): Promise<CollectorEvent[]> {
   const head = typeof ev.payload.head === 'string' ? ev.payload.head : '';
   if (!head) return [];
@@ -257,7 +266,7 @@ async function mapPushEvent(
           title: (c.commit?.message ?? c.sha).split('\n')[0] ?? c.sha,
           summary: `${login}: ${(c.commit?.message ?? '').split('\n')[0] ?? ''}`,
           url: `${repoHtmlUrl(repoName)}/commit/${c.sha}`,
-          actor: { type: 'person', identityKey: login, displayName: login },
+          actor,
           entities: [
             {
               type: 'repository',
@@ -282,7 +291,7 @@ async function mapPushEvent(
       title: `push to ${ref.replace('refs/heads/', '')} (${head.slice(0, 7)})`,
       summary: `${login}: push to ${ref.replace('refs/heads/', '')}`,
       url: `${repoHtmlUrl(repoName)}/commit/${head}`,
-      actor: { type: 'person', identityKey: login, displayName: login },
+      actor,
       entities: [
         {
           type: 'repository',
