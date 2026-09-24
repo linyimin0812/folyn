@@ -107,8 +107,11 @@ function ConfigForm({
       {Object.entries(schema.properties).map(([key, prop]) => {
         const value = draft[key] ?? prop.default ?? '';
         const label = prop.title ?? key;
+        // file-activity's excludeDirs renders as chips-only (no text input).
+        const chipsOnly = reg.collectorId === 'file-activity' && key === 'excludeDirs';
         return (
           <Fragment key={key}>
+            {!chipsOnly && (
             <label
               className={prop.type === 'boolean' && !prop.enum
                 ? 'flex items-center gap-1.5 mb-2.5'
@@ -152,8 +155,9 @@ function ConfigForm({
               </>
             )}
           </label>
+            )}
           {reg.collectorId === 'file-activity' && key === 'excludeDirs' && (
-            <div className="mt-1 mb-2.5 flex flex-wrap items-center gap-2">
+            <div className="mb-2.5 flex flex-wrap items-center gap-2">
               <span className="text-[10px] text-t3">{t('activity:collectors.fileExcludeApplied')}</span>
               {excludeInput ? (
                 <input
