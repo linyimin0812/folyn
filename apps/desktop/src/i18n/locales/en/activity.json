@@ -127,7 +127,7 @@
     "installZip": "Install from zip…",
     "collectFailed": "Collection failed (not installed/enabled, no open vault, or a collection error)",
     "collectResult": "{{accepted}} new events, {{deduped}} deduplicated",
-    "fileExcludeApplied": "Appearance filter already applied:"
+    "fileExcludeApplied": "Filter files/folders:"
   },
   "collectAll": {
     "action": "Collect",

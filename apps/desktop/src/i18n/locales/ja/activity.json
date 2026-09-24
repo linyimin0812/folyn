@@ -127,7 +127,7 @@
     "installZip": "zip からインストール…",
     "collectFailed": "収集に失敗しました（未インストール・無効、開いているボールトなし、または収集エラー）",
     "collectResult": "新規 {{accepted}} 件、重複 {{deduped}} 件",
-    "fileExcludeApplied": "外観フィルター適用済み："
+    "fileExcludeApplied": "ファイル/フォルダを除外："
   },
   "collectAll": {
     "action": "収集",

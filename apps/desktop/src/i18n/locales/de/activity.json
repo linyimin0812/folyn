@@ -127,7 +127,7 @@
     "installZip": "Aus zip installieren…",
     "collectFailed": "Sammlung fehlgeschlagen (nicht installiert/aktiviert, kein offener Vault oder Sammelfehler)",
     "collectResult": "{{accepted}} neue Ereignisse, {{deduped}} dedupliziert",
-    "fileExcludeApplied": "Darstellungsfilter bereits angewendet:"
+    "fileExcludeApplied": "Dateien/Ordner filtern:"
   },
   "collectAll": {
     "action": "Sammeln",
