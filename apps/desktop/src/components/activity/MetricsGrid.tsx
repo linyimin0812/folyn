@@ -65,7 +65,7 @@ export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridPr
   return (
     <div className="mb-6">
       <button
-        className="m-0 mb-3 text-[12px] text-t3 bg-transparent border-0 p-0 cursor-pointer flex items-center gap-1"
+        className="m-0 mb-3 text-[13px] font-semibold text-t2 bg-transparent border-0 p-0 cursor-pointer flex items-center gap-1"
         aria-label={t('activity:metric.title')}
         onClick={() => setSummaryCollapsed(!summaryCollapsed)}
       >
