@@ -35,6 +35,48 @@ function borderDistance(ux: number, uy: number, width: number, height: number): 
   return Math.min(width / 2 / Math.abs(ux), height / 2 / Math.abs(uy));
 }
 
+// Quadratic bezier point at t (standard eval).
+function qAt(t: number, x0: number, y0: number, cx: number, cy: number, x1: number, y1: number): [number, number] {
+  const u = 1 - t;
+  return [u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1];
+}
+
+// ponytail: bezier length via 16-segment polyline — no closed form exists,
+// and px-accurate is all the label-gap t conversion needs.
+function qLen(x0: number, y0: number, cx: number, cy: number, x1: number, y1: number): number {
+  let len = 0;
+  let px = x0;
+  let py = y0;
+  for (let k = 1; k <= 16; k++) {
+    const [bx, by] = qAt(k / 16, x0, y0, cx, cy, x1, y1);
+    len += Math.hypot(bx - px, by - py);
+    px = bx;
+    py = by;
+  }
+  return len;
+}
+
+// Arc-length-uniform angles on the ellipse θ→(rx·cosθ, ry·sinθ): uniform
+// *angle* steps cluster nodes at the slow top/bottom vs the fast sides.
+// Samples cumulative arc length (midpoint rule) and inverts it at equal
+// arc fractions so adjacent card centers keep a constant arc gap.
+function ellipseArcAngles(count: number, rx: number, ry: number, startTheta: number): number[] {
+  const N = 720;
+  const dTheta = (2 * Math.PI) / N;
+  const speed = (th: number) => Math.hypot(rx * Math.sin(th), ry * Math.cos(th));
+  const cum = new Float64Array(N + 1);
+  for (let i = 1; i <= N; i++) cum[i] = cum[i - 1] + speed(startTheta + (i - 0.5) * dTheta) * dTheta;
+  const out: number[] = [];
+  let j = 0;
+  for (let i = 0; i < count; i++) {
+    const target = (i / count) * cum[N];
+    while (j < N && cum[j + 1] < target) j++;
+    const seg = cum[j + 1] - cum[j];
+    out.push(startTheta + (j + (seg > 0 ? (target - cum[j]) / seg : 0)) * dTheta);
+  }
+  return out;
+}
+
 interface EntityGraphViewProps {
   vaultRoot: string;
 }
@@ -183,18 +225,20 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     aggregate: g.items.length > 1,
   }));
   const slots = displayItems.length;
-  // Orbit sized to the node count (adjacent cards keep a 28px gutter) and
+  // Orbit sized to the node count (adjacent cards keep a 40px gutter) and
   // capped so few-neighbor graphs stay compact instead of being stretched to
   // the window edges. The canvas hugs the content and centers in the pane.
   const orbit = slots > 1
-    ? Math.min(340, Math.max(150, (Math.hypot(NODE_W, NODE_H) + 28) / (2 * Math.sin(Math.PI / slots))))
+    ? Math.min(400, Math.max(150, (Math.hypot(NODE_W, NODE_H) + 40) / (2 * Math.sin(Math.PI / slots))))
     : 150;
-  const RX = orbit * 1.35;
+  const RX = orbit * 1.15;
   const RY = orbit;
   const W = Math.max(box.w, RX * 2 + NODE_W + 48);
   const H = Math.max(box.h, RY * 2 + NODE_H + 48);
   const CX = W / 2;
   const CY = H / 2;
+  // Arc-length-uniform slot angles (equal arc gaps, not equal angles).
+  const angles = ellipseArcAngles(slots, RX, RY, -Math.PI / 2);
 
   const navigateTo = (id: string) => {
     setExpandedGroups(new Set());
@@ -224,7 +268,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   // absolutely-positioned HTML overlaid on the svg — foreignObject content
   // doesn't paint reliably in Tauri macOS WKWebView.
   const nodeLayouts = displayItems.map((di, i) => {
-    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(1, slots);
+    const angle = angles[i] ?? -Math.PI / 2;
     const nx = CX + RX * Math.cos(angle);
     const ny = CY + RY * Math.sin(angle);
     const dx = nx - CX;
@@ -334,11 +378,11 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               style={{ position: 'absolute', left: -dx, top: -dy }}
             >
               <defs>
-                <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                  <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
+                <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                  <path d="M2 1L8 5L2 9" fill="none" stroke="var(--brd2)" strokeWidth="1.5" strokeLinecap="round" />
                 </marker>
               </defs>
-              {nodeLayouts.map(({ di, startX, startY, endX, endY }) => {
+              {nodeLayouts.map(({ di, startX, startY, endX, endY }, i) => {
                 const relation = di.items[0]?.relation ?? '';
                 // Quadratic bezier: control point = edge midpoint pushed
                 // perpendicular (+90° rotation of the direction) by 12% of
@@ -351,13 +395,41 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                 // Bezier t=0.5 point: 0.25·P0 + 0.5·C + 0.25·P1
                 const mx = 0.25 * startX + 0.5 * cxp + 0.25 * endX;
                 const my = 0.25 * startY + 0.5 * cyp + 0.25 * endY;
+                const gradId = `${arrowId}-g-${i}`;
+                // Line breaks around the pill instead of under it: split the
+                // curve at t = 0.5 ± (half pill width + 4px).
+                // ponytail: px→t via polyline arc length (qLen) — the curve
+                // is nearly flat at 12% bow, approximate is plenty.
+                const pillW = relation.length * 6 + 10;
+                const dt = relation !== '' ? (pillW / 2 + 4) / qLen(startX, startY, cxp, cyp, endX, endY) : 0;
+                const t1 = Math.max(0, 0.5 - dt);
+                const t2 = Math.min(1, 0.5 + dt);
+                // Sub-segments of a quadratic stay quadratic (de Casteljau).
+                const [ax, ay] = qAt(t1, startX, startY, cxp, cyp, endX, endY);
+                const [bx, by] = qAt(t2, startX, startY, cxp, cyp, endX, endY);
+                const c1x = startX + (cxp - startX) * t1;
+                const c1y = startY + (cyp - startY) * t1;
+                const c2x = cxp + (endX - cxp) * t2;
+                const c2y = cyp + (endY - cyp) * t2;
                 return (
                   <g key={di.entityType}>
-                    <path d={`M${startX} ${startY} Q${cxp} ${cyp} ${endX} ${endY}`} fill="none" stroke="var(--brd2)" strokeWidth="1" markerEnd={`url(#${arrowId})`} />
+                    {/* Gradient in userSpaceOnUse: faint at the center, more present at the node. */}
+                    <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1={startX} y1={startY} x2={endX} y2={endY}>
+                      <stop offset="0" stopColor="var(--brd)" />
+                      <stop offset="1" stopColor="var(--brd2)" />
+                    </linearGradient>
+                    {relation !== '' ? (
+                      <>
+                        <path d={`M${startX} ${startY} Q${c1x} ${c1y} ${ax} ${ay}`} fill="none" stroke={`url(#${gradId})`} strokeWidth="1" />
+                        <path d={`M${bx} ${by} Q${c2x} ${c2y} ${endX} ${endY}`} fill="none" stroke={`url(#${gradId})`} strokeWidth="1" markerEnd={`url(#${arrowId})`} />
+                      </>
+                    ) : (
+                      <path d={`M${startX} ${startY} Q${cxp} ${cyp} ${endX} ${endY}`} fill="none" stroke={`url(#${gradId})`} strokeWidth="1" markerEnd={`url(#${arrowId})`} />
+                    )}
                     {relation !== '' && (
                       <g transform={`translate(${mx} ${my})`}>
-                        <rect x={-(relation.length * 6 + 10) / 2} y={-8} width={relation.length * 6 + 10} height={16} rx={5} fill="var(--panel)" stroke="var(--brd2)" strokeWidth="1" />
-                        <text textAnchor="middle" dominantBaseline="central" fontSize="10" fill="var(--t3)">
+                        <rect x={-pillW / 2} y={-7} width={pillW} height={14} rx={5} fill="var(--panel)" stroke="var(--brd2)" strokeWidth="1" />
+                        <text textAnchor="middle" dominantBaseline="central" fontSize="9" fill="var(--t3)">
                           {relation}
                         </text>
                       </g>
@@ -368,7 +440,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               {fans.map(({ nl, members }) =>
                 members.map(({ n, x, y }) => (
                   // Aggregate → member: covered by both HTML cards at the ends.
-                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1" strokeDasharray="4 4" />
+                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1" strokeDasharray="3 4" />
                 )),
               )}
             </svg>
@@ -386,8 +458,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   // Orbit nodes sit above fan member cards (which render after
                   // in DOM): an overlapped aggregate B must win the click over
                   // an expanded-A member, or B never expands.
-                  style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W, ...(selected ? { zIndex: 10 } : { zIndex: 5 }) }}
-                  className={`flex h-[50px] items-center gap-2 rounded-xl border px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
+                  // Left/top (not a centering transform) so Tailwind's hover
+                  // translate isn't overridden by an inline transform.
+                  style={{ position: 'absolute', left: nx - NODE_W / 2, top: ny - NODE_H / 2, width: NODE_W, ...(selected ? { zIndex: 10 } : { zIndex: 5 }) }}
+                  className={`flex h-[50px] items-center gap-2 rounded-lg border px-2 text-left cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,.04)] transition hover:-translate-y-px hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
                   onClick={() => {
                     if (di.aggregate) {
                       setExpandedGroups((prev) => {
@@ -402,11 +476,11 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   }}
                 >
                   <span
-                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
                     style={{ background: pal.bg, color: pal.color }}
                   >
                     {td?.icon ? (
-                      <LucideNameIcon name={td.icon} size={14} />
+                      <LucideNameIcon name={td.icon} size={12} />
                     ) : (
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
                     )}
@@ -429,16 +503,16 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   key={n.neighborId}
                   type="button"
                   title={n.relation}
-                  style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', width: NODE_W }}
-                  className="flex h-[50px] items-center gap-2 rounded-xl border border-brd2 bg-panel px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
+                  style={{ position: 'absolute', left: x - NODE_W / 2, top: y - NODE_H / 2, width: NODE_W }}
+                  className="flex h-[50px] items-center gap-2 rounded-lg border border-brd2 bg-panel px-2 text-left cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,.04)] transition hover:-translate-y-px hover:shadow-sm hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
                   onClick={() => navigateTo(n.neighborId)}
                 >
                   <span
-                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
                     style={{ background: pal.bg, color: pal.color }}
                   >
                     {td?.icon ? (
-                      <LucideNameIcon name={td.icon} size={14} />
+                      <LucideNameIcon name={td.icon} size={12} />
                     ) : (
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
                     )}
@@ -452,7 +526,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
             })}
             {center && (
               <div
-                style={{ position: 'absolute', left: CX, top: CY, transform: 'translate(-50%, -50%)', width: CENTER_W, boxShadow: '0 0 0 5px var(--accglow)' }}
+                style={{ position: 'absolute', left: CX - CENTER_W / 2, top: CY - CENTER_H / 2, width: CENTER_W, boxShadow: '0 0 0 1px var(--acc), 0 0 12px 0 var(--accglow)' }}
                 className="flex h-[58px] items-center gap-2.5 rounded-xl border border-acc bg-panel px-3"
                 title={nameOf(center.id)}
               >
