@@ -25,6 +25,10 @@ const NODE_W = 148;
 const NODE_H = 50;
 const CENTER_W = 164;
 const CENTER_H = 58;
+// Drag-pan slack: the scroll container only extends to the content div's
+// layout box (transforms don't grow it), so the content sits centered inside
+// a larger layout box. Pans up to ±PAN_PAD stay inside it — no clipping.
+const PAN_PAD = 600;
 
 // Distance from a rectangle's center to its border along a unit vector.
 function borderDistance(ux: number, uy: number, width: number, height: number): number {
@@ -57,27 +61,34 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   // Drag-to-pan state: panRef carries the drag math; `dragging` only drives
   // the cursor class. Drags starting inside a button (node/member cards are
-  // <button>s) are ignored so card clicks keep working.
-  const panRef = useRef<{ pointerId: number; startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
+  // <button>s) are ignored so card clicks keep working. Panning translates
+  // the content (the canvas usually exactly fits the pane, so scrollLeft/
+  // scrollTop have nothing to move).
+  const panRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest('button')) return;
-    const el = e.currentTarget;
-    panRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop };
-    el.setPointerCapture(e.pointerId);
+    panRef.current = { pointerId: e.pointerId, lastX: e.clientX, lastY: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
     setDragging(true);
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const pan = panRef.current;
-    const el = e.currentTarget;
-    if (!pan || pan.pointerId !== e.pointerId) return;
-    el.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
-    el.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+    const p = panRef.current;
+    if (!p || p.pointerId !== e.pointerId) return;
+    const dx = e.clientX - p.lastX;
+    const dy = e.clientY - p.lastY;
+    p.lastX = e.clientX;
+    p.lastY = e.clientY;
+    setPan((pan) => ({
+      x: Math.max(-PAN_PAD, Math.min(PAN_PAD, pan.x + dx)),
+      y: Math.max(-PAN_PAD, Math.min(PAN_PAD, pan.y + dy)),
+    }));
   };
   const endPan = (e: React.PointerEvent<HTMLDivElement>) => {
-    const pan = panRef.current;
-    if (!pan || pan.pointerId !== e.pointerId) return;
+    const p = panRef.current;
+    if (!p || p.pointerId !== e.pointerId) return;
     panRef.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
     setDragging(false);
@@ -89,6 +100,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
     ro.observe(el);
     setBox({ w: el.clientWidth, h: el.clientHeight });
+    // Content sits at PAN_PAD inside the padded layout box — start scrolled
+    // there so pan=0 shows the graph at the viewport origin.
+    el.scrollLeft = PAN_PAD;
+    el.scrollTop = PAN_PAD;
     return () => ro.disconnect();
     // Re-attach when the graph wrapper actually mounts (early-return states
     // render no wrapper).
@@ -164,6 +179,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   const navigateTo = (id: string) => {
     setExpandedGroup(null);
+    setPan({ x: 0, y: 0 });
     setHistory((h) => [...h, id]);
   };
 
@@ -266,81 +282,52 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
       onPointerUp={endPan}
       onPointerCancel={endPan}
     >
-      <div className="relative" style={{ width: contentW, height: contentH }}>
-        <div className="absolute top-0 left-0" style={{ width: W, height: H, transform: `translate(${dx}px, ${dy}px)` }}>
-          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none" aria-hidden="true">
-            <defs>
-              <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
-              </marker>
-            </defs>
-            {nodeLayouts.map(({ di, startX, startY, endX, endY }) => (
-              <g key={di.entityType}>
-                <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="var(--brd2)" strokeWidth="1" markerEnd={`url(#${arrowId})`} />
-                <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 8} textAnchor="middle" fontSize="11" fill="var(--t3)" stroke="var(--bg)" strokeWidth="5" paintOrder="stroke">
-                  {di.items[0]?.relation ?? ''}
-                </text>
-              </g>
-            ))}
-            {expandedLayout &&
-              memberLayouts.map(({ n, x, y }) => (
-                // Aggregate → member: covered by both HTML cards at the ends.
-                <line key={n.neighborId} x1={expandedLayout.nx} y1={expandedLayout.ny} x2={x} y2={y} stroke="var(--brd2)" strokeWidth="1" />
+      <div className="relative" style={{ width: contentW + 2 * PAN_PAD, height: contentH + 2 * PAN_PAD }}>
+        <div
+          className="absolute"
+          style={{ left: PAN_PAD, top: PAN_PAD, width: contentW, height: contentH, transform: `translate(${pan.x}px, ${pan.y}px)` }}
+        >
+          <div className="absolute top-0 left-0" style={{ width: W, height: H, transform: `translate(${dx}px, ${dy}px)` }}>
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none" aria-hidden="true">
+              <defs>
+                <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
+                </marker>
+              </defs>
+              {nodeLayouts.map(({ di, startX, startY, endX, endY }) => (
+                <g key={di.entityType}>
+                  <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="var(--brd2)" strokeWidth="1" markerEnd={`url(#${arrowId})`} />
+                  <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 8} textAnchor="middle" fontSize="11" fill="var(--t3)" stroke="var(--bg)" strokeWidth="5" paintOrder="stroke">
+                    {di.items[0]?.relation ?? ''}
+                  </text>
+                </g>
               ))}
-          </svg>
-          {nodeLayouts.map(({ di, nx, ny }) => {
-            const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
-            const selected = expandedGroup === di.entityType;
-            const td = typeDisplayOf(di.entityType);
-            const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
-            return (
-              <button
-                key={di.entityType}
-                type="button"
-                title={label}
-                aria-expanded={di.aggregate ? selected : undefined}
-                style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W }}
-                className={`flex h-[50px] items-center gap-2 rounded-xl border px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
-                onClick={() => {
-                  if (di.aggregate) {
-                    setExpandedGroup(selected ? null : di.entityType);
-                  } else {
-                    navigateTo(di.items[0]!.neighborId);
-                  }
-                }}
-              >
-                <span
-                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                  style={{ background: pal.bg, color: pal.color }}
-                >
-                  {td?.icon ? (
-                    <LucideNameIcon name={td.icon} size={14} />
-                  ) : (
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
-                  )}
-                </span>
-                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                  <span className="block w-full truncate text-[13px] font-medium text-t1">{label}</span>
-                  <span className="flex w-full items-center justify-between gap-2 text-[11px] text-t3">
-                    <span className="truncate">{di.aggregate ? t('activity:graph.groupCount', { count: di.items.length }) : typeLabelOf(di.entityType)}</span>
-                    {di.aggregate && <span aria-hidden="true">›</span>}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-          {expandedLayout &&
-            memberLayouts.map(({ n, x, y }) => {
-              const td = typeDisplayOf(expandedLayout.di.entityType);
+              {expandedLayout &&
+                memberLayouts.map(({ n, x, y }) => (
+                  // Aggregate → member: covered by both HTML cards at the ends.
+                  <line key={n.neighborId} x1={expandedLayout.nx} y1={expandedLayout.ny} x2={x} y2={y} stroke="var(--brd2)" strokeWidth="1" />
+                ))}
+            </svg>
+            {nodeLayouts.map(({ di, nx, ny }) => {
+              const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
+              const selected = expandedGroup === di.entityType;
+              const td = typeDisplayOf(di.entityType);
               const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
               return (
                 <button
-                  key={n.neighborId}
+                  key={di.entityType}
                   type="button"
-                  title={n.relation}
-                  style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', width: NODE_W }}
-                  className="flex h-[50px] items-center gap-2 rounded-xl border border-brd2 bg-panel px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
-                  onClick={() => navigateTo(n.neighborId)}
+                  title={label}
+                  aria-expanded={di.aggregate ? selected : undefined}
+                  style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W }}
+                  className={`flex h-[50px] items-center gap-2 rounded-xl border px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
+                  onClick={() => {
+                    if (di.aggregate) {
+                      setExpandedGroup(selected ? null : di.entityType);
+                    } else {
+                      navigateTo(di.items[0]!.neighborId);
+                    }
+                  }}
                 >
                   <span
                     className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
@@ -353,31 +340,65 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                     )}
                   </span>
                   <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="block w-full truncate text-[13px] font-medium text-t1">{nameOf(n.neighborId)}</span>
-                    <span className="block w-full truncate text-[11px] text-t3">{n.relation}</span>
+                    <span className="block w-full truncate text-[13px] font-medium text-t1">{label}</span>
+                    <span className="flex w-full items-center justify-between gap-2 text-[11px] text-t3">
+                      <span className="truncate">{di.aggregate ? t('activity:graph.groupCount', { count: di.items.length }) : typeLabelOf(di.entityType)}</span>
+                      {di.aggregate && <span aria-hidden="true">›</span>}
+                    </span>
                   </span>
                 </button>
               );
             })}
-          {center && (
-            <div
-              style={{ position: 'absolute', left: CX, top: CY, transform: 'translate(-50%, -50%)', width: CENTER_W, boxShadow: '0 0 0 5px var(--accglow)' }}
-              className="flex h-[58px] items-center gap-2.5 rounded-xl border border-acc bg-panel px-3"
-              title={nameOf(center.id)}
-            >
-              <span className="w-8 h-8 rounded-full bg-accdim text-acc flex items-center justify-center shrink-0">
-                {typeDisplayOf(center.type)?.icon ? (
-                  <LucideNameIcon name={typeDisplayOf(center.type)!.icon!} size={16} />
-                ) : (
-                  <span className="w-2 h-2 rounded-full bg-acc" />
-                )}
-              </span>
-              <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                <span className="truncate text-[13px] font-semibold text-t1">{nameOf(center.id)}</span>
-                <span className="truncate text-[11px] text-t2">{typeLabelOf(center.type)}</span>
-              </span>
-            </div>
-          )}
+            {expandedLayout &&
+              memberLayouts.map(({ n, x, y }) => {
+                const td = typeDisplayOf(expandedLayout.di.entityType);
+                const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
+                return (
+                  <button
+                    key={n.neighborId}
+                    type="button"
+                    title={n.relation}
+                    style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', width: NODE_W }}
+                    className="flex h-[50px] items-center gap-2 rounded-xl border border-brd2 bg-panel px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
+                    onClick={() => navigateTo(n.neighborId)}
+                  >
+                    <span
+                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: pal.bg, color: pal.color }}
+                    >
+                      {td?.icon ? (
+                        <LucideNameIcon name={td.icon} size={14} />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
+                      )}
+                    </span>
+                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="block w-full truncate text-[13px] font-medium text-t1">{nameOf(n.neighborId)}</span>
+                      <span className="block w-full truncate text-[11px] text-t3">{n.relation}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            {center && (
+              <div
+                style={{ position: 'absolute', left: CX, top: CY, transform: 'translate(-50%, -50%)', width: CENTER_W, boxShadow: '0 0 0 5px var(--accglow)' }}
+                className="flex h-[58px] items-center gap-2.5 rounded-xl border border-acc bg-panel px-3"
+                title={nameOf(center.id)}
+              >
+                <span className="w-8 h-8 rounded-full bg-accdim text-acc flex items-center justify-center shrink-0">
+                  {typeDisplayOf(center.type)?.icon ? (
+                    <LucideNameIcon name={typeDisplayOf(center.type)!.icon!} size={16} />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-acc" />
+                  )}
+                </span>
+                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="truncate text-[13px] font-semibold text-t1">{nameOf(center.id)}</span>
+                  <span className="truncate text-[11px] text-t2">{typeLabelOf(center.type)}</span>
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
