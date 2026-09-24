@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Pin } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Pin } from 'lucide-react';
 import { type MetricCard, effectivePinned, togglePinOverride } from './display';
 import { useActivityCollectorStore } from '@/store/activityCollectorStore';
 
@@ -21,6 +21,7 @@ interface MetricsGridProps {
 export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const pinnedMetrics = useActivityCollectorStore((s) => s.pinnedMetrics);
   const setPinnedMetrics = useActivityCollectorStore((s) => s.setPinnedMetrics);
 
@@ -63,27 +64,36 @@ export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridPr
 
   return (
     <div className="mb-6">
-      <p className="m-0 mb-3 text-[12px] text-t3">{t('activity:metric.title')}</p>
-      <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3">
-        {pinned.map(renderCard)}
-        {unpinnedVisible.map(renderCard)}
-        {collapsed.length > 0 && (
-          <div className="col-span-full">
-            <button
-              className="btn btn-g btn-sm inline-flex items-center gap-1.5"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {t('activity:metric.more', { count: collapsed.length })}
-              {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            </button>
-            {expanded && (
-              <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
-                {collapsed.map(renderCard)}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <button
+        className="m-0 mb-3 text-[12px] text-t3 bg-transparent border-0 p-0 cursor-pointer flex items-center gap-1"
+        aria-label={t('activity:metric.title')}
+        onClick={() => setSummaryCollapsed(!summaryCollapsed)}
+      >
+        {summaryCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+        {t('activity:metric.title')}
+      </button>
+      {!summaryCollapsed && (
+        <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3">
+          {pinned.map(renderCard)}
+          {unpinnedVisible.map(renderCard)}
+          {collapsed.length > 0 && (
+            <div className="col-span-full">
+              <button
+                className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+                onClick={() => setExpanded(!expanded)}
+              >
+                {t('activity:metric.more', { count: collapsed.length })}
+                {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              </button>
+              {expanded && (
+                <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
+                  {collapsed.map(renderCard)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
