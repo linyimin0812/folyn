@@ -154,9 +154,21 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     return e?.displayName || e?.identityKey || id;
   };
 
+  // Neighbor rows are per (entity, relation) — one entity with several
+  // relation types would yield duplicate React keys in the fan. Collapse to
+  // one row per entity, keeping the highest-score (first) row's relation.
+  const uniqueNeighbors = useMemo(() => {
+    const seen = new Set<string>();
+    return (neighbors ?? []).filter((n) => {
+      if (seen.has(n.neighborId)) return false;
+      seen.add(n.neighborId);
+      return true;
+    });
+  }, [neighbors]);
+
   const groups = useMemo(
-    () => groupNeighborsByType(neighbors ?? [], (n) => byId.get(n.neighborId)?.type ?? '__unknown__'),
-    [neighbors, byId],
+    () => groupNeighborsByType(uniqueNeighbors, (n) => byId.get(n.neighborId)?.type ?? '__unknown__'),
+    [uniqueNeighbors, byId],
   );
 
   // Display items: one per group — aggregate when the group has ≥2 members.
