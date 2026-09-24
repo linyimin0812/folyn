@@ -137,11 +137,13 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
             : t('activity:timeline.collapseAll')}
         </button>
       </div>
-      {!recordsHidden && groups.map((g, gi) => (
+      {/* 收起全部 keeps day headers visible, hides only the event rows. */}
+      {groups.map((g, gi) => (
         <div key={g.key} className={gi === 0 ? '' : 'mt-5'}>
           <div className={gi === 0 ? 'pb-2' : 'pt-3 pb-2 border-t border-brd'}>
             <p className="m-0 text-[12px] text-t3">{g.dayLabel}</p>
           </div>
+          {!recordsHidden && (
           <div className="relative">
             {/* Vertical rail behind the icon bubbles (centered on bubble column). */}
             <span
@@ -257,6 +259,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
               );
             })}
           </div>
+          )}
         </div>
       ))}
     </div>
