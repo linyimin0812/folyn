@@ -71,7 +71,8 @@
     "noResult": "Sin resultado",
     "duration": "Duración {{time}}",
     "logs": "Registros",
-    "emptyLogs": "Sin registros en esta ejecución"
+    "emptyLogs": "Sin registros en esta ejecución",
+    "runs": "{{count}} ejecuciones"
   },
   "reportSettings": {
     "title": "Ajustes de informes",

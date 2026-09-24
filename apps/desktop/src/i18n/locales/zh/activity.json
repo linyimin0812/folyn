@@ -71,7 +71,8 @@
     "noResult": "无结果",
     "duration": "用时 {{time}}",
     "logs": "采集日志",
-    "emptyLogs": "本次运行无日志"
+    "emptyLogs": "本次运行无日志",
+    "runs": "{{count}} 次运行"
   },
   "reportSettings": {
     "title": "报告设置",

@@ -71,7 +71,8 @@
     "noResult": "No result",
     "duration": "Duration {{time}}",
     "logs": "Logs",
-    "emptyLogs": "No logs for this run"
+    "emptyLogs": "No logs for this run",
+    "runs": "{{count}} runs"
   },
   "reportSettings": {
     "title": "Report settings",

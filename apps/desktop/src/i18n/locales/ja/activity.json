@@ -71,7 +71,8 @@
     "noResult": "結果なし",
     "duration": "所要時間 {{time}}",
     "logs": "収集ログ",
-    "emptyLogs": "この実行のログはありません"
+    "emptyLogs": "この実行のログはありません",
+    "runs": "{{count}} 回"
   },
   "reportSettings": {
     "title": "レポート設定",

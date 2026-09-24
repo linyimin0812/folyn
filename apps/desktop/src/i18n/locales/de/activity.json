@@ -71,7 +71,8 @@
     "noResult": "Kein Ergebnis",
     "duration": "Dauer {{time}}",
     "logs": "Protokolle",
-    "emptyLogs": "Keine Protokolle für diesen Lauf"
+    "emptyLogs": "Keine Protokolle für diesen Lauf",
+    "runs": "{{count}} Läufe"
   },
   "reportSettings": {
     "title": "Berichtseinstellungen",

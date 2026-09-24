@@ -71,7 +71,8 @@
     "noResult": "Sans résultat",
     "duration": "Durée {{time}}",
     "logs": "Journaux",
-    "emptyLogs": "Aucun journal pour cette exécution"
+    "emptyLogs": "Aucun journal pour cette exécution",
+    "runs": "{{count}} exécutions"
   },
   "reportSettings": {
     "title": "Réglages des rapports",
