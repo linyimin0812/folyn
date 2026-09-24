@@ -77,8 +77,7 @@
     "hint": "Click a node to make it the new center and inspect its relations",
     "centerInfo": "Center: {{name}} · {{count}} relations",
     "noRelations": "{{name}} has no relations yet",
-    "groupCount": "{{count}}",
-    "groupPanel": "{{label}} · {{count}}"
+    "groupCount": "{{count}}"
   },
   "entityType": {
     "person": "Person",

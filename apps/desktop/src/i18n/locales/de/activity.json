@@ -77,8 +77,7 @@
     "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",
     "centerInfo": "Zentrum: {{name}} · {{count}} Beziehungen",
     "noRelations": "{{name}} hat noch keine Beziehungen",
-    "groupCount": "{{count}}",
-    "groupPanel": "{{label}} · {{count}}"
+    "groupCount": "{{count}}"
   },
   "entityType": {
     "person": "Person",

@@ -77,8 +77,7 @@
     "hint": "点击图谱中的节点，切换中心并查看关联",
     "centerInfo": "当前中心：{{name}} · 共 {{count}} 个关联",
     "noRelations": "{{name}} 暂无关联记录",
-    "groupCount": "{{count}} 个",
-    "groupPanel": "{{label}} · {{count}} 个"
+    "groupCount": "{{count}} 个"
   },
   "entityType": {
     "person": "人物",

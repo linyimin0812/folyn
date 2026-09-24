@@ -77,8 +77,7 @@
     "hint": "ノードをクリックすると中心を切り替えて関連を表示します",
     "centerInfo": "中心：{{name}} · {{count}} 件の関連",
     "noRelations": "{{name}} には関連がありません",
-    "groupCount": "{{count}} 件",
-    "groupPanel": "{{label}} · {{count}} 件"
+    "groupCount": "{{count}} 件"
   },
   "entityType": {
     "person": "人物",

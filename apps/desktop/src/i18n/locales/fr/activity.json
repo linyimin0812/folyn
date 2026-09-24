@@ -77,8 +77,7 @@
     "hint": "Cliquez un nœud pour en faire le centre et voir ses relations",
     "centerInfo": "Centre : {{name}} · {{count}} relations",
     "noRelations": "{{name}} n'a pas encore de relations",
-    "groupCount": "{{count}}",
-    "groupPanel": "{{label}} · {{count}}"
+    "groupCount": "{{count}}"
   },
   "entityType": {
     "person": "Personne",
