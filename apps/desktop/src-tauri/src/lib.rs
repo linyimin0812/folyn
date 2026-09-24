@@ -1203,6 +1203,8 @@ pub fn run() {
             activity::activity_daily_digest_input,
             activity::activity_get_event_summary,
             activity::activity_set_event_summary,
+            activity::activity_insert_collect_run,
+            activity::activity_list_collect_runs,
             pet_api::get_pet_api_info,
             pet_api::open_external,
             activity_webhook::activity_webhook_info,

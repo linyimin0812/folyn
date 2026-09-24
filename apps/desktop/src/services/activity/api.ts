@@ -9,6 +9,8 @@
 
 import { invoke } from '@/services/tauriInvoke';
 import { currentVaultRoot } from './runtime';
+import { isCollectRunRecord, type CollectRunRecord } from '@/store/activityCollectorStore';
+import { storageClient } from '@/utils/storageClient';
 
 export { currentVaultRoot as resolveVaultRoot };
 
@@ -127,4 +129,46 @@ export async function setActivityEventSummary(
   summary: string,
 ): Promise<boolean> {
   return invoke<boolean>('activity_set_event_summary', { vaultRoot, eventId, summary });
+}
+
+// ── Collect-run history (采集记录 — activity db, replaces the old
+// storageClient-persisted collectHistory) ────────────────────────────────────
+
+/** Append one completed run to the activity db (Rust enforces the 100-row
+ *  and 50-log caps). No-op without an open vault. */
+export async function insertActivityCollectRun(record: CollectRunRecord): Promise<void> {
+  const vaultRoot = await currentVaultRoot();
+  if (!vaultRoot) return;
+  await invoke('activity_insert_collect_run', { vaultRoot, run: record });
+}
+
+/**
+ * All runs (≤ 100), newest-first. On the first call after the db migration,
+ * this also performs the one-time legacy migration: any `collectHistory`
+ * array still persisted in the storageClient 'activityCollectors' blob is
+ * validated, inserted oldest-first (so cap eviction keeps the newest), and
+ * the key is stripped from the blob — the removal is the run-at-most-once
+ * guard. On migration failure the key is left in place for a retry next
+ * launch (worst case: duplicate rows of debug-log history).
+ */
+export async function listActivityCollectRuns(): Promise<CollectRunRecord[]> {
+  const vaultRoot = await currentVaultRoot();
+  if (!vaultRoot) return [];
+  const blob = await storageClient.get<Record<string, unknown>>('activityCollectors');
+  if (blob && typeof blob === 'object' && 'collectHistory' in blob) {
+    try {
+      const legacy = Array.isArray(blob.collectHistory)
+        ? blob.collectHistory.filter(isCollectRunRecord)
+        : [];
+      legacy.sort((a, b) => a.startedAt - b.startedAt);
+      for (const r of legacy) {
+        await invoke('activity_insert_collect_run', { vaultRoot, run: r });
+      }
+      const { collectHistory: _migrated, ...rest } = blob;
+      await storageClient.set('activityCollectors', rest);
+    } catch (err) {
+      console.error('[activity] legacy collectHistory migration failed (will retry next launch):', err);
+    }
+  }
+  return invoke<CollectRunRecord[]>('activity_list_collect_runs', { vaultRoot });
 }

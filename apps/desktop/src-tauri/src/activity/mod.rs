@@ -6,6 +6,7 @@
 pub mod db;
 pub mod ingest;
 pub mod query;
+pub mod runs;
 
 use crate::errors::AppError;
 use ingest::{ActivityEventIn, PushOutcome};
@@ -288,4 +289,19 @@ pub fn activity_set_event_summary(
     with_conn(&vault_root, |conn| {
         query::set_event_summary(conn, &event_id, &summary)
     })
+}
+
+/// Append one collect-run history record (采集记录) — see `runs.rs`.
+#[tauri::command]
+pub fn activity_insert_collect_run(
+    vault_root: String,
+    run: runs::CollectRunIn,
+) -> Result<(), AppError> {
+    with_conn_mut(&vault_root, |conn| runs::insert_collect_run(conn, &run))?
+}
+
+/// All collect-run records (≤ 100), newest-first.
+#[tauri::command]
+pub fn activity_list_collect_runs(vault_root: String) -> Result<Vec<runs::CollectRunRow>, AppError> {
+    with_conn(&vault_root, runs::list_collect_runs)
 }

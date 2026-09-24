@@ -20,7 +20,7 @@
 
 import type { CollectorEvent } from '@folyn/extension-host';
 import { useCollectorRegistryStore } from './registry';
-import { getCollectorSettings, useActivityCollectorStore } from '@/store/activityCollectorStore';
+import { getCollectorSettings, useActivityCollectorStore, type CollectRunRecord } from '@/store/activityCollectorStore';
 
 // ── Pure helpers (exported for tests) ───────────────────────────────────────
 
@@ -200,8 +200,10 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
     return null;
   } finally {
     store.getState().setCollectProgress(collectorId, null);
-    // null outcome = skipped OR failed — recorded as 无结果.
-    store.getState().appendCollectRun({
+    // null outcome = skipped OR failed — recorded as 无结果. Fire-and-forget:
+    // the record goes to the activity db (Rust caps), then the store's
+    // transient list refreshes from the db so CollectLogView stays reactive.
+    const record: CollectRunRecord = {
       collectorId,
       collectorName: reg.extensionName ?? collectorId,
       startedAt,
@@ -210,7 +212,17 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       deduped: pushed?.deduped ?? 0,
       outcome: pushed ? 'ok' : 'no-result',
       logs,
-    });
+    };
+    void (async () => {
+      try {
+        // Lazy import: api.ts imports this module (currentVaultRoot).
+        const { insertActivityCollectRun, listActivityCollectRuns } = await import('./api');
+        await insertActivityCollectRun(record);
+        useActivityCollectorStore.getState().setCollectHistory(await listActivityCollectRuns());
+      } catch (err) {
+        console.error('[activity] collect run history write failed:', err);
+      }
+    })();
   }
 }
 

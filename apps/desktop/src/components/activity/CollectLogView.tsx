@@ -1,14 +1,15 @@
 /**
  * 采集记录 view: past collection runs (scheduled polls and manual collects)
- * recorded by runCollect into the persisted `collectHistory`. Each row shows
- * collector name, time, duration, accepted/deduped counts and an expandable
- * log section fed by the collector's onProgress messages.
+ * recorded by runCollect into the activity db (`collect_runs` table). Each
+ * row shows collector name, time, duration, accepted/deduped counts and an
+ * expandable log section fed by the collector's onProgress messages.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useActivityCollectorStore, type CollectRunRecord } from '@/store/activityCollectorStore';
+import { listActivityCollectRuns } from '@/services/activity/api';
 
 function RunRow({ run, expanded, onToggle }: {
   run: CollectRunRecord;
@@ -85,6 +86,21 @@ function RunRow({ run, expanded, onToggle }: {
 export function CollectLogView() {
   const { t, i18n } = useTranslation();
   const history = useActivityCollectorStore((s) => s.collectHistory);
+  const setCollectHistory = useActivityCollectorStore((s) => s.setCollectHistory);
+  // Initial load from the activity db (also runs the one-time legacy
+  // localStorage→db migration — see listActivityCollectRuns). Later runs
+  // refresh the store from runCollect's finally.
+  useEffect(() => {
+    let cancelled = false;
+    void listActivityCollectRuns()
+      .then((runs) => {
+        if (!cancelled) setCollectHistory(runs);
+      })
+      .catch((err) => console.error('[activity] collect history load failed:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [setCollectHistory]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // Collapsed collector groups; empty = all groups expanded (default).
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());

@@ -22,7 +22,6 @@ export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
   'pinnedMetrics',
   'reportHashes',
   'reportConfig',
-  'collectHistory',
 ] as const;
 
 /** Per-collector user preferences. Missing record = all defaults (on). */
@@ -78,9 +77,6 @@ export interface CollectRunRecord {
   logs: string[];
 }
 
-/** Cap the persisted history (design: keep the last 100 runs). */
-const MAX_COLLECT_HISTORY = 100;
-
 export interface ActivityCollectorState {
   /** Privacy switch (design §8): keep the events' `raw` payload. */
   keepRaw: boolean;
@@ -109,7 +105,9 @@ export interface ActivityCollectorState {
    *  ends). Locale-neutral strings from the collector; the UI prefixes the
    *  localized label. */
   collectProgress: Record<string, string>;
-  /** Past collection runs (most recent first), persisted across restarts. */
+  /** Collection-run history (most recent first), loaded from the activity
+   *  SQLite db (services/activity api) — NOT persisted in this slice; the
+   *  db owns the 100-run cap. */
   collectHistory: CollectRunRecord[];
 
   setKeepRaw: (v: boolean) => void;
@@ -132,8 +130,9 @@ export interface ActivityCollectorState {
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
   /** Runtime-only — null clears the entry (runCollect's finally). */
   setCollectProgress: (collectorId: string, message: string | null) => void;
-  /** Record one completed run (called from runCollect's finally). */
-  appendCollectRun: (record: CollectRunRecord) => void;
+  /** Replace the in-memory history from the activity db (runCollect's
+   *  finally + CollectLogView's mount load). */
+  setCollectHistory: (runs: CollectRunRecord[]) => void;
 
   hydrate: (blob: Record<string, unknown>) => void;
 }
@@ -163,7 +162,7 @@ export function parseReportConfig(blob: unknown): ReportConfig {
   };
 }
 
-/** Type-guard a persisted collectHistory entry. */
+/** Type-guard a collect-run record (legacy storageClient blob → db migration). */
 export function isCollectRunRecord(v: unknown): v is CollectRunRecord {
   if (!v || typeof v !== 'object') return false;
   const r = v as Record<string, unknown>;
@@ -243,9 +242,8 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     set({ collectProgress: next });
   },
 
-  appendCollectRun: (record) => {
-    set({ collectHistory: [record, ...get().collectHistory].slice(0, MAX_COLLECT_HISTORY) });
-    persist();
+  setCollectHistory: (runs) => {
+    set({ collectHistory: runs });
   },
 
   hydrate: (blob) => {
@@ -294,9 +292,9 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
       }
       patch.configs = configs;
     }
-    if (Array.isArray(blob.collectHistory)) {
-      patch.collectHistory = blob.collectHistory.filter(isCollectRunRecord).slice(0, MAX_COLLECT_HISTORY);
-    }
+    // collectHistory is intentionally NOT hydrated here — it lives in the
+    // activity db now (loaded by CollectLogView / runCollect via
+    // services/activity/api.ts); stale blobs may still carry the key.
     if (Object.keys(patch).length > 0) set(patch);
   },
 }));

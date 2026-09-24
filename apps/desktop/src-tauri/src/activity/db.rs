@@ -135,6 +135,18 @@ pub fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
           collector_id TEXT PRIMARY KEY,
           cursor       TEXT,
           updated_at   INTEGER
+        );
+
+        CREATE TABLE IF NOT EXISTS collect_runs (
+          id             INTEGER PRIMARY KEY AUTOINCREMENT,
+          collector_id   TEXT NOT NULL,
+          collector_name TEXT NOT NULL,
+          started_at     INTEGER NOT NULL,
+          finished_at    INTEGER,
+          accepted       INTEGER NOT NULL DEFAULT 0,
+          deduped        INTEGER NOT NULL DEFAULT 0,
+          outcome        TEXT NOT NULL,
+          logs           TEXT NOT NULL
         );",
     )
 }

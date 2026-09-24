@@ -3,6 +3,8 @@ import { storageClient } from '@/utils/storageClient';
 import { markSettingsHydrated } from './settingsPersistence';
 import {
   DEFAULT_REPORT_CONFIG,
+  PERSIST_KEYS_ACTIVITY_COLLECTORS,
+  isCollectRunRecord,
   parseReportConfig,
   useActivityCollectorStore,
   type CollectRunRecord,
@@ -72,33 +74,27 @@ describe('reportConfig hydrate round-trip', () => {
   });
 });
 
-describe('collectHistory', () => {
-  it('appendCollectRun prepends and caps at 100', () => {
-    const { appendCollectRun } = useActivityCollectorStore.getState();
-    for (let i = 0; i < 105; i++) appendCollectRun(run({ startedAt: i }));
-    const h = useActivityCollectorStore.getState().collectHistory;
-    expect(h).toHaveLength(100);
-    expect(h[0].startedAt).toBe(104); // most recent first
-    expect(h[99].startedAt).toBe(5); // oldest dropped
+describe('collectHistory (transient — owned by the activity db, not the slice)', () => {
+  it('setCollectHistory replaces the list; collectHistory is not persisted', () => {
+    expect(PERSIST_KEYS_ACTIVITY_COLLECTORS).not.toContain('collectHistory');
+    const { setCollectHistory } = useActivityCollectorStore.getState();
+    setCollectHistory([run(), run({ outcome: 'no-result', accepted: 0, deduped: 0, logs: [] })]);
+    expect(useActivityCollectorStore.getState().collectHistory).toEqual([
+      run(),
+      run({ outcome: 'no-result', accepted: 0, deduped: 0, logs: [] }),
+    ]);
   });
 
-  it('hydrate: round-trips valid records, drops malformed entries, missing → []', () => {
-    const { appendCollectRun, hydrate } = useActivityCollectorStore.getState();
-    appendCollectRun(run());
-    appendCollectRun(run({ outcome: 'no-result', accepted: 0, deduped: 0, logs: [] }));
-    const blob = JSON.parse(
-      JSON.stringify(useActivityCollectorStore.getState().collectHistory),
-    ) as unknown[];
-
+  it('hydrate ignores a stale persisted collectHistory (db owns it now)', () => {
     useActivityCollectorStore.setState({ collectHistory: [] });
-    hydrate({ collectHistory: [...blob, { collectorId: 'bad' }, 'nope'] });
-    expect(useActivityCollectorStore.getState().collectHistory).toEqual([
-      run({ outcome: 'no-result', accepted: 0, deduped: 0, logs: [] }),
-      run(),
-    ]);
-
-    useActivityCollectorStore.setState({ collectHistory: [] });
-    hydrate({});
+    useActivityCollectorStore.getState().hydrate({ collectHistory: [run()] });
     expect(useActivityCollectorStore.getState().collectHistory).toEqual([]);
+  });
+
+  it('isCollectRunRecord guards the legacy → db migration input', () => {
+    expect(isCollectRunRecord(run())).toBe(true);
+    expect(isCollectRunRecord({ collectorId: 'bad' })).toBe(false);
+    expect(isCollectRunRecord('nope')).toBe(false);
+    expect(isCollectRunRecord(run({ logs: ['ok', 1 as unknown as string] }))).toBe(false);
   });
 });
