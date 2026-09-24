@@ -338,18 +338,37 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
                 </marker>
               </defs>
-              {nodeLayouts.map(({ di, startX, startY, endX, endY }) => (
-                <g key={di.entityType}>
-                  <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="var(--brd2)" strokeWidth="1" markerEnd={`url(#${arrowId})`} />
-                  <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 8} textAnchor="middle" fontSize="11" fill="var(--t3)" stroke="var(--bg)" strokeWidth="5" paintOrder="stroke">
-                    {di.items[0]?.relation ?? ''}
-                  </text>
-                </g>
-              ))}
+              {nodeLayouts.map(({ di, startX, startY, endX, endY }) => {
+                const relation = di.items[0]?.relation ?? '';
+                // Quadratic bezier: control point = edge midpoint pushed
+                // perpendicular (+90° rotation of the direction) by 12% of
+                // the edge length; endpoints unchanged so the arrow marker
+                // still lands on the node border.
+                const ex = endX - startX;
+                const ey = endY - startY;
+                const cxp = (startX + endX) / 2 - ey * 0.12;
+                const cyp = (startY + endY) / 2 + ex * 0.12;
+                // Bezier t=0.5 point: 0.25·P0 + 0.5·C + 0.25·P1
+                const mx = 0.25 * startX + 0.5 * cxp + 0.25 * endX;
+                const my = 0.25 * startY + 0.5 * cyp + 0.25 * endY;
+                return (
+                  <g key={di.entityType}>
+                    <path d={`M${startX} ${startY} Q${cxp} ${cyp} ${endX} ${endY}`} fill="none" stroke="var(--brd2)" strokeWidth="1" markerEnd={`url(#${arrowId})`} />
+                    {relation !== '' && (
+                      <g transform={`translate(${mx} ${my})`}>
+                        <rect x={-(relation.length * 6 + 10) / 2} y={-8} width={relation.length * 6 + 10} height={16} rx={5} fill="var(--panel)" stroke="var(--brd2)" strokeWidth="1" />
+                        <text textAnchor="middle" dominantBaseline="central" fontSize="10" fill="var(--t3)">
+                          {relation}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
               {fans.map(({ nl, members }) =>
                 members.map(({ n, x, y }) => (
                   // Aggregate → member: covered by both HTML cards at the ends.
-                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd2)" strokeWidth="1" />
+                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1" strokeDasharray="4 4" />
                 )),
               )}
             </svg>
