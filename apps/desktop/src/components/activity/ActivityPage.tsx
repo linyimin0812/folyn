@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, List, Network, Plug, RefreshCw, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
+import { Activity, List, Loader2, Network, Plug, RefreshCw, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -309,7 +309,17 @@ export function ActivityPage() {
       </div>
 
       {view === 'main' ? (
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      <div className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
+        {/* Refetch-in-progress overlay: grays the content, keeps header buttons
+            visible (but dimmed) — same flag that spins the refresh icon. */}
+        {eventsLoading && (
+          <div
+            className="absolute inset-0 z-10 bg-black/20 flex items-center justify-center"
+            aria-label={t('common:common.loading')}
+          >
+            <Loader2 size={28} className="animate-spin text-acc" />
+          </div>
+        )}
         {/* Fixed header block — identical for both tabs, so switching tabs never
             re-layouts it. Full-width so the divider spans the pane; inner content
             keeps the 1200px alignment. */}
