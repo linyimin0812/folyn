@@ -155,8 +155,8 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
               </button>
             </div>
             <div
-              className={`grid transition-[grid-template-rows] duration-200 ease-out ${
-                collapsed ? 'grid-template-rows-[0fr]' : 'grid-template-rows-[1fr]'
+              className={`grid [transition-property:grid-template-rows] duration-200 ease-out ${
+                collapsed ? '[grid-template-rows:0fr]' : '[grid-template-rows:1fr]'
               }`}
             >
               <div className="overflow-hidden min-h-0">
@@ -209,8 +209,8 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
 
                   {/* ponytail: same grid-rows collapse as the day groups / metrics summary */}
                   <div
-                    className={`grid transition-[grid-template-rows] duration-200 ease-out ${
-                      isOpen ? 'grid-template-rows-[1fr]' : 'grid-template-rows-[0fr]'
+                    className={`grid [transition-property:grid-template-rows] duration-200 ease-out ${
+                      isOpen ? '[grid-template-rows:1fr]' : '[grid-template-rows:0fr]'
                     }`}
                   >
                     <div className="overflow-hidden min-h-0">

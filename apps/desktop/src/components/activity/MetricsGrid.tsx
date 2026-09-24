@@ -74,8 +74,8 @@ export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridPr
       </button>
       {/* ponytail: CSS grid-rows collapse — Safari 16+/Chrome 107+ (WKWebView fine); fall back to conditional unmount if an old WKWebView ever needs it */}
       <div
-        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
-          summaryCollapsed ? 'grid-template-rows-[0fr]' : 'grid-template-rows-[1fr]'
+        className={`grid [transition-property:grid-template-rows] duration-200 ease-out ${
+          summaryCollapsed ? '[grid-template-rows:0fr]' : '[grid-template-rows:1fr]'
         }`}
       >
         <div className="overflow-hidden min-h-0">
