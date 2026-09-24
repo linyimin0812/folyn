@@ -42,6 +42,35 @@ fn row_to_event(row: &rusqlite::Row) -> rusqlite::Result<EventRow> {
     })
 }
 
+/// Append the source include-list filter to a dynamic SQL builder.
+/// None = no filtering (backward compatible); Some(empty) = `AND 1=0` (every
+/// collector disabled → nothing matches); Some(list) = `AND <col> IN (…)`.
+/// Rationale: disabling a collector hides its already-collected content, not
+/// just future collection.
+fn push_source_filter(
+    sql: &mut String,
+    bound: &mut Vec<Box<dyn rusqlite::ToSql>>,
+    sources: Option<&[String]>,
+    col: &str,
+) {
+    let list = match sources {
+        None => return,
+        Some(l) => l,
+    };
+    if list.is_empty() {
+        sql.push_str(" AND 1=0");
+        return;
+    }
+    sql.push_str(" AND ");
+    sql.push_str(col);
+    sql.push_str(" IN (");
+    for (i, s) in list.iter().enumerate() {
+        sql.push_str(if i == 0 { "?" } else { ",?" });
+        bound.push(Box::new(s.clone()));
+    }
+    sql.push(')');
+}
+
 pub fn list_events(
     conn: &Connection,
     from: Option<i64>,
@@ -50,6 +79,7 @@ pub fn list_events(
     source: Option<&str>,
     actor_entity_id: Option<&str>,
     limit: Option<i64>,
+    sources: Option<&[String]>,
 ) -> Vec<EventRow> {
     let mut sql = format!("SELECT {EVENT_COLS} FROM activity_events WHERE 1=1");
     let mut bound: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -77,6 +107,7 @@ pub fn list_events(
         }
         sql.push(')');
     }
+    push_source_filter(&mut sql, &mut bound, sources, "source");
     sql.push_str(" ORDER BY occurred_at DESC LIMIT ?");
     bound.push(Box::new(limit.unwrap_or(500)));
     let mut stmt = match conn.prepare(&sql) {
@@ -102,18 +133,36 @@ pub struct MetricRow {
     pub total_minutes: Option<f64>,
 }
 
-pub fn aggregate_metrics(conn: &Connection, from: Option<i64>, to: Option<i64>) -> Vec<MetricRow> {
-    let sql = "SELECT type, COUNT(*),
+pub fn aggregate_metrics(
+    conn: &Connection,
+    from: Option<i64>,
+    to: Option<i64>,
+    sources: Option<&[String]>,
+) -> Vec<MetricRow> {
+    let mut sql = String::from(
+        "SELECT type, COUNT(*),
         CASE WHEN SUM(json_extract(payload_json, '$.minutes')) IS NULL THEN NULL
              ELSE CAST(SUM(json_extract(payload_json, '$.minutes')) AS REAL) END
-        FROM activity_events WHERE (?1 IS NULL OR occurred_at >= ?1) AND (?2 IS NULL OR occurred_at <= ?2)
-        GROUP BY type ORDER BY type";
-    let mut stmt = match conn.prepare(sql) {
+        FROM activity_events WHERE 1=1",
+    );
+    let mut bound: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+    if let Some(f) = from {
+        sql.push_str(" AND occurred_at >= ?");
+        bound.push(Box::new(f));
+    }
+    if let Some(t) = to {
+        sql.push_str(" AND occurred_at <= ?");
+        bound.push(Box::new(t));
+    }
+    push_source_filter(&mut sql, &mut bound, sources, "source");
+    sql.push_str(" GROUP BY type ORDER BY type");
+    let mut stmt = match conn.prepare(&sql) {
         Ok(s) => s,
         Err(_) => return vec![],
     };
+    let refs: Vec<&dyn rusqlite::ToSql> = bound.iter().map(|p| p.as_ref()).collect();
     let out: Vec<MetricRow> = stmt
-        .query_map(params![from, to], |row| {
+        .query_map(refs.as_slice(), |row| {
             Ok(MetricRow {
                 event_type: row.get(0)?,
                 count: row.get(1)?,
@@ -196,17 +245,48 @@ pub struct NeighborRow {
     pub score: f64,
 }
 
-pub fn get_entity_neighbors(conn: &Connection, entity_id: &str, now_ms: i64) -> Vec<NeighborRow> {
-    let sql = "SELECT CASE WHEN r.from_entity_id = ?1 THEN r.to_entity_id ELSE r.from_entity_id END AS neighbor_id,
+pub fn get_entity_neighbors(
+    conn: &Connection,
+    entity_id: &str,
+    now_ms: i64,
+    sources: Option<&[String]>,
+) -> Vec<NeighborRow> {
+    // Source include-list: a relation edge only shows when its backing event's
+    // collector is enabled (same hide-on-disable rule as the other read paths).
+    // The EXISTS subquery filters relations; `1=0` (all disabled) matches none.
+    let mut sql = String::from(
+        "SELECT CASE WHEN r.from_entity_id = ? THEN r.to_entity_id ELSE r.from_entity_id END AS neighbor_id,
         r.relation_type, COUNT(*) AS event_count, MAX(r.occurred_at) AS last_at
-        FROM relations r WHERE r.from_entity_id = ?1 OR r.to_entity_id = ?1
-        GROUP BY neighbor_id, r.relation_type";
-    let mut stmt = match conn.prepare(sql) {
+        FROM relations r WHERE (r.from_entity_id = ? OR r.to_entity_id = ?)",
+    );
+    let entity_id = entity_id.to_string();
+    let mut bound: Vec<Box<dyn rusqlite::ToSql>> = vec![
+        Box::new(entity_id.clone()),
+        Box::new(entity_id.clone()),
+        Box::new(entity_id),
+    ];
+    if let Some(list) = sources {
+        if list.is_empty() {
+            sql.push_str(" AND 1=0");
+        } else {
+            sql.push_str(
+                " AND EXISTS (SELECT 1 FROM activity_events e WHERE e.id = r.activity_event_id AND e.source IN (",
+            );
+            for (i, s) in list.iter().enumerate() {
+                sql.push_str(if i == 0 { "?" } else { ",?" });
+                bound.push(Box::new(s.clone()));
+            }
+            sql.push_str("))");
+        }
+    }
+    sql.push_str(" GROUP BY neighbor_id, r.relation_type");
+    let mut stmt = match conn.prepare(&sql) {
         Ok(s) => s,
         Err(_) => return vec![],
     };
+    let refs: Vec<&dyn rusqlite::ToSql> = bound.iter().map(|p| p.as_ref()).collect();
     let mut out: Vec<NeighborRow> = stmt
-        .query_map(params![entity_id], |row| {
+        .query_map(refs.as_slice(), |row| {
             Ok(NeighborRow {
                 neighbor_id: row.get(0)?,
                 relation: row.get(1)?,
@@ -242,10 +322,14 @@ fn day_to_epoch_ms(date: &str) -> Option<i64> {
     Some(d.midnight().assume_utc().unix_timestamp() * 1000)
 }
 
-pub fn daily_digest_input(conn: &Connection, date: &str) -> Option<DigestInput> {
+pub fn daily_digest_input(
+    conn: &Connection,
+    date: &str,
+    sources: Option<&[String]>,
+) -> Option<DigestInput> {
     let start = day_to_epoch_ms(date)?;
     let end = start + 86_400_000 - 1;
-    let events = list_events(conn, Some(start), Some(end), None, None, None, None);
+    let events = list_events(conn, Some(start), Some(end), None, None, None, None, sources);
     let ongoing_tasks: Vec<EntityRow> = {
         let mut stmt = conn
             .prepare(
@@ -315,19 +399,60 @@ mod tests {
     fn list_and_filter() {
         let mut conn = test_conn();
         seed(&mut conn);
-        assert_eq!(list_events(&conn, None, None, None, None, None, None).len(), 3);
+        assert_eq!(
+            list_events(&conn, None, None, None, None, None, None, None).len(),
+            3
+        );
         let types = vec!["commit".to_string()];
-        assert_eq!(list_events(&conn, None, None, Some(&types), None, None, None).len(), 2);
-        assert_eq!(list_events(&conn, Some(2500), None, None, None, None, None).len(), 1);
-        let all = list_events(&conn, None, None, None, None, None, None);
+        assert_eq!(
+            list_events(&conn, None, None, Some(&types), None, None, None, None).len(),
+            2
+        );
+        assert_eq!(
+            list_events(&conn, Some(2500), None, None, None, None, None, None).len(),
+            1
+        );
+        let all = list_events(&conn, None, None, None, None, None, None, None);
         assert!(all[0].occurred_at >= all[1].occurred_at);
+    }
+
+    #[test]
+    fn source_include_list_filters_reads() {
+        let mut conn = test_conn();
+        seed(&mut conn);
+        let git = vec!["git".to_string()];
+        // Events: include-list keeps only git's 2 commits.
+        assert_eq!(
+            list_events(&conn, None, None, None, None, None, None, Some(&git)).len(),
+            2
+        );
+        // Empty include-list (all collectors disabled) matches nothing.
+        let none: Vec<String> = vec![];
+        assert_eq!(
+            list_events(&conn, None, None, None, None, None, None, Some(&none)).len(),
+            0
+        );
+        // Metrics follow the same rule.
+        let rows = aggregate_metrics(&conn, None, None, Some(&git));
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].event_type, "commit");
+        assert!(aggregate_metrics(&conn, None, None, Some(&none)).is_empty());
+        // Neighbors: relation edges backed by a filtered-out event disappear.
+        let now = 86_400_000 * 10;
+        let ns = get_entity_neighbors(&conn, "person:me", now, Some(&git));
+        assert_eq!(ns.len(), 1);
+        assert_eq!(ns[0].neighbor_id, "repository:r1");
+        assert!(get_entity_neighbors(&conn, "person:me", now, Some(&none)).is_empty());
+        // Digest events filtered too (ongoing tasks are not source-bound).
+        let input = daily_digest_input(&conn, "1970-01-01", Some(&git)).unwrap();
+        assert_eq!(input.events.len(), 2);
     }
 
     #[test]
     fn aggregate_counts_and_minutes() {
         let mut conn = test_conn();
         seed(&mut conn);
-        let rows = aggregate_metrics(&conn, None, None);
+        let rows = aggregate_metrics(&conn, None, None, None);
         let commit = rows.iter().find(|r| r.event_type == "commit").unwrap();
         let meeting = rows.iter().find(|r| r.event_type == "meeting").unwrap();
         assert_eq!(commit.count, 2);
@@ -341,7 +466,7 @@ mod tests {
         let mut conn = test_conn();
         seed(&mut conn);
         let now = 86_400_000 * 10; // 10 days after the events
-        let ns = get_entity_neighbors(&conn, "person:me", now);
+        let ns = get_entity_neighbors(&conn, "person:me", now, None);
         assert_eq!(ns.len(), 2);
         // repository: 2 events × decay > meeting: 1 event × decay
         assert_eq!(ns[0].neighbor_id, "repository:r1");
@@ -363,12 +488,12 @@ mod tests {
         .unwrap();
         push_events(&mut conn, "aone", None, &[task]);
         // Window covering epoch day 0: both the event and the ongoing task hit.
-        let input = daily_digest_input(&conn, "1970-01-01").unwrap();
+        let input = daily_digest_input(&conn, "1970-01-01", None).unwrap();
         assert_eq!(input.events.len(), 1);
         assert_eq!(input.ongoing_tasks.len(), 1);
         assert_eq!(input.ongoing_tasks[0].id, "task:T1");
         // A day outside the schedule window: no events, no ongoing tasks.
-        let empty = daily_digest_input(&conn, "2030-01-01").unwrap();
+        let empty = daily_digest_input(&conn, "2030-01-01", None).unwrap();
         assert!(empty.events.is_empty());
         assert!(empty.ongoing_tasks.is_empty());
     }

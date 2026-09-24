@@ -44,7 +44,7 @@ import { collectNow } from '@/services/activity/runtime';
 import { getCollectorSettings, useActivityCollectorStore } from '@/store/activityCollectorStore';
 import { CollectorsSettings } from '@/components/settings/CollectorsSettings';
 import { ReportSettingsView } from './ReportSettingsView';
-import { useAsync, useVaultRoot } from './useActivityData';
+import { useAsync, useEnabledSources, useVaultRoot } from './useActivityData';
 import { PeriodPicker } from './PeriodPicker';
 import { OngoingTasks } from './OngoingTasks';
 import { MetricsGrid } from './MetricsGrid';
@@ -135,28 +135,33 @@ export function ActivityPage() {
     to: endOfDay(period.end).getTime(),
   };
 
+  // Enabled-source include-list: disabling a collector hides its events/
+  // metrics/digest. `sourcesKey` re-fetches the three reads on toggle.
+  const enabledSources = useEnabledSources();
+  const sourcesKey = enabledSources.join(',');
+
   const { data: events, loading: eventsLoading } = useAsync(
     () =>
       vaultRoot
-        ? listActivityEvents(vaultRoot, range, typeFilter ? [typeFilter] : undefined)
+        ? listActivityEvents(vaultRoot, range, typeFilter ? [typeFilter] : undefined, enabledSources)
         : Promise.resolve([] as Awaited<ReturnType<typeof listActivityEvents>>),
-    [vaultRoot, periodKey, typeFilter, refreshKey],
+    [vaultRoot, periodKey, typeFilter, refreshKey, sourcesKey],
   );
   const { data: metricRows } = useAsync(
     () =>
       vaultRoot
-        ? aggregateActivityMetrics(vaultRoot, range)
+        ? aggregateActivityMetrics(vaultRoot, range, enabledSources)
         : Promise.resolve([] as Awaited<ReturnType<typeof aggregateActivityMetrics>>),
-    [vaultRoot, periodKey, refreshKey],
+    [vaultRoot, periodKey, refreshKey, sourcesKey],
   );
   // Ongoing tasks reflect "now" — only fetched while on the current period.
   const todayKey = dateKey(today);
   const { data: digest } = useAsync(
     () =>
       vaultRoot && current
-        ? getActivityDailyDigestInput(vaultRoot, todayKey)
+        ? getActivityDailyDigestInput(vaultRoot, todayKey, enabledSources)
         : Promise.resolve(null as Awaited<ReturnType<typeof getActivityDailyDigestInput>>),
-    [vaultRoot, current ? '1' : '0', todayKey, refreshKey],
+    [vaultRoot, current ? '1' : '0', todayKey, refreshKey, sourcesKey],
   );
 
   const showOverlay = useMinimumDuration(eventsLoading, 500);

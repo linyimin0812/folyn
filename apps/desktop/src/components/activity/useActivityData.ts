@@ -4,9 +4,11 @@
  * explicit deps so a new period/vault refetches.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useVaultStore } from '@/store/vaultStore';
 import { resolveVaultRoot } from '@/services/activity/api';
+import { useCollectorRegistryStore } from '@/services/activity/registry';
+import { getCollectorSettings, useActivityCollectorStore } from '@/store/activityCollectorStore';
 
 export { useAsync } from '@/hooks/useAsync';
 
@@ -24,4 +26,21 @@ export function useVaultRoot(): string {
     };
   }, [currentVault]);
   return root;
+}
+
+/** Collector ids whose events stay visible: registered collectors the user
+ *  hasn't disabled. Feeds the read paths' `sources` include-list — disabling a
+ *  collector hides its already-collected events, metrics, digest and graph
+ *  edges. Sources missing from the registry (uninstalled collectors) are
+ *  hidden as well; empty array = show nothing from any collector. */
+export function useEnabledSources(): string[] {
+  const registered = useCollectorRegistryStore((s) => s.collectors);
+  const settings = useActivityCollectorStore((s) => s.collectors);
+  return useMemo(
+    () =>
+      registered
+        .filter((c) => getCollectorSettings({ collectors: settings }, c.collectorId).enabled)
+        .map((c) => c.collectorId),
+    [registered, settings],
+  );
 }

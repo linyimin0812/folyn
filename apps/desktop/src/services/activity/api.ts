@@ -52,27 +52,33 @@ export interface ActivityDigestInput {
   ongoingTasks: ActivityEntityRow[];
 }
 
+/** `sources` = include-list of collector ids (undefined = no filtering,
+ *  [] = match nothing). Disabled collectors hide their existing events. */
 export async function listActivityEvents(
   vaultRoot: string,
   range: { from: number; to: number },
   types?: string[],
+  sources?: string[],
 ): Promise<ActivityEventRow[]> {
   return invoke<ActivityEventRow[]>('activity_list_events', {
     vaultRoot,
     from: range.from,
     to: range.to,
     types,
+    sources,
   });
 }
 
 export async function aggregateActivityMetrics(
   vaultRoot: string,
   range: { from: number; to: number },
+  sources?: string[],
 ): Promise<ActivityMetricRow[]> {
   return invoke<ActivityMetricRow[]>('activity_aggregate_metrics', {
     vaultRoot,
     from: range.from,
     to: range.to,
+    sources,
   });
 }
 
@@ -93,20 +99,24 @@ export async function listActivityEntities(
 export async function getActivityEntityNeighbors(
   vaultRoot: string,
   entityId: string,
+  sources?: string[],
 ): Promise<ActivityNeighborRow[]> {
   return invoke<ActivityNeighborRow[]>('activity_get_entity_neighbors', {
     vaultRoot,
     entityId,
+    sources,
   });
 }
 
 export async function getActivityDailyDigestInput(
   vaultRoot: string,
   dateKey: string,
+  sources?: string[],
 ): Promise<ActivityDigestInput | null> {
   return invoke<ActivityDigestInput | null>('activity_daily_digest_input', {
     vaultRoot,
     date: dateKey,
+    sources,
   });
 }
 

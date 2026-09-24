@@ -204,6 +204,7 @@ pub fn activity_list_events(
     source: Option<String>,
     actor_entity_id: Option<String>,
     limit: Option<i64>,
+    sources: Option<Vec<String>>,
 ) -> Result<Vec<EventRow>, AppError> {
     with_conn(&vault_root, |conn| {
         query::list_events(
@@ -214,17 +215,23 @@ pub fn activity_list_events(
             source.as_deref(),
             actor_entity_id.as_deref(),
             limit,
+            sources.as_deref(),
         )
     })
 }
 
+/// `sources`: include-list of collector ids (None = no filtering; Some(empty)
+/// = match nothing). Disabled collectors hide their already-collected content.
 #[tauri::command]
 pub fn activity_aggregate_metrics(
     vault_root: String,
     from: Option<i64>,
     to: Option<i64>,
+    sources: Option<Vec<String>>,
 ) -> Result<Vec<MetricRow>, AppError> {
-    with_conn(&vault_root, |conn| query::aggregate_metrics(conn, from, to))
+    with_conn(&vault_root, |conn| {
+        query::aggregate_metrics(conn, from, to, sources.as_deref())
+    })
 }
 
 #[tauri::command]
@@ -243,16 +250,28 @@ pub fn activity_get_entity(vault_root: String, id: String) -> Result<Option<Enti
     with_conn(&vault_root, |conn| query::get_entity(conn, &id))
 }
 
+/// `sources` semantics as on `activity_aggregate_metrics`.
 #[tauri::command]
-pub fn activity_get_entity_neighbors(vault_root: String, entity_id: String) -> Result<Vec<NeighborRow>, AppError> {
+pub fn activity_get_entity_neighbors(
+    vault_root: String,
+    entity_id: String,
+    sources: Option<Vec<String>>,
+) -> Result<Vec<NeighborRow>, AppError> {
     with_conn(&vault_root, |conn| {
-        query::get_entity_neighbors(conn, &entity_id, now_ms())
+        query::get_entity_neighbors(conn, &entity_id, now_ms(), sources.as_deref())
     })
 }
 
+/// `sources` semantics as on `activity_aggregate_metrics`.
 #[tauri::command]
-pub fn activity_daily_digest_input(vault_root: String, date: String) -> Result<Option<DigestInput>, AppError> {
-    with_conn(&vault_root, |conn| query::daily_digest_input(conn, &date))
+pub fn activity_daily_digest_input(
+    vault_root: String,
+    date: String,
+    sources: Option<Vec<String>>,
+) -> Result<Option<DigestInput>, AppError> {
+    with_conn(&vault_root, |conn| {
+        query::daily_digest_input(conn, &date, sources.as_deref())
+    })
 }
 
 #[tauri::command]

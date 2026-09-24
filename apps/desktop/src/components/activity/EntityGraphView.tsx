@@ -18,7 +18,7 @@ import {
 } from '@/services/activity/api';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
 import { LucideNameIcon } from '@/components/icons/LucideNameIcon';
-import { useAsync } from './useActivityData';
+import { useAsync, useEnabledSources } from './useActivityData';
 import { ACTIVITY_PALETTE, groupNeighborsByType, paletteOf } from './display';
 
 const NODE_W = 148;
@@ -132,12 +132,17 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   const centerId = history[history.length - 1] ?? null;
 
+  // Edges from disabled collectors are hidden (same include-list as the
+  // timeline/metrics reads); toggling a collector refetches the neighbors.
+  const enabledSources = useEnabledSources();
+  const sourcesKey = enabledSources.join(',');
+
   const { data: neighbors } = useAsync(
     () =>
       vaultRoot && centerId
-        ? getActivityEntityNeighbors(vaultRoot, centerId)
+        ? getActivityEntityNeighbors(vaultRoot, centerId, enabledSources)
         : Promise.resolve([] as ActivityNeighborRow[]),
-    [vaultRoot, centerId],
+    [vaultRoot, centerId, sourcesKey],
   );
 
   const typeLabelOf = (typeId: string): string => {
