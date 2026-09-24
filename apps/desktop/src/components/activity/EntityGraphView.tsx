@@ -35,26 +35,6 @@ function borderDistance(ux: number, uy: number, width: number, height: number): 
   return Math.min(width / 2 / Math.abs(ux), height / 2 / Math.abs(uy));
 }
 
-// Quadratic bezier point at t (standard eval).
-function qAt(t: number, x0: number, y0: number, cx: number, cy: number, x1: number, y1: number): [number, number] {
-  const u = 1 - t;
-  return [u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1];
-}
-
-// ponytail: bezier length via 16-segment polyline — no closed form exists,
-// and px-accurate is all the label-gap t conversion needs.
-function qLen(x0: number, y0: number, cx: number, cy: number, x1: number, y1: number): number {
-  let len = 0;
-  let px = x0;
-  let py = y0;
-  for (let k = 1; k <= 16; k++) {
-    const [bx, by] = qAt(k / 16, x0, y0, cx, cy, x1, y1);
-    len += Math.hypot(bx - px, by - py);
-    px = bx;
-    py = by;
-  }
-  return len;
-}
 
 // Arc-length-uniform angles on the ellipse θ→(rx·cosθ, ry·sinθ): uniform
 // *angle* steps cluster nodes at the slow top/bottom vs the fast sides.
@@ -382,7 +362,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   <path d="M2 1L8 5L2 9" fill="none" stroke="var(--brd2)" strokeWidth="1.5" strokeLinecap="round" />
                 </marker>
               </defs>
-              {nodeLayouts.map(({ di, startX, startY, endX, endY }, i) => {
+              {nodeLayouts.map(({ di, startX, startY, endX, endY }) => {
                 const relation = di.items[0]?.relation ?? '';
                 // Quadratic bezier: control point = edge midpoint pushed
                 // perpendicular (+90° rotation of the direction) by 12% of
@@ -392,40 +372,22 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                 const ey = endY - startY;
                 const cxp = (startX + endX) / 2 - ey * 0.12;
                 const cyp = (startY + endY) / 2 + ex * 0.12;
-                // Bezier t=0.5 point: 0.25·P0 + 0.5·C + 0.25·P1
+                // Bezier t=0.5 point: 0.25·P0 + 0.5·C + 0.25·P1. The pill is
+                // opaque and sits ON TOP of the continuous line.
                 const mx = 0.25 * startX + 0.5 * cxp + 0.25 * endX;
                 const my = 0.25 * startY + 0.5 * cyp + 0.25 * endY;
-                const gradId = `${arrowId}-g-${i}`;
-                // Line breaks around the pill instead of under it: split the
-                // curve at t = 0.5 ± (half pill width + 4px).
-                // ponytail: px→t via polyline arc length (qLen) — the curve
-                // is nearly flat at 12% bow, approximate is plenty.
-                const pillW = relation.length * 6 + 10;
-                const dt = relation !== '' ? (pillW / 2 + 4) / qLen(startX, startY, cxp, cyp, endX, endY) : 0;
-                const t1 = Math.max(0, 0.5 - dt);
-                const t2 = Math.min(1, 0.5 + dt);
-                // Sub-segments of a quadratic stay quadratic (de Casteljau).
-                const [ax, ay] = qAt(t1, startX, startY, cxp, cyp, endX, endY);
-                const [bx, by] = qAt(t2, startX, startY, cxp, cyp, endX, endY);
-                const c1x = startX + (cxp - startX) * t1;
-                const c1y = startY + (cyp - startY) * t1;
-                const c2x = cxp + (endX - cxp) * t2;
-                const c2y = cyp + (endY - cyp) * t2;
+                // ponytail: CJK chars are ~full-width at 9px — 9px/char + 12
+                // padding; Latin slightly over-estimated, fine.
+                const pillW = relation.length * 9 + 12;
                 return (
                   <g key={di.entityType}>
-                    {/* Gradient in userSpaceOnUse: faint at the center, more present at the node. */}
-                    <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1={startX} y1={startY} x2={endX} y2={endY}>
-                      <stop offset="0" stopColor="var(--brd)" />
-                      <stop offset="1" stopColor="var(--brd2)" />
-                    </linearGradient>
-                    {relation !== '' ? (
-                      <>
-                        <path d={`M${startX} ${startY} Q${c1x} ${c1y} ${ax} ${ay}`} fill="none" stroke={`url(#${gradId})`} strokeWidth="1" />
-                        <path d={`M${bx} ${by} Q${c2x} ${c2y} ${endX} ${endY}`} fill="none" stroke={`url(#${gradId})`} strokeWidth="1" markerEnd={`url(#${arrowId})`} />
-                      </>
-                    ) : (
-                      <path d={`M${startX} ${startY} Q${cxp} ${cyp} ${endX} ${endY}`} fill="none" stroke={`url(#${gradId})`} strokeWidth="1" markerEnd={`url(#${arrowId})`} />
-                    )}
+                    <path
+                      d={`M${startX} ${startY} Q${cxp} ${cyp} ${endX} ${endY}`}
+                      fill="none"
+                      stroke="var(--brd2)"
+                      strokeWidth="1"
+                      markerEnd={`url(#${arrowId})`}
+                    />
                     {relation !== '' && (
                       <g transform={`translate(${mx} ${my})`}>
                         <rect x={-pillW / 2} y={-7} width={pillW} height={14} rx={5} fill="var(--panel)" stroke="var(--brd2)" strokeWidth="1" />
@@ -440,7 +402,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               {fans.map(({ nl, members }) =>
                 members.map(({ n, x, y }) => (
                   // Aggregate → member: covered by both HTML cards at the ends.
-                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1" strokeDasharray="3 4" />
+                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1" />
                 )),
               )}
             </svg>
