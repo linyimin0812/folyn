@@ -127,7 +127,7 @@
     "installZip": "Instalar desde zip…",
     "collectFailed": "La recopilación falló (no instalada/activada, sin bóveda abierta o error de recopilación)",
     "collectResult": "{{accepted}} eventos nuevos, {{deduped}} deduplicados",
-    "fileExcludeApplied": "Filtro de apariencia ya aplicado: {{patterns}}"
+    "fileExcludeApplied": "Filtro de apariencia ya aplicado:"
   },
   "collectAll": {
     "action": "Recopilar",

@@ -121,11 +121,14 @@ function ConfigForm({
               </>
             )}
             {reg.collectorId === 'file-activity' && key === 'excludeDirs' && appliedPatterns.length > 0 && (
-              <p className="m-0 mt-1 text-[10px] text-t3">
-                {t('activity:collectors.fileExcludeApplied', {
-                  patterns: appliedPatterns.join(['zh', 'ja'].includes(i18n.language.split('-')[0] ?? '') ? '、' : ', '),
-                })}
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="text-[10px] text-t3">{t('activity:collectors.fileExcludeApplied')}</span>
+                {appliedPatterns.map((p) => (
+                  <span key={p} className="inline-flex items-center gap-1 h-[26px] pl-2.5 pr-1 rounded-md text-[11px] font-ui bg-accdim text-t1 border border-brd2">
+                    <span className="font-mono leading-none">{p}</span>
+                  </span>
+                ))}
+              </div>
             )}
           </label>
         );

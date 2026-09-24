@@ -127,7 +127,7 @@
     "installZip": "Installer depuis un zip…",
     "collectFailed": "Échec de la collecte (non installée/activée, aucun coffre ouvert, ou erreur de collecte)",
     "collectResult": "{{accepted}} nouveaux événements, {{deduped}} dédupliqués",
-    "fileExcludeApplied": "Filtre d'apparence déjà appliqué : {{patterns}}"
+    "fileExcludeApplied": "Filtre d'apparence déjà appliqué :"
   },
   "collectAll": {
     "action": "Collecter",
