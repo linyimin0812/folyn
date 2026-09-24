@@ -193,7 +193,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
   // mode only — webhook collectors push on arrival, no manual trigger.
   const collectNowButton = reg.mode === 'poll' ? (
     <button
-      className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+      className="btn btn-g btn-sm inline-flex items-center gap-1.5 active:scale-95"
       disabled={busy || !settings.enabled || !reg.impl}
       onClick={() => void onCollectNow()}
     >
