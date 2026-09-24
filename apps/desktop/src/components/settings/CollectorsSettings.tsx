@@ -188,7 +188,13 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
               {reg.extensionName ?? reg.extensionId}
             </span>
             <span className="text-[10px] text-t3 font-mono truncate">{reg.collectorId}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t1 bg-surf2">
+            <span
+              className={
+                reg.mode === 'poll'
+                  ? 'text-[10px] px-1.5 py-0.5 rounded border border-acc/30 text-acc bg-accdim'
+                  : 'text-[10px] px-1.5 py-0.5 rounded border border-green-500/30 text-green-600 dark:text-green-400 bg-green-500/15'
+              }
+            >
               {t(reg.mode === 'poll' ? 'activity:collectors.modePoll' : 'activity:collectors.modeWebhook')}
             </span>
             {conflicts.length > 0 && (
