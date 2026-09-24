@@ -8,10 +8,10 @@
  * ACTIVE extensions only.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
-import { Loader2, Play, TriangleAlert } from 'lucide-react';
+import { Check, Loader2, Play, TriangleAlert } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { useExtensionStore } from '@/store/extensionStore';
 import { useCollectorRegistryStore, type CollectorRegistration } from '@/services/activity/registry';
@@ -37,6 +37,17 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
   const config = useActivityCollectorStore((s) => s.configs[reg.collectorId]);
   const setCollectorConfig = useActivityCollectorStore((s) => s.setCollectorConfig);
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...(config ?? {}) }));
+  const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+  }, []);
+  const onSave = () => {
+    setCollectorConfig(reg.collectorId, draft);
+    setSaved(true);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSaved(false), 900);
+  };
   if (!schema || Object.keys(schema.properties).length === 0) return null;
 
   return (
@@ -81,7 +92,8 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
           </label>
         );
       })}
-      <button className="btn btn-g btn-sm" onClick={() => setCollectorConfig(reg.collectorId, draft)}>
+      <button className="btn btn-g btn-sm" onClick={onSave}>
+        {saved && <Check size={11} />}
         {t('activity:collectors.save')}
       </button>
     </div>
