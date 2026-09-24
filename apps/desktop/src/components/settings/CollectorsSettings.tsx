@@ -66,7 +66,7 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
             <span className="block text-[11px] text-t2 mb-1">{label}</span>
             {prop.enum ? (
               <select
-                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
+                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
                 value={String(value)}
                 onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
               >
@@ -81,7 +81,7 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
               />
             ) : (
               <input
-                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
+                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
                 type={prop.type === 'number' ? 'number' : 'text'}
                 value={String(value)}
                 onChange={(e) =>
@@ -229,16 +229,16 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
               onChange={(v) => setCollectorSettings(reg.collectorId, { pollOn: v })}
             />
             {t('activity:collectors.pollLabel')}
-            <span className="text-[11px] text-t2">
+            <span className="text-[11px] text-t1">
               {settings.pollOn
                 ? t('activity:collectors.pollEvery', { min: intervalMin })
                 : t('activity:collectors.pollOff')}
             </span>
           </label>
-          <label className="flex items-center gap-1 text-[11px] text-t2 m-0">
+          <label className="flex items-center gap-1 text-[11px] text-t1 m-0">
             {t('activity:collectors.intervalMinutes')}
             <input
-              className="w-20 text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1"
+              className="w-20 text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1"
               type="number"
               min={1}
               value={settings.intervalOverrideMs ? Math.round(settings.intervalOverrideMs / 60_000) : ''}
