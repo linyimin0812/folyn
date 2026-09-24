@@ -51,12 +51,20 @@ function ConfigForm({
   // file-activity scan (runtime.ts scanVault) — shown under 排除目录 so the
   // user sees the full effective exclusion list. Parsed with the same rules.
   const appearancePatternsRaw = useAppearanceStore((s) => s.excludePatterns);
+  const setExcludePatterns = useAppearanceStore((s) => s.setExcludePatterns);
   const appliedPatterns = reg.collectorId === 'file-activity'
     ? (appearancePatternsRaw || '')
         .split('\n')
         .map((s) => s.trim())
         .filter((s) => s.length > 0 && !s.startsWith('#'))
     : [];
+  const [excludeInput, setExcludeInput] = useState<{ value: string } | null>(null);
+  const addExcludePattern = (v: string) => {
+    const raw = appearancePatternsRaw || '';
+    const next = raw.trim() ? `${raw.trimEnd()}\n${v}` : v;
+    setExcludePatterns(next);
+    import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree());
+  };
   useEffect(() => () => {
     if (savedTimer.current) clearTimeout(savedTimer.current);
   }, []);
@@ -120,12 +128,52 @@ function ConfigForm({
                 />
               </>
             )}
-            {reg.collectorId === 'file-activity' && key === 'excludeDirs' && appliedPatterns.length > 0 && (
+            {reg.collectorId === 'file-activity' && key === 'excludeDirs' && (
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="text-[10px] text-t3">{t('activity:collectors.fileExcludeApplied')}</span>
+                {excludeInput ? (
+                  <input
+                    autoFocus
+                    className="py-[5px] px-2.5 rounded-md text-[11px] font-ui border border-acc bg-inp text-t1 outline-none w-[180px]"
+                    placeholder={t('settings:appearance.excludePatterns.prompt')}
+                    value={excludeInput.value}
+                    onChange={(e) => setExcludeInput({ value: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const v = excludeInput.value.trim();
+                        if (v) addExcludePattern(v);
+                        setExcludeInput(null);
+                      } else if (e.key === 'Escape') {
+                        setExcludeInput(null);
+                      }
+                    }}
+                    onBlur={() => {
+                      const v = excludeInput.value.trim();
+                      if (v) addExcludePattern(v);
+                      setExcludeInput(null);
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-dashed border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
+                    onClick={() => setExcludeInput({ value: '' })}
+                  >+ {t('settings:appearance.excludePatterns.add')}</button>
+                )}
+                {appliedPatterns.length === 0 && !excludeInput && (
+                  <span className="text-[11px] text-t3 italic">{t('settings:appearance.excludePatterns.empty')}</span>
+                )}
                 {appliedPatterns.map((p) => (
                   <span key={p} className="inline-flex items-center gap-1 h-[26px] pl-2.5 pr-1 rounded-md text-[11px] font-ui bg-accdim text-t1 border border-brd2">
                     <span className="font-mono leading-none">{p}</span>
+                    <button
+                      className="w-[18px] h-[18px] flex items-center justify-center rounded text-t3 hover:text-[#f06a6a] hover:bg-hov transition-colors leading-none"
+                      onClick={() => {
+                        const next = (appearancePatternsRaw || '').split('\n').map(s => s.trim()).filter(s => s !== p).join('\n');
+                        setExcludePatterns(next);
+                        import('@/store/vaultStore').then(m => m.useVaultStore.getState().refreshFileTree());
+                      }}
+                      aria-label={t('settings:appearance.excludePatterns.add')}
+                    >×</button>
                   </span>
                 ))}
               </div>
