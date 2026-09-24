@@ -234,7 +234,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   // 170 ≥ 74 (member half-width) + 74 (aggregate half-width) + 22 gutter —
   // members can never overlap the aggregate card and steal its collapse click.
   const FAN_R = 170;
-  const MAX_SPREAD = (150 * Math.PI) / 180;
+  // Tighter fan cone: members render after the orbit buttons in DOM, so any
+  // remaining overlap with another aggregate card resolves in favor of the
+  // orbit button via zIndex below (fan members stay clickable otherwise).
+  const MAX_SPREAD = (110 * Math.PI) / 180;
   const memberLayouts = (() => {
     if (!expandedLayout) return [] as { n: ActivityNeighborRow; x: number; y: number }[];
     const { nx, ny } = expandedLayout;
@@ -323,7 +326,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   type="button"
                   title={label}
                   aria-expanded={di.aggregate ? selected : undefined}
-                  style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W, ...(selected ? { zIndex: 10 } : {}) }}
+                  // Orbit nodes sit above fan member cards (which render after
+                  // in DOM): an overlapped aggregate B must win the click over
+                  // an expanded-A member, or B never expands.
+                  style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W, ...(selected ? { zIndex: 10 } : { zIndex: 5 }) }}
                   className={`flex h-[50px] items-center gap-2 rounded-xl border px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
                   onClick={() => {
                     if (di.aggregate) {
