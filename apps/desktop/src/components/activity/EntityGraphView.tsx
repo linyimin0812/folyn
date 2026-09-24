@@ -231,7 +231,9 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   // symmetrically around the outward (canvas-center → node) direction.
   const expandedLayout =
     expandedGroup == null ? null : nodeLayouts.find((nl) => nl.di.entityType === expandedGroup) ?? null;
-  const FAN_R = 120;
+  // 170 ≥ 74 (member half-width) + 74 (aggregate half-width) + 22 gutter —
+  // members can never overlap the aggregate card and steal its collapse click.
+  const FAN_R = 170;
   const MAX_SPREAD = (150 * Math.PI) / 180;
   const memberLayouts = (() => {
     if (!expandedLayout) return [] as { n: ActivityNeighborRow; x: number; y: number }[];
@@ -245,8 +247,9 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     const idealStep = 2 * Math.asin(Math.min(1, need / (2 * FAN_R)));
     const cappedStep = MAX_SPREAD / Math.max(1, items.length - 1);
     const step = Math.min(idealStep, cappedStep);
-    // Radius only grows when the capped spread can't keep cards apart.
-    const fanR = step < idealStep ? need / (2 * Math.sin(cappedStep / 2)) : FAN_R;
+    // Radius only grows when the capped spread can't keep cards apart, and
+    // never drops below FAN_R (member cards stay clear of the aggregate).
+    const fanR = Math.max(FAN_R, step < idealStep ? need / (2 * Math.sin(cappedStep / 2)) : FAN_R);
     const spread = step * (items.length - 1);
     return items.map((n, i) => {
       const angle = outward - spread / 2 + step * i;
@@ -320,7 +323,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   type="button"
                   title={label}
                   aria-expanded={di.aggregate ? selected : undefined}
-                  style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W }}
+                  style={{ position: 'absolute', left: nx, top: ny, transform: 'translate(-50%, -50%)', width: NODE_W, ...(selected ? { zIndex: 10 } : {}) }}
                   className={`flex h-[50px] items-center gap-2 rounded-xl border px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
                   onClick={() => {
                     if (di.aggregate) {
