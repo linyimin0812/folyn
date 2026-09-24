@@ -739,7 +739,14 @@
     "store": {
       "tabContainers": "Contenedores",
       "containers": "Contenedores",
-      "tabInstalled": "Extensiones"
+      "tabInstalled": "Extensiones",
+      "tabStore": "Tienda",
+      "install": "Instalar",
+      "installed": "Instalado",
+      "installing": "Instalando…",
+      "refresh": "Actualizar",
+      "refreshing": "Cargando…",
+      "empty": "La tienda no tiene extensiones disponibles"
     }
   },
   "voice": {

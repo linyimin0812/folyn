@@ -5,7 +5,8 @@
  * entity-type registration conflict badge (design §3.4). Install/permission
  * confirmation flows through the existing extension consent modal
  * (hostAllowlist already renders there) — this tab manages collectors of
- * ACTIVE extensions only.
+ * ACTIVE extensions only. A second「商店」tab lists catalog entries with
+ * `type: 'collector'` (reuses StoreEntryCard + the shared extension catalog).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,6 +16,7 @@ import { Check, Loader2, Play, TriangleAlert } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { useShallow } from 'zustand/react/shallow';
 import { useExtensionStore } from '@/store/extensionStore';
+import { StoreEntryCard } from '@/components/settings/ExtensionsSettings';
 import { useCollectorRegistryStore, type CollectorRegistration } from '@/services/activity/registry';
 import { collectNow, effectiveIntervalMs } from '@/services/activity/runtime';
 import {
@@ -301,8 +303,33 @@ export function CollectorsSettings() {
   const installFromFolder = useExtensionStore((s) => s.installFromFolder);
   const installFromZip = useExtensionStore((s) => s.installFromZip);
   const refresh = useExtensionStore((s) => s.refresh);
+  // Store (catalog) selectors — the store tab shares the extension catalog and
+  // filters to `type === 'collector'` in render (stable-array selector rule).
+  const catalog = useExtensionStore((s) => s.catalog);
+  const catalogLoading = useExtensionStore((s) => s.catalogLoading);
+  const catalogError = useExtensionStore((s) => s.catalogError);
+  const fetchCatalog = useExtensionStore((s) => s.fetchCatalog);
   const [folderOpen, setFolderOpen] = useState(false);
   const [zipOpen, setZipOpen] = useState(false);
+  // Tab is component-local UI state (only this component reads it) — useState
+  // per state-management.md, no store.
+  const [tab, setTab] = useState<'collectors' | 'store'>('collectors');
+
+  // Refresh the installed-extension rows on mount so store cards can show
+  // their installed state (the registry store alone doesn't know rows).
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // Lazy-load the catalog when the user switches to the store tab and it's
+  // not loaded yet (same pattern as ExtensionsSettings).
+  useEffect(() => {
+    if (tab === 'store' && !catalogLoading && catalog.length === 0 && !catalogError) {
+      void fetchCatalog();
+    }
+  }, [tab, catalogLoading, catalog.length, catalogError, fetchCatalog]);
+
+  const storeEntries = catalog.filter((e) => e.type === 'collector');
 
   const handleInstallFromFolder = useCallback(async () => {
     if (folderOpen) return;
@@ -355,39 +382,85 @@ export function CollectorsSettings() {
 
   return (
     <div>
-      <div className="mb-3 flex gap-2 flex-wrap">
+      {/* Tab bar — same styling as the ExtensionsSettings tabs. */}
+      <div className="flex items-center gap-1 mb-3 border-b border-brd2">
         <button
-          className="btn btn-p btn-sm"
-          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
-          onClick={handleInstallFromFolder}
+          className={`px-3 py-1.5 text-[length:calc(var(--ui-font-size)-1px)] font-medium border-b-2 -mb-px ${tab === 'collectors' ? 'border-acc text-t1' : 'border-transparent text-t3 hover:text-t2'}`}
+          onClick={() => setTab('collectors')}
         >
-          {installing
-            ? t('settings:extensions.installing', { id: installing.id })
-            : t('activity:collectors.install')}
+          {t('activity:collectors.tab')}
         </button>
         <button
-          className="btn btn-g btn-sm"
-          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
-          onClick={handleInstallFromZip}
+          className={`px-3 py-1.5 text-[length:calc(var(--ui-font-size)-1px)] font-medium border-b-2 -mb-px ${tab === 'store' ? 'border-acc text-t1' : 'border-transparent text-t3 hover:text-t2'}`}
+          onClick={() => setTab('store')}
         >
-          {installing
-            ? t('settings:extensions.installing', { id: installing.id })
-            : t('activity:collectors.installZip')}
+          {t('settings:extensions.store.tabStore')}
         </button>
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
-            {error}
-          </div>
-        )}
       </div>
-      {collectors.length === 0 ? (
-        <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
-          {t('activity:collectors.empty')}
-        </div>
+
+      {tab === 'store' ? (
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <button className="btn btn-g btn-sm" disabled={catalogLoading} onClick={() => void fetchCatalog()}>
+              {catalogLoading ? t('settings:extensions.store.refreshing') : t('settings:extensions.store.refresh')}
+            </button>
+          </div>
+
+          {(error || catalogError) && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
+              {error || catalogError}
+            </div>
+          )}
+
+          {storeEntries.length === 0 ? (
+            <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+              {catalogLoading ? t('settings:extensions.store.refreshing') : t('settings:extensions.store.empty')}
+            </div>
+          ) : (
+            <div>
+              {storeEntries.map((entry) => (
+                <StoreEntryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        collectors.map((reg) => (
-          <CollectorCard key={reg.collectorId} reg={reg} webhookEndpoint={webhookEndpoint} />
-        ))
+        <>
+          <div className="mb-3 flex gap-2 flex-wrap">
+            <button
+              className="btn btn-p btn-sm"
+              disabled={!!installing || folderOpen || zipOpen || !isTauri()}
+              onClick={handleInstallFromFolder}
+            >
+              {installing
+                ? t('settings:extensions.installing', { id: installing.id })
+                : t('activity:collectors.install')}
+            </button>
+            <button
+              className="btn btn-g btn-sm"
+              disabled={!!installing || folderOpen || zipOpen || !isTauri()}
+              onClick={handleInstallFromZip}
+            >
+              {installing
+                ? t('settings:extensions.installing', { id: installing.id })
+                : t('activity:collectors.installZip')}
+            </button>
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
+                {error}
+              </div>
+            )}
+          </div>
+          {collectors.length === 0 ? (
+            <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+              {t('activity:collectors.empty')}
+            </div>
+          ) : (
+            collectors.map((reg) => (
+              <CollectorCard key={reg.collectorId} reg={reg} webhookEndpoint={webhookEndpoint} />
+            ))
+          )}
+        </>
       )}
     </div>
   );

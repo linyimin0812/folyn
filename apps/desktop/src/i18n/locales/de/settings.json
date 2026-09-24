@@ -739,7 +739,14 @@
     "store": {
       "tabContainers": "Container",
       "containers": "Container",
-      "tabInstalled": "Erweiterungen"
+      "tabInstalled": "Erweiterungen",
+      "tabStore": "Store",
+      "install": "Installieren",
+      "installed": "Installiert",
+      "installing": "Wird installiert…",
+      "refresh": "Aktualisieren",
+      "refreshing": "Wird geladen…",
+      "empty": "Keine Erweiterungen im Store verfügbar"
     }
   },
   "voice": {

@@ -1,5 +1,5 @@
 {
-  "$schema": "reference catalog for the Folyn extension store (see docs/extension-store.md). Copy this file to the root of the linyimin0812/folyn-extensions repo and edit per release. name/description may be a plain string (fallback for all locales) or a {locale: text} object; the app resolves by current locale → zh → en → first available.",
+  "$schema": "reference catalog for the Folyn extension store (see docs/extension-store.md). Copy this file to the root of the linyimin0812/folyn-extensions repo and edit per release. name/description may be a plain string (fallback for all locales) or a {locale: text} object; the app resolves by current locale → zh → en → first available. Optional \"type\": \"collector\" marks an activity-collector extension (listed in the collectors settings store tab); absent = regular extension.",
   "extensions": [
     {
       "id": "folyn-rich-text",
@@ -114,6 +114,74 @@
       "author": "Folyn",
       "icon": "github",
       "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/github-jsdelivr-0.1.0.zip"
+    },
+    {
+      "id": "folyn-github-collector",
+      "type": "collector",
+      "name": {
+        "zh": "GitHub 采集器",
+        "en": "GitHub Collector"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "轮询读取你的 GitHub 事件流（提交/PR/Issue），写入活动时间线",
+        "en": "Polls your GitHub event stream (commits/PRs/issues) into the activity timeline"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "G",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/folyn-github-collector-0.1.0.zip"
+    },
+    {
+      "id": "folyn-git-commit-collector",
+      "type": "collector",
+      "name": {
+        "zh": "Git 提交采集器",
+        "en": "Git Commit Collector"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "轮询读取本地仓库的新提交，写入活动时间线",
+        "en": "Polls a local repository's new commits into the activity timeline"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "G",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/folyn-git-commit-collector-0.1.0.zip"
+    },
+    {
+      "id": "folyn-webhook-collector",
+      "type": "collector",
+      "name": {
+        "zh": "Webhook 采集器",
+        "en": "Webhook Collector"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "外部系统向本地回调地址 POST 任意 JSON，按配置的字段名映射产出活动事件",
+        "en": "External systems POST arbitrary JSON to a local callback URL; configured field names map it to an activity event"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "W",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/folyn-webhook-collector-0.1.0.zip"
+    },
+    {
+      "id": "folyn-window-activity-collector",
+      "type": "collector",
+      "name": {
+        "zh": "窗口活动采集器",
+        "en": "Window Activity Collector"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "轮询采样当前前台应用与窗口标题，变化时写入活动时间线（macOS 首次采集会触发系统自动化权限弹窗）",
+        "en": "Samples the frontmost app + window title, emitting an event on change (macOS asks for Automation permission on first run)"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "W",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/folyn-window-activity-collector-0.1.0.zip"
     }
   ]
 }

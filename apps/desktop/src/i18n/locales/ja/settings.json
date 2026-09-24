@@ -745,7 +745,14 @@
     "store": {
       "tabContainers": "コンテナ指令",
       "containers": "コンテナ指令",
-      "tabInstalled": "拡張機能"
+      "tabInstalled": "拡張機能",
+      "tabStore": "ストア",
+      "install": "インストール",
+      "installed": "インストール済み",
+      "installing": "インストール中…",
+      "refresh": "更新",
+      "refreshing": "読み込み中…",
+      "empty": "ストアに利用可能な拡張機能がありません"
     }
   },
   "voice": {

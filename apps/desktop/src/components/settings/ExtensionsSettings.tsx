@@ -319,8 +319,10 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
 /** A single catalog entry in the Store tab. Mirrors `ExtensionRowCard`'s
  * layout (icon + name + version + tier + description) but the action button is
  * Install / Installed rather than the activate/uninstall pair. Install state is
- * derived from the installed `rows` (id match) — no extra store field. */
-function StoreEntryCard({ entry }: { entry: CatalogEntry }) {
+ * derived from the installed `rows` (id match) — no extra store field.
+ * Exported: also rendered by the collectors settings store tab (catalog
+ * entries with `type: 'collector'`). */
+export function StoreEntryCard({ entry }: { entry: CatalogEntry }) {
   const { t } = useTranslation();
   const rows = useExtensionStore((s) => s.rows);
   const installing = useExtensionStore((s) => s.installing);
@@ -598,13 +600,13 @@ export function ExtensionsSettings() {
             </div>
           )}
 
-          {catalog.length === 0 ? (
+          {catalog.filter((e) => e.type !== 'collector').length === 0 ? (
             <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
               {catalogLoading ? t('settings:extensions.store.refreshing') : t('settings:extensions.store.empty')}
             </div>
           ) : (
             <div>
-              {catalog.map((entry) => (
+              {catalog.filter((e) => e.type !== 'collector').map((entry) => (
                 <StoreEntryCard key={entry.id} entry={entry} />
               ))}
             </div>

@@ -69,6 +69,9 @@ export interface CatalogEntry {
   tier: 'sandbox' | 'trusted';
   author?: string;
   icon?: string;
+  /** Entry kind: `"collector"` = activity collector (shown in the collectors
+   *  settings store tab); absent = regular extension (Extensions store tab). */
+  type?: 'collector';
   /** Count of container directives this extension contributes
    *  (manifest.contributes.containers.length). Surfaced in the store card
    *  as a "containers" badge so container-focused users can spot them. */
