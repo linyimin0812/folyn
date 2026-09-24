@@ -47,6 +47,8 @@ function ConfigForm({
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...(config ?? {}) }));
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Inline「+ 添加」input state for the editable exclude-pattern chips.
+  const [excludeInput, setExcludeInput] = useState<{ value: string } | null>(null);
   // The collector's OWN filter patterns snapshot (config key
   // `excludePatterns`, newline-separated like appearance): seeded ONCE from
   // the appearance「过滤文件/文件夹」store on first mount, then fully
@@ -72,6 +74,23 @@ function ConfigForm({
   useEffect(() => () => {
     if (savedTimer.current) clearTimeout(savedTimer.current);
   }, []);
+  // Editable chips write straight into the collector's OWN config (persisted
+  // immediately) AND keep `draft` in sync — a later 保存 must not clobber the
+  // change with a stale draft value. Raw newline-joined storage format, same
+  // rules as the appearance store (but never the appearance store itself, and
+  // no file-tree refresh — the runtime reads this key at collect time).
+  const writeExcludePatterns = (nextRaw: string) => {
+    setCollectorConfig(reg.collectorId, { ...(config ?? {}), excludePatterns: nextRaw });
+    setDraft((d) => ({ ...d, excludePatterns: nextRaw }));
+  };
+  const addExcludePattern = (v: string) => {
+    const raw = String(config?.excludePatterns ?? '');
+    writeExcludePatterns(raw.trim() ? `${raw.trimEnd()}\n${v}` : v);
+  };
+  const removeExcludePattern = (p: string) => {
+    const raw = String(config?.excludePatterns ?? '');
+    writeExcludePatterns(raw.split('\n').map((s) => s.trim()).filter((s) => s !== p).join('\n'));
+  };
   const onSave = () => {
     setCollectorConfig(reg.collectorId, draft);
     setSaved(true);
@@ -132,12 +151,48 @@ function ConfigForm({
                 />
               </>
             )}
-            {reg.collectorId === 'file-activity' && key === 'excludeDirs' && appliedPatterns.length > 0 && (
+            {reg.collectorId === 'file-activity' && key === 'excludeDirs' && (
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="text-[10px] text-t3">{t('activity:collectors.fileExcludeApplied')}</span>
+                {excludeInput ? (
+                  <input
+                    autoFocus
+                    className="py-[5px] px-2.5 rounded-md text-[11px] font-ui border border-acc bg-inp text-t1 outline-none w-[180px]"
+                    placeholder={t('settings:appearance.excludePatterns.prompt')}
+                    value={excludeInput.value}
+                    onChange={(e) => setExcludeInput({ value: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const v = excludeInput.value.trim();
+                        if (v) addExcludePattern(v);
+                        setExcludeInput(null);
+                      } else if (e.key === 'Escape') {
+                        setExcludeInput(null);
+                      }
+                    }}
+                    onBlur={() => {
+                      const v = excludeInput.value.trim();
+                      if (v) addExcludePattern(v);
+                      setExcludeInput(null);
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-dashed border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
+                    onClick={() => setExcludeInput({ value: '' })}
+                  >+ {t('settings:appearance.excludePatterns.add')}</button>
+                )}
+                {appliedPatterns.length === 0 && !excludeInput && (
+                  <span className="text-[11px] text-t3 italic">{t('settings:appearance.excludePatterns.empty')}</span>
+                )}
                 {appliedPatterns.map((p) => (
-                  <span key={p} className="inline-flex items-center h-[26px] pl-2.5 pr-2.5 rounded-md text-[11px] font-ui bg-accdim text-t1 border border-brd2">
+                  <span key={p} className="inline-flex items-center gap-1 h-[26px] pl-2.5 pr-1 rounded-md text-[11px] font-ui bg-accdim text-t1 border border-brd2">
                     <span className="font-mono leading-none">{p}</span>
+                    <button
+                      className="w-[18px] h-[18px] flex items-center justify-center rounded text-t3 hover:text-[#f06a6a] hover:bg-hov transition-colors leading-none"
+                      onClick={() => removeExcludePattern(p)}
+                      aria-label={t('settings:appearance.excludePatterns.add')}
+                    >×</button>
                   </span>
                 ))}
               </div>
