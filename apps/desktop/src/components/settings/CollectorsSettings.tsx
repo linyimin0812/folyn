@@ -153,6 +153,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
 
   const onCollectNow = async () => {
     setBusy(true);
+    const started = Date.now();
     try {
       // null = skipped (not installed/enabled, no vault) or failed — same message.
       const outcome = await collectNow(reg.collectorId);
@@ -169,6 +170,10 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
       );
       if (noticeTimer.current) clearTimeout(noticeTimer.current);
       noticeTimer.current = setTimeout(() => setNotice(null), 5_000);
+      // Fast runs (< tens of ms) make the spinner flash unreadably — keep the
+      // busy state on screen for at least 500ms.
+      const elapsed = Date.now() - started;
+      if (elapsed < 500) await new Promise((r) => setTimeout(r, 500 - elapsed));
     } finally {
       setBusy(false);
     }
