@@ -11,7 +11,7 @@
 
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import type { ActivityEventRow } from '@/services/activity/api';
 import type { DisplayIndexEntry } from '@/services/activity/registry';
@@ -51,9 +51,9 @@ function openExternalUrl(u: string) {
 export function TimelineList({ events, displayByType, vaultRoot }: TimelineListProps) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  // 「收起全部」hides the whole records list (day groups + rows), not the
-  // per-event detail cards — those stay per-row via `toggle` below.
-  const [recordsHidden, setRecordsHidden] = useState(false);
+  // Per-day-group collapse (chevron on the day header); the per-event detail
+  // cards are separate, per-row via `toggle` below.
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   // Per-collector AI opt-in: `event.source` is the collector id (validated
   // Rust-side to equal it), which keys the authSchema-rendered config values.
   const configs = useActivityCollectorStore((s) => s.configs);
@@ -125,25 +125,36 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
     else groups.push({ key, dayLabel: dayLabelOf(d), events: [e] });
   }
 
+  const toggleDay = (key: string) => {
+    setCollapsedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   return (
     <div>
-      <div className="pb-2 flex justify-end">
-        <button
-          className="text-[12px] text-t3 hover:text-t1 cursor-pointer bg-transparent border-0 p-0"
-          onClick={() => setRecordsHidden((h) => !h)}
-        >
-          {recordsHidden
-            ? t('activity:timeline.expandAll')
-            : t('activity:timeline.collapseAll')}
-        </button>
-      </div>
-      {/* 收起全部 keeps day headers visible, hides only the event rows. */}
-      {groups.map((g, gi) => (
-        <div key={g.key} className={gi === 0 ? '' : 'mt-5'}>
-          <div className={gi === 0 ? 'pb-2' : 'pt-3 pb-2 border-t border-brd'}>
-            <p className="m-0 text-[12px] text-t3">{g.dayLabel}</p>
-          </div>
-          {!recordsHidden && (
+      {groups.map((g, gi) => {
+        const collapsed = collapsedDays.has(g.key);
+        return (
+          <div key={g.key} className={gi === 0 ? '' : 'mt-5'}>
+            <div className={gi === 0 ? 'pb-2' : 'pt-3 pb-2 border-t border-brd'}>
+              <button
+                className="bg-transparent border-0 p-0 m-0 w-full flex items-center gap-1 cursor-pointer text-left"
+                onClick={() => toggleDay(g.key)}
+                aria-expanded={!collapsed}
+              >
+                {collapsed ? (
+                  <ChevronRight size={12} className="text-t3 shrink-0" />
+                ) : (
+                  <ChevronDown size={12} className="text-t3 shrink-0" />
+                )}
+                <span className="text-[12px] text-t3">{g.dayLabel}</span>
+              </button>
+            </div>
+            {!collapsed && (
           <div className="relative">
             {/* Vertical rail behind the icon bubbles (centered on bubble column). */}
             <span
@@ -259,9 +270,10 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
               );
             })}
           </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

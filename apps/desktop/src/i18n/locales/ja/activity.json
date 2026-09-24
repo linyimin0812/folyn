@@ -34,9 +34,7 @@
     "empty": "この期間のアクティビティはありません",
     "viewSource": "原文を見る",
     "aiSummary": "要約 · AI 生成",
-    "aiSummaryLoading": "要約を生成中…",
-    "expandAll": "すべて展開",
-    "collapseAll": "すべて折りたたむ"
+    "aiSummaryLoading": "要約を生成中…"
   },
   "report": {
     "daily": "日報",

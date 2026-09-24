@@ -34,9 +34,7 @@
     "empty": "Aucune activité sur cette période",
     "viewSource": "Voir la source",
     "aiSummary": "Résumé · généré par IA",
-    "aiSummaryLoading": "Génération du résumé…",
-    "expandAll": "Tout déplier",
-    "collapseAll": "Tout replier"
+    "aiSummaryLoading": "Génération du résumé…"
   },
   "report": {
     "daily": "Rapport quotidien",
