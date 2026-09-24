@@ -376,7 +376,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               <defs>
                 {/* markerUnits=strokeWidth: 1.5 stroke × 4 = 6px arrow — grows with the thicker line; refX=8 keeps the tip on the node border. */}
                 <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-                  <path d="M2 1L8 5L2 9" fill="none" stroke="var(--brd2)" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t1)" strokeWidth="1.5" strokeLinecap="round" />
                 </marker>
               </defs>
               {nodeLayouts.map(({ di, startX, startY, endX, endY }) => {
@@ -404,7 +404,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                     <path
                       d={`M${startX} ${startY} Q${cxp} ${cyp} ${endX} ${endY}`}
                       fill="none"
-                      stroke="var(--brd2)"
+                      stroke="var(--t1)"
                       strokeWidth="1.5"
                       markerEnd={`url(#${arrowId})`}
                     />
@@ -422,7 +422,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
               {fans.map(({ nl, members }) =>
                 members.map(({ n, x, y }) => (
                   // Aggregate → member: covered by both HTML cards at the ends.
-                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd)" strokeWidth="1.5" />
+                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--t1)" strokeWidth="1.5" />
                 )),
               )}
             </svg>
