@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, Plug, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Activity, List, Network, Plug, SlidersHorizontal, Sparkles } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -213,7 +213,41 @@ export function ActivityPage() {
       {/* Secondary left rail — page-local, a sibling of the global ActivityBar
           (NOT a modification of it). Switching views swaps the page content. */}
       <div className="w-56 shrink-0 border-r border-brd bg-panel flex flex-col gap-1 py-3 px-2">
-        {RAIL_VIEWS.map((v) => (
+        {/* 活动 group: parent + indented timeline/graph children (second-level nav). */}
+        <button
+          type="button"
+          className={`flex w-full items-center gap-2 px-2.5 py-2 rounded cursor-pointer ${
+            view === 'main' ? 'bg-accdim text-acc' : 'text-t3 hover:text-t2 hover:bg-hov'
+          }`}
+          aria-label={t('activity:rail.main')}
+          onClick={() => {
+            setView('main');
+            setTab('timeline');
+          }}
+        >
+          <Activity size={16} />
+          <span className="text-[12px]">{t('activity:rail.main')}</span>
+        </button>
+        {(['timeline', 'graph'] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            className={`flex w-full items-center gap-2 pl-7 pr-2.5 py-1.5 rounded cursor-pointer ${
+              view === 'main' && tab === m
+                ? 'bg-accdim text-acc'
+                : 'text-t3 hover:text-t2 hover:bg-hov'
+            }`}
+            aria-label={t(`activity:tabs.${m}`)}
+            onClick={() => {
+              setView('main');
+              setTab(m);
+            }}
+          >
+            {m === 'timeline' ? <List size={14} /> : <Network size={14} />}
+            <span className="text-[11px]">{t(`activity:tabs.${m}`)}</span>
+          </button>
+        ))}
+        {RAIL_VIEWS.filter((v) => v.id !== 'main').map((v) => (
           <button
             key={v.id}
             type="button"
@@ -243,21 +277,6 @@ export function ActivityPage() {
             <p className="m-0 text-[12px] text-t3 truncate">{periodDesc}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex gap-1">
-              {(['timeline', 'graph'] as const).map((m) => (
-                <button
-                  key={m}
-                  className={`px-4 py-1.5 rounded-full text-[13px] border cursor-pointer ${
-                    tab === m
-                      ? 'border-transparent bg-accdim text-acc'
-                      : 'border-brd bg-transparent text-t2 hover:bg-hov'
-                  }`}
-                  onClick={() => setTab(m)}
-                >
-                  {t(`activity:tabs.${m}`)}
-                </button>
-              ))}
-            </div>
             {reportMode && (
               <button
                 className="btn btn-g btn-sm inline-flex items-center gap-1.5"
