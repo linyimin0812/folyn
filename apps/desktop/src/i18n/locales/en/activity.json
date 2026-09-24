@@ -107,6 +107,8 @@
     "save": "Save",
     "conflictBadge": "Type registration conflict",
     "noImpl": "Declarative collector (no runtime code)",
-    "install": "Install collector extension…"
+    "install": "Install collector extension…",
+    "collectFailed": "Collection failed (not installed/enabled, no open vault, or a collection error)",
+    "collectResult": "{{accepted}} new events, {{deduped}} deduplicated"
   }
 }

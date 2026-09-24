@@ -107,6 +107,8 @@
     "save": "保存",
     "conflictBadge": "类型注册冲突",
     "noImpl": "声明式采集器（无运行时代码）",
-    "install": "安装采集器扩展…"
+    "install": "安装采集器扩展…",
+    "collectFailed": "采集失败（未安装/未启用/无打开的仓库，或采集异常）",
+    "collectResult": "本次新增 {{accepted}} 条，去重 {{deduped}} 条"
   }
 }

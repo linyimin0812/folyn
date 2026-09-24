@@ -265,8 +265,11 @@ describe('collectGithubEvents', () => {
       Accept: 'application/vnd.github+json',
       Authorization: 'Bearer ghp_secret',
     });
-    expect(seen[1]!.url).toBe(compareUrl('octocat/hello-world', 'base000', HEAD_2));
-    expect(seen[1]!.headers).toMatchObject({ Authorization: 'Bearer ghp_secret' });
+    // Compare fetches now run after pagination (concurrency pool), so locate
+    // the call by URL rather than by call order.
+    const compare = seen.find((s) => s.url.includes('/compare/'))!;
+    expect(compare.url).toBe(compareUrl('octocat/hello-world', 'base000', HEAD_2));
+    expect(compare.headers).toMatchObject({ Authorization: 'Bearer ghp_secret' });
     expect(events).toHaveLength(2);
     expect(JSON.stringify(events)).not.toContain('ghp_secret');
   });
@@ -294,5 +297,28 @@ describe('collectGithubEvents', () => {
       http: vi.fn(async () => ({ status: 403, body: 'rate limited' })),
     };
     await expect(collectGithubEvents(ctx)).rejects.toThrow(/status 403/);
+  });
+
+  it('aborts a stalled request after the timeout instead of hanging', async () => {
+    vi.useFakeTimers();
+    try {
+      const ctx: CollectorContext = {
+        cursor: null,
+        config: { username: 'octocat' },
+        // Never resolves on its own — only rejection is the passed abort signal.
+        http: (_url: string, init?: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+          }),
+      };
+      const p = collectGithubEvents(ctx);
+      // Attach the handler BEFORE advancing the clock so the abort rejection
+      // is never momentarily unhandled.
+      const expectation = expect(p).rejects.toThrow(/aborted/);
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expectation;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

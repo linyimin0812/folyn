@@ -112,13 +112,32 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
   const allConflicts = useCollectorRegistryStore((s) => s.conflicts);
   const conflicts = allConflicts.filter((c) => c.extensionId === reg.extensionId);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+  }, []);
 
   const intervalMin = Math.round(effectiveIntervalMs(reg.pollIntervalMs, settings.intervalOverrideMs) / 60_000);
 
   const onCollectNow = async () => {
     setBusy(true);
     try {
-      await collectNow(reg.collectorId);
+      // null = skipped (not installed/enabled, no vault) or failed — same message.
+      const outcome = await collectNow(reg.collectorId);
+      setNotice(
+        outcome === null
+          ? { error: true, text: t('activity:collectors.collectFailed') }
+          : {
+              error: false,
+              text: t('activity:collectors.collectResult', {
+                accepted: outcome.accepted,
+                deduped: outcome.deduped,
+              }),
+            },
+      );
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      noticeTimer.current = setTimeout(() => setNotice(null), 5_000);
     } finally {
       setBusy(false);
     }
@@ -211,21 +230,28 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
         </div>
       )}
 
-      <div className="text-[11px] text-t3 mt-2">
-        {lastSync?.at === undefined
-          ? t('activity:collectors.neverSynced')
-          : t('activity:collectors.lastSync', {
-              time:
-                Date.now() - lastSync.at < 60_000
-                  ? t('activity:collectors.justNow')
-                  : new Intl.DateTimeFormat(i18n.language, {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }).format(new Date(lastSync.at)),
-              count: lastSync.accepted,
-            })}
+      <div className="text-[11px] text-t3 mt-2 flex items-center gap-2 flex-wrap">
+        <span>
+          {lastSync?.at === undefined
+            ? t('activity:collectors.neverSynced')
+            : t('activity:collectors.lastSync', {
+                time:
+                  Date.now() - lastSync.at < 60_000
+                    ? t('activity:collectors.justNow')
+                    : new Intl.DateTimeFormat(i18n.language, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }).format(new Date(lastSync.at)),
+                count: lastSync.accepted,
+              })}
+        </span>
+        {notice && (
+          <span className={notice.error ? 'text-red-600 dark:text-red-400' : 'text-acc'}>
+            {notice.text}
+          </span>
+        )}
       </div>
 
       <ConfigForm reg={reg} />

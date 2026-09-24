@@ -212,7 +212,7 @@ async function collectorExec(
 export function collectorHttp(hostAllowlist: string[]) {
   return async (
     url: string,
-    init?: { method?: string; headers?: Record<string, string>; body?: string },
+    init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
   ): Promise<{ status: number; body: string }> => {
     const origin = new URL(url).origin;
     if (!hostAllowlist.includes(origin)) {

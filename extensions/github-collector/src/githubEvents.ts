@@ -20,6 +20,11 @@ const API_ROOT = 'https://api.github.com';
 /** Events endpoint pages we are willing to walk per poll (300 events max). */
 const MAX_PAGES = 3;
 const PER_PAGE = 100;
+/** Per-request abort timeout. */
+const REQUEST_TIMEOUT_MS = 15_000;
+/** Concurrent compare-endpoint fetches (first run can be a full backfill of
+ *  hundreds of pushes — serial fetches take minutes). */
+const COMPARE_CONCURRENCY = 6;
 
 interface GhEvent {
   id: string;
@@ -63,16 +68,23 @@ function configString(ctx: CollectorContext, key: string): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-/** GET a GitHub API url with the standard headers (Bearer when tokened); throws on non-200. */
+/** GET a GitHub API url with the standard headers (Bearer when tokened); throws on non-200.
+ *  15s abort timeout — a stalled connection fails the request instead of hanging the run. */
 async function fetchJson(ctx: CollectorContext, url: string): Promise<unknown> {
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
   const token = configString(ctx, 'token');
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await ctx.http!(url, { headers });
-  if (res.status !== 200) {
-    throw new Error(`github request failed (status ${res.status}): ${url}`);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await ctx.http!(url, { headers, signal: ctrl.signal });
+    if (res.status !== 200) {
+      throw new Error(`github request failed (status ${res.status}): ${url}`);
+    }
+    return JSON.parse(res.body) as unknown;
+  } finally {
+    clearTimeout(timer);
   }
-  return JSON.parse(res.body) as unknown;
 }
 
 async function fetchPage(
@@ -100,6 +112,9 @@ export async function collectGithubEvents(
   }
 
   const events: CollectorEvent[] = [];
+  // PushEvents need a compare fetch each — deferred and run through a small
+  // concurrency pool (order irrelevant: host sorts by occurredAt, dedups by id).
+  const pushTasks: (() => Promise<CollectorEvent[]>)[] = [];
   let newest = cursor;
   for (let page = 1; page <= MAX_PAGES; page++) {
     const pageEvents = await fetchPage(ctx, username, page);
@@ -109,12 +124,20 @@ export async function collectGithubEvents(
       if (cursor && ev.created_at <= cursor) continue;
       const created = Date.parse(ev.created_at);
       if (!Number.isFinite(created)) continue;
-      events.push(...(await mapEvent(ctx, ev, created)));
+      if (ev.type === 'PushEvent') {
+        pushTasks.push(() => mapEvent(ctx, ev, created));
+      } else {
+        events.push(...(await mapEvent(ctx, ev, created)));
+      }
       if (!newest || ev.created_at > newest) newest = ev.created_at;
     }
     // Oldest entry already covered by the cursor — no need for more pages.
     const oldest = pageEvents[pageEvents.length - 1]!.created_at;
     if (cursor && oldest <= cursor) break;
+  }
+  for (let i = 0; i < pushTasks.length; i += COMPARE_CONCURRENCY) {
+    const results = await Promise.all(pushTasks.slice(i, i + COMPARE_CONCURRENCY).map((f) => f()));
+    events.push(...results.flat());
   }
   return { events, nextCursor: newest };
 }

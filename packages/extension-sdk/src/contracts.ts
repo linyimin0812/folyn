@@ -223,6 +223,8 @@ export interface CollectorContext {
     method?: string;
     headers?: Record<string, string>;
     body?: string;
+    /** Abort the request (timeouts). Honored by the host's fetch. */
+    signal?: AbortSignal;
   }) => Promise<{ status: number; body: string }>;
 }
 

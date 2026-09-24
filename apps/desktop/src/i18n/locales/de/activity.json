@@ -107,6 +107,8 @@
     "save": "Speichern",
     "conflictBadge": "Typ-Registrierungskonflikt",
     "noImpl": "Deklarativer Kollektor (kein Runtime-Code)",
-    "install": "Collector-Erweiterung installieren…"
+    "install": "Collector-Erweiterung installieren…",
+    "collectFailed": "Sammlung fehlgeschlagen (nicht installiert/aktiviert, kein offener Vault oder Sammelfehler)",
+    "collectResult": "{{accepted}} neue Ereignisse, {{deduped}} dedupliziert"
   }
 }

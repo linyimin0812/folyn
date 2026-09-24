@@ -107,6 +107,8 @@
     "save": "Guardar",
     "conflictBadge": "Conflicto de registro de tipo",
     "noImpl": "Colector declarativo (sin código en runtime)",
-    "install": "Instalar extensión de recopilador…"
+    "install": "Instalar extensión de recopilador…",
+    "collectFailed": "La recopilación falló (no instalada/activada, sin bóveda abierta o error de recopilación)",
+    "collectResult": "{{accepted}} eventos nuevos, {{deduped}} deduplicados"
   }
 }
