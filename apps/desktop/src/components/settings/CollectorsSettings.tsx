@@ -62,35 +62,48 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
         const value = draft[key] ?? prop.default ?? '';
         const label = prop.title ?? key;
         return (
-          <label key={key} className="block mb-2.5">
-            <span className="block text-[11px] text-t2 mb-1">{label}</span>
+          <label
+            key={key}
+            className={prop.type === 'boolean' && !prop.enum
+              ? 'flex items-center gap-1.5 mb-2.5'
+              : 'block mb-2.5'}
+          >
             {prop.enum ? (
-              <select
-                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
-                value={String(value)}
-                onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
-              >
-                {prop.enum.map((v) => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
+              <>
+                <span className="block text-[11px] text-t2 mb-1">{label}</span>
+                <select
+                  className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
+                  value={String(value)}
+                  onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+                >
+                  {prop.enum.map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </>
             ) : prop.type === 'boolean' ? (
-              <Toggle
-                value={value === true}
-                onChange={(v) => setDraft({ ...draft, [key]: v })}
-              />
+              <>
+                <Toggle
+                  value={value === true}
+                  onChange={(v) => setDraft({ ...draft, [key]: v })}
+                />
+                <span className="text-[11px] text-t2">{label}</span>
+              </>
             ) : (
-              <input
-                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
-                type={prop.type === 'number' ? 'number' : 'text'}
-                value={String(value)}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    [key]: prop.type === 'number' ? Number(e.target.value) : e.target.value,
-                  })
-                }
-              />
+              <>
+                <span className="block text-[11px] text-t2 mb-1">{label}</span>
+                <input
+                  className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
+                  type={prop.type === 'number' ? 'number' : 'text'}
+                  value={String(value)}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      [key]: prop.type === 'number' ? Number(e.target.value) : e.target.value,
+                    })
+                  }
+                />
+              </>
             )}
           </label>
         );
