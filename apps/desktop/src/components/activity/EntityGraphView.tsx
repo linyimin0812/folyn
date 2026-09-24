@@ -25,9 +25,9 @@ const NODE_W = 148;
 const NODE_H = 50;
 const CENTER_W = 164;
 const CENTER_H = 58;
-// Drag-pan slack: the scroll container only extends to the content div's
-// layout box (transforms don't grow it), so the content sits centered inside
-// a larger layout box. Pans up to ±PAN_PAD stay inside it — no clipping.
+// Drag-pan slack (vertical only): the scroll container clips horizontally
+// (overflow-x hidden) and the layout box only adds vertical padding, so pans
+// up to ±PAN_PAD stay reachable — horizontal panning is transform-only.
 const PAN_PAD = 600;
 
 // Distance from a rectangle's center to its border along a unit vector.
@@ -100,9 +100,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
     ro.observe(el);
     setBox({ w: el.clientWidth, h: el.clientHeight });
-    // Content sits at PAN_PAD inside the padded layout box — start scrolled
-    // there so pan=0 shows the graph at the viewport origin.
-    el.scrollLeft = PAN_PAD;
+    // Content sits at PAN_PAD from the top of the padded layout box — start
+    // scrolled there so pan=0 shows the graph at the viewport top. No
+    // horizontal padding (layout box width = contentW) and overflow-x is
+    // hidden: horizontal panning is transform-only, no horizontal scrollbar.
     el.scrollTop = PAN_PAD;
     return () => ro.disconnect();
     // Re-attach when the graph wrapper actually mounts (early-return states
@@ -276,16 +277,16 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   const graph = (
     <div
       ref={wrapRef}
-      className={`flex-1 min-h-0 min-w-0 overflow-auto cursor-grab select-none ${dragging ? 'cursor-grabbing' : ''}`}
+      className={`flex-1 min-h-0 min-w-0 overflow-x-hidden overflow-y-auto cursor-grab select-none ${dragging ? 'cursor-grabbing' : ''}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endPan}
       onPointerCancel={endPan}
     >
-      <div className="relative" style={{ width: contentW + 2 * PAN_PAD, height: contentH + 2 * PAN_PAD }}>
+      <div className="relative" style={{ width: contentW, height: contentH + 2 * PAN_PAD }}>
         <div
           className="absolute"
-          style={{ left: PAN_PAD, top: PAN_PAD, width: contentW, height: contentH, transform: `translate(${pan.x}px, ${pan.y}px)` }}
+          style={{ left: 0, top: PAN_PAD, width: contentW, height: contentH, transform: `translate(${pan.x}px, ${pan.y}px)` }}
         >
           <div className="absolute top-0 left-0" style={{ width: W, height: H, transform: `translate(${dx}px, ${dy}px)` }}>
             <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none" aria-hidden="true">
