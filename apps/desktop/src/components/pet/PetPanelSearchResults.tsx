@@ -98,6 +98,7 @@ export const PetPanelSearchResults = forwardRef<
   // command: a disabled translation panel must not surface in search
   // (neither of its two rows).
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
+  const enableActivityPanel = useAppearanceStore((s) => s.enableActivityPanel);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Vault files, ALL types (PRD 09-19-pet-search-all-files) — the tree the
@@ -176,6 +177,15 @@ export const PetPanelSearchResults = forwardRef<
             r.builtin &&
             r.entry.id === 'builtin:translation' &&
             !enableTranslationPanel
+          ) {
+            return false;
+          }
+          // Same gate for the activity panel — a disabled panel must not
+          // surface in search (same as its ActivityBar icon).
+          if (
+            r.builtin &&
+            r.entry.id === 'builtin:activity' &&
+            !enableActivityPanel
           ) {
             return false;
           }

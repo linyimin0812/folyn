@@ -61,6 +61,10 @@
         "label": "Schedule panel",
         "description": "Schedule (Plan My Day) feature entry"
       },
+      "activity": {
+        "label": "Activity panel",
+        "description": "Activity collection: timeline, metrics, entity graph and reports"
+      },
       "translation": {
         "label": "Translation panel",
         "description": "Two-pane translator (source → target) with LLM picker"

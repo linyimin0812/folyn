@@ -65,6 +65,10 @@
         "label": "Panel de notas diarias",
         "description": "Mostrar entrada de calendario y notas diarias en la barra lateral (desactivar también desactiva ⌘D)"
       },
+      "activity": {
+        "label": "Panel de actividad",
+        "description": "Recopilación de actividad: cronología, métricas, grafo de entidades e informes"
+      },
       "tray": {
         "label": "Mostrar icono en bandeja",
         "description": "Mostrar icono de la app en la bandeja; clic para el mismo menú de acciones rápidas que el menú derecho de la mascota"

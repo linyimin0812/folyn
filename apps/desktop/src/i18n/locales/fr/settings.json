@@ -65,6 +65,10 @@
         "label": "Panneau Notes quotidiennes",
         "description": "Afficher l'entrée Calendrier et notes quotidiennes dans la barre latérale (désactiver désactive aussi ⌘D)"
       },
+      "activity": {
+        "label": "Panneau d'activité",
+        "description": "Collecte d'activité : chronologie, métriques, graphe d'entités et rapports"
+      },
       "tray": {
         "label": "Afficher l'icône dans la barre",
         "description": "Afficher l'icône dans la barre système ; clic pour le même menu d'actions rapides que le clic droit du pet"

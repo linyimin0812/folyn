@@ -171,6 +171,8 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   // and these subscriptions are cheap (zustand shallow-equals primitives).
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const setEnableTranslationPanel = useAppearanceStore((s) => s.setEnableTranslationPanel);
+  const enableActivityPanel = useAppearanceStore((s) => s.enableActivityPanel);
+  const setEnableActivityPanel = useAppearanceStore((s) => s.setEnableActivityPanel);
   // Render errors captured by PanelErrorBoundary for this extension's surfaces.
   // A extension that threw during render is isolated (never crashes the host),
   // but surfaced here so the user can see something went wrong + clear it.
@@ -189,7 +191,9 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   // needed (their trust boundary is the iframe sandbox, not a pin).
   const needsApproval = !builtin && entry.tier === 'trusted' && !entry.trusted;
   const isActive = builtin
-    ? (entry.id === 'builtin:translation' ? enableTranslationPanel : false)
+    ? (entry.id === 'builtin:translation' ? enableTranslationPanel
+      : entry.id === 'builtin:activity' ? enableActivityPanel
+      : false)
     : state === 'active';
   const toggleBusy = isActivateBusy || isDeactivateBusy;
   const toggleValue = isActive && !toggleBusy;
@@ -274,6 +278,7 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
               onChange={(v) => {
                 if (builtin) {
                   if (entry.id === 'builtin:translation') setEnableTranslationPanel(v);
+                  else if (entry.id === 'builtin:activity') setEnableActivityPanel(v);
                   return;
                 }
                 if (v && !isActive) void activate(entry.id);

@@ -61,6 +61,10 @@
         "label": "日程面板",
         "description": "日程（Plan My Day）相关功能入口"
       },
+      "activity": {
+        "label": "活动面板",
+        "description": "活动采集：时间线、指标、实体图谱与报告"
+      },
       "translation": {
         "label": "翻译面板",
         "description": "双栏翻译（原文 → 译文），可选翻译模型"

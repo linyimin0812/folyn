@@ -52,6 +52,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
   const currentPage = useNavStore((s) => s.currentPage);
   const currentVault = useVaultStore((s) => s.currentVault);
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
+  const enableActivityPanel = useAppearanceStore((s) => s.enableActivityPanel);
   const [gitOpen, setGitOpen] = useState(false);
 
   // Git icon only for GitHub-type vaults (clone-backed local git repo).
@@ -110,13 +111,15 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
       {filesPanel && renderPanelButton(filesPanel)}
 
       {/* Activity page-nav (native「活动」tab, design §7.1). */}
-      <button
-        className={`activity-icon ${onActivity ? 'active' : ''}`}
-        onClick={() => setCurrentPage('activity')}
-        title={t('shell:nav.activity')}
-      >
-        <Activity size={16} />
-      </button>
+      {enableActivityPanel && (
+        <button
+          className={`activity-icon ${onActivity ? 'active' : ''}`}
+          onClick={() => setCurrentPage('activity')}
+          title={t('shell:nav.activity')}
+        >
+          <Activity size={16} />
+        </button>
+      )}
 
       {enableTranslationPanel && (
         <button

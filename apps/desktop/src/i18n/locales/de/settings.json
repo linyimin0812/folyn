@@ -65,6 +65,10 @@
         "label": "Tagesnotizen-Panel",
         "description": "Kalender- und Tagesnotiz-Eintrag in der Seitenleiste (Deaktivieren deaktiviert auch ⌘D)"
       },
+      "activity": {
+        "label": "Aktivitätsbereich",
+        "description": "Aktivitätserfassung: Chronik, Metriken, Entitätsgraph und Berichte"
+      },
       "tray": {
         "label": "Tray-Icon anzeigen",
         "description": "App-Icon im System-Tray anzeigen; Klick für dasselbe Schnellaktionsmenü wie das Pet-Rechtsklickmenü"
