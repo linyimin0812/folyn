@@ -5,9 +5,10 @@
  * only when the「允许 AI 读取活动数据生成摘要」switch is on — the UI gates
  * the block entirely when it's off.
  *
- * Uses `historyMode: 'none'` (no persisted chat turn) and the extension pair
- * falling back to the first enabled pair — same resolution strategy as
- * extension-host's aiCapability.
+ * Uses `historyMode: 'none'` (no persisted chat turn). Pair resolution
+ * follows the global chat config first (extensionPair ?? chat pair ?? first
+ * enabled pair) — same semantics as design §7.5's "modelOverride undefined
+ * = follow global chat config".
  */
 
 import type { ActivityEventRow } from './api';
@@ -28,22 +29,25 @@ export function buildEventSummaryPrompt(event: ActivityEventRow): string {
 }
 
 /**
- * Generate + cache the summary. Returns the text, or null when no AI pair is
- * configured, the chat errored (provider errors arrive as error chunks, not
- * rejections — captured and logged), or the response was empty. Callers
- * treat null as a failure and retry on the next expand.
+ * Generate + cache the summary. Returns the summary text; throws on failure
+ * (no AI pair configured, provider error, or empty response) — callers catch
+ * and surface the message. A cache-write failure still returns the text (the
+ * summary is displayed this session).
  */
 export async function generateEventSummary(
   vaultRoot: string,
   event: ActivityEventRow,
-): Promise<string | null> {
+): Promise<string> {
   const { useAiConfigStore, resolvePairConfig, firstEnabledPair } = await import(
     '@/store/aiConfigStore'
   );
   const state = useAiConfigStore.getState();
-  const pair = state.extensionPair ?? firstEnabledPair(state);
+  const chatPair = state.chatProvider && state.chatModel
+    ? { provider: state.chatProvider, model: state.chatModel }
+    : null;
+  const pair = state.extensionPair ?? chatPair ?? firstEnabledPair(state);
   const cfg = resolvePairConfig(pair, state);
-  if (!cfg) return null;
+  if (!cfg) throw new Error('AI pair not configured');
 
   const { runRigChat } = await import('@/services/rigChat');
   let text = '';
@@ -69,13 +73,10 @@ export async function generateEventSummary(
     });
   } catch (err) {
     console.warn('[activity] event summary generation failed:', err);
-    return null;
+    throw err;
   }
   const summary = text.trim();
-  if (!summary) {
-    console.warn('[activity] event summary generation failed:', errorText || 'empty response');
-    return null;
-  }
+  if (!summary) throw new Error(errorText || 'empty response');
   try {
     await setActivityEventSummary(vaultRoot, event.id, summary);
   } catch (err) {
