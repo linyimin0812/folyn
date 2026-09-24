@@ -34,7 +34,9 @@
     "empty": "Keine Aktivität in diesem Zeitraum",
     "viewSource": "Quelle ansehen",
     "aiSummary": "Zusammenfassung · KI-generiert",
-    "aiSummaryLoading": "Zusammenfassung wird erstellt…"
+    "aiSummaryLoading": "Zusammenfassung wird erstellt…",
+    "expandAll": "Alle ausklappen",
+    "collapseAll": "Alle einklappen"
   },
   "report": {
     "daily": "Tagesbericht",

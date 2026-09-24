@@ -124,6 +124,20 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
 
   return (
     <div>
+      <div className="pb-2 flex justify-end">
+        <button
+          className="text-[12px] text-t3 hover:text-t1 cursor-pointer bg-transparent border-0 p-0"
+          onClick={() =>
+            setExpanded(
+              expanded.size > 0 ? new Set() : new Set(events.map((e) => e.id))
+            )
+          }
+        >
+          {expanded.size > 0
+            ? t('activity:timeline.collapseAll')
+            : t('activity:timeline.expandAll')}
+        </button>
+      </div>
       {groups.map((g, gi) => (
         <div key={g.key} className={gi === 0 ? '' : 'mt-5'}>
           <div className={gi === 0 ? 'pb-2' : 'pt-3 pb-2 border-t border-brd'}>

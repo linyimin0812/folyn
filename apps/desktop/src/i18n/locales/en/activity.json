@@ -34,7 +34,9 @@
     "empty": "No activity in this period",
     "viewSource": "View source",
     "aiSummary": "Summary · AI generated",
-    "aiSummaryLoading": "Generating summary…"
+    "aiSummaryLoading": "Generating summary…",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all"
   },
   "report": {
     "daily": "Daily report",
