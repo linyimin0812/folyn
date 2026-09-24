@@ -214,7 +214,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                     }`}
                   >
                     <div className="overflow-hidden min-h-0">
-                    <div className="ml-11 mr-2 mb-2 rounded-md bg-surf2 border border-brd p-3 pt-4 text-[13px] text-t2">
+                    <div className="ml-11 mr-2 mt-2 mb-2 rounded-md bg-surf2 border border-brd p-3 text-[13px] text-t2">
                       {e.summary && <p className="m-0 mb-2">{e.summary}</p>}
 
                       {detailFields && detailFields.length > 0 ? (
