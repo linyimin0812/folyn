@@ -32,6 +32,12 @@
               "title": "排除目录",
               "description": "逗号分隔的目录名或相对路径，匹配的目录不进行采集（如 .obsidian, node_modules）",
               "default": ""
+            },
+            "allowAiSummary": {
+              "type": "boolean",
+              "title": "允许 AI 读取活动数据生成摘要",
+              "description": "开启后，时间线详情面板可为该采集器的事件懒生成 AI 摘要",
+              "default": false
             }
           }
         },
