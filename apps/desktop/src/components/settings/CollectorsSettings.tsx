@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { Check, Loader2, Play, TriangleAlert } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
+import { useShallow } from 'zustand/react/shallow';
 import { useExtensionStore } from '@/store/extensionStore';
 import { useCollectorRegistryStore, type CollectorRegistration } from '@/services/activity/registry';
 import { collectNow, effectiveIntervalMs } from '@/services/activity/runtime';
@@ -110,6 +111,8 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
   // Live progress from the collector's ctx.onProgress (cleared when the run
   // ends) — locale-neutral string from the collector, label localized here.
   const collectProgress = useActivityCollectorStore((s) => s.collectProgress[reg.collectorId]);
+  const uninstall = useExtensionStore((s) => s.uninstall);
+  const uninstallBusy = useExtensionStore(useShallow((s) => !!s.busy[`${reg.extensionId}:uninstall`]));
   // Select the stable array ref and derive in render (state-management spec:
   // a `.filter` in the selector mints a fresh array every call → re-render loop).
   const allConflicts = useCollectorRegistryStore((s) => s.conflicts);
@@ -146,6 +149,21 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
     }
   };
 
+  const onUninstall = useCallback(async () => {
+    if (!isTauri()) {
+      void uninstall(reg.extensionId);
+      return;
+    }
+    const { confirm } = await import('@tauri-apps/plugin-dialog');
+    const ok = await confirm(t('settings:extensions.uninstallConfirm.message'), {
+      title: t('settings:extensions.uninstallConfirm.title'),
+      okLabel: t('settings:extensions.uninstallConfirm.confirm'),
+      cancelLabel: t('settings:extensions.uninstallConfirm.cancel'),
+    });
+    if (!ok) return;
+    void uninstall(reg.extensionId);
+  }, [reg.extensionId, uninstall, t]);
+
   return (
     <div className="border border-brd rounded-lg p-3 mb-2 bg-surf">
       <div className="flex items-start justify-between gap-2">
@@ -173,6 +191,15 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            className="btn btn-sm text-t3 hover:text-red-600 dark:hover:text-red-400"
+            disabled={uninstallBusy}
+            onClick={() => void onUninstall()}
+          >
+            {uninstallBusy
+              ? t('settings:extensions.uninstalling')
+              : t('settings:extensions.uninstall')}
+          </button>
           <span className="text-[11px] text-t3">
             {settings.enabled ? t('activity:collectors.enabled') : t('activity:collectors.disabled')}
           </span>
@@ -272,8 +299,10 @@ export function CollectorsSettings() {
   const error = useExtensionStore((s) => s.error);
   const clearError = useExtensionStore((s) => s.clearError);
   const installFromFolder = useExtensionStore((s) => s.installFromFolder);
+  const installFromZip = useExtensionStore((s) => s.installFromZip);
   const refresh = useExtensionStore((s) => s.refresh);
   const [folderOpen, setFolderOpen] = useState(false);
+  const [zipOpen, setZipOpen] = useState(false);
 
   const handleInstallFromFolder = useCallback(async () => {
     if (folderOpen) return;
@@ -294,6 +323,27 @@ export function CollectorsSettings() {
     }
   }, [folderOpen, installFromFolder, clearError, refresh]);
 
+  const handleInstallFromZip = useCallback(async () => {
+    if (zipOpen) return;
+    setZipOpen(true);
+    clearError();
+    try {
+      if (!isTauri()) {
+        return;
+      }
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const picked = await open({
+        filters: [{ name: 'Extension zip', extensions: ['zip'] }],
+        multiple: false,
+      });
+      if (!picked || Array.isArray(picked)) return;
+      await installFromZip(picked as string);
+      await refresh();
+    } finally {
+      setZipOpen(false);
+    }
+  }, [zipOpen, installFromZip, clearError, refresh]);
+
   // Webhook endpoint (Rust activity_webhook_info) — only shown for
   // webhook-mode collectors; empty when the local server isn't running.
   const hasWebhook = collectors.some((c) => c.mode === 'webhook');
@@ -305,15 +355,24 @@ export function CollectorsSettings() {
 
   return (
     <div>
-      <div className="mb-3">
+      <div className="mb-3 flex gap-2 flex-wrap">
         <button
           className="btn btn-p btn-sm"
-          disabled={!!installing || folderOpen || !isTauri()}
+          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
           onClick={handleInstallFromFolder}
         >
           {installing
             ? t('settings:extensions.installing', { id: installing.id })
             : t('activity:collectors.install')}
+        </button>
+        <button
+          className="btn btn-g btn-sm"
+          disabled={!!installing || folderOpen || zipOpen || !isTauri()}
+          onClick={handleInstallFromZip}
+        >
+          {installing
+            ? t('settings:extensions.installing', { id: installing.id })
+            : t('activity:collectors.installZip')}
         </button>
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-[11px] rounded-md p-2 mb-3 break-words">
