@@ -4,9 +4,9 @@
  * plus report generation (日/周/月 written into the vault, §7.5).
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, List, Loader2, Network, Plug, RefreshCw, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
+import { Activity, History, List, Loader2, Network, Plug, RefreshCw, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -44,6 +44,7 @@ import { collectNow } from '@/services/activity/runtime';
 import { getCollectorSettings, useActivityCollectorStore } from '@/store/activityCollectorStore';
 import { CollectorsSettings } from '@/components/settings/CollectorsSettings';
 import { ReportSettingsView } from './ReportSettingsView';
+import { CollectLogView } from './CollectLogView';
 import { useAsync, useEnabledSources, useVaultRoot } from './useActivityData';
 import { PeriodPicker } from './PeriodPicker';
 import { OngoingTasks } from './OngoingTasks';
@@ -60,8 +61,10 @@ function reportModeOf(mode: Period['mode']): ReportPeriod | null {
   return null;
 }
 
-/** Secondary rail views (activity page-local — NOT the global ActivityBar). */
-type ActivityView = 'main' | 'collectors' | 'reportSettings';
+/** Secondary rail views (activity page-local — NOT the global ActivityBar).
+ *  `collectLog` is a second-level child under 采集器, rendered indented like
+ *  the timeline/graph children under 活动 — not part of RAIL_VIEWS. */
+type ActivityView = 'main' | 'collectors' | 'collectLog' | 'reportSettings';
 const RAIL_VIEWS: { id: ActivityView; icon: typeof Activity; key: string }[] = [
   { id: 'main', icon: Activity, key: 'activity:rail.main' },
   { id: 'collectors', icon: Plug, key: 'activity:rail.collectors' },
@@ -324,18 +327,33 @@ export function ActivityPage() {
           </button>
         ))}
         {RAIL_VIEWS.filter((v) => v.id !== 'main').map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            className={`flex w-full items-center gap-2 px-2.5 py-2 rounded cursor-pointer ${
-              view === v.id ? 'bg-accdim text-acc' : 'text-t3 hover:text-t2 hover:bg-hov'
-            }`}
-            aria-label={t(v.key)}
-            onClick={() => setView(v.id)}
-          >
-            <v.icon size={16} />
-            <span className="text-[12px]">{t(v.key)}</span>
-          </button>
+          <Fragment key={v.id}>
+            <button
+              type="button"
+              className={`flex w-full items-center gap-2 px-2.5 py-2 rounded cursor-pointer ${
+                view === v.id ? 'bg-accdim text-acc' : 'text-t3 hover:text-t2 hover:bg-hov'
+              }`}
+              aria-label={t(v.key)}
+              onClick={() => setView(v.id)}
+            >
+              <v.icon size={16} />
+              <span className="text-[12px]">{t(v.key)}</span>
+            </button>
+            {/* 采集记录: indented child of 采集器 (same pattern as timeline/graph). */}
+            {v.id === 'collectors' && (
+              <button
+                type="button"
+                className={`flex w-full items-center gap-2 pl-7 pr-2.5 py-1.5 rounded cursor-pointer ${
+                  view === 'collectLog' ? 'bg-accdim text-acc' : 'text-t3 hover:text-t2 hover:bg-hov'
+                }`}
+                aria-label={t('activity:rail.collectLog')}
+                onClick={() => setView('collectLog')}
+              >
+                <History size={14} />
+                <span className="text-[11px]">{t('activity:rail.collectLog')}</span>
+              </button>
+            )}
+          </Fragment>
         ))}
       </div>
 
@@ -483,9 +501,17 @@ export function ActivityPage() {
         <div className="flex-1 min-w-0 overflow-y-auto">
           <div className="max-w-[1200px] mx-auto px-8 py-5">
             <h1 className="m-0 mb-4 pb-3 border-b border-brd text-[17px] font-semibold text-t1">
-              {t(view === 'collectors' ? 'activity:rail.collectors' : 'activity:rail.reportSettings')}
+              {view === 'collectLog'
+                ? t('activity:collectLog.title')
+                : t(view === 'collectors' ? 'activity:rail.collectors' : 'activity:rail.reportSettings')}
             </h1>
-            {view === 'collectors' ? <CollectorsSettings /> : <ReportSettingsView />}
+            {view === 'collectors' ? (
+              <CollectorsSettings />
+            ) : view === 'collectLog' ? (
+              <CollectLogView />
+            ) : (
+              <ReportSettingsView />
+            )}
           </div>
         </div>
       )}

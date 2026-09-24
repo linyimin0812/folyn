@@ -60,7 +60,18 @@
   "rail": {
     "main": "活动",
     "collectors": "采集器",
-    "reportSettings": "报告设置"
+    "reportSettings": "报告设置",
+    "collectLog": "采集记录"
+  },
+  "collectLog": {
+    "title": "采集记录",
+    "empty": "暂无采集记录，运行「采集」后在此查看历史",
+    "records": "新增 {{count}}",
+    "deduped": "去重 {{count}}",
+    "noResult": "无结果",
+    "duration": "用时 {{time}}",
+    "logs": "采集日志",
+    "emptyLogs": "本次运行无日志"
   },
   "reportSettings": {
     "title": "报告设置",

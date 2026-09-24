@@ -22,6 +22,7 @@ export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
   'pinnedMetrics',
   'reportHashes',
   'reportConfig',
+  'collectHistory',
 ] as const;
 
 /** Per-collector user preferences. Missing record = all defaults (on). */
@@ -62,6 +63,24 @@ export const DEFAULT_REPORT_CONFIG: ReportConfig = {
   rootDir: '',
 };
 
+/** One completed collector run (scheduled poll or manual collect) —
+ *  recorded by runCollect for the 采集记录 view. */
+export interface CollectRunRecord {
+  collectorId: string;
+  collectorName: string;
+  startedAt: number;
+  finishedAt: number;
+  accepted: number;
+  deduped: number;
+  /** 'ok' when the push outcome exists; 'no-result' covers skipped OR failed. */
+  outcome: 'ok' | 'no-result';
+  /** Locale-neutral onProgress messages from the collector (capped at 50). */
+  logs: string[];
+}
+
+/** Cap the persisted history (design: keep the last 100 runs). */
+const MAX_COLLECT_HISTORY = 100;
+
 export interface ActivityCollectorState {
   /** Privacy switch (design §8): keep the events' `raw` payload. */
   keepRaw: boolean;
@@ -90,6 +109,8 @@ export interface ActivityCollectorState {
    *  ends). Locale-neutral strings from the collector; the UI prefixes the
    *  localized label. */
   collectProgress: Record<string, string>;
+  /** Past collection runs (most recent first), persisted across restarts. */
+  collectHistory: CollectRunRecord[];
 
   setKeepRaw: (v: boolean) => void;
   setRedactPatterns: (v: string[]) => void;
@@ -111,6 +132,8 @@ export interface ActivityCollectorState {
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
   /** Runtime-only — null clears the entry (runCollect's finally). */
   setCollectProgress: (collectorId: string, message: string | null) => void;
+  /** Record one completed run (called from runCollect's finally). */
+  appendCollectRun: (record: CollectRunRecord) => void;
 
   hydrate: (blob: Record<string, unknown>) => void;
 }
@@ -140,6 +163,23 @@ export function parseReportConfig(blob: unknown): ReportConfig {
   };
 }
 
+/** Type-guard a persisted collectHistory entry. */
+export function isCollectRunRecord(v: unknown): v is CollectRunRecord {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return (
+    typeof r.collectorId === 'string' &&
+    typeof r.collectorName === 'string' &&
+    typeof r.startedAt === 'number' &&
+    typeof r.finishedAt === 'number' &&
+    typeof r.accepted === 'number' &&
+    typeof r.deduped === 'number' &&
+    (r.outcome === 'ok' || r.outcome === 'no-result') &&
+    Array.isArray(r.logs) &&
+    r.logs.every((l) => typeof l === 'string')
+  );
+}
+
 export const useActivityCollectorStore = create<ActivityCollectorState>((set, get) => ({
   keepRaw: false,
   redactPatterns: [],
@@ -150,6 +190,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   reportConfig: DEFAULT_REPORT_CONFIG,
   lastSync: {},
   collectProgress: {},
+  collectHistory: [],
 
   setKeepRaw: (v) => { set({ keepRaw: v }); persist(); },
   setRedactPatterns: (v) => { set({ redactPatterns: v }); persist(); },
@@ -202,6 +243,11 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     set({ collectProgress: next });
   },
 
+  appendCollectRun: (record) => {
+    set({ collectHistory: [record, ...get().collectHistory].slice(0, MAX_COLLECT_HISTORY) });
+    persist();
+  },
+
   hydrate: (blob) => {
     const patch: Partial<ActivityCollectorState> = {};
     if (typeof blob.keepRaw === 'boolean') patch.keepRaw = blob.keepRaw;
@@ -247,6 +293,9 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
         }
       }
       patch.configs = configs;
+    }
+    if (Array.isArray(blob.collectHistory)) {
+      patch.collectHistory = blob.collectHistory.filter(isCollectRunRecord).slice(0, MAX_COLLECT_HISTORY);
     }
     if (Object.keys(patch).length > 0) set(patch);
   },

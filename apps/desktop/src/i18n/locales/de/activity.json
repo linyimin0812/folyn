@@ -60,7 +60,18 @@
   "rail": {
     "main": "Aktivität",
     "collectors": "Kollektoren",
-    "reportSettings": "Berichtseinstellungen"
+    "reportSettings": "Berichtseinstellungen",
+    "collectLog": "Erfassungsverlauf"
+  },
+  "collectLog": {
+    "title": "Erfassungsverlauf",
+    "empty": "Noch keine Erfassungsläufe — führe eine Erfassung aus und sieh hier nach",
+    "records": "Neu: {{count}}",
+    "deduped": "Dedupliziert: {{count}}",
+    "noResult": "Kein Ergebnis",
+    "duration": "Dauer {{time}}",
+    "logs": "Protokolle",
+    "emptyLogs": "Keine Protokolle für diesen Lauf"
   },
   "reportSettings": {
     "title": "Berichtseinstellungen",

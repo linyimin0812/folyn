@@ -60,7 +60,18 @@
   "rail": {
     "main": "Activity",
     "collectors": "Collectors",
-    "reportSettings": "Report settings"
+    "reportSettings": "Report settings",
+    "collectLog": "Collection History"
+  },
+  "collectLog": {
+    "title": "Collection History",
+    "empty": "No collection runs yet — run a collect and check back here",
+    "records": "Added {{count}}",
+    "deduped": "Deduped {{count}}",
+    "noResult": "No result",
+    "duration": "Duration {{time}}",
+    "logs": "Logs",
+    "emptyLogs": "No logs for this run"
   },
   "reportSettings": {
     "title": "Report settings",

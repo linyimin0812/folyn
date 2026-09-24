@@ -165,6 +165,11 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
   const cursor = await invoke<string | null>('activity_get_cursor', { vaultRoot, collectorId });
   const config = useActivityCollectorStore.getState().configs[collectorId] ?? {};
   const store = useActivityCollectorStore;
+  // Per-run history record (采集记录 view): logs accumulate alongside the
+  // transient progress; the record is appended in the finally on both paths.
+  const startedAt = Date.now();
+  const logs: string[] = [];
+  let pushed: ActivityPushOutcome | null = null;
   try {
     const { events, nextCursor } = await reg.impl.collect({
       cursor,
@@ -178,10 +183,15 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       },
       // Transient progress → store (runtime-only, never persisted). Cleared
       // in the finally below on both success and failure paths.
-      onProgress: (message) => store.getState().setCollectProgress(collectorId, message),
+      onProgress: (message) => {
+        // ponytail: 50-log cap per run — enough to debug, bounded storage
+        if (logs.length < 50) logs.push(message);
+        store.getState().setCollectProgress(collectorId, message);
+      },
     });
     const outcome = await pushCollectorEvents(collectorId, events);
     if (!outcome) return null;
+    pushed = outcome;
     await invoke('activity_set_cursor', { vaultRoot, collectorId, cursor: nextCursor });
     useActivityCollectorStore.getState().setLastSync(collectorId, Date.now(), outcome.accepted);
     return outcome;
@@ -190,6 +200,17 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
     return null;
   } finally {
     store.getState().setCollectProgress(collectorId, null);
+    // null outcome = skipped OR failed — recorded as 无结果.
+    store.getState().appendCollectRun({
+      collectorId,
+      collectorName: reg.extensionName ?? collectorId,
+      startedAt,
+      finishedAt: Date.now(),
+      accepted: pushed?.accepted ?? 0,
+      deduped: pushed?.deduped ?? 0,
+      outcome: pushed ? 'ok' : 'no-result',
+      logs,
+    });
   }
 }
 

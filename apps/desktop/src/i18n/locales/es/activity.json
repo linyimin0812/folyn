@@ -60,7 +60,18 @@
   "rail": {
     "main": "Actividad",
     "collectors": "Colectores",
-    "reportSettings": "Ajustes de informes"
+    "reportSettings": "Ajustes de informes",
+    "collectLog": "Historial de recolección"
+  },
+  "collectLog": {
+    "title": "Historial de recolección",
+    "empty": "Aún no hay recolecciones; ejecuta una recolección y consulta aquí",
+    "records": "Nuevas: {{count}}",
+    "deduped": "Duplicadas: {{count}}",
+    "noResult": "Sin resultado",
+    "duration": "Duración {{time}}",
+    "logs": "Registros",
+    "emptyLogs": "Sin registros en esta ejecución"
   },
   "reportSettings": {
     "title": "Ajustes de informes",

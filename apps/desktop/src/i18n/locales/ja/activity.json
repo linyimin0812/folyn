@@ -60,7 +60,18 @@
   "rail": {
     "main": "アクティビティ",
     "collectors": "コレクター",
-    "reportSettings": "レポート設定"
+    "reportSettings": "レポート設定",
+    "collectLog": "収集履歴"
+  },
+  "collectLog": {
+    "title": "収集履歴",
+    "empty": "まだ収集履歴がありません。収集を実行してから確認してください",
+    "records": "新規 {{count}}",
+    "deduped": "重複 {{count}}",
+    "noResult": "結果なし",
+    "duration": "所要時間 {{time}}",
+    "logs": "収集ログ",
+    "emptyLogs": "この実行のログはありません"
   },
   "reportSettings": {
     "title": "レポート設定",
