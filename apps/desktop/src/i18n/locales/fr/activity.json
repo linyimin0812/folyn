@@ -74,7 +74,9 @@
     "duration": "Durée {{time}}",
     "logs": "Journaux",
     "emptyLogs": "Aucun journal pour cette exécution",
-    "runs": "{{count}} exécutions"
+    "runs": "{{count}} exécutions",
+    "more": "Afficher plus · {{count}}",
+    "less": "Réduire"
   },
   "reportSettings": {
     "title": "Réglages des rapports",

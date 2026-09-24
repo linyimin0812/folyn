@@ -74,7 +74,9 @@
     "duration": "Dauer {{time}}",
     "logs": "Protokolle",
     "emptyLogs": "Keine Protokolle für diesen Lauf",
-    "runs": "{{count}} Läufe"
+    "runs": "{{count}} Läufe",
+    "more": "Mehr anzeigen · {{count}}",
+    "less": "Weniger anzeigen"
   },
   "reportSettings": {
     "title": "Berichtseinstellungen",

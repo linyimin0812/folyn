@@ -74,7 +74,9 @@
     "duration": "Duration {{time}}",
     "logs": "Logs",
     "emptyLogs": "No logs for this run",
-    "runs": "{{count}} runs"
+    "runs": "{{count}} runs",
+    "more": "Show more · {{count}}",
+    "less": "Show less"
   },
   "reportSettings": {
     "title": "Report settings",

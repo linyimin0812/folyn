@@ -74,7 +74,9 @@
     "duration": "用时 {{time}}",
     "logs": "采集日志",
     "emptyLogs": "本次运行无日志",
-    "runs": "{{count}} 次运行"
+    "runs": "{{count}} 次运行",
+    "more": "显示更多 · {{count}}",
+    "less": "收起"
   },
   "reportSettings": {
     "title": "报告设置",

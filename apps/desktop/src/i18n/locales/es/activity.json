@@ -74,7 +74,9 @@
     "duration": "Duración {{time}}",
     "logs": "Registros",
     "emptyLogs": "Sin registros en esta ejecución",
-    "runs": "{{count}} ejecuciones"
+    "runs": "{{count}} ejecuciones",
+    "more": "Mostrar más · {{count}}",
+    "less": "Mostrar menos"
   },
   "reportSettings": {
     "title": "Ajustes de informes",

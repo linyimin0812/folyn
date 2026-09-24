@@ -74,7 +74,9 @@
     "duration": "所要時間 {{time}}",
     "logs": "収集ログ",
     "emptyLogs": "この実行のログはありません",
-    "runs": "{{count}} 回"
+    "runs": "{{count}} 回",
+    "more": "さらに表示 · {{count}}",
+    "less": "折りたたむ"
   },
   "reportSettings": {
     "title": "レポート設定",

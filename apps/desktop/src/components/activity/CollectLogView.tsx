@@ -88,6 +88,8 @@ export function CollectLogView() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // Collapsed collector groups; empty = all groups expanded (default).
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  // Groups expanded beyond the default 5 most-recent run records.
+  const [showAllGroups, setShowAllGroups] = useState<Set<string>>(new Set());
 
   if (history.length === 0) {
     return (
@@ -132,6 +134,15 @@ export function CollectLogView() {
     });
   };
 
+  const toggleShowAll = (id: string) => {
+    setShowAllGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {[...groups.entries()].map(([id, runs]) => {
@@ -165,12 +176,23 @@ export function CollectLogView() {
             >
               <div className="overflow-hidden min-h-0">
                 <div className="flex flex-col gap-2 pt-2">
-                  {runs.map((r) => {
+                  {(showAllGroups.has(id) ? runs : runs.slice(0, 5)).map((r) => {
                     const key = `${r.collectorId}:${r.startedAt}`;
                     return (
                       <RunRow key={key} run={r} expanded={expanded.has(key)} onToggle={() => toggle(key)} />
                     );
                   })}
+                  {runs.length > 5 && (
+                    <button
+                      type="button"
+                      className="btn btn-g btn-sm inline-flex items-center gap-1.5 self-start"
+                      onClick={() => toggleShowAll(id)}
+                    >
+                      {showAllGroups.has(id)
+                        ? t('activity:collectLog.less')
+                        : t('activity:collectLog.more', { count: runs.length - 5 })}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
