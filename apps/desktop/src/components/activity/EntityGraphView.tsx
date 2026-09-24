@@ -75,10 +75,14 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     return m;
   }, [entities]);
 
-  // Default center: the first person entity (the vault owner's actor node).
+  // Default center: the local-user anchor. The 'self' person is where
+  // window-activity and other local collectors attach; remote-service actors
+  // (e.g. github logins) are separate person entities, reachable by click.
   useEffect(() => {
     if (history.length > 0 || !entities || entities.length === 0) return;
-    const person = entities.find((e) => e.type === 'person');
+    const person =
+      entities.find((e) => e.type === 'person' && e.identityKey === 'self') ??
+      entities.find((e) => e.type === 'person');
     if (person) setHistory([person.id]);
   }, [entities, history.length]);
 
