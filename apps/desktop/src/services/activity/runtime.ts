@@ -183,11 +183,19 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       },
       // Vault scanner (Rust `activity_scan_vault` — fixed recursive walk, .git
       // always skipped; excludes are dir names / vault-relative paths only,
-      // see activity/mod.rs).
+      // see activity/mod.rs). The appearance「过滤文件/文件夹」patterns are
+      // host-applied here (invisible to the collector — SDK contract unchanged):
+      // one exclusion list, configured once.
       scanVault: async (opts: { excludeDirs?: string[] }) => {
+        const { useAppearanceStore } = await import('@/store/appearanceStore');
+        const excludePatterns = useAppearanceStore
+          .getState()
+          .excludePatterns.split('\n')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && !s.startsWith('#'));
         return invoke<Array<{ path: string; mtimeMs: number; size: number }>>(
           'activity_scan_vault',
-          { vaultRoot, excludeDirs: opts?.excludeDirs ?? [] },
+          { vaultRoot, excludeDirs: opts?.excludeDirs ?? [], excludePatterns },
         );
       },
       // Transient progress → store (runtime-only, never persisted). Cleared

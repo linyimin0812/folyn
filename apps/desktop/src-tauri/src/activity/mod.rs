@@ -165,13 +165,23 @@ pub struct VaultFileEntry {
 /// Recursively list every file under `vault_root`. `.git` is always skipped
 /// (repo internals are never user activity); any directory whose relative path
 /// OR basename matches a trimmed non-empty exclude entry is skipped too.
-/// Sorted by path. Backs the `ctx.scanVault` the collector runtime injects.
+/// `exclude_patterns` are the appearance「过滤文件/文件夹」globs: a dir OR file
+/// is skipped when any segment of its relative path matches a pattern
+/// (`*` = any chars, `?` = one char, otherwise exact segment match — mirrors
+/// `src/utils/excludePattern.ts`). Sorted by path. Backs the `ctx.scanVault`
+/// the collector runtime injects.
 #[tauri::command]
 pub fn activity_scan_vault(
     vault_root: String,
     exclude_dirs: Vec<String>,
+    exclude_patterns: Vec<String>,
 ) -> Result<Vec<VaultFileEntry>, AppError> {
     let excludes: Vec<String> = exclude_dirs
+        .iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    let patterns: Vec<String> = exclude_patterns
         .iter()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -181,14 +191,52 @@ pub fn activity_scan_vault(
         return Err(format!("activity_scan_vault: not a directory: {vault_root}").into());
     }
     let mut out = Vec::new();
-    walk_vault(root, "", &excludes, &mut out);
+    walk_vault(root, "", &excludes, &patterns, &mut out);
     out.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(out)
 }
 
+/// Glob match for one path segment: `*` = any run of chars, `?` = one char,
+/// otherwise exact. Same semantics as `patternToRegExp` in
+/// `src/utils/excludePattern.ts`. Char-based so `?` never splits a UTF-8 char.
+fn wildcard_match(seg: &str, pat: &str) -> bool {
+    fn go(s: &[char], p: &[char]) -> bool {
+        if p.is_empty() {
+            return s.is_empty();
+        }
+        match p[0] {
+            '*' => (0..=s.len()).any(|i| go(&s[i..], &p[1..])),
+            '?' => !s.is_empty() && go(&s[1..], &p[1..]),
+            c => !s.is_empty() && s[0] == c && go(&s[1..], &p[1..]),
+        }
+    }
+    let s: Vec<char> = seg.chars().collect();
+    let p: Vec<char> = pat.chars().collect();
+    go(&s, &p)
+}
+
+/// Does any path segment of `rel` match one of the patterns?
+fn segment_matches_pattern(rel: &str, patterns: &[String]) -> bool {
+    rel.split('/').any(|seg| {
+        patterns.iter().any(|p| {
+            if p.contains('*') || p.contains('?') {
+                wildcard_match(seg, p)
+            } else {
+                seg == p
+            }
+        })
+    })
+}
+
 /// Fixed recursive walk (std::fs only). Unreadable entries are skipped — a
 /// scan is a snapshot, not a contract to enumerate everything.
-fn walk_vault(dir: &std::path::Path, rel: &str, excludes: &[String], out: &mut Vec<VaultFileEntry>) {
+fn walk_vault(
+    dir: &std::path::Path,
+    rel: &str,
+    excludes: &[String],
+    patterns: &[String],
+    out: &mut Vec<VaultFileEntry>,
+) {
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -197,6 +245,10 @@ fn walk_vault(dir: &std::path::Path, rel: &str, excludes: &[String], out: &mut V
         let name = entry.file_name().to_string_lossy().into_owned();
         let child_rel = if rel.is_empty() { name.clone() } else { format!("{rel}/{name}") };
         let Ok(ft) = entry.file_type() else { continue };
+        // Appearance「过滤文件/文件夹」patterns apply to files AND dirs.
+        if segment_matches_pattern(&child_rel, patterns) {
+            continue;
+        }
         if ft.is_dir() {
             // .git skipped unconditionally: repo internals, never user activity.
             if name == ".git" {
@@ -205,7 +257,7 @@ fn walk_vault(dir: &std::path::Path, rel: &str, excludes: &[String], out: &mut V
             if excludes.iter().any(|e| child_rel == *e || name == *e) {
                 continue;
             }
-            walk_vault(&entry.path(), &child_rel, excludes, out);
+            walk_vault(&entry.path(), &child_rel, excludes, patterns, out);
         } else {
             let Ok(md) = entry.metadata() else { continue };
             let mtime_ms = md
@@ -400,6 +452,7 @@ mod scan_tests {
         let entries = activity_scan_vault(
             root.to_string_lossy().into_owned(),
             vec!["junk".into(), "notes/secret".into(), "  ".into(), String::new()],
+            vec![],
         )
         .unwrap();
         let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
@@ -408,8 +461,40 @@ mod scan_tests {
     }
 
     #[test]
+    fn scan_applies_exclude_patterns() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        fs::write(root.join("a.md"), "x").unwrap();
+        fs::write(root.join("app.log"), "x").unwrap();
+        fs::create_dir_all(root.join("notes/sub")).unwrap();
+        fs::write(root.join("notes/debug.log"), "x").unwrap();
+        // Segment pattern prunes the whole nested dir.
+        fs::create_dir_all(root.join("notes/__wiki__/deep")).unwrap();
+        fs::write(root.join("notes/__wiki__/deep/b.md"), "x").unwrap();
+        // Exact file-name segment pattern.
+        fs::write(root.join("notes/secret.md"), "x").unwrap();
+        // `?` wildcard: one char.
+        fs::write(root.join("notes/draft-1.md"), "x").unwrap();
+
+        let entries = activity_scan_vault(
+            root.to_string_lossy().into_owned(),
+            vec![],
+            vec![
+                "*.log".into(),
+                "__wiki__".into(),
+                "secret.md".into(),
+                "draft-?.md".into(),
+            ],
+        )
+        .unwrap();
+        let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
+        assert_eq!(paths, vec!["a.md"]);
+    }
+
+    #[test]
     fn scan_non_directory_is_an_error() {
-        let err = activity_scan_vault("/definitely/not/a/dir".into(), vec![]).unwrap_err();
+        let err =
+            activity_scan_vault("/definitely/not/a/dir".into(), vec![], vec![]).unwrap_err();
         assert!(err.to_string().contains("not a directory"));
     }
 }
