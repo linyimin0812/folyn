@@ -25,7 +25,24 @@ const run = (over: Partial<CollectRunRecord> = {}): CollectRunRecord => ({
 beforeEach(() => {
   storageClient.__resetForTesting();
   markSettingsHydrated();
-  useActivityCollectorStore.setState({ reportConfig: DEFAULT_REPORT_CONFIG, collectHistory: [] });
+  useActivityCollectorStore.setState({ reportConfig: DEFAULT_REPORT_CONFIG, summaryPair: null, collectHistory: [] });
+});
+
+describe('summaryPair hydrate round-trip', () => {
+  it('set → persist blob → hydrate restores; malformed drops to null', () => {
+    const { setSummaryPair, hydrate } = useActivityCollectorStore.getState();
+    setSummaryPair({ provider: 'anthropic', model: 'claude-x' });
+    const blob = JSON.parse(
+      JSON.stringify(useActivityCollectorStore.getState().summaryPair),
+    ) as Record<string, unknown>;
+    useActivityCollectorStore.setState({ summaryPair: null });
+    hydrate({ summaryPair: blob });
+    expect(useActivityCollectorStore.getState().summaryPair).toEqual({ provider: 'anthropic', model: 'claude-x' });
+
+    useActivityCollectorStore.setState({ summaryPair: null });
+    hydrate({ summaryPair: { provider: 'p' } });
+    expect(useActivityCollectorStore.getState().summaryPair).toBeNull();
+  });
 });
 
 describe('reportConfig hydrate round-trip', () => {

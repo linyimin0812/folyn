@@ -85,6 +85,7 @@
     "promptPlaceholder": "Deja vacío para usar la plantilla integrada",
     "promptHint": "Si se define, el cuerpo del informe lo genera un LLM; los datos de actividad del periodo se añaden después del prompt",
     "modelLabel": "Modelo de informes",
+    "summaryModelLabel": "Modelo de resumen de eventos",
     "followGlobal": "Seguir el modelo de chat global",
     "followGlobalHint": "Actualmente siguiendo el modelo de chat global",
     "rootDirLabel": "Directorio raíz de informes",

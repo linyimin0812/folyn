@@ -85,6 +85,7 @@
     "promptPlaceholder": "空欄の場合は内蔵テンプレートを使用します",
     "promptHint": "設定するとレポート本文は LLM が生成します。期間のアクティビティデータはプロンプトの後に付加されます",
     "modelLabel": "レポートモデル",
+    "summaryModelLabel": "イベント要約モデル",
     "followGlobal": "グローバルのチャットモデルに従う",
     "followGlobalHint": "現在：グローバルのチャットモデルに従う",
     "rootDirLabel": "レポートのルートフォルダ",

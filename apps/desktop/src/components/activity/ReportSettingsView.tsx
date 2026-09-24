@@ -20,6 +20,8 @@ export function ReportSettingsView() {
   const setReportPrompt = useActivityCollectorStore((s) => s.setReportPrompt);
   const setReportModelOverride = useActivityCollectorStore((s) => s.setReportModelOverride);
   const setReportRootDir = useActivityCollectorStore((s) => s.setReportRootDir);
+  const summaryPair = useActivityCollectorStore((s) => s.summaryPair);
+  const setSummaryPair = useActivityCollectorStore((s) => s.setSummaryPair);
   const [period, setPeriod] = useState<Period>('daily');
 
   return (
@@ -56,6 +58,30 @@ export function ReportSettingsView() {
           {t('activity:reportSettings.promptHint')}
         </span>
       </label>
+
+      <div className="py-4 border-t border-brd mb-6">
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+          <span className="text-[13px] text-t1">{t('activity:reportSettings.summaryModelLabel')}</span>
+          {summaryPair ? (
+            <button
+              className="btn btn-sm"
+              onClick={() => setSummaryPair(null)}
+            >
+              {t('activity:reportSettings.followGlobal')}
+            </button>
+          ) : (
+            <span className="text-[11px] text-t3">{t('activity:reportSettings.followGlobalHint')}</span>
+          )}
+        </div>
+        <PairSelector
+          className="w-[360px]"
+          value={summaryPair}
+          onChange={(pair) => setSummaryPair(pair)}
+          dropDirection="down"
+          panelAlign="right"
+          panelMatchWidth
+        />
+      </div>
 
       <div className="py-4 border-t border-brd mb-6">
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">

@@ -85,6 +85,7 @@
     "promptPlaceholder": "Laisser vide pour utiliser le modèle intégré",
     "promptHint": "Si défini, le corps du rapport est généré par un LLM ; les données d'activité de la période sont ajoutées après le prompt",
     "modelLabel": "Modèle des rapports",
+    "summaryModelLabel": "Modèle de résumé d'événement",
     "followGlobal": "Suivre le modèle de chat global",
     "followGlobalHint": "Suit actuellement le modèle de chat global",
     "rootDirLabel": "Dossier racine des rapports",

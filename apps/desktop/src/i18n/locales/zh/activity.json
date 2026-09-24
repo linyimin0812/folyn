@@ -85,6 +85,7 @@
     "promptPlaceholder": "留空则使用内置模板",
     "promptHint": "填写后报告正文由大模型生成，本期活动数据会附加在提示词之后",
     "modelLabel": "报告模型",
+    "summaryModelLabel": "事件摘要模型",
     "followGlobal": "跟随全局对话模型",
     "followGlobalHint": "当前：跟随全局对话模型",
     "rootDirLabel": "报告根目录",

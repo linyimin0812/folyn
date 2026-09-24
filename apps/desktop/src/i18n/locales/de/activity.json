@@ -85,6 +85,7 @@
     "promptPlaceholder": "Leer lassen, um die eingebaute Vorlage zu verwenden",
     "promptHint": "Wenn gesetzt, wird der Berichtstext von einem LLM erzeugt; die Aktivitätsdaten des Zeitraums werden nach dem Prompt angehängt",
     "modelLabel": "Berichtsmodell",
+    "summaryModelLabel": "Ereignis-Zusammenfassungsmodell",
     "followGlobal": "Globalem Chat-Modell folgen",
     "followGlobalHint": "Folgt derzeit dem globalen Chat-Modell",
     "rootDirLabel": "Bericht-Stammordner",

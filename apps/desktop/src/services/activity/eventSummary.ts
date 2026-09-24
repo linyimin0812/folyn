@@ -5,10 +5,10 @@
  * only when the「允许 AI 读取活动数据生成摘要」switch is on — the UI gates
  * the block entirely when it's off.
  *
- * Uses `historyMode: 'none'` (no persisted chat turn). Pair resolution
- * follows the global chat config first (extensionPair ?? chat pair ?? first
- * enabled pair) — same semantics as design §7.5's "modelOverride undefined
- * = follow global chat config".
+ * Uses `historyMode: 'none'` (no persisted chat turn). Pair resolution:
+ * summaryPair (报告设置 view) ?? global chat pair ?? first enabled pair —
+ * same semantics as design §7.5's "modelOverride undefined = follow global
+ * chat config".
  */
 
 import type { ActivityEventRow } from './api';
@@ -45,7 +45,9 @@ export async function generateEventSummary(
   const chatPair = state.chatProvider && state.chatModel
     ? { provider: state.chatProvider, model: state.chatModel }
     : null;
-  const pair = state.extensionPair ?? chatPair ?? firstEnabledPair(state);
+  const { useActivityCollectorStore } = await import('@/store/activityCollectorStore');
+  const summaryPair = useActivityCollectorStore.getState().summaryPair ?? null;
+  const pair = summaryPair ?? chatPair ?? firstEnabledPair(state);
   const cfg = resolvePairConfig(pair, state);
   if (!cfg) throw new Error('AI pair not configured');
 

@@ -22,6 +22,7 @@ export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
   'pinnedMetrics',
   'reportHashes',
   'reportConfig',
+  'summaryPair',
 ] as const;
 
 /** Per-collector user preferences. Missing record = all defaults (on). */
@@ -97,6 +98,10 @@ export interface ActivityCollectorState {
   reportHashes: Record<string, string>;
   /** Report customization (prompts / model / root dir). */
   reportConfig: ReportConfig;
+  /** Model override for event AI summaries (null = follow global chat
+   *  pair). Set from the 报告设置 view; consumed by
+   *  services/activity/eventSummary.ts. */
+  summaryPair: { provider: string; model: string } | null;
   /** Runtime-only last-sync info per collectorId (NOT persisted — refreshed
    *  on every collect). */
   lastSync: Record<string, { at: number; accepted: number }>;
@@ -126,6 +131,8 @@ export interface ActivityCollectorState {
   setReportModelOverride: (pair: { provider: string; model: string } | null) => void;
   /** Set the vault-relative report root dir ('' = 'activity_collection'). */
   setReportRootDir: (v: string) => void;
+  /** Set/clear the event-summary model override (null = follow global chat pair). */
+  setSummaryPair: (pair: { provider: string; model: string } | null) => void;
   /** Runtime-only — called by runCollect after a successful push. */
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
   /** Runtime-only — null clears the entry (runCollect's finally). */
@@ -187,6 +194,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   pinnedMetrics: {},
   reportHashes: {},
   reportConfig: DEFAULT_REPORT_CONFIG,
+  summaryPair: null,
   lastSync: {},
   collectProgress: {},
   collectHistory: [],
@@ -231,6 +239,11 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     persist();
   },
 
+  setSummaryPair: (pair) => {
+    set({ summaryPair: pair });
+    persist();
+  },
+
   setLastSync: (collectorId, at, accepted) => {
     set({ lastSync: { ...get().lastSync, [collectorId]: { at, accepted } } });
   },
@@ -265,6 +278,12 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     }
     if (blob.reportConfig && typeof blob.reportConfig === 'object' && !Array.isArray(blob.reportConfig)) {
       patch.reportConfig = parseReportConfig(blob.reportConfig);
+    }
+    const sp = blob.summaryPair;
+    if (sp && typeof sp === 'object' && !Array.isArray(sp) &&
+      typeof (sp as Record<string, unknown>).provider === 'string' &&
+      typeof (sp as Record<string, unknown>).model === 'string') {
+      patch.summaryPair = { provider: (sp as Record<string, unknown>).provider as string, model: (sp as Record<string, unknown>).model as string };
     }
     if (Array.isArray(blob.redactPatterns)) {
       patch.redactPatterns = blob.redactPatterns.filter((p): p is string => typeof p === 'string');
