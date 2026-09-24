@@ -35,7 +35,9 @@
     "empty": "本期暂无活动记录",
     "viewSource": "查看原文",
     "aiSummary": "摘要 · AI 生成",
-    "aiSummaryLoading": "生成摘要中…"
+    "aiSummaryLoading": "生成摘要中…",
+    "sessionTitle": "窗口活动 · {{count}} 条",
+    "sessionDuration": "持续 {{duration}}"
   },
   "report": {
     "daily": "日报",

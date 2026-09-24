@@ -35,7 +35,9 @@
     "empty": "Keine Aktivität in diesem Zeitraum",
     "viewSource": "Quelle ansehen",
     "aiSummary": "Zusammenfassung · KI-generiert",
-    "aiSummaryLoading": "Zusammenfassung wird erstellt…"
+    "aiSummaryLoading": "Zusammenfassung wird erstellt…",
+    "sessionTitle": "Fensteraktivität · {{count}}",
+    "sessionDuration": "Dauer: {{duration}}"
   },
   "report": {
     "daily": "Tagesbericht",

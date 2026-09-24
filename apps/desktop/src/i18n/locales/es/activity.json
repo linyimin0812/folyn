@@ -35,7 +35,9 @@
     "empty": "Sin actividad en este periodo",
     "viewSource": "Ver origen",
     "aiSummary": "Resumen · generado por IA",
-    "aiSummaryLoading": "Generando resumen…"
+    "aiSummaryLoading": "Generando resumen…",
+    "sessionTitle": "Actividad de ventana · {{count}}",
+    "sessionDuration": "Duración: {{duration}}"
   },
   "report": {
     "daily": "Informe diario",

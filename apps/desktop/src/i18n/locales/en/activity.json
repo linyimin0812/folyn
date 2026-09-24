@@ -35,7 +35,9 @@
     "empty": "No activity in this period",
     "viewSource": "View source",
     "aiSummary": "Summary · AI generated",
-    "aiSummaryLoading": "Generating summary…"
+    "aiSummaryLoading": "Generating summary…",
+    "sessionTitle": "Window activity · {{count}}",
+    "sessionDuration": "Duration: {{duration}}"
   },
   "report": {
     "daily": "Daily report",
