@@ -4,7 +4,7 @@
  * plus report generation (日/周/月 written into the vault, §7.5).
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Activity, List, Loader2, Network, Plug, RefreshCw, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
@@ -67,6 +67,30 @@ const RAIL_VIEWS: { id: ActivityView; icon: typeof Activity; key: string }[] = [
   { id: 'collectors', icon: Plug, key: 'activity:rail.collectors' },
   { id: 'reportSettings', icon: SlidersHorizontal, key: 'activity:rail.reportSettings' },
 ];
+
+/** Keep a boolean flag shown for at least `ms` after it turns true — refetches
+ *  can finish in ~50ms and the overlay would just flash. */
+function useMinimumDuration(flag: boolean, ms: number): boolean {
+  const [shown, setShown] = useState(false);
+  const startedAt = useRef(0);
+  useEffect(() => {
+    if (flag) {
+      startedAt.current = Date.now();
+      setShown(true);
+      return;
+    }
+    if (!shown) return;
+    const remain = ms - (Date.now() - startedAt.current);
+    if (remain <= 0) {
+      setShown(false);
+      return;
+    }
+    const t = setTimeout(() => setShown(false), remain);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `shown` intentionally excluded: it must not retrigger the timer
+  }, [flag]);
+  return shown;
+}
 
 /** Report preview — same plugin set as the editor's markdown preview (memoized per text). */
 function ReportMarkdown({ markdown }: { markdown: string }) {
@@ -134,6 +158,8 @@ export function ActivityPage() {
         : Promise.resolve(null as Awaited<ReturnType<typeof getActivityDailyDigestInput>>),
     [vaultRoot, current ? '1' : '0', todayKey, refreshKey],
   );
+
+  const showOverlay = useMinimumDuration(eventsLoading, 500);
 
   const cards = metricCardsFromRows(
     metricRows ?? [],
@@ -312,7 +338,7 @@ export function ActivityPage() {
       <div className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Refetch-in-progress overlay: grays the content, keeps header buttons
             visible (but dimmed) — same flag that spins the refresh icon. */}
-        {eventsLoading && (
+        {showOverlay && (
           <div
             className="absolute inset-0 z-10 bg-black/20 flex items-center justify-center"
             aria-label={t('common:common.loading')}
@@ -356,7 +382,7 @@ export function ActivityPage() {
               className="btn btn-g btn-sm inline-flex items-center gap-1.5"
               onClick={() => setRefreshKey((k) => k + 1)}
             >
-              <RefreshCw size={14} className={eventsLoading ? 'animate-spin text-acc' : 'text-acc'} />
+              <RefreshCw size={14} className={showOverlay ? 'animate-spin text-acc' : 'text-acc'} />
               {t('activity:refresh')}
             </button>
           </div>
