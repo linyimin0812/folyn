@@ -52,7 +52,7 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
             <span className="block text-[11px] text-t2 mb-1">{label}</span>
             {prop.enum ? (
               <select
-                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1"
+                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
                 value={String(value)}
                 onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
               >
@@ -67,7 +67,7 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
               />
             ) : (
               <input
-                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1"
+                className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
                 type={prop.type === 'number' ? 'number' : 'text'}
                 value={String(value)}
                 onChange={(e) =>
