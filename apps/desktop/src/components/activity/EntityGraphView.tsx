@@ -302,7 +302,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
             <svg
               width={contentW}
               height={contentH}
-              viewBox={`0 0 ${contentW} ${contentH}`}
+              viewBox={`${-dx} ${-dy} ${contentW} ${contentH}`}
               className="block select-none"
               aria-hidden="true"
               style={{ position: 'absolute', left: -dx, top: -dy }}
