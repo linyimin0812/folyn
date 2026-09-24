@@ -11,7 +11,7 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
-import { Play, TriangleAlert } from 'lucide-react';
+import { Loader2, Play, TriangleAlert } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { useExtensionStore } from '@/store/extensionStore';
 import { useCollectorRegistryStore, type CollectorRegistration } from '@/services/activity/registry';
@@ -193,7 +193,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
             disabled={busy || !settings.enabled || !reg.impl}
             onClick={() => void onCollectNow()}
           >
-            <Play size={11} />
+            {busy ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />}
             {t('activity:collectors.collectNow')}
           </button>
         </div>
