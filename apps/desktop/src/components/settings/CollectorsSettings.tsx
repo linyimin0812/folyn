@@ -175,7 +175,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
               {reg.extensionName ?? reg.extensionId}
             </span>
             <span className="text-[10px] text-t3 font-mono truncate">{reg.collectorId}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t2 bg-surf2">
+            <span className="text-[10px] px-1.5 py-0.5 rounded border border-brd2 text-t1 bg-surf2">
               {t(reg.mode === 'poll' ? 'activity:collectors.modePoll' : 'activity:collectors.modeWebhook')}
             </span>
             {conflicts.length > 0 && (
@@ -189,7 +189,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
             )}
           </div>
           {!reg.impl && (
-            <div className="text-[11px] text-t3 mt-0.5">{t('activity:collectors.noImpl')}</div>
+            <div className="text-[11px] text-t2 mt-0.5">{t('activity:collectors.noImpl')}</div>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -202,7 +202,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
               ? t('settings:extensions.uninstalling')
               : t('settings:extensions.uninstall')}
           </button>
-          <span className="text-[11px] text-t3">
+          <span className="text-[11px] text-t2">
             {settings.enabled ? t('activity:collectors.enabled') : t('activity:collectors.disabled')}
           </span>
           <Toggle
@@ -213,9 +213,9 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
       </div>
 
       {reg.mode === 'webhook' && webhookEndpoint && (
-        <div className="mt-2.5 text-[11px] text-t3">
+        <div className="mt-2.5 text-[11px] text-t2">
           {t('activity:collectors.webhookEndpoint')}:{' '}
-          <span className="font-mono text-t2 select-all">
+          <span className="font-mono text-t1 select-all">
             POST {webhookEndpoint}/{reg.collectorId}
           </span>
         </div>
@@ -229,7 +229,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
               onChange={(v) => setCollectorSettings(reg.collectorId, { pollOn: v })}
             />
             {t('activity:collectors.pollLabel')}
-            <span className="text-[11px] text-t3">
+            <span className="text-[11px] text-t2">
               {settings.pollOn
                 ? t('activity:collectors.pollEvery', { min: intervalMin })
                 : t('activity:collectors.pollOff')}
@@ -238,7 +238,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
           <label className="flex items-center gap-1 text-[11px] text-t2 m-0">
             {t('activity:collectors.intervalMinutes')}
             <input
-              className="w-16 text-[11px] bg-surf2 border border-brd2 rounded-md px-1.5 py-0.5 text-t1"
+              className="w-20 text-[length:calc(var(--ui-font-size)-1px)] bg-surf2 border border-brd2 rounded-md px-2 py-1 text-t1"
               type="number"
               min={1}
               value={settings.intervalOverrideMs ? Math.round(settings.intervalOverrideMs / 60_000) : ''}
@@ -262,7 +262,7 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
         </div>
       )}
 
-      <div className="text-[11px] text-t3 mt-2 flex items-center gap-2 flex-wrap">
+      <div className="text-[11px] text-t2 mt-2 flex items-center gap-2 flex-wrap">
         <span>
           {lastSync?.at === undefined
             ? t('activity:collectors.neverSynced')
@@ -413,7 +413,7 @@ export function CollectorsSettings() {
           )}
 
           {storeEntries.length === 0 ? (
-            <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+            <div className="text-[12px] text-t2 bg-surf2 border border-brd2 rounded-md p-4 text-center">
               {catalogLoading ? t('settings:extensions.store.refreshing') : t('settings:extensions.store.empty')}
             </div>
           ) : (
@@ -452,7 +452,7 @@ export function CollectorsSettings() {
             )}
           </div>
           {collectors.length === 0 ? (
-            <div className="text-[12px] text-t3 bg-surf2 border border-brd2 rounded-md p-4 text-center">
+            <div className="text-[12px] text-t2 bg-surf2 border border-brd2 rounded-md p-4 text-center">
               {t('activity:collectors.empty')}
             </div>
           ) : (
