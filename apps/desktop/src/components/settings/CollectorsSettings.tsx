@@ -108,10 +108,12 @@ function ConfigForm({ reg }: { reg: CollectorRegistration }) {
           </label>
         );
       })}
-      <button className="btn btn-g btn-sm" onClick={onSave}>
-        {saved && <Check size={11} />}
-        {t('activity:collectors.save')}
-      </button>
+      <div className="flex justify-end">
+        <button className="btn btn-g btn-sm" onClick={onSave}>
+          {saved && <Check size={11} />}
+          {t('activity:collectors.save')}
+        </button>
+      </div>
     </div>
   );
 }
