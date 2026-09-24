@@ -1,7 +1,6 @@
 {
   "title": "Aktivität",
   "noVault": "Öffne einen Vault, um Aktivitätsaufzeichnungen zu sehen",
-  "seedDemo": "Demodaten",
   "tabs": {
     "timeline": "Zeitlinie",
     "graph": "Beziehungen"

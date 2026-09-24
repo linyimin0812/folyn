@@ -1,7 +1,6 @@
 {
   "title": "活动",
   "noVault": "打开一个 vault 后即可查看活动记录",
-  "seedDemo": "演示数据",
   "tabs": {
     "timeline": "时间线",
     "graph": "实体关系"

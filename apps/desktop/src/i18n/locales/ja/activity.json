@@ -1,7 +1,6 @@
 {
   "title": "アクティビティ",
   "noVault": "Vault を開くとアクティビティ記録を表示できます",
-  "seedDemo": "デモデータ",
   "tabs": {
     "timeline": "タイムライン",
     "graph": "エンティティ関係"
