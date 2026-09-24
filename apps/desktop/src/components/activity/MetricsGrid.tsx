@@ -39,7 +39,7 @@ export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridPr
       <div
         key={c.id}
         className={`relative bg-panel border rounded-lg p-4 min-w-[130px] ${
-          selected ? 'border-transparent ring-1 ring-[var(--acc, #6366f1)]' : 'border-brd'
+          selected ? 'border-acc' : 'border-brd'
         } ${onSelectType ? 'cursor-pointer hover:bg-hov' : ''}`}
         onClick={() => onSelectType?.(selected ? null : c.type)}
       >
