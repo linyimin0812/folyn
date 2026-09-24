@@ -150,6 +150,75 @@ fn front_window() -> Option<FrontWindow> {
     None
 }
 
+// ── Vault scan (file-activity collector) ──────────────────────────────────────
+
+/// One file found by `activity_scan_vault` (serde camelCase for the JS side).
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultFileEntry {
+    /// Vault-root-relative path, forward slashes.
+    pub path: String,
+    pub mtime_ms: i64,
+    pub size: u64,
+}
+
+/// Recursively list every file under `vault_root`. `.git` is always skipped
+/// (repo internals are never user activity); any directory whose relative path
+/// OR basename matches a trimmed non-empty exclude entry is skipped too.
+/// Sorted by path. Backs the `ctx.scanVault` the collector runtime injects.
+#[tauri::command]
+pub fn activity_scan_vault(
+    vault_root: String,
+    exclude_dirs: Vec<String>,
+) -> Result<Vec<VaultFileEntry>, AppError> {
+    let excludes: Vec<String> = exclude_dirs
+        .iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    let root = std::path::Path::new(&vault_root);
+    if !root.is_dir() {
+        return Err(format!("activity_scan_vault: not a directory: {vault_root}").into());
+    }
+    let mut out = Vec::new();
+    walk_vault(root, "", &excludes, &mut out);
+    out.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(out)
+}
+
+/// Fixed recursive walk (std::fs only). Unreadable entries are skipped — a
+/// scan is a snapshot, not a contract to enumerate everything.
+fn walk_vault(dir: &std::path::Path, rel: &str, excludes: &[String], out: &mut Vec<VaultFileEntry>) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let child_rel = if rel.is_empty() { name.clone() } else { format!("{rel}/{name}") };
+        let Ok(ft) = entry.file_type() else { continue };
+        if ft.is_dir() {
+            // .git skipped unconditionally: repo internals, never user activity.
+            if name == ".git" {
+                continue;
+            }
+            if excludes.iter().any(|e| child_rel == *e || name == *e) {
+                continue;
+            }
+            walk_vault(&entry.path(), &child_rel, excludes, out);
+        } else {
+            let Ok(md) = entry.metadata() else { continue };
+            let mtime_ms = md
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            out.push(VaultFileEntry { path: child_rel, mtime_ms, size: md.len() });
+        }
+    }
+}
+
 fn with_conn<T>(vault_root: &str, f: impl FnOnce(&Connection) -> T) -> Result<T, AppError> {
     let shared = db::conn(vault_root)?;
     let guard = shared.lock().map_err(|_| AppError::Internal {
@@ -304,4 +373,43 @@ pub fn activity_insert_collect_run(
 #[tauri::command]
 pub fn activity_list_collect_runs(vault_root: String) -> Result<Vec<runs::CollectRunRow>, AppError> {
     with_conn(&vault_root, runs::list_collect_runs)
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn scan_walks_recursively_and_applies_excludes() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        fs::write(root.join("a.md"), "x").unwrap();
+        fs::create_dir_all(root.join("notes/sub")).unwrap();
+        fs::write(root.join("notes/sub/b.md"), "yyy").unwrap();
+        // .git always skipped.
+        fs::create_dir_all(root.join(".git/objects")).unwrap();
+        fs::write(root.join(".git/HEAD"), "ref").unwrap();
+        // Excluded by basename and by relative path; blank entries ignored.
+        fs::create_dir_all(root.join("junk")).unwrap();
+        fs::write(root.join("junk/c.md"), "x").unwrap();
+        fs::create_dir_all(root.join("notes/secret")).unwrap();
+        fs::write(root.join("notes/secret/d.md"), "x").unwrap();
+
+        let entries = activity_scan_vault(
+            root.to_string_lossy().into_owned(),
+            vec!["junk".into(), "notes/secret".into(), "  ".into(), String::new()],
+        )
+        .unwrap();
+        let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
+        assert_eq!(paths, vec!["a.md", "notes/sub/b.md"]);
+        assert!(entries.iter().all(|e| e.size > 0 && e.mtime_ms > 0));
+    }
+
+    #[test]
+    fn scan_non_directory_is_an_error() {
+        let err = activity_scan_vault("/definitely/not/a/dir".into(), vec![]).unwrap_err();
+        assert!(err.to_string().contains("not a directory"));
+    }
 }

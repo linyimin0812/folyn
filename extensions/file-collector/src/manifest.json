@@ -1,0 +1,79 @@
+{
+  "id": "folyn-file-collector",
+  "name": "File Collector",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "icon": "F",
+  "description": "文件采集器 —— 轮询 vault 文件的新增/修改/删除，支持排除目录",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false, "readBinary": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "collectors": [
+      {
+        "id": "file-activity",
+        "activityTypes": ["file_created", "file_modified", "file_deleted"],
+        "mode": "poll",
+        "pollIntervalMs": 300000,
+        "authSchema": {
+          "type": "object",
+          "properties": {
+            "excludeDirs": {
+              "type": "string",
+              "title": "排除目录",
+              "description": "逗号分隔的目录名或相对路径，匹配的目录不进行采集（如 .obsidian, node_modules）",
+              "default": ""
+            }
+          }
+        },
+        "hostAllowlist": []
+      }
+    ],
+    "activityDisplay": [
+      {
+        "type": "file_created",
+        "icon": "file-plus",
+        "color": "green",
+        "detailFields": [
+          { "key": "path", "label": "路径", "format": "text" },
+          { "key": "size", "label": "大小", "format": "number" }
+        ],
+        "metric": { "id": "file_created_count", "label": "文件新增", "aggregate": "count" },
+        "entity": { "role": "file", "relationLabel": "文件" }
+      },
+      {
+        "type": "file_modified",
+        "icon": "file-pen",
+        "color": "blue",
+        "detailFields": [
+          { "key": "path", "label": "路径", "format": "text" },
+          { "key": "size", "label": "大小", "format": "number" }
+        ],
+        "metric": { "id": "file_modified_count", "label": "文件修改", "aggregate": "count" },
+        "entity": { "role": "file", "relationLabel": "文件" }
+      },
+      {
+        "type": "file_deleted",
+        "icon": "trash-2",
+        "color": "red",
+        "detailFields": [
+          { "key": "path", "label": "路径", "format": "text" }
+        ],
+        "metric": { "id": "file_deleted_count", "label": "文件删除", "aggregate": "count" },
+        "entity": { "role": "file", "relationLabel": "文件" }
+      }
+    ],
+    "entityTypes": [
+      { "id": "file", "label": "文件", "color": "green", "icon": "file" }
+    ]
+  }
+}

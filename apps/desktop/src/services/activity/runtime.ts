@@ -181,6 +181,15 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       frontWindow: async () => {
         return invoke<{ app: string; title: string | null } | null>('activity_front_window');
       },
+      // Vault scanner (Rust `activity_scan_vault` — fixed recursive walk, .git
+      // always skipped; excludes are dir names / vault-relative paths only,
+      // see activity/mod.rs).
+      scanVault: async (opts: { excludeDirs?: string[] }) => {
+        return invoke<Array<{ path: string; mtimeMs: number; size: number }>>(
+          'activity_scan_vault',
+          { vaultRoot, excludeDirs: opts?.excludeDirs ?? [] },
+        );
+      },
       // Transient progress → store (runtime-only, never persisted). Cleared
       // in the finally below on both success and failure paths.
       onProgress: (message) => {

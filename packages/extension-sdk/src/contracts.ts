@@ -241,6 +241,19 @@ export interface CollectorContext {
    * tests/embedded hosts.
    */
   frontWindow?: () => Promise<{ app: string; title: string | null } | null>;
+  /**
+   * Host-injected vault scanner: lists every file under the ACTIVE vault root
+   * (host resolves the root — collectors never learn the absolute path).
+   * Backed by the Rust `activity_scan_vault` command — a fixed recursive walk
+   * (`.git` always skipped, files only, paths vault-relative with forward
+   * slashes, sorted by path). The caller may exclude directories by name or
+   * vault-relative path; no other collector-controlled arguments. Returns
+   * `null` when unavailable (no vault / non-Tauri / tests). Absent in
+   * tests/embedded hosts.
+   */
+  scanVault?: (opts: { excludeDirs?: string[] }) => Promise<
+    Array<{ path: string; mtimeMs: number; size: number }> | null
+  >;
 }
 
 /** The extension-side collector interface (design §2.2). Exported by a
