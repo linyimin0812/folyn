@@ -151,7 +151,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                 ) : (
                   <ChevronDown size={12} className="text-t3 shrink-0" />
                 )}
-                <span className="text-[12px] text-t3">{g.dayLabel}</span>
+                <span className="text-[13px] font-semibold text-t2">{g.dayLabel}</span>
               </button>
             </div>
             <div
