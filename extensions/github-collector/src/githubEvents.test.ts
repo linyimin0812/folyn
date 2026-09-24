@@ -1,6 +1,10 @@
 /**
  * Fixture-based collect() tests: ctx.http stubbed per-URL with canned GitHub
  * event JSON — no network, same contract shape as the host's collectorHttp.
+ *
+ * PushEvent fixtures use the REAL slimmed payload shape (repository_id/push_id/
+ * ref/head/before — no commits array); per-commit detail comes from the mocked
+ * compare endpoint.
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { CollectorContext, CollectorEvent } from 'folyn-extension-sdk';
@@ -15,21 +19,31 @@ interface GhEvent {
   payload: Record<string, unknown>;
 }
 
-function pushEvent(createdAt: string, commits: { sha: string; message: string; author?: { name: string } }[]): GhEvent {
+function pushEvent(createdAt: string, pushId: number, head: string, before = 'base000'): GhEvent {
   return {
     id: '9001',
     type: 'PushEvent',
     created_at: createdAt,
     actor: { login: 'octocat' },
     repo: { id: 1, name: 'octocat/hello-world', url: 'https://api.github.com/repos/octocat/hello-world' },
-    payload: { commits },
+    // Real /users/:name/events payload: no commits array.
+    payload: { repository_id: 1, push_id: pushId, ref: 'refs/heads/main', head, before },
   };
 }
 
-const PUSH_2 = pushEvent('2026-01-02T10:00:00Z', [
-  { sha: 'aaa111', message: 'first line\n\nbody', author: { name: 'Octo Cat' } },
-  { sha: 'bbb222', message: 'second commit' },
-]);
+const HEAD_2 = 'bbb222';
+const PUSH_2 = pushEvent('2026-01-02T10:00:00Z', 1234, HEAD_2);
+
+function compareUrl(repo: string, before: string, head: string): string {
+  return `https://api.github.com/repos/${repo}/compare/${before}...${head}`;
+}
+
+const COMPARE_2 = {
+  commits: [
+    { sha: 'aaa111', commit: { message: 'first line\n\nbody', author: { name: 'Octo Cat' } } },
+    { sha: 'bbb222', commit: { message: 'second commit' } },
+  ],
+};
 
 const PR_MERGED: GhEvent = {
   id: '9002',
@@ -46,6 +60,20 @@ const PR_MERGED: GhEvent = {
       html_url: 'https://github.com/octocat/hello-world/pull/42',
       state: 'closed',
       merged: true,
+    },
+  },
+};
+
+// Real PR events can lack `title` in the slimmed payload.
+const PR_NO_TITLE: GhEvent = {
+  ...PR_MERGED,
+  payload: {
+    action: 'opened',
+    number: 14,
+    pull_request: {
+      number: 14,
+      html_url: 'https://github.com/octocat/hello-world/pull/14',
+      state: 'open',
     },
   },
 };
@@ -72,7 +100,7 @@ const ISSUE: GhEvent = {
 const PAGE_1: GhEvent[] = [ISSUE, PR_MERGED, PUSH_2];
 
 function makeCtx(
-  pages: Record<string, GhEvent[]>,
+  pages: Record<string, unknown>,
   opts: { cursor?: string | null; username?: string; token?: string } = {},
 ): CollectorContext {
   return {
@@ -103,8 +131,11 @@ describe('collectGithubEvents', () => {
     ).rejects.toThrow(/requires ctx\.http/);
   });
 
-  it('maps a PushEvent to one commit event per commit (stable ids)', async () => {
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [PUSH_2] });
+  it('maps a PushEvent to one commit event per compare commit (stable ids)', async () => {
+    const ctx = makeCtx({
+      [pageUrl('octocat', '', 1)]: [PUSH_2],
+      [compareUrl('octocat/hello-world', 'base000', HEAD_2)]: COMPARE_2,
+    });
     const { events, nextCursor } = await collectGithubEvents(ctx);
     expect(events).toHaveLength(2);
     const [e1, e2] = events as CollectorEvent[];
@@ -127,6 +158,40 @@ describe('collectGithubEvents', () => {
       relation: 'commit',
     });
     expect(nextCursor).toBe('2026-01-02T10:00:00Z');
+  });
+
+  it('compare failures (e.g. force-pushed range 404) fall back to one push event', async () => {
+    const ctx: CollectorContext = {
+      cursor: null,
+      config: { username: 'octocat' },
+      http: vi.fn(async (url: string) => {
+        if (url.includes('/compare/')) return { status: 404, body: 'Not Found' };
+        // endsWith, not includes: 'per_page=100' contains 'page=1'.
+        return { status: 200, body: JSON.stringify(url.endsWith('&page=1') ? [PUSH_2] : []) };
+      }),
+    };
+    const { events } = await collectGithubEvents(ctx);
+    expect(events).toHaveLength(1);
+    const [e] = events as CollectorEvent[];
+    expect(e).toMatchObject({
+      id: 'github:push:octocat/hello-world:1234',
+      type: 'commit',
+      occurredAt: Date.parse('2026-01-02T10:00:00Z'),
+      title: 'push to main (bbb222)',
+      url: 'https://github.com/octocat/hello-world/commit/bbb222',
+      actor: { type: 'person', identityKey: 'octocat' },
+    });
+    expect(e.entities?.[0]).toMatchObject({ type: 'repository', relation: 'commit' });
+    expect(e.payload).toMatchObject({ sha: HEAD_2, pushId: 1234, repo: 'octocat/hello-world' });
+  });
+
+  it('PR without a title never renders "undefined"', async () => {
+    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [PR_NO_TITLE] });
+    const { events } = await collectGithubEvents(ctx);
+    const [e] = events as CollectorEvent[];
+    expect(e.id).toBe('github:pr:octocat/hello-world:14:opened');
+    expect(e.title).toBe('octocat/hello-world · PR #14 opened: ');
+    expect(e.title).not.toContain('undefined');
   });
 
   it('maps a merged PullRequestEvent with action "merged"', async () => {
@@ -181,14 +246,16 @@ describe('collectGithubEvents', () => {
     expect(ctx.http).toHaveBeenCalledTimes(1);
   });
 
-  it('authenticates with a token: authed endpoint, Bearer header, token absent from events', async () => {
+  it('authenticates with a token: authed endpoint, Bearer header (events + compare), token absent from events', async () => {
     const seen: { url: string; headers?: Record<string, string> }[] = [];
     const ctx: CollectorContext = {
       cursor: null,
       config: { username: 'octocat', token: 'ghp_secret' },
       http: vi.fn(async (url: string, init?: { headers?: Record<string, string> }) => {
         seen.push({ url, headers: init?.headers });
-        const body = url.includes('page=1') ? [PR_MERGED] : [];
+        if (url.includes('/compare/')) return { status: 200, body: JSON.stringify(COMPARE_2) };
+        // endsWith, not includes: 'per_page=100' contains 'page=1'.
+        const body = url.endsWith('&page=1') ? [PUSH_2] : [];
         return { status: 200, body: JSON.stringify(body) };
       }),
     };
@@ -198,11 +265,17 @@ describe('collectGithubEvents', () => {
       Accept: 'application/vnd.github+json',
       Authorization: 'Bearer ghp_secret',
     });
+    expect(seen[1]!.url).toBe(compareUrl('octocat/hello-world', 'base000', HEAD_2));
+    expect(seen[1]!.headers).toMatchObject({ Authorization: 'Bearer ghp_secret' });
+    expect(events).toHaveLength(2);
     expect(JSON.stringify(events)).not.toContain('ghp_secret');
   });
 
   it('uses the public endpoint and no Authorization header without a token', async () => {
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [PUSH_2] });
+    const ctx = makeCtx({
+      [pageUrl('octocat', '', 1)]: [PUSH_2],
+      [compareUrl('octocat/hello-world', 'base000', HEAD_2)]: COMPARE_2,
+    });
     await collectGithubEvents(ctx);
     // vi.fn calls are argument tuples: [url, init].
     const [url, init] = (ctx.http as ReturnType<typeof vi.fn>).mock.calls[0] as unknown as [
@@ -214,7 +287,7 @@ describe('collectGithubEvents', () => {
     expect(JSON.stringify(init)).not.toContain('ghp');
   });
 
-  it('throws a descriptive error on non-200', async () => {
+  it('throws a descriptive error on non-200 (events page)', async () => {
     const ctx: CollectorContext = {
       cursor: null,
       config: { username: 'octocat' },
