@@ -16,6 +16,7 @@ import { Check, Loader2, Play, TriangleAlert } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { useShallow } from 'zustand/react/shallow';
 import { useExtensionStore } from '@/store/extensionStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { StoreEntryCard } from '@/components/settings/ExtensionsSettings';
 import { useCollectorRegistryStore, type CollectorRegistration } from '@/services/activity/registry';
 import { collectNow, effectiveIntervalMs } from '@/services/activity/runtime';
@@ -46,6 +47,16 @@ function ConfigForm({
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...(config ?? {}) }));
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Appearance「过滤文件/文件夹」patterns the host merges into the
+  // file-activity scan (runtime.ts scanVault) — shown under 排除目录 so the
+  // user sees the full effective exclusion list. Parsed with the same rules.
+  const appearancePatternsRaw = useAppearanceStore((s) => s.excludePatterns);
+  const appliedPatterns = reg.collectorId === 'file-activity'
+    ? (appearancePatternsRaw || '')
+        .split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0 && !s.startsWith('#'))
+    : [];
   useEffect(() => () => {
     if (savedTimer.current) clearTimeout(savedTimer.current);
   }, []);
@@ -108,6 +119,13 @@ function ConfigForm({
                   }
                 />
               </>
+            )}
+            {reg.collectorId === 'file-activity' && key === 'excludeDirs' && appliedPatterns.length > 0 && (
+              <p className="m-0 mt-1 text-[10px] text-t3">
+                {t('activity:collectors.fileExcludeApplied', {
+                  patterns: appliedPatterns.join(['zh', 'ja'].includes(i18n.language.split('-')[0] ?? '') ? '、' : ', '),
+                })}
+              </p>
             )}
           </label>
         );
