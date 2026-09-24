@@ -402,7 +402,7 @@ export function CollectorsSettings() {
   const webhookEndpoint = webhookInfo?.endpoint ?? '';
 
   return (
-    <div>
+    <div className="max-w-[720px]">
       {/* Tab bar — same styling as the ExtensionsSettings tabs. */}
       <div className="flex items-center gap-1 mb-3 border-b border-brd2">
         <button
