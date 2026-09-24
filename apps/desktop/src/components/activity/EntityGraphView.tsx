@@ -55,6 +55,33 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   // sized by node count (below), not by the container — that was what made
   // few-neighbor graphs sprawl.
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Drag-to-pan state: panRef carries the drag math; `dragging` only drives
+  // the cursor class. Drags starting inside a button (node/member cards are
+  // <button>s) are ignored so card clicks keep working.
+  const panRef = useRef<{ pointerId: number; startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    const el = e.currentTarget;
+    panRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop };
+    el.setPointerCapture(e.pointerId);
+    setDragging(true);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    const el = e.currentTarget;
+    if (!pan || pan.pointerId !== e.pointerId) return;
+    el.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
+    el.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+  };
+  const endPan = (e: React.PointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    if (!pan || pan.pointerId !== e.pointerId) return;
+    panRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setDragging(false);
+  };
   const [box, setBox] = useState({ w: 1100, h: 600 });
   useEffect(() => {
     const el = wrapRef.current;
@@ -231,7 +258,14 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   const contentH = Number.isFinite(maxY) ? Math.max(H, maxY + dy + PAD) : H;
 
   const graph = (
-    <div ref={wrapRef} className="flex-1 min-h-0 min-w-0 overflow-auto">
+    <div
+      ref={wrapRef}
+      className={`flex-1 min-h-0 min-w-0 overflow-auto cursor-grab select-none ${dragging ? 'cursor-grabbing' : ''}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endPan}
+      onPointerCancel={endPan}
+    >
       <div className="relative" style={{ width: contentW, height: contentH }}>
         <div className="absolute top-0 left-0" style={{ width: W, height: H, transform: `translate(${dx}px, ${dy}px)` }}>
           <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none" aria-hidden="true">
