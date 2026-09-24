@@ -72,28 +72,35 @@ export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridPr
         {summaryCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
         {t('activity:metric.title')}
       </button>
-      {!summaryCollapsed && (
-        <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3">
-          {pinned.map(renderCard)}
-          {unpinnedVisible.map(renderCard)}
-          {collapsed.length > 0 && (
-            <div className="col-span-full">
-              <button
-                className="btn btn-g btn-sm inline-flex items-center gap-1.5"
-                onClick={() => setExpanded(!expanded)}
-              >
-                {t('activity:metric.more', { count: collapsed.length })}
-                {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              </button>
-              {expanded && (
-                <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
-                  {collapsed.map(renderCard)}
-                </div>
-              )}
-            </div>
-          )}
+      {/* ponytail: CSS grid-rows collapse — Safari 16+/Chrome 107+ (WKWebView fine); fall back to conditional unmount if an old WKWebView ever needs it */}
+      <div
+        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+          summaryCollapsed ? 'grid-template-rows-[0fr]' : 'grid-template-rows-[1fr]'
+        }`}
+      >
+        <div className="overflow-hidden min-h-0">
+          <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3">
+            {pinned.map(renderCard)}
+            {unpinnedVisible.map(renderCard)}
+            {collapsed.length > 0 && (
+              <div className="col-span-full">
+                <button
+                  className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  {t('activity:metric.more', { count: collapsed.length })}
+                  {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </button>
+                {expanded && (
+                  <div className="grid grid-cols-[repeat(6,minmax(130px,1fr))] gap-3 mt-3">
+                    {collapsed.map(renderCard)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

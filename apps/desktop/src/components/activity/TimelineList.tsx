@@ -154,7 +154,12 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                 <span className="text-[12px] text-t3">{g.dayLabel}</span>
               </button>
             </div>
-            {!collapsed && (
+            <div
+              className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+                collapsed ? 'grid-template-rows-[0fr]' : 'grid-template-rows-[1fr]'
+              }`}
+            >
+              <div className="overflow-hidden min-h-0">
           <div className="relative">
             {/* Vertical rail behind the icon bubbles (centered on bubble column). */}
             <span
@@ -202,7 +207,13 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                     />
                   </button>
 
-                  {isOpen && (
+                  {/* ponytail: same grid-rows collapse as the day groups / metrics summary */}
+                  <div
+                    className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+                      isOpen ? 'grid-template-rows-[1fr]' : 'grid-template-rows-[0fr]'
+                    }`}
+                  >
+                    <div className="overflow-hidden min-h-0">
                     <div className="ml-11 mr-2 mb-2 rounded-md bg-surf2 border border-brd p-3 text-[13px] text-t2">
                       {e.summary && <p className="m-0 mb-2">{e.summary}</p>}
 
@@ -265,12 +276,14 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                         </a>
                       )}
                     </div>
-                  )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
-            )}
+              </div>
+            </div>
           </div>
         );
       })}
