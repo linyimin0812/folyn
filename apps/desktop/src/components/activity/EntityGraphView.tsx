@@ -299,7 +299,14 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
           style={{ left: 0, top: PAN_PAD, width: contentW, height: contentH, transform: `translate(${pan.x}px, ${pan.y}px)` }}
         >
           <div className="absolute top-0 left-0" style={{ width: W, height: H, transform: `translate(${dx}px, ${dy}px)` }}>
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block select-none" aria-hidden="true">
+            <svg
+              width={contentW}
+              height={contentH}
+              viewBox={`0 0 ${contentW} ${contentH}`}
+              className="block select-none"
+              aria-hidden="true"
+              style={{ position: 'absolute', left: -dx, top: -dy }}
+            >
               <defs>
                 <marker id={arrowId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                   <path d="M2 1L8 5L2 9" fill="none" stroke="var(--t3)" strokeWidth="1.2" strokeLinecap="round" />
