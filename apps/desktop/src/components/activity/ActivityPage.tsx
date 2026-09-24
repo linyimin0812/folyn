@@ -296,7 +296,7 @@ export function ActivityPage() {
         <button
           type="button"
           className={`flex w-full items-center gap-2 px-2.5 py-2 rounded cursor-pointer ${
-            view === 'main' ? 'bg-accdim text-acc' : 'font-semibold text-t1 hover:bg-hov'
+            view === 'main' ? 'bg-accdim text-acc font-semibold' : 'font-semibold text-t1 hover:bg-hov'
           }`}
           aria-label={t('activity:rail.main')}
           onClick={() => {
@@ -313,7 +313,7 @@ export function ActivityPage() {
             type="button"
             className={`flex w-full items-center gap-2 pl-7 pr-2.5 py-1.5 rounded cursor-pointer ${
               view === 'main' && tab === m
-                ? 'bg-accdim text-acc'
+                ? 'bg-accdim text-acc font-semibold'
                 : 'font-semibold text-t1 hover:bg-hov'
             }`}
             aria-label={t(`activity:tabs.${m}`)}
@@ -331,7 +331,7 @@ export function ActivityPage() {
             <button
               type="button"
               className={`flex w-full items-center gap-2 px-2.5 py-2 rounded cursor-pointer ${
-                view === v.id ? 'bg-accdim text-acc' : 'font-semibold text-t1 hover:bg-hov'
+                view === v.id ? 'bg-accdim text-acc font-semibold' : 'font-semibold text-t1 hover:bg-hov'
               }`}
               aria-label={t(v.key)}
               onClick={() => setView(v.id)}
@@ -344,7 +344,7 @@ export function ActivityPage() {
               <button
                 type="button"
                 className={`flex w-full items-center gap-2 pl-7 pr-2.5 py-1.5 rounded cursor-pointer ${
-                  view === 'collectLog' ? 'bg-accdim text-acc' : 'font-semibold text-t1 hover:bg-hov'
+                  view === 'collectLog' ? 'bg-accdim text-acc font-semibold' : 'font-semibold text-t1 hover:bg-hov'
                 }`}
                 aria-label={t('activity:rail.collectLog')}
                 onClick={() => setView('collectLog')}
