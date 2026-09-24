@@ -171,6 +171,11 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       config,
       exec: collectorExec,
       http: collectorHttp(reg.hostAllowlist),
+      // Frontmost-window sampler (Rust `activity_front_window` — fixed
+      // scripts, no collector-controlled args; see activity/mod.rs).
+      frontWindow: async () => {
+        return invoke<{ app: string; title: string | null } | null>('activity_front_window');
+      },
       // Transient progress → store (runtime-only, never persisted). Cleared
       // in the finally below on both success and failure paths.
       onProgress: (message) => store.getState().setCollectProgress(collectorId, message),

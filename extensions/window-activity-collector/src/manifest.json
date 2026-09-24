@@ -1,0 +1,58 @@
+{
+  "id": "folyn-window-activity-collector",
+  "name": "Window Activity Collector",
+  "version": "0.1.0",
+  "author": "Folyn",
+  "folyn": ">=0.1.0",
+  "tier": "trusted",
+  "main": "dist/index.js",
+  "icon": "W",
+  "description": "窗口活动采集器 —— 按轮询采样当前前台应用与窗口标题，窗口变化时写入活动时间线。macOS 首次采集会触发系统的自动化（Automation）权限弹窗，请允许",
+  "permissions": {
+    "fs": { "scope": [] },
+    "http": { "origins": [] },
+    "clipboard": false,
+    "dialog": false,
+    "window": false,
+    "vault": { "readActive": false, "insertContent": false, "readBinary": false },
+    "ai": { "chat": false, "agents": [], "edit": false }
+  },
+  "contributes": {
+    "collectors": [
+      {
+        "id": "window-activity",
+        "activityTypes": ["window_activity"],
+        "mode": "poll",
+        "pollIntervalMs": 60000,
+        "authSchema": {
+          "type": "object",
+          "properties": {
+            "allowAiSummary": {
+              "type": "boolean",
+              "title": "允许 AI 读取活动数据生成摘要",
+              "description": "开启后，时间线详情面板可为该采集器的事件懒生成 AI 摘要",
+              "default": false
+            }
+          }
+        },
+        "hostAllowlist": []
+      }
+    ],
+    "activityDisplay": [
+      {
+        "type": "window_activity",
+        "icon": "app-window",
+        "color": "blue",
+        "detailFields": [
+          { "key": "app", "label": "应用", "format": "text" },
+          { "key": "title", "label": "窗口标题", "format": "text" }
+        ],
+        "metric": { "id": "window_switch_count", "label": "窗口切换", "aggregate": "count" },
+        "entity": { "role": "application", "relationLabel": "窗口" }
+      }
+    ],
+    "entityTypes": [
+      { "id": "application", "label": "应用", "color": "blue", "icon": "app-window" }
+    ]
+  }
+}

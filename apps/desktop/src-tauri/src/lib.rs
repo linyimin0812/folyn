@@ -1194,6 +1194,7 @@ pub fn run() {
             activity::activity_get_cursor,
             activity::activity_set_cursor,
             activity::activity_exec,
+            activity::activity_front_window,
             activity::activity_list_events,
             activity::activity_aggregate_metrics,
             activity::activity_list_entities,

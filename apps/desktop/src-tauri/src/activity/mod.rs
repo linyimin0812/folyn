@@ -56,6 +56,99 @@ pub fn activity_exec(
     })
 }
 
+// ── Frontmost-window sampling (window-activity collector) ────────────────────
+// ponytail: these are FIXED scripts with no collector-controlled arguments —
+// the fixed script IS the security boundary (same reasoning as the
+// EXEC_ALLOWED_PROGRAMS allowlist above: exposing osascript/powershell with
+// caller-chosen args would be an unbounded exec surface). Widening what this
+// command returns means editing this file, not anything extension-side.
+
+/// Result of `activity_front_window` — frontmost app + window title (title
+/// null when the platform/window can't provide one).
+#[derive(Serialize, Debug)]
+pub struct FrontWindow {
+    pub app: String,
+    pub title: Option<String>,
+}
+
+/// Sample the frontmost window (app + title) for the window-activity
+/// collector. `None` when unavailable (unsupported platform, permission
+/// denied, no foreground window). On macOS the first call triggers the
+/// system Automation-permission prompt — expected, documented in the
+/// collector's manifest description.
+#[tauri::command]
+pub fn activity_front_window() -> Option<FrontWindow> {
+    front_window()
+}
+
+#[cfg(target_os = "macos")]
+fn front_window() -> Option<FrontWindow> {
+    // System Events list output: "AppName, Window Title" / "AppName, missing value".
+    let script = "tell application \"System Events\" to get {name, name of first window} of first application process whose frontmost is true";
+    let out = std::process::Command::new("osascript")
+        .args(["-e", script])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        // Automation not granted yet (or AppleScript error): the app-only
+        // script usually still works — same permission, weaker query.
+        let fallback = "tell application \"System Events\" to get name of first application process whose frontmost is true";
+        let out2 = std::process::Command::new("osascript")
+            .args(["-e", fallback])
+            .output()
+            .ok()?;
+        if !out2.status.success() {
+            return None;
+        }
+        let app = String::from_utf8_lossy(&out2.stdout).trim().to_string();
+        return (!app.is_empty()).then(|| FrontWindow { app, title: None });
+    }
+    let line = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    // Titles can contain commas; app names can't contain ", " in practice —
+    // split at the first separator so a comma'd title stays whole.
+    let (app, title) = match line.split_once(", ") {
+        Some((a, t)) => (a.trim().to_string(), t.trim()),
+        None => (line, ""),
+    };
+    if app.is_empty() {
+        return None;
+    }
+    let title = if title.is_empty() || title == "missing value" {
+        None
+    } else {
+        Some(title.to_string())
+    };
+    Some(FrontWindow { app, title })
+}
+
+#[cfg(target_os = "windows")]
+fn front_window() -> Option<FrontWindow> {
+    // Fixed script: P/Invoke GetForegroundWindow/GetWindowText, app name by
+    // matching the process whose MainWindowHandle is the foreground window.
+    // Output "app|title" (titles can contain '|' — split at the first one).
+    let script = r#"[Console]::OutputEncoding=[Text.Encoding]::UTF8; Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class FW{[DllImport("user32.dll")]public static extern IntPtr GetForegroundWindow();[DllImport("user32.dll")]public static extern int GetWindowText(IntPtr h,System.Text.StringBuilder s,int n);}' -ErrorAction SilentlyContinue; $h=[FW]::GetForegroundWindow(); $s=New-Object System.Text.StringBuilder(512); [void][FW]::GetWindowText($h,$s,512); $p=Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -eq $h } | Select-Object -First 1; Write-Output ($p.ProcessName + '|' + $s.ToString())"#;
+    let out = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-Command", script])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let line = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let (app, title) = line.split_once('|')?;
+    let app = app.trim();
+    if app.is_empty() {
+        return None;
+    }
+    let title = if title.is_empty() { None } else { Some(title.to_string()) };
+    Some(FrontWindow { app: app.to_string(), title })
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn front_window() -> Option<FrontWindow> {
+    None
+}
+
 fn with_conn<T>(vault_root: &str, f: impl FnOnce(&Connection) -> T) -> Result<T, AppError> {
     let shared = db::conn(vault_root)?;
     let guard = shared.lock().map_err(|_| AppError::Internal {

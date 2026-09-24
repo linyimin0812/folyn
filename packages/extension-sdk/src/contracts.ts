@@ -233,6 +233,14 @@ export interface CollectorContext {
    * absent in tests/embedded hosts.
    */
   onProgress?: (message: string) => void;
+  /**
+   * Sample the current frontmost window (fixed host command;
+   * platform-dependent). Backed by the Rust `activity_front_window` command —
+   * fixed scripts, no collector-controlled args. Returns `null` when
+   * unavailable (unsupported platform / permission denied). Absent in
+   * tests/embedded hosts.
+   */
+  frontWindow?: () => Promise<{ app: string; title: string | null } | null>;
 }
 
 /** The extension-side collector interface (design §2.2). Exported by a
