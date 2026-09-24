@@ -51,7 +51,8 @@
         "color": "green",
         "detailFields": [
           { "key": "path", "label": "路径", "format": "text" },
-          { "key": "size", "label": "大小", "format": "number" }
+          { "key": "size", "label": "大小", "format": "number" },
+          { "key": "content", "label": "内容", "format": "text" }
         ],
         "metric": { "id": "file_created_count", "label": "文件新增", "aggregate": "count" },
         "entity": { "role": "file", "relationLabel": "文件" }
@@ -62,7 +63,8 @@
         "color": "blue",
         "detailFields": [
           { "key": "path", "label": "路径", "format": "text" },
-          { "key": "size", "label": "大小", "format": "number" }
+          { "key": "size", "label": "大小", "format": "number" },
+          { "key": "diff", "label": "差异", "format": "text" }
         ],
         "metric": { "id": "file_modified_count", "label": "文件修改", "aggregate": "count" },
         "entity": { "role": "file", "relationLabel": "文件" }

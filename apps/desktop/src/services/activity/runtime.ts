@@ -197,6 +197,17 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
           { vaultRoot, excludeDirs: opts?.excludeDirs ?? [], excludePatterns },
         );
       },
+      // Vault text-file reader (Rust `activity_read_text_file` — traversal /
+      // absolute rejected, binary + >1MB skipped, truncated to maxBytes;
+      // see activity/mod.rs). Same trust model as scanVault: fixed command,
+      // vault-relative paths only, invisible to manifest permissions.
+      readVaultFile: async (path: string, maxBytes?: number) => {
+        return invoke<string | null>('activity_read_text_file', {
+          vaultRoot,
+          path,
+          maxBytes: maxBytes ?? null,
+        });
+      },
       // Transient progress → store (runtime-only, never persisted). Cleared
       // in the finally below on both success and failure paths.
       onProgress: (message) => {

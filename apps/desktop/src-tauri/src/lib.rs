@@ -1196,6 +1196,7 @@ pub fn run() {
             activity::activity_exec,
             activity::activity_front_window,
             activity::activity_scan_vault,
+            activity::activity_read_text_file,
             activity::activity_list_events,
             activity::activity_aggregate_metrics,
             activity::activity_list_entities,

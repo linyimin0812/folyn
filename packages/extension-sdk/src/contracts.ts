@@ -254,6 +254,12 @@ export interface CollectorContext {
   scanVault?: (opts: { excludeDirs?: string[] }) => Promise<
     Array<{ path: string; mtimeMs: number; size: number }> | null
   >;
+  /**
+   * Host-injected vault text-file reader (Rust `activity_read_text_file`):
+   * vault-relative path, returns truncated text or null for binary /
+   * oversized / unreadable. Like scanVault, invisible to manifest permissions.
+   */
+  readVaultFile?: (path: string, maxBytes?: number) => Promise<string | null>;
 }
 
 /** The extension-side collector interface (design §2.2). Exported by a

@@ -271,6 +271,42 @@ fn walk_vault(
     }
 }
 
+// ── Vault text-file read (file-activity collector content capture) ───────────
+
+/// Read one vault text file, truncated, for the file collector's content /
+/// diff capture. Backs the `ctx.readVaultFile` the collector runtime injects.
+/// `None` for absolute paths, `..` traversal, files > 1 MB, binary (NUL byte
+/// in the read window), invalid UTF-8, or any read failure.
+#[tauri::command]
+pub fn activity_read_text_file(
+    vault_root: String,
+    path: String,
+    max_bytes: Option<usize>,
+) -> Option<String> {
+    read_text_file(&vault_root, &path, max_bytes)
+}
+
+fn read_text_file(vault_root: &str, path: &str, max_bytes: Option<usize>) -> Option<String> {
+    let rel = std::path::Path::new(path);
+    if rel.is_absolute() || path.split('/').any(|s| s == "..") {
+        return None;
+    }
+    // ponytail: clamp instead of rejecting — a caller passing 0 or a huge cap
+    // still gets a sane window, never an error worth surfacing.
+    let cap = max_bytes.unwrap_or(8192).clamp(1, 65_536);
+    let full = std::path::Path::new(vault_root).join(path);
+    let len = std::fs::metadata(&full).ok().filter(|md| md.is_file())?.len();
+    if len > 1_048_576 {
+        return None; // huge files: skip entirely, no content for these
+    }
+    let bytes = std::fs::read(&full).ok()?;
+    let window = &bytes[..bytes.len().min(cap)];
+    if window.contains(&0u8) {
+        return None; // binary sniff
+    }
+    std::str::from_utf8(window).ok().map(|s| s.to_string())
+}
+
 fn with_conn<T>(vault_root: &str, f: impl FnOnce(&Connection) -> T) -> Result<T, AppError> {
     let shared = db::conn(vault_root)?;
     let guard = shared.lock().map_err(|_| AppError::Internal {
@@ -425,6 +461,70 @@ pub fn activity_insert_collect_run(
 #[tauri::command]
 pub fn activity_list_collect_runs(vault_root: String) -> Result<Vec<runs::CollectRunRow>, AppError> {
     with_conn(&vault_root, runs::list_collect_runs)
+}
+
+#[cfg(test)]
+mod read_text_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn tmp() -> (TempDir, String) {
+        let t = TempDir::new().unwrap();
+        let root = t.path().to_string_lossy().into_owned();
+        (t, root)
+    }
+
+    #[test]
+    fn reads_file_content() {
+        let (t, root) = tmp();
+        fs::write(t.path().join("a.md"), "hello\nworld").unwrap();
+        assert_eq!(
+            activity_read_text_file(root, "a.md".into(), None),
+            Some("hello\nworld".into())
+        );
+    }
+
+    #[test]
+    fn truncates_at_cap() {
+        let (t, root) = tmp();
+        fs::write(t.path().join("a.md"), "abcdefghij").unwrap();
+        assert_eq!(
+            activity_read_text_file(root.clone(), "a.md".into(), Some(4)),
+            Some("abcd".into())
+        );
+        // Cap is clamped to at least 1, never 0.
+        assert_eq!(
+            activity_read_text_file(root, "a.md".into(), Some(0)),
+            Some("a".into())
+        );
+    }
+
+    #[test]
+    fn rejects_traversal_and_absolute_paths() {
+        let (t, root) = tmp();
+        fs::write(t.path().join("a.md"), "x").unwrap();
+        assert_eq!(activity_read_text_file(root.clone(), "../a.md".into(), None), None);
+        assert_eq!(activity_read_text_file(root.clone(), "notes/../../a.md".into(), None), None);
+        assert_eq!(activity_read_text_file(root.clone(), "/etc/hosts".into(), None), None);
+        // Missing file → None, not an error.
+        assert_eq!(activity_read_text_file(root, "nope.md".into(), None), None);
+    }
+
+    #[test]
+    fn nul_byte_is_binary_none() {
+        let (t, root) = tmp();
+        fs::write(t.path().join("bin.dat"), b"ab\x00cd").unwrap();
+        assert_eq!(activity_read_text_file(root, "bin.dat".into(), None), None);
+    }
+
+    #[test]
+    fn oversized_file_is_none() {
+        let (t, root) = tmp();
+        let big = vec![b'a'; 1_048_577];
+        fs::write(t.path().join("big.md"), &big).unwrap();
+        assert_eq!(activity_read_text_file(root, "big.md".into(), None), None);
+    }
 }
 
 #[cfg(test)]
