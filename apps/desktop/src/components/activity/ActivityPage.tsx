@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, List, Network, Plug, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
+import { Activity, List, Network, Plug, RefreshCw, SlidersHorizontal, Sparkles, Zap } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkDirective from 'remark-directive';
@@ -100,6 +100,8 @@ export function ActivityPage() {
   // closed and reopened while a run continues in the background.
   const [collectRun, setCollectRun] = useState<CollectAllRun | null>(null);
   const [collectModalOpen, setCollectModalOpen] = useState(false);
+  // Manual refresh: bumps all data useAsync deps to re-read from the activity db.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const today = new Date();
   const current = isCurrentPeriod(period, today);
@@ -109,19 +111,19 @@ export function ActivityPage() {
     to: endOfDay(period.end).getTime(),
   };
 
-  const { data: events } = useAsync(
+  const { data: events, loading: eventsLoading } = useAsync(
     () =>
       vaultRoot
         ? listActivityEvents(vaultRoot, range, typeFilter ? [typeFilter] : undefined)
         : Promise.resolve([] as Awaited<ReturnType<typeof listActivityEvents>>),
-    [vaultRoot, periodKey, typeFilter],
+    [vaultRoot, periodKey, typeFilter, refreshKey],
   );
   const { data: metricRows } = useAsync(
     () =>
       vaultRoot
         ? aggregateActivityMetrics(vaultRoot, range)
         : Promise.resolve([] as Awaited<ReturnType<typeof aggregateActivityMetrics>>),
-    [vaultRoot, periodKey],
+    [vaultRoot, periodKey, refreshKey],
   );
   // Ongoing tasks reflect "now" — only fetched while on the current period.
   const todayKey = dateKey(today);
@@ -130,7 +132,7 @@ export function ActivityPage() {
       vaultRoot && current
         ? getActivityDailyDigestInput(vaultRoot, todayKey)
         : Promise.resolve(null as Awaited<ReturnType<typeof getActivityDailyDigestInput>>),
-    [vaultRoot, current ? '1' : '0', todayKey],
+    [vaultRoot, current ? '1' : '0', todayKey, refreshKey],
   );
 
   const cards = metricCardsFromRows(
@@ -339,6 +341,13 @@ export function ActivityPage() {
             >
               <Zap size={14} className="text-acc" />
               {t('activity:collectAll.action')}
+            </button>
+            <button
+              className="btn btn-g btn-sm inline-flex items-center gap-1.5"
+              onClick={() => setRefreshKey((k) => k + 1)}
+            >
+              <RefreshCw size={14} className={eventsLoading ? 'animate-spin text-acc' : 'text-acc'} />
+              {t('activity:refresh')}
             </button>
           </div>
         </div>

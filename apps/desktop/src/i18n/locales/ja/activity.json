@@ -1,6 +1,7 @@
 {
   "title": "アクティビティ",
   "noVault": "Vault を開くとアクティビティ記録を表示できます",
+  "refresh": "更新",
   "tabs": {
     "timeline": "タイムライン",
     "graph": "エンティティ関係"

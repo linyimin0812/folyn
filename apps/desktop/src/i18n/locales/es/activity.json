@@ -1,6 +1,7 @@
 {
   "title": "Actividad",
   "noVault": "Abre un vault para ver los registros de actividad",
+  "refresh": "Actualizar",
   "tabs": {
     "timeline": "Cronología",
     "graph": "Relaciones"

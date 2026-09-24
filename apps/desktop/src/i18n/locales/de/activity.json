@@ -1,6 +1,7 @@
 {
   "title": "Aktivität",
   "noVault": "Öffne einen Vault, um Aktivitätsaufzeichnungen zu sehen",
+  "refresh": "Aktualisieren",
   "tabs": {
     "timeline": "Zeitlinie",
     "graph": "Beziehungen"
