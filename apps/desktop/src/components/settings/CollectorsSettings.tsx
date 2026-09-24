@@ -107,6 +107,9 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
   );
   const setCollectorSettings = useActivityCollectorStore((s) => s.setCollectorSettings);
   const lastSync = useActivityCollectorStore((s) => s.lastSync[reg.collectorId]);
+  // Live progress from the collector's ctx.onProgress (cleared when the run
+  // ends) — locale-neutral string from the collector, label localized here.
+  const collectProgress = useActivityCollectorStore((s) => s.collectProgress[reg.collectorId]);
   // Select the stable array ref and derive in render (state-management spec:
   // a `.filter` in the selector mints a fresh array every call → re-render loop).
   const allConflicts = useCollectorRegistryStore((s) => s.conflicts);
@@ -247,6 +250,9 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
                 count: lastSync.accepted,
               })}
         </span>
+        {collectProgress && (
+          <span>{t('activity:collectors.collecting')} {collectProgress}</span>
+        )}
         {notice && (
           <span className={notice.error ? 'text-red-600 dark:text-red-400' : 'text-acc'}>
             {notice.text}

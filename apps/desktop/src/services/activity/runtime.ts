@@ -164,12 +164,16 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
   const { invoke } = await import('@tauri-apps/api/core');
   const cursor = await invoke<string | null>('activity_get_cursor', { vaultRoot, collectorId });
   const config = useActivityCollectorStore.getState().configs[collectorId] ?? {};
+  const store = useActivityCollectorStore;
   try {
     const { events, nextCursor } = await reg.impl.collect({
       cursor,
       config,
       exec: collectorExec,
       http: collectorHttp(reg.hostAllowlist),
+      // Transient progress → store (runtime-only, never persisted). Cleared
+      // in the finally below on both success and failure paths.
+      onProgress: (message) => store.getState().setCollectProgress(collectorId, message),
     });
     const outcome = await pushCollectorEvents(collectorId, events);
     if (!outcome) return null;
@@ -179,6 +183,8 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
   } catch (err) {
     console.warn(`[activity] collector "${collectorId}" collect failed:`, err);
     return null;
+  } finally {
+    store.getState().setCollectProgress(collectorId, null);
   }
 }
 

@@ -99,6 +99,7 @@
     "pollOff": "Aus — nur manuelles Sammeln",
     "intervalMinutes": "Intervall (Min.)",
     "collectNow": "Jetzt sammeln",
+    "collecting": "Sammele",
     "lastSync": "Letzte Synchronisierung: {{time}} · {{count}} Ereignisse",
     "neverSynced": "Nie synchronisiert",
     "justNow": "gerade eben",

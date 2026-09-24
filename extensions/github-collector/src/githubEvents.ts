@@ -22,9 +22,11 @@ const MAX_PAGES = 3;
 const PER_PAGE = 100;
 /** Per-request abort timeout. */
 const REQUEST_TIMEOUT_MS = 15_000;
-/** Concurrent compare-endpoint fetches (first run can be a full backfill of
- *  hundreds of pushes — serial fetches take minutes). */
-const COMPARE_CONCURRENCY = 6;
+/** Concurrent compare-endpoint fetches. A full first-run backfill can be ~260
+ *  pushes; GitHub's guidance explicitly allows far more concurrent requests,
+ *  and the token-authed 5000/hr budget covers it — 12 halves the wall-clock
+ *  vs 6 while staying gentle on the API. */
+const COMPARE_CONCURRENCY = 12;
 
 interface GhEvent {
   id: string;
@@ -118,6 +120,7 @@ export async function collectGithubEvents(
   let newest = cursor;
   for (let page = 1; page <= MAX_PAGES; page++) {
     const pageEvents = await fetchPage(ctx, username, page);
+    ctx.onProgress?.(`page ${page}`);
     if (pageEvents.length === 0) break;
     for (const ev of pageEvents) {
       // iso-8601 strings compare lexicographically as chronologically.
@@ -138,6 +141,7 @@ export async function collectGithubEvents(
   for (let i = 0; i < pushTasks.length; i += COMPARE_CONCURRENCY) {
     const results = await Promise.all(pushTasks.slice(i, i + COMPARE_CONCURRENCY).map((f) => f()));
     events.push(...results.flat());
+    ctx.onProgress?.(`commits ${i + results.length}/${pushTasks.length}`);
   }
   return { events, nextCursor: newest };
 }

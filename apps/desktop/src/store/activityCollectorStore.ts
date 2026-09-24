@@ -85,6 +85,11 @@ export interface ActivityCollectorState {
   /** Runtime-only last-sync info per collectorId (NOT persisted — refreshed
    *  on every collect). */
   lastSync: Record<string, { at: number; accepted: number }>;
+  /** Runtime-only collect progress per collectorId (NOT persisted — set by
+   *  runCollect from the collector's ctx.onProgress, cleared when the run
+   *  ends). Locale-neutral strings from the collector; the UI prefixes the
+   *  localized label. */
+  collectProgress: Record<string, string>;
 
   setKeepRaw: (v: boolean) => void;
   setRedactPatterns: (v: string[]) => void;
@@ -104,6 +109,8 @@ export interface ActivityCollectorState {
   setReportRootDir: (v: string) => void;
   /** Runtime-only — called by runCollect after a successful push. */
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
+  /** Runtime-only — null clears the entry (runCollect's finally). */
+  setCollectProgress: (collectorId: string, message: string | null) => void;
 
   hydrate: (blob: Record<string, unknown>) => void;
 }
@@ -142,6 +149,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   reportHashes: {},
   reportConfig: DEFAULT_REPORT_CONFIG,
   lastSync: {},
+  collectProgress: {},
 
   setKeepRaw: (v) => { set({ keepRaw: v }); persist(); },
   setRedactPatterns: (v) => { set({ redactPatterns: v }); persist(); },
@@ -185,6 +193,13 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
 
   setLastSync: (collectorId, at, accepted) => {
     set({ lastSync: { ...get().lastSync, [collectorId]: { at, accepted } } });
+  },
+
+  setCollectProgress: (collectorId, message) => {
+    const next = { ...get().collectProgress };
+    if (message === null) delete next[collectorId];
+    else next[collectorId] = message;
+    set({ collectProgress: next });
   },
 
   hydrate: (blob) => {

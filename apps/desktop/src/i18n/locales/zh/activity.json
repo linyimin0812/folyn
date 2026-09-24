@@ -99,6 +99,7 @@
     "pollOff": "已关闭，仅手动采集",
     "intervalMinutes": "间隔（分钟）",
     "collectNow": "立即采集",
+    "collecting": "采集中",
     "lastSync": "上次同步：{{time}} · 采集 {{count}} 条",
     "neverSynced": "尚未同步",
     "justNow": "刚刚",

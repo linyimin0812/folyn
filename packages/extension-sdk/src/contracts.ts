@@ -226,6 +226,13 @@ export interface CollectorContext {
     /** Abort the request (timeouts). Honored by the host's fetch. */
     signal?: AbortSignal;
   }) => Promise<{ status: number; body: string }>;
+  /**
+   * Host-injected progress reporter. Collectors call it with a short
+   * human-readable, locale-neutral progress string (e.g. `commits 42/256`)
+   * during long runs; the host surfaces it next to the spinner. Optional —
+   * absent in tests/embedded hosts.
+   */
+  onProgress?: (message: string) => void;
 }
 
 /** The extension-side collector interface (design §2.2). Exported by a

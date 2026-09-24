@@ -99,6 +99,7 @@
     "pollOff": "Off — manual collect only",
     "intervalMinutes": "Interval (min)",
     "collectNow": "Collect now",
+    "collecting": "Collecting",
     "lastSync": "Last sync: {{time}} · {{count}} events",
     "neverSynced": "Never synced",
     "justNow": "just now",

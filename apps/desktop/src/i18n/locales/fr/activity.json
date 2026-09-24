@@ -99,6 +99,7 @@
     "pollOff": "Désactivé — collecte manuelle uniquement",
     "intervalMinutes": "Intervalle (min)",
     "collectNow": "Collecter maintenant",
+    "collecting": "Collecte",
     "lastSync": "Dernière synchro : {{time}} · {{count}} événements",
     "neverSynced": "Jamais synchronisé",
     "justNow": "à l'instant",

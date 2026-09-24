@@ -99,6 +99,7 @@
     "pollOff": "オフ — 手動収集のみ",
     "intervalMinutes": "間隔（分）",
     "collectNow": "今すぐ収集",
+    "collecting": "収集中",
     "lastSync": "前回の同期：{{time}} · {{count}} 件",
     "neverSynced": "未同期",
     "justNow": "たった今",
