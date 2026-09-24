@@ -34,7 +34,11 @@ interface WebhookInfo {
 }
 
 /** authSchema-rendered config form. Draft + save (prototype interaction). */
-function ConfigForm({ reg, footerExtra }: { reg: CollectorRegistration; footerExtra?: ReactNode }) {
+function ConfigForm({
+  reg,
+  footerExtra,
+  footerLeft,
+}: { reg: CollectorRegistration; footerExtra?: ReactNode; footerLeft?: ReactNode }) {
   const { t } = useTranslation();
   const schema = reg.authSchema;
   const config = useActivityCollectorStore((s) => s.configs[reg.collectorId]);
@@ -108,12 +112,15 @@ function ConfigForm({ reg, footerExtra }: { reg: CollectorRegistration; footerEx
           </label>
         );
       })}
-      <div className="flex justify-end gap-2">
-        {footerExtra}
-        <button className="btn btn-g btn-sm" onClick={onSave}>
-          {saved && <Check size={11} />}
-          {t('activity:collectors.save')}
-        </button>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {footerLeft && <div className="min-w-0 text-[11px] text-t2 flex items-center gap-2 flex-wrap">{footerLeft}</div>}
+        <div className="flex gap-2">
+          {footerExtra}
+          <button className="btn btn-g btn-sm" onClick={onSave}>
+            {saved && <Check size={11} />}
+            {t('activity:collectors.save')}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -197,6 +204,37 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
   // ConfigForm returns null when the schema has no properties — a schemaless
   // poll collector still needs the footer row.
   const hasConfigFields = !!(reg.authSchema && Object.keys(reg.authSchema.properties).length > 0);
+
+  // Status text (last sync / progress / notice) merged into the footer action
+  // row — left side, right of it the collect-now + save buttons.
+  const statusContent = (
+    <>
+      <span>
+        {lastSync?.at === undefined
+          ? t('activity:collectors.neverSynced')
+          : t('activity:collectors.lastSync', {
+              time:
+                Date.now() - lastSync.at < 60_000
+                  ? t('activity:collectors.justNow')
+                  : new Intl.DateTimeFormat(i18n.language, {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }).format(new Date(lastSync.at)),
+              count: lastSync.accepted,
+            })}
+      </span>
+      {collectProgress && (
+        <span>{t('activity:collectors.collecting')} {collectProgress}</span>
+      )}
+      {notice && (
+        <span className={notice.error ? 'text-red-600 dark:text-red-400' : 'text-acc'}>
+          {notice.text}
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div className="border border-brd rounded-lg p-3 mb-2 bg-surf">
@@ -292,37 +330,13 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
         </div>
       )}
 
-      <div className="text-[11px] text-t2 mt-2 flex items-center gap-2 flex-wrap">
-        <span>
-          {lastSync?.at === undefined
-            ? t('activity:collectors.neverSynced')
-            : t('activity:collectors.lastSync', {
-                time:
-                  Date.now() - lastSync.at < 60_000
-                    ? t('activity:collectors.justNow')
-                    : new Intl.DateTimeFormat(i18n.language, {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }).format(new Date(lastSync.at)),
-                count: lastSync.accepted,
-              })}
-        </span>
-        {collectProgress && (
-          <span>{t('activity:collectors.collecting')} {collectProgress}</span>
-        )}
-        {notice && (
-          <span className={notice.error ? 'text-red-600 dark:text-red-400' : 'text-acc'}>
-            {notice.text}
-          </span>
-        )}
-      </div>
-
       {hasConfigFields ? (
-        <ConfigForm reg={reg} footerExtra={collectNowButton} />
+        <ConfigForm reg={reg} footerExtra={collectNowButton} footerLeft={statusContent} />
       ) : (
-        collectNowButton && <div className="mt-2 flex justify-end gap-2">{collectNowButton}</div>
+        <div className="mt-2 flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0 text-[11px] text-t2 flex items-center gap-2 flex-wrap">{statusContent}</div>
+          {collectNowButton}
+        </div>
       )}
     </div>
   );
