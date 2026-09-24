@@ -9,7 +9,7 @@
  * `type: 'collector'` (reuses StoreEntryCard + the shared extension catalog).
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { Check, Loader2, Play, TriangleAlert } from 'lucide-react';
@@ -108,12 +108,12 @@ function ConfigForm({
         const value = draft[key] ?? prop.default ?? '';
         const label = prop.title ?? key;
         return (
-          <label
-            key={key}
-            className={prop.type === 'boolean' && !prop.enum
-              ? 'flex items-center gap-1.5 mb-2.5'
-              : 'block mb-2.5'}
-          >
+          <Fragment key={key}>
+            <label
+              className={prop.type === 'boolean' && !prop.enum
+                ? 'flex items-center gap-1.5 mb-2.5'
+                : 'block mb-2.5'}
+            >
             {prop.enum ? (
               <>
                 <span className="block text-[11px] text-t2 mb-1">{label}</span>
@@ -151,25 +151,28 @@ function ConfigForm({
                 />
               </>
             )}
-            {reg.collectorId === 'file-activity' && key === 'excludeDirs' && (
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="text-[10px] text-t3">{t('activity:collectors.fileExcludeApplied')}</span>
-                {excludeInput ? (
-                  <input
-                    autoFocus
-                    className="py-[5px] px-2.5 rounded-md text-[11px] font-ui border border-acc bg-inp text-t1 outline-none w-[180px]"
-                    placeholder={t('settings:appearance.excludePatterns.prompt')}
-                    value={excludeInput.value}
-                    onChange={(e) => setExcludeInput({ value: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const v = excludeInput.value.trim();
-                        if (v) addExcludePattern(v);
-                        setExcludeInput(null);
-                      } else if (e.key === 'Escape') {
-                        setExcludeInput(null);
-                      }
-                    }}
+          </label>
+          {reg.collectorId === 'file-activity' && key === 'excludeDirs' && (
+            <div className="mt-1 mb-2.5 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] text-t3">{t('activity:collectors.fileExcludeApplied')}</span>
+              {excludeInput ? (
+                <input
+                  autoFocus
+                  className="py-[5px] px-2.5 rounded-md text-[11px] font-ui border border-acc bg-inp text-t1 outline-none w-[180px]"
+                  placeholder={t('settings:appearance.excludePatterns.prompt')}
+                  value={excludeInput.value}
+                  onChange={(e) => setExcludeInput({ value: e.target.value })}
+                  onKeyDown={(e) => {
+                    // IME composition: Enter here commits the composition, not the add.
+                    if (e.nativeEvent.isComposing) return;
+                    if (e.key === 'Enter') {
+                      const v = excludeInput.value.trim();
+                      if (v) addExcludePattern(v);
+                      setExcludeInput(null);
+                    } else if (e.key === 'Escape') {
+                      setExcludeInput(null);
+                    }
+                  }}
                     onBlur={() => {
                       const v = excludeInput.value.trim();
                       if (v) addExcludePattern(v);
@@ -195,9 +198,9 @@ function ConfigForm({
                     >×</button>
                   </span>
                 ))}
-              </div>
-            )}
-          </label>
+            </div>
+          )}
+          </Fragment>
         );
       })}
       <div className="flex items-center justify-between gap-3 flex-wrap">
