@@ -44,8 +44,9 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   const arrowId = useId();
   // centerHistory holds entity ids; the last entry is the current center.
   const [history, setHistory] = useState<string[]>([]);
-  // entityType key of the aggregate node whose members are expanded in-graph.
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  // entityType keys of the aggregate nodes whose members are expanded in-graph
+  // (multiple groups may be expanded at once, each toggling only itself).
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const entityTypes = useCollectorRegistryStore((s) => s.entityTypes);
 
@@ -179,7 +180,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   const CY = H / 2;
 
   const navigateTo = (id: string) => {
-    setExpandedGroup(null);
+    setExpandedGroups(new Set());
     setPan({ x: 0, y: 0 });
     setHistory((h) => [...h, id]);
   };
@@ -227,10 +228,8 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     };
   });
 
-  // Expanded group: members fan out around the aggregate node, spread
+  // Expanded groups: members fan out around each aggregate node, spread
   // symmetrically around the outward (canvas-center → node) direction.
-  const expandedLayout =
-    expandedGroup == null ? null : nodeLayouts.find((nl) => nl.di.entityType === expandedGroup) ?? null;
   // 170 ≥ 74 (member half-width) + 74 (aggregate half-width) + 22 gutter —
   // members can never overlap the aggregate card and steal its collapse click.
   const FAN_R = 170;
@@ -238,10 +237,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   // remaining overlap with another aggregate card resolves in favor of the
   // orbit button via zIndex below (fan members stay clickable otherwise).
   const MAX_SPREAD = (110 * Math.PI) / 180;
-  const memberLayouts = (() => {
-    if (!expandedLayout) return [] as { n: ActivityNeighborRow; x: number; y: number }[];
-    const { nx, ny } = expandedLayout;
-    const items = expandedLayout.di.items;
+  // Fan of member positions around a given expanded aggregate node layout.
+  const fanOf = (nl: (typeof nodeLayouts)[number]) => {
+    const { nx, ny } = nl;
+    const items = nl.di.items;
     const outward = Math.atan2(ny - CY, nx - CX);
     // Card extent along the fan's tangent + gutter — minimum adjacent
     // center spacing. ponytail: measured at the outward direction only;
@@ -258,7 +257,10 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
       const angle = outward - spread / 2 + step * i;
       return { n, x: nx + fanR * Math.cos(angle), y: ny + fanR * Math.sin(angle) };
     });
-  })();
+  };
+  const fans = nodeLayouts
+    .filter((nl) => expandedGroups.has(nl.di.entityType))
+    .map((nl) => ({ nl, members: fanOf(nl) }));
 
   // No clipping: base layout fits W×H by construction; expanded members may
   // not. Shift all content by (dx,dy) so it clears the origin and grow the
@@ -269,11 +271,13 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const m of memberLayouts) {
-    minX = Math.min(minX, m.x - NODE_W / 2);
-    minY = Math.min(minY, m.y - NODE_H / 2);
-    maxX = Math.max(maxX, m.x + NODE_W / 2);
-    maxY = Math.max(maxY, m.y + NODE_H / 2);
+  for (const { members } of fans) {
+    for (const m of members) {
+      minX = Math.min(minX, m.x - NODE_W / 2);
+      minY = Math.min(minY, m.y - NODE_H / 2);
+      maxX = Math.max(maxX, m.x + NODE_W / 2);
+      maxY = Math.max(maxY, m.y + NODE_H / 2);
+    }
   }
   const dx = Number.isFinite(minX) ? Math.max(0, PAD - minX) : 0;
   const dy = Number.isFinite(minY) ? Math.max(0, PAD - minY) : 0;
@@ -309,15 +313,16 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   </text>
                 </g>
               ))}
-              {expandedLayout &&
-                memberLayouts.map(({ n, x, y }) => (
+              {fans.map(({ nl, members }) =>
+                members.map(({ n, x, y }) => (
                   // Aggregate → member: covered by both HTML cards at the ends.
-                  <line key={n.neighborId} x1={expandedLayout.nx} y1={expandedLayout.ny} x2={x} y2={y} stroke="var(--brd2)" strokeWidth="1" />
-                ))}
+                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--brd2)" strokeWidth="1" />
+                )),
+              )}
             </svg>
             {nodeLayouts.map(({ di, nx, ny }) => {
               const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
-              const selected = expandedGroup === di.entityType;
+              const selected = expandedGroups.has(di.entityType);
               const td = typeDisplayOf(di.entityType);
               const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
               return (
@@ -333,7 +338,12 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   className={`flex h-[50px] items-center gap-2 rounded-xl border px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
                   onClick={() => {
                     if (di.aggregate) {
-                      setExpandedGroup(selected ? null : di.entityType);
+                      setExpandedGroups((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(di.entityType)) next.delete(di.entityType);
+                        else next.add(di.entityType);
+                        return next;
+                      });
                     } else {
                       navigateTo(di.items[0]!.neighborId);
                     }
@@ -359,36 +369,35 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                 </button>
               );
             })}
-            {expandedLayout &&
-              memberLayouts.map(({ n, x, y }) => {
-                const td = typeDisplayOf(expandedLayout.di.entityType);
-                const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
-                return (
-                  <button
-                    key={n.neighborId}
-                    type="button"
-                    title={n.relation}
-                    style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', width: NODE_W }}
-                    className="flex h-[50px] items-center gap-2 rounded-xl border border-brd2 bg-panel px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
-                    onClick={() => navigateTo(n.neighborId)}
+            {fans.map(({ nl, members }) => {
+              const td = typeDisplayOf(nl.di.entityType);
+              const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
+              return members.map(({ n, x, y }) => (
+                <button
+                  key={n.neighborId}
+                  type="button"
+                  title={n.relation}
+                  style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', width: NODE_W }}
+                  className="flex h-[50px] items-center gap-2 rounded-xl border border-brd2 bg-panel px-2.5 text-left cursor-pointer shadow-sm transition-shadow hover:shadow-md hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
+                  onClick={() => navigateTo(n.neighborId)}
+                >
+                  <span
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: pal.bg, color: pal.color }}
                   >
-                    <span
-                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-                      style={{ background: pal.bg, color: pal.color }}
-                    >
-                      {td?.icon ? (
-                        <LucideNameIcon name={td.icon} size={14} />
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
-                      )}
-                    </span>
-                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                      <span className="block w-full truncate text-[13px] font-medium text-t1">{nameOf(n.neighborId)}</span>
-                      <span className="block w-full truncate text-[11px] text-t3">{n.relation}</span>
-                    </span>
-                  </button>
-                );
-              })}
+                    {td?.icon ? (
+                      <LucideNameIcon name={td.icon} size={14} />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
+                    )}
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="block w-full truncate text-[13px] font-medium text-t1">{nameOf(n.neighborId)}</span>
+                    <span className="block w-full truncate text-[11px] text-t3">{n.relation}</span>
+                  </span>
+                </button>
+              ));
+            })}
             {center && (
               <div
                 style={{ position: 'absolute', left: CX, top: CY, transform: 'translate(-50%, -50%)', width: CENTER_W, boxShadow: '0 0 0 5px var(--accglow)' }}
@@ -418,9 +427,9 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     <div
       className="h-full min-h-0 overflow-hidden flex flex-col"
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && expandedGroup != null) {
+        if (event.key === 'Escape' && expandedGroups.size > 0) {
           event.stopPropagation();
-          setExpandedGroup(null);
+          setExpandedGroups(new Set());
         }
       }}
     >
