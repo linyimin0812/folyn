@@ -182,6 +182,23 @@
       "author": "Folyn",
       "icon": "W",
       "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/0.0.2/folyn-window-activity-collector-0.1.0.zip"
+    },
+    {
+      "id": "folyn-file-collector",
+      "type": "collector",
+      "name": {
+        "zh": "文件采集器",
+        "en": "File Collector"
+      },
+      "version": "0.1.0",
+      "description": {
+        "zh": "轮询 vault 文件的新增/修改/删除，采集文件内容与行级差异，支持排除目录与 AI 事件摘要",
+        "en": "Polls vault files for created/modified/deleted events with content and line diffs, exclude dirs, optional AI event summaries"
+      },
+      "tier": "trusted",
+      "author": "Folyn",
+      "icon": "F",
+      "downloadUrl": "https://github.com/linyimin0812/folyn-extensions/releases/download/folyn-file-collector-0.1.0/folyn-file-collector-0.1.0.zip"
     }
   ]
 }
