@@ -1,6 +1,17 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { watch, type WatchEvent } from '@tauri-apps/plugin-fs';
 import { getHandlerById } from '@/components/file-types/registry';
+import { isExternalPath } from '@/utils/isExternalPath';
+import { externalFileProvider, resolveAbsolutePath } from '@/services/externalFileProvider';
+
+interface EditorTab {
+  id: string;
+  path: string;
+  fileType: string;
+  content: string;
+  isDirty: boolean;
+}
 
 let currentUnlisten: UnlistenFn | null = null;
 let currentBasePath = '';
@@ -90,6 +101,93 @@ async function handleWatchEvent(event: WatcherEvent) {
       // file may have been deleted
     }
   }
+}
+
+/**
+ * External-file (outside-the-vault) tabs aren't covered by the vault-root
+ * watcher: they bypass the `startsWith(currentBasePath)` filter and their tab
+ * ids (`ext:<path>`) never match the vault `${vaultId}:${relativePath}` lookup.
+ * Instead each open external tab gets its own single-file watch via the fs
+ * plugin, reconciled whenever the tab list changes.
+ */
+const externalWatches = new Map<string, () => void>();
+const pendingWatches = new Set<string>();
+
+function isExternalModifyEvent(type: WatchEvent['type']): boolean {
+  if (typeof type === 'string') return type === 'any';
+  return 'modify' in type || 'create' in type;
+}
+
+async function refreshExternalTab(path: string): Promise<void> {
+  if (paused) return;
+  if (suppressedPaths.has(path)) return;
+
+  const { useEditorStore } = await import('@/store/editorStore');
+  const { useDiffReviewStore } = await import('@/store/diffReviewStore');
+
+  const tab = useEditorStore.getState().tabs.find((t) => t.id === `ext:${path}`);
+  if (!tab || tab.isDirty) return;
+
+  const handler = getHandlerById(tab.fileType);
+  if (!handler?.needsFileContent) return;
+
+  try {
+    const raw = await externalFileProvider.readFile(path);
+    const diskContent = handler.deserialize ? handler.deserialize(raw) : raw;
+    if (diskContent === tab.content) return;
+    useDiffReviewStore.getState().setContentExternal(tab.id, diskContent);
+  } catch {
+    // file may have been deleted
+  }
+}
+
+export async function syncExternalWatches(tabs: EditorTab[]): Promise<void> {
+  const wanted = new Set(tabs.map((t) => t.path).filter(isExternalPath));
+
+  for (const [path, unwatch] of externalWatches) {
+    if (!wanted.has(path)) {
+      unwatch();
+      externalWatches.delete(path);
+    }
+  }
+
+  for (const path of wanted) {
+    if (externalWatches.has(path) || pendingWatches.has(path)) continue;
+    pendingWatches.add(path);
+    try {
+      const abs = await resolveAbsolutePath(path);
+      const unwatch = await watch(abs, (event) => {
+        if (isExternalModifyEvent(event.type)) void refreshExternalTab(path);
+      });
+      externalWatches.set(path, unwatch);
+    } catch {
+      // watch failed (file gone / scope denied) — nothing to refresh
+    } finally {
+      pendingWatches.delete(path);
+    }
+  }
+}
+
+/** One-time hook: keeps external-file watches in sync with open tabs. */
+export async function initExternalFileWatcher(): Promise<void> {
+  const { useEditorStore } = await import('@/store/editorStore');
+  // Reconcile only when the set of external tab paths actually changes —
+  // editorStore emits on every keystroke, a plain subscribe would reconcile
+  // per keypress.
+  const signature = (s: { tabs: EditorTab[] }) =>
+    s.tabs
+      .map((t) => t.path)
+      .filter(isExternalPath)
+      .sort()
+      .join('\n');
+  let last = signature(useEditorStore.getState());
+  void syncExternalWatches(useEditorStore.getState().tabs);
+  useEditorStore.subscribe((s) => {
+    const cur = signature(s);
+    if (cur === last) return;
+    last = cur;
+    void syncExternalWatches(s.tabs);
+  });
 }
 
 export async function startVaultWatcher(basePath: string): Promise<void> {

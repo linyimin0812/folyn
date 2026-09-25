@@ -24,6 +24,7 @@ import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
+import { initExternalFileWatcher } from './utils/fileWatcher';
 import { startProvidersBroadcast } from './store/aiConfigStore';
 import { usePetStore } from './store/petStore';
 import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone, hydrateAllStores } from './store/settingsPersistence';
@@ -333,6 +334,11 @@ export default function App() {
       await settingsLoadDone;
 
       await useVaultStore.getState().initVault();
+
+      // External (non-vault) tabs need per-file watches — the vault-root
+      // watcher never sees them. Must run before restoreOpenTabs so restored
+      // external tabs get watched; later opens are handled by the subscription.
+      await initExternalFileWatcher();
 
       await loadAiSessionsForVault();
       await editorIoService.restoreOpenTabs();
