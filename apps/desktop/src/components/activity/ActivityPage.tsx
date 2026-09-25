@@ -305,7 +305,7 @@ export function ActivityPage() {
           }}
         >
           <Activity size={16} />
-          <span className="text-[12px]">{t('activity:rail.main')}</span>
+          <span className="text-[13px]">{t('activity:rail.main')}</span>
         </button>
         {(['timeline', 'graph'] as const).map((m) => (
           <button
@@ -323,7 +323,7 @@ export function ActivityPage() {
             }}
           >
             {m === 'timeline' ? <List size={14} /> : <Network size={14} />}
-            <span className="text-[11px]">{t(`activity:tabs.${m}`)}</span>
+            <span className="text-[12px]">{t(`activity:tabs.${m}`)}</span>
           </button>
         ))}
         {RAIL_VIEWS.filter((v) => v.id !== 'main').map((v) => (
@@ -337,7 +337,7 @@ export function ActivityPage() {
               onClick={() => setView(v.id)}
             >
               <v.icon size={16} />
-              <span className="text-[12px]">{t(v.key)}</span>
+              <span className="text-[13px]">{t(v.key)}</span>
             </button>
             {/* 采集记录: indented child of 采集器 (same pattern as timeline/graph). */}
             {v.id === 'collectors' && (
@@ -350,7 +350,7 @@ export function ActivityPage() {
                 onClick={() => setView('collectLog')}
               >
                 <History size={14} />
-                <span className="text-[11px]">{t('activity:rail.collectLog')}</span>
+                <span className="text-[12px]">{t('activity:rail.collectLog')}</span>
               </button>
             )}
           </Fragment>
