@@ -1,0 +1,4 @@
+{"file": "folyn-activity-collection-design.md", "reason": "权威技术规格：schema/SQL/贡献点/查询/UI 全部细节"}
+{"file": ".trellis/tasks/09-23-activity-data-layer/prd.md", "reason": "本子任务范围与验收标准"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "src-tauri 与 src 服务组织约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "代码标准与禁止模式"}
