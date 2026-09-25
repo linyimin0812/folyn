@@ -19,6 +19,7 @@ TOFU 审批流程、本地开发、打包。示例插件位于
 - [TOFU 审批流程](#tofu-审批流程)
 - [本地开发](#本地开发)
 - [打包](#打包)
+- [采集器（活动采集）](#采集器活动采集)
 - [参考：示例插件](#参考示例插件)
 
 ---
@@ -101,6 +102,9 @@ export const commands = { ping: () => console.info("pong") };
 | `editorLanguages`         | ✗       | ✓       | 编辑器内 fenced source 用的 CodeMirror language 扩展        |
 | `highlightGrammars`      | ✗       | ✓       | 预览与 CodeFileViewer 里 fenced code 用的 highlight.js 语法 |
 | `storageProviders`       | ✗       | ✓       | Settings → Storage & Sharing 里的云对象存储提供者           |
+| `collectors`             | ✗       | ✓       | 活动采集器（poll / webhook）→ 活动时间线事件                |
+| `activityDisplay`        | ✗       | ✓       | 事件类型的图标/颜色/详情字段/指标卡（声明式）                |
+| `entityTypes`            | ✗       | ✓       | 实体图谱的自定义实体类型（声明式）                           |
 
 ### 3. RPC 方法表（sandbox tier —— host 中介）
 
@@ -189,7 +193,7 @@ default-src 'none';
 | 隔离              | 跨 origin opaque origin；无父 DOM、无 Tauri API、无 localStorage                                                  | 无——运行在 host realm；可读 Zustand store、调 Tauri、操作 DOM                                               |
 | 能力面            | 仅 host RPC 桥（`postMessage`）；manifest 的 `permissions` 把守每一调用                                           | 完整 host realm 访问；无逐插件运行时 ACL，`permissions` 仅供信息（见 [权限模型](#权限模型)）        |
 | 信任门槛          | 无（sandbox 本身就是边界）                                                                                        | TOFU：激活前必须 **批准并授权**                                                                             |
-| 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`、`highlightGrammars`、`storageProviders`      |
+| 可用 contribution | `commands`、`tools`（window）                                                                                     | `commands`、`fileTypes`、`containers`、`features`、`tools`、`markdownCodeRenderers`、`editorLanguages`、`highlightGrammars`、`storageProviders`、`collectors`      |
 | 热卸载            | 销毁 iframe 元素                                                                                                  | `dispose()` adapter + `URL.revokeObjectURL(blobUrl)`                                                        |
 | 打包要求          | HTML + JS 由 iframe 通过 `folyn-extension://` 加载                                                                   | 自包含 ESM bundle（eval 时不能有相对/远程 import——blob URL 解析不了）                                       |
 
@@ -677,6 +681,98 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `ExtensionHost.valid
 host 把设置 UI 与图片粘贴 / markdown→HTML 分享流都走同一个
 `StorageProviderRegistry`；内置与扩展提供者是同类东西，卸载会干净移除你的
 条目，已存配置重置为你的 `defaultConfig`。
+
+### 采集器（活动采集，仅 trusted）
+
+采集器从一个数据源拉取/接收数据，转换成标准活动事件（活动时间线 + 实体
+图谱）。采集器只做「拉取/接收 + 转换」——存储、去重、实体解析全由 host 的
+ingest 管道负责。完整字段表（`contributes.collectors[]`、`activityDisplay[]`、
+`entityTypes[]`、`CollectorEvent`、`CollectorContext`）见
+`extension-sdk-reference.md` 的 "Collectors (activity collection)" 一节。规范示例：
+[`extensions/file-collector`](../../extensions/file-collector)（poll 模式、快照
+diff 游标、`authSchema` 含 `excludeDirs` + `allowAiSummary`）。
+
+#### 模式
+
+- **`poll`**——host 调度器按间隔调你的 `collect(ctx)`。声明的默认
+  `pollIntervalMs` 被 host 压到 **60 s 下限**（任何采集器都不能快于 60s）；
+  用户可以调大、按采集器关掉轮询、或手动「立即采集」——手动与定时走完全相同
+  的 collect→push→cursor 路径。
+- **`webhook`**——host 跑一个本地 webhook server（127.0.0.1），把入站 payload
+  路由到你的 `onWebhook(payload, config)`。无游标；产出的事件直接 push。
+
+#### 游标黄金规则
+
+`collect()` 返回 `{ events, nextCursor }`。**游标只在 push 成功后才会持久化**——
+失败的周期（collect 抛错、push 被拒、无打开的 vault）下次会重新读完全相同的
+窗口，因此永远不会漏采或重复推进。把游标设计为 host 替你存储的不透明字符串
+（文件采集器用 JSON 快照 blob；单调递增源用时间戳或 commit hash 也行）。没有
+产出事件时**原样返回**旧游标。
+
+#### 隐私（host 侧，每次 push 前）
+
+- 事件的 `raw` 字段**在用户 keepRaw 开关关闭时被剥离**——把 `raw` 当作可能
+  消失的调试数据，不要让 UI 依赖它。
+- 用户的 redact 正则会应用到 `title` 和 `summary` 上。**别把敏感信息放进
+  title/summary**——它们是时间线里展示的字段。
+
+#### host 注入的 `ctx` 能力（各自强制什么）
+
+`exec`/`http`/`frontWindow`/`scanVault`/`readVaultFile` 在测试与嵌入 host 中
+不存在——务必先做特性检测。
+
+| 能力 | host 强制什么 |
+| --- | --- |
+| `ctx.exec(program, args, cwd)` | Rust `activity_exec`：**程序白名单**（目前仅 `git`）。参数分离、无 shell → 无注入。需要别的二进制必须 host 侧扩列表。 |
+| `ctx.http(url, init)` | URL 的 **origin 必须与** manifest `hostAllowlist` 条目**精确匹配**——否则请求发出前就抛错。这是安装时权限确认的运行时对应物。 |
+| `ctx.frontWindow()` | Rust `activity_front_window`：**固定平台脚本**，无采集器可控参数。不可用返回 `null`。 |
+| `ctx.scanVault({ excludeDirs })` | Rust `activity_scan_vault`：对当前 vault 的固定递归遍历；**`.git` 恒跳过**；路径为 vault 相对路径；采集器永远不知道 vault 绝对根路径。 |
+| `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`：**遍历安全**（`..`/绝对路径拒绝）、二进制与 >1MB 文件返回 `null`、输出截断（上限钳制 1 B–64 KB，默认 8 KB）。 |
+
+#### `authSchema` → 设置页配置表单
+
+`authSchema`（JSON-schema 风格 `{ type: 'object', properties }`，string 与
+boolean 类型）会在**采集器设置页自动渲染为该采集器的配置表单**。保存的值在每次
+collect/webhook 调用时通过 `ctx.config` 送达。文件采集器的惯例：`boolean` 的
+`allowAiSummary` 控制详情面板 AI 事件摘要块是否出现。
+
+#### 声明的 `activityTypes` 会被校验
+
+每个事件的 `type` 必须在该采集器声明的 `contributes.collectors[].activityTypes`
+内——Rust ingest 会拒绝未声明类型的事件（并且用采集器 id 自己盖章 `source`，
+覆盖事件携带的任何值）。`id` 是去重键：惯例 `${source}:${externalId}`；稳定
+id 重复 push 会被静默去重，这也是你的崩溃/重启安全网。
+
+#### 最小接线
+
+```jsonc
+"contributes": {
+  "collectors": [{ "id": "my-source", "activityTypes": ["my_event"], "mode": "poll", "pollIntervalMs": 300000, "hostAllowlist": [] }],
+  "activityDisplay": [{ "type": "my_event", "icon": "star", "color": "blue" }],
+  "entityTypes": [{ "id": "my_thing", "label": "Thing", "color": "green" }]
+}
+```
+
+```ts
+import type { ExtensionModule } from 'folyn-extension-sdk';
+
+const module: ExtensionModule = {
+  collectors: {
+    'my-source': {
+      id: 'my-source',
+      async collect(ctx) {
+        const cursor = ctx.cursor ?? '';
+        // 经 ctx.exec / ctx.http / ctx.scanVault 自游标拉数据 …
+        return { events: [], nextCursor: cursor };
+      },
+    },
+  },
+};
+export default module;
+```
+
+`module.collectors` 的 key 是采集器 **id**（不是 entry-ref 字符串）。冲突规则：
+第二个插件注册相同 `entityTypes` id 会被跳过并打日志 + 商店条目显示冲突徽标。
 
 ---
 

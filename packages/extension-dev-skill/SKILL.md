@@ -14,6 +14,7 @@ reference for depth (it does not duplicate the SDK docs).
 
 - "Create / write / build a Folyn extension"
 - "Add a file type / container / command / exporter / sidebar panel / tool window to Folyn"
+- "Build an activity collector (采集器) that feeds the activity timeline"
 - "Publish my Folyn extension to the store"
 - The user is starting a new extension, or extending an existing scaffolded one.
 
@@ -30,7 +31,7 @@ in at scaffold time:
 
 | Tier | Runs in | When to pick | Contribution points available |
 | --- | --- | --- | --- |
-| **trusted** | host webview realm (in-process) | Renders inline React/CodeMirror, deep host integration. Needs a one-time user **批准并授权** (TOFU). | all (`commands`, `fileTypes`, `containers`, `features`, `tools`, `exporters`, `fileTemplates`, `keybindings`, `exportEnhancers`, `markdownCodeRenderers`, `editorLanguages`, `storageProviders`) |
+| **trusted** | host webview realm (in-process) | Renders inline React/CodeMirror, deep host integration. Needs a one-time user **批准并授权** (TOFU). | all (`commands`, `fileTypes`, `containers`, `features`, `tools`, `exporters`, `fileTemplates`, `keybindings`, `exportEnhancers`, `markdownCodeRenderers`, `editorLanguages`, `storageProviders`, `collectors` + `activityDisplay` + `entityTypes`) |
 | **sandbox** | isolated iframe (`folyn-extension://` opaque origin) | Self-contained tool/launcher; safest for untrusted third-party code. No host React. | `commands`, `tools` only |
 
 Default to **trusted** unless you have a reason to isolate.
@@ -77,6 +78,7 @@ Loop:
 - **`manifest.main` rewrite.** Root `manifest.json` says `"main": "dist/index.js"`; `build.mjs` strips the `dist/` prefix when copying into `dist/manifest.json` (→ `"index.js"`). Don't "fix" one without the other — install breaks silently.
 - **Remote fetch (trusted).** The main webview CSP does not include third-party origins. To call a remote URL, declare `permissions.http.origins` and use `ctx.http.fetch` (routes through Rust, outside CSP) — never a direct `fetch()` in the bundle.
 - **Entry-ref keys must match exactly.** The manifest is JSON, not typed — typos surface as runtime resolution errors, not type errors.
+- **Activity collectors**: `contributes.collectors[]` + `module.collectors` (keyed by collector id, not an entry-ref) + optional declarative `activityDisplay[]` / `entityTypes[]`. The cursor only persists after a successful push; `ctx.http` is gated by the collector's `hostAllowlist` (exact origin). Deep dive: `extension-development.md` → "Collectors (activity collection)".
 
 ### Where the depth lives
 

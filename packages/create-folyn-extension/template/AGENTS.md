@@ -218,6 +218,49 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 }]
 ```
 
+### collectors (activity collection — trusted only)
+
+A collector converts one data source into standard activity events (activity timeline + entity graph). The host owns storage/dedup/entity resolution — the collector only pulls and converts. Unlike every other contribution, `module.collectors` is keyed by the **collector id**, not an entry-ref string.
+
+```jsonc
+"contributes": {
+  "collectors": [{
+    "id": "my-source",                    // module key + event `source` (host-stamped)
+    "activityTypes": ["my_event"],        // ingest REJECTS events whose type isn't declared here
+    "mode": "poll",                       // 'poll' | 'webhook'
+    "pollIntervalMs": 300000,             // floored at 60s; user-adjustable / off / manual 立即采集
+    "authSchema": {                       // optional: renders the collector's config form (string/boolean)
+      "type": "object",
+      "properties": { "token": { "type": "string", "title": "Token", "default": "" } }
+    },
+    "hostAllowlist": ["https://api.example.com"]  // ctx.http exact-origin gate (install-time confirm)
+  }],
+  "activityDisplay": [{ "type": "my_event", "icon": "star", "color": "blue", "detailFields": [{ "key": "path", "label": "Path", "format": "text" }] }],
+  "entityTypes": [{ "id": "my_thing", "label": "Thing", "color": "green" }]
+}
+```
+
+```ts
+// src/index.ts — keyed by collector id
+collectors: {
+  'my-source': {
+    id: 'my-source',
+    // poll mode: cursor → collect → push → cursor persists ONLY after a successful
+    // push (failed cycle re-reads the same window). No events → return old cursor.
+    collect: async (ctx) => {
+      const cursor = ctx.cursor ?? '';
+      // ctx.exec (program-allowlisted: git only) / ctx.http (hostAllowlist exact origin)
+      // / ctx.scanVault (.git skipped, vault-relative paths) / ctx.readVaultFile
+      // (traversal-safe, binary/>1MB → null) — all absent in tests/embedded hosts,
+      // feature-detect. Privacy: host strips `raw` unless keepRaw; redact regexes hit
+      // title/summary — never put secrets there.
+      return { events: [], nextCursor: cursor };
+    },
+    // webhook mode instead: onWebhook(payload, config) → events (no cursor)
+  },
+},
+```
+
 ## ExtensionModule export contract
 
 The default export of `src/index.ts`. Every entry-ref in `manifest.json`'s `contributes.*[]` MUST have a matching key in the corresponding map here. Missing keys surface as runtime errors when the host tries to resolve the entry-ref.
@@ -271,6 +314,10 @@ const module: ExtensionModule = {
   // entry-ref → highlight.js grammar fn (matches contributes.highlightGrammars[].entry)
   // Receives the host's hljs instance, returns a Language definition.
   highlightGrammars: { 'plantuml-grammar': (hljs) => /* Language */ },
+
+  // collector id → collector impl (matches contributes.collectors[].id — NOT an
+  // entry-ref; the only map keyed by id). See "collectors" section above.
+  collectors: { 'my-source': { id: 'my-source', collect: async (ctx) => ({ events: [], nextCursor: ctx.cursor ?? '' }) } },
 
   // Optional lifecycle hooks (trusted loader calls these on activate/deactivate)
   activate: async (ctx) => { /* ctx: ExtensionContext */ },

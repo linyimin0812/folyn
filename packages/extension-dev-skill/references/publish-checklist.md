@@ -134,6 +134,7 @@ replace an entry in `extensions[]`:
 | `version` | Must match the manifest `version`. |
 | `description` | Plain string or `{ locale: text }`. Fallback: current locale → `zh` → `en` → first available. |
 | `tier` | `"trusted"` \| `"sandbox"`. Trusted still needs 批准并授权 after install (TOFU). |
+| `type` | Optional `"collector"` — marks an activity-collector extension so it also lists in the Collectors / 采集器 settings tab. Omit for regular extensions. |
 | `author` | Display string. |
 | `icon` | **Match** the extension `manifest.json` `icon`: inline `<svg>...</svg>` text or emoji. The Store renders from `catalog.json`, the installed list from the local manifest — they must agree or the icon differs between the two views. |
 | `downloadUrl` | Direct link to the GitHub Release zip asset. Host must be `github.com`. |

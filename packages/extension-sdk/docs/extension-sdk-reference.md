@@ -63,6 +63,9 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `editorLanguages`       | ✗       | ✓       | `contributes.editorLanguages[]`       | `module.editorLanguages`         | 编辑器内 fenced source 用的 CodeMirror language 扩展 |
 | `highlightGrammars`    | ✗       | ✓       | `contributes.highlightGrammars[]`     | `module.highlightGrammars`       | 预览与 CodeFileViewer 里 fenced code 用的 highlight.js 语法 |
 | `storageProviders`     | ✗       | ✓       | `contributes.storageProviders[]`       | `module.storageProviders`        | Settings → Storage & Sharing 里的云对象存储提供者           |
+| `collectors`           | ✗       | ✓       | `contributes.collectors[]`             | `module.collectors`              | 活动采集器（poll / webhook）→ 活动时间线事件                |
+| `activityDisplay`      | ✗       | ✓       | `contributes.activityDisplay[]`        | （declarative，无 module map）   | 活动事件类型的图标/颜色/详情字段/指标卡展示                 |
+| `entityTypes`          | ✗       | ✓       | `contributes.entityTypes[]`            | （declarative，无 module map）   | 自定义实体类型（实体图谱节点）                              |
 
 ## 4. 各贡献点字段表 + 片段
 
@@ -260,6 +263,114 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 
 > 卸载会干净移除该提供者条目，已存配置重置为 `defaultConfig`。host UI 与图片粘贴 / markdown→HTML 分享流都走同一个 `StorageProviderRegistry`。
 
+### collectors / activityDisplay / entityTypes（活动采集，仅 trusted）
+
+采集器把外部数据源转换为标准活动事件，写入活动时间线（活动页 + 实体图谱）。采集器只负责「拉取/接收 + 转换」——存储、去重、实体解析全部由 host 的 ingest 管道负责。开发指南（模式、游标规则、隐私、host 能力边界）见 `extension-development.md` 的 "Collectors (activity collection)" 一节。规范示例：`extensions/file-collector`（poll + 快照 diff 游标 + authSchema）。
+
+#### `contributes.collectors[]`
+
+| 字段             | 类型          | 必填 | 说明                                                                                                  |
+| ---------------- | ------------- | ---- | ----------------------------------------------------------------------------------------------------- |
+| `id`             | `string`      | 是   | 采集器 id；`module.collectors` 的 key，事件 `source` 由 host 按此盖章                                  |
+| `activityTypes`  | `string[]`    | 是   | 本采集器可能产出的事件类型 id；Rust ingest 校验事件 `type` 必须在声明列表内（未声明类型被拒绝）         |
+| `mode`           | `string`      | 是   | `'poll'`（按间隔调度 `collect()`）或 `'webhook'`（本地 webhook 路由到 `onWebhook()`）                  |
+| `pollIntervalMs` | `number`      | 否   | 声明的轮询间隔默认值；用户可覆盖或整体关闭。host 强制 60s 下限                                         |
+| `authSchema`     | `object`      | 否   | 配置表单 schema（JSON-schema 风格 `{ type: 'object', properties }`）；设置页自动渲染 string/boolean |
+| `hostAllowlist`  | `string[]`    | 否   | `ctx.http` 允许的 origin（精确 origin 匹配，如 `https://api.github.com`）。安装/启用时弹窗一次性确认  |
+
+```jsonc
+"collectors": [{
+  "id": "file-activity",
+  "activityTypes": ["file_created", "file_modified", "file_deleted"],
+  "mode": "poll",
+  "pollIntervalMs": 300000,
+  "authSchema": {
+    "type": "object",
+    "properties": {
+      "excludeDirs": { "type": "string", "title": "排除目录", "default": "" },
+      "allowAiSummary": { "type": "boolean", "title": "允许 AI 读取活动数据生成摘要", "default": false }
+    }
+  },
+  "hostAllowlist": []
+}]
+```
+
+#### `module.collectors['<id>']`
+
+| 成员        | 签名                                                                                              | 说明                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `collect`   | `(ctx: CollectorContext) => Promise<{ events: CollectorEvent[]; nextCursor: string }>`            | poll 模式 + 手动「立即采集」调用；拉取自上次游标以来的批次 |
+| `onWebhook` | `(payload: unknown, config: Record<string, unknown>) => Promise<CollectorEvent[]>`                | webhook 模式；本地 webhook server 路由到此处，无游标       |
+
+#### `contributes.activityDisplay[]`（declarative）
+
+声明事件类型的展示样式（图标/颜色/详情字段）与派生指标卡。`type` 对应事件 `type`；`entity` 把事件实体挂上图谱。
+
+| 字段           | 类型                                                        | 必填 | 说明                                    |
+| -------------- | ----------------------------------------------------------- | ---- | --------------------------------------- |
+| `type`         | `string`                                                    | 是   | 事件类型 id（须在某个采集器的 activityTypes 内） |
+| `icon`         | `string`                                                    | 否   | 图标名（如 `file-plus`）                 |
+| `color`        | `string`                                                    | 否   | 颜色名（如 `green`/`blue`/`red`）       |
+| `detailFields` | `{ key: string; label: string; format: string }[]`          | 否   | 详情面板字段；key 索引事件 `payload`，format 如 `text`/`number` |
+| `metric`       | `{ id: string; label: string; aggregate: string }`          | 否   | 指标卡（如 `aggregate: "count"`）       |
+| `entity`       | `{ role: string; relationLabel: string }`                    | 否   | 事件实体在图谱中的角色与边标签          |
+
+#### `contributes.entityTypes[]`（declarative）
+
+自定义实体类型（供事件实体引用，与内置 `person`/`meeting`/`repository`/`document`/`task` 并列）。冲突时后装者跳过并打日志，商店条目显示冲突徽标。
+
+| 字段    | 类型     | 必填 | 说明          |
+| ------- | -------- | ---- | ------------- |
+| `id`    | `string` | 是   | 类型 id       |
+| `label` | `string` | 是   | 显示名        |
+| `color` | `string` | 否   | 颜色名        |
+| `icon`  | `string` | 否   | 图标名        |
+
+#### CollectorEvent
+
+| 字段        | 类型                       | 必填 | 说明                                                              |
+| ----------- | -------------------------- | ---- | ----------------------------------------------------------------- |
+| `id`        | `string`                   | 是   | 稳定去重 id，惯例 `${source}:${externalId}`；重复 id 被 dedup     |
+| `type`      | `string`                   | 是   | 事件类型；必须在该采集器声明的 `activityTypes` 内，否则 Rust ingest 拒绝 |
+| `occurredAt`| `number`                   | 是   | epoch 毫秒                                                        |
+| `title`     | `string`                   | 否   | 标题；受用户 redact 正则影响——别放敏感信息                       |
+| `summary`   | `string`                   | 否   | 摘要；同上                                                        |
+| `url`       | `string`                   | 否   | 相关链接                                                          |
+| `payload`   | `Record<string, unknown>`  | 否   | 类型相关的结构化负载（detailFields 从这里取值）                  |
+| `raw`       | `unknown`                  | 否   | 原始数据；host 隐私开关默认剥离（keepRaw=false 时入库前删掉）    |
+| `actor`     | `CollectorEntityRef`       | 否   | 行为主体（通常是 person 实体）                                   |
+| `entities`  | `CollectorEventEntity[]`   | 否   | 相关实体 + 关系标签（边为 actor → entity）                       |
+
+`source` 由 host 从采集器 id 盖章，采集器不填（填错也会被覆盖）。
+
+#### CollectorContext
+
+| 成员           | 签名                                                                                                   | 说明（host 侧强制点见 extension-development.md）                            |
+| -------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `cursor`       | `string \| null`                                                                                       | 上次持久化游标（采集器自有，host 不透明存储）；首次为 `null`                |
+| `config`       | `Record<string, unknown>`                                                                               | authSchema 表单捕获的配置值                                                  |
+| `exec`         | `(program, args, cwd) => Promise<{stdout, stderr, exitCode}>`                                           | 读本地源（如 `git log`）；程序白名单（现仅 `git`）；测试/嵌入 host 缺失     |
+| `http`         | `(url, init?) => Promise<{status, body}>`                                                               | 远程源；origin 必须在 manifest `hostAllowlist`（精确 origin），否则抛错     |
+| `onProgress`   | `(message: string) => void`                                                                             | 进度上报（如 `commits 42/256`），显示在采集按钮旁的 spinner 处              |
+| `frontWindow`  | `() => Promise<{ app: string; title: string \| null } \| null>`                                        | 前台窗口采样；固定 host 脚本，无采集器可控参数；不可用时返回 `null`         |
+| `scanVault`    | `(opts: { excludeDirs?: string[] }) => Promise<{path, mtimeMs, size}[] \| null>`                        | vault 文件扫描（`.git` 恒跳过，vault 相对路径，按路径排序）；不可用返回 `null` |
+| `readVaultFile`| `(path: string, maxBytes?: number) => Promise<string \| null>`                                          | vault 文本读取（遍历/绝对路径拒绝，二进制与 >1MB 返回 `null`，截断到 maxBytes） |
+
+```ts
+import type { CollectorContext, CollectorEvent, ExtensionModule } from 'folyn-extension-sdk';
+
+async function collect(ctx: CollectorContext): Promise<{ events: CollectorEvent[]; nextCursor: string }> {
+  const cursor = ctx.cursor ?? '';
+  // ...用 ctx.scanVault / ctx.exec / ctx.http 拉数据、diff 出事件...
+  return { events, nextCursor: JSON.stringify(snapshot) };
+}
+
+const module: ExtensionModule = {
+  collectors: { 'file-activity': { id: 'file-activity', collect } },
+};
+export default module;
+```
+
 ## 5. ExtensionModule 导出契约（trusted）
 
 ```ts
@@ -277,12 +388,13 @@ export interface ExtensionModule {
   editorLanguages?: Record<string, EditorLanguageFactory>;
   highlightGrammars?: Record<string, HighlightGrammarFn>;
   storageProviders?: Record<string, unknown>;
+  collectors?: Record<string, CollectorExtension>;
   activate?: (ctx: ExtensionContext) => void | Promise<void>;
   deactivate?: (ctx: ExtensionContext) => void | Promise<void>;
 }
 ```
 
-entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对应。缺失 key 跳过并告警（其它贡献仍加载）。`fileTemplates` + `keybindings` 无 module map（declarative）。`highlightGrammars` 与 `storageProviders` 的 module map 值类型为 `unknown`——host adapter 按角色窄化（语法 factory / React 组件 / 谓词 / 上传 fn）。默认导出工厂 `(ctx) => ExtensionModule` 也被接受。
+entry-ref key 与 manifest 中 `run`/`handler`/`component`/`entry` 字符串对应。缺失 key 跳过并告警（其它贡献仍加载）。`fileTemplates` + `keybindings` 无 module map（declarative）。`highlightGrammars` 与 `storageProviders` 的 module map 值类型为 `unknown`——host adapter 按角色窄化（语法 factory / React 组件 / 谓词 / 上传 fn）。`collectors` 的 key 对应 `contributes.collectors[].id`（不是 entry-ref 字段）。默认导出工厂 `(ctx) => ExtensionModule` 也被接受。
 
 ### trusted 导出骨架（无 JSX，用 `window.React` + `createElement`）
 
@@ -480,3 +592,4 @@ trusted 加载器把 `main` 包成 blob URL 后 `import()`，blob URL 无路径�
 - `../examples/extensions/hello-tool` — sandbox；`tools` + 剪贴板 RPC。
 - `../examples/extensions/markdown-table` — sandbox；`tools` + `vault:insert-content` RPC。
 - `../extensions/extension-graphviz` — trusted；`fileTypes` + `containers`，Vite 打包。
+- `../../extensions/file-collector` — trusted；活动采集器标杆（`collectors` + `activityDisplay` + `entityTypes`，poll 模式快照 diff 游标 + authSchema 配置）。

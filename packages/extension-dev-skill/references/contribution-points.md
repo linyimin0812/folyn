@@ -12,6 +12,7 @@ key W." For full field tables and examples, read the scaffolded project's
 | Add a CodeMirror language / highlight grammar | **trusted** |
 | Drive a feature AI agent (`ctx.ai.agent`) or AI file edits (`ctx.ai.editFile/createFile`) | **trusted** |
 | Add a storage provider (Settings → Storage & Sharing) | **trusted** |
+| Build an activity collector (采集器) feeding the activity timeline | **trusted** |
 | Run an isolated tool/launcher window with no host-React access (safest for untrusted code) | **sandbox** |
 
 Default to **trusted**. Use **sandbox** only when you specifically want the
@@ -33,6 +34,35 @@ isolated-iframe boundary (and accept its limits: `commands` + `tools` only).
 | ` ```lang ` fenced block → React | `contributes.markdownCodeRenderers[]` | `module.markdownCodeRenderers` | ✓ | ✗ | `component` |
 | CodeMirror language support | `contributes.editorLanguages[]` | `module.editorLanguages` | ✓ | ✗ | `entry` |
 | Cloud storage provider | `contributes.storageProviders[]` | `module.storageProviders` | ✓ | ✗ | `configForm` / `isConfigured` / `uploadImage` / `uploadHtml` |
+| Activity collector (poll / webhook) | `contributes.collectors[]` | `module.collectors` | ✓ | ✗ | _(collector id, not an entry-ref)_ |
+| Event-type display (icon / color / detail fields / metric card) | `contributes.activityDisplay[]` | _(declarative — no map)_ | ✓ | ✗ | — |
+| Custom entity type (entity graph) | `contributes.entityTypes[]` | _(declarative — no map)_ | ✓ | ✗ | — |
+
+## Collector quick facts
+
+- **Trusted only.** A collector is `contributes.collectors[]` + a
+  `module.collectors['<id>']` entry — the map is keyed by the collector **id**
+  (the only contribution whose key is not an entry-ref string).
+- **Modes**: `poll` (host scheduler calls `collect(ctx)`; `pollIntervalMs`
+  floored at **60 s**, user-adjustable / per-collector off / manual 立即采集)
+  or `webhook` (local 127.0.0.1 server routes payloads to `onWebhook`).
+- **Cursor rule**: `collect()` returns `{ events, nextCursor }`; the cursor
+  persists **only after a successful push** — a failed cycle re-reads the same
+  window. No events → return the old cursor unchanged.
+- **Privacy** (host-side, before every push): `raw` stripped unless the user's
+  keepRaw switch; redact regexes hit `title`/`summary` — never put secrets
+  there.
+- **hostAllowlist**: `ctx.http` throws unless the URL's origin **exactly
+  matches** an entry in the collector's manifest `hostAllowlist` (confirmed
+  once at install/enable).
+- **Event types are validated**: each event's `type` must be in the declared
+  `activityTypes`; the Rust ingest rejects the rest and stamps `source` from
+  the collector id.
+- **authSchema** renders the collector's config form in the 采集器 settings
+  (string/boolean); values arrive as `ctx.config`.
+- Full contract: `extension-sdk-reference.md` → "collectors / activityDisplay
+  / entityTypes" section; guide: `extension-development.md` → "Collectors
+  (activity collection)"; example: `extensions/file-collector`.
 
 ## The lockstep rule
 

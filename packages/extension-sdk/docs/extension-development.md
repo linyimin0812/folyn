@@ -21,6 +21,7 @@ development, and packaging. It references the two sample extensions in
 - [TOFU approval flow](#tofu-approval-flow)
 - [Local development](#local-development)
 - [Packaging](#packaging)
+- [Collectors (activity collection)](#collectors-activity-collection)
 - [Reference: sample extensions](#reference-sample-extensions)
 
 ---
@@ -57,6 +58,9 @@ activate; auto-unregistered on deactivate.
 | `editorLanguages`             | ✗        | ✓        | CodeMirror language support for fenced source blocks in the editor     |
 | `highlightGrammars`          | ✗        | ✓        | highlight.js grammar for fenced code blocks in preview + CodeFileViewer |
 | `storageProviders`             | ✗        | ✓        | cloud object-storage provider in Settings → Storage & Sharing       |
+| `collectors`                   | ✗        | ✓        | activity collector (poll / webhook) → events in the activity timeline |
+| `activityDisplay`              | ✗        | ✓        | icon/color/detail-fields/metric card for event types (declarative)   |
+| `entityTypes`                  | ✗        | ✓        | custom entity types for the entity graph (declarative)               |
 
 ### 3. RPC method table (sandbox tier — host-mediated)
 
@@ -202,7 +206,7 @@ contribution points are available.
 | Isolation                   | cross-origin opaque origin; no parent DOM, no Tauri APIs, no localStorage                                              | none — runs in the host realm; can read Zustand stores, call Tauri, touch the DOM                                                         |
 | Capability surface          | host RPC bridge (`postMessage`) only; manifest `permissions` gate every call                                           | full host realm access; no per-extension runtime ACL, `permissions` informational (see [Permissions model](#permissions-model))        |
 | Trust gate                  | none (sandbox IS the boundary)                                                                                         | TOFU: user must **批准并授权** before activation                                                                                          |
-| Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`, `highlightGrammars`, `storageProviders`                                    |
+| Allowed contribution points | `commands`, `tools` (window)                                                                                           | `commands`, `fileTypes`, `containers`, `features`, `tools`, `markdownCodeRenderers`, `editorLanguages`, `highlightGrammars`, `storageProviders`, `collectors` |
 | Hot unload                  | destroy iframe element                                                                                                 | `dispose()` adapters + `URL.revokeObjectURL(blobUrl)`                                                                                     |
 | Bundle requirement          | HTML + JS loaded by the iframe via `folyn-extension://`                                                                   | self-contained ESM bundle (no relative/remote imports at eval time — blob URLs can't resolve them)                                        |
 
@@ -758,6 +762,109 @@ The host routes the settings UI and the image-paste / markdown→HTML share
 flows through one `StorageProviderRegistry`; built-in and extension
 providers are the same kind of thing, so an uninstall cleanly removes your
 entry and its saved config resets to your `defaultConfig`.
+
+### Collectors (activity collection — trusted only)
+
+A collector pulls or receives data from one source and converts it into
+standard activity events (activity timeline + entity graph). The collector
+never touches storage, dedup, or entity resolution — the host owns the whole
+ingest pipeline. Full field tables (`contributes.collectors[]`,
+`activityDisplay[]`, `entityTypes[]`, `CollectorEvent`, `CollectorContext`):
+see `extension-sdk-reference.md` "Collectors (activity collection)". Canonical
+example: [`extensions/file-collector`](../../extensions/file-collector)
+(poll mode, snapshot-diff cursor, `authSchema` with `excludeDirs` +
+`allowAiSummary`).
+
+#### Modes
+
+- **`poll`** — the host scheduler calls your `collect(ctx)` on an interval.
+  Declared default `pollIntervalMs` is floored at **60 s** (no collector polls
+  faster); the user can raise it, turn polling off per-collector, or trigger
+  立即采集 manually — manual runs share the exact same collect→push→cursor
+  path as scheduled ticks.
+- **`webhook`** — the host runs a local webhook server (127.0.0.1) that routes
+  inbound payloads to your `onWebhook(payload, config)`. No cursor; the
+  produced events go straight to push.
+
+#### The golden cursor rule
+
+`collect()` returns `{ events, nextCursor }`. **The cursor is only persisted
+after a successful push** — a failed cycle (collect throw, rejected push, no
+vault open) re-reads the exact same window next time, so there are never
+gaps or double-advances. Design your cursor as an opaque string the host
+stores for you (the file collector uses a JSON snapshot blob; a timestamp or
+commit hash works for monotonic sources). Return the cursor **unchanged**
+when you produced no events.
+
+#### Privacy (host-side, before every push)
+
+- The event's `raw` field is **stripped unless the user's keepRaw switch is
+  on** — treat `raw` as debug data that may vanish, never as something the
+  UI can rely on.
+- The user's redact regexes are applied to `title` and `summary`. **Don't put
+  secrets in title/summary** — they are the fields shown in the timeline.
+
+#### Host-injected `ctx` capabilities (and what each enforces)
+
+`exec`/`http`/`frontWindow`/`scanVault`/`readVaultFile` are absent in tests
+and embedded hosts — always feature-detect.
+
+| Capability | What the host enforces |
+| --- | --- |
+| `ctx.exec(program, args, cwd)` | Rust `activity_exec`: **program allowlist** (currently `git` only). Separated args, no shell → no injection. A collector needing another binary must get it added host-side. |
+| `ctx.http(url, init)` | The URL's **origin must exactly match** an entry in the collector's manifest `hostAllowlist` — anything else throws before the request leaves. This is the runtime counterpart of the install-time permission confirm. |
+| `ctx.frontWindow()` | Rust `activity_front_window`: **fixed platform scripts**, no collector-controlled arguments. Returns `null` when unavailable. |
+| `ctx.scanVault({ excludeDirs })` | Rust `activity_scan_vault`: fixed recursive walk of the active vault; **`.git` always skipped**; paths are vault-relative; the collector never learns the absolute vault root. |
+| `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`: **traversal-safe** (`..`/absolute rejected), binary and >1 MB files return `null`, output truncated (cap clamped 1 B–64 KB, default 8 KB). |
+
+#### `authSchema` → the settings config form
+
+An `authSchema` (JSON-schema-ish `{ type: 'object', properties }`, string and
+boolean types) is rendered **automatically as the collector's config form in
+the 采集器 settings view**. Saved values arrive in `ctx.config` on every
+collect/webhook call. Convention from the file collector: a `boolean`
+`allowAiSummary` gate for the AI event-summary block in the detail panel.
+
+#### Declared `activityTypes` are validated
+
+Every event's `type` must be in the collector's declared
+`contributes.collectors[].activityTypes` — the Rust ingest rejects events
+whose type is not declared (and stamps `source` from the collector id
+itself, overwriting whatever the event carried). `id` is the dedup key:
+conventionally `${source}:${externalId}`; a stable id pushed twice is
+silently deduped, which is also your crash/restart safety net.
+
+#### Minimal wiring
+
+```jsonc
+"contributes": {
+  "collectors": [{ "id": "my-source", "activityTypes": ["my_event"], "mode": "poll", "pollIntervalMs": 300000, "hostAllowlist": [] }],
+  "activityDisplay": [{ "type": "my_event", "icon": "star", "color": "blue" }],
+  "entityTypes": [{ "id": "my_thing", "label": "Thing", "color": "green" }]
+}
+```
+
+```ts
+import type { ExtensionModule } from 'folyn-extension-sdk';
+
+const module: ExtensionModule = {
+  collectors: {
+    'my-source': {
+      id: 'my-source',
+      async collect(ctx) {
+        const cursor = ctx.cursor ?? '';
+        // pull since cursor via ctx.exec / ctx.http / ctx.scanVault ...
+        return { events: [], nextCursor: cursor };
+      },
+    },
+  },
+};
+export default module;
+```
+
+`module.collectors` is keyed by the collector **id** (not an entry-ref
+string). Conflict rule: a second extension registering the same `entityTypes`
+id is skipped with a log line + a conflict badge on the store entry.
 
 ---
 
