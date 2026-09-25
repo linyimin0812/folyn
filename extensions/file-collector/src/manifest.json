@@ -71,7 +71,7 @@
       },
       {
         "type": "file_deleted",
-        "icon": "file-x",
+        "icon": "trash-2",
         "color": "red",
         "detailFields": [
           { "key": "path", "label": "路径", "format": "text" }
