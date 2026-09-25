@@ -499,7 +499,7 @@ export function ActivityPage() {
       </div>
       ) : (
         <div className="flex-1 min-w-0 overflow-y-auto">
-          <div className="max-w-[1200px] mx-auto px-8 py-5">
+          <div className={`${view === 'collectLog' ? 'max-w-[900px]' : 'max-w-[1200px]'} mx-auto px-8 py-5`}>
             <h1 className="m-0 mb-4 pb-3 border-b border-brd text-[17px] font-semibold text-t1">
               {view === 'collectLog'
                 ? t('activity:collectLog.title')
