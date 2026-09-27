@@ -681,3 +681,43 @@ Iterated the activity entity graph to a planned radial layout (per-direction slo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 20: P1 oversized-file refactor + extension popup focus fix + isTauri observation disposition
+
+**Date**: 2026-09-27
+**Task**: P1 oversized-file refactor + extension popup focus fix + isTauri observation disposition
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+架构评估(graphify)后落地: ①P1 拆分 6 个超大文件零行为变化(MarkdownPreview 1588→298+6模块, App.tsx 1247→430+9 hooks, PetApp 1073→289+4模块, apple_speech.rs 1431→5子模块, lib.rs 1359→991+2模块, chat.rs 1349→457+4子模块), tsc/cargo test 231/231/vitest 基线持平; ②扩展弹窗关闭抢焦点修复(搜索行路径补 adopt frontmost pid + 礼貌激活失败强激活兜底), chips 路径留 1-2 天观察期后摘诊断日志; ③isTauri 观察项勘察(硬编码 true, 160 死分支)用户拍板保留不动, 任务已归档。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `be7b7077` | (see git log) |
+| `e52c0812` | (see git log) |
+| `f96acd76` | (see git log) |
+| `0f9a5231` | (see git log) |
+| `2fcf2e6d` | (see git log) |
+| `f4166654` | (see git log) |
+| `c573629c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

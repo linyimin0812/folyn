@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 19
+- **Total Sessions**: 20
 - **Last Active**: 2026-09-27
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~683 | Active |
+| `journal-1.md` | ~723 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 20 | 2026-09-27 | P1 oversized-file refactor + extension popup focus fix + isTauri observation disposition | `be7b7077`, `e52c0812`, `f96acd76`, `0f9a5231`, `2fcf2e6d`, `f4166654`, `c573629c` | `master` |
 | 19 | 2026-09-27 | Entity graph visual iteration, file-collector store publish, collector docs | `d7c53f8f`, `4d164dbe`, `b3203237`, `2ab076fe`, `d378528e`, `ded04730`, `a096b393`, `70a673de`, `3cebbcc4`, `bcc95f91`, `87c27f56`, `c9d1ba04`, `a7237a73`, `03a54f6a`, `d912128c`, `a9185c63` | `master` |
 | 18 | 2026-09-22 | Markdown split mode: giant blank gap between list and code block | `ef1b7d4e` | `master` |
 | 17 | 2026-09-22 | Extension popup close focus restore | `948cb939` | `master` |

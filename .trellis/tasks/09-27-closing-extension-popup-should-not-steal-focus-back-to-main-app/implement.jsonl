@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "窗口焦点/NSPanel 行为遵循 Tauri 窗口模式约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "诊断日志与修复需过质量基线（cargo check/test）"}
