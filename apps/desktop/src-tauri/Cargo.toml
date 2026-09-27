@@ -172,6 +172,9 @@ windows-sys = { version = "0.59", features = [
   # also SetFocus for pet_panel's focus_panel (WebView2 child focus — the
   # Windows equivalent of macOS makeFirstResponder(wkwebview)).
   "Win32_UI_Input_KeyboardAndMouse",
+  # OpenProcess / QueryFullProcessImageNameW — foreground-window process name
+  # for activity_front_window (FFI replacement of the old powershell probe).
+  "Win32_System_Threading",
 ] }
 windows = { version = "0.62", features = [
   "Media_SpeechRecognition",

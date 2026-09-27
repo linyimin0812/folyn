@@ -58,9 +58,9 @@ pub fn activity_exec(
 }
 
 // ── Frontmost-window sampling (window-activity collector) ────────────────────
-// ponytail: these are FIXED scripts with no collector-controlled arguments —
-// the fixed script IS the security boundary (same reasoning as the
-// EXEC_ALLOWED_PROGRAMS allowlist above: exposing osascript/powershell with
+// ponytail: these are FIXED queries with no collector-controlled arguments —
+// a fixed osascript on macOS, fixed FFI calls on Windows (same reasoning as
+// the EXEC_ALLOWED_PROGRAMS allowlist above: exposing osascript/FFI with
 // caller-chosen args would be an unbounded exec surface). Widening what this
 // command returns means editing this file, not anything extension-side.
 
@@ -124,25 +124,76 @@ fn front_window() -> Option<FrontWindow> {
 
 #[cfg(target_os = "windows")]
 fn front_window() -> Option<FrontWindow> {
-    // Fixed script: P/Invoke GetForegroundWindow/GetWindowText, app name by
-    // matching the process whose MainWindowHandle is the foreground window.
-    // Output "app|title" (titles can contain '|' — split at the first one).
-    let script = r#"[Console]::OutputEncoding=[Text.Encoding]::UTF8; Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public class FW{[DllImport("user32.dll")]public static extern IntPtr GetForegroundWindow();[DllImport("user32.dll")]public static extern int GetWindowText(IntPtr h,System.Text.StringBuilder s,int n);}' -ErrorAction SilentlyContinue; $h=[FW]::GetForegroundWindow(); $s=New-Object System.Text.StringBuilder(512); [void][FW]::GetWindowText($h,$s,512); $p=Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -eq $h } | Select-Object -First 1; Write-Output ($p.ProcessName + '|' + $s.ToString())"#;
-    let out = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-Command", script])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+    };
+
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.is_null() {
+            log::warn!("[activity] front_window: no foreground window");
+            return None;
+        }
+        let mut title_buf = [0u16; 512];
+        let title_len = GetWindowTextW(hwnd, title_buf.as_mut_ptr(), 512);
+        let title = if title_len > 0 {
+            Some(String::from_utf16_lossy(&title_buf[..title_len as usize]))
+        } else {
+            None
+        };
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, &mut pid);
+        if pid == 0 {
+            log::warn!("[activity] front_window: no pid for foreground window");
+            return None;
+        }
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if process.is_null() {
+            log::warn!("[activity] front_window: OpenProcess denied for pid {pid}");
+            return None;
+        }
+        let mut path_buf = [0u16; 1024];
+        let mut path_len = path_buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(
+            process,
+            PROCESS_NAME_WIN32,
+            path_buf.as_mut_ptr(),
+            &mut path_len,
+        );
+        CloseHandle(process);
+        if ok == 0 {
+            log::warn!("[activity] front_window: QueryFullProcessImageNameW failed for pid {pid}");
+            return None;
+        }
+        let image = String::from_utf16_lossy(&path_buf[..path_len as usize]);
+        let app = exe_stem(&image).to_string();
+        if app.is_empty() {
+            log::warn!("[activity] front_window: empty image path for pid {pid}");
+            return None;
+        }
+        // ponytail: UWP front windows are owned by ApplicationFrameHost —
+        // resolving the real app needs IApplicationActivationManager; add if
+        // UWP titles matter.
+        Some(FrontWindow { app, title })
     }
-    let line = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    let (app, title) = line.split_once('|')?;
-    let app = app.trim();
-    if app.is_empty() {
-        return None;
+}
+
+/// File name of a process image path without its extension, handling both
+/// `\` and `/` separators. The extension is stripped from the last path
+/// component only. `""` in → `""` out.
+#[cfg(any(target_os = "windows", test))]
+fn exe_stem(image_path: &str) -> &str {
+    let name = image_path.rsplit(['\\', '/']).next().unwrap_or(image_path);
+    match name.rfind('.') {
+        // ".hidden" keeps its name: the leading dot isn't an extension.
+        Some(0) | None => name,
+        Some(i) => &name[..i],
     }
-    let title = if title.is_empty() { None } else { Some(title.to_string()) };
-    Some(FrontWindow { app: app.to_string(), title })
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -524,6 +575,27 @@ mod read_text_tests {
         let big = vec![b'a'; 1_048_577];
         fs::write(t.path().join("big.md"), &big).unwrap();
         assert_eq!(activity_read_text_file(root, "big.md".into(), None), None);
+    }
+}
+
+#[cfg(test)]
+mod exe_stem_tests {
+    use super::*;
+
+    #[test]
+    fn strips_last_component_and_extension() {
+        assert_eq!(exe_stem(r"C:\Program Files\Code.exe"), "Code");
+        assert_eq!(exe_stem(r"C:\apps\foo.bar\Weird.Sig.exe"), "Weird.Sig");
+        assert_eq!(exe_stem("/usr/bin/code"), "code");
+        assert_eq!(exe_stem("Code.exe"), "Code");
+        assert_eq!(exe_stem("noext"), "noext");
+    }
+
+    #[test]
+    fn edge_cases() {
+        assert_eq!(exe_stem(r"C:\dir\.hidden"), ".hidden");
+        assert_eq!(exe_stem("."), ".");
+        assert_eq!(exe_stem(""), "");
     }
 }
 
