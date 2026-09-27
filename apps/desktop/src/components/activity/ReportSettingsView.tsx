@@ -44,9 +44,25 @@ export function ReportSettingsView() {
       </div>
 
       <label className="block border-t border-brd pt-4 mb-6">
-        <span className="block text-[13px] text-t1 mb-1.5">
-          {t('activity:reportSettings.promptLabel')}
-        </span>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span className="text-[13px] text-t1">
+            {t('activity:reportSettings.promptLabel')}
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm shrink-0"
+            onClick={() =>
+              setReportPrompt(
+                period,
+                t(
+                  `activity:reportSettings.defaultPrompt${period[0].toUpperCase()}${period.slice(1)}`,
+                ),
+              )
+            }
+          >
+            {t('activity:reportSettings.defaultPromptButton')}
+          </button>
+        </div>
         <textarea
           className="w-full text-[13px] bg-panel border border-brd2 rounded-md px-3 py-2 text-t1 leading-relaxed resize-y outline-none transition-[border-color] duration-100 focus:border-acc"
           rows={10}
