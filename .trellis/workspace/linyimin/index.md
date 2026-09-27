@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 22
+- **Total Sessions**: 23
 - **Last Active**: 2026-09-27
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~792 | Active |
+| `journal-1.md` | ~826 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 23 | 2026-09-27 | README: add activity collection section | `ea45813a` | `master` |
 | 22 | 2026-09-27 | Windows front-window collector FFI fix | `7f15254b` | `master` |
 | 21 | 2026-09-27 | Report settings default-prompt button + report jump link & pet-notify toggle | `88ae0dac`, `43e60250` | `master` |
 | 20 | 2026-09-27 | P1 oversized-file refactor + extension popup focus fix + isTauri observation disposition | `be7b7077`, `e52c0812`, `f96acd76`, `0f9a5231`, `2fcf2e6d`, `f4166654`, `c573629c` | `master` |

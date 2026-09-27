@@ -790,3 +790,37 @@ Diagnosed window-activity collector emitting zero events on Windows (github coll
 ### Next Steps
 
 - None - task complete
+
+
+## Session 23: README: add activity collection section
+
+**Date**: 2026-09-27
+**Task**: README: add activity collection section
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+6 语言 README 新增活动采集章节（Why Folyn bullet + For Users 小节 + 时间线/关系图截图）；Extension system 更新：移除已删除的日程/Wiki，翻译标注内置，新增富文本/DBML/文件查看器与采集器条目，替换失效 extensions-1.png 为新 extension-system.png
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ea45813a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
