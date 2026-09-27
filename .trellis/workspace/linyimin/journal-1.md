@@ -721,3 +721,38 @@ Iterated the activity entity graph to a planned radial layout (per-direction slo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 21: Report settings default-prompt button + report jump link & pet-notify toggle
+
+**Date**: 2026-09-27
+**Task**: Report settings default-prompt button + report jump link & pet-notify toggle
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Added a 默认提示词 button to per-period prompt textareas in report settings (fills localized starter prompt, 6 locales; fixed key-casing interpolation bug). After report generation, the saved path in the banner is now a jump link opening the note in the editor; added a report-settings toggle for pet notification (default on, persisted); notification payload now carries a visible open-report action button (bubble/corner templates only render payload.actions). Also diagnosed transient macOS unclickable-app glitch (resolved by reboot) and confirmed activity SQLite data intact across vault switch.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `88ae0dac` | (see git log) |
+| `43e60250` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
