@@ -26,7 +26,8 @@
 - **AI 深度集成** — 内置适配 Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder 六种 CLI 代理，跨模型厂商自由切换，不绑定单一供应商。
 - **桌宠助手** — 常驻桌面的小伙伴，负责推送日程提醒、任务变更通知，一点即可唤起大模型对话。
 - **应用内终端** — 在 Folyn 中直接打开终端，调用 Claude Code / Codex 等 CLI 代理读写当前文档，无需窗口切换。
-- **扩展系统** — 微内核 + 扩展 SDK 架构，翻译、日程、Wiki 均以扩展形式提供，支持第三方扩展。
+- **活动采集** — 采集器扩展记录你的一天：窗口切换、文件变动、GitHub 动态、webhook 事件，存入 vault 内的本地数据库；以时间线和关系图回顾，日报/周报/月报自动生成为 vault 笔记（可由 AI 撰写）。
+- **扩展系统** — 微内核 + 扩展 SDK 架构，富文本、DBML、文件查看器、活动采集器等以扩展形式提供，翻译为内置能力，支持第三方扩展。
 - **语音输入** — 语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。
 
 ## For Users
@@ -105,18 +106,34 @@
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
+### 活动采集
+
+来自扩展商店的采集器扩展记录设备上发生的事：前台窗口切换、文件创建/修改/删除、GitHub 提交/PR/Issue，以及外部工具通过本地 webhook 推送的事件，全部写入 vault 内的数据库，数据不出本机。
+
+活动页把原始事件整理为当日时间线和实体关系图（人物、会议、仓库、文档、任务）。日报/周报/月报会生成为 vault 内的 Markdown 笔记；设置自定义提示词后，报告正文改由 LLM 生成而非固定模板，报告完成时桌宠还可以提醒你。
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-time-line.png" alt="活动时间线" width="860" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-relations.png" alt="活动关系图" width="860" />
+</p>
+
+每个采集器可单独启用/停用并设置各自的轮询间隔，也可以用扩展 SDK 自己写一个。
+
 ### 扩展系统
 
 微内核 + 扩展 SDK 架构,核心保持轻量,功能按需加载:
 
-- **翻译** — 多语言内容处理
-- **日程** — 任务设置 / 通知提醒 / 专注番茄 / 任务看板
-- **Wiki 知识库** — 以 Wiki 方式组织和链接知识条目,构建可互相跳转的知识网络
+- **翻译** — 多语言内容处理（内置）
+- **富文本 / DBML / 文件查看器** — 来自扩展商店的编辑与查看扩展
+- **活动采集器** — 窗口活动、文件、GitHub、webhook 采集器来自扩展商店,为活动页记录事件
 
 支持第三方扩展,详见 `docs/extensions.html`。
 
 <p align="center">
-  <img src="docs/assets/screenshots/extensions-1.png" alt="Extensions" width="860" />
+  <img src="docs/assets/screenshots/extension-system.png" alt="Extensions" width="860" />
 </p>
 
 ### 语音输入

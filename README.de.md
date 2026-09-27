@@ -26,7 +26,8 @@
 - **Tiefe KI-Integration** — Eingebaute Adapter für sechs CLI-Agenten: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Frei zwischen Modellanbietern wechseln, kein Vendor-Lock-in.
 - **Desktop-Begleiter-Assistent** — Ein auf dem Desktop residierender Begleiter, der Kalendererinnerungen und Aufgabenänderungen pushst; ein Klick öffnet einen Chat mit dem LLM.
 - **Internes Terminal** — Öffnen Sie ein Terminal in Folyn und lassen Sie Claude Code / Codex / andere CLI-Agenten das aktuelle Dokument lesen und schreiben — kein Fensterwechsel.
-- **Extension-System** — Microkernel- + Extension-SDK-Architektur. Übersetzung, Kalender und Wiki werden als Extensions mitgeliefert; Drittanbieter-Erweiterungen unterstützt.
+- **Aktivitätserfassung** — Collector-Erweiterungen zeichnen Ihren Tag auf — Fensterwechsel, Dateiänderungen, GitHub-Aktivität, Webhook-Ereignisse — in eine lokale Datenbank im Vault; sehen Sie ihn als Timeline und Beziehungsgraph, und erzeugen Sie Tages-/Wochen-/Monatsberichte als Vault-Notizen (optional KI-geschrieben).
+- **Extension-System** — Microkernel- + Extension-SDK-Architektur. Rich-Text, DBML, Dateibetrachter und Aktivitäts-Collectors werden als Extensions mitgeliefert, Übersetzung ist eingebaut; Drittanbieter-Erweiterungen unterstützt.
 - **Spracheingabe** — Sprache-zu-Text mit automatischer Nachbearbeitung, direkt am Cursor eingefügt (aktuell nur macOS).
 
 ## For Users
@@ -105,18 +106,34 @@ Externe Apps (Skripte, cron, CI) können Benachrichtigungen über eine lokale HT
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
+### Aktivitätserfassung
+
+Collector-Erweiterungen aus dem Extension-Store zeichnen auf, was auf Ihrem Rechner passiert — Wechsel des Vordergrundfensters, Anlegen/Ändern/Löschen von Dateien, GitHub-Commits/PRs/Issues sowie Ereignisse externer Tools über einen lokalen Webhook — in einer Datenbank im Vault. Nichts verlässt Ihr Gerät.
+
+Der Aktivitäts-Tab wandelt Rohereignisse in eine Tages-Timeline und einen Entitätsbeziehungsgraphen (Personen, Meetings, Repositorys, Dokumente, Aufgaben) um. Tages-, Wochen- und Monatsberichte werden als Markdown-Notizen im Vault abgelegt; mit eigenem Prompt wird der Berichtstext statt von einer festen Vorlage vom LLM erzeugt, und der Desktop-Begleiter kann Sie benachrichtigen, wenn ein Bericht fertig ist.
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-time-line.png" alt="Aktivitäts-Timeline" width="860" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-relations.png" alt="Aktivitäts-Beziehungsgraph" width="860" />
+</p>
+
+Jeder Collector lässt sich einzeln aktivieren/deaktivieren, mit eigenem Abfrageintervall — oder schreiben Sie mit dem Extension-SDK einen eigenen.
+
 ### Extension-System
 
 Microkernel- + Extension-SDK-Architektur; der Kern bleibt schlank, Funktionen werden bei Bedarf geladen:
 
-- **Übersetzung** — Mehrsprachige Inhaltsverarbeitung
-- **Kalender** — Aufgabeneinstellungen / Benachrichtigungen / Fokus-Pomodoro / Aufgaben-Board
-- **Wiki-Wissensbasis** — Wissenseinträge als Wiki organisieren und verlinken, ein navigierbares Wissensnetz aufbauen
+- **Übersetzung** — Mehrsprachige Inhaltsverarbeitung (eingebaut)
+- **Rich-Text / DBML / Dateibetrachter** — Bearbeitungs- und Anzeige-Extensions aus dem Extension-Store
+- **Aktivitäts-Collectors** — Fenster-, Datei-, GitHub- und Webhook-Collectors aus dem Extension-Store zeichnen Ereignisse für den Aktivitäts-Tab auf
 
 Drittanbieter-Extension-Erweiterungen unterstützt; siehe `docs/extensions.html`.
 
 <p align="center">
-  <img src="docs/assets/screenshots/extensions-1.png" alt="Extensions" width="860" />
+  <img src="docs/assets/screenshots/extension-system.png" alt="Extensions" width="860" />
 </p>
 
 ### Spracheingabe

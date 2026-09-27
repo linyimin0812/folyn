@@ -26,7 +26,8 @@
 - **Intégration IA profonde** — Adaptateurs intégrés pour six agents CLI : Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Basculez librement entre les fournisseurs de modèles, sans verrouillage.
 - **Assistant animal de bureau** — Un compagnon résident sur le bureau qui pousse les rappels de calendrier et les notifications de changement de tâche ; un clic ouvre un chat avec le LLM.
 - **Terminal intégré** — Ouvrez un terminal dans Folyn et laissez Claude Code / Codex / autres agents CLI lire et écrire le document courant — pas de changement de fenêtre.
-- **Système de extensions** — Architecture microkernel + SDK extension. Traduction, calendrier et Wiki sont fournis en tant que extensions ; extensions tierces prises en charge.
+- **Collecte d'activité** — Les extensions collecteurs enregistrent votre journée — changements de fenêtre, modifications de fichiers, activité GitHub, événements webhook — dans une base locale au vault ; consultez-la en timeline et graphe de relations, et générez des rapports quotidien/hebdomadaire/mensuel en notes du vault (rédaction par IA en option).
+- **Système de extensions** — Architecture microkernel + SDK extension. Texte enrichi, DBML, visionneuse de fichiers et collecteurs d'activité sont fournis en tant qu'extensions, la traduction est intégrée ; extensions tierces prises en charge.
 - **Saisie vocale** — Synthèse vocale en texte avec polissage automatique, collée directement au curseur (actuellement macOS uniquement).
 
 ## For Users
@@ -105,18 +106,34 @@ Ouvrez un panneau terminal dans l'espace de travail Folyn, côte à côte avec l
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
+### Collecte d'activité
+
+Les extensions collecteurs de la boutique d'extensions enregistrent ce qui se passe sur votre machine — changements de la fenêtre au premier plan, création/modification/suppression de fichiers, commits/PR/issues GitHub, et événements poussés par des outils externes via un webhook local — dans une base de données stockée dans le vault. Rien ne quitte votre appareil.
+
+L'onglet Activité transforme les événements bruts en timeline de la journée et en graphe de relations entre entités (personnes, réunions, dépôts, documents, tâches). Les rapports quotidien, hebdomadaire et mensuel sont écrits en notes Markdown dans le vault ; avec une invite personnalisée, le corps du rapport est généré par le LLM au lieu d'un modèle fixe, et l'assistant animal de bureau peut vous prévenir quand un rapport est prêt.
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-time-line.png" alt="Timeline d'activité" width="860" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-relations.png" alt="Graphe de relations d'activité" width="860" />
+</p>
+
+Chaque collecteur peut être activé/désactivé séparément avec son propre intervalle de sondage — ou écrivez le vôtre avec le SDK d'extension.
+
 ### Système de extensions
 
 Architecture microkernel + SDK extension ; le cœur reste léger et les fonctionnalités se chargent à la demande :
 
-- **Traduction** — Traitement de contenu multilingue
-- **Calendrier** — Paramètres de tâches / notifications / pomodoro de concentration / tableau de tâches
-- **Base de connaissances Wiki** — Organiser et lier les entrées de connaissance en Wiki, construire un réseau de connaissances navigable
+- **Traduction** — Traitement de contenu multilingue (intégré)
+- **Texte enrichi / DBML / visionneuse de fichiers** — Extensions d'édition et de visualisation de la boutique d'extensions
+- **Collecteurs d'activité** — Les collecteurs d'activité fenêtre, fichiers, GitHub et webhook de la boutique d'extensions enregistrent les événements pour l'onglet Activité
 
 Extensions tierces prises en charge ; voir `docs/extensions.html`.
 
 <p align="center">
-  <img src="docs/assets/screenshots/extensions-1.png" alt="Extensions" width="860" />
+  <img src="docs/assets/screenshots/extension-system.png" alt="Extensions" width="860" />
 </p>
 
 ### Saisie vocale

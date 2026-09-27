@@ -26,7 +26,8 @@
 - **Integración profunda de IA** — Adaptadores integrados para seis agentes CLI: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Cambia libremente entre proveedores de modelos, sin atarte a uno.
 - **Asistente mascota de escritorio** — Un compañero residente en el escritorio que envía recordatorios de calendario y notificaciones de cambios de tareas; un clic abre un chat con el LLM.
 - **Terminal integrada** — Abre una terminal dentro de Folyn y deja que Claude Code / Codex / otros agentes CLI lean y escriban el documento actual — sin cambiar de ventana.
-- **Sistema de extensions** — Arquitectura de microkernel + SDK de extension. Traducción, calendario y Wiki se entregan como extensions; se admiten extensiones de terceros.
+- **Recolección de actividad** — Las extensiones recolectoras registran tu día — cambios de ventana, modificaciones de archivos, actividad de GitHub, eventos webhook — en una base de datos local del vault; revísalo en una línea de tiempo y un grafo de relaciones, y genera informes diarios/semanales/mensuales como notas del vault (opcionalmente escritos por IA).
+- **Sistema de extensions** — Arquitectura de microkernel + SDK de extension. Texto enriquecido, DBML, visor de archivos y recolectores de actividad se entregan como extensions, la traducción está integrada; se admiten extensiones de terceros.
 - **Entrada por voz** — Voz a texto con pulido automático, pegado directo en el cursor (actualmente solo macOS).
 
 ## For Users
@@ -105,18 +106,34 @@ Abre un panel de terminal en el espacio de trabajo de Folyn, junto al editor, co
   <img src="docs/assets/screenshots/terminal-1.png" alt="In-app terminal" width="860" />
 </p>
 
+### Recolección de actividad
+
+Las extensiones recolectoras de la tienda de extensiones registran lo que ocurre en tu equipo — cambios de la ventana en primer plano, creación/modificación/eliminación de archivos, commits/PR/issues de GitHub y eventos enviados por herramientas externas mediante un webhook local — en una base de datos almacenada dentro del vault. Nada sale de tu dispositivo.
+
+La pestaña de Actividad convierte los eventos brutos en una línea de tiempo del día y un grafo de relaciones entre entidades (personas, reuniones, repositorios, documentos, tareas). Los informes diario, semanal y mensual se escriben como notas Markdown en el vault; con un prompt personalizado, el cuerpo del informe lo genera el LLM en lugar de una plantilla fija, y la mascota de escritorio puede avisarte cuando el informe está listo.
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-time-line.png" alt="Línea de tiempo de actividad" width="860" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/activity-collect-relations.png" alt="Grafo de relaciones de actividad" width="860" />
+</p>
+
+Cada recolector se puede activar/desactivar por separado con su propio intervalo de sondeo — o escribe el tuyo con el SDK de extensiones.
+
 ### Sistema de extensions
 
 Arquitectura de microkernel + SDK de extension; el núcleo se mantiene ligero y las funciones se cargan bajo demanda:
 
-- **Traducción** — Procesamiento de contenido multilingüe
-- **Calendario** — Ajustes de tareas / notificaciones / pomodoro de enfoque / tablero de tareas
-- **Base de conocimiento Wiki** — Organizar y enlazar entradas de conocimiento como Wiki, construyendo una red navegable
+- **Traducción** — Procesamiento de contenido multilingüe (integrada)
+- **Texto enriquecido / DBML / visor de archivos** — Extensions de edición y visualización de la tienda de extensions
+- **Recolectores de actividad** — Los recolectores de ventana, archivos, GitHub y webhook de la tienda de extensiones registran eventos para la pestaña de Actividad
 
 Extensiones de terceros soportadas; ver `docs/extensions.html`.
 
 <p align="center">
-  <img src="docs/assets/screenshots/extensions-1.png" alt="Extensions" width="860" />
+  <img src="docs/assets/screenshots/extension-system.png" alt="Extensions" width="860" />
 </p>
 
 ### Entrada por voz
