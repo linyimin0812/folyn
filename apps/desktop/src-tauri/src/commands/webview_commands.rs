@@ -623,6 +623,7 @@ pub async fn open_extension_tool_window(
     #[cfg(target_os = "macos")]
     {
         let pid = crate::commands::capture_frontmost_pid();
+        eprintln!("[ext-tool-diag] open: captured frontmost pid = {:?}", pid);
         if pid.is_some() {
             if let Some(state) = app.try_state::<crate::commands::ExtensionToolFrontmostApp>() {
                 *state.0.lock().unwrap() = pid;
@@ -713,6 +714,7 @@ pub async fn extension_tool_adopt_frontmost(app: tauri::AppHandle) -> Result<(),
     let pid = app
         .try_state::<crate::commands::PreviousFrontmostApp>()
         .and_then(|s| *s.0.lock().ok()?);
+    eprintln!("[ext-tool-diag] adopt: pet-panel previous pid = {:?}", pid);
     if let Some(pid) = pid {
         if let Some(state) = app.try_state::<crate::commands::ExtensionToolFrontmostApp>() {
             *state.0.lock().unwrap() = Some(pid);
@@ -764,13 +766,21 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
         let prev = app
             .try_state::<crate::commands::ExtensionToolFrontmostApp>()
             .and_then(|s| s.0.lock().ok().and_then(|mut g| g.take()));
+        let now_frontmost = crate::commands::capture_frontmost_pid();
+        eprintln!(
+            "[ext-tool-diag] hide: restore-target pid = {:?}, frontmost now = {:?} ({})",
+            prev,
+            now_frontmost,
+            if now_frontmost.is_some() { "user app frontmost -> restore skipped" } else { "folyn frontmost -> restore will fire" }
+        );
         if let Some(pid) = prev {
-            if crate::commands::capture_frontmost_pid().is_none() {
+            if now_frontmost.is_none() {
                 let app2 = app.clone();
                 tauri::async_runtime::spawn(async move {
                     // Delayed ~150ms so the hide's window-server state
                     // settles first (same race guard as pet_panel_hide).
                     tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                    eprintln!("[ext-tool-diag] hide: firing restore for pid {}", pid);
                     crate::commands::restore_frontmost_app(&app2, pid);
                 });
             }

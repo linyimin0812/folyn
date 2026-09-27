@@ -54,13 +54,35 @@ pub(crate) fn restore_frontmost_app(app: &tauri::AppHandle, pid: i32) {
         let cls: *mut tauri_nspanel::objc2::runtime::AnyObject =
             msg_send![tauri_nspanel::objc2::class!(NSRunningApplication),
                       runningApplicationWithProcessIdentifier: pid];
+        eprintln!(
+            "[ext-tool-diag] restore: pid {} -> NSRunningApplication {}",
+            pid,
+            if cls.is_null() { "NOT found (app exited)" } else { "found, activating" }
+        );
         if cls.is_null() {
             return; // app exited — leave focus where it is
         }
-        // activateWithOptions:0 — a polite activation (no
-        // activateIgnoringOtherApps force-steal; if the user has already
-        // moved on, the system may decline).
-        let _: () = msg_send![cls, activateWithOptions: 0u64];
+        // activateWithOptions:0 — a polite activation. macOS REJECTS it in
+        // the post-hide window (the 09-27 bug root cause: diagnostics showed
+        // the app found + activateWithOptions:0 called, yet the user's app
+        // never came back and Folyn's main window stayed front). So capture
+        // the BOOL return and fall back to a force activation
+        // (NSApplicationActivateIgnoringOtherApps = 2). Safe because the
+        // caller only restores when Folyn itself is frontmost at hide time —
+        // we never yank focus away from an app the user is actively using.
+        let ok: tauri_nspanel::objc2::runtime::Bool =
+            msg_send![cls, activateWithOptions: 0u64];
+        let ok = ok.as_bool();
+        eprintln!("[ext-tool-diag] restore: pid {} polite activate -> {}", pid, ok);
+        if !ok {
+            eprintln!(
+                "[ext-tool-diag] restore: pid {} polite activate declined, forcing (ignoring other apps)",
+                pid
+            );
+            let forced: tauri_nspanel::objc2::runtime::Bool =
+                msg_send![cls, activateWithOptions: 2u64];
+            eprintln!("[ext-tool-diag] restore: pid {} forced activate -> {}", pid, forced.as_bool());
+        }
     });
 }
 

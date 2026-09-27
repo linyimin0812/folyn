@@ -486,9 +486,23 @@ async function emitRunCommand(commandId: string): Promise<void> {
     if (commandId === 'action.open-inbox' || commandId.startsWith('extension.openTool.')) {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('extension_tool_match_pet_panel');
+      // Mirror emitOpenExtensionTool: adopt the pet panel's frontmost pid as
+      // the tool popup's close-restore target. Without this, hide-time
+      // restore has no pid and closing the popup leaves Folyn's main window
+      // on top of the user's app (the reported focus-steal bug).
+      await invoke('extension_tool_adopt_frontmost');
     }
     const { emit } = await import('@tauri-apps/api/event');
     await emit('pet://menu-action', { action: 'run-command', commandId });
+    if (commandId === 'action.open-inbox' || commandId.startsWith('extension.openTool.')) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      // Same tail as emitOpenExtensionTool: the tool popup's surface
+      // activates Folyn, so the panel must hide WITHOUT restoring focus —
+      // otherwise the user's app is re-activated and the just-surfaced
+      // popup blurs into the unpinned auto-hide ("chip click opens
+      // nothing" regression).
+      await invoke('pet_panel_hide', { restoreFocus: false });
+    }
   } catch {
     // Non-fatal.
   }
