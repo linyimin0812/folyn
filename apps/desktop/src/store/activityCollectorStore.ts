@@ -109,6 +109,10 @@ export interface ActivityCollectorState {
   /** Runtime-only last-sync info per collectorId (NOT persisted — refreshed
    *  on every collect). */
   lastSync: Record<string, { at: number; accepted: number }>;
+  /** Runtime-only counter bumped when a collect push accepted events —
+   *  timeline/metrics/digest refetch on change (polls run in the background
+   *  and otherwise leave the page on its mount-time snapshot). */
+  dataVersion: number;
   /** Runtime-only collect progress per collectorId (NOT persisted — set by
    *  runCollect from the collector's ctx.onProgress, cleared when the run
    *  ends). Locale-neutral strings from the collector; the UI prefixes the
@@ -203,6 +207,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   summaryPair: null,
   notifyPet: true,
   lastSync: {},
+  dataVersion: 0,
   collectProgress: {},
   collectHistory: [],
 
@@ -258,6 +263,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
 
   setLastSync: (collectorId, at, accepted) => {
     set({ lastSync: { ...get().lastSync, [collectorId]: { at, accepted } } });
+    if (accepted > 0) set({ dataVersion: get().dataVersion + 1 });
   },
 
   setCollectProgress: (collectorId, message) => {

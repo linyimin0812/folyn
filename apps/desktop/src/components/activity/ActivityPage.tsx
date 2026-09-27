@@ -129,6 +129,12 @@ export function ActivityPage() {
   const [collectModalOpen, setCollectModalOpen] = useState(false);
   // Manual refresh: bumps all data useAsync deps to re-read from the activity db.
   const [refreshKey, setRefreshKey] = useState(0);
+  // Background polls that accepted events bump dataVersion → auto refetch,
+  // so the timeline tracks live collection instead of the mount snapshot.
+  const dataVersion = useActivityCollectorStore((s) => s.dataVersion);
+  useEffect(() => {
+    if (dataVersion > 0) setRefreshKey((k) => k + 1);
+  }, [dataVersion]);
 
   const today = new Date();
   const current = isCurrentPeriod(period, today);
