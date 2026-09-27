@@ -632,3 +632,52 @@ Fixed intermittent giant blank gap in markdown split preview. Root cause: CodeBl
 ### Next Steps
 
 - None - task complete
+
+
+## Session 19: Entity graph visual iteration, file-collector store publish, collector docs
+
+**Date**: 2026-09-27
+**Task**: Entity graph visual iteration, file-collector store publish, collector docs
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Iterated the activity entity graph to a planned radial layout (per-direction slot radii for constant 110px visible edges, tangential-footprint-weighted angles, 1.5px theme-aware strokes, label pills) through several user-feedback rounds. Published folyn-file-collector 0.1.0 to the extension store (GitHub Release + catalog.json, rebase-merged alongside the github/window collectors). Removed the in-repo git-commit-collector (superseded by store entry). Committed + pushed the external-file-watch feature, trellis task dirs, and docs: first full documentation of the activity-collector contribution point across SDK docs (en+zh), extension-dev skill, publish checklist, and scaffold template. Smaller touches: file_deleted icon trash, rail font bump, collect-log page width 900px.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d7c53f8f` | (see git log) |
+| `4d164dbe` | (see git log) |
+| `b3203237` | (see git log) |
+| `2ab076fe` | (see git log) |
+| `d378528e` | (see git log) |
+| `ded04730` | (see git log) |
+| `a096b393` | (see git log) |
+| `70a673de` | (see git log) |
+| `3cebbcc4` | (see git log) |
+| `bcc95f91` | (see git log) |
+| `87c27f56` | (see git log) |
+| `c9d1ba04` | (see git log) |
+| `a7237a73` | (see git log) |
+| `03a54f6a` | (see git log) |
+| `d912128c` | (see git log) |
+| `a9185c63` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

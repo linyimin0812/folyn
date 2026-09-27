@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 18
-- **Last Active**: 2026-09-22
+- **Total Sessions**: 19
+- **Last Active**: 2026-09-27
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~634 | Active |
+| `journal-1.md` | ~683 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 19 | 2026-09-27 | Entity graph visual iteration, file-collector store publish, collector docs | `d7c53f8f`, `4d164dbe`, `b3203237`, `2ab076fe`, `d378528e`, `ded04730`, `a096b393`, `70a673de`, `3cebbcc4`, `bcc95f91`, `87c27f56`, `c9d1ba04`, `a7237a73`, `03a54f6a`, `d912128c`, `a9185c63` | `master` |
 | 18 | 2026-09-22 | Markdown split mode: giant blank gap between list and code block | `ef1b7d4e` | `master` |
 | 17 | 2026-09-22 | Extension popup close focus restore | `948cb939` | `master` |
 | 16 | 2026-09-22 | Translation popup input: Cmd+A select-all and left-align | `738cd13c` | `master` |
