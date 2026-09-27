@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新模块落位需遵循既定目录布局（components/ 分域、App.tsx 只留组合根）"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "拆出的组件需遵守命名导出/Props/结构顺序约定"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "MarkdownPreview.tsx 拆分涉及渲染管线各环节归属"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "lib.rs 拆出桌宠窗口管理需符合 Tauri 窗口模式约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "重构验收基线（lint/typecheck/test）"}
