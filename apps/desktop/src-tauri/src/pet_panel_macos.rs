@@ -183,7 +183,7 @@ pub fn convert_window_to_floating_panel(
     }
     let applied = catch(AssertUnwindSafe(|| unsafe {
         // 64-bit `setLevel:` takes NSInteger — the `as isize` cast widens
-        // the i32 CG level (same cast as `reapply_pet_topmost` in lib.rs).
+        // the i32 CG level (same cast as `reapply_pet_topmost` in `pet_window_mgmt`).
         let level = CGWindowLevelForKey(KCG_SCREENSAVER_WINDOW_LEVEL_KEY) as isize;
         let _: () = msg_send![ns, setLevel: level];
         const CB_CAN_JOIN_ALL_SPACES: isize = 1 << 0; // 1

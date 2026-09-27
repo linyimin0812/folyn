@@ -86,7 +86,7 @@ pub fn build_app_menu(app: &tauri::AppHandle, locale: &str) -> Result<(), AppErr
 /// = pet hidden) so the user can toggle the pet on/off from the tray even
 /// when the pet is already hidden.
 ///
-/// Item ids are the `PET_CTX_MENU_*` constants; `lib.rs::pet_ctx_menu_action`
+/// Item ids are the `PET_CTX_MENU_*` constants; `pet_window_mgmt::pet_ctx_menu_action`
 /// maps each to the `PetMenuAction` payload the main window expects. The
 /// `hide-pet` frontend handler is a real toggle (`toggle_pet_mode` reads
 /// `pet.is_visible()` and flips), so the tray's checkable toggle routes

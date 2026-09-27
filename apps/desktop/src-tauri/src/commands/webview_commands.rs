@@ -745,7 +745,7 @@ pub async fn hide_extension_tool_window(app: tauri::AppHandle, label: String) ->
         // Reuse the pet-mode close-to-hide dance (invisible → dismiss the
         // fullscreen Space + wait → hide) — hiding a native-fullscreen
         // window mid-animation would leave a black Space behind.
-        crate::hide_fullscreen_window_directly(app, &label).await;
+        crate::window_utils::hide_fullscreen_window_directly(app, &label).await;
         return Ok(());
     }
     let _ = w.hide();
