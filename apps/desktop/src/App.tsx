@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Topbar } from './components/shell/Topbar';
 import { ActivityBar } from './components/shell/ActivityBar';
 import { Sidebar } from './components/sidebar/Sidebar';
@@ -19,28 +18,30 @@ import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
 import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { useScreenWakeRelayout } from './hooks/useScreenWakeRelayout';
+import { useIsMobile } from './hooks/useIsMobile';
+import { useExtensionHostSync } from './hooks/useExtensionHostSync';
+import { useVoiceGlobalHotkey } from './hooks/useVoiceGlobalHotkey';
+import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
+import { useTrayIconSync } from './hooks/useTrayIconSync';
+import { useOsFileDragDrop } from './hooks/useOsFileDragDrop';
+import { useOsFilePasteImport } from './hooks/useOsFilePasteImport';
+import { useOpenExternalFiles } from './hooks/useOpenExternalFiles';
+import { usePersistOnClose } from './hooks/usePersistOnClose';
 import { installExternalLinkInterceptor } from './services/externalLinks';
+import { registerBuiltinExtensionHost } from './services/extension-host/registerBuiltinExtensionHost';
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
 import { initExternalFileWatcher } from './utils/fileWatcher';
 import { startProvidersBroadcast } from './store/aiConfigStore';
-import { usePetStore } from './store/petStore';
-import { settingsLoadDone, persistNow, loadSettings, resolveSettingsLoadDone, hydrateAllStores } from './store/settingsPersistence';
+import { settingsLoadDone, loadSettings, resolveSettingsLoadDone, hydrateAllStores } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import { getWebviewLabels } from './components/file-types/web/WebViewer';
 import * as editorIoService from './services/editorIoService';
 import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
-import { readClipboardFiles } from '@/services/clipboardFiles';
-import { useToastStore } from '@/store/toastStore';
-import { PasteConflictDialog, type ConflictChoice, type ConflictResolution } from '@/components/editor/PasteConflictDialog';
+import { PasteConflictDialog } from '@/components/editor/PasteConflictDialog';
 import { MoveDialog } from '@/components/sidebar/SidebarActions';
-import type { VaultEntry } from '@folyn/vault-provider';
-import { useSearchStore } from './store/searchStore';
-import { useCommandPaletteStore } from './store/commandPaletteStore';
-import { useEditorPrefsStore } from './store/editorPrefsStore';
-import { usePrefsStore, type ShortcutItem } from './store/prefsStore';
 import { loadAiSessionsForVault } from './store/aiStore';
 import { startPetChatSessionsHost } from './store/petChatSessions';
 import { registerBuiltinExtensions } from '@folyn/container-extensions';
@@ -50,14 +51,6 @@ import { registerBuiltinCodeContributions } from './services/registerBuiltinCode
 import { registerBuiltinExporters } from './services/export/exporterRegistry';
 import { isTauri } from "@/utils/platform";
 import { useLocaleStore } from '@/store/localeStore';
-import { extensionHost } from "@folyn/extension-host";
-import type { ToolExtensionUIContext } from '@folyn/extension-host';
-import { createExtensionApi } from './services/extension-host/createExtensionApi';
-import { extensionAssetUrl } from './services/extension-host/extensionUrl';
-import { workspaceApi } from './services/workspaceRegistry';
-import { sandboxLoader } from './services/extension-host/sandboxLoader';
-import { trustedLoader } from './services/extension-host/trustedLoader';
-import { attachToolWindowRpcListener } from './services/extension-host/toolWindowRpcListener';
 
 registerBuiltinExtensions();
 registerBuiltinCodeContributions();
@@ -70,123 +63,15 @@ registerBuiltinCommands();
 // Sidebar are data-driven off the store; this must run before they mount.
 // (Extension panels arrive later via featureAdapter — PR3.)
 registerBuiltinPanels();
-
-// ponytail: register extension loaders ONCE at module top-level, NOT inside the
-// extension-host useEffect. React StrictMode (dev) mounts effects twice; both
-// mounts share the SAME `sandboxLoader`/`trustedLoader` module singletons, so
-// mount #1's cleanup disposing its `registerLoader` handle wipes the entry
-// mount #2 registered (dispose checks `loaders.get(tier) === loader` — true
-// for the shared singleton). The result: after StrictMode settles, the
-// loaders map is empty and `extensionHost.activate(id)` throws
-// "No loader registered for tier: sandbox". App-lifetime singletons don't
-// need disposal — they live for the whole session.
-// Phase 2: wire the real capability surface into the new runtime so
-// `module.activate(api, ctx)` gets ai/network/env/export/fileTypes/exporters
-// + `ctx.ui.workspace` instead of `undefined`.
-extensionHost.setHooks({
-  createApi: (record) => createExtensionApi(record.manifest),
-  createContext: (record) => ({
-    extensionId: record.manifest.id,
-    extensionPath: record.manifest.main,
-    manifest: record.manifest,
-    vault: { name: 'default', path: 'default' },
-    ui: {
-      // Real Tauri dialogs, gated on permissions.dialog (matches the other
-      // capability grants). window.confirm fallback covers non-Tauri (tests,
-      // browser dev) where the plugin import rejects.
-      dialogs: {
-        async info(message: string) {
-          if (!record.manifest.permissions?.dialog) {
-            throw new Error(`extension "${record.manifest.id}" lacks permissions.dialog — call refused`);
-          }
-          try {
-            const { message: showMessage } = await import('@tauri-apps/plugin-dialog');
-            await showMessage(message, { kind: 'info' });
-          } catch {
-            window.alert(message);
-          }
-        },
-        async confirm(message: string) {
-          if (!record.manifest.permissions?.dialog) {
-            throw new Error(`extension "${record.manifest.id}" lacks permissions.dialog — call refused`);
-          }
-          try {
-            const { confirm } = await import('@tauri-apps/plugin-dialog');
-            return await confirm(message, { kind: 'warning' });
-          } catch {
-            return window.confirm(message);
-          }
-        },
-      },
-      notifications: { show() {} },
-      workspace: workspaceApi,
-    } as ToolExtensionUIContext,
-    logger: console,
-    // Mirrors Tauri's runtime convertFileSrc rule (tauri/scripts/core.js):
-    // Windows/Android serve a registered custom scheme under
-    // `${protocolScheme}://${scheme}.localhost`, and the raw `scheme://`
-    // form is NOT navigable as a top-level document there (Tauri/wry does
-    // not call CoreWebView2CustomSchemeRegistration — tauri-apps/tauri#10667).
-    // Same rule as the sandbox-loader / tool-panel iframes — one helper
-    // (extensionUrl.ts) owns it.
-    resolveAssetUrl: (file) => extensionAssetUrl(record.manifest.id, file),
-  }),
-});
-
-extensionHost.registerLoader(sandboxLoader);
-extensionHost.registerLoader(trustedLoader);
-
-/** Hook to detect mobile viewport */
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth <= breakpoint : false,
-  );
-  useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    const handler = (event: MediaQueryListEvent) => setIsMobile(event.matches);
-    mql.addEventListener('change', handler);
-    setIsMobile(mql.matches);
-    return () => mql.removeEventListener('change', handler);
-  }, [breakpoint]);
-  return isMobile;
-}
-
-/**
- * Match a prefsStore ShortcutItem's display-symbol keys (e.g. ['⌘','Shift','I']
- * on mac, ['Ctrl','Shift','I'] on Windows) against a KeyboardEvent. Modifiers
- * are matched as an exact set (every declared mod pressed, no extras) so a
- * re-recorded combo is honored precisely. Single non-modifier token compared
- * case-insensitively. Mirrors keybindingAdapter's matchAccelerator approach.
- */
-function eventMatchesShortcut(e: KeyboardEvent, keys: string[]): boolean {
-  let mainKey = '';
-  let mainCount = 0;
-  const required: Array<(ev: KeyboardEvent) => boolean> = [];
-  for (const k of keys) {
-    switch (k) {
-      case '⌘': case 'Win': required.push((ev) => ev.metaKey); break;
-      case 'Ctrl': required.push((ev) => ev.ctrlKey); break;
-      case '⌥': case 'Alt': required.push((ev) => ev.altKey); break;
-      case 'Shift': required.push((ev) => ev.shiftKey); break;
-      default: mainKey = k.toLowerCase(); mainCount++;
-    }
-  }
-  if (mainCount !== 1) return false;
-  if (mainKey !== e.key.toLowerCase()) return false;
-  // Exact modifier set: every required mod pressed AND no extra mod pressed.
-  for (const ok of required) if (!ok(e)) return false;
-  const requiredLen = required.length;
-  const pressedCount =
-    (e.metaKey ? 1 : 0) + (e.ctrlKey ? 1 : 0) + (e.altKey ? 1 : 0) + (e.shiftKey ? 1 : 0);
-  return pressedCount === requiredLen;
-}
+// Wire the extension-host API/context hooks + sandbox/trusted loaders once at
+// module-eval time (app-lifetime singletons).
+registerBuiltinExtensionHost();
 
 export default function App() {
   useTheme();
   useDisableAutoCapitalize();
   usePetHostBridge();
   useScreenWakeRelayout();
-  const { t } = useTranslation();
 
   useEffect(() => installExternalLinkInterceptor(), []);
 
@@ -250,8 +135,9 @@ export default function App() {
   // A ref guard would short-circuit the second mount while the first mount's
   // `.then` is still in flight, and the first mount's `cancelled` flag
   // (flipped by its cleanup) would skip the setState — neither mount seeds.
-  // Mirrors the canonical teardown-races-await pattern at App.tsx:381-423
-  // (voice hotkey). The redundant setState on the second mount is idempotent.
+  // Mirrors the canonical teardown-races-await pattern (see
+  // useVoiceGlobalHotkey — voice hotkey). The redundant setState on the
+  // second mount is idempotent.
   useEffect(() => {
     let cancelled = false;
     settingsLoadDone.then(() => {
@@ -404,335 +290,12 @@ export default function App() {
     })();
   }, [focusMode, currentPage]);
 
-  // ── Extension host: register loaders + sync on install/approve/uninstall ──
-  // The sandbox loader is the untrusted-tier ExtensionLoader (sandboxed iframe +
-  // host RPC). The trusted loader is the in-process ExtensionLoader (blob-URL
-  // `import()` + TOFU gate). Sandbox extensions auto-activate on install (their
-  // commands appear immediately). Trusted extensions do NOT auto-activate on
-  // install — they require `approve_extension` (the explicit TOFU-pin consent,
-  // surfaced as the `extension://approved` event) before activation. This is the
-  // PR3 acceptance: "trusted-tier extensions require explicit approval before
-  // loading". Failures are logged and never crash the main app.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let uninstalled: (() => void) | null = null;
-    let cancelled = false;
-
-    /** Read a extension manifest from ~/.folyn/extensions/<id>/manifest.json */
-    async function readExtensionManifest(id: string): Promise<Record<string, unknown>> {
-      const { homeDir, join } = await import('@tauri-apps/api/path');
-      const { readTextFile } = await import('@tauri-apps/plugin-fs');
-      const home = await homeDir();
-      const manifestPath = await join(home, '.folyn', 'extensions', id, 'manifest.json');
-      return JSON.parse(await readTextFile(manifestPath)) as Record<string, unknown>;
-    }
-
-    (async () => {
-      // Loaders are registered at module top-level (see file header) — they
-      // are app-lifetime singletons, not per-effect disposables.
-
-      // Hydrate from disk: query the Rust side for installed extensions and
-      // install + activate each one in the in-memory host.
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const entries = await invoke<
-          Array<{ id: string; name: string; version: string; tier: string; trusted: boolean; enabled: boolean }>
-        >('list_extensions');
-        for (const entry of entries) {
-          if (cancelled) break;
-          // ponytail: skip activation when the user disabled the extension in a
-          // prior session — the on-disk `enabled` flag is the only state that
-          // survives restart (host state is in-memory and reset on launch).
-          if (entry.enabled === false) {
-            try {
-              const manifest = await readExtensionManifest(entry.id);
-              // Idempotent: React.StrictMode double-invokes effects in dev,
-              // so this runs twice — the 2nd pass would re-install and throw
-              // "already installed". Install only when the host doesn't yet
-              // have the record (the 1st pass's install is the source of truth).
-              if (!extensionHost.get(entry.id)) {
-                await extensionHost.install(manifest as never);
-              }
-            } catch (err: unknown) {
-              console.warn(`[App] failed to hydrate disabled extension ${entry.id}:`, err);
-            }
-            continue;
-          }
-          try {
-            const manifest = await readExtensionManifest(entry.id);
-            // Idempotent (see the disabled branch above): skip install on the
-            // StrictMode 2nd pass; `activate` below is itself idempotent.
-            if (!extensionHost.get(entry.id)) {
-              await extensionHost.install(manifest as never);
-            }
-            // Activate sandbox extensions so their commands appear immediately.
-            // Trusted extensions activate only after approval (extension://approved).
-            if (manifest.tier === 'sandbox') {
-              await extensionHost.activate(manifest.id as string).catch((err: unknown) => {
-                console.warn(`[App] failed to activate extension ${entry.id}:`, err);
-              });
-            } else if (manifest.tier === 'trusted' && entry.trusted) {
-              // Already-approved trusted extension (hydrated from a prior
-              // session) — activate it now.
-              await extensionHost.activate(manifest.id as string).catch((err: unknown) => {
-                console.warn(`[App] failed to activate trusted extension ${entry.id}:`, err);
-              });
-            }
-          } catch (err: unknown) {
-            console.warn(`[App] failed to hydrate extension ${entry.id}:`, err);
-          }
-        }
-      } catch (err: unknown) {
-        console.warn('[App] extension hydration failed:', err);
-      }
-
-      // Listen for live install/approve/uninstall events.
-      const { listen } = await import('@tauri-apps/api/event');
-      const unInstall = await listen<{ id: string; trusted?: boolean; tier?: string }>('extension://installed', async (event) => {
-        try {
-          // Re-install (update): if the host already has a record, tear it
-          // down first (deactivate + drop) so the FRESH manifest + bundle from
-          // disk take effect — otherwise the host keeps the stale activation
-          // (e.g. an old :::carousel template) and the slash menu / preview
-          // keep using it. (Boot hydration also installs, but that path is
-          // guarded separately against StrictMode double-invoke.)
-          if (extensionHost.get(event.payload.id)) {
-            await extensionHost.uninstall(event.payload.id);
-          }
-          const manifest = await readExtensionManifest(event.payload.id) as {
-            id: string; tier: 'sandbox' | 'trusted';
-          };
-          await extensionHost.install(manifest as never);
-          // Sandbox: activate immediately. Trusted: only if already approved
-          // (Rust re-install resets `trusted` to false → re-TOFU required).
-          if (manifest.tier === 'sandbox') {
-            await extensionHost.activate(manifest.id).catch(() => {});
-          } else if (manifest.tier === 'trusted' && event.payload.trusted) {
-            await extensionHost.activate(manifest.id).catch(() => {});
-          }
-        } catch (err: unknown) {
-          console.warn(`[App] failed to install extension on event:`, err);
-        } finally {
-          // Refresh any open Settings tab so the new row appears even when
-          // the install originated from another window (or the caller's
-          // refresh raced the host install above).
-          try {
-            const { useExtensionStore } = await import('@/store/extensionStore');
-            await useExtensionStore.getState().refresh();
-          } catch { /* non-fatal */ }
-        }
-      });
-      const unApprove = await listen<{ id: string }>('extension://approved', async (event) => {
-        try {
-          // The extension was already installed on the `extension://installed`
-          // event; just activate it now that the user has approved.
-          await extensionHost.activate(event.payload.id).catch((err: unknown) => {
-            console.warn(`[App] failed to activate approved extension ${event.payload.id}:`, err);
-          });
-        } catch (err: unknown) {
-          console.warn(`[App] failed to approve extension on event:`, err);
-        } finally {
-          // Approval flips the trusted flag + activation state — refresh so
-          // open Settings tabs (Extensions + Containers gallery) reflect it
-          // (the Containers gallery re-reads ContainerRegistry.getAll() on
-          // rows change, so newly-registered carousel/slide appear here too).
-          try {
-            const { useExtensionStore } = await import('@/store/extensionStore');
-            await useExtensionStore.getState().refresh();
-          } catch { /* non-fatal */ }
-        }
-      });
-      const unUninstall = await listen<{ id: string }>('extension://uninstalled', async (event) => {
-        try {
-          await extensionHost.uninstall(event.payload.id);
-        } catch (err: unknown) {
-          console.warn(`[App] failed to uninstall extension on event:`, err);
-        }
-      });
-      // Persisted enabled-state flips from another tab — refresh so every open
-      // Settings tab reflects the toggle. The activate/deactivate itself runs
-      // in the originating tab; this listener just re-reads the on-disk flag.
-      const unEnabled = await listen<{ id: string }>('extension://state-changed', async () => {
-        try {
-          const { useExtensionStore } = await import('@/store/extensionStore');
-          await useExtensionStore.getState().refresh();
-        } catch (err: unknown) {
-          console.warn(`[App] failed to refresh on extension state change:`, err);
-        }
-      });
-
-      // Fetch-RPC listener: routes `folyn-extension://.../rpc` POSTs from tool
-      // windows back through the shared `dispatchExtensionRpc` so the same
-      // permission checks / path resolution apply as the iframe bridge.
-      const unRpc = await attachToolWindowRpcListener();
-
-      if (cancelled) {
-        unInstall();
-        unApprove();
-        unUninstall();
-        unEnabled();
-        unRpc();
-      } else {
-        uninstalled = () => {
-          unInstall();
-          unApprove();
-          unUninstall();
-          unEnabled();
-          unRpc();
-        };
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      uninstalled?.();
-    };
-  }, []);
-
+  // ── Extension host hydration + live install/approve/uninstall sync ──
+  useExtensionHostSync();
   // ── Voice input: global toggle hotkey ──
-  // Registers the persisted voice hotkey on mount and listens for
-  // `voice://hotkey-toggle` events from the `tauri-extension-global-shortcut`
-  // handler in `lib.rs`. Toggle semantics (mirrors openless `qa_hotkey.rs`):
-  // each press flips the state — idle → start, recording → stop → transcribe
-  // → polish → insert. Other phases are ignored by the guards already in
-  // `useVoiceInput.start`/`.stop`. Reuses the SAME flow as the mic button.
-  //
-  // Root cause for the subscribe pattern: `loadSettings()` is fire-and-forget
-  // async (`settingsPersistence.ts`), so `useVoiceStore.getState().globalHotkey`
-  // at mount time reads the default `''` before hydration lands — the mount-time
-  // register silently no-ops. Subscribing to globalHotkey changes lets the
-  // hydration `''` → 'Cmd+Shift+V' transition re-register without re-running
-  // the whole effect (no listener churn). Non-Tauri/test envs skip.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unlistenToggle: (() => void) | undefined;
-    let unsubHotkey: (() => void) | undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const { listen } = await import('@tauri-apps/api/event');
-        const { useVoiceStore } = await import('@/store/voiceStore');
-        const { useVoiceInput } = await import('@/hooks/useVoiceInput');
-
-        const register = async (accel: string) => {
-          if (!accel || cancelled) return;
-          try {
-            await invoke('voice_set_global_hotkey', { accelerator: accel });
-          } catch (err) {
-            console.warn('[voice] hotkey register failed:', err);
-          }
-        };
-
-        // Initial register (covers the cache-hit case where hydration finished
-        // before this effect ran). StrictMode teardown-races-await: the first
-        // mount's cleanup may run while this `await` is in flight; `cancelled`
-        // gates the stale register so only the remount's register lands.
-        await register(useVoiceStore.getState().globalHotkey);
-
-        // Re-register whenever the persisted hotkey hydrates/changes. Without
-        // this, first launch picks up an empty hotkey and never re-registers
-        // once hydration lands the real value → user must open VoiceSettings
-        // and re-set the hotkey to trigger the invoke.
-        unsubHotkey = useVoiceStore.subscribe((state, prev) => {
-          if (state.globalHotkey !== prev.globalHotkey) {
-            void register(state.globalHotkey);
-          }
-        });
-
-        // One event = one toggle. Read phase and flip; the hook's own guards
-        // make a stray toggle during transcribe/polish/insert a no-op.
-        // 'inserting' is also allowed through to start() so the user can
-        // break out of the post-no-API-key linger (idleNoticeTimer running)
-        // — start() itself rejects the call if no linger is active.
-        unlistenToggle = await listen('voice://hotkey-toggle', () => {
-          const { phase, start, stop } = useVoiceInput.getState();
-          if (phase === 'idle' || phase === 'inserting') void start('hotkey');
-          else if (phase === 'recording') void stop();
-        });
-      } catch (err) {
-        console.warn('[voice] hotkey listener setup failed:', err);
-      }
-      // ponytail: StrictMode teardown-races-await canonical guard (mirrors
-      // VoiceOrbOverlay.tsx:76-98): if cleanup already ran while we were
-      // awaiting `listen` / `subscribe`, drop the listeners right now so they
-      // don't leak.
-      if (cancelled) {
-        unlistenToggle?.();
-        unsubHotkey?.();
-      }
-    })();
-    return () => {
-      cancelled = true;
-      unlistenToggle?.();
-      unsubHotkey?.();
-    };
-  }, []);
-
-  // ── Global Ctrl+S / Cmd+S and Cmd+Shift+F ──
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        const activeTabId = useEditorStore.getState().activeTabId;
-        if (activeTabId) {
-          editorIoService.saveFile(activeTabId);
-        }
-      }
-      // Global search (find in files) — Cmd/Ctrl+Shift+F.
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        const { isOpen, openPanel, closePanel } = useSearchStore.getState();
-        if (isOpen) {
-          closePanel();
-        } else {
-          openPanel();
-        }
-      }
-      // Focus mode — Cmd/Ctrl+Shift+Enter. Hides every sidebar/dock/topbar/
-      // status bar so only the editor/preview area is visible.
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key === 'Enter') {
-        e.preventDefault();
-        useEditorViewStateStore.getState().toggleFocusMode();
-      }
-      // Cmd/Ctrl+A selects all in native <input>/<textarea>. CodeMirror has
-      // its own Mod-a keymap that preventDefaults, so it never reaches here.
-      // Tauri's Edit menu lacks a Select All item on purpose — adding
-      // `.select_all()` regresses CodeMirror (menu accelerator intercepts
-      // Cmd+A before the webview gets the keydown).
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
-        const el = e.target as HTMLElement | null;
-        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-          e.preventDefault();
-          el.select();
-        }
-      }
-      // Cursor sync toggle — default Cmd/Ctrl+Shift+I, rebindable via
-      // Settings → Shortcuts (prefsStore `cursorSync` entry). Toggles preview
-      // cursor-sync (scroll + highlight) in split mode. Default on.
-      const cursorSyncShortcut = usePrefsStore
-        .getState()
-        .shortcuts.find((s: ShortcutItem) => s.id === 'cursorSync');
-      if (cursorSyncShortcut && eventMatchesShortcut(e, cursorSyncShortcut.keys)) {
-        e.preventDefault();
-        const { cursorSyncPreview, setCursorSyncPreview } = useEditorPrefsStore.getState();
-        setCursorSyncPreview(!cursorSyncPreview);
-      }
-      // Cmd/Ctrl+P (no Shift) toggles the command palette. Shift is reserved
-      // (e.g. Cmd+Shift+P / Cmd+Shift+F), so this branch only fires without it.
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        !e.shiftKey &&
-        !e.altKey &&
-        e.key.toLowerCase() === 'p'
-      ) {
-        e.preventDefault();
-        useCommandPaletteStore.getState().toggle();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useVoiceGlobalHotkey();
+  // ── Global shortcuts (Cmd+S, search, focus mode, palette, …) ──
+  useGlobalShortcuts();
 
   // ponytail: on Tauri startup, push the persisted locale to Rust so the
   // macOS app menu bar (built with locale="en" at app boot before JS
@@ -746,407 +309,27 @@ export default function App() {
   }, []);
 
   // ── Tray icon: sync Rust-side with the persisted `showTrayIcon` flag ──
-  // Mirrors the voice-hotkey subscribe pattern: `loadSettings()` is
-  // fire-and-forget async, so reading `showTrayIcon` at mount time returns
-  // the default `false` before hydration lands. Initial invoke + subscribe
-  // covers both the cache-hit case and the post-hydrate `false` → `true`
-  // transition. The SettingsPage Toggle also invokes on change, but this
-  // effect is the source of truth for startup + external hydrate paths.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    let unsub: (() => void) | undefined;
-    const sync = async (enabled: boolean) => {
-      if (cancelled) return;
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const i18n = (await import('@/i18n')).default;
-        await invoke('tray_set_enabled', { enabled, locale: i18n.language || 'en' });
-      } catch (err) {
-        console.warn('[tray] sync failed:', err);
-      }
-    };
-    void sync(useAppearanceStore.getState().showTrayIcon);
-    unsub = useAppearanceStore.subscribe((state, prev) => {
-      if (state.showTrayIcon !== prev.showTrayIcon) {
-        void sync(state.showTrayIcon);
-      }
-    });
-    return () => {
-      cancelled = true;
-      unsub?.();
-    };
-  }, []);
+  useTrayIconSync();
 
   // ── OS file drag-and-drop onto the window ──
-  // When the user drags a file from the OS file manager (Finder / Explorer)
-  // onto the window, the webview receives an HTML5 `drop` event. We open each
-  // dropped file as a vault-independent external tab via `openDroppedFiles`,
-  // which routes by platform: macOS gets the real path from WebKit's private
-  // `File.path`; Windows (no path on the File object) stages the content into
-  // `~/.folyn/drops/` and opens that staged copy (see editorIoService for why
-  // `dragDropEnabled` can't be flipped on). A full-window overlay signals that
-  // a file drop is pending so the user knows the window accepts files.
-  const [fileDragActive, setFileDragActive] = useState(false);
-  useEffect(() => {
-    if (!isTauri()) return;
-    const isFileDrag = (e: DragEvent) => !!e.dataTransfer?.types?.includes('Files');
-    // dragenter/dragleave fire per child element AND their order + relatedTarget
-    // are not reliable across WKWebView/WebView2 — a depth counter desyncs
-    // (leave fires before the matching enter when crossing children), so the
-    // overlay flickers off mid-drag or stays stuck on after a cancelled drop.
-    // Instead we drive the overlay off the reliable, continuously-firing
-    // dragover: each dragover refreshes a short lease; when it expires (drop,
-    // drag leaves the window, or the user drags back out) the overlay clears.
-    let lease: ReturnType<typeof setTimeout> | null = null;
-    const arm = () => {
-      if (!lease) setFileDragActive(true);
-      else clearTimeout(lease);
-      // 120ms > the dragover cadence on every platform, so the lease only lapses
-      // once dragover actually stops (i.e. the drag has left the window or ended).
-      lease = setTimeout(() => {
-        lease = null;
-        setFileDragActive(false);
-      }, 120);
-    };
-    const disarm = () => {
-      if (lease) { clearTimeout(lease); lease = null; }
-      setFileDragActive(false);
-    };
-    const onDragOver = (e: DragEvent) => {
-      // Allow a drop (default is to deny). Only signal allow when there are
-      // files so we don't interfere with in-app HTML5 DnD (board cards).
-      if (!isFileDrag(e)) return;
-      e.preventDefault();
-      arm();
-    };
-    // ponytail: single capture-phase drop listener. Capture runs BEFORE any
-    // child React handler (CodeMirror/ProseMirror/rich-text onDrop), so a
-    // child stopPropagation in bubble can't prevent us from preventDefault
-    // AND reading dataTransfer. Per HTML5 spec dataTransfer is available
-    // throughout the drop dispatch including capture phase — earlier worry
-    // about capture-phase empty files was a misdiagnosis; the real culprit
-    // for "only one file opens" was bubble onDrop being stopPropagation'd by
-    // a mounted child after the first file's editor mounted.
-    const onDrop = (e: DragEvent) => {
-      if (isFileDrag(e)) e.preventDefault();
-      disarm();
-      if (!isFileDrag(e)) return;
-      // Read from both .files and .items — WKWebView populates .files, but
-      // fall back to .items (with getAsFile) when .files is empty so a real
-      // file drop is never silently dropped.
-      const dt = e.dataTransfer;
-      const fromFiles = dt?.files ? Array.from(dt.files) : [];
-      const fromItems = !dt?.items ? [] : Array.from(dt.items)
-        .filter((it) => it.kind === 'file')
-        .map((it) => it.getAsFile())
-        .filter((f): f is File => !!f);
-      const arr = fromFiles.length > 0 ? fromFiles : fromItems;
-      if (arr.length === 0) return;
-      void editorIoService.openDroppedFiles(arr).then((n) => {
-        if (n > 0) useNavStore.getState().setCurrentPage('editor');
-      });
-    };
-    // ponytail: capture phase so our preventDefault runs BEFORE any child
-    // React handler (CodeMirror/ProseMirror/preview drop handlers) that
-    // might stopPropagation — otherwise the window bubble listener never
-    // fires and WKWebView navigates to the dropped file.
-    // ponytail: the markdown/html preview is a sandboxed <iframe> — a
-    // separate document whose dragover/drop don't reach the parent window.
-    // The iframe forwards 'folyn:file-drag-active' (arm the overlay) and
-    // 'folyn:open-dropped-files' (open the files) via postMessage; handle
-    // them here, reusing the same arm/disarm + openDroppedFiles path as
-    // window drops. Files (not paths) are forwarded because a cross-origin
-    // sandbox iframe can't read WebKit's private File.path.
-    const onMsg = (e: MessageEvent) => {
-      if (e.source === window) return;
-      const data = e.data as { type?: string; files?: File[] } | null;
-      if (!data || typeof data !== 'object') return;
-      if (data.type === 'folyn:file-drag-active') {
-        arm();
-      } else if (data.type === 'folyn:open-dropped-files' && Array.isArray(data.files)) {
-        // iframe (markdown/html preview) forwarded a drop as File objects —
-        // the iframe is a separate document whose dragover/drop don't reach
-        // the parent window, and a cross-origin (allow-scripts only) iframe
-        // can't read WebKit's private File.path, so it ships the File objects
-        // themselves. Route through the same openDroppedFiles path as a
-        // window-level drop (macOS .path if present, else staging).
-        disarm();
-        void editorIoService.openDroppedFiles(data.files).then((n) => {
-          if (n > 0) useNavStore.getState().setCurrentPage('editor');
-        });
-      }
-    };
-    window.addEventListener('dragover', onDragOver, true);
-    window.addEventListener('drop', onDrop, true);
-    window.addEventListener('message', onMsg);
-    return () => {
-      if (lease) clearTimeout(lease);
-      window.removeEventListener('dragover', onDragOver, true);
-      window.removeEventListener('drop', onDrop, true);
-      window.removeEventListener('message', onMsg);
-    };
-  }, []);
+  const { fileDragActive } = useOsFileDragDrop();
 
   // ── OS file paste (Finder Cmd+C → Folyn Cmd+V) ──
-  // When the user copies a file in Finder/Explorer and pastes in Folyn, open a
-  // folder picker restricted to the current vault, then import each clipboard
-  // file into the picked folder via `copyExternalFileToVault` (binary-safe —
-  // reuses the path proven by the drag-drop flow).
-  //
-  // File refs on the clipboard can't be read synchronously via
-  // `navigator.clipboard` (WKWebView/WebView2 only expose text/plain +
-  // image/png), so the Rust `read_clipboard_files` command (arboard) does the
-  // read. To avoid racing that async read against the paste event's narrow
-  // synchronous preventDefault window, we refresh a cached file list on
-  // window focus — the user must focus Folyn before pasting, which updates
-  // the cache just-in-time.
-  //
-  // ponytail: "File wins" — when the cache is non-empty we preventDefault +
-  // stopPropagation in capture so CodeMirror/ProseMirror bubble-phase paste
-  // handlers never fire (they'd insert the filename as text). When the cache
-  // is empty we no-op and the default text paste runs unchanged.
-  // Split-screen edge case: copy a file in Finder while Folyn stays focused
-  // (no focus event fires) → cache is stale → text paste runs instead of the
-  // picker. Acceptable for MVP; a polling fallback can cover it if it bites.
-  // Folder picker = in-app MoveDialog (same UI as right-click "Move to…"),
-  // NOT the native OS folder picker. Reuses MoveDialog with mode 'copy' +
-  // empty sources (the clipboard files are external, not vault entries, so
-  // there's no move-into-self to guard). MoveDialog returns a vault-relative
-  // dir path ('' = root), so no absolute-path normalization or vault-boundary
-  // validation is needed here.
-  const [pickerFileTree, setPickerFileTree] = useState<VaultEntry[]>([]);
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const pickerResolverRef = useRef<((dir: string | null) => void) | null>(null);
-  const showFolderPicker = useCallback(() => {
-    setPickerFileTree(useVaultStore.getState().fileTree);
-    setPickerVisible(true);
-    return new Promise<string | null>((resolve) => {
-      pickerResolverRef.current = resolve;
-    });
-  }, []);
-  const onPickerConfirm = useCallback(async (dir: string) => {
-    setPickerVisible(false);
-    const r = pickerResolverRef.current;
-    pickerResolverRef.current = null;
-    r?.(dir);
-  }, []);
-  const onPickerCancel = useCallback(() => {
-    setPickerVisible(false);
-    const r = pickerResolverRef.current;
-    pickerResolverRef.current = null;
-    r?.(null);
-  }, []);
-
-  const [conflictFile, setConflictFile] = useState<string | null>(null);
-  const [conflictRemaining, setConflictRemaining] = useState(0);
-  const conflictResolverRef = useRef<((res: ConflictResolution) => void) | null>(null);
-  const showConflictModal = useCallback(
-    (fileName: string, remaining: number) =>
-      new Promise<ConflictResolution>((resolve) => {
-        conflictResolverRef.current = resolve;
-        setConflictFile(fileName);
-        setConflictRemaining(remaining);
-      }),
-    [],
-  );
-  const onConflictResolve = useCallback((res: ConflictResolution) => {
-    setConflictFile(null);
-    const r = conflictResolverRef.current;
-    conflictResolverRef.current = null;
-    r?.(res);
-  }, []);
-
-  const runFilePasteImport = useCallback(async (srcPaths: string[]) => {
-    if (!useVaultStore.getState().currentVault?.basePath) {
-      useToastStore.getState().push(t('editor:filePaste.openVaultFirst'));
-      return;
-    }
-    const relDir = await showFolderPicker();
-    if (relDir === null) return; // user cancelled the folder picker
-    const vault = useVaultStore.getState();
-    let imported = 0;
-    let skipped = 0;
-    let batchChoice: ConflictChoice | null = null;
-    let applyToAll = false;
-    for (let i = 0; i < srcPaths.length; i++) {
-      const src = srcPaths[i];
-      // ponytail: split on both separators — arboard returns backslash paths
-      // on Windows (`C:\Users\…`), the old `/`-only split made baseName the
-      // whole path → invalid vault filename → silent writeFileBytes failure.
-      const baseName = src.split(/[\\/]/).pop()!;
-      const remaining = srcPaths.length - i - 1;
-      let choice: ConflictChoice | 'write';
-      const exists = await vault.externalFileExistsAt(relDir, baseName);
-      if (!exists) {
-        choice = 'write';
-      } else if (applyToAll && batchChoice) {
-        choice = batchChoice;
-      } else {
-        const res = await showConflictModal(baseName, remaining);
-        applyToAll = res.applyToAll;
-        if (applyToAll) batchChoice = res.choice;
-        choice = res.choice;
-      }
-      try {
-        if (choice === 'skip') {
-          skipped++;
-          continue;
-        }
-        if (choice === 'overwrite') {
-          await vault.overwriteExternalFileToVault(src, relDir);
-        } else {
-          // 'write' (no conflict) or 'rename' — copyExternalFileToVault
-          // uses the original name when free, ` 副本` suffix on collision,
-          // so it covers both cases (the caller has already resolved the
-          // choice; for 'rename' we rely on the auto-suffix).
-          await vault.copyExternalFileToVault(src, relDir);
-        }
-        imported++;
-      } catch (err) {
-        console.error('[paste] import failed', src, err);
-      }
-    }
-    if (imported > 0) {
-      useToastStore.getState().push(
-        t('editor:filePaste.imported', { count: imported, where: relDir || t('editor:filePaste.vaultRoot') }),
-      );
-    } else if (skipped > 0) {
-      useToastStore.getState().push(t('editor:filePaste.allSkipped', { count: skipped }));
-    }
-  }, [t, showFolderPicker, showConflictModal]);
-
-  const clipboardFilesCache = useRef<string[]>([]);
-  useEffect(() => {
-    if (!isTauri()) return;
-    const refresh = () => {
-      void readClipboardFiles().then((p) => {
-        clipboardFilesCache.current = p;
-      });
-    };
-    refresh();
-    window.addEventListener('focus', refresh);
-    const onPaste = (e: ClipboardEvent) => {
-      const paths = clipboardFilesCache.current;
-      if (paths.length === 0) return; // no file ref → default text paste
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      void runFilePasteImport(paths).finally(() => {
-        // ponytail: refresh async after this paste so a 2nd paste-without-
-        // refocus (different file copied in place) sees the new clipboard.
-        setTimeout(refresh, 0);
-      });
-    };
-    window.addEventListener('paste', onPaste, true);
-    return () => {
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('paste', onPaste, true);
-    };
-  }, []);
+  const {
+    pickerVisible,
+    pickerFileTree,
+    onPickerConfirm,
+    onPickerCancel,
+    conflictFile,
+    conflictRemaining,
+    onConflictResolve,
+  } = useOsFilePasteImport();
 
   // ── OS "Open With" / file-association launch ──
-  // When the OS launches Folyn to open a file (right-click → Open With →
-  // Folyn, or double-click an associated file), the Rust side buffers the
-  // paths in `PendingOpenFiles` AND emits `app://open-external-file` (from
-  // `RunEvent::Opened` on macOS and the single-instance callback on both
-  // platforms). We listen FIRST so warm-launch emits are never missed, then
-  // drain the buffer so cold-launch paths (arrived before React mounted)
-  // are recovered. Each path opens as a vault-independent external tab.
-  // Safe to fire before `restoreOpenTabs` completes — `openFile` is
-  // idempotent on the tab id.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    const openPaths = (paths: string[]) => {
-      for (const p of paths) {
-        const name = p.split(/[\\/]/).pop()!;
-        void editorIoService.openFile(p, name);
-      }
-      if (paths.length > 0) {
-        useNavStore.getState().setCurrentPage('editor');
-      }
-    };
-    // Register the listener FIRST so warm-launch emits are never missed,
-    // then drain the backend buffer (cold-launch paths that arrived before
-    // React mounted). A path can be delivered twice (once via the event,
-    // once via the drain) — `openFile` is idempotent on the tab id, so the
-    // second delivery just re-activates the tab. The two steps are
-    // independent: a failure in one must not disable the other (e.g. a
-    // missing `drain_pending_open_files` on an older backend must not kill
-    // the warm-launch listener).
-    (async () => {
-      try {
-        const { listen } = await import('@tauri-apps/api/event');
-        unlisten = await listen<string[]>('app://open-external-file', (e) => {
-          openPaths(e.payload ?? []);
-        });
-      } catch (err) {
-        console.warn('[App] open-external-file listener setup failed:', err);
-      }
-      if (cancelled) unlisten?.();
-    })();
-    (async () => {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const pending = await invoke<string[]>('drain_pending_open_files');
-        openPaths(pending ?? []);
-      } catch (err) {
-        console.warn('[App] drain pending open files failed:', err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
+  useOpenExternalFiles();
 
-  // ponytail: flush persisted settings before the window closes. The 300ms
-  // debounce in storageClient would otherwise drop the last setter's write
-  // if the user changes a setting and Cmd+Q / closes the window within
-  // that window. pet menu "退出应用" goes through routePetMenuAction which
-  // also awaits persistNow; this listener covers Cmd+Q and window-close.
-  useEffect(() => {
-    if (!isTauri()) return;
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        unlisten = await getCurrentWindow().onCloseRequested(async (e) => {
-          e.preventDefault();
-          try {
-            // Flush open tabs first (sync, marks storage dirty), then
-            // persistNow() flushes everything to disk. Without this, closing
-            // a tab and quitting within the persist debounce window would
-            // restore the closed tab on the next launch.
-            editorIoService.saveOpenTabs();
-            await persistNow();
-          } catch (err) {
-            console.warn('[App] persistNow on close failed:', err);
-          }
-          // ponytail: pet mode on → Rust's on_window_event owns the hide
-          // (prevent_close + hide, and fullscreen-aware on macOS: hiding a
-          // fullscreen window under macOSPrivateApi leaves a black fullscreen
-          // Space behind, so Rust exits fullscreen + waits for the transition
-          // before hiding). The webview stays alive after the window is
-          // hidden, so the persistNow() flush above is not cut short. Pet off
-          // → real close (app exits, pet window cleanup is automatic).
-          const petOn = usePetStore.getState().petModeEnabled;
-          if (!petOn) {
-            await getCurrentWindow().destroy();
-          }
-        });
-      } catch (err) {
-        console.warn('[App] close-requested listener setup failed:', err);
-      }
-      if (cancelled) unlisten?.();
-    })();
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
+  // ── Flush persisted settings before the window closes ──
+  usePersistOnClose();
 
   return (
     <div className="shell flex flex-col h-dvh" style={{ '--ui-font-size': `${fontSize}px` } as any}>
