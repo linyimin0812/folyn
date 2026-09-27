@@ -756,3 +756,37 @@ Added a 默认提示词 button to per-period prompt textareas in report settings
 ### Next Steps
 
 - None - task complete
+
+
+## Session 22: Windows front-window collector FFI fix
+
+**Date**: 2026-09-27
+**Task**: Windows front-window collector FFI fix
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Diagnosed window-activity collector emitting zero events on Windows (github collector proved runtime/invoke/DB chain fine; only the powershell+Add-Type front_window probe failed silently). Replaced the Windows branch with direct windows-sys FFI (GetForegroundWindow/GetWindowTextW/GetWindowThreadProcessId/OpenProcess/QueryFullProcessImageNameW), app name from the owning process exe stem, log::warn on every failure path, exe_stem pure helper + tests, Win32_System_Threading feature added. User verified on Windows; macOS untouched.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7f15254b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
