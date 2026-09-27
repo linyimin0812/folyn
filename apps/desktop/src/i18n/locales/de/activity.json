@@ -46,7 +46,7 @@
     "monthly": "Monatsbericht",
     "generate": "{{label}} erstellen",
     "generating": "Wird erstellt…",
-    "savedTo": "Gespeichert unter {{path}}",
+    "savedToPrefix": "Gespeichert unter",
     "openInEditor": "Im Editor öffnen",
     "metrics": "Metriken",
     "metricCol": "Metrik",
@@ -57,6 +57,7 @@
     "ongoingTask": "Laufend: {{name}} (Tag {{current}}/{{total}}, keine neuen Updates)",
     "regeneratedAt": "Neu erstellt um {{time}}",
     "notifyText": "{{label}} ist fertig — zum Anzeigen klicken",
+    "notifyOpen": "Bericht öffnen",
     "generateFailed": "Berichterstellung fehlgeschlagen",
     "noModel": "Kein nutzbares Berichtsmodell (Anbieter fehlt oder kein API-Schlüssel) — zuerst in den Einstellungen konfigurieren"
   },
@@ -93,7 +94,9 @@
     "followGlobal": "Globalem Chat-Modell folgen",
     "followGlobalHint": "Folgt derzeit dem globalen Chat-Modell",
     "rootDirLabel": "Bericht-Stammordner",
-    "rootDirPlaceholder": "activity_collection"
+    "rootDirPlaceholder": "activity_collection",
+  "notifyLabel": "Pet-Benachrichtigung nach Fertigstellung",
+  "notifyDescription": "Sendet nach Fertigstellung eine Pet-Benachrichtigung; ein Klick öffnet den Bericht"
   },
   "graph": {
     "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",

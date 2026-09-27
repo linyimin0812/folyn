@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PairSelector } from '@/components/ai/PairSelector';
+import { Toggle } from '@/components/settings/primitives';
 import { useActivityCollectorStore } from '@/store/activityCollectorStore';
 
 const PERIODS = ['daily', 'weekly', 'monthly'] as const;
@@ -22,6 +23,8 @@ export function ReportSettingsView() {
   const setReportRootDir = useActivityCollectorStore((s) => s.setReportRootDir);
   const summaryPair = useActivityCollectorStore((s) => s.summaryPair);
   const setSummaryPair = useActivityCollectorStore((s) => s.setSummaryPair);
+  const notifyPet = useActivityCollectorStore((s) => s.notifyPet);
+  const setNotifyPet = useActivityCollectorStore((s) => s.setNotifyPet);
   const [period, setPeriod] = useState<Period>('daily');
 
   return (
@@ -74,6 +77,16 @@ export function ReportSettingsView() {
           {t('activity:reportSettings.promptHint')}
         </span>
       </label>
+
+      <div className="py-4 border-t border-brd mb-6">
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+          <div className="min-w-0">
+            <span className="block text-[13px] text-t1">{t('activity:reportSettings.notifyLabel')}</span>
+            <span className="block text-[11px] text-t3">{t('activity:reportSettings.notifyDescription')}</span>
+          </div>
+          <Toggle value={notifyPet} onChange={(v) => setNotifyPet(v)} />
+        </div>
+      </div>
 
       <div className="py-4 border-t border-brd mb-6">
         <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">

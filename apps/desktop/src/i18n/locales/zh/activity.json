@@ -46,7 +46,7 @@
     "monthly": "月报",
     "generate": "生成{{label}}",
     "generating": "生成中…",
-    "savedTo": "已保存至 {{path}}",
+    "savedToPrefix": "已保存至",
     "openInEditor": "在编辑器中打开",
     "metrics": "指标",
     "metricCol": "指标",
@@ -57,6 +57,7 @@
     "ongoingTask": "推进中：{{name}}（第 {{current}}/{{total}} 天，无新增更新）",
     "regeneratedAt": "重新生成于 {{time}}",
     "notifyText": "{{label}}已生成，点击查看",
+    "notifyOpen": "打开报告",
     "generateFailed": "报告生成失败",
     "noModel": "报告模型未配置或缺少密钥，请先在设置中完成配置"
   },
@@ -93,7 +94,9 @@
     "followGlobal": "跟随全局对话模型",
     "followGlobalHint": "当前：跟随全局对话模型",
     "rootDirLabel": "报告根目录",
-    "rootDirPlaceholder": "activity_collection"
+    "rootDirPlaceholder": "activity_collection",
+  "notifyLabel": "生成后桌宠通知",
+  "notifyDescription": "报告生成完成后发送桌宠通知，点击可打开报告"
   },
   "graph": {
     "hint": "点击图谱中的节点，切换中心并查看关联",

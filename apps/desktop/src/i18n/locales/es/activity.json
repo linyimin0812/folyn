@@ -46,7 +46,7 @@
     "monthly": "Informe mensual",
     "generate": "Generar {{label}}",
     "generating": "Generando…",
-    "savedTo": "Guardado en {{path}}",
+    "savedToPrefix": "Guardado en",
     "openInEditor": "Abrir en el editor",
     "metrics": "Métricas",
     "metricCol": "Métrica",
@@ -57,6 +57,7 @@
     "ongoingTask": "En curso: {{name}} (día {{current}}/{{total}}, sin novedades)",
     "regeneratedAt": "Regenerado a las {{time}}",
     "notifyText": "{{label}} listo — haz clic para verlo",
+    "notifyOpen": "Abrir informe",
     "generateFailed": "Error al generar el informe",
     "noModel": "No hay un modelo de informes utilizable (falta proveedor o clave de API) — configura uno primero en Ajustes"
   },
@@ -93,7 +94,9 @@
     "followGlobal": "Seguir el modelo de chat global",
     "followGlobalHint": "Actualmente siguiendo el modelo de chat global",
     "rootDirLabel": "Directorio raíz de informes",
-    "rootDirPlaceholder": "activity_collection"
+    "rootDirPlaceholder": "activity_collection",
+  "notifyLabel": "Notificación de mascota al terminar",
+  "notifyDescription": "Envía una notificación de la mascota al terminar el informe; al pulsarla se abre"
   },
   "graph": {
     "hint": "Haz clic en un nodo para convertirlo en el centro y ver sus relaciones",

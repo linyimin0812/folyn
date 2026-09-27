@@ -46,7 +46,7 @@
     "monthly": "月報",
     "generate": "{{label}}を生成",
     "generating": "生成中…",
-    "savedTo": "{{path}} に保存しました",
+    "savedToPrefix": "保存先：",
     "openInEditor": "エディタで開く",
     "metrics": "指標",
     "metricCol": "指標",
@@ -57,6 +57,7 @@
     "ongoingTask": "進行中：{{name}}（{{current}}/{{total}} 日目、新規更新なし）",
     "regeneratedAt": "{{time}} に再生成",
     "notifyText": "{{label}}が生成されました。クリックして表示",
+    "notifyOpen": "レポートを開く",
     "generateFailed": "レポートの生成に失敗しました",
     "noModel": "利用可能なレポートモデルがありません（プロバイダー未設定または API キーなし）— 先に設定で構成してください"
   },
@@ -93,7 +94,9 @@
     "followGlobal": "グローバルのチャットモデルに従う",
     "followGlobalHint": "現在：グローバルのチャットモデルに従う",
     "rootDirLabel": "レポートのルートフォルダ",
-    "rootDirPlaceholder": "activity_collection"
+    "rootDirPlaceholder": "activity_collection",
+  "notifyLabel": "生成後のペット通知",
+  "notifyDescription": "レポート生成完了後にデスクトップペット通知を送る（クリックで開く）"
   },
   "graph": {
     "hint": "ノードをクリックすると中心を切り替えて関連を表示します",

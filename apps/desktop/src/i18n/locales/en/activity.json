@@ -46,7 +46,7 @@
     "monthly": "Monthly report",
     "generate": "Generate {{label}}",
     "generating": "Generating…",
-    "savedTo": "Saved to {{path}}",
+    "savedToPrefix": "Saved to",
     "openInEditor": "Open in editor",
     "metrics": "Metrics",
     "metricCol": "Metric",
@@ -57,6 +57,7 @@
     "ongoingTask": "In progress: {{name}} (day {{current}}/{{total}}, no new updates)",
     "regeneratedAt": "Regenerated at {{time}}",
     "notifyText": "{{label}} is ready — click to view",
+    "notifyOpen": "Open report",
     "generateFailed": "Report generation failed",
     "noModel": "No usable report model (provider missing or no API key) — configure one in Settings first"
   },
@@ -93,7 +94,9 @@
     "followGlobal": "Follow global chat model",
     "followGlobalHint": "Currently following the global chat model",
     "rootDirLabel": "Report root directory",
-    "rootDirPlaceholder": "activity_collection"
+    "rootDirPlaceholder": "activity_collection",
+  "notifyLabel": "Pet notification on completion",
+  "notifyDescription": "Send a desktop pet notification when a report finishes; click it to open the report"
   },
   "graph": {
     "hint": "Click a node to make it the new center and inspect its relations",

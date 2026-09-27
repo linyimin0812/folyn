@@ -209,6 +209,7 @@ export function ActivityPage() {
       t('activity:report.ongoingTask', { name, current, total }),
     regeneratedAt: (time) => t('activity:report.regeneratedAt', { time }),
     notifyText: (label) => t('activity:report.notifyText', { label }),
+    notifyOpen: t('activity:report.notifyOpen'),
   };
 
   const onGenerate = async () => {
@@ -431,7 +432,14 @@ export function ActivityPage() {
           <div className="border border-brd rounded-lg p-4 mt-4 mb-0 bg-panel shrink-0">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
               <p className="m-0 text-[11px] text-acc">
-                {t('activity:report.savedTo', { path: report.path })}
+                {t('activity:report.savedToPrefix')}{' '}
+                <button
+                  type="button"
+                  className="underline decoration-acc/60 hover:decoration-acc cursor-pointer"
+                  onClick={() => void openReportInEditor()}
+                >
+                  {report.path}
+                </button>
               </p>
               <div className="flex items-center gap-2">
                 <button

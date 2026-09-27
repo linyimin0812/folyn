@@ -22,6 +22,7 @@ export const PERSIST_KEYS_ACTIVITY_COLLECTORS = [
   'pinnedMetrics',
   'reportHashes',
   'reportConfig',
+  'notifyPet',
   'summaryPair',
 ] as const;
 
@@ -102,6 +103,9 @@ export interface ActivityCollectorState {
    *  pair). Set from the 报告设置 view; consumed by
    *  services/activity/eventSummary.ts. */
   summaryPair: { provider: string; model: string } | null;
+  /** Pet notification after a report is written (design §7.6) — set from
+   *  报告设置, consumed by services/activity/reports.ts. */
+  notifyPet: boolean;
   /** Runtime-only last-sync info per collectorId (NOT persisted — refreshed
    *  on every collect). */
   lastSync: Record<string, { at: number; accepted: number }>;
@@ -133,6 +137,8 @@ export interface ActivityCollectorState {
   setReportRootDir: (v: string) => void;
   /** Set/clear the event-summary model override (null = follow global chat pair). */
   setSummaryPair: (pair: { provider: string; model: string } | null) => void;
+  /** Toggle the pet notification on report completion. */
+  setNotifyPet: (v: boolean) => void;
   /** Runtime-only — called by runCollect after a successful push. */
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
   /** Runtime-only — null clears the entry (runCollect's finally). */
@@ -195,6 +201,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   reportHashes: {},
   reportConfig: DEFAULT_REPORT_CONFIG,
   summaryPair: null,
+  notifyPet: true,
   lastSync: {},
   collectProgress: {},
   collectHistory: [],
@@ -244,6 +251,11 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     persist();
   },
 
+  setNotifyPet: (v) => {
+    set({ notifyPet: v });
+    persist();
+  },
+
   setLastSync: (collectorId, at, accepted) => {
     set({ lastSync: { ...get().lastSync, [collectorId]: { at, accepted } } });
   },
@@ -262,6 +274,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   hydrate: (blob) => {
     const patch: Partial<ActivityCollectorState> = {};
     if (typeof blob.keepRaw === 'boolean') patch.keepRaw = blob.keepRaw;
+    if (typeof blob.notifyPet === 'boolean') patch.notifyPet = blob.notifyPet;
     if (blob.pinnedMetrics && typeof blob.pinnedMetrics === 'object') {
       const pinnedMetrics: Record<string, boolean> = {};
       for (const [id, v] of Object.entries(blob.pinnedMetrics as Record<string, unknown>)) {

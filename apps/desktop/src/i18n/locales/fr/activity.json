@@ -46,7 +46,7 @@
     "monthly": "Rapport mensuel",
     "generate": "Générer {{label}}",
     "generating": "Génération…",
-    "savedTo": "Enregistré dans {{path}}",
+    "savedToPrefix": "Enregistré dans",
     "openInEditor": "Ouvrir dans l'éditeur",
     "metrics": "Indicateurs",
     "metricCol": "Indicateur",
@@ -57,6 +57,7 @@
     "ongoingTask": "En cours : {{name}} (jour {{current}}/{{total}}, sans nouvelle mise à jour)",
     "regeneratedAt": "Régénéré à {{time}}",
     "notifyText": "{{label}} prêt — cliquez pour l'ouvrir",
+    "notifyOpen": "Ouvrir le rapport",
     "generateFailed": "Échec de la génération du rapport",
     "noModel": "Aucun modèle utilisable pour les rapports (fournisseur manquant ou pas de clé API) — configurez-en un dans les Réglages d'abord"
   },
@@ -93,7 +94,9 @@
     "followGlobal": "Suivre le modèle de chat global",
     "followGlobalHint": "Suit actuellement le modèle de chat global",
     "rootDirLabel": "Dossier racine des rapports",
-    "rootDirPlaceholder": "activity_collection"
+    "rootDirPlaceholder": "activity_collection",
+  "notifyLabel": "Notification mascotte à la fin",
+  "notifyDescription": "Envoie une notification de la mascotte quand le rapport est terminé ; un clic l’ouvre"
   },
   "graph": {
     "hint": "Cliquez un nœud pour en faire le centre et voir ses relations",

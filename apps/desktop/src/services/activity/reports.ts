@@ -101,6 +101,8 @@ export interface ReportStrings {
   ongoingTask: (name: string, current: number, total: number) => string;
   regeneratedAt: (time: string) => string;
   notifyText: (label: string) => string;
+  /** Visible open-the-report button on the pet notification (bubble/corner). */
+  notifyOpen: string;
 }
 
 export function frontmatterBlock(
@@ -398,7 +400,9 @@ export async function generateReport(opts: GenerateReportOptions): Promise<Gener
   }
   void useVaultStore.getState().refreshFileTree();
 
-  void notifyReportGenerated(s, path);
+  if (useActivityCollectorStore.getState().notifyPet) {
+    void notifyReportGenerated(s, path);
+  }
   return { path, mode: writeMode, markdown: content };
 }
 
@@ -463,6 +467,9 @@ async function notifyReportGenerated(s: ReportStrings, path: string): Promise<vo
       text: s.notifyText(s.label),
       source: 'activity',
       target: { kind: 'file', id: path },
+      // Visible jump button — without actions the bubble/corner card only
+      // has the (unhinted) clickable title, which reads as "no jump".
+      actions: [{ id: 'open', label: s.notifyOpen, kind: 'primary' }],
     });
   } catch (err) {
     console.warn('[activity] pet notify failed (pet may be off):', err);
