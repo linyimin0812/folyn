@@ -31,6 +31,18 @@ The app is not code-signed; the OS will block it on first launch. Dismiss as fol
   ```
   Then reopen from Launchpad.
 
+## Why Folyn
+
+- **Vault multi-vault isolation** — Open a separate vault for each project or note set. Data stays independent, switch anytime. Your local device is the single source of truth.
+- **Multi-format editing** — Markdown (with container extensions: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, plus Graphviz / Mermaid / PlantUML diagram containers), rich text, CSV, JSON, markmap mind maps, dbml ER diagrams, drawio architecture diagrams, excalidraw hand-drawn whiteboards, graphviz DOT — one editor handles them all.
+- **Universal preview** — Office documents, audio/video, archives, e-books, presentations and drawings — view them without leaving Folyn.
+- **Deep AI integration** — Built-in adapters for six CLI agents: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Switch freely across model vendors, no vendor lock-in.
+- **Desktop pet assistant** — A resident desktop companion that pushes schedule reminders and task-change notifications; click to bring up a chat with the LLM.
+- **In-app terminal** — Open a terminal inside Folyn and let Claude Code / Codex / other CLI agents read and write the current document — no window switching.
+- **Activity collection** — Collector extensions record your day — window switches, file changes, GitHub activity, webhook events — into a per-vault local database; review it on a timeline and relations graph, and generate daily/weekly/monthly reports as vault notes (optionally AI-written).
+- **Extension system** — Microkernel + extension SDK architecture. Rich text, DBML, file viewer, and activity collectors ship as extensions, translation is built in; third-party extensions supported.
+- **Voice input** — Speech-to-text with automatic polish, pasted straight to the cursor (currently macOS only).
+
 ### Vault multi-vault isolation
 
 Open a separate vault for each project or note set. Each vault is its own data space — notes, attachments, and extension configs are stored independently; switching vaults is like switching a whole workspace. Data stays on the local device; no cloud account required.
@@ -131,18 +143,6 @@ Speech is transcribed to text in real time and auto-polished — removing filler
 <p align="center">
   <img src="docs/assets/screenshots/voice-1.png" alt="Voice input" width="860" />
 </p>
-
-## Why Folyn
-
-- **Vault multi-vault isolation** — Open a separate vault for each project or note set. Data stays independent, switch anytime. Your local device is the single source of truth.
-- **Multi-format editing** — Markdown (with container extensions: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, plus Graphviz / Mermaid / PlantUML diagram containers), rich text, CSV, JSON, markmap mind maps, dbml ER diagrams, drawio architecture diagrams, excalidraw hand-drawn whiteboards, graphviz DOT — one editor handles them all.
-- **Universal preview** — Office documents, audio/video, archives, e-books, presentations and drawings — view them without leaving Folyn.
-- **Deep AI integration** — Built-in adapters for six CLI agents: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Switch freely across model vendors, no vendor lock-in.
-- **Desktop pet assistant** — A resident desktop companion that pushes schedule reminders and task-change notifications; click to bring up a chat with the LLM.
-- **In-app terminal** — Open a terminal inside Folyn and let Claude Code / Codex / other CLI agents read and write the current document — no window switching.
-- **Activity collection** — Collector extensions record your day — window switches, file changes, GitHub activity, webhook events — into a per-vault local database; review it on a timeline and relations graph, and generate daily/weekly/monthly reports as vault notes (optionally AI-written).
-- **Extension system** — Microkernel + extension SDK architecture. Rich text, DBML, file viewer, and activity collectors ship as extensions, translation is built in; third-party extensions supported.
-- **Voice input** — Speech-to-text with automatic polish, pasted straight to the cursor (currently macOS only).
 
 ## For Developers
 

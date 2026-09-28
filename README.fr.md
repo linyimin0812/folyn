@@ -31,6 +31,18 @@ L'application n'est pas signée ; le système la bloquera au premier lancement. 
   ```
   Puis rouvrez depuis le Launchpad.
 
+## Why Folyn
+
+- **Isolation multi-Vault** — Ouvrez un Vault séparé pour chaque projet ou jeu de notes. Les données restent indépendantes, basculez à tout moment. Votre appareil local est la source de vérité unique.
+- **Édition multi-format** — Markdown (avec extensions de conteneur : Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, plus conteneurs de diagrammes Graphviz / Mermaid / PlantUML), texte enrichi, CSV, JSON, cartes mentales markmap, diagrammes ER dbml, diagrammes d'architecture drawio, tableaux blancs manuels excalidraw, DOT graphviz — un seul éditeur pour tout.
+- **Prévisualisation universelle** — Documents Office, audio/vidéo, archives, livres électroniques, présentations et plans — visualisez sans quitter Folyn.
+- **Intégration IA profonde** — Adaptateurs intégrés pour six agents CLI : Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Basculez librement entre les fournisseurs de modèles, sans verrouillage.
+- **Assistant animal de bureau** — Un compagnon résident sur le bureau qui pousse les rappels de calendrier et les notifications de changement de tâche ; un clic ouvre un chat avec le LLM.
+- **Terminal intégré** — Ouvrez un terminal dans Folyn et laissez Claude Code / Codex / autres agents CLI lire et écrire le document courant — pas de changement de fenêtre.
+- **Collecte d'activité** — Les extensions collecteurs enregistrent votre journée — changements de fenêtre, modifications de fichiers, activité GitHub, événements webhook — dans une base locale au vault ; consultez-la en timeline et graphe de relations, et générez des rapports quotidien/hebdomadaire/mensuel en notes du vault (rédaction par IA en option).
+- **Système de extensions** — Architecture microkernel + SDK extension. Texte enrichi, DBML, visionneuse de fichiers et collecteurs d'activité sont fournis en tant qu'extensions, la traduction est intégrée ; extensions tierces prises en charge.
+- **Saisie vocale** — Synthèse vocale en texte avec polissage automatique, collée directement au curseur (actuellement macOS uniquement).
+
 ### Isolation multi-Vault
 
 Ouvrez un Vault séparé pour chaque projet ou jeu de notes. Chaque Vault est un espace de données indépendant — notes, pièces jointes et configurations de extensions sont stockés séparément ; changer de Vault équivaut à changer d'environnement de travail complet. Les données restent sur l'appareil local ; aucun compte cloud requis.
@@ -131,18 +143,6 @@ La parole est transcrite en texte en temps réel et polie automatiquement — su
 <p align="center">
   <img src="docs/assets/screenshots/voice-1.png" alt="Voice input" width="860" />
 </p>
-
-## Why Folyn
-
-- **Isolation multi-Vault** — Ouvrez un Vault séparé pour chaque projet ou jeu de notes. Les données restent indépendantes, basculez à tout moment. Votre appareil local est la source de vérité unique.
-- **Édition multi-format** — Markdown (avec extensions de conteneur : Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, plus conteneurs de diagrammes Graphviz / Mermaid / PlantUML), texte enrichi, CSV, JSON, cartes mentales markmap, diagrammes ER dbml, diagrammes d'architecture drawio, tableaux blancs manuels excalidraw, DOT graphviz — un seul éditeur pour tout.
-- **Prévisualisation universelle** — Documents Office, audio/vidéo, archives, livres électroniques, présentations et plans — visualisez sans quitter Folyn.
-- **Intégration IA profonde** — Adaptateurs intégrés pour six agents CLI : Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Basculez librement entre les fournisseurs de modèles, sans verrouillage.
-- **Assistant animal de bureau** — Un compagnon résident sur le bureau qui pousse les rappels de calendrier et les notifications de changement de tâche ; un clic ouvre un chat avec le LLM.
-- **Terminal intégré** — Ouvrez un terminal dans Folyn et laissez Claude Code / Codex / autres agents CLI lire et écrire le document courant — pas de changement de fenêtre.
-- **Collecte d'activité** — Les extensions collecteurs enregistrent votre journée — changements de fenêtre, modifications de fichiers, activité GitHub, événements webhook — dans une base locale au vault ; consultez-la en timeline et graphe de relations, et générez des rapports quotidien/hebdomadaire/mensuel en notes du vault (rédaction par IA en option).
-- **Système de extensions** — Architecture microkernel + SDK extension. Texte enrichi, DBML, visionneuse de fichiers et collecteurs d'activité sont fournis en tant qu'extensions, la traduction est intégrée ; extensions tierces prises en charge.
-- **Saisie vocale** — Synthèse vocale en texte avec polissage automatique, collée directement au curseur (actuellement macOS uniquement).
 
 ## For Developers
 
