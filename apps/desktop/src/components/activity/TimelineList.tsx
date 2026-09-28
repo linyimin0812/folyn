@@ -97,6 +97,50 @@ function eventIcon(e: ActivityEventRow, displayByType: Record<string, DisplayInd
   return displayByType[e.type]?.icon ?? BUILTIN_EVENT_DISPLAY[e.type]?.icon;
 }
 
+// ── Manifest-declared timeline chips ────────────────────────────────────────
+// A collector's `activityDisplay[].chips` declares payload keys to show as
+// inline row markers (e.g. email's mailbox). `badge: 'provider'` gets the
+// provider monogram below; anything else is a plain text chip. The host owns
+// all badge styles — extensions never ship UI.
+// ponytail: colored monograms, not real brand logos — only Gmail exists on
+// simple-icons (CC0); bundle real logo SVGs if fidelity ever matters.
+const PROVIDER_BADGES: Record<string, { label: string; color: string }> = {
+  'gmail.com': { label: 'G', color: '#EA4335' },
+  'googlemail.com': { label: 'G', color: '#EA4335' },
+  'qq.com': { label: 'QQ', color: '#12B7F5' },
+  'foxmail.com': { label: 'QQ', color: '#12B7F5' },
+  '163.com': { label: '163', color: '#3399EA' },
+  '126.com': { label: '126', color: '#3399EA' },
+  'yeah.net': { label: '163', color: '#3399EA' },
+  'sina.com': { label: 'S', color: '#E6162D' },
+  'outlook.com': { label: 'O', color: '#0078D4' },
+  'hotmail.com': { label: 'O', color: '#0078D4' },
+  'live.com': { label: 'O', color: '#0078D4' },
+  'yahoo.com': { label: 'Y', color: '#6001D2' },
+  'icloud.com': { label: 'i', color: '#3AA9E9' },
+};
+
+/** `user@domain` → provider monogram badge; unknown domains get a neutral one. */
+export function providerBadge(mailbox: string): { label: string; color: string } {
+  const domain = mailbox.split('@')[1]?.toLowerCase() ?? '';
+  return PROVIDER_BADGES[domain] ?? { label: '@', color: '#8B93A1' };
+}
+
+/** Resolve an event's declared chips to renderable {text, badge?} values —
+ *  string payload values only; non-strings/missing keys drop out. */
+export function eventChips(
+  payload: Record<string, unknown>,
+  chips: { key: string; badge?: 'provider' }[] | undefined,
+): { key: string; text: string; badge?: 'provider' }[] {
+  if (!chips) return [];
+  const out: { key: string; text: string; badge?: 'provider' }[] = [];
+  for (const c of chips) {
+    const v = payload[c.key];
+    if (typeof v === 'string' && v.trim()) out.push({ key: c.key, text: v, badge: c.badge });
+  }
+  return out;
+}
+
 /** Collector urls open via the app's external-open path (shell plugin /
  *  window.open), never a raw href navigation — see isExternalUrl. */
 function openExternalUrl(u: string) {
@@ -215,6 +259,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
     const payload = e.payload ?? {};
     const url = isExternalUrl(e.url) ? e.url : null;
     const sub = e.summary || e.type;
+    const chips = eventChips(payload, displayByType[e.type]?.chips);
     return (
       <div key={e.id}>
         <button
@@ -235,7 +280,25 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
             <span className="block text-[13px] font-medium text-t1 truncate">
               {e.title || e.id}
             </span>
-            <span className="block text-[12px] text-t2 truncate">{sub}</span>
+            <span className="flex items-center gap-1.5 text-[12px] text-t2 min-w-0">
+              {chips.map((c) => {
+                const b = c.badge === 'provider' ? providerBadge(c.text) : null;
+                return (
+                  <span key={c.key} className="inline-flex items-center gap-1 shrink-0 min-w-0">
+                    {b && (
+                      <span
+                        className="inline-flex items-center justify-center h-[14px] px-1 rounded-[3px] text-[9px] font-semibold text-white leading-none"
+                        style={{ background: b.color }}
+                      >
+                        {b.label}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-t3 truncate max-w-[150px]">{c.text}</span>
+                  </span>
+                );
+              })}
+              <span className="truncate min-w-0">{sub}</span>
+            </span>
           </span>
           <span className="mt-1 shrink-0 text-[12px] text-t3">
             {timeFmt.format(new Date(e.occurredAt))}

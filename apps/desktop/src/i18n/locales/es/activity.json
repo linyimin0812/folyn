@@ -95,8 +95,8 @@
     "followGlobalHint": "Actualmente siguiendo el modelo de chat global",
     "rootDirLabel": "Directorio raíz de informes",
     "rootDirPlaceholder": "activity_collection",
-  "notifyLabel": "Notificación de mascota al terminar",
-  "notifyDescription": "Envía una notificación de la mascota al terminar el informe; al pulsarla se abre"
+    "notifyLabel": "Notificación de mascota al terminar",
+    "notifyDescription": "Envía una notificación de la mascota al terminar el informe; al pulsarla se abre"
   },
   "graph": {
     "hint": "Haz clic en un nodo para convertirlo en el centro y ver sus relaciones",
@@ -137,7 +137,8 @@
     "installZip": "Instalar desde zip…",
     "collectFailed": "La recopilación falló (no instalada/activada, sin bóveda abierta o error de recopilación)",
     "collectResult": "{{accepted}} eventos nuevos, {{deduped}} deduplicados",
-    "fileExcludeApplied": "Filtrar archivos/carpetas:"
+    "fileExcludeApplied": "Filtrar archivos/carpetas:",
+    "unsavedHint": "Los cambios sin guardar no se usarán en «Recopilar ahora»"
   },
   "collectAll": {
     "action": "Recopilar",

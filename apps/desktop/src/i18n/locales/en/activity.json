@@ -95,8 +95,8 @@
     "followGlobalHint": "Currently following the global chat model",
     "rootDirLabel": "Report root directory",
     "rootDirPlaceholder": "activity_collection",
-  "notifyLabel": "Pet notification on completion",
-  "notifyDescription": "Send a desktop pet notification when a report finishes; click it to open the report"
+    "notifyLabel": "Pet notification on completion",
+    "notifyDescription": "Send a desktop pet notification when a report finishes; click it to open the report"
   },
   "graph": {
     "hint": "Click a node to make it the new center and inspect its relations",
@@ -137,7 +137,8 @@
     "installZip": "Install from zip…",
     "collectFailed": "Collection failed (not installed/enabled, no open vault, or a collection error)",
     "collectResult": "{{accepted}} new events, {{deduped}} deduplicated",
-    "fileExcludeApplied": "Filter files/folders:"
+    "fileExcludeApplied": "Filter files/folders:",
+    "unsavedHint": "Unsaved changes won't be used by “Collect now”"
   },
   "collectAll": {
     "action": "Collect",

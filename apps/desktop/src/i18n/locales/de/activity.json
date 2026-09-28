@@ -95,8 +95,8 @@
     "followGlobalHint": "Folgt derzeit dem globalen Chat-Modell",
     "rootDirLabel": "Bericht-Stammordner",
     "rootDirPlaceholder": "activity_collection",
-  "notifyLabel": "Pet-Benachrichtigung nach Fertigstellung",
-  "notifyDescription": "Sendet nach Fertigstellung eine Pet-Benachrichtigung; ein Klick öffnet den Bericht"
+    "notifyLabel": "Pet-Benachrichtigung nach Fertigstellung",
+    "notifyDescription": "Sendet nach Fertigstellung eine Pet-Benachrichtigung; ein Klick öffnet den Bericht"
   },
   "graph": {
     "hint": "Klicke einen Knoten, um ihn zum Zentrum zu machen und seine Beziehungen zu sehen",
@@ -137,7 +137,8 @@
     "installZip": "Aus zip installieren…",
     "collectFailed": "Sammlung fehlgeschlagen (nicht installiert/aktiviert, kein offener Vault oder Sammelfehler)",
     "collectResult": "{{accepted}} neue Ereignisse, {{deduped}} dedupliziert",
-    "fileExcludeApplied": "Dateien/Ordner filtern:"
+    "fileExcludeApplied": "Dateien/Ordner filtern:",
+    "unsavedHint": "Ungespeicherte Änderungen werden von „Jetzt sammeln“ nicht verwendet"
   },
   "collectAll": {
     "action": "Sammeln",

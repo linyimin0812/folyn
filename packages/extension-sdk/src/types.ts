@@ -556,6 +556,10 @@ export interface ActivityDisplayContribution {
   metric?: { id: string; label: string; aggregate: ActivityMetricAggregate };
   /** When present, this event type's entities join the relation graph. */
   entity?: { role: string; relationLabel: string };
+  /** Inline chips on the timeline row, rendered from payload keys.
+   *  `badge: 'provider'` gets the host's email-provider monogram; the host
+   *  owns the badge styles (extensions never ship UI). */
+  chips?: { key: string; badge?: 'provider' }[];
 }
 
 /** `contributes.entityTypes[]` — registers a custom entity type (design §3.4).

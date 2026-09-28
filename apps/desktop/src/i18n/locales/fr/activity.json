@@ -95,8 +95,8 @@
     "followGlobalHint": "Suit actuellement le modèle de chat global",
     "rootDirLabel": "Dossier racine des rapports",
     "rootDirPlaceholder": "activity_collection",
-  "notifyLabel": "Notification mascotte à la fin",
-  "notifyDescription": "Envoie une notification de la mascotte quand le rapport est terminé ; un clic l’ouvre"
+    "notifyLabel": "Notification mascotte à la fin",
+    "notifyDescription": "Envoie une notification de la mascotte quand le rapport est terminé ; un clic l’ouvre"
   },
   "graph": {
     "hint": "Cliquez un nœud pour en faire le centre et voir ses relations",
@@ -137,7 +137,8 @@
     "installZip": "Installer depuis un zip…",
     "collectFailed": "Échec de la collecte (non installée/activée, aucun coffre ouvert, ou erreur de collecte)",
     "collectResult": "{{accepted}} nouveaux événements, {{deduped}} dédupliqués",
-    "fileExcludeApplied": "Filtrer fichiers/dossiers :"
+    "fileExcludeApplied": "Filtrer fichiers/dossiers :",
+    "unsavedHint": "Les modifications non enregistrées ne seront pas utilisées par « Collecter maintenant »"
   },
   "collectAll": {
     "action": "Collecter",

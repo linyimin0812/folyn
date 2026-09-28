@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeTimelineSessions, formatSessionDuration } from './TimelineList';
+import { mergeTimelineSessions, formatSessionDuration, providerBadge, eventChips } from './TimelineList';
 import type { ActivityEventRow } from '@/services/activity/api';
 
 const MIN = 60_000;
@@ -66,5 +66,32 @@ describe('formatSessionDuration', () => {
   it('clamps sub-minute durations to 1 minute (session counts the last sample)', () => {
     const s = formatSessionDuration(0, 'en');
     expect(s).toContain('1');
+  });
+});
+
+describe('providerBadge', () => {
+  it('maps known domains (case-insensitive) and falls back to neutral', () => {
+    expect(providerBadge('a@gmail.com')).toEqual({ label: 'G', color: '#EA4335' });
+    expect(providerBadge('a@QQ.COM')).toEqual({ label: 'QQ', color: '#12B7F5' });
+    expect(providerBadge('15289842383@163.com')).toEqual({ label: '163', color: '#3399EA' });
+    expect(providerBadge('a@unknown.tld')).toEqual({ label: '@', color: '#8B93A1' });
+    expect(providerBadge('no-at-sign')).toEqual({ label: '@', color: '#8B93A1' });
+  });
+});
+
+describe('eventChips', () => {
+  it('resolves declared chip keys from the payload (strings only)', () => {
+    const decl = [{ key: 'mailbox', badge: 'provider' as const }, { key: 'repo' }];
+    expect(eventChips({ mailbox: 'a@gmail.com', repo: 'folyn' }, decl)).toEqual([
+      { key: 'mailbox', text: 'a@gmail.com', badge: 'provider' },
+      { key: 'repo', text: 'folyn' },
+    ]);
+  });
+
+  it('drops missing / non-string / empty values, and undeclared → []', () => {
+    const decl = [{ key: 'mailbox', badge: 'provider' as const }, { key: 'n' }];
+    expect(eventChips({ mailbox: 42, n: '  ' }, decl)).toEqual([]);
+    expect(eventChips({ mailbox: 'a@x.com' }, undefined)).toEqual([]);
+    expect(eventChips({}, [])).toEqual([]);
   });
 });

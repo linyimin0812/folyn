@@ -114,16 +114,82 @@ export function inferImapHost(username: string): string {
   return IMAP_HOSTS[domain] ?? `imap.${domain}`;
 }
 
-function configString(ctx: CollectorContext, key: string): string {
-  const v = ctx.config[key];
+function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-function configNumber(ctx: CollectorContext, key: string, fallback: number, min: number, max: number): number {
-  const v = ctx.config[key];
+function num(v: unknown, fallback: number, min: number, max: number): number {
   const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
+}
+
+/** One configured mailbox. host '' = infer from the username at collect time. */
+export interface EmailAccount {
+  username: string;
+  password: string;
+  host: string;
+  port: number;
+  folder: string;
+  backfillDays: number;
+}
+
+/**
+ * Config → account list. `config.accounts` is the multi-mailbox shape
+ * ({accounts: [{username, password, host?, port?, folder?, backfillDays?}]});
+ * a legacy flat single-account config is still accepted.
+ */
+export function parseAccounts(config: Record<string, unknown> | undefined): EmailAccount[] {
+  const cfg = config ?? {};
+  const fromRecord = (r: Record<string, unknown>): EmailAccount | null => {
+    const username = str(r.username);
+    const password = typeof r.password === 'string' ? r.password : '';
+    if (!username || !password) return null;
+    return {
+      username,
+      password,
+      host: str(r.host),
+      port: num(r.port, 993, 1, 65_535),
+      folder: str(r.folder) || 'INBOX',
+      backfillDays: num(r.backfillDays, 30, 1, 365),
+    };
+  };
+  if (Array.isArray(cfg.accounts)) {
+    const out: EmailAccount[] = [];
+    for (const a of cfg.accounts) {
+      if (a && typeof a === 'object' && !Array.isArray(a)) {
+        const acc = fromRecord(a as Record<string, unknown>);
+        if (acc) out.push(acc);
+      }
+    }
+    return out;
+  }
+  const legacy = fromRecord(cfg);
+  return legacy ? [legacy] : [];
+}
+
+/** Cursor key — username + folder so one mailbox can be watched on two folders.
+ *  ponytail: no host in the key — same mailbox moved between hosts re-backfills. */
+function cursorKey(acc: EmailAccount): string {
+  return `${acc.username}|${acc.folder}`;
+}
+
+/** Error → readable text. Tauri command failures reject with the host's
+ *  AppError shape `{category, detail}`, not Error instances. */
+export function errorText(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    const r = err as Record<string, unknown>;
+    if (typeof r.detail === 'string') return `${String(r.category ?? 'error')}: ${r.detail}`;
+    if (typeof r.message === 'string') return r.message;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      // Unstringifiable object — at least name the type.
+      return Object.prototype.toString.call(err);
+    }
+  }
+  return String(err);
 }
 
 /** `Name <addr@host>` → `addr@host` (identity keys must be stable). */
@@ -139,41 +205,33 @@ export function emailId(msg: ImapFetchedMessage, host: string, folder: string): 
   return mid ? `email:${mid}` : `email:${host}:${folder}:${msg.uid}`;
 }
 
-export async function collectEmailEvents(
-  ctx: CollectorContext,
-): Promise<{ events: CollectorEvent[]; nextCursor: string }> {
-  const username = configString(ctx, 'username');
-  const password = configString(ctx, 'password');
-  const cursor = ctx.cursor ?? '';
-  if (!username || !password) {
-    // Unconfigured — no events, cursor untouched.
-    return { events: [], nextCursor: cursor };
-  }
-  if (!ctx.imapFetch) {
-    throw new Error('email collector requires ctx.imapFetch');
-  }
-  const host = configString(ctx, 'host') || inferImapHost(username);
-  if (!host) {
-    throw new Error('email collector: cannot infer an IMAP server from the username — fill in the IMAP 服务器 field');
-  }
+type ImapFetch = NonNullable<CollectorContext['imapFetch']>;
 
-  const folder = configString(ctx, 'folder') || 'INBOX';
-  const backfillDays = configNumber(ctx, 'backfillDays', 30, 1, 365);
-  const cursorMs = Number(cursor);
-  const firstRun = !Number.isFinite(cursorMs) || cursorMs <= 0;
-  const sinceMs = firstRun ? Date.now() - backfillDays * 86_400_000 : cursorMs;
+/** Fetch + map one account's new messages since `cursorMs` (0 = first run).
+ *  The receiving mailbox is stamped into each event's payload (`mailbox`) —
+ *  the host timeline renders the provider badge + address from it. */
+async function collectAccount(
+  imapFetch: ImapFetch,
+  acc: EmailAccount,
+  cursorMs: number,
+): Promise<{ events: CollectorEvent[]; newest: number }> {
+  const host = acc.host || inferImapHost(acc.username);
+  if (!host) {
+    throw new Error(`cannot infer an IMAP server from ${acc.username} — fill in the IMAP 服务器 field`);
+  }
+  const firstRun = cursorMs <= 0;
+  const sinceMs = firstRun ? Date.now() - acc.backfillDays * 86_400_000 : cursorMs;
 
   const messages =
-    (await ctx.imapFetch({
+    (await imapFetch({
       host,
-      port: configNumber(ctx, 'port', 993, 1, 65_535),
-      username,
-      password,
-      folder,
+      port: acc.port,
+      username: acc.username,
+      password: acc.password,
+      folder: acc.folder,
       sinceMs,
       max: MAX_BATCH,
     })) ?? [];
-  ctx.onProgress?.(`${messages.length} messages`);
 
   const events: CollectorEvent[] = [];
   let newest = firstRun ? 0 : cursorMs;
@@ -189,15 +247,15 @@ export async function collectEmailEvents(
     // appear — no per-collector UI wiring. The actor is not rendered in the
     // timeline, so using the mailbox as actor is purely a graph-shape choice.
     events.push({
-      id: emailId(msg, host, folder),
+      id: emailId(msg, host, acc.folder),
       type: 'email_received',
       occurredAt: msg.dateMs,
       title: subject || '(no subject)',
       summary: [from, subject || '(no subject)'].filter(Boolean).join(' · '),
       actor: {
         type: 'mailbox',
-        identityKey: `${username}@${host}`,
-        displayName: username,
+        identityKey: `${acc.username}@${host}`,
+        displayName: acc.username,
       },
       entities: [
         {
@@ -214,16 +272,80 @@ export async function collectEmailEvents(
         },
       ],
       payload: {
+        mailbox: acc.username,
         from,
         to: msg.to ?? '',
         subject,
-        folder,
+        folder: acc.folder,
         snippet: msg.snippet ?? '',
       },
     });
     if (msg.dateMs > newest) newest = msg.dateMs;
   }
-  // No new mail on the first run → anchor the cursor at now so the next poll
-  // doesn't refetch the whole backfill window.
-  return { events, nextCursor: String(newest > 0 ? newest : Date.now()) };
+  return { events, newest };
+}
+
+/**
+ * Cursor format (multi-account): JSON `{"username|folder": epochMs}`.
+ * A legacy bare epoch-ms cursor belongs to the first (migrated) account.
+ */
+function parseCursorMap(cursor: string): { map: Record<string, number>; legacyMs: number } {
+  if (cursor.startsWith('{')) {
+    try {
+      const parsed: unknown = JSON.parse(cursor);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const map: Record<string, number> = {};
+        for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+          if (typeof v === 'number' && Number.isFinite(v) && v > 0) map[k] = v;
+        }
+        return { map, legacyMs: 0 };
+      }
+    } catch {
+      // Malformed JSON → fall through to the bare-number path.
+    }
+  }
+  const n = Number(cursor);
+  return { map: {}, legacyMs: Number.isFinite(n) && n > 0 ? n : 0 };
+}
+
+export async function collectEmailEvents(
+  ctx: CollectorContext,
+): Promise<{ events: CollectorEvent[]; nextCursor: string }> {
+  const accounts = parseAccounts(ctx.config);
+  const cursorIn = ctx.cursor ?? '';
+  // Unconfigured — no events, cursor untouched.
+  if (accounts.length === 0) return { events: [], nextCursor: cursorIn };
+  if (!ctx.imapFetch) throw new Error('email collector requires ctx.imapFetch');
+  const imapFetch = ctx.imapFetch;
+
+  const { map, legacyMs } = parseCursorMap(cursorIn);
+  const events: CollectorEvent[] = [];
+  const nextMap: Record<string, number> = {};
+  const errors: string[] = [];
+
+  for (const [i, acc] of accounts.entries()) {
+    const key = cursorKey(acc);
+    // Legacy cursor / prior cursor of a failed account is preserved so the
+    // next run re-reads the same window instead of skipping it.
+    const prevMs = map[key] ?? (i === 0 ? legacyMs : 0);
+    if (prevMs > 0) nextMap[key] = prevMs;
+    try {
+      const { events: accountEvents, newest } = await collectAccount(imapFetch, acc, prevMs);
+      events.push(...accountEvents);
+      // No new mail on the first run → anchor the cursor at now so the next
+      // poll doesn't refetch the whole backfill window.
+      nextMap[key] = newest > 0 ? newest : Date.now();
+      ctx.onProgress?.(`${acc.username}: ${accountEvents.length} messages`);
+    } catch (err) {
+      const message = errorText(err);
+      errors.push(`${acc.username}: ${message}`);
+      ctx.onProgress?.(`${acc.username}: ${message}`);
+    }
+  }
+
+  // Every account failed → surface the failure (runCollect records it).
+  if (errors.length === accounts.length) {
+    throw new Error(`email collector: ${errors.join('; ')}`);
+  }
+  return { events, nextCursor: JSON.stringify(nextMap) };
 }

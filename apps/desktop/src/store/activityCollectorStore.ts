@@ -118,6 +118,10 @@ export interface ActivityCollectorState {
    *  ends). Locale-neutral strings from the collector; the UI prefixes the
    *  localized label. */
   collectProgress: Record<string, string>;
+  /** Runtime-only last collect error per collectorId (NOT persisted — set by
+   *  runCollect's catch, cleared when the next run starts). Locale-neutral
+   *  text from the collector/host; shown in place of the generic failure. */
+  collectErrors: Record<string, string>;
   /** Collection-run history (most recent first), loaded from the activity
    *  SQLite db (services/activity api) — NOT persisted in this slice; the
    *  db owns the 100-run cap. */
@@ -147,6 +151,8 @@ export interface ActivityCollectorState {
   setLastSync: (collectorId: string, at: number, accepted: number) => void;
   /** Runtime-only — null clears the entry (runCollect's finally). */
   setCollectProgress: (collectorId: string, message: string | null) => void;
+  /** Runtime-only — null clears the entry (runCollect start). */
+  setCollectError: (collectorId: string, message: string | null) => void;
   /** Replace the in-memory history from the activity db (runCollect's
    *  finally + CollectLogView's mount load). */
   setCollectHistory: (runs: CollectRunRecord[]) => void;
@@ -209,6 +215,7 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
   lastSync: {},
   dataVersion: 0,
   collectProgress: {},
+  collectErrors: {},
   collectHistory: [],
 
   setKeepRaw: (v) => { set({ keepRaw: v }); persist(); },
@@ -273,6 +280,13 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
     set({ collectProgress: next });
   },
 
+  setCollectError: (collectorId, message) => {
+    const next = { ...get().collectErrors };
+    if (message === null) delete next[collectorId];
+    else next[collectorId] = message;
+    set({ collectErrors: next });
+  },
+
   setCollectHistory: (runs) => {
     set({ collectHistory: runs });
   },
@@ -327,6 +341,13 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
         if (v && typeof v === 'object' && !Array.isArray(v)) {
           configs[id] = v as Record<string, unknown>;
         }
+      }
+      // Legacy single-mailbox email config → multi-account shape (the
+      // collector still accepts the flat form; this migrates the settings UI).
+      const email = configs['email'];
+      if (email && !Array.isArray(email.accounts) && typeof email.username === 'string' && email.username.trim()) {
+        const { host, port, username, password, folder, backfillDays, ...rest } = email;
+        configs['email'] = { ...rest, accounts: [{ host, port, username, password, folder, backfillDays }] };
       }
       patch.configs = configs;
     }

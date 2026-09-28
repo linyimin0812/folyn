@@ -91,12 +91,96 @@ function ConfigForm({
     const raw = String(config?.excludePatterns ?? '');
     writeExcludePatterns(raw.split('\n').map((s) => s.trim()).filter((s) => s !== p).join('\n'));
   };
+  // Email collector: multi-mailbox account list. Account edits persist
+  // immediately (same seam as the exclude chips above) and keep `draft` in
+  // sync so a later 保存 can't clobber them with a stale snapshot.
+  // ponytail: field labels hardcoded zh like the manifest's authSchema titles
+  // — move to i18n if another locale matters here.
+  // ponytail: known-domain mirror of the extension's IMAP_HOSTS (emailEvents.ts)
+  // — those domains auto-infer the IMAP host, so the server/port fields are
+  // noise for them. Mirror drifts silently; sync when IMAP_HOSTS grows.
+  const KNOWN_IMAP_DOMAINS = new Set([
+    'gmail.com', 'googlemail.com', 'qq.com', 'foxmail.com', '163.com', '126.com',
+    'yeah.net', 'sina.com', 'outlook.com', 'hotmail.com', 'live.com', 'yahoo.com',
+    'icloud.com',
+  ]);
+  const isEmail = reg.collectorId === 'email';
+  const accountsDraft = Array.isArray(draft.accounts)
+    ? (draft.accounts as Array<Record<string, unknown>>)
+    : [];
+  const writeAccounts = (next: Array<Record<string, unknown>>) => {
+    setCollectorConfig(reg.collectorId, { ...(config ?? {}), accounts: next });
+    setDraft((d) => ({ ...d, accounts: next }));
+  };
+  const updateAccount = (i: number, patch: Record<string, unknown>) => {
+    writeAccounts(accountsDraft.map((a, j) => (j === i ? { ...a, ...patch } : a)));
+  };
+  // Official「generate an auth code」help pages, keyed like KNOWN_IMAP_DOMAINS.
+  // ponytail: hardcoded mirror; domains without a confident official URL
+  // (sina) are simply absent.
+  const AUTH_HELP_URLS: Record<string, string> = {
+    'gmail.com': 'https://support.google.com/mail/answer/185833',
+    'googlemail.com': 'https://support.google.com/mail/answer/185833',
+    'qq.com': 'https://service.mail.qq.com/detail/0/75',
+    'foxmail.com': 'https://service.mail.qq.com/detail/0/75',
+    '163.com': 'https://help.mail.163.com/faqDetail.do?code=d1a5dc8471cd0c0128b6c9d0f5b52d16',
+    '126.com': 'https://help.mail.163.com/faqDetail.do?code=d1a5dc8471cd0c0128b6c9d0f5b52d16',
+    'yeah.net': 'https://help.mail.163.com/faqDetail.do?code=d1a5dc8471cd0c0128b6c9d0f5b52d16',
+    'outlook.com': 'https://account.live.com/password/AppPassword',
+    'hotmail.com': 'https://account.live.com/password/AppPassword',
+    'live.com': 'https://account.live.com/password/AppPassword',
+    'yahoo.com': 'https://help.yahoo.com/kb/SLN15241.html',
+    'icloud.com': 'https://support.apple.com/zh-cn/HT204397',
+  };
+  const authHelpUrl = (username: unknown): string | null =>
+    AUTH_HELP_URLS[String(username ?? '').split('@')[1]?.toLowerCase() ?? ''] ?? null;
+  /** External link via the app's shell-open path, never a raw href navigation. */
+  const openHelpUrl = (u: string) => {
+    if (isTauri()) {
+      void import('@tauri-apps/plugin-shell').then(({ open }) => open(u));
+    } else {
+      window.open(u, '_blank', 'noopener,noreferrer');
+    }
+  };
+  const accountField = (
+    i: number,
+    key: string,
+    label: string,
+    placeholder: string,
+    kind: 'text' | 'number' = 'text',
+    hint?: ReactNode,
+  ) => (
+    <label className="block">
+      <span className="flex items-center justify-between mb-1">
+        <span className="text-[11px] text-t2">{label}</span>
+        {hint}
+      </span>
+      <input
+        className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
+        type={kind}
+        placeholder={placeholder}
+        value={String(accountsDraft[i]?.[key] ?? '')}
+        onChange={(e) =>
+          updateAccount(i, {
+            [key]: kind === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value,
+          })
+        }
+      />
+    </label>
+  );
   const onSave = () => {
     setCollectorConfig(reg.collectorId, draft);
     setSaved(true);
     if (savedTimer.current) clearTimeout(savedTimer.current);
     savedTimer.current = setTimeout(() => setSaved(false), 900);
   };
+  // Unsaved draft fields (allowAiSummary, tokens, …) are NOT what runCollect
+  // reads — it takes the persisted store config. Email accounts / exclude
+  // chips write through immediately and keep `draft` synced, so they never
+  // show the hint.
+  // ponytail: JSON compare (same-source key order); a false positive is
+  // harmless, a diff library is not worth it here.
+  const dirty = JSON.stringify(draft) !== JSON.stringify(config ?? {});
   if (!schema || Object.keys(schema.properties).length === 0) return null;
 
   return (
@@ -104,6 +188,66 @@ function ConfigForm({
       <p className="m-0 mb-2 text-[11px] font-semibold text-t2">
         {t('activity:collectors.configTitle')}
       </p>
+      {isEmail && (
+        <div className="mb-3">
+          {accountsDraft.map((acc, i) => (
+            <div key={i} className="border border-brd2 rounded-md p-2.5 mb-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-t2 truncate">
+                  {String(acc.username || `账户 ${i + 1}`)}
+                </span>
+                <button
+                  className="text-[11px] text-t3 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
+                  onClick={() => writeAccounts(accountsDraft.filter((_, j) => j !== i))}
+                >
+                  删除
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-2.5">
+                {accountField(i, 'username', '邮箱账号', 'you@example.com')}
+                {accountField(
+                  i,
+                  'password',
+                  '密码 / 授权码',
+                  '',
+                  'text',
+                  authHelpUrl(acc.username) && (
+                    <button
+                      type="button"
+                      className="text-[10px] text-acc hover:underline cursor-pointer bg-transparent border-0 p-0"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openHelpUrl(authHelpUrl(acc.username)!);
+                      }}
+                    >
+                      如何获取授权码？
+                    </button>
+                  ),
+                )}
+                {(String(acc.host ?? '') !== '' ||
+                  !KNOWN_IMAP_DOMAINS.has(String(acc.username ?? '').split('@')[1]?.toLowerCase() ?? '')) && (
+                  <>
+                    {accountField(i, 'host', 'IMAP 服务器（留空自动推断）', 'imap.example.com')}
+                    {accountField(i, 'port', '端口', '993', 'number')}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+          <button
+            className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-dashed border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
+            onClick={() =>
+              writeAccounts([
+                ...accountsDraft,
+                { username: '', password: '', host: '', port: undefined },
+              ])
+            }
+          >
+            + 添加邮箱
+          </button>
+        </div>
+      )}
       {Object.entries(schema.properties).map(([key, prop]) => {
         const value = draft[key] ?? prop.default ?? '';
         const label = prop.title ?? key;
@@ -209,7 +353,12 @@ function ConfigForm({
       })}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {footerLeft && <div className="min-w-0 text-[11px] text-t2 flex items-center gap-2 flex-wrap">{footerLeft}</div>}
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {dirty && (
+            <span className="text-[10px] text-amber-700 dark:text-amber-400">
+              {t('activity:collectors.unsavedHint')}
+            </span>
+          )}
           {footerExtra}
           <button className="btn btn-g btn-sm" onClick={onSave}>
             {saved && <Check size={11} />}
@@ -231,6 +380,9 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
   // Live progress from the collector's ctx.onProgress (cleared when the run
   // ends) — locale-neutral string from the collector, label localized here.
   const collectProgress = useActivityCollectorStore((s) => s.collectProgress[reg.collectorId]);
+  // Last collect failure text (cleared when the next run starts) — shown in
+  // place of the generic failure message.
+  const collectError = useActivityCollectorStore((s) => s.collectErrors[reg.collectorId]);
   const uninstall = useExtensionStore((s) => s.uninstall);
   const uninstallBusy = useExtensionStore(useShallow((s) => !!s.busy[`${reg.extensionId}:uninstall`]));
   // Select the stable array ref and derive in render (state-management spec:
@@ -239,6 +391,9 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
   const conflicts = allConflicts.filter((c) => c.extensionId === reg.extensionId);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null);
+  // Collapsed by default — the config body (poll row, config form, footer)
+  // only opens on demand; component-local, not persisted.
+  const [open, setOpen] = useState(false);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -250,11 +405,15 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
     setBusy(true);
     const started = Date.now();
     try {
-      // null = skipped (not installed/enabled, no vault) or failed — same message.
       const outcome = await collectNow(reg.collectorId);
+      // null = skipped (not installed/enabled, no vault) or failed. A failure
+      // landed its text in collectErrors — prefer it over the generic message.
+      const failureText =
+        useActivityCollectorStore.getState().collectErrors[reg.collectorId] ??
+        t('activity:collectors.collectFailed');
       setNotice(
         outcome === null
-          ? { error: true, text: t('activity:collectors.collectFailed') }
+          ? { error: true, text: failureText }
           : {
               error: false,
               text: t('activity:collectors.collectResult', {
@@ -328,6 +487,9 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
       {collectProgress && (
         <span>{t('activity:collectors.collecting')} {collectProgress}</span>
       )}
+      {collectError && (
+        <span className="text-red-600 dark:text-red-400 break-all">{collectError}</span>
+      )}
       {notice && (
         <span className={notice.error ? 'text-red-600 dark:text-red-400' : 'text-acc'}>
           {notice.text}
@@ -338,7 +500,10 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
 
   return (
     <div className="border border-brd rounded-lg p-3 mb-2 bg-surf">
-      <div className="flex items-start justify-between gap-2">
+      <div
+        className="flex items-start justify-between gap-2 cursor-pointer"
+        onClick={() => setOpen((v) => !v)}
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[length:calc(var(--ui-font-size)-1px)] font-semibold text-t1 truncate">
@@ -372,22 +537,34 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
           <button
             className="btn btn-sm text-t3 hover:text-red-600 dark:hover:text-red-400"
             disabled={uninstallBusy}
-            onClick={() => void onUninstall()}
+            onClick={(e) => {
+              e.stopPropagation();
+              void onUninstall();
+            }}
           >
             {uninstallBusy
               ? t('settings:extensions.uninstalling')
               : t('settings:extensions.uninstall')}
           </button>
-          <span className="text-[11px] text-t2">
-            {settings.enabled ? t('activity:collectors.enabled') : t('activity:collectors.disabled')}
+          <span className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <span className="text-[11px] text-t2">
+              {settings.enabled ? t('activity:collectors.enabled') : t('activity:collectors.disabled')}
+            </span>
+            <Toggle
+              value={settings.enabled}
+              onChange={(v) => setCollectorSettings(reg.collectorId, { enabled: v })}
+            />
           </span>
-          <Toggle
-            value={settings.enabled}
-            onChange={(v) => setCollectorSettings(reg.collectorId, { enabled: v })}
-          />
         </div>
       </div>
 
+      {/* ponytail: same grid-rows collapse as the timeline day groups */}
+      <div
+        className={`grid [transition-property:grid-template-rows] duration-200 ease-out ${
+          open ? '[grid-template-rows:1fr]' : '[grid-template-rows:0fr]'
+        }`}
+      >
+        <div className="overflow-hidden min-h-0">
       {reg.mode === 'webhook' && webhookEndpoint && (
         <div className="mt-2.5 text-[11px] text-t2">
           {t('activity:collectors.webhookEndpoint')}:{' '}
@@ -438,6 +615,8 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
           {collectNowButton}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { CollectorContext, CollectorEvent } from 'folyn-extension-sdk';
-import { collectEmailEvents, decodeMimeHeader, emailId, inferImapHost, senderAddress, type ImapFetchedMessage } from './emailEvents';
+import { collectEmailEvents, decodeMimeHeader, emailId, errorText, inferImapHost, parseAccounts, senderAddress, type ImapFetchedMessage } from './emailEvents';
 
 function msg(partial: Partial<ImapFetchedMessage>): ImapFetchedMessage {
   return {
@@ -32,6 +32,13 @@ const CFG = {
   password: 'secret',
   folder: 'INBOX',
   backfillDays: 30,
+};
+
+const MULTI = {
+  accounts: [
+    { username: 'a@example.com', password: 'p1' },
+    { username: 'b@example.com', password: 'p2', folder: 'Archive' },
+  ],
 };
 
 describe('collectEmailEvents', () => {
@@ -84,19 +91,20 @@ describe('collectEmailEvents', () => {
         relation: '发件人',
       },
     ]);
-    expect(ev.payload).toMatchObject({ from: 'Alice <alice@example.com>', folder: 'INBOX' });
+    expect(ev.payload).toMatchObject({ mailbox: 'bob@example.com', from: 'Alice <alice@example.com>', folder: 'INBOX' });
     // Password never reaches the event.
     expect(JSON.stringify(ev)).not.toContain('secret');
-    expect(out.nextCursor).toBe('1000');
+    expect(JSON.parse(out.nextCursor)).toEqual({ 'bob@example.com|INBOX': 1000 });
   });
 
   it('filters at the cursor (SINCE day-slack overlap) and advances to newest', async () => {
     const M2 = msg({ uid: 2, messageId: '<two@example.com>', dateMs: 2_000 });
     const M3 = msg({ uid: 3, messageId: '<three@example.com>', dateMs: 3_000 });
+    // Legacy bare-number cursor belongs to the (migrated) first account.
     const out = await collectEmailEvents(ctx(CFG, '2000', [msg({}), M2, M3]));
     // dateMs <= cursor filtered: uid1 (1000) and uid2 (2000) gone.
     expect(out.events.map((e) => e.id)).toEqual(['email:<three@example.com>']);
-    expect(out.nextCursor).toBe('3000');
+    expect(JSON.parse(out.nextCursor)).toEqual({ 'bob@example.com|INBOX': 3000 });
   });
 
   it('first run passes backfill sinceMs; empty result anchors cursor at now', async () => {
@@ -104,7 +112,7 @@ describe('collectEmailEvents', () => {
     const c = ctx(CFG, null, []);
     const out = await collectEmailEvents(c);
     expect(out.events).toEqual([]);
-    expect(Number(out.nextCursor)).toBeGreaterThanOrEqual(before);
+    expect(JSON.parse(out.nextCursor)['bob@example.com|INBOX']).toBeGreaterThanOrEqual(before);
     const called = (c.imapFetch as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { sinceMs: number };
     const days = (Date.now() - called.sinceMs) / 86_400_000;
     expect(days).toBeGreaterThan(29);
@@ -121,6 +129,78 @@ describe('collectEmailEvents', () => {
     const sender = out.events[0]!.entities![1]!;
     expect(sender.identityKey).toBe('plain@example.com');
     expect(sender.displayName).toBe('plain@example.com');
+  });
+
+  const multiCtx = (cursor: string | null, failUsernames: string[] = []) => {
+    const imapFetch = vi.fn(async (args: { username: string; sinceMs: number }) => {
+      if (failUsernames.includes(args.username)) throw new Error('auth failed');
+      return [msg({ messageId: `<${args.username}@x>`, dateMs: 5_000 })];
+    });
+    return {
+      cursor,
+      config: MULTI,
+      imapFetch,
+    } as unknown as CollectorContext & { imapFetch: ReturnType<typeof vi.fn> };
+  }
+
+  it('collects every account with an independent cursor', async () => {
+    const cursor = JSON.stringify({ 'a@example.com|INBOX': 4_000, 'b@example.com|Archive': 6_000 });
+    const c = multiCtx(cursor);
+    const out = await collectEmailEvents(c);
+    // a@example.com: 5000 > 4000 → kept; b@example.com: 5000 <= 6000 → filtered.
+    expect(out.events.map((e) => e.id)).toEqual(['email:<a@example.com@x>']);
+    // Every event stamps its receiving mailbox into the payload.
+    expect(out.events[0]!.payload).toMatchObject({ mailbox: 'a@example.com' });
+    expect(JSON.parse(out.nextCursor)).toEqual({
+      'a@example.com|INBOX': 5_000,
+      'b@example.com|Archive': 6_000,
+    });
+    // A second call: imapFetch got one call per account.
+    expect(c.imapFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('an account without a cursor entry backfills (first-run sinceMs)', async () => {
+    const cursor = JSON.stringify({ 'a@example.com|INBOX': 4_000 });
+    const c = multiCtx(cursor);
+    await collectEmailEvents(c);
+    const calls = (c.imapFetch as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [{ username: string; sinceMs: number }]
+    >;
+    const byUser = Object.fromEntries(calls.map(([a]) => [a.username, a]));
+    expect(byUser['a@example.com']!.sinceMs).toBe(4_000);
+    expect(Date.now() - byUser['b@example.com']!.sinceMs).toBeLessThan(86_400_000 * 31);
+  });
+
+  it('one failing account does not block the others and keeps its cursor', async () => {
+    const cursor = JSON.stringify({ 'a@example.com|INBOX': 4_000 });
+    const c = multiCtx(cursor, ['a@example.com']);
+    const out = await collectEmailEvents(c);
+    // b (the healthy account) still produced its event.
+    expect(out.events.map((e) => e.id)).toEqual(['email:<b@example.com@x>']);
+    // a's cursor unchanged, b advanced.
+    expect(JSON.parse(out.nextCursor)).toEqual({
+      'a@example.com|INBOX': 4_000,
+      'b@example.com|Archive': 5_000,
+    });
+  });
+
+  it('all accounts failing → throws with per-account messages', async () => {
+    const c = multiCtx(null, ['a@example.com', 'b@example.com']);
+    await expect(collectEmailEvents(c)).rejects.toThrow(/a@example.com: auth failed/);
+  });
+
+  it('all accounts failing → throws with the AppError-shaped message (no [object Object])', async () => {
+    const imapFetch = vi.fn(async () => {
+      throw { category: 'internal', detail: 'imap: login failed' };
+    });
+    const c = {
+      cursor: null,
+      config: MULTI,
+      imapFetch,
+    } as unknown as CollectorContext;
+    await expect(collectEmailEvents(c)).rejects.toThrow(
+      'a@example.com: internal: imap: login failed; b@example.com: internal: imap: login failed',
+    );
   });
 });
 
@@ -152,6 +232,25 @@ describe('helpers', () => {
   it('decodeMimeHeader: encoded display name before an address', () => {
     const raw = '=?UTF-8?B?5byg5LiJ?= <zhang@example.com>';
     expect(decodeMimeHeader(raw)).toBe('张三 <zhang@example.com>');
+  });
+
+  it('parseAccounts: accounts array with defaults, legacy flat config, junk skipped', () => {
+    expect(parseAccounts(MULTI)).toEqual([
+      { username: 'a@example.com', password: 'p1', host: '', port: 993, folder: 'INBOX', backfillDays: 30 },
+      { username: 'b@example.com', password: 'p2', host: '', port: 993, folder: 'Archive', backfillDays: 30 },
+    ]);
+    expect(parseAccounts(CFG)).toHaveLength(1);
+    expect(parseAccounts({ username: 'x@y.com' })).toEqual([]);
+    expect(parseAccounts({ accounts: [{ username: 'x@y.com' }, null, 'junk'] })).toEqual([]);
+    expect(parseAccounts(undefined)).toEqual([]);
+  });
+
+  it('errorText: Error, AppError object, message object, string', () => {
+    expect(errorText(new Error('boom'))).toBe('boom');
+    expect(errorText({ category: 'io', detail: 'dns' })).toBe('io: dns');
+    expect(errorText({ message: 'm' })).toBe('m');
+    expect(errorText('raw')).toBe('raw');
+    expect(errorText(42)).toBe('42');
   });
 
   it('inferImapHost: known table + imap.<domain> fallback + no domain', () => {

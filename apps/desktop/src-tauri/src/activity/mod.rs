@@ -15,7 +15,10 @@ use query::{
 };
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use std::io::{Read, Write};
 use std::net::ToSocketAddrs;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 // ── collector exec (design §2.2 — collectors pull local sources) ──────────────
 // Trusted blob modules cannot import `@tauri-apps/api` (bare specifiers don't
@@ -365,6 +368,103 @@ fn read_text_file(vault_root: &str, path: &str, max_bytes: Option<usize>) -> Opt
 // host, port, credentials, folder, time window, page size. No exec, no shell.
 // TLS only (imaps, default 993) — plaintext/STARTTLS IMAP is not supported.
 
+/// Read+Write wrapper that drops untagged `* ID (...)` response lines while
+/// `filter` is set. imap-proto 0.10 has no RFC 2971 ID variant, and the imap
+/// crate's reader aborts on the unparseable line — then panics on the stale
+/// tag of the next command. NetEase/QQ require the ID command, so during the
+/// ID exchange (login → tagged ID response) the line is filtered out before
+/// the crate ever sees it; everything else passes through byte-for-byte.
+/// Filtering is ONLY active for the ID exchange — never during FETCH bodies,
+/// whose literal data could legitimately contain a `* ID`-prefixed line.
+struct IdFilterStream<T> {
+    inner: T,
+    filter: Arc<AtomicBool>,
+    /// Complete lines ready to hand out.
+    ready: Vec<u8>,
+    /// Trailing incomplete line (might still turn out to be `* ID`).
+    partial: Vec<u8>,
+}
+
+impl<T> IdFilterStream<T> {
+    fn new(inner: T, filter: Arc<AtomicBool>) -> Self {
+        Self { inner, filter, ready: Vec::new(), partial: Vec::new() }
+    }
+}
+
+impl<T: Read + Write> Read for IdFilterStream<T> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if !self.filter.load(Ordering::SeqCst) {
+            // Past the ID exchange: drain buffered bytes (ready lines first,
+            // then the held partial line), then delegate.
+            if !self.ready.is_empty() {
+                let n = self.ready.len().min(buf.len());
+                buf[..n].copy_from_slice(&self.ready[..n]);
+                self.ready.drain(..n);
+                if n > 0 {
+                    return Ok(n);
+                }
+            }
+            if !self.partial.is_empty() {
+                let n = self.partial.len().min(buf.len());
+                buf[..n].copy_from_slice(&self.partial[..n]);
+                self.partial.drain(..n);
+                if n > 0 {
+                    return Ok(n);
+                }
+            }
+            return self.inner.read(buf);
+        }
+        // Filtering: pull lines from the server, drop `* ID` ones.
+        loop {
+            if !self.ready.is_empty() {
+                let n = self.ready.len().min(buf.len());
+                buf[..n].copy_from_slice(&self.ready[..n]);
+                self.ready.drain(..n);
+                return Ok(n);
+            }
+            let mut chunk = [0u8; 1024];
+            let n = self.inner.read(&mut chunk)?;
+            if n == 0 {
+                // EOF: the held partial line can no longer grow — emit it.
+                if self.partial.is_empty() {
+                    return Ok(0);
+                }
+                let mut src = std::mem::take(&mut self.partial);
+                let n = src.len().min(buf.len());
+                buf[..n].copy_from_slice(&src[..n]);
+                let rest = src.split_off(n);
+                self.partial = rest;
+                return Ok(n);
+            }
+            let data = &chunk[..n];
+            // Split on \n, keeping line endings; the final segment may be partial.
+            let mut start = 0;
+            for (i, &b) in data.iter().enumerate() {
+                if b == b'\n' {
+                    let mut line = self.partial.split_off(0);
+                    line.extend_from_slice(&data[start..=i]);
+                    start = i + 1;
+                    if line.starts_with(b"* ID") {
+                        continue; // dropped
+                    }
+                    self.ready.extend_from_slice(&line);
+                }
+            }
+            self.partial.extend_from_slice(&data[start..]);
+            // Loop: ready may now be non-empty; otherwise read more.
+        }
+    }
+}
+
+impl<T: Write> Write for IdFilterStream<T> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.inner.write(buf)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.inner.flush()
+    }
+}
+
 /// One message returned by `activity_imap_fetch` (serde camelCase for the JS side).
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -523,14 +623,27 @@ fn imap_fetch(args: ImapFetchArgs) -> Result<Vec<ImapMessage>, AppError> {
     let tls_client = rustls::ClientConnection::new(std::sync::Arc::new(tls_config), server_name)
         .map_err(|e| format!("activity_imap_fetch: TLS setup for {host} failed: {e}"))?;
     let conn = rustls::StreamOwned::new(tls_client, tcp);
-
-    let mut client = imap::Client::new(conn);
+    // Filter handle: set only during the ID exchange below (see IdFilterStream).
+    let id_filter = Arc::new(AtomicBool::new(false));
+    let mut client = imap::Client::new(IdFilterStream::new(conn, Arc::clone(&id_filter)));
     client
         .read_greeting()
         .map_err(|e| format!("activity_imap_fetch: greeting from {host} failed: {e}"))?;
     let mut session = client
         .login(&args.username, &args.password)
         .map_err(|(e, _)| format!("activity_imap_fetch: login to {host} failed: {e}"))?;
+    // NetEase (163/126/yeah) and QQ IMAP reject post-login commands with
+    // "Unsafe Login" until the client identifies itself via RFC 2971 ID.
+    // The untagged `* ID` response line is dropped by IdFilterStream (imap-proto
+    // can't parse it — see the struct docs). Best-effort: servers without ID
+    // answer BAD, which is fine.
+    id_filter.store(true, Ordering::SeqCst);
+    let id_result = session.run_command_and_check_ok(format!(
+        "ID (\"name\" \"Folyn\" \"version\" \"{}\")",
+        env!("CARGO_PKG_VERSION")
+    ));
+    id_filter.store(false, Ordering::SeqCst);
+    let _ = id_result;
 
     let result = (|| -> Result<Vec<ImapMessage>, AppError> {
         session
@@ -934,5 +1047,119 @@ mod scan_tests {
         let err =
             activity_scan_vault("/definitely/not/a/dir".into(), vec![], vec![]).unwrap_err();
         assert!(err.to_string().contains("not a directory"));
+    }
+}
+
+#[cfg(test)]
+mod id_filter_tests {
+    use super::*;
+
+    /// Mock server stream: yields at most `chunk` bytes per read (simulates TCP
+    /// segmentation), discards writes.
+    struct MockServer {
+        data: Vec<u8>,
+        pos: usize,
+        chunk: usize,
+    }
+
+    impl MockServer {
+        fn new(data: &str) -> Self {
+            Self { data: data.as_bytes().to_vec(), pos: 0, chunk: usize::MAX }
+        }
+        fn chunked(data: &str, chunk: usize) -> Self {
+            Self { data: data.as_bytes().to_vec(), pos: 0, chunk }
+        }
+    }
+
+    impl Read for MockServer {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let n = (self.data.len() - self.pos).min(buf.len()).min(self.chunk);
+            if n == 0 {
+                return Ok(0);
+            }
+            buf[..n].copy_from_slice(&self.data[self.pos..self.pos + n]);
+            self.pos += n;
+            Ok(n)
+        }
+    }
+
+    impl Write for MockServer {
+        fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+            Ok(_buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn read_all(stream: &mut IdFilterStream<MockServer>) -> Vec<u8> {
+        let mut out = Vec::new();
+        let mut buf = [0u8; 8];
+        loop {
+            let n = stream.read(&mut buf).unwrap();
+            if n == 0 {
+                return out;
+            }
+            out.extend_from_slice(&buf[..n]);
+        }
+    }
+
+    #[test]
+    fn drops_untagged_id_line_while_filtering() {
+        let filter = Arc::new(AtomicBool::new(true));
+        let mut s = IdFilterStream::new(
+            MockServer::new("* ID (\"name\" \"GImap\")\r\na2 OK ID fine\r\n"),
+            Arc::clone(&filter),
+        );
+        assert_eq!(read_all(&mut s), b"a2 OK ID fine\r\n");
+    }
+
+    #[test]
+    fn passes_through_when_filter_off() {
+        let filter = Arc::new(AtomicBool::new(false));
+        let data = "* ID (\"name\" \"x\")\r\n* 3 EXISTS\r\na2 OK\r\n";
+        let mut s = IdFilterStream::new(MockServer::new(data), Arc::clone(&filter));
+        assert_eq!(read_all(&mut s), data.as_bytes());
+    }
+
+    #[test]
+    fn id_line_split_across_reads_is_still_dropped() {
+        let filter = Arc::new(AtomicBool::new(true));
+        let mut s = IdFilterStream::new(
+            MockServer::chunked("* ID (\"name\" \"x\")\r\na2 OK done\r\n", 7),
+            Arc::clone(&filter),
+        );
+        assert_eq!(read_all(&mut s), b"a2 OK done\r\n");
+    }
+
+    #[test]
+    fn other_untagged_lines_pass_while_filtering() {
+        let filter = Arc::new(AtomicBool::new(true));
+        let data = "* CAPABILITY IMAP4rev1 ID\r\n* 12 EXISTS\r\na2 OK\r\n";
+        let mut s = IdFilterStream::new(MockServer::new(data), Arc::clone(&filter));
+        assert_eq!(read_all(&mut s), data.as_bytes());
+    }
+
+    #[test]
+    fn buffered_bytes_flush_after_filter_turns_off() {
+        // Read once while filtering (only the ID exchange is buffered), then
+        // disable and drain — the held tagged line must come out.
+        let filter = Arc::new(AtomicBool::new(true));
+        let mut s = IdFilterStream::new(
+            MockServer::new("* ID (\"name\" \"x\")\r\na2 OK\r\n"),
+            Arc::clone(&filter),
+        );
+        let mut first = Vec::new();
+        let mut buf = [0u8; 8];
+        loop {
+            let n = s.read(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            first.extend_from_slice(&buf[..n]);
+        }
+        assert_eq!(first, b"a2 OK\r\n");
+        filter.store(false, Ordering::SeqCst);
+        assert_eq!(read_all(&mut s), b"");
     }
 }

@@ -27,6 +27,18 @@ import { getCollectorSettings, useActivityCollectorStore, type CollectRunRecord 
 /** Poll interval floor (design §2.1): no collector can poll faster than 60s. */
 export const MIN_POLL_INTERVAL_MS = 60_000;
 
+/** Collect failure → readable text. Tauri command failures reject with the
+ *  host's AppError shape `{category, detail}`, not Error instances. */
+export function collectErrorText(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    const r = err as Record<string, unknown>;
+    if (typeof r.detail === 'string') return `${String(r.category ?? 'error')}: ${r.detail}`;
+    if (typeof r.message === 'string') return r.message;
+  }
+  return String(err);
+}
+
 /** Effective interval: user override wins over the declared default, floored
  *  at 60s either way. Missing both → the floor itself. */
 export function effectiveIntervalMs(
@@ -170,6 +182,8 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
   const startedAt = Date.now();
   const logs: string[] = [];
   let pushed: ActivityPushOutcome | null = null;
+  // Fresh run: the previous run's error no longer applies.
+  store.getState().setCollectError(collectorId, null);
   try {
     const { events, nextCursor } = await reg.impl.collect({
       cursor,
@@ -258,6 +272,7 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
     return outcome;
   } catch (err) {
     console.warn(`[activity] collector "${collectorId}" collect failed:`, err);
+    store.getState().setCollectError(collectorId, collectErrorText(err));
     return null;
   } finally {
     store.getState().setCollectProgress(collectorId, null);
