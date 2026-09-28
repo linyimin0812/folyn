@@ -527,7 +527,7 @@ export function ActivityPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden max-w-[1200px] w-full mx-auto px-8">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
             <EntityGraphView vaultRoot={vaultRoot} range={range} />
           </div>
         )}

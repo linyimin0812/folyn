@@ -3,8 +3,10 @@
  * selected center, same-type neighbors (≥2) collapsed into aggregate nodes,
  * static radial layout (canvas fills the pane; each node sits on its own
  * radius so every edge shows the same visible length, centered in it). Clicking a neighbor makes it the
- * new center (refetch); clicking an aggregate node lists its members in the
- * right side panel (click again to collapse).
+ * new center (refetch, full re-layout); clicking an aggregate node with ≤5
+ * members expands them IN-CANVAS as fan children around the aggregate (click
+ * again to collapse), bigger groups list their members in the right side
+ * panel.
  * Unregistered entity types use the raw type string.
  */
 
@@ -40,9 +42,27 @@ function borderDistance(ux: number, uy: number, width: number, height: number): 
 const EDGE_LEN = 110;
 // Center-to-center angular gap between adjacent node cards.
 const GUTTER = 36;
-// Groups larger than this auto-open their member panel on arrival (small
-// groups still expand on click — into the panel too, just not automatically).
+// Groups above this list their members in the right side panel (opened by
+// clicking the aggregate card); groups at or below it expand IN-CANVAS on
+// click: members become full-size node
+// cards in an outward arc around the aggregate card (ARC_STEP spans at most
+// ±135° — see ARC_STEP). The angle solver reserves the arc's symmetric
+// tangential extent (FAN_EXTENT) for the expanded slot.
 const PANEL_MAX = 5;
+// Target visible connector length (main edges show EDGE_LEN=110; child
+// spokes one level shorter).
+const CHILD_LINE = 90;
+// Outward arc: children at ARC_STEP around the parent's outward radial
+// direction (k=5 spans exactly ±135°; fewer members = narrower arc). The
+// ±135° cap keeps children off the inward radial line — the center edge is
+// never occluded and no child points at the center, so no orbit-radius floor
+// is needed. Per-child distance is direction-dependent
+// (2·borderDistance + CHILD_LINE): AABB-separated from the parent on the
+// child's own axis, uniform ~84px visible connector.
+const ARC_STEP = (3 * Math.PI) / 8; // 67.5°
+// Worst tangential reach of the arc (max d · sin135° + card half), used by
+// the angle solver's reservation.
+const FAN_EXTENT = (NODE_W + CHILD_LINE) * Math.SQRT1_2 + NODE_W / 2;
 
 // Node-center radius for a slot direction: center border + visible edge +
 // node border + 8 (absorbs the 3+5 endpoint insets) → every edge shows the
@@ -70,9 +90,13 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
   const arrowId = useId();
   // centerHistory holds entity ids; the last entry is the current center.
   const [history, setHistory] = useState<string[]>([]);
-  // entityType keys of the aggregate nodes whose members are expanded in-graph
-  // (multiple groups may be expanded at once, each toggling only itself).
+  // entityType keys of the aggregate nodes whose members are listed in the
+  // right side panel (groups > PANEL_MAX).
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  // entityType keys of the aggregate nodes expanded IN-CANVAS as fan children
+  // (groups ≤ PANEL_MAX; multiple groups may be expanded at once, each
+  // toggling only itself).
+  const [fanGroups, setFanGroups] = useState<Set<string>>(new Set());
 
   const entityTypes = useCollectorRegistryStore((s) => s.entityTypes);
 
@@ -211,24 +235,10 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
     aggregate: g.items.length > 1,
   }));
 
-  // Arriving at a center auto-opens the member panel for the first too-big-
-  // for-canvas group: clicking the mailbox node should reveal its senders
-  // directly, not behind a second aggregate click. Closing the panel or
-  // collapsing stays closed until the next navigation (deps = group shape).
-  const autoPanelKey = displayItems.map((di) => `${di.entityType}#${di.items.length}`).join(',');
-  useEffect(() => {
-    const big = displayItems.find((di) => di.items.length > PANEL_MAX);
-    if (!big) return;
-    setExpandedGroups((prev) => {
-      if (prev.has(big.entityType)) return prev;
-      const next = new Set(prev);
-      next.add(big.entityType);
-      return next;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPanelKey]);
-
   const slots = displayItems.length;
+  const isFanOpen = (di: { entityType: string; items: unknown[]; aggregate: boolean }): boolean =>
+    di.aggregate && di.items.length <= PANEL_MAX && fanGroups.has(di.entityType);
+  const hasFan = displayItems.some(isFanOpen);
   // Angular allocation: the gap two adjacent cards need depends on their
   // FINAL angles (card tangential extent at that orientation + orbit radius),
   // which depend on the gaps — solved by fixed-point iteration. The required
@@ -254,7 +264,18 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
           if (Math.abs(p[i]!.x - p[j]!.x) < NODE_W && Math.abs(p[i]!.y - p[j]!.y) < NODE_H) return true;
       return false;
     };
-    for (let iter = 0; iter < 24 && overlaps(); iter++) {
+    // The fan is an arc symmetric around the slot's angle: flat worst-case
+    // tangential reach (max child offset · sin135° + card half).
+    const extOf = (j: number): number => {
+      const di = displayItems[j];
+      if (di && isFanOpen(di)) return FAN_EXTENT;
+      return tangentExtent(a[j]!);
+    };
+    // Without fans: only iterate when cards actually overlap — the uniform
+    // seed distribution is kept as-is on sparse orbits. With fans: at least
+    // one pass even without overlap, because the fan reservation below must
+    // apply (overlaps() only sees orbit cards).
+    for (let iter = 0; iter < 24 && (overlaps() || (hasFan && iter === 0)); iter++) {
       const gaps: number[] = [];
       let sum = 0;
       for (let i = 0; i < slots; i++) {
@@ -262,7 +283,12 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
         const th2 = i + 1 < slots ? a[i + 1]! : a[0]! + 2 * Math.PI;
         const mid = (th1 + th2) / 2;
         const rBar = (rScale * (slotRadius(th1) + slotRadius(th2))) / 2;
-        const need = 2 * tangentExtent(mid) + GUTTER;
+        const next = i + 1 < slots ? i + 1 : 0;
+        // Original formula when neither endpoint is fanned (midpoint extent);
+        // a fanned endpoint claims its symmetric arc extent instead.
+        const need = isFanOpen(displayItems[i]!) || isFanOpen(displayItems[next]!)
+          ? extOf(i) + extOf(next) + GUTTER
+          : 2 * tangentExtent(mid) + GUTTER;
         const gap = 2 * Math.asin(Math.min(1, need / (2 * rBar)));
         gaps.push(gap);
         sum += gap;
@@ -285,10 +311,39 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
     return { angles: slots === 1 ? [-Math.PI / 2] : a, rScale };
   })();
   const radii = angles.map((th) => rScale * slotRadius(th));
+  // Fan children per expanded aggregate group, center-relative (their extent
+  // must be able to grow the canvas below). Child angle = slot angle +
+  // (j − mid)·ARC_STEP around the aggregate's outward radial direction;
+  // distance is direction-dependent (2·borderDistance + CHILD_LINE).
+  const fanRel = displayItems.flatMap((di, i) => {
+    if (!isFanOpen(di)) return [];
+    const angle = angles[i] ?? -Math.PI / 2;
+    const r = radii[i] ?? slotRadius(angle);
+    const arx = r * Math.cos(angle);
+    const ary = r * Math.sin(angle);
+    const mid = (di.items.length - 1) / 2;
+    return di.items.map((item, j) => {
+      const theta = angle + (j - mid) * ARC_STEP;
+      const d = 2 * borderDistance(Math.cos(theta), Math.sin(theta), NODE_W, NODE_H) + CHILD_LINE;
+      return {
+        item,
+        entityType: di.entityType,
+        arx,
+        ary,
+        ox: arx + d * Math.cos(theta),
+        oy: ary + d * Math.sin(theta),
+      };
+    });
+  });
   // Canvas sized from the actual radii: every node (card included) fits W×H
   // by construction; the canvas also never shrinks below the pane (box).
-  const maxAx = radii.length ? Math.max(...radii.map((r, i) => r * Math.abs(Math.cos(angles[i]!)))) : 0;
-  const maxAy = radii.length ? Math.max(...radii.map((r, i) => r * Math.abs(Math.sin(angles[i]!)))) : 0;
+  // Fan child offsets are folded in so expansions never clip.
+  const maxAx = radii.length
+    ? Math.max(...radii.map((r, i) => r * Math.abs(Math.cos(angles[i]!))), ...fanRel.map((c) => Math.abs(c.ox)))
+    : 0;
+  const maxAy = radii.length
+    ? Math.max(...radii.map((r, i) => r * Math.abs(Math.sin(angles[i]!))), ...fanRel.map((c) => Math.abs(c.oy)))
+    : 0;
   const W = Math.max(box.w, 2 * maxAx + NODE_W + 48);
   const H = Math.max(box.h, 2 * maxAy + NODE_H + 48);
   const CX = W / 2;
@@ -296,12 +351,14 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
 
   const navigateTo = (id: string) => {
     setExpandedGroups(new Set());
+    setFanGroups(new Set());
     setPan({ x: 0, y: 0 });
     setHistory((h) => [...h, id]);
   };
   // Pops the center history one level (back toward the root 'self' center).
   const goBack = () => {
     setExpandedGroups(new Set());
+    setFanGroups(new Set());
     setPan({ x: 0, y: 0 });
     setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
   };
@@ -350,11 +407,18 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
     };
   });
 
-  // Group expansion ALWAYS renders in the right member panel. In-canvas fans
-  // overlapped neighboring cards at any size — wide fans exceeded the
-  // ±PAN_PAD pan bound (overflow-x is hidden), and even small fans grazed
-  // adjacent aggregate cards. The canvas keeps only the center + aggregate
-  // nodes (radial layout, fits W×H by construction — no overlap possible).
+  // Fan children at absolute positions: full-size member cards in the
+  // outward arc around their aggregate card (ax, ay).
+  const fanChildren = fanRel.map((c) => ({
+    ...c,
+    ax: CX + c.arx,
+    ay: CY + c.ary,
+    cx: CX + c.ox,
+    cy: CY + c.oy,
+  }));
+
+  // Groups > PANEL_MAX keep the right member panel; smaller ones expand
+  // in-canvas (fanChildren above).
   const panelGroup = nodeLayouts.find(
     (nl) => expandedGroups.has(nl.di.entityType) && nl.di.aggregate,
   );
@@ -434,10 +498,65 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
                   </g>
                 );
               })}
+              {/* Fan spokes: aggregate → child connectors (quadratic bezier
+                  trimmed at both card borders, bowed away from the
+                  aggregate's outward radial direction). */}
+              {fanChildren.map((c) => {
+                const { ax, ay, cx, cy, item } = c;
+                const dxs = cx - ax;
+                const dys = cy - ay;
+                const len = Math.hypot(dxs, dys) || 1;
+                const ux = dxs / len;
+                const uy = dys / len;
+                const start = borderDistance(ux, uy, NODE_W, NODE_H) + 3;
+                const end = borderDistance(ux, uy, NODE_W, NODE_H) + 3;
+                const x1 = ax + start * ux;
+                const y1 = ay + start * uy;
+                const x2 = cx - end * ux;
+                const y2 = cy - end * uy;
+                // Bow away from the center's radial line through the
+                // aggregate: side of the child chord relative to that radial
+                // direction (cross product).
+                const seed = item.neighborId.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0);
+                const rx = ax - CX;
+                const ry = ay - CY;
+                const cross = rx * (cy - ay) - ry * (cx - ax);
+                const dir = cross === 0 ? (seed % 2 === 0 ? 1 : -1) : Math.sign(cross);
+                const mag = dir * (0.08 + (seed % 3) * 0.03) * len; // 8–14% of chord
+                const ex = x2 - x1;
+                const ey = y2 - y1;
+                const cxp = (x1 + x2) / 2 - (ey / len) * mag;
+                const cyp = (y1 + y2) / 2 + (ex / len) * mag;
+                const relation = item.relation ?? '';
+                // Same pill formula/rationale as the node edges above.
+                const pillW = Math.min(96, relation.length * 9 + 12);
+                // Bezier t=0.5 point: 0.25·P0 + 0.5·C + 0.25·P1.
+                const mx = 0.25 * x1 + 0.5 * cxp + 0.25 * x2;
+                const my = 0.25 * y1 + 0.5 * cyp + 0.25 * y2;
+                return (
+                  <g key={item.neighborId}>
+                    <path
+                      d={`M${x1} ${y1} Q${cxp} ${cyp} ${x2} ${y2}`}
+                      fill="none"
+                      stroke="var(--t2)"
+                      strokeWidth="1.5"
+                      markerEnd={`url(#${arrowId})`}
+                    />
+                    {relation !== '' && (
+                      <g transform={`translate(${mx} ${my})`}>
+                        <rect x={-pillW / 2} y={-7} width={pillW} height={14} rx={5} fill="var(--panel)" stroke="var(--brd2)" strokeWidth="1" />
+                        <text textAnchor="middle" dominantBaseline="central" fontSize="9" fill="var(--t3)">
+                          {relation}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
             </svg>
             {nodeLayouts.map(({ di, nx, ny }) => {
               const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
-              const selected = expandedGroups.has(di.entityType);
+              const selected = di.aggregate && (expandedGroups.has(di.entityType) || fanGroups.has(di.entityType));
               const td = typeDisplayOf(di.entityType);
               const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
               return (
@@ -452,12 +571,26 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
                   className={`flex h-[50px] items-center gap-2 rounded-lg border px-2 text-left cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,.04)] transition hover:-translate-y-px hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
                   onClick={() => {
                     if (di.aggregate) {
-                      setExpandedGroups((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(di.entityType)) next.delete(di.entityType);
-                        else next.add(di.entityType);
-                        return next;
-                      });
+                      // ≤ PANEL_MAX expands in-canvas (fan), larger groups
+                      // keep the right member panel.
+                      if (di.items.length > PANEL_MAX) {
+                        setExpandedGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(di.entityType)) next.delete(di.entityType);
+                          else next.add(di.entityType);
+                          return next;
+                        });
+                      } else {
+                        // Fan toggle also closes the member panel: clicking a
+                        // node means "look at this", not both views at once.
+                        setExpandedGroups(new Set());
+                        setFanGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(di.entityType)) next.delete(di.entityType);
+                          else next.add(di.entityType);
+                          return next;
+                        });
+                      }
                     } else {
                       navigateTo(di.items[0]!.neighborId);
                     }
@@ -478,6 +611,40 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
                     <span className="flex w-full items-center justify-between gap-2 text-[11px] text-t3">
                       <span className="truncate">{di.aggregate ? t('activity:graph.groupCount', { count: di.items.length }) : typeLabelOf(di.entityType)}</span>
                       {di.aggregate && <span aria-hidden="true">›</span>}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+            {fanChildren.map((c) => {
+              // Fan child card: same node-card markup as a non-aggregate
+              // neighbor; clicking navigates (full re-layout around it).
+              const label = nameOf(c.item.neighborId);
+              const td = typeDisplayOf(c.entityType);
+              const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
+              return (
+                <button
+                  key={c.item.neighborId}
+                  type="button"
+                  title={label}
+                  style={{ position: 'absolute', left: c.cx - NODE_W / 2, top: c.cy - NODE_H / 2, width: NODE_W }}
+                  className="flex h-[50px] items-center gap-2 rounded-lg border px-2 text-left cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,.04)] transition hover:-translate-y-px hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc border-brd2 bg-panel hover:border-t3 hover:bg-hov"
+                  onClick={() => navigateTo(c.item.neighborId)}
+                >
+                  <span
+                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: pal.bg, color: pal.color }}
+                  >
+                    {td?.icon ? (
+                      <LucideNameIcon name={td.icon} size={12} />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
+                    )}
+                  </span>
+                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <span className="block w-full truncate text-[13px] font-medium text-t1">{label}</span>
+                    <span className="flex w-full items-center justify-between gap-2 text-[11px] text-t3">
+                      <span className="truncate">{typeLabelOf(c.entityType)}</span>
                     </span>
                   </span>
                 </button>
@@ -512,9 +679,10 @@ export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
     <div
       className="h-full min-h-0 overflow-hidden flex flex-col"
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && expandedGroups.size > 0) {
+        if (event.key === 'Escape' && (expandedGroups.size > 0 || fanGroups.size > 0)) {
           event.stopPropagation();
           setExpandedGroups(new Set());
+          setFanGroups(new Set());
         }
       }}
     >
