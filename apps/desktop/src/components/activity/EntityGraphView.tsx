@@ -3,8 +3,8 @@
  * selected center, same-type neighbors (≥2) collapsed into aggregate nodes,
  * static radial layout (canvas fills the pane; each node sits on its own
  * radius so every edge shows the same visible length, centered in it). Clicking a neighbor makes it the
- * new center (refetch); clicking an aggregate node expands its member
- * instances in the graph as a fan around it (click again to collapse).
+ * new center (refetch); clicking an aggregate node lists its members in the
+ * right side panel (click again to collapse).
  * Unregistered entity types use the raw type string.
  */
 
@@ -40,6 +40,9 @@ function borderDistance(ux: number, uy: number, width: number, height: number): 
 const EDGE_LEN = 110;
 // Center-to-center angular gap between adjacent node cards.
 const GUTTER = 36;
+// Groups larger than this auto-open their member panel on arrival (small
+// groups still expand on click — into the panel too, just not automatically).
+const PANEL_MAX = 5;
 
 // Node-center radius for a slot direction: center border + visible edge +
 // node border + 8 (absorbs the 3+5 endpoint insets) → every edge shows the
@@ -57,9 +60,12 @@ const tangentExtent = (theta: number): number =>
 
 interface EntityGraphViewProps {
   vaultRoot: string;
+  /** Same window as the timeline — the graph shows only relations whose
+   *  events fall inside it, so the two views stay consistent. */
+  range: { from: number; to: number };
 }
 
-export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
+export function EntityGraphView({ vaultRoot, range }: EntityGraphViewProps) {
   const { t } = useTranslation();
   const arrowId = useId();
   // centerHistory holds entity ids; the last entry is the current center.
@@ -154,15 +160,17 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
 
   // Edges from disabled collectors are hidden (same include-list as the
   // timeline/metrics reads); toggling a collector refetches the neighbors.
+  // The date range matches the timeline's period picker.
   const enabledSources = useEnabledSources();
   const sourcesKey = enabledSources.join(',');
+  const rangeKey = `${range.from}:${range.to}`;
 
   const { data: neighbors } = useAsync(
     () =>
       vaultRoot && centerId
-        ? getActivityEntityNeighbors(vaultRoot, centerId, enabledSources)
+        ? getActivityEntityNeighbors(vaultRoot, centerId, enabledSources, range)
         : Promise.resolve([] as ActivityNeighborRow[]),
-    [vaultRoot, centerId, sourcesKey],
+    [vaultRoot, centerId, sourcesKey, rangeKey],
   );
 
   const typeLabelOf = (typeId: string): string => {
@@ -180,7 +188,7 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
   };
 
   // Neighbor rows are per (entity, relation) — one entity with several
-  // relation types would yield duplicate React keys in the fan. Collapse to
+  // relation types would yield duplicate React keys in the member panel.
   // one row per entity, keeping the highest-score (first) row's relation.
   const uniqueNeighbors = useMemo(() => {
     const seen = new Set<string>();
@@ -202,29 +210,81 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     items: g.items,
     aggregate: g.items.length > 1,
   }));
+
+  // Arriving at a center auto-opens the member panel for the first too-big-
+  // for-canvas group: clicking the mailbox node should reveal its senders
+  // directly, not behind a second aggregate click. Closing the panel or
+  // collapsing stays closed until the next navigation (deps = group shape).
+  const autoPanelKey = displayItems.map((di) => `${di.entityType}#${di.items.length}`).join(',');
+  useEffect(() => {
+    const big = displayItems.find((di) => di.items.length > PANEL_MAX);
+    if (!big) return;
+    setExpandedGroups((prev) => {
+      if (prev.has(big.entityType)) return prev;
+      const next = new Set(prev);
+      next.add(big.entityType);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPanelKey]);
+
   const slots = displayItems.length;
-  // Tangential-footprint-weighted angles: each slot gets a share of 2π
-  // proportional to (card tangential extent + gutter) / radius, so wide
-  // horizontal slots take more angle than narrow vertical ones. First slot
-  // sits at θ=-π/2 (straight up).
-  // ponytail: one-pass proportional — weights are measured at uniform seed
-  // angles, not the final ones, so adjacent gaps are near-constant, not exact.
-  const angles: number[] =
-    slots === 1
-      ? [-Math.PI / 2]
-      : (() => {
-          const seed = Array.from({ length: slots }, (_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / slots);
-          const weights = seed.map((th) => (2 * tangentExtent(th) + GUTTER) / slotRadius(th));
-          const total = weights.reduce((a, b) => a + b, 0);
-          if (total <= 0) return seed; // guard: uniform fallback
-          let acc = -Math.PI / 2;
-          return weights.map((wi) => {
-            const th = acc;
-            acc += (wi / total) * 2 * Math.PI;
-            return th;
-          });
-        })();
-  const radii = angles.map(slotRadius);
+  // Angular allocation: the gap two adjacent cards need depends on their
+  // FINAL angles (card tangential extent at that orientation + orbit radius),
+  // which depend on the gaps — solved by fixed-point iteration. The required
+  // gaps are exact (verified against the real card rects each iteration); the
+  // orbit radius only grows when the gaps can't fit in 2π (≥ ~8 slots). The
+  // old one-pass proportional split measured weights at the uniform seed
+  // angles, leaving wrap-around gaps ~40° where cards need ~65° — cards
+  // overlapped (4 groups was already enough).
+  // First slot sits at θ=-π/2 (straight up).
+  const { angles, rScale } = (() => {
+    const a0 = Array.from({ length: slots }, (_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / slots);
+    let a = a0;
+    let rScale = 1;
+    const pos = (i: number) => {
+      const th = a[i]!;
+      const r = rScale * slotRadius(th);
+      return { x: r * Math.cos(th), y: r * Math.sin(th) };
+    };
+    const overlaps = () => {
+      const p = Array.from({ length: slots }, (_, i) => pos(i));
+      for (let i = 0; i < slots; i++)
+        for (let j = i + 1; j < slots; j++)
+          if (Math.abs(p[i]!.x - p[j]!.x) < NODE_W && Math.abs(p[i]!.y - p[j]!.y) < NODE_H) return true;
+      return false;
+    };
+    for (let iter = 0; iter < 24 && overlaps(); iter++) {
+      const gaps: number[] = [];
+      let sum = 0;
+      for (let i = 0; i < slots; i++) {
+        const th1 = a[i]!;
+        const th2 = i + 1 < slots ? a[i + 1]! : a[0]! + 2 * Math.PI;
+        const mid = (th1 + th2) / 2;
+        const rBar = (rScale * (slotRadius(th1) + slotRadius(th2))) / 2;
+        const need = 2 * tangentExtent(mid) + GUTTER;
+        const gap = 2 * Math.asin(Math.min(1, need / (2 * rBar)));
+        gaps.push(gap);
+        sum += gap;
+      }
+      if (sum > 2 * Math.PI) {
+        // Gaps can't fit the orbit: grow the radius (required gap ~ 1/r) and
+        // re-measure.
+        rScale *= (sum / (2 * Math.PI)) * 1.05;
+        continue;
+      }
+      // Distribute the leftover angle evenly so gaps stay near-constant.
+      const extra = (2 * Math.PI - sum) / slots;
+      let acc = -Math.PI / 2;
+      a = gaps.map((g) => {
+        const th = acc;
+        acc += g + extra;
+        return th;
+      });
+    }
+    return { angles: slots === 1 ? [-Math.PI / 2] : a, rScale };
+  })();
+  const radii = angles.map((th) => rScale * slotRadius(th));
   // Canvas sized from the actual radii: every node (card included) fits W×H
   // by construction; the canvas also never shrinks below the pane (box).
   const maxAx = radii.length ? Math.max(...radii.map((r, i) => r * Math.abs(Math.cos(angles[i]!)))) : 0;
@@ -238,6 +298,12 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     setExpandedGroups(new Set());
     setPan({ x: 0, y: 0 });
     setHistory((h) => [...h, id]);
+  };
+  // Pops the center history one level (back toward the root 'self' center).
+  const goBack = () => {
+    setExpandedGroups(new Set());
+    setPan({ x: 0, y: 0 });
+    setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
   };
 
   if (entities?.length === 0) {
@@ -284,71 +350,20 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
     };
   });
 
-  // Expanded groups: members fan out around each aggregate node, spread
-  // symmetrically around the outward (canvas-center → node) direction.
-  // 170 ≥ 74 (member half-width) + 74 (aggregate half-width) + 22 gutter —
-  // members can never overlap the aggregate card and steal its collapse click.
-  const FAN_R = 170;
-  // Tighter fan cone: members render after the radial node buttons in DOM, so
-  // any remaining overlap with another aggregate card resolves in favor of
-  // the radial node button via zIndex below (fan members stay clickable
-  // otherwise).
-  const MAX_SPREAD = (110 * Math.PI) / 180;
-  // Fan of member positions around a given expanded aggregate node layout.
-  const fanOf = (nl: (typeof nodeLayouts)[number]) => {
-    const { nx, ny } = nl;
-    const items = nl.di.items;
-    const outward = Math.atan2(ny - CY, nx - CX);
-    // Card extent along the fan's tangent + gutter — minimum adjacent
-    // center spacing. ponytail: measured at the outward direction only;
-    // extreme fan members can still graze on wide horizontal fans.
-    const need = Math.abs(NODE_W * -Math.sin(outward)) + Math.abs(NODE_H * Math.cos(outward)) + 14;
-    const idealStep = 2 * Math.asin(Math.min(1, need / (2 * FAN_R)));
-    const cappedStep = MAX_SPREAD / Math.max(1, items.length - 1);
-    const step = Math.min(idealStep, cappedStep);
-    // Radius only grows when the capped spread can't keep cards apart, and
-    // never drops below FAN_R (member cards stay clear of the aggregate).
-    const fanR = Math.max(FAN_R, step < idealStep ? need / (2 * Math.sin(cappedStep / 2)) : FAN_R);
-    const spread = step * (items.length - 1);
-    return items.map((n, i) => {
-      const angle = outward - spread / 2 + step * i;
-      return { n, x: nx + fanR * Math.cos(angle), y: ny + fanR * Math.sin(angle) };
-    });
-  };
-  const fans = nodeLayouts
-    .filter((nl) => expandedGroups.has(nl.di.entityType))
-    .map((nl) => ({ nl, members: fanOf(nl) }));
+  // Group expansion ALWAYS renders in the right member panel. In-canvas fans
+  // overlapped neighboring cards at any size — wide fans exceeded the
+  // ±PAN_PAD pan bound (overflow-x is hidden), and even small fans grazed
+  // adjacent aggregate cards. The canvas keeps only the center + aggregate
+  // nodes (radial layout, fits W×H by construction — no overlap possible).
+  const panelGroup = nodeLayouts.find(
+    (nl) => expandedGroups.has(nl.di.entityType) && nl.di.aggregate,
+  );
 
-  // Extents are computed from ALL potential fan members, not just the
-  // expanded ones: Tauri's WKWebView leaves stale paint from unmounting fan
-  // cards when the collapse also shifts ancestor geometry (dx/dy, svg size).
-  // Keeping dx/dy/contentW/contentH constant per graph (they only change when
-  // center/neighbors/box change) means toggling a group only mounts/unmounts
-  // member cards — nothing else reflows. Side effect: the scroll region is
-  // always sized for all fans, even fully collapsed.
-  const allFanMembers = nodeLayouts
-    .filter((nl) => nl.di.aggregate)
-    .flatMap((nl) => fanOf(nl));
-
-  // No clipping: base layout fits W×H by construction; expanded members may
-  // not. Shift all content by (dx,dy) so it clears the origin and grow the
-  // scroll area to the required size. One translated wrapper holds svg +
-  // HTML overlay so both coordinate systems stay in sync.
-  const PAD = 48;
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const m of allFanMembers) {
-    minX = Math.min(minX, m.x - NODE_W / 2);
-    minY = Math.min(minY, m.y - NODE_H / 2);
-    maxX = Math.max(maxX, m.x + NODE_W / 2);
-    maxY = Math.max(maxY, m.y + NODE_H / 2);
-  }
-  const dx = Number.isFinite(minX) ? Math.max(0, PAD - minX) : 0;
-  const dy = Number.isFinite(minY) ? Math.max(0, PAD - minY) : 0;
-  const contentW = Number.isFinite(maxX) ? Math.max(W, maxX + dx + PAD) : W;
-  const contentH = Number.isFinite(maxY) ? Math.max(H, maxY + dy + PAD) : H;
+  // No canvas fan members: the scroll region is exactly the base canvas box.
+  const dx = 0;
+  const dy = 0;
+  const contentW = W;
+  const contentH = H;
 
   const graph = (
     <div
@@ -419,12 +434,6 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   </g>
                 );
               })}
-              {fans.map(({ nl, members }) =>
-                members.map(({ n, x, y }) => (
-                  // Aggregate → member: covered by both HTML cards at the ends.
-                  <line key={n.neighborId} x1={nl.nx} y1={nl.ny} x2={x} y2={y} stroke="var(--t2)" strokeWidth="1.5" />
-                )),
-              )}
             </svg>
             {nodeLayouts.map(({ di, nx, ny }) => {
               const label = di.aggregate ? typeLabelOf(di.entityType) : nameOf(di.items[0]!.neighborId);
@@ -437,12 +446,9 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   type="button"
                   title={label}
                   aria-expanded={di.aggregate ? selected : undefined}
-                  // Orbit nodes sit above fan member cards (which render after
-                  // in DOM): an overlapped aggregate B must win the click over
-                  // an expanded-A member, or B never expands.
                   // Left/top (not a centering transform) so Tailwind's hover
                   // translate isn't overridden by an inline transform.
-                  style={{ position: 'absolute', left: nx - NODE_W / 2, top: ny - NODE_H / 2, width: NODE_W, ...(selected ? { zIndex: 10 } : { zIndex: 5 }) }}
+                  style={{ position: 'absolute', left: nx - NODE_W / 2, top: ny - NODE_H / 2, width: NODE_W }}
                   className={`flex h-[50px] items-center gap-2 rounded-lg border px-2 text-left cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,.04)] transition hover:-translate-y-px hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc ${selected ? 'border-acc bg-accdim' : 'border-brd2 bg-panel hover:border-t3 hover:bg-hov'}`}
                   onClick={() => {
                     if (di.aggregate) {
@@ -476,35 +482,6 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
                   </span>
                 </button>
               );
-            })}
-            {fans.map(({ nl, members }) => {
-              const td = typeDisplayOf(nl.di.entityType);
-              const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
-              return members.map(({ n, x, y }) => (
-                <button
-                  key={n.neighborId}
-                  type="button"
-                  title={n.relation}
-                  style={{ position: 'absolute', left: x - NODE_W / 2, top: y - NODE_H / 2, width: NODE_W }}
-                  className="flex h-[50px] items-center gap-2 rounded-lg border border-brd2 bg-panel px-2 text-left cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,.04)] transition hover:-translate-y-px hover:shadow-sm hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
-                  onClick={() => navigateTo(n.neighborId)}
-                >
-                  <span
-                    className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: pal.bg, color: pal.color }}
-                  >
-                    {td?.icon ? (
-                      <LucideNameIcon name={td.icon} size={12} />
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
-                    )}
-                  </span>
-                  <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <span className="block w-full truncate text-[13px] font-medium text-t1">{nameOf(n.neighborId)}</span>
-                    <span className="block w-full truncate text-[11px] text-t3">{n.relation}</span>
-                  </span>
-                </button>
-              ));
             })}
             {center && (
               <div
@@ -542,7 +519,86 @@ export function EntityGraphView({ vaultRoot }: EntityGraphViewProps) {
       }}
     >
       <div className="flex flex-1 min-h-0 min-w-0">
-        <div className="flex flex-1 min-w-0 min-h-0 flex-col">{graph}</div>
+        <div className="relative flex flex-1 min-w-0 min-h-0 flex-col">
+          {history.length > 1 && (
+            <button
+              type="button"
+              className="absolute top-2 left-2 z-20 flex h-8 items-center gap-1.5 rounded-lg border border-brd2 bg-panel px-2.5 text-[12px] text-t2 cursor-pointer transition hover:border-t3 hover:bg-hov hover:text-t1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
+              onClick={goBack}
+            >
+              <LucideNameIcon name="arrow-left" size={13} />
+              <span>{t('activity:graph.back')}</span>
+            </button>
+          )}
+          {graph}
+        </div>
+        {panelGroup && (
+          <aside className="w-[260px] shrink-0 min-h-0 overflow-y-auto border-l border-brd bg-panel">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-brd bg-panel px-3 py-2">
+              <span className="flex min-w-0 items-center gap-2">
+                {(() => {
+                  const td = typeDisplayOf(panelGroup.di.entityType);
+                  const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
+                  return (
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: pal.bg, color: pal.color }}>
+                      {td?.icon ? (
+                        <LucideNameIcon name={td.icon} size={11} />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
+                      )}
+                    </span>
+                  );
+                })()}
+                <span className="min-w-0 truncate text-[13px] font-medium text-t1">
+                  {typeLabelOf(panelGroup.di.entityType)}
+                  <span className="ml-1.5 text-[11px] font-normal text-t3">
+                    {t('activity:graph.groupCount', { count: panelGroup.di.items.length })}
+                  </span>
+                </span>
+              </span>
+              <button
+                type="button"
+                className="shrink-0 w-5 h-5 flex items-center justify-center rounded text-t3 hover:text-t1 hover:bg-hov text-[14px] leading-none"
+                onClick={() => {
+                  setExpandedGroups((prev) => {
+                    const next = new Set(prev);
+                    next.delete(panelGroup.di.entityType);
+                    return next;
+                  });
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex flex-col gap-1 p-1.5">
+              {panelGroup.di.items.map((n) => {
+                const td = typeDisplayOf(panelGroup.di.entityType);
+                const pal = ACTIVITY_PALETTE[paletteOf(td?.color)];
+                return (
+                  <button
+                    key={n.neighborId}
+                    type="button"
+                    title={n.relation}
+                    className="flex items-center gap-2 rounded-lg border border-brd2 bg-panel px-2 py-1.5 text-left cursor-pointer transition hover:border-t3 hover:bg-hov focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acc"
+                    onClick={() => navigateTo(n.neighborId)}
+                  >
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: pal.bg, color: pal.color }}>
+                      {td?.icon ? (
+                        <LucideNameIcon name={td.icon} size={11} />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: pal.color }} />
+                      )}
+                    </span>
+                    <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="block w-full truncate text-[13px] font-medium text-t1">{nameOf(n.neighborId)}</span>
+                      <span className="block w-full truncate text-[11px] text-t3">{n.relation}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );

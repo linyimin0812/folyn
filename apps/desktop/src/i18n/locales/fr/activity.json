@@ -102,6 +102,7 @@
     "hint": "Cliquez un nœud pour en faire le centre et voir ses relations",
     "centerInfo": "Centre : {{name}} · {{count}} relations",
     "noRelations": "{{name}} n'a pas encore de relations",
+    "back": "Retour",
     "groupCount": "{{count}}"
   },
   "entityType": {

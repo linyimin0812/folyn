@@ -20,11 +20,13 @@ import {
   type Period,
   dateKey,
   endOfDay,
+  endOfMonth,
   formatPeriodRange,
   isCurrentPeriod,
   quickRange,
   sameDay,
   startOfDay,
+  startOfMonth,
 } from './period';
 import { metricCardsFromRows } from './display';
 import {
@@ -53,11 +55,18 @@ import { TimelineList } from './TimelineList';
 import { CollectAllModal, type CollectAllRun } from './CollectAllModal';
 import { EntityGraphView } from './EntityGraphView';
 
-/** Map the picker's period mode to the report kind (custom ranges: no report). */
-function reportModeOf(mode: Period['mode']): ReportPeriod | null {
-  if (mode === 'today') return 'daily';
-  if (mode === 'week') return 'weekly';
-  if (mode === 'month') return 'monthly';
+/** Map the picker's period to the report kind. Quick tabs map directly;
+ *  calendar-picked ranges map by span (single day → daily, 7 days → weekly,
+ *  whole calendar month → monthly) — so a past day still gets a daily
+ *  report. Other custom spans have no report. */
+function reportModeOf(p: Period): ReportPeriod | null {
+  if (p.mode === 'today') return 'daily';
+  if (p.mode === 'week') return 'weekly';
+  if (p.mode === 'month') return 'monthly';
+  if (sameDay(p.start, p.end)) return 'daily';
+  if (Math.round((p.end.getTime() - p.start.getTime()) / 86_400_000) + 1 === 7) return 'weekly';
+  if (startOfMonth(p.start).getTime() === p.start.getTime() && endOfMonth(p.start).getTime() === p.end.getTime())
+    return 'monthly';
   return null;
 }
 
@@ -175,14 +184,26 @@ export function ActivityPage() {
 
   const showOverlay = useMinimumDuration(eventsLoading, 500);
 
+  // Event type → collecting extension name, for metric-card attribution:
+  // the activityDisplay declarant first, else the collector whose
+  // activityTypes cover the type (builtin-table types like commit).
+  const registryCollectors = useCollectorRegistryStore((s) => s.collectors);
+  const collectorNameForType = (type: string): string | undefined => {
+    const extId =
+      displayByType[type]?.collectorId ??
+      registryCollectors.find((c) => c.activityTypes.includes(type))?.extensionId;
+    return registryCollectors.find((c) => c.extensionId === extId)?.extensionName;
+  };
+
   const cards = metricCardsFromRows(
     metricRows ?? [],
     displayByType,
     (id) => metricLabel(t, id),
     (id) => metricLabel(t, id),
+    collectorNameForType,
   );
 
-  const reportMode = reportModeOf(period.mode);
+  const reportMode = reportModeOf(period);
   const reportLabel = reportMode ? t(`activity:report.${reportMode}`) : '';
   const timeFmt = new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' });
   const dateTimeFmt = new Intl.DateTimeFormat(i18n.language, {
@@ -507,7 +528,7 @@ export function ActivityPage() {
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden max-w-[1200px] w-full mx-auto px-8">
-            <EntityGraphView vaultRoot={vaultRoot} />
+            <EntityGraphView vaultRoot={vaultRoot} range={range} />
           </div>
         )}
       </div>

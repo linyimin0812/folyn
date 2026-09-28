@@ -14,7 +14,8 @@ use query::{
     DigestInput, EntityRow, EventRow, MetricRow, NeighborRow,
 };
 use rusqlite::Connection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::net::ToSocketAddrs;
 
 // ── collector exec (design §2.2 — collectors pull local sources) ──────────────
 // Trusted blob modules cannot import `@tauri-apps/api` (bare specifiers don't
@@ -358,6 +359,224 @@ fn read_text_file(vault_root: &str, path: &str, max_bytes: Option<usize>) -> Opt
     std::str::from_utf8(window).ok().map(|s| s.to_string())
 }
 
+// ── IMAP fetch (email collector) ──────────────────────────────────────────────
+// Same trust model as scanVault/readVaultFile: a FIXED protocol implementation
+// (imap crate over rustls) where collector-controlled values are pure data —
+// host, port, credentials, folder, time window, page size. No exec, no shell.
+// TLS only (imaps, default 993) — plaintext/STARTTLS IMAP is not supported.
+
+/// One message returned by `activity_imap_fetch` (serde camelCase for the JS side).
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImapFetchArgs {
+    pub host: String,
+    pub port: Option<u16>,
+    pub username: String,
+    pub password: String,
+    pub folder: Option<String>,
+    /// Epoch-ms INTERNALDATE lower bound. SEARCH SINCE is day-granular, so one
+    /// day of slack is subtracted here — callers still filter exactly.
+    pub since_ms: i64,
+    pub max: Option<usize>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImapMessage {
+    pub uid: u32,
+    pub message_id: Option<String>,
+    pub subject: Option<String>,
+    pub from: Option<String>,
+    pub to: Option<String>,
+    /// INTERNALDATE as epoch ms.
+    pub date_ms: i64,
+    /// First ~2KB of BODY[TEXT], only when it sniffs as plain text. Raw
+    /// transfer-encoded bodies (base64/QP) are dropped, not garbled.
+    pub snippet: Option<String>,
+}
+
+/// Fetch new mail over IMAPS for the email collector. Backs the `ctx.imapFetch`
+/// the collector runtime injects. Async + spawn_blocking: the imap crate is
+/// sync, and a network command must not sit on the main thread.
+#[tauri::command]
+pub async fn activity_imap_fetch(args: ImapFetchArgs) -> Result<Vec<ImapMessage>, AppError> {
+    tauri::async_runtime::spawn_blocking(move || imap_fetch(args))
+        .await
+        .map_err(|e| AppError::Internal {
+            detail: format!("imap task join failed: {e}"),
+        })?
+}
+
+const IMAP_MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// Epoch ms → IMAP date "DD-Mon-YYYY" with one day of SINCE slack.
+fn imap_since_date(since_ms: i64) -> String {
+    let secs = since_ms.saturating_sub(86_400_000) / 1000;
+    match time::OffsetDateTime::from_unix_timestamp(secs) {
+        Ok(t) => format!("{:02}-{}-{}", t.day(), IMAP_MONTHS[(t.month() as usize - 1) % 12], t.year()),
+        Err(_) => "01-Jan-1970".to_string(),
+    }
+}
+
+/// Mailbox name → IMAP astring: atom as-is, quoted (with `"`/`\` escaped) when
+/// it contains spaces/quotes. Control chars and non-ASCII are rejected — real
+/// non-ASCII folders are IMAP-UTF7 on the wire and need a proper encoder.
+/// ponytail: add UTF-7 encoding if non-ASCII folder names ever matter.
+fn quote_mailbox(folder: &str) -> Result<String, AppError> {
+    if folder.is_empty()
+        || folder.chars().any(|c| c.is_ascii_control() || !c.is_ascii())
+    {
+        return Err(format!("activity_imap_fetch: invalid folder name: {folder:?}").into());
+    }
+    if folder.chars().any(|c| c == '"' || c == '\\' || c == ' ') {
+        Ok(format!("\"{}\"", folder.replace('\\', "\\\\").replace('"', "\\\"")))
+    } else {
+        Ok(folder.to_string())
+    }
+}
+
+/// Reject hosts with whitespace/control chars (IMAP command injection guard —
+/// the values are spliced into protocol lines host-side).
+fn valid_host(host: &str) -> bool {
+    !host.is_empty() && !host.chars().any(|c| c.is_ascii_control() || c.is_whitespace())
+}
+
+fn lossy(bytes: Option<&[u8]>) -> Option<String> {
+    bytes.map(|b| String::from_utf8_lossy(b).into_owned())
+}
+
+/// `mailbox@host` (+ display name when present) for one envelope address.
+fn format_addr(a: &imap_proto::types::Address<'_>) -> String {
+    let email = match (a.mailbox, a.host) {
+        (Some(m), Some(h)) => format!("{}@{}", String::from_utf8_lossy(m), String::from_utf8_lossy(h)),
+        (Some(m), None) => String::from_utf8_lossy(m).into_owned(),
+        _ => String::new(),
+    };
+    match a.name {
+        Some(n) if !n.is_empty() => format!("{} <{}>", String::from_utf8_lossy(n), email),
+        _ => email,
+    }
+}
+
+fn format_addrs(addrs: &Vec<imap_proto::types::Address<'_>>) -> Option<String> {
+    let joined = addrs.iter().map(format_addr).filter(|s| !s.is_empty()).collect::<Vec<_>>().join(", ");
+    (!joined.is_empty()).then_some(joined)
+}
+
+/// Any wrapped line ≥40 chars of pure base64 alphabet → treat as encoded.
+/// ponytail: heuristic, not decoding — quoted-printable slips through; add a
+/// real decoder when body previews (not just subject/from) matter.
+fn looks_base64(b: &[u8]) -> bool {
+    b.split(|&c| c == b'\n' || c == b'\r').any(|line| {
+        line.len() >= 40
+            && line.iter().all(|&c| c.is_ascii_alphanumeric() || c == b'+' || c == b'/' || c == b'=')
+    })
+}
+
+/// Keep a body prefix only when it sniffs as plain text (binary and base64
+/// dropped rather than garbled).
+fn text_snippet(bytes: Option<&[u8]>) -> Option<String> {
+    let b = bytes?;
+    if b.is_empty() || looks_base64(b) {
+        return None;
+    }
+    let printable = b.iter().filter(|&&c| c == b'\n' || c == b'\r' || c == b'\t' || (0x20..0x7f).contains(&c) || c >= 0x80).count();
+    if printable * 10 < b.len() * 9 {
+        return None;
+    }
+    Some(String::from_utf8_lossy(b).trim().to_string())
+}
+
+fn imap_fetch(args: ImapFetchArgs) -> Result<Vec<ImapMessage>, AppError> {
+    let host = args.host.trim().to_string();
+    if !valid_host(&host) {
+        let raw = args.host.clone();
+        return Err(format!("activity_imap_fetch: invalid host: {raw:?}").into());
+    }
+    let port = args.port.unwrap_or(993);
+    let folder = quote_mailbox(args.folder.as_deref().unwrap_or("INBOX").trim())?;
+    let max = args.max.unwrap_or(100).clamp(1, 200);
+
+    let mut roots = rustls::RootCertStore::empty();
+    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let tls_config = rustls::ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth();
+    let server_name = rustls::pki_types::ServerName::try_from(host.clone())
+        .map_err(|e| format!("activity_imap_fetch: bad host name {host:?}: {e}"))?;
+
+    let addr = (host.as_str(), port)
+        .to_socket_addrs()
+        .map_err(|e| format!("activity_imap_fetch: resolving {host}: {e}"))?
+        .next()
+        .ok_or_else(|| AppError::Internal {
+            detail: format!("activity_imap_fetch: no address for {host}"),
+        })?;
+    let tcp = std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(15))
+        .map_err(|e| format!("activity_imap_fetch: connect {host}:{port} failed: {e}"))?;
+    tcp.set_read_timeout(Some(std::time::Duration::from_secs(30)))
+        .map_err(|e| format!("activity_imap_fetch: set timeout: {e}"))?;
+    tcp.set_write_timeout(Some(std::time::Duration::from_secs(30)))
+        .map_err(|e| format!("activity_imap_fetch: set timeout: {e}"))?;
+    let tls_client = rustls::ClientConnection::new(std::sync::Arc::new(tls_config), server_name)
+        .map_err(|e| format!("activity_imap_fetch: TLS setup for {host} failed: {e}"))?;
+    let conn = rustls::StreamOwned::new(tls_client, tcp);
+
+    let mut client = imap::Client::new(conn);
+    client
+        .read_greeting()
+        .map_err(|e| format!("activity_imap_fetch: greeting from {host} failed: {e}"))?;
+    let mut session = client
+        .login(&args.username, &args.password)
+        .map_err(|(e, _)| format!("activity_imap_fetch: login to {host} failed: {e}"))?;
+
+    let result = (|| -> Result<Vec<ImapMessage>, AppError> {
+        session
+            .examine(&folder)
+            .map_err(|e| format!("activity_imap_fetch: examine {folder} failed: {e}"))?;
+        let mut uids: Vec<u32> = session
+            .uid_search(format!("SINCE {}", imap_since_date(args.since_ms)))
+            .map_err(|e| format!("activity_imap_fetch: search failed: {e}"))?
+            .into_iter()
+            .collect();
+        uids.sort_unstable();
+        if uids.len() > max {
+            uids = uids.split_off(uids.len() - max); // newest by ascending UID
+        }
+        if uids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let set = uids.iter().map(|u| u.to_string()).collect::<Vec<_>>().join(",");
+        let fetches = session
+            .uid_fetch(set, "(UID ENVELOPE INTERNALDATE BODY.PEEK[TEXT]<0.2048>)")
+            .map_err(|e| format!("activity_imap_fetch: fetch failed: {e}"))?;
+        let mut out = Vec::with_capacity(fetches.len());
+        for f in fetches.iter() {
+            // INTERNALDATE is the timeline anchor; a message without one is unusable here.
+            let Some(date_ms) = f.internal_date().map(|d| d.timestamp_millis()) else {
+                continue;
+            };
+            let env = f.envelope();
+            out.push(ImapMessage {
+                uid: f.uid.unwrap_or(0),
+                message_id: lossy(env.and_then(|e| e.message_id)),
+                subject: lossy(env.and_then(|e| e.subject)),
+                from: env.and_then(|e| e.from.as_ref()).and_then(format_addrs),
+                to: env.and_then(|e| e.to.as_ref()).and_then(format_addrs),
+                date_ms,
+                snippet: text_snippet(f.text()),
+            });
+        }
+        Ok(out)
+    })();
+
+    // Best-effort logout — errors after a successful fetch are not worth failing on.
+    let _ = session.logout();
+    result
+}
+
 fn with_conn<T>(vault_root: &str, f: impl FnOnce(&Connection) -> T) -> Result<T, AppError> {
     let shared = db::conn(vault_root)?;
     let guard = shared.lock().map_err(|_| AppError::Internal {
@@ -459,15 +678,18 @@ pub fn activity_get_entity(vault_root: String, id: String) -> Result<Option<Enti
     with_conn(&vault_root, |conn| query::get_entity(conn, &id))
 }
 
-/// `sources` semantics as on `activity_aggregate_metrics`.
+/// `sources` semantics as on `activity_aggregate_metrics`. `from`/`to`
+/// (epoch ms) bound the relations the same way the timeline bounds events.
 #[tauri::command]
 pub fn activity_get_entity_neighbors(
     vault_root: String,
     entity_id: String,
     sources: Option<Vec<String>>,
+    from: Option<i64>,
+    to: Option<i64>,
 ) -> Result<Vec<NeighborRow>, AppError> {
     with_conn(&vault_root, |conn| {
-        query::get_entity_neighbors(conn, &entity_id, now_ms(), sources.as_deref())
+        query::get_entity_neighbors(conn, &entity_id, now_ms(), sources.as_deref(), from, to)
     })
 }
 
@@ -596,6 +818,50 @@ mod exe_stem_tests {
         assert_eq!(exe_stem(r"C:\dir\.hidden"), ".hidden");
         assert_eq!(exe_stem("."), ".");
         assert_eq!(exe_stem(""), "");
+    }
+}
+
+#[cfg(test)]
+mod imap_tests {
+    use super::*;
+
+    #[test]
+    fn since_date_formats_with_day_slack() {
+        // 2026-09-28T00:00:00Z → one day back → 27-Sep-2026.
+        assert_eq!(imap_since_date(1_790_553_600_000), "27-Sep-2026");
+        // Pre-epoch input stays valid (no panic), just lands before the epoch.
+        assert_eq!(imap_since_date(-100), "31-Dec-1969");
+    }
+
+    #[test]
+    fn mailbox_quoting() {
+        assert_eq!(quote_mailbox("INBOX").unwrap(), "INBOX");
+        assert_eq!(quote_mailbox("Sent Items").unwrap(), "\"Sent Items\"");
+        assert_eq!(quote_mailbox("we\"ird").unwrap(), "\"we\\\"ird\"");
+        assert!(quote_mailbox("a\\b").is_ok()); // backslash gets escaped, not rejected
+        assert_eq!(quote_mailbox("a\\b").unwrap(), "\"a\\\\b\"");
+        assert!(quote_mailbox("中文").is_err()); // non-ASCII rejected (needs IMAP-UTF7)
+        assert!(quote_mailbox("bad\nname").is_err()); // control chars rejected
+        assert!(quote_mailbox("").is_err());
+    }
+
+    #[test]
+    fn snippet_sniffs_printable_text() {
+        let text = b"hello world\nsecond line".as_slice();
+        assert_eq!(text_snippet(Some(text)).as_deref(), Some("hello world\nsecond line"));
+        // base64-wrapped body → dropped, not garbled.
+        let b64 = b"SGVsbG8gd29ybGQgZnJvbSB0aGUgZW1haWwgY29sbGVjdG9y\nSGVsbG8gd29ybGQgZnJvbSB0aGUgZW1haWwgY29sbGVjdG9y";
+        assert_eq!(text_snippet(Some(b64.as_slice())), None);
+        assert_eq!(text_snippet(None), None);
+        assert_eq!(text_snippet(Some(b"")), None);
+    }
+
+    #[test]
+    fn host_validation() {
+        assert!(valid_host("imap.qq.com"));
+        assert!(!valid_host(""));
+        assert!(!valid_host("imap.qq.com rm -rf"));
+        assert!(!valid_host("bad\nhost"));
     }
 }
 

@@ -250,10 +250,14 @@ pub fn get_entity_neighbors(
     entity_id: &str,
     now_ms: i64,
     sources: Option<&[String]>,
+    from: Option<i64>,
+    to: Option<i64>,
 ) -> Vec<NeighborRow> {
     // Source include-list: a relation edge only shows when its backing event's
     // collector is enabled (same hide-on-disable rule as the other read paths).
     // The EXISTS subquery filters relations; `1=0` (all disabled) matches none.
+    // from/to: same window semantics as the timeline (relations.occurred_at is
+    // copied from the event's occurredAt at ingest).
     let mut sql = String::from(
         "SELECT CASE WHEN r.from_entity_id = ? THEN r.to_entity_id ELSE r.from_entity_id END AS neighbor_id,
         r.relation_type, COUNT(*) AS event_count, MAX(r.occurred_at) AS last_at
@@ -265,6 +269,14 @@ pub fn get_entity_neighbors(
         Box::new(entity_id.clone()),
         Box::new(entity_id),
     ];
+    if let Some(f) = from {
+        sql.push_str(" AND r.occurred_at >= ?");
+        bound.push(Box::new(f));
+    }
+    if let Some(t) = to {
+        sql.push_str(" AND r.occurred_at <= ?");
+        bound.push(Box::new(t));
+    }
     if let Some(list) = sources {
         if list.is_empty() {
             sql.push_str(" AND 1=0");
@@ -439,10 +451,20 @@ mod tests {
         assert!(aggregate_metrics(&conn, None, None, Some(&none)).is_empty());
         // Neighbors: relation edges backed by a filtered-out event disappear.
         let now = 86_400_000 * 10;
-        let ns = get_entity_neighbors(&conn, "person:me", now, Some(&git));
+        let ns = get_entity_neighbors(&conn, "person:me", now, Some(&git), None, None);
         assert_eq!(ns.len(), 1);
         assert_eq!(ns[0].neighbor_id, "repository:r1");
-        assert!(get_entity_neighbors(&conn, "person:me", now, Some(&none)).is_empty());
+        assert!(get_entity_neighbors(&conn, "person:me", now, Some(&none), None, None).is_empty());
+        // Time window: edges outside from/to disappear (seed events sit at
+        // occurredAt 1000/2000/3000ms).
+        assert_eq!(
+            get_entity_neighbors(&conn, "person:me", now, None, Some(2500), None).len(),
+            1
+        );
+        assert_eq!(
+            get_entity_neighbors(&conn, "person:me", now, None, None, Some(1000)).len(),
+            1
+        );
         // Digest events filtered too (ongoing tasks are not source-bound).
         let input = daily_digest_input(&conn, "1970-01-01", Some(&git)).unwrap();
         assert_eq!(input.events.len(), 2);
@@ -466,7 +488,7 @@ mod tests {
         let mut conn = test_conn();
         seed(&mut conn);
         let now = 86_400_000 * 10; // 10 days after the events
-        let ns = get_entity_neighbors(&conn, "person:me", now, None);
+        let ns = get_entity_neighbors(&conn, "person:me", now, None, None, None);
         assert_eq!(ns.len(), 2);
         // repository: 2 events × decay > meeting: 1 event × decay
         assert_eq!(ns[0].neighbor_id, "repository:r1");

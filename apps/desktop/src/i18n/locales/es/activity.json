@@ -102,6 +102,7 @@
     "hint": "Haz clic en un nodo para convertirlo en el centro y ver sus relaciones",
     "centerInfo": "Centro: {{name}} · {{count}} relaciones",
     "noRelations": "{{name}} aún no tiene relaciones",
+    "back": "Volver",
     "groupCount": "{{count}}"
   },
   "entityType": {

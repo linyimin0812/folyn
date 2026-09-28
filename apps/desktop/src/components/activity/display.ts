@@ -76,6 +76,9 @@ export interface MetricCard {
   type: string;
   /** Builtin 6 default pinned; collector-declared default collapsed. */
   defaultPinned: boolean;
+  /** Extension (collector) that declared this metric — shown on the card so
+   *  the user can tell where the number comes from. Undefined for builtins. */
+  collectorName?: string;
 }
 
 /**
@@ -83,12 +86,17 @@ export interface MetricCard {
  * (collector `metric` declaration or the builtin table); a row with
  * `totalMinutes` additionally yields a minutes card (only `meeting` in
  * practice — the Rust aggregate only sums `payload.minutes`).
+ * `collectorNameForType` resolves an event type to the collecting
+ * extension's display name (from the collector registry: the
+ * activityDisplay declarant first, else any collector whose activityTypes
+ * cover the type — e.g. builtin-table types like commit).
  */
 export function metricCardsFromRows(
   rows: ActivityMetricRow[],
   displayByType: Record<string, DisplayIndexEntry>,
   builtinLabel: (metricId: string) => string,
   minutesLabel: (metricId: string) => string,
+  collectorNameForType?: (type: string) => string | undefined,
 ): MetricCard[] {
   const cards: MetricCard[] = [];
   for (const row of rows) {
@@ -97,12 +105,14 @@ export function metricCardsFromRows(
     const metricId = declared?.id ?? builtin?.metricId ?? `${row.type}_count`;
     const isBuiltin = BUILTIN_METRIC_IDS.has(metricId);
     const label = isBuiltin ? builtinLabel(metricId) : (declared?.label ?? row.type);
+    const collectorName = collectorNameForType?.(row.type);
     cards.push({
       id: metricId,
       label,
       value: row.count,
       type: row.type,
       defaultPinned: isBuiltin,
+      ...(collectorName != null && { collectorName }),
     });
     if (row.totalMinutes != null) {
       const minutesId = metricId === 'meeting_count' ? 'meeting_minutes' : `${metricId}_minutes`;

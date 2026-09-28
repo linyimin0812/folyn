@@ -102,11 +102,14 @@ export async function getActivityEntityNeighbors(
   vaultRoot: string,
   entityId: string,
   sources?: string[],
+  range?: { from: number; to: number },
 ): Promise<ActivityNeighborRow[]> {
   return invoke<ActivityNeighborRow[]>('activity_get_entity_neighbors', {
     vaultRoot,
     entityId,
     sources,
+    from: range?.from,
+    to: range?.to,
   });
 }
 

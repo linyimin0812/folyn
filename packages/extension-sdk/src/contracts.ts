@@ -260,6 +260,34 @@ export interface CollectorContext {
    * oversized / unreadable. Like scanVault, invisible to manifest permissions.
    */
   readVaultFile?: (path: string, maxBytes?: number) => Promise<string | null>;
+  /**
+   * Host-injected IMAPS mail fetcher (Rust `activity_imap_fetch`): connects to
+   * the given IMAP server over TLS, logs in, and returns messages with
+   * INTERNALDATE >= sinceMs (one day of SINCE slack is applied host-side —
+   * still filter exactly). Pure data parameters, no exec; TLS only. Returns
+   * null when unavailable (non-Tauri / tests). Like scanVault, invisible to
+   * manifest permissions.
+   */
+  imapFetch?: (opts: {
+    host: string;
+    port?: number;
+    username: string;
+    password: string;
+    folder?: string;
+    sinceMs: number;
+    max?: number;
+  }) => Promise<
+    Array<{
+      uid: number;
+      messageId: string | null;
+      subject: string | null;
+      from: string | null;
+      to: string | null;
+      /** INTERNALDATE as epoch ms. */
+      dateMs: number;
+      snippet: string | null;
+    }> | null
+  >;
 }
 
 /** The extension-side collector interface (design §2.2). Exported by a

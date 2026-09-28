@@ -20,6 +20,7 @@ describe('metric cards + pin overrides', () => {
     expense_approval: {
       type: 'expense_approval',
       metric: { id: 'expense_count', label: '报销审批', aggregate: 'count' },
+      collectorId: 'folyn-expense-collector',
     },
   };
   const label = (id: string) => `L:${id}`;
@@ -31,6 +32,18 @@ describe('metric cards + pin overrides', () => {
     expect(byId['meeting_count']).toMatchObject({ value: 2, defaultPinned: true });
     expect(byId['meeting_minutes']).toMatchObject({ value: 120, defaultPinned: true });
     expect(byId['expense_count']).toMatchObject({ value: 3, defaultPinned: false, label: '报销审批' });
+  });
+
+  it('collector attribution: name on declared and activityTypes-covered cards, absent on unowned builtins', () => {
+    const cards = metricCardsFromRows(rows, displayByType, label, label, (type) => {
+      if (type === 'expense_approval') return 'Expense Collector';
+      if (type === 'commit') return 'GitHub Collector';
+      return undefined;
+    });
+    const byId = Object.fromEntries(cards.map((c) => [c.id, c]));
+    expect(byId['expense_count'].collectorName).toBe('Expense Collector');
+    expect(byId['commit_count'].collectorName).toBe('GitHub Collector');
+    expect(byId['meeting_count'].collectorName).toBeUndefined();
   });
 
   it('pin overrides flip state and drop no-op entries', () => {

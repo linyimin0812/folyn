@@ -55,6 +55,11 @@ export function MetricsGrid({ cards, selectedType, onSelectType }: MetricsGridPr
           <Pin size={12} />
         </button>
         <p className="m-0 mb-1.5 text-[12px] text-t3 pr-5 truncate">{c.label}</p>
+        {c.collectorName && (
+          <p className="m-0 mb-0.5 text-[11px] text-t3 truncate" title={c.collectorName}>
+            {c.collectorName}
+          </p>
+        )}
         <p className="m-0 text-[22px] font-semibold text-t1 leading-tight">{c.value}</p>
       </div>
     );
