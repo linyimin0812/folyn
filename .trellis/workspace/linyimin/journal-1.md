@@ -824,3 +824,38 @@ Diagnosed window-activity collector emitting zero events on Windows (github coll
 ### Next Steps
 
 - None - task complete
+
+
+## Session 24: Entity graph fan expansion + email collector multi-account
+
+**Date**: 2026-09-29
+**Task**: Entity graph fan expansion + email collector multi-account
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+实体图谱：≤5 成员聚合组点击后在图内以外向弧展开为同款子节点卡（贝塞尔连线+关系 pill，>5 仍走侧栏），侧栏改为仅显式点击打开、点其他节点自动隐藏，图谱区占满全宽；中途试做累积探索图后按用户要求回退为单中心替换。邮箱采集器支持多账号、时间线 activityDisplay chips、立即采集错误透出等已随 77821891 提交。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `377ef6a8` | (see git log) |
+| `77821891` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
