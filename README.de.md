@@ -18,18 +18,6 @@
 
 > Eine App, all Ihr Wissen. Isoliert jeden Datensatz in einem Vault, fasst Markdown, Whiteboards, ER-Diagramme und Mindmaps in einem Editor zusammen und bindet KI-Agenten direkt in den Workflow ein — alles bleibt auf Ihren eigenen Geräten.
 
-## Why Folyn
-
-- **Vault-Isolierung mehrerer Vaults** — Öffnen Sie für jedes Projekt oder jede Notizsammlung einen eigenen Vault. Daten bleiben unabhängig, jederzeit umschaltbar. Ihr lokales Gerät ist die einzige Wahrheitsquelle.
-- **Multi-Format-Bearbeitung** — Markdown (mit Container-Extensions: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, sowie Graphviz / Mermaid / PlantUML-Diagramm-Container), Rich-Text, CSV, JSON, markmap-Mindmaps, dbml-ER-Diagramme, drawio-Architekturdiagramme, excalidraw-Handwhiteboards, graphviz-DOT — ein Editor für alles.
-- **Universelle Vorschau** — Office-Dokumente, Audio/Video, Archive, E-Books, Präsentationen und Zeichnungen — ohne Folyn zu verlassen ansehen.
-- **Tiefe KI-Integration** — Eingebaute Adapter für sechs CLI-Agenten: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Frei zwischen Modellanbietern wechseln, kein Vendor-Lock-in.
-- **Desktop-Begleiter-Assistent** — Ein auf dem Desktop residierender Begleiter, der Kalendererinnerungen und Aufgabenänderungen pushst; ein Klick öffnet einen Chat mit dem LLM.
-- **Internes Terminal** — Öffnen Sie ein Terminal in Folyn und lassen Sie Claude Code / Codex / andere CLI-Agenten das aktuelle Dokument lesen und schreiben — kein Fensterwechsel.
-- **Aktivitätserfassung** — Collector-Erweiterungen zeichnen Ihren Tag auf — Fensterwechsel, Dateiänderungen, GitHub-Aktivität, Webhook-Ereignisse — in eine lokale Datenbank im Vault; sehen Sie ihn als Timeline und Beziehungsgraph, und erzeugen Sie Tages-/Wochen-/Monatsberichte als Vault-Notizen (optional KI-geschrieben).
-- **Extension-System** — Microkernel- + Extension-SDK-Architektur. Rich-Text, DBML, Dateibetrachter und Aktivitäts-Collectors werden als Extensions mitgeliefert, Übersetzung ist eingebaut; Drittanbieter-Erweiterungen unterstützt.
-- **Spracheingabe** — Sprache-zu-Text mit automatischer Nachbearbeitung, direkt am Cursor eingefügt (aktuell nur macOS).
-
 ## For Users
 
 ### Hinweise zum ersten Start
@@ -143,6 +131,18 @@ Sprache wird in Echtzeit zu Text transkribiert und automatisch nachbearbeitet �
 <p align="center">
   <img src="docs/assets/screenshots/voice-1.png" alt="Voice input" width="860" />
 </p>
+
+## Why Folyn
+
+- **Vault-Isolierung mehrerer Vaults** — Öffnen Sie für jedes Projekt oder jede Notizsammlung einen eigenen Vault. Daten bleiben unabhängig, jederzeit umschaltbar. Ihr lokales Gerät ist die einzige Wahrheitsquelle.
+- **Multi-Format-Bearbeitung** — Markdown (mit Container-Extensions: Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible, sowie Graphviz / Mermaid / PlantUML-Diagramm-Container), Rich-Text, CSV, JSON, markmap-Mindmaps, dbml-ER-Diagramme, drawio-Architekturdiagramme, excalidraw-Handwhiteboards, graphviz-DOT — ein Editor für alles.
+- **Universelle Vorschau** — Office-Dokumente, Audio/Video, Archive, E-Books, Präsentationen und Zeichnungen — ohne Folyn zu verlassen ansehen.
+- **Tiefe KI-Integration** — Eingebaute Adapter für sechs CLI-Agenten: Claude Code, Codex CLI, Gemini CLI, Opencode, Pi Code Agent, Qoder. Frei zwischen Modellanbietern wechseln, kein Vendor-Lock-in.
+- **Desktop-Begleiter-Assistent** — Ein auf dem Desktop residierender Begleiter, der Kalendererinnerungen und Aufgabenänderungen pushst; ein Klick öffnet einen Chat mit dem LLM.
+- **Internes Terminal** — Öffnen Sie ein Terminal in Folyn und lassen Sie Claude Code / Codex / andere CLI-Agenten das aktuelle Dokument lesen und schreiben — kein Fensterwechsel.
+- **Aktivitätserfassung** — Collector-Erweiterungen zeichnen Ihren Tag auf — Fensterwechsel, Dateiänderungen, GitHub-Aktivität, Webhook-Ereignisse — in eine lokale Datenbank im Vault; sehen Sie ihn als Timeline und Beziehungsgraph, und erzeugen Sie Tages-/Wochen-/Monatsberichte als Vault-Notizen (optional KI-geschrieben).
+- **Extension-System** — Microkernel- + Extension-SDK-Architektur. Rich-Text, DBML, Dateibetrachter und Aktivitäts-Collectors werden als Extensions mitgeliefert, Übersetzung ist eingebaut; Drittanbieter-Erweiterungen unterstützt.
+- **Spracheingabe** — Sprache-zu-Text mit automatischer Nachbearbeitung, direkt am Cursor eingefügt (aktuell nur macOS).
 
 ## For Developers
 

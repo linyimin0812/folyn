@@ -18,18 +18,6 @@
 
 > 一个应用，承载全部上下文。以 Vault 隔离每一份数据，用一套编辑器容纳 markdown、白板、ER 图、思维导图，再把 AI 代理直接接入工作流——所有内容始终留在你自己的设备上。
 
-## Why Folyn
-
-- **Vault 多仓库隔离** — 为每个项目、每份笔记开一个独立仓库，数据互不干扰，随时切换。本地是唯一真源。
-- **多格式编辑** — Markdown（含容器扩展：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible，以及 Graphviz / Mermaid / PlantUML 图表容器）、富文本、CSV、JSON、markmap 思维导图、dbml ER 图、drawio 架构图、excalidraw 手绘白板、graphviz DOT 图——一个编辑器全部搞定。
-- **全格式预览** — Office 文档、音视频、压缩包、电子书、演示与图纸，不离开 Folyn 就能查看。
-- **AI 深度集成** — 内置适配 Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder 六种 CLI 代理，跨模型厂商自由切换，不绑定单一供应商。
-- **桌宠助手** — 常驻桌面的小伙伴，负责推送日程提醒、任务变更通知，一点即可唤起大模型对话。
-- **应用内终端** — 在 Folyn 中直接打开终端，调用 Claude Code / Codex 等 CLI 代理读写当前文档，无需窗口切换。
-- **活动采集** — 采集器扩展记录你的一天：窗口切换、文件变动、GitHub 动态、webhook 事件，存入 vault 内的本地数据库；以时间线和关系图回顾，日报/周报/月报自动生成为 vault 笔记（可由 AI 撰写）。
-- **扩展系统** — 微内核 + 扩展 SDK 架构，富文本、DBML、文件查看器、活动采集器等以扩展形式提供，翻译为内置能力，支持第三方扩展。
-- **语音输入** — 语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。
-
 ## For Users
 
 ### 首次运行提示
@@ -143,6 +131,18 @@
 <p align="center">
   <img src="docs/assets/screenshots/voice-1.png" alt="Voice input" width="860" />
 </p>
+
+## Why Folyn
+
+- **Vault 多仓库隔离** — 为每个项目、每份笔记开一个独立仓库，数据互不干扰，随时切换。本地是唯一真源。
+- **多格式编辑** — Markdown（含容器扩展：Button / Callout / Card / Tabs / Timeline / Steps / Grid / FilePreview / StatusTag / Collapsible，以及 Graphviz / Mermaid / PlantUML 图表容器）、富文本、CSV、JSON、markmap 思维导图、dbml ER 图、drawio 架构图、excalidraw 手绘白板、graphviz DOT 图——一个编辑器全部搞定。
+- **全格式预览** — Office 文档、音视频、压缩包、电子书、演示与图纸，不离开 Folyn 就能查看。
+- **AI 深度集成** — 内置适配 Claude Code、Codex CLI、Gemini CLI、Opencode、Pi Code Agent、Qoder 六种 CLI 代理，跨模型厂商自由切换，不绑定单一供应商。
+- **桌宠助手** — 常驻桌面的小伙伴，负责推送日程提醒、任务变更通知，一点即可唤起大模型对话。
+- **应用内终端** — 在 Folyn 中直接打开终端，调用 Claude Code / Codex 等 CLI 代理读写当前文档，无需窗口切换。
+- **活动采集** — 采集器扩展记录你的一天：窗口切换、文件变动、GitHub 动态、webhook 事件，存入 vault 内的本地数据库；以时间线和关系图回顾，日报/周报/月报自动生成为 vault 笔记（可由 AI 撰写）。
+- **扩展系统** — 微内核 + 扩展 SDK 架构，富文本、DBML、文件查看器、活动采集器等以扩展形式提供，翻译为内置能力，支持第三方扩展。
+- **语音输入** — 语音转文字并自动润色，直接粘贴到光标处（目前仅支持 macOS）。
 
 ## For Developers
 
