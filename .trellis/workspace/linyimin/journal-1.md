@@ -859,3 +859,37 @@ Diagnosed window-activity collector emitting zero events on Windows (github coll
 ### Next Steps
 
 - None - task complete
+
+
+## Session 25: New folder/file locate-and-highlight after create
+
+**Date**: 2026-09-29
+**Task**: New folder/file locate-and-highlight after create
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+Sidebar: insertEntry now inserts at provider sort position (dirs first, name) so optimistic rows don't jump on refresh; confirmNewItem reuses revealPath to select and scrollIntoView the created folder/file. treeUtils tests updated (32 pass), tsc clean.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0cf7af60` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
