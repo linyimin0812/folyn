@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop frontend conventions for sidebar/vault UI changes"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "reuse selectedPaths/scrollIntoView idiom instead of new abstractions"}
