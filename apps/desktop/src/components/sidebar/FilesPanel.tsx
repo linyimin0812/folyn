@@ -122,6 +122,38 @@ export function FilesPanel(): React.JSX.Element {
     });
   }, []);
 
+  /** Expand all parent directories of `filePath`, scroll it into view, and
+   *  select its row. Shared by the "locate active" button, the
+   *  revealPathBridge starter, and post-create reveal. */
+  const revealPath = useCallback((filePath: string) => {
+    // Expand all parent directories
+    const parts = filePath.split('/');
+    const dirsToExpand: string[] = [];
+    for (let i = 1; i < parts.length; i++) {
+      dirsToExpand.push(parts.slice(0, i).join('/'));
+    }
+
+    setExpandedDirs((prev) => {
+      const next = new Set(prev);
+      for (const dir of dirsToExpand) next.add(dir);
+      return next;
+    });
+
+    setSelectedPaths(new Set([filePath]));
+
+    // Scroll to the item's row after DOM update
+    requestAnimationFrame(() => {
+      const container = fileTreeRef.current;
+      if (!container) return;
+      const fileElement = container.querySelector(
+        `[data-filepath="${CSS.escape(filePath)}"], [data-dirpath="${CSS.escape(filePath)}"]`
+      );
+      if (fileElement) {
+        fileElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+  }, []);
+
   const {
     newItemType, newItemName, setNewItemName, newItemParent, newItemExtension,
     newItemInputRef,
@@ -129,7 +161,7 @@ export function FilesPanel(): React.JSX.Element {
     renamingItem, renameValue, setRenameValue, renameInputRef,
     startRename, confirmRename, cancelRename,
     deleteConfirm, setDeleteConfirm, confirmDelete, deleteItems,
-  } = useSidebarActions({ handleFileClick, setExpandedDirs });
+  } = useSidebarActions({ handleFileClick, setExpandedDirs, revealItem: revealPath });
 
   // Bridge the command palette's new-file/new-folder actions to the Sidebar's
   // inline new-item flow. Registered on mount; cleared on unmount. A request
@@ -178,36 +210,6 @@ export function FilesPanel(): React.JSX.Element {
     },
     [flatPaths, handleFileClick, handleToggleDir],
   );
-
-  /** Expand all parent directories of `filePath`, scroll it into view, and
-   *  select its row. Shared by the "locate active" button and the
-   *  revealPathBridge starter. */
-  const revealPath = useCallback((filePath: string) => {
-    // Expand all parent directories
-    const parts = filePath.split('/');
-    const dirsToExpand: string[] = [];
-    for (let i = 1; i < parts.length; i++) {
-      dirsToExpand.push(parts.slice(0, i).join('/'));
-    }
-
-    setExpandedDirs((prev) => {
-      const next = new Set(prev);
-      for (const dir of dirsToExpand) next.add(dir);
-      return next;
-    });
-
-    setSelectedPaths(new Set([filePath]));
-
-    // Scroll to the file element after DOM update
-    requestAnimationFrame(() => {
-      const container = fileTreeRef.current;
-      if (!container) return;
-      const fileElement = container.querySelector(`[data-filepath="${CSS.escape(filePath)}"]`);
-      if (fileElement) {
-        fileElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
-    });
-  }, []);
 
   /** Expand all parent directories of the active file and scroll it into view */
   const locateActiveFile = useCallback(async () => {

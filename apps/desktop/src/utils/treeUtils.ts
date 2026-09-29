@@ -11,15 +11,26 @@ export function flattenTree(entries: VaultEntry[]): string[] {
   return result;
 }
 
-/** Insert a new entry under its parent dir (or at root). Returns a new tree
- * if the parent was found; returns the input reference unchanged if not, so
- * the caller can skip the optimistic update and let a background refresh
- * reconcile. No mutation. */
+/** Insert a new entry under its parent dir (or at root) at its sorted
+ * position — same order the provider returns (dirs first, then name) — so
+ * the row lands where the background refresh will keep it. Returns a new
+ * tree if the parent was found; returns the input reference unchanged if
+ * not, so the caller can skip the optimistic update and let a background
+ * refresh reconcile. No mutation. */
 export function insertEntry(tree: VaultEntry[], path: string, type: 'file' | 'dir'): VaultEntry[] {
   const segments = path.split('/');
   const name = segments[segments.length - 1];
   const newEntry: VaultEntry = { path, name, type };
-  if (segments.length === 1) return [...tree, newEntry];
+
+  const insertSorted = (entries: VaultEntry[]): VaultEntry[] => {
+    const idx = entries.findIndex(
+      (e) => (type === 'dir' && e.type === 'file') || (e.type === type && e.name.localeCompare(name) > 0)
+    );
+    if (idx === -1) return [...entries, newEntry];
+    return [...entries.slice(0, idx), newEntry, ...entries.slice(idx)];
+  };
+
+  if (segments.length === 1) return insertSorted(tree);
 
   const parentPath = segments.slice(0, -1).join('/');
   let inserted = false;
@@ -27,7 +38,7 @@ export function insertEntry(tree: VaultEntry[], path: string, type: 'file' | 'di
     entries.map((e) => {
       if (e.path === parentPath && e.type === 'dir') {
         inserted = true;
-        return { ...e, children: [...(e.children ?? []), newEntry] };
+        return { ...e, children: insertSorted(e.children ?? []) };
       }
       if (e.children) return { ...e, children: walk(e.children) };
       return e;

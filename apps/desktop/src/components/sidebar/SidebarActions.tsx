@@ -14,9 +14,10 @@ import type { VaultEntry } from '@folyn/vault-provider';
 interface UseSidebarActionsOptions {
   handleFileClick: (filePath: string, fileName: string) => void;
   setExpandedDirs: React.Dispatch<React.SetStateAction<Set<string>>>;
+  revealItem: (path: string) => void;
 }
 
-export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSidebarActionsOptions) {
+export function useSidebarActions({ handleFileClick, setExpandedDirs, revealItem }: UseSidebarActionsOptions) {
   const vaultCreateFile = useVaultStore((state) => state.createFile);
   const vaultCreateDir = useVaultStore((state) => state.createDir);
   const vaultDeleteFile = useVaultStore((state) => state.deleteFile);
@@ -103,7 +104,8 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs }: UseSideb
     } else {
       setExpandedDirs((prev) => new Set([...prev, fullPath]));
     }
-  }, [newItemName, newItemType, newItemParent, newItemExtension, handleFileClick, vaultCreateFile, vaultCreateDir, setExpandedDirs]);
+    revealItem(fullPath);
+  }, [newItemName, newItemType, newItemParent, newItemExtension, handleFileClick, vaultCreateFile, vaultCreateDir, setExpandedDirs, revealItem]);
 
   const cancelNewItem = useCallback(() => {
     setNewItemType(null);

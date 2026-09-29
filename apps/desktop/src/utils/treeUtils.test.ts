@@ -96,16 +96,26 @@ describe('matchesSearch', () => {
 });
 
 describe('insertEntry', () => {
-  it('appends a root-level file', () => {
+  it('inserts a root-level file at its sorted position', () => {
     const result = insertEntry(tree, 'new.md', 'file');
-    expect(result).toHaveLength(3);
-    expect(result[result.length - 1]).toEqual({ path: 'new.md', name: 'new.md', type: 'file' });
+    expect(result.map((e) => e.path)).toEqual(['notes', 'new.md', 'root.md']);
+  });
+
+  it('inserts a root-level dir before files and among dirs by name', () => {
+    expect(insertEntry(tree, 'aaa', 'dir').map((e) => e.path)).toEqual(['aaa', 'notes', 'root.md']);
+    expect(insertEntry(tree, 'zzz', 'dir').map((e) => e.path)).toEqual(['notes', 'zzz', 'root.md']);
   });
 
   it('inserts under the matching parent dir', () => {
     const result = insertEntry(tree, 'notes/c.md', 'file');
     const notes = result.find((e) => e.path === 'notes');
     expect(notes?.children).toContainEqual({ path: 'notes/c.md', name: 'c.md', type: 'file' });
+  });
+
+  it('inserts a nested dir among sibling dirs by name', () => {
+    const result = insertEntry(tree, 'notes/alpha', 'dir');
+    const notes = result.find((e) => e.path === 'notes');
+    expect(notes?.children?.map((c) => c.path)).toEqual(['notes/alpha', 'notes/a.md', 'notes/sub']);
   });
 
   it('inserts into a nested dir', () => {
