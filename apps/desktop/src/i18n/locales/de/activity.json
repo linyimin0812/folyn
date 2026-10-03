@@ -34,6 +34,8 @@
     "loading": "Lädt…",
     "empty": "Keine Aktivität in diesem Zeitraum",
     "viewSource": "Quelle ansehen",
+    "viewPreview": "Vorschau ansehen",
+    "closePreview": "Vorschau schließen",
     "aiSummary": "Zusammenfassung · KI-generiert",
     "aiSummaryLoading": "Zusammenfassung wird erstellt…",
     "aiSummaryFailed": "Zusammenfassung fehlgeschlagen – zum Wiederholen erneut aufklappen",

@@ -1,6 +1,7 @@
 import { isTauri } from '@/utils/platform';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useNavStore } from '@/store/navStore';
 
 // ponytail: a single document-level capture listener beats injecting a custom
 // `a` component into the markdown pipeline — one listener covers every
@@ -10,6 +11,28 @@ import { useEditorStore } from '@/store/editorStore';
 // Ceiling: anchors created from a separate JS realm (e.g. extension iframe
 // posting a message that triggers host-side navigation) won't be caught
 // because the click still fires inside the iframe. Out of scope here.
+/** One link, one policy: internal mode opens an in-app web tab (visible jump
+ *  to the editor area), otherwise the system opener. Shared by the document
+ *  interceptor below and the email body preview. */
+export function openLinkByMode(href: string, linkText: string): void {
+  if (/^https?:/i.test(href) && useAppearanceStore.getState().linkOpenMode === 'internal') {
+    useEditorStore.getState().openWebTab(href, linkText);
+    useEditorStore.setState({ activePanel: 'files' });
+    // The click can come from a non-editor page (e.g. the activity timeline) —
+    // switching the panel alone leaves the page covering the work area.
+    useNavStore.getState().setCurrentPage('editor');
+    return;
+  }
+  void (async () => {
+    try {
+      const { openUrl } = await import('@tauri-apps/plugin-opener');
+      await openUrl(href);
+    } catch (err) {
+      console.warn('[externalLinks] openUrl failed:', err);
+    }
+  })();
+}
+
 export function installExternalLinkInterceptor(): () => void {
   if (!isTauri()) return () => {};
 
@@ -41,6 +64,7 @@ export function installExternalLinkInterceptor(): () => void {
       const linkText = anchor.textContent || href;
       useEditorStore.getState().openWebTab(href, linkText);
       useEditorStore.setState({ activePanel: 'files' });
+      useNavStore.getState().setCurrentPage('editor');
       return;
     }
 
@@ -50,20 +74,7 @@ export function installExternalLinkInterceptor(): () => void {
     // capture listener always won the race against MarkdownPreview's map['a']
     // handler, so the in-app web tab setting was silently ignored. Non-web
     // schemes (mailto/tel/ftp) always go to the system handler.
-    if (/^https?:/i.test(href) && useAppearanceStore.getState().linkOpenMode === 'internal') {
-      const linkText = anchor.textContent || href;
-      useEditorStore.getState().openWebTab(href, linkText);
-      useEditorStore.setState({ activePanel: 'files' });
-      return;
-    }
-    void (async () => {
-      try {
-        const { openUrl } = await import('@tauri-apps/plugin-opener');
-        await openUrl(href);
-      } catch (err) {
-        console.warn('[externalLinks] openUrl failed:', err);
-      }
-    })();
+    openLinkByMode(href, anchor.textContent || href);
   };
 
   document.addEventListener('click', handler, true);

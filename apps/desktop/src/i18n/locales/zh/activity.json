@@ -34,6 +34,8 @@
     "loading": "加载中…",
     "empty": "本期暂无活动记录",
     "viewSource": "查看原文",
+    "viewPreview": "查看预览",
+    "closePreview": "关闭预览",
     "aiSummary": "摘要 · AI 生成",
     "aiSummaryLoading": "生成摘要中…",
     "aiSummaryFailed": "摘要生成失败，重新展开可重试",

@@ -1,7 +1,7 @@
 {
   "id": "folyn-email-collector",
   "name": "Email Collector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Folyn",
   "folyn": ">=0.1.0",
   "tier": "trusted",
@@ -49,7 +49,7 @@
           { "key": "from", "label": "发件人", "format": "text" },
           { "key": "to", "label": "收件人", "format": "text" },
           { "key": "folder", "label": "文件夹", "format": "text" },
-          { "key": "snippet", "label": "正文预览", "format": "text" }
+          { "key": "bodyHtml", "label": "正文", "format": "html" }
         ],
         "metric": { "id": "email_count", "label": "邮件", "aggregate": "count" },
         "entity": { "role": "mailbox", "relationLabel": "邮箱" },

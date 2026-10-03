@@ -113,6 +113,9 @@ imap = { version = "2.4.1", default-features = false }
 rustls = "0.23"
 webpki-roots = "0.26"
 imap-proto = "0.10.2"
+# MIME body decoding (quoted-printable/base64/charsets) for email activity
+# previews — hand-rolling RFC 2045/2047 body decoding is the alternative.
+mailparse = "0.17"
 [dev-dependencies]
 tempfile = "3"
 # `#[tokio::test]` for the AppleSpeechAsr::transcribe() async tests ported

@@ -1,6 +1,6 @@
 {
   "name": "@folyn/extension-email-collector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Email collector — polls a custom IMAP mailbox into the activity timeline",

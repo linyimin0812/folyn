@@ -490,9 +490,12 @@ pub struct ImapMessage {
     pub to: Option<String>,
     /// INTERNALDATE as epoch ms.
     pub date_ms: i64,
-    /// First ~2KB of BODY[TEXT], only when it sniffs as plain text. Raw
-    /// transfer-encoded bodies (base64/QP) are dropped, not garbled.
+    /// Decoded first text/plain part, capped at 2000 chars — the timeline
+    /// snippet. None when the message has no usable plain part.
     pub snippet: Option<String>,
+    /// Decoded first text/html part (≤ the 256KB fetch window) — the
+    /// preview-panel body. None for plain-text-only mail.
+    pub body_html: Option<String>,
 }
 
 /// Fetch new mail over IMAPS for the email collector. Backs the `ctx.imapFetch`
@@ -565,28 +568,57 @@ fn format_addrs(addrs: &Vec<imap_proto::types::Address<'_>>) -> Option<String> {
     (!joined.is_empty()).then_some(joined)
 }
 
-/// Any wrapped line ≥40 chars of pure base64 alphabet → treat as encoded.
-/// ponytail: heuristic, not decoding — quoted-printable slips through; add a
-/// real decoder when body previews (not just subject/from) matter.
-fn looks_base64(b: &[u8]) -> bool {
-    b.split(|&c| c == b'\n' || c == b'\r').any(|line| {
-        line.len() >= 40
-            && line.iter().all(|&c| c.is_ascii_alphanumeric() || c == b'+' || c == b'/' || c == b'=')
-    })
+/// Decoded email body: first text/plain part (timeline snippet) and first
+/// text/html part (preview panel). mailparse handles transfer encoding
+/// (quoted-printable/base64) and charsets (GBK etc. via the charset crate).
+struct MailBody {
+    plain: Option<String>,
+    html: Option<String>,
 }
 
-/// Keep a body prefix only when it sniffs as plain text (binary and base64
-/// dropped rather than garbled).
-fn text_snippet(bytes: Option<&[u8]>) -> Option<String> {
-    let b = bytes?;
-    if b.is_empty() || looks_base64(b) {
-        return None;
+/// Cap for the decoded plain snippet; the html body is capped by the fetch
+/// window (256KB) instead.
+/// ponytail: fixed char cap — timeline snippet, not a body store.
+const MAX_SNIPPET_CHARS: usize = 2000;
+
+fn truncate_chars(s: &str, max: usize) -> String {
+    match s.char_indices().nth(max) {
+        Some((idx, _)) => s[..idx].to_string(),
+        None => s.to_string(),
     }
-    let printable = b.iter().filter(|&&c| c == b'\n' || c == b'\r' || c == b'\t' || (0x20..0x7f).contains(&c) || c >= 0x80).count();
-    if printable * 10 < b.len() * 9 {
-        return None;
+}
+
+fn collect_mail_parts(part: &mailparse::ParsedMail<'_>, body: &mut MailBody) {
+    // ponytail: lowercase string match over a MIME type tree — text/plain and
+    // text/html are all the timeline needs; parameters (charset) are mailparse's job.
+    let ctype = part.ctype.mimetype.to_ascii_lowercase();
+    if ctype == "text/plain" && body.plain.is_none() {
+        if let Ok(p) = part.get_body() {
+            if !p.trim().is_empty() {
+                body.plain = Some(truncate_chars(p.trim(), MAX_SNIPPET_CHARS));
+            }
+        }
+    } else if ctype == "text/html" && body.html.is_none() {
+        if let Ok(h) = part.get_body() {
+            if !h.trim().is_empty() {
+                body.html = Some(h);
+            }
+        }
     }
-    Some(String::from_utf8_lossy(b).trim().to_string())
+    for sub in &part.subparts {
+        if body.plain.is_some() && body.html.is_some() {
+            break;
+        }
+        collect_mail_parts(sub, body);
+    }
+}
+
+fn parse_mail_body(raw: &[u8]) -> MailBody {
+    let mut body = MailBody { plain: None, html: None };
+    if let Ok(msg) = mailparse::parse_mail(raw) {
+        collect_mail_parts(&msg, &mut body);
+    }
+    body
 }
 
 fn imap_fetch(args: ImapFetchArgs) -> Result<Vec<ImapMessage>, AppError> {
@@ -662,8 +694,11 @@ fn imap_fetch(args: ImapFetchArgs) -> Result<Vec<ImapMessage>, AppError> {
             return Ok(Vec::new());
         }
         let set = uids.iter().map(|u| u.to_string()).collect::<Vec<_>>().join(",");
+        // Full-message prefix (headers + body, 256KB cap): mailparse needs the
+        // headers to find the multipart structure; QP/base64 parts beyond the
+        // window just decode truncated.
         let fetches = session
-            .uid_fetch(set, "(UID ENVELOPE INTERNALDATE BODY.PEEK[TEXT]<0.2048>)")
+            .uid_fetch(set, "(UID ENVELOPE INTERNALDATE BODY.PEEK[]<0.262144>)")
             .map_err(|e| format!("activity_imap_fetch: fetch failed: {e}"))?;
         let mut out = Vec::with_capacity(fetches.len());
         for f in fetches.iter() {
@@ -672,6 +707,7 @@ fn imap_fetch(args: ImapFetchArgs) -> Result<Vec<ImapMessage>, AppError> {
                 continue;
             };
             let env = f.envelope();
+            let body = parse_mail_body(f.body().unwrap_or_default());
             out.push(ImapMessage {
                 uid: f.uid.unwrap_or(0),
                 message_id: lossy(env.and_then(|e| e.message_id)),
@@ -679,7 +715,8 @@ fn imap_fetch(args: ImapFetchArgs) -> Result<Vec<ImapMessage>, AppError> {
                 from: env.and_then(|e| e.from.as_ref()).and_then(format_addrs),
                 to: env.and_then(|e| e.to.as_ref()).and_then(format_addrs),
                 date_ms,
-                snippet: text_snippet(f.text()),
+                snippet: body.plain,
+                body_html: body.html,
             });
         }
         Ok(out)
@@ -959,14 +996,59 @@ mod imap_tests {
     }
 
     #[test]
-    fn snippet_sniffs_printable_text() {
-        let text = b"hello world\nsecond line".as_slice();
-        assert_eq!(text_snippet(Some(text)).as_deref(), Some("hello world\nsecond line"));
-        // base64-wrapped body → dropped, not garbled.
-        let b64 = b"SGVsbG8gd29ybGQgZnJvbSB0aGUgZW1haWwgY29sbGVjdG9y\nSGVsbG8gd29ybGQgZnJvbSB0aGUgZW1haWwgY29sbGVjdG9y";
-        assert_eq!(text_snippet(Some(b64.as_slice())), None);
-        assert_eq!(text_snippet(None), None);
-        assert_eq!(text_snippet(Some(b"")), None);
+    fn parses_multipart_quoted_printable() {
+        // Shape of the user-reported case: multipart with a QP text/plain part
+        // and a base64 text/html part.
+        let raw = concat!(
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"4a32dc26\"\r\n",
+            "\r\n",
+            "--4a32dc26\r\n",
+            "Content-Type: text/plain; charset=\"utf-8\"\r\n",
+            "Content-Transfer-Encoding: quoted-printable\r\n",
+            "\r\n",
+            "Kilo Weekly =F0=9F=8F=86\r\n",
+            "Read more =E2=86=92\r\n",
+            "--4a32dc26\r\n",
+            "Content-Type: text/html; charset=\"utf-8\"\r\n",
+            "Content-Transfer-Encoding: base64\r\n",
+            "\r\n",
+            "PGh0bWw+PGJvZHk+aGkgdGhlcmU8L2JvZHk+PC9odG1sPg==\r\n",
+            "--4a32dc26--\r\n",
+        );
+        let body = parse_mail_body(raw.as_bytes());
+        assert_eq!(body.plain.as_deref(), Some("Kilo Weekly 🏆\r\nRead more →"));
+        assert_eq!(body.html.as_deref(), Some("<html><body>hi there</body></html>"));
+    }
+
+    #[test]
+    fn parses_singlepart_gbk_qp() {
+        let raw = concat!(
+            "Content-Type: text/plain; charset=gbk\r\n",
+            "Content-Transfer-Encoding: quoted-printable\r\n",
+            "\r\n",
+            "=D6=D0=CE=C4=D5=FD=CE=C4"
+        );
+        let body = parse_mail_body(raw.as_bytes());
+        assert_eq!(body.plain.as_deref(), Some("中文正文"));
+        assert!(body.html.is_none());
+    }
+
+    #[test]
+    fn snippet_truncated_garbage_rejected() {
+        // Unparseable bytes → no snippet, no panic.
+        let body = parse_mail_body(&[0xff, 0xfe, 0x00, 0x01, 0x02]);
+        assert!(body.plain.is_none());
+        let empty = parse_mail_body(b"");
+        assert!(empty.plain.is_none());
+        assert!(empty.html.is_none());
+    }
+
+    #[test]
+    fn snippet_char_cap() {
+        let raw = format!("Content-Type: text/plain\r\n\r\n{}", "a".repeat(5000));
+        let body = parse_mail_body(raw.as_bytes());
+        assert_eq!(body.plain.as_deref().map(|p| p.chars().count()), Some(MAX_SNIPPET_CHARS));
     }
 
     #[test]

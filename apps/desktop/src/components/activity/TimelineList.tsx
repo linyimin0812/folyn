@@ -17,13 +17,14 @@
 
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppWindow, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { AppWindow, ChevronDown, ChevronRight, ExternalLink, Eye } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import type { ActivityEventRow } from '@/services/activity/api';
 import type { DisplayIndexEntry } from '@/services/activity/registry';
 import { useActivityCollectorStore } from '@/store/activityCollectorStore';
 import { generateEventSummary } from '@/services/activity/eventSummary';
 import { LucideNameIcon } from '@/components/icons/LucideNameIcon';
+import { EmailHtmlPreview } from './EmailHtmlPreview';
 import { dateKey } from './period';
 import { ACTIVITY_PALETTE, BUILTIN_EVENT_DISPLAY, formatDetailValue, isExternalUrl, paletteOf } from './display';
 
@@ -169,6 +170,8 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
   const [pendingSummary, setPendingSummary] = useState<Set<string>>(new Set());
   const [failedSummary, setFailedSummary] = useState<Record<string, string>>({});
   const tried = useRef<Set<string>>(new Set());
+  // Open body-preview panel (format 'html' detail fields — e.g. email bodyHtml).
+  const [preview, setPreview] = useState<{ title: string; content: string } | null>(null);
 
   if (events.length === 0) {
     return (
@@ -324,6 +327,26 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                 <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
                   {detailFields.map((f) => {
                     const raw = (payload as Record<string, unknown>)[f.key];
+                    // format 'html': the value is a preview-panel body, never
+                    // inline timeline text (untrusted collector content —
+                    // sanitized inside EmailHtmlPreview).
+                    if (f.format === 'html') {
+                      if (typeof raw !== 'string' || !raw.trim()) return null;
+                      return (
+                        <div key={f.key} className="contents">
+                          <dt className="text-t3">{f.label}</dt>
+                          <dd className="m-0">
+                            <button
+                              className="inline-flex items-center gap-1 m-0 p-0 bg-transparent border-0 cursor-pointer text-[13px] text-acc hover:underline"
+                              onClick={() => setPreview({ title: e.title || e.id, content: raw })}
+                            >
+                              {t('activity:timeline.viewPreview')}
+                              <Eye size={12} />
+                            </button>
+                          </dd>
+                        </div>
+                      );
+                    }
                     const text = formatDetailValue(raw, f.format);
                     if (!text) return null;
                     return (
@@ -392,6 +415,13 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
 
   return (
     <div>
+      {preview && (
+        <EmailHtmlPreview
+          title={preview.title}
+          content={preview.content}
+          onClose={() => setPreview(null)}
+        />
+      )}
       {groups.map((g, gi) => {
         const collapsed = collapsedDays.has(g.key);
         return (

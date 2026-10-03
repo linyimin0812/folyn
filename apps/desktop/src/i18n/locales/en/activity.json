@@ -34,6 +34,8 @@
     "loading": "Loading…",
     "empty": "No activity in this period",
     "viewSource": "View source",
+    "viewPreview": "View preview",
+    "closePreview": "Close preview",
     "aiSummary": "Summary · AI generated",
     "aiSummaryLoading": "Generating summary…",
     "aiSummaryFailed": "Summary generation failed — re-expand to retry",

@@ -243,6 +243,7 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
             to: string | null;
             dateMs: number;
             snippet: string | null;
+            bodyHtml: string | null;
           }> | null
         >('activity_imap_fetch', {
           args: {

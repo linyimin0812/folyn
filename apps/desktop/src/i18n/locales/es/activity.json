@@ -34,6 +34,8 @@
     "loading": "Cargando…",
     "empty": "Sin actividad en este periodo",
     "viewSource": "Ver origen",
+    "viewPreview": "Ver vista previa",
+    "closePreview": "Cerrar vista previa",
     "aiSummary": "Resumen · generado por IA",
     "aiSummaryLoading": "Generando resumen…",
     "aiSummaryFailed": "Error al generar el resumen: vuelve a expandir para reintentar",

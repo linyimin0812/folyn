@@ -286,6 +286,9 @@ export interface CollectorContext {
       /** INTERNALDATE as epoch ms. */
       dateMs: number;
       snippet: string | null;
+      /** Decoded text/html body (≤256KB fetch window) for preview rendering;
+       *  null for plain-text-only mail. */
+      bodyHtml: string | null;
     }> | null
   >;
 }

@@ -34,6 +34,8 @@
     "loading": "読み込み中…",
     "empty": "この期間のアクティビティはありません",
     "viewSource": "原文を見る",
+    "viewPreview": "プレビューを見る",
+    "closePreview": "プレビューを閉じる",
     "aiSummary": "要約 · AI 生成",
     "aiSummaryLoading": "要約を生成中…",
     "aiSummaryFailed": "要約の生成に失敗しました。再展開で再試行できます",

@@ -22,6 +22,8 @@ export interface ImapFetchedMessage {
   to: string | null;
   dateMs: number;
   snippet: string | null;
+  /** Decoded text/html body from the host — null for plain-text-only mail. */
+  bodyHtml: string | null;
 }
 
 const MAX_BATCH = 200;
@@ -278,6 +280,9 @@ async function collectAccount(
         subject,
         folder: acc.folder,
         snippet: msg.snippet ?? '',
+        // Preview-panel content: the html body when the mail has one, else the
+        // decoded plain snippet (the panel renders plain text escaped).
+        bodyHtml: msg.bodyHtml ?? msg.snippet ?? '',
       },
     });
     if (msg.dateMs > newest) newest = msg.dateMs;

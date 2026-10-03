@@ -15,6 +15,7 @@ function msg(partial: Partial<ImapFetchedMessage>): ImapFetchedMessage {
     to: 'Bob <bob@example.com>',
     dateMs: 1_000,
     snippet: 'hi there',
+    bodyHtml: null,
     ...partial,
   };
 }
@@ -95,6 +96,16 @@ describe('collectEmailEvents', () => {
     // Password never reaches the event.
     expect(JSON.stringify(ev)).not.toContain('secret');
     expect(JSON.parse(out.nextCursor)).toEqual({ 'bob@example.com|INBOX': 1000 });
+  });
+
+  it('payload.bodyHtml carries the html body, falling back to the plain snippet', async () => {
+    const html = msg({ bodyHtml: '<html><body>hi</body></html>' });
+    const plain = msg({ bodyHtml: null, snippet: 'plain body' });
+    const empty = msg({ bodyHtml: null, snippet: null });
+    const out = await collectEmailEvents(ctx(CFG, null, [html, plain, empty]));
+    expect(out.events[0]!.payload).toMatchObject({ bodyHtml: '<html><body>hi</body></html>' });
+    expect(out.events[1]!.payload).toMatchObject({ bodyHtml: 'plain body' });
+    expect(out.events[2]!.payload).toMatchObject({ bodyHtml: '' });
   });
 
   it('filters at the cursor (SINCE day-slack overlap) and advances to newest', async () => {

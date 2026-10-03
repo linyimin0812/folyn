@@ -537,7 +537,16 @@ export interface CollectorContribution {
 }
 
 /** Built-in detail-field formatters (design §3.1). No templates, no HTML. */
-export type ActivityDetailFormat = 'text' | 'number' | 'currency' | 'date' | 'badge' | 'list';
+export type ActivityDetailFormat =
+  | 'text'
+  | 'number'
+  | 'currency'
+  | 'date'
+  | 'badge'
+  | 'list'
+  /** Sanitized-HTML payload rendered in a click-to-open preview panel —
+   *  the field value never lands inline in the timeline. */
+  | 'html';
 /** Metric-card aggregations (design §3.1). No custom expressions. */
 export type ActivityMetricAggregate = 'count' | 'sum';
 /** Palette keys the host accepts (no arbitrary hex, design §3.1). */
