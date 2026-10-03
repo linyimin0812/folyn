@@ -967,3 +967,37 @@ Sidebar: insertEntry now inserts at provider sort position (dirs first, name) so
 ### Next Steps
 
 - None - task complete
+
+
+## Session 28: Font size 8-28px range for appearance and editor settings
+
+**Date**: 2026-10-03
+**Task**: Font size 8-28px range for appearance and editor settings
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+外观页界面字体大小与编辑器页字体大小从固定选项改为 8-28px 全量下拉（默认 14/13 不变），setFontSize/setEditorFontSize 及 hydrate 增加 [8,28] clamp，脏配置值被压回范围。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50ce32bd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
