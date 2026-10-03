@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "SettingsPage 控件改动规范"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "store 持久化与 hydrate clamp 改动"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型安全规范"}
