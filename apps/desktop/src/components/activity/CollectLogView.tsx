@@ -215,7 +215,7 @@ export function CollectLogView() {
   const visibleGroups = [...groups.entries()].filter(([id]) => !deselected.has(id));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 flex-1">
       {groups.size > 1 && (
         <div className="flex flex-wrap gap-1.5 pb-2.5 border-b border-brd">
           <button type="button" className={chipClass(allSelected)} onClick={toggleAll}>
