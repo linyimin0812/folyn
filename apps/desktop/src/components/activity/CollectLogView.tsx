@@ -215,7 +215,7 @@ export function CollectLogView() {
   const visibleGroups = [...groups.entries()].filter(([id]) => !deselected.has(id));
 
   return (
-    <div className="flex flex-col gap-4 flex-1">
+    <div className="flex flex-col gap-4">
       {groups.size > 1 && (
         <div className="flex flex-wrap gap-1.5 pb-2.5 border-b border-brd">
           <button type="button" className={chipClass(allSelected)} onClick={toggleAll}>
@@ -234,7 +234,7 @@ export function CollectLogView() {
         </div>
       )}
       {visibleGroups.length === 0 ? (
-        <div className="flex-1 w-full flex flex-col items-center justify-center gap-2 py-10 bg-panel border border-brd rounded-lg">
+        <div className="w-full flex flex-col items-center gap-2 py-10 bg-panel border border-brd rounded-lg">
           <span className="chat-empty-badge">
             <ScrollText size={18} />
           </span>
