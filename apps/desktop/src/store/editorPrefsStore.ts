@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { registerPersistSlice } from './settingsPersistence';
+import { clampFontSize } from './appearanceStore';
 
 export type TablePasteMode = 'ask' | 'convert' | 'text';
 
@@ -56,7 +57,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   cursorSyncPreview: true,
 
   setEditorFont: (v) => { set({ editorFont: v }); persist(); },
-  setEditorFontSize: (v) => { set({ editorFontSize: v }); persist(); },
+  setEditorFontSize: (v) => { const clamped = clampFontSize(v); set({ editorFontSize: clamped }); persist(); },
   setTabSize: (v) => { set({ tabSize: v }); persist(); },
   setWrapColumn: (v) => { set({ wrapColumn: v }); persist(); },
   setShowLineNumbers: (v) => { set({ showLineNumbers: v }); persist(); },
@@ -69,7 +70,7 @@ export const useEditorPrefsStore = create<EditorPrefsState>((set) => ({
   hydrate: (blob) => {
     const patch: Partial<EditorPrefsState> = {};
     if (blob.editorFont !== undefined) patch.editorFont = blob.editorFont as string;
-    if (blob.editorFontSize !== undefined) patch.editorFontSize = blob.editorFontSize as number;
+    if (typeof blob.editorFontSize === 'number' && Number.isFinite(blob.editorFontSize)) patch.editorFontSize = clampFontSize(blob.editorFontSize);
     if (blob.tabSize !== undefined) patch.tabSize = blob.tabSize as number;
     if (blob.wrapColumn !== undefined) patch.wrapColumn = blob.wrapColumn as number;
     if (blob.showLineNumbers !== undefined) patch.showLineNumbers = blob.showLineNumbers as boolean;

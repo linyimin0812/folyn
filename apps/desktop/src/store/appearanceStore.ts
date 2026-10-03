@@ -8,6 +8,13 @@ import type { CodeThemeId } from '@/editor/codeThemes';
 export type Theme = 'light' | 'dark' | 'system';
 export type LinkOpenMode = 'external' | 'internal';
 
+export const FONT_SIZE_MIN = 8;
+export const FONT_SIZE_MAX = 28;
+
+export function clampFontSize(v: number): number {
+  return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, v));
+}
+
 /** Built-in managed dirs that should always be hidden from the file panel. */
 const BUILTIN_EXCLUDE_DIRS = [
   '__reports__',
@@ -134,8 +141,9 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   },
 
   setFontSize: (size) => {
-    document.documentElement.style.setProperty('--ui-font-size', `${size}px`);
-    set({ fontSize: size });
+    const clamped = clampFontSize(size);
+    document.documentElement.style.setProperty('--ui-font-size', `${clamped}px`);
+    set({ fontSize: clamped });
     persist();
   },
 
@@ -159,7 +167,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.theme !== undefined) patch.theme = blob.theme as Theme;
     if (blob.codeTheme !== undefined) patch.codeTheme = blob.codeTheme as CodeThemeId;
     if (blob.fontFamily !== undefined) patch.fontFamily = blob.fontFamily as string;
-    if (blob.fontSize !== undefined) patch.fontSize = blob.fontSize as number;
+    if (typeof blob.fontSize === 'number' && Number.isFinite(blob.fontSize)) patch.fontSize = clampFontSize(blob.fontSize);
     if (blob.lineHeight !== undefined) patch.lineHeight = blob.lineHeight as number;
     if (blob.showAiPanel !== undefined) patch.showAiPanel = blob.showAiPanel as boolean;
     if (blob.showStatusBar !== undefined) patch.showStatusBar = blob.showStatusBar as boolean;

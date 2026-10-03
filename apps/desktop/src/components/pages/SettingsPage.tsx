@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavStore } from '@/store/navStore';
-import { useAppearanceStore } from '@/store/appearanceStore';
+import { useAppearanceStore, FONT_SIZE_MIN, FONT_SIZE_MAX } from '@/store/appearanceStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { CliSettings } from '@/components/settings/CliSettings';
@@ -24,6 +24,7 @@ import { isMacPlatform } from '@/utils/shellSidecar';
  *  Not yet rebindable — shown for discoverability. Modifier glyph is platform
  *  primary (⌘ on macOS, Ctrl elsewhere), matching ShortcutEditor's symbol set. */
 const PRIMARY_MOD = isMacPlatform() ? '⌘' : 'Ctrl';
+const FONT_SIZE_OPTIONS = Array.from({ length: FONT_SIZE_MAX - FONT_SIZE_MIN + 1 }, (_, i) => FONT_SIZE_MIN + i);
 const APP_SHORTCUTS: { id: string; keys: string[] }[] = [
   { id: 'focusMode', keys: [PRIMARY_MOD, 'Shift', 'Enter'] },
   { id: 'globalSearch', keys: [PRIMARY_MOD, 'Shift', 'F'] },
@@ -172,10 +173,8 @@ export function SettingsPage() {
               <div className="tr-info">
                 <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:appearance.fontSize.label')}</h4>
               </div>
-              <select className="settings-select" style={{ maxWidth: 180 }} value={`${fontSize}px`} onChange={(e) => setFontSize(parseInt(e.target.value))}>
-                <option value="12px">{t('settings:appearance.fontSize.compact')}</option>
-                <option value="14px">{t('settings:appearance.fontSize.default')}</option>
-                <option value="16px">{t('settings:appearance.fontSize.comfortable')}</option>
+              <select className="settings-select" style={{ maxWidth: 180 }} value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}>
+                {FONT_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}px</option>)}
               </select>
             </div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
@@ -269,7 +268,7 @@ export function SettingsPage() {
               <div className="text-[length:calc(var(--ui-font-size)-1px)] text-t3">{t('settings:editor.description')}</div>
             </div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.font.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={editorFont} onChange={(e) => setEditorFont(e.target.value)}><option>DM Mono</option><option>JetBrains Mono</option><option>Fira Code</option></select></div>
-            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.fontSize.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={`${editorFontSize}px`} onChange={(e) => setEditorFontSize(parseInt(e.target.value))}><option value="12px">12px</option><option value="13px">13px</option><option value="14px">14px</option><option value="16px">16px</option></select></div>
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.fontSize.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={editorFontSize} onChange={(e) => setEditorFontSize(parseInt(e.target.value))}>{FONT_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}px</option>)}</select></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.tabSize.label')}</h4></div><select className="settings-select" style={{ maxWidth: 180 }} value={tabSize} onChange={(e) => setTabSize(parseInt(e.target.value))}><option value={2}>{t('settings:editor.tabSize.2')}</option><option value={4}>{t('settings:editor.tabSize.4')}</option></select></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.showLineNumbers.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.showLineNumbers.description')}</p></div><Toggle value={showLineNumbers} onChange={(v) => setShowLineNumbers(v)} /></div>
             <div className="tr flex items-center justify-between py-3.5 border-b border-brd"><div className="tr-info"><h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:editor.autoSave.label')}</h4><p className="text-[length:calc(var(--ui-font-size)-3px)] text-t3 m-0 leading-relaxed">{t('settings:editor.autoSave.description')}</p></div><Toggle value={autoSave} onChange={(v) => setAutoSave(v)} /></div>
