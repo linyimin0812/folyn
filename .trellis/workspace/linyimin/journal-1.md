@@ -928,3 +928,42 @@ Sidebar: insertEntry now inserts at provider sort position (dirs first, name) so
 ### Next Steps
 
 - None - task complete
+
+
+## Session 27: 采集记录页样式打磨与采集器筛选
+
+**Date**: 2026-10-03
+**Task**: 采集记录页样式打磨与采集器筛选
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+采集记录页视觉重构：加载骨架、图标空态、语义色徽章（.cl-badge）、等宽日志面板、展开分隔线；新增采集器多选 chips 筛选（全选/全部切换、noMatch 全宽空态）与分组间分隔线；附带 hooks trace 日志提交并推送。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5f1320f0` | (see git log) |
+| `8c4a6dfb` | (see git log) |
+| `fc2a47a1` | (see git log) |
+| `9309d481` | (see git log) |
+| `57b96984` | (see git log) |
+| `facd9490` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
