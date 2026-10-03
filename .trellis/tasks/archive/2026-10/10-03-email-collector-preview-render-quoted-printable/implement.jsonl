@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "desktop frontend conventions overview"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "new preview panel component + TimelineList button"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "existing dompurify/rehype pipeline to reuse for HTML body"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "body_html is untrusted collector content — sanitize rules for rendering extension data"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Rust host → extension TS → webview data flow across layers"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "reuse display.ts formats / existing sanitize pipeline"}
