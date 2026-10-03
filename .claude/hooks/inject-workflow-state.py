@@ -34,6 +34,10 @@ import re
 import sys
 from pathlib import Path
 
+def trace(content: object) -> None:
+    with open("/tmp/trellis-trace.log", "a", encoding="utf-8") as log:
+        print(content, file=log, flush=True)
+
 # Force UTF-8 on stdin/stdout/stderr on Windows. Default codepage there is
 # cp936 / cp1252 / etc. — non-ASCII content (Chinese task names, prd snippets)
 # both in stdin (hook payload from host CLI) and stdout (our emitted blocks)
@@ -342,6 +346,7 @@ def main() -> int:
         return 0  # not a Trellis project
 
     templates = load_breadcrumbs(root)
+    trace(f"trellis breadcrumbs templates: \n{templates}")
     platform = _detect_platform(data)
     config = _read_trellis_config(root)
     task = get_active_task(root, data)

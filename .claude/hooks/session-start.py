@@ -18,6 +18,10 @@ import sys
 from io import StringIO
 from pathlib import Path
 
+def trace(content: object) -> None:
+    with open("/tmp/trellis-trace.log", "a", encoding="utf-8") as log:
+        print(content, file=log, flush=True)
+
 
 def _normalize_windows_shell_path(path_str: str) -> str:
     """Normalize Unix-style shell paths to real Windows paths.
@@ -798,7 +802,7 @@ If a task is READY, execute its Next required action without asking whether to c
         "additional_context": context_text,
     }
 
-    log(context_text)
+    trace(context_text)
 
     # Output JSON - stdout is already configured for UTF-8
     print(json.dumps(result, ensure_ascii=False), flush=True)
