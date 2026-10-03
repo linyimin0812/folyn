@@ -234,7 +234,7 @@ export function CollectLogView() {
         </div>
       )}
       {visibleGroups.length === 0 ? (
-        <div className="chat-empty bg-panel border border-brd rounded-lg">
+        <div className="flex-1 w-full flex flex-col items-center justify-center gap-2 py-10 bg-panel border border-brd rounded-lg">
           <span className="chat-empty-badge">
             <ScrollText size={18} />
           </span>
