@@ -893,3 +893,38 @@ Sidebar: insertEntry now inserts at provider sort position (dirs first, name) so
 ### Next Steps
 
 - None - task complete
+
+
+## Session 26: Email body decoding + HTML preview panel
+
+**Date**: 2026-10-03
+**Task**: Email body decoding + HTML preview panel
+**Package**: api
+**Branch**: `master`
+
+### Summary
+
+邮件正文改为 mailparse 解码（256KB 全文采集，snippet 纯文本 + bodyHtml），时间线新增点击打开的正文预览面板（DOMPurify 净化、纯文本回退），链接统一走 openLinkByMode 策略并修复非 editor 页跳转；扩展发布 folyn-email-collector 0.1.1 到 folyn-extensions 商店。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8297dd6b` | (see git log) |
+| `a13217ed` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

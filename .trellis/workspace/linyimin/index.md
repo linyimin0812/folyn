@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 25
-- **Last Active**: 2026-09-29
+- **Total Sessions**: 26
+- **Last Active**: 2026-10-03
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~895 | Active |
+| `journal-1.md` | ~930 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 26 | 2026-10-03 | Email body decoding + HTML preview panel | `8297dd6b`, `a13217ed` | `master` |
 | 25 | 2026-09-29 | New folder/file locate-and-highlight after create | `0cf7af60` | `master` |
 | 24 | 2026-09-29 | Entity graph fan expansion + email collector multi-account | `377ef6a8`, `77821891` | `master` |
 | 23 | 2026-09-27 | README: add activity collection section | `ea45813a` | `master` |
