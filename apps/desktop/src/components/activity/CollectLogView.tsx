@@ -217,7 +217,7 @@ export function CollectLogView() {
   return (
     <div className="flex flex-col gap-4">
       {groups.size > 1 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 pb-2.5 border-b border-brd">
           <button type="button" className={chipClass(allSelected)} onClick={toggleAll}>
             {t('activity:collectLog.all')}
           </button>
@@ -243,7 +243,8 @@ export function CollectLogView() {
           </p>
         </div>
       ) : (
-        visibleGroups.map(([id, runs]) => {
+        <div className="flex flex-col gap-4 divide-y divide-brd">
+        {visibleGroups.map(([id, runs]) => {
         const collapsed = collapsedGroups.has(id);
         const latest = runs[0];
         return (
@@ -297,7 +298,8 @@ export function CollectLogView() {
             </div>
           </div>
         );
-        })
+        })}
+        </div>
       )}
     </div>
   );
