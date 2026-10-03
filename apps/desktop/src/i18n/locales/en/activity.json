@@ -80,7 +80,9 @@
     "emptyLogs": "No logs for this run",
     "runs": "{{count}} runs",
     "more": "Show more · {{count}}",
-    "less": "Show less"
+    "less": "Show less",
+    "all": "All",
+    "noMatch": "No runs match the selected collectors"
   },
   "reportSettings": {
     "title": "Report settings",

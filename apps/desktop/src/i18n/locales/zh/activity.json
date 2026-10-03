@@ -80,7 +80,9 @@
     "emptyLogs": "本次运行无日志",
     "runs": "{{count}} 次运行",
     "more": "显示更多 · {{count}}",
-    "less": "收起"
+    "less": "收起",
+    "all": "全部",
+    "noMatch": "所选采集器暂无采集记录"
   },
   "reportSettings": {
     "title": "报告设置",

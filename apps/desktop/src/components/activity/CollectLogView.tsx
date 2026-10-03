@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronRight, ScrollText } from 'lucide-react';
 import { useActivityCollectorStore, type CollectRunRecord } from '@/store/activityCollectorStore';
 import { listActivityCollectRuns } from '@/services/activity/api';
 
@@ -25,36 +25,42 @@ function RunRow({ run, expanded, onToggle }: {
   });
   const seconds = Math.max(1, Math.round((run.finishedAt - run.startedAt) / 1000));
   return (
-    <div className="border border-brd rounded-lg bg-panel">
+    <div className="border border-brd rounded-lg bg-panel overflow-hidden">
       <button
         type="button"
-        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left cursor-pointer bg-transparent border-0 hover:bg-hov"
+        className="w-full flex items-center gap-2.5 px-3.5 py-3 rounded-lg text-left cursor-pointer bg-transparent border-0 hover:bg-hov transition-colors"
         aria-expanded={expanded}
         onClick={onToggle}
       >
-        {expanded ? (
-          <ChevronDown size={12} className="text-t3 shrink-0" />
-        ) : (
-          <ChevronRight size={12} className="text-t3 shrink-0" />
-        )}
+        <ChevronRight
+          size={12}
+          className={`text-t3 shrink-0 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+        />
+        <span
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+            run.outcome === 'ok' ? 'bg-green' : 'bg-amber'
+          }`}
+        />
         <span className="text-[13px] font-medium text-t1 truncate">{run.collectorName}</span>
         <span className="text-[12px] text-t3 shrink-0">
           {dateTimeFmt.format(new Date(run.startedAt))}
-        </span>
-        <span className="text-[12px] text-t3 shrink-0">
+          {' · '}
           {t('activity:collectLog.duration', { time: `${seconds}s` })}
         </span>
         <span className="flex-1" />
         {run.outcome === 'ok' ? (
-          <span className="text-[12px] text-t3 shrink-0">
-            {t('activity:collectLog.records', { count: run.accepted })}
-            {' · '}
-            {t('activity:collectLog.deduped', { count: run.deduped })}
+          <span className="flex items-center gap-1.5 shrink-0">
+            <span className="cl-badge ok">
+              {t('activity:collectLog.records', { count: run.accepted })}
+            </span>
+            {run.deduped > 0 && (
+              <span className="cl-badge muted">
+                {t('activity:collectLog.deduped', { count: run.deduped })}
+              </span>
+            )}
           </span>
         ) : (
-          <span className="text-[11px] text-t3 bg-hov rounded px-1.5 py-0.5 shrink-0">
-            {t('activity:collectLog.noResult')}
-          </span>
+          <span className="cl-badge none">{t('activity:collectLog.noResult')}</span>
         )}
       </button>
       <div
@@ -63,19 +69,21 @@ function RunRow({ run, expanded, onToggle }: {
         }`}
       >
         <div className="overflow-hidden min-h-0">
-          <div className="mx-3 mb-3 rounded-md bg-surf2 border border-brd p-3">
-            <p className="m-0 mb-1.5 text-[11px] text-acc">
+          <div className="border-t border-brd">
+            <div className="mx-3.5 my-3 rounded-md bg-surf2 border border-brd p-3">
+            <p className="m-0 mb-1.5 text-[11px] font-semibold text-acc tracking-wide uppercase">
               {t('activity:collectLog.logs')}
             </p>
             {run.logs.length === 0 ? (
               <p className="m-0 text-[12px] text-t3">{t('activity:collectLog.emptyLogs')}</p>
             ) : (
-              <ul className="m-0 pl-4 text-[12px] text-t2 leading-relaxed">
+              <ul className="m-0 pl-4 font-mono text-[11px] text-t2 leading-relaxed break-all">
                 {run.logs.map((l, i) => (
                   <li key={i}>{l}</li>
                 ))}
               </ul>
             )}
+            </div>
           </div>
         </div>
       </div>
@@ -87,6 +95,9 @@ export function CollectLogView() {
   const { t, i18n } = useTranslation();
   const history = useActivityCollectorStore((s) => s.collectHistory);
   const setCollectHistory = useActivityCollectorStore((s) => s.setCollectHistory);
+  // True once the initial listActivityCollectRuns promise settles (store may
+  // already hold runs from a same-session collect, which skips the skeleton).
+  const [loaded, setLoaded] = useState(false);
   // Initial load from the activity db (also runs the one-time legacy
   // localStorage→db migration — see listActivityCollectRuns). Later runs
   // refresh the store from runCollect's finally.
@@ -96,7 +107,10 @@ export function CollectLogView() {
       .then((runs) => {
         if (!cancelled) setCollectHistory(runs);
       })
-      .catch((err) => console.error('[activity] collect history load failed:', err));
+      .catch((err) => console.error('[activity] collect history load failed:', err))
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -106,11 +120,31 @@ export function CollectLogView() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   // Groups expanded beyond the default 5 most-recent run records.
   const [showAllGroups, setShowAllGroups] = useState<Set<string>>(new Set());
+  // Deselected collector ids (filter chips); empty = show all groups.
+  const [deselected, setDeselected] = useState<Set<string>>(new Set());
+
+  if (!loaded && history.length === 0) {
+    return (
+      <div className="flex flex-col gap-3" aria-busy="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="border border-brd rounded-lg bg-panel px-3.5 py-3 animate-pulse">
+            <div className="h-3 w-1/4 rounded bg-hov" />
+            <div className="h-2.5 w-2/5 rounded bg-hov mt-2.5" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (history.length === 0) {
     return (
-      <div className="text-[13px] text-t3 bg-panel border border-brd rounded-lg p-8 text-center">
-        {t('activity:collectLog.empty')}
+      <div className="chat-empty bg-panel border border-brd rounded-lg">
+        <span className="chat-empty-badge">
+          <ScrollText size={18} />
+        </span>
+        <p className="m-0 text-[13px] text-t2 max-w-[360px]">
+          {t('activity:collectLog.empty')}
+        </p>
       </div>
     );
   }
@@ -159,29 +193,78 @@ export function CollectLogView() {
     });
   };
 
+  const toggleDeselected = (id: string) => {
+    setDeselected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allSelected = deselected.size === 0;
+  const toggleAll = () => {
+    setDeselected(allSelected ? new Set(groups.keys()) : new Set());
+  };
+
+  const chipClass = (selected: boolean) =>
+    `px-2 py-[3px] rounded-full text-[11.5px] cursor-pointer border-0 transition-colors ${
+      selected ? 'bg-accdim text-acc font-semibold' : 'bg-hov text-t3'
+    }`;
+
+  const visibleGroups = [...groups.entries()].filter(([id]) => !deselected.has(id));
+
   return (
     <div className="flex flex-col gap-4">
-      {[...groups.entries()].map(([id, runs]) => {
+      {groups.size > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" className={chipClass(allSelected)} onClick={toggleAll}>
+            {t('activity:collectLog.all')}
+          </button>
+          {[...groups.entries()].map(([id, runs]) => (
+            <button
+              key={id}
+              type="button"
+              className={chipClass(!deselected.has(id))}
+              onClick={() => toggleDeselected(id)}
+            >
+              {runs[0].collectorName}
+            </button>
+          ))}
+        </div>
+      )}
+      {visibleGroups.length === 0 ? (
+        <div className="chat-empty bg-panel border border-brd rounded-lg">
+          <span className="chat-empty-badge">
+            <ScrollText size={18} />
+          </span>
+          <p className="m-0 text-[13px] text-t2 max-w-[360px]">
+            {t('activity:collectLog.noMatch')}
+          </p>
+        </div>
+      ) : (
+        visibleGroups.map(([id, runs]) => {
         const collapsed = collapsedGroups.has(id);
         const latest = runs[0];
         return (
           <div key={id}>
             <button
-              className="bg-transparent border-0 p-0 m-0 w-full flex items-center gap-2 cursor-pointer text-left"
+              className="w-full flex items-center gap-2 px-2 -mx-2 py-1.5 rounded-md cursor-pointer text-left bg-transparent border-0 hover:bg-hov transition-colors"
               onClick={() => toggleGroup(id)}
               aria-expanded={!collapsed}
             >
-              {collapsed ? (
-                <ChevronRight size={12} className="text-t3 shrink-0" />
-              ) : (
-                <ChevronDown size={12} className="text-t3 shrink-0" />
-              )}
-              <span className="text-[13px] font-semibold text-t2 truncate">
+              <ChevronRight
+                size={12}
+                className={`text-t3 shrink-0 transition-transform duration-200 ${collapsed ? '' : 'rotate-90'}`}
+              />
+              <span className="text-[13px] font-semibold text-t1 truncate">
                 {latest.collectorName}
               </span>
-              <span className="text-[12px] text-t3 shrink-0">
+              <span className="cl-badge muted shrink-0">
                 {t('activity:collectLog.runs', { count: runs.length })}
-                {' · '}
+              </span>
+              <span className="flex-1" />
+              <span className="text-[11.5px] text-t3 shrink-0">
                 {dateTimeFmt.format(new Date(latest.startedAt))}
               </span>
             </button>
@@ -214,7 +297,8 @@ export function CollectLogView() {
             </div>
           </div>
         );
-      })}
+        })
+      )}
     </div>
   );
 }

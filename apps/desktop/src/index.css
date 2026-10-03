@@ -402,6 +402,12 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .diff-status-badge { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 3px; }
 .diff-status-badge.accepted { background: color-mix(in srgb, var(--green, #22a863) 15%, transparent); color: var(--green, #22a863); }
 .diff-status-badge.rejected { background: color-mix(in srgb, var(--red, #f06a6a) 15%, transparent); color: var(--red, #f06a6a); }
+
+/* Collect-log outcome/count badges (same color-mix pattern as above) */
+.cl-badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.cl-badge.ok { background: color-mix(in srgb, var(--green, #22a863) 14%, transparent); color: var(--green, #22a863); }
+.cl-badge.none { background: color-mix(in srgb, var(--amber, #d4820a) 14%, transparent); color: var(--amber, #d4820a); }
+.cl-badge.muted { background: var(--hov); color: var(--t3); }
 .diff-line { display: flex; padding: 0 8px; min-height: 18px; }
 .diff-line.diff-add { background: color-mix(in srgb, var(--green, #22a863) 10%, transparent); }
 .diff-line.diff-remove { background: color-mix(in srgb, var(--red, #f06a6a) 10%, transparent); }
