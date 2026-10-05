@@ -126,7 +126,7 @@ to itself), never `parent`/`window.top`/`window.opener`.
 
 Reference: `apps/desktop/src/components/file-types/html/HtmlPreview.tsx`,
 `apps/desktop/src/components/file-types/html/injectPreviewBootstrap.ts`.
-For full host↔iframe RPC (plugins), see the `plugin-host` sandbox loader + `rpcBridge`
+For full host↔iframe RPC (plugins), see the `extension-host` sandbox loader + `rpcBridge`
 (`allow-scripts` only + `postMessage` with origin verification).
 
 > **Testing gotcha**: jsdom does NOT enforce iframe `sandbox` cross-origin
@@ -242,7 +242,7 @@ Observed convention (enforced by reading order, not tooling):
 3. Hook imports (`import { useTheme } from '@/hooks/useTheme'`)
 4. Component imports (`import { Topbar } from '@/components/shell/Topbar'`)
 5. Utility imports (`import { isTauri } from '@/utils/platform'`)
-6. Package imports (`import { registerBuiltinPlugins } from '@folyn/container-plugins'`)
+6. Package imports (`import { registerBuiltinExtensions } from '@folyn/container-extensions'`)
 7. Type-only imports (`import type { VaultEntry } from '@folyn/vault-provider'`)
 
 ---

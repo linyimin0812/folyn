@@ -89,16 +89,22 @@ max_journal_lines: 2000
 # codex:
 #   dispatch_mode: inline  # or "sub-agent" to dispatch trellis-* sub-agents
 
-# Auto-detected monorepo packages
+# Monorepo packages (kept in sync with the workspace layout)
 packages:
-  api:
-    path: apps/api
   desktop:
     path: apps/desktop
   cli-adapter:
     path: packages/cli-adapter
-  container-plugins:
-    path: packages/container-plugins
+  container-extensions:
+    path: packages/container-extensions
+  extension-sdk:
+    path: packages/extension-sdk
+  extension-host:
+    path: packages/extension-host
+  create-folyn-extension:
+    path: packages/create-folyn-extension
+  extension-dev-skill:
+    path: packages/extension-dev-skill
   vault-provider:
     path: packages/vault-provider
-default_package: api
+default_package: desktop

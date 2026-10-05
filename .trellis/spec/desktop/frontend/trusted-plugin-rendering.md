@@ -12,7 +12,7 @@ Applies whenever a `trusted`-tier plugin contributes a React component that the 
 
 ## The core contract
 
-Trusted plugins run in the host webview realm but are loaded as a **blob URL** `import()` (see `apps/desktop/src/services/plugin-host/trustedLoader.ts`). A blob URL has no path, so:
+Trusted plugins run in the host webview realm but are loaded as a **blob URL** `import()` (see `apps/desktop/src/services/extension-host/trustedLoader.ts`). A blob URL has no path, so:
 
 - relative imports do not resolve (`./utils.js` fails)
 - remote imports are blocked by the `folyn-plugin://` CSP
@@ -161,7 +161,7 @@ export function Block() { const [s] = useState(null); return h('div', null, 'ok'
 
 ## Related
 
-- `docs/plugin-development.md` §"The PluginModule export contract (trusted tier)" + §"Trusted tier bundling"
-- `apps/desktop/src/services/plugin-host/trustedLoader.ts` (blob URL + `import()`)
-- `apps/desktop/src/services/plugin-host/contributionAdapters.ts` (`PluginModule` resolution)
-- `packages/container-plugins/src/plugins/MermaidPlugin.tsx` (inline-render precedent — but note: mermaid runs host-bundled, not as a blob-URL plugin; the `window.React` rule applies only to blob-loaded trusted plugins)
+- `packages/extension-sdk/docs/extension-development.md` §"The ExtensionModule export contract (trusted tier)" + §"Trusted tier bundling"
+- `apps/desktop/src/services/extension-host/trustedLoader.ts` (blob URL + `import()`)
+- `apps/desktop/src/services/extension-host/contributionAdapters.ts` (`ExtensionModule` resolution)
+- `packages/container-extensions/src/extensions/MermaidExtension.tsx` (inline-render precedent — but note: mermaid runs host-bundled, not as a blob-URL plugin; the `window.React` rule applies only to blob-loaded trusted plugins)

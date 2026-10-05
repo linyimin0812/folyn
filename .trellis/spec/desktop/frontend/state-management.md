@@ -125,7 +125,7 @@ backends by design** — picking the wrong one is a subtle bug.
 
 | Registry | Backend | Why |
 |----------|---------|-----|
-| `ContainerRegistry` (`@folyn/container-plugins`) | Plain singleton class, `getAll()` returns the current array | Container directives register **once at load** (`registerBuiltinPlugins()` in `App.tsx`); the preview pane reads them during render. No runtime add/remove → no reactivity needed. |
+| `ContainerRegistry` (`@folyn/container-extensions`) | Plain singleton class, `getAll()` returns the current array | Built-in container directives register **once at load** (`registerBuiltinExtensions()` in `App.tsx`); the preview pane reads them during render. No runtime add/remove → no reactivity needed. |
 | `featurePanelStore` / `toolWindowStore` (`store/`) | Zustand store | Panels/tool-windows **register and unregister at runtime** when plugins activate/deactivate. ActivityBar/Sidebar must re-render on those changes → reactive. |
 
 ### Decision rule

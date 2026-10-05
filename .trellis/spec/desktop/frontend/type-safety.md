@@ -41,7 +41,7 @@ From `tsconfig.base.json`:
 |------|---------|---------|
 | Store state | `<Domain>State` | `EditorState`, `VaultState`, `SettingsState` |
 | Component props | `<Component>Props` | `TopbarProps`, `SidebarProps` |
-| Data shapes | Descriptive nouns | `FileTab`, `VaultEntry`, `CliMessage`, `ContainerPlugin` |
+| Data shapes | Descriptive nouns | `FileTab`, `VaultEntry`, `CliMessage`, `ContainerExtension` |
 | Store hook | `use<Domain>Store` | `useEditorStore`, `useVaultStore` |
 
 ---
@@ -111,7 +111,7 @@ import { useEditorStore } from '@/store/editorStore';
 import type { VaultEntry } from '@folyn/vault-provider';
 ```
 
-Package imports use workspace protocol: `@folyn/cli-adapter`, `@folyn/container-plugins`, `@folyn/vault-provider`.
+Package imports use workspace protocol: `@folyn/cli-adapter`, `@folyn/container-extensions`, `@folyn/vault-provider`, `folyn-extension-sdk`.
 
 ---
 
