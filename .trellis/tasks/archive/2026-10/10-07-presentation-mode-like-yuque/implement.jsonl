@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "frontend spec entry point"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "new PresentationMode overlay component conventions"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "reuse markdown pipeline for slide rendering"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "adding presentationMode to editorViewStateStore"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "keyboard shortcut / keydown handling conventions"}
