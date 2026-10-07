@@ -1,0 +1,3 @@
+{"file": ".agents/skills/trellis-spec-bootstrap/references/spec-writing.md", "reason": "Content standards + final-pass verification commands"}
+{"file": ".trellis/tasks/10-05-spec-bootstrap-extension-packages/research/repository-analysis.md", "reason": "Verify spec claims match the verified facts (paths, symbol names, package names)"}
+{"file": ".trellis/tasks/10-05-spec-bootstrap-extension-packages/prd.md", "reason": "Acceptance criteria to verify against"}

@@ -1,0 +1,8 @@
+{"file": ".trellis/tasks/10-05-spec-bootstrap-extension-packages/research/repository-analysis.md", "reason": "Full repository analysis: package inventory, architecture, per-package patterns, stale refs, spec mechanics"}
+{"file": "extension-system.SPEC.md", "reason": "Authoritative architecture doc for the extension system: layering, two-tier model, boundary rules"}
+{"file": ".agents/skills/trellis-spec-bootstrap/references/spec-writing.md", "reason": "How to write high-signal spec files: content standards, file structure, final pass"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Reference example of a well-formed spec index"}
+{"file": ".trellis/spec/desktop/frontend/trusted-plugin-rendering.md", "reason": "Existing host-side rendering contract; new specs must reference not duplicate it"}
+{"file": ".trellis/spec/api/backend/index.md", "reason": "Content to move to desktop/backend; shows existing backend layer conventions"}
+{"file": ".trellis/spec/container-plugins/frontend/index.md", "reason": "Old spec being replaced; carry over still-valid patterns"}
+{"file": ".trellis/spec/container-plugins/frontend/quality-guidelines.md", "reason": "Old spec quality patterns to carry over"}

@@ -1001,3 +1001,37 @@ Sidebar: insertEntry now inserts at provider sort position (dirs first, name) so
 ### Next Steps
 
 - None - task complete
+
+
+## Session 29: 演示模式（Yuque 风格）全屏阅读
+
+**Date**: 2026-10-07
+**Task**: 演示模式（Yuque 风格）全屏阅读
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+新增 Markdown 演示模式：全屏 overlay，首屏标题页居中滚动进正文，Esc 退出（多语言提示），演示期隐藏桌宠窗口，字号/宽度放大，入口为命令面板 + 预览工具栏 + 可重绑快捷键（默认 Cmd/Ctrl+Shift+F5，设置页与专注模式行相邻）。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `18210204` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
