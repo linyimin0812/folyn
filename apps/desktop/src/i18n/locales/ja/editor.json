@@ -253,5 +253,9 @@
   "previewToolbar": {
     "cursorSyncOn": "カーソル同期をオフ",
     "cursorSyncOff": "カーソル同期をオン"
+  },
+  "presentation": {
+    "enter": "プレゼンテーションモード (Ctrl/Cmd+Shift+F5)",
+    "exitHint": "全画面モードを終了するには ESC を押してください"
   }
 }

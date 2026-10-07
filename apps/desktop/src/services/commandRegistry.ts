@@ -245,6 +245,18 @@ export function registerBuiltinCommands(): void {
       },
     },
 
+    // ── Presentation mode (演示模式) ──
+    {
+      id: 'action.presentation-mode',
+      title: '演示模式 / Presentation Mode',
+      category: 'action',
+      keywords: ['presentation', 'slides', '演示', '放映', '幻灯片', 'cmd+shift+f5'],
+      run: () => {
+        useNavStore.getState().setCurrentPage('editor');
+        useEditorViewStateStore.getState().togglePresentationMode();
+      },
+    },
+
     // ── Pet inbox popup (PRD 09-19-inbox-command-popup) ──
     // The inbox is no longer a pet-panel tab — this command is the entry
     // point. It surfaces the extension-tool popup window with the built-in

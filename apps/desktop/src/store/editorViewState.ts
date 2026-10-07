@@ -163,6 +163,14 @@ interface EditorViewState {
   toggleFocusMode: () => void;
   /** Set focus mode explicitly (used to force-exit when leaving the editor page). */
   setFocusMode: (v: boolean) => void;
+
+  /** Presentation mode (Yuque-style 演示模式): fullscreen slide overlay of
+   *  the active markdown doc, split at its highest heading level. Runtime-only. */
+  presentationMode: boolean;
+  /** Toggle presentation mode on/off (no-op guard: only markdown tabs present a deck). */
+  togglePresentationMode: () => void;
+  /** Set presentation mode explicitly (used by the overlay's Esc/× exit). */
+  setPresentationMode: (v: boolean) => void;
 }
 
 // ponytail: P2 — the per-tab cursor persistence is debounced (trailing,
@@ -204,6 +212,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
   versionHistoryVisible: false,
   versionHistorySelection: { selectedKey: null, snapshotContent: null, snapshotError: null },
   focusMode: false,
+  presentationMode: false,
 
   setCursorPosition: (line, col) => {
     // ponytail: cursor is also persisted onto the active tab so it survives tab
@@ -292,4 +301,14 @@ export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
 
   toggleFocusMode: () => set((state) => ({ focusMode: !state.focusMode })),
   setFocusMode: (v) => set({ focusMode: v }),
+
+  // ponytail: toggle only enters when a markdown tab is active — the command
+  // palette / shortcut entry points call this blindly; the guard keeps a
+  // non-markdown tab from opening an empty overlay.
+  togglePresentationMode: () => {
+    const activeTab = useEditorStore.getState().tabs.find((t) => t.id === useEditorStore.getState().activeTabId);
+    if (!get().presentationMode && activeTab?.fileType !== 'markdown') return;
+    set((state) => ({ presentationMode: !state.presentationMode }));
+  },
+  setPresentationMode: (v) => set({ presentationMode: v }),
 }));

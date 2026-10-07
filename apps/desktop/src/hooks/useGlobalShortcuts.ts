@@ -40,6 +40,16 @@ export function useGlobalShortcuts() {
         e.preventDefault();
         useEditorViewStateStore.getState().toggleFocusMode();
       }
+      // Presentation mode (演示模式) — default Cmd/Ctrl+Shift+F5, rebindable via
+      // Settings → Shortcuts (prefsStore `presentationMode` entry). Toggles the
+      // fullscreen slide-deck overlay. Esc inside the overlay exits.
+      const presentationModeShortcut = usePrefsStore
+        .getState()
+        .shortcuts.find((s: ShortcutItem) => s.id === 'presentationMode');
+      if (presentationModeShortcut && eventMatchesShortcut(e, presentationModeShortcut.keys)) {
+        e.preventDefault();
+        useEditorViewStateStore.getState().togglePresentationMode();
+      }
       // Cmd/Ctrl+A selects all in native <input>/<textarea>. CodeMirror has
       // its own Mod-a keymap that preventDefaults, so it never reaches here.
       // Tauri's Edit menu lacks a Select All item on purpose — adding

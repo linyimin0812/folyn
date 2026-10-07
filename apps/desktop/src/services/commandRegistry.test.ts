@@ -179,6 +179,7 @@ describe('commandRegistry — registerBuiltinCommands', () => {
       'action.export-html',
       'action.open-global-search',
       'action.toggle-focus-mode',
+      'action.presentation-mode',
       'action.open-inbox',
     ]);
   });

@@ -253,5 +253,9 @@
   "previewToolbar": {
     "cursorSyncOn": "Cursor-Sync deaktivieren",
     "cursorSyncOff": "Cursor-Sync aktivieren"
+  },
+  "presentation": {
+    "enter": "Präsentationsmodus (Strg/Cmd+Umschalt+F5)",
+    "exitHint": "Drücken Sie ESC, um den Vollbildmodus zu verlassen"
   }
 }

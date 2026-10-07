@@ -168,7 +168,8 @@
       "code": "インラインコード",
       "link": "リンクを挿入",
       "togglePetPanel": "桌宠パネルを開く",
-      "cursorSync": "カーソル同期"
+      "cursorSync": "カーソル同期",
+      "presentationMode": "プレゼンテーションモード"
     },
     "appItems": {
       "focusMode": "フォーカスモード切替",

@@ -260,5 +260,9 @@
   "previewToolbar": {
     "cursorSyncOn": "关闭光标同步",
     "cursorSyncOff": "开启光标同步"
+  },
+  "presentation": {
+    "enter": "演示模式 (Ctrl/Cmd+Shift+F5)",
+    "exitHint": "若要退出全屏模式，请按 ESC"
   }
 }

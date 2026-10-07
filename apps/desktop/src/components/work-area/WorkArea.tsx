@@ -18,6 +18,7 @@ import { PreviewPane } from './PreviewPane';
 import { OutlineSidebar } from './OutlineSidebar';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
+import { PresentationOverlay } from './PresentationOverlay';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 // ponytail: inline `kind: 'component'` editors (Excalidraw / rich-text / web)
@@ -42,6 +43,7 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const setContentExternal = useDiffReviewStore((state) => state.setContentExternal);
   const versionHistoryVisible = useEditorViewStateStore((s) => s.versionHistoryVisible);
   const versionHistorySelectedKey = useEditorViewStateStore((s) => s.versionHistorySelection.selectedKey);
+  const presentationMode = useEditorViewStateStore((s) => s.presentationMode);
 
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);
@@ -371,6 +373,17 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           integration. Visibility gated by useEditorViewStateStore; the panel
           itself no-ops when the active tab is not a Versionable File. */}
       <VersionHistoryPanel activeTab={activeTab} />
+
+      {/* Presentation mode (演示模式) — fixed fullscreen overlay above the
+          whole work area. Entry: command palette / preview toolbar / rebindable
+          shortcut (default Cmd/Ctrl+Shift+F5). Esc exits. */}
+      {presentationMode && activeTab?.fileType === 'markdown' && (
+        <PresentationOverlay
+          content={activeTab.content}
+          filePath={activeTab.path}
+          vaultRoot={vaultRoot}
+        />
+      )}
     </div>
   );
 }

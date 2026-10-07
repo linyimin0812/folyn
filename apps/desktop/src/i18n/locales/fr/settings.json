@@ -168,7 +168,8 @@
       "code": "Code en ligne",
       "link": "Insérer un lien",
       "togglePetPanel": "Ouvrir le panneau du pet",
-      "cursorSync": "Synchronisation du curseur"
+      "cursorSync": "Synchronisation du curseur",
+      "presentationMode": "Mode présentation"
     },
     "appItems": {
       "focusMode": "Basculer le mode concentration",

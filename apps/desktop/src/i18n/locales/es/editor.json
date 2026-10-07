@@ -253,5 +253,9 @@
   "previewToolbar": {
     "cursorSyncOn": "Desactivar sincronización del cursor",
     "cursorSyncOff": "Activar sincronización del cursor"
+  },
+  "presentation": {
+    "enter": "Modo presentación (Ctrl/Cmd+Shift+F5)",
+    "exitHint": "Pulse ESC para salir del modo de pantalla completa"
   }
 }

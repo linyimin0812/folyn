@@ -168,7 +168,8 @@
       "code": "Inline-Code",
       "link": "Link einfügen",
       "togglePetPanel": "Pet-Panel öffnen",
-      "cursorSync": "Cursor-Synchronisierung"
+      "cursorSync": "Cursor-Synchronisierung",
+      "presentationMode": "Präsentationsmodus"
     },
     "appItems": {
       "focusMode": "Fokusmodus umschalten",

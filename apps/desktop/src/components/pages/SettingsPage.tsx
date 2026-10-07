@@ -308,21 +308,12 @@ export function SettingsPage() {
                 <ShortcutEditor shortcutId={shortcut.id} currentKeys={shortcut.keys} />
               </div>
             ))}
-            {/* Voice global hotkey lives in voiceStore (accelerator string
-                keyshape, OS-registered via voice_set_global_hotkey). Shown
-                here alongside prefsStore shortcuts so users see all global
-                hotkeys in one place. Editor reuses VoiceHotkeyRecorder —
-                same capture/Esc-clear/re-register flow as the voice tab. */}
-            <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
-              <div className="tr-info">
-                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:voice.globalHotkey.label')}</h4>
-              </div>
-              <VoiceHotkeyRecorder />
-            </div>
 
             {/* Application-level shortcuts — handled at the document level
                 in App.tsx (not yet rebindable). Shown read-only so users can
-                discover them alongside the editable editor shortcuts. */}
+                discover them alongside the editable editor shortcuts.
+                Voice hotkey renders after this block so the presentation /
+                focus mode rows sit adjacent. */}
             {APP_SHORTCUTS.map((sc) => (
               <div className="tr flex items-center justify-between py-3.5 border-b border-brd" key={sc.id}>
                 <div className="tr-info">
@@ -338,6 +329,17 @@ export function SettingsPage() {
                 </div>
               </div>
             ))}
+            {/* Voice global hotkey lives in voiceStore (accelerator string
+                keyshape, OS-registered via voice_set_global_hotkey). Shown
+                here so users see all global hotkeys in one place. Editor
+                reuses VoiceHotkeyRecorder — same capture/Esc-clear/
+                re-register flow as the voice tab. */}
+            <div className="tr flex items-center justify-between py-3.5 border-b border-brd">
+              <div className="tr-info">
+                <h4 className="text-[length:calc(var(--ui-font-size)-1.5px)] font-semibold text-t1 m-0 mb-1">{t('settings:voice.globalHotkey.label')}</h4>
+              </div>
+              <VoiceHotkeyRecorder />
+            </div>
             <div className="flex gap-2 mt-4">
               <button className="btn btn-g btn-sm" onClick={() => resetShortcuts()}>{t('settings:shortcuts.reset')}</button>
             </div>

@@ -168,7 +168,8 @@
       "code": "Inline code",
       "link": "Insert link",
       "togglePetPanel": "Open pet panel",
-      "cursorSync": "Cursor sync"
+      "cursorSync": "Cursor sync",
+      "presentationMode": "Presentation mode"
     },
     "appItems": {
       "focusMode": "Toggle focus mode",

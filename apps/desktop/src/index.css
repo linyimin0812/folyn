@@ -444,6 +444,22 @@ mjx-container svg {
 
 /* ── Markdown Preview (targets rendered HTML) ── */
 .md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.6; color: var(--t1); overflow-wrap: break-word; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; }
+/* Presentation mode (演示模式) — slides get larger body text and a wider
+   measure so the deck reads from a distance. */
+.presentation-mode .md-preview { font-size: 19px; max-width: 1280px; }
+/* Presentation mode: code blocks, tables and mono run-output carry their own
+   explicit font-size (12px/11px) and would stay small while the body scales
+   to 19px. Scale each by the same 19/14 ≈ 1.36 ratio: 12px → 16.5px, 11px →
+   15px. Selectors mirror the base rules above; specificity (.presentation-mode
+   + .md-preview) + source order beat them. hljs spans have no font-size and
+   inherit. */
+.presentation-mode .md-preview code { font-size: 16.5px; }
+.presentation-mode .md-preview th, .presentation-mode .md-preview td { font-size: 16.5px; }
+.presentation-mode .md-preview blockquote.run-result { font-size: 16.5px; }
+.presentation-mode .code-block-inner pre code,
+.presentation-mode .code-block-inner .code-ln,
+.presentation-mode .code-run-output { font-size: 16.5px; }
+.presentation-mode .code-run-status { font-size: 15px; }
 /* Preview frame variant for the Containers settings modal: full width
    (no 800px cap) and flattened first/last vertical margins so the preview's
    top + bottom spacing is symmetric inside the frame's `p-4` padding —

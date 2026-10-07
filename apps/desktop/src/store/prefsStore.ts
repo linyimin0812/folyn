@@ -40,6 +40,10 @@ export function buildDefaultShortcuts(primaryMod: '⌘' | 'Ctrl'): ShortcutItem[
     // reads this entry from prefsStore at match time, so re-recording here
     // takes effect immediately without an App.tsx edit. Not OS-registered.
     { id: 'cursorSync', name: '光标同步', keys: [primaryMod, 'Shift', 'I'] },
+    // DOCUMENT-level shortcut — handled in useGlobalShortcuts' keydown listener
+    // (toggles editorViewStateStore.presentationMode). Rebindable: useGlobalShortcuts
+    // reads this entry from prefsStore at match time. Not OS-registered.
+    { id: 'presentationMode', name: '演示模式', keys: [primaryMod, 'Shift', 'F5'] },
   ];
 }
 

@@ -90,6 +90,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     const hasSelection = useEditorViewStateStore((s) => viewMode === 'split' ? s.hasSelection : false);
     const outlineVisible = useEditorViewStateStore((s) => s.outlineVisible);
     const toggleOutline = useEditorViewStateStore((s) => s.toggleOutline);
+    const togglePresentationMode = useEditorViewStateStore((s) => s.togglePresentationMode);
     // Markmap preview toggle (markdown only). Default false = normal preview.
     const [markmapMode, setMarkmapMode] = useState(false);
     const [markmapAssetBase, setMarkmapAssetBase] = useState<string | null>(null);
@@ -183,6 +184,19 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 <line x1="4" y1="6.5" x2="14" y2="6.5" />
                 <line x1="4" y1="9.5" x2="14" y2="9.5" />
                 <line x1="2" y1="12.5" x2="14" y2="12.5" />
+              </svg>
+            </button>
+            <button
+              className="flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2"
+              onClick={togglePresentationMode}
+              title={t('editor:presentation.enter')}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1.5" y="2.5" width="13" height="9" rx="1" />
+                <line x1="5.5" y1="7" x2="6.5" y2="7" />
+                <line x1="8.5" y1="7" x2="9.5" y2="7" />
+                <line x1="11.5" y1="7" x2="12" y2="7" />
+                <path d="M 4 14 L 12 14" />
               </svg>
             </button>
             {viewMode === 'split' && (

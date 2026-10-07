@@ -260,5 +260,9 @@
   "previewToolbar": {
     "cursorSyncOn": "Disable cursor sync",
     "cursorSyncOff": "Enable cursor sync"
+  },
+  "presentation": {
+    "enter": "Presentation mode (Ctrl/Cmd+Shift+F5)",
+    "exitHint": "Press ESC to exit full-screen mode"
   }
 }
