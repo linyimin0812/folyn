@@ -1035,3 +1035,37 @@ Sidebar: insertEntry now inserts at provider sort position (dirs first, name) so
 ### Next Steps
 
 - None - task complete
+
+
+## Session 30: Dark mode cursor-sync highlight visibility fix
+
+**Date**: 2026-10-07
+**Task**: Dark mode cursor-sync highlight visibility fix
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+Fixed faint cursor-sync block highlight in dark mode: raised accent color-mix from 6% to 26% via a dark-theme CSS override in index.css (.cursor-sync-active). Light mode unchanged.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0bb8604c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

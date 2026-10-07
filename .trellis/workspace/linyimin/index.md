@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 29
+- **Total Sessions**: 30
 - **Last Active**: 2026-10-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1037 | Active |
+| `journal-1.md` | ~1071 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 30 | 2026-10-07 | Dark mode cursor-sync highlight visibility fix | `0bb8604c` | `master` |
 | 29 | 2026-10-07 | 演示模式（Yuque 风格）全屏阅读 | `18210204` | `master` |
 | 28 | 2026-10-03 | Font size 8-28px range for appearance and editor settings | `50ce32bd` | `master` |
 | 27 | 2026-10-03 | 采集记录页样式打磨与采集器筛选 | `5f1320f0`, `8c4a6dfb`, `fc2a47a1`, `9309d481`, `57b96984`, `facd9490` | `master` |
