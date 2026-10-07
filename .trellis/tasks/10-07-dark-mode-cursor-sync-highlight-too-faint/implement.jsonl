@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "cursor-sync highlight lives in the markdown preview pipeline; dark-mode CSS override must stay consistent with preview styling"}

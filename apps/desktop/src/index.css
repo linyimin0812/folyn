@@ -994,3 +994,8 @@ mjx-container svg {
   background-color: color-mix(in srgb, var(--acc) 6%, transparent);
   border-radius: 4px;
 }
+/* ponytail: 6% accent tint is near-invisible on dark surfaces (#13161f);
+   raised until visible, one dark-theme override. */
+[data-theme='dark'] .md-preview .cursor-sync-active {
+  background-color: color-mix(in srgb, var(--acc) 26%, transparent);
+}
