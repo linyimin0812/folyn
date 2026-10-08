@@ -40,8 +40,12 @@
  *
  * Two-stage design:
  * 1. `remarkCollapseUnknownTagRuns` (mdast level, right after remarkParse)
- *    collapses ROOT-level runs — from a lone unknown OPEN tag (a single-line
- *    `html` node) to the next lone close tag of the same name — into ONE
+ *    collapses ROOT-level runs — an unknown OPEN tag (a lone single-line
+ *    `html` node, or an `html` node whose value starts with the open tag on
+ *    its own first line) through the close tag of the same name (a lone root
+ *    close-tag `html` node, or an inline close-tag `html` child at the end of
+ *    a paragraph — CommonMark cannot let a type-7 close tag interrupt a
+ *    paragraph) — into ONE
  *    paragraph of raw source, tagged `md-raw-tag-block` (via mdast
  *    data.hProperties → remark-rehype) so the whole region renders as a raw
  *    source block (mono, subtle chrome — softer than a real code block). Needed because CommonMark ends an HTML block
@@ -217,18 +221,27 @@ export function rehypeShowRawTags(options: { extraKnownTags?: Iterable<string> }
 }
 
 // ---- Stage 1: mdast-level run collapser ----
-// Lone tags on a line of their own. Single-line only ([^>\n] in the attr
-// class): a multi-line html node value is the no-blank-line block owned by
-// the hast-level stage 2 above.
+// An html node opens a run when it is a lone single-line open tag
+// (`^<name attrs>$`) OR its value STARTS with an open tag on its own first
+// line (`^<name attrs>\n` — attrs may not contain `\n` or `>`); the second
+// form is the open tag of a blank-line-separated region whose first content
+// line shares the html node (CommonMark ends the block at the blank line
+// AFTER it, so the node holds `<name>\ncontent…`).
+// A run ends at a lone root close-tag html node, OR — because a type-7 close
+// tag CANNOT interrupt a paragraph — at a PARAGRAPH whose trailing inline
+// html child is the lone close tag `^</name\s*>$`.
 const OPEN_TAG_LINE_RE = /^<([a-zA-Z][\w-]*)(?:[ \t][^>\n]*)?>$/;
+const OPEN_TAG_FIRST_LINE_RE = /^<([a-zA-Z][\w-]*)(?:[ \t][^>\n]*)?>\n/;
 const CLOSE_TAG_LINE_RE = /^<\/([a-zA-Z][\w-]*)[ \t]*>$/;
 
 /**
- * Remark plugin: collapse a root-level run of unknown-tag blocks — lone open
- * `html` node … lone close `html` node of the same name — into ONE paragraph
- * of raw source, so blank-line-separated regions (where CommonMark ends the
- * HTML block at the first blank line and the inner content parses as real
- * markdown) display as literal text instead of rendering.
+ * Remark plugin: collapse a root-level run of unknown-tag blocks — an open
+ * tag (lone single-line `html` node, or an `html` node whose first line is
+ * the open tag) through a close tag of the same name (lone root `html` node,
+ * or a trailing inline close-tag `html` child of a paragraph) — into ONE
+ * paragraph of raw source, so blank-line-separated regions (where CommonMark
+ * ends the HTML block at the first blank line and the inner content parses as
+ * real markdown) display as literal text instead of rendering.
  *
  * ponytail: ROOT-level walk only — inline unknown tags inside paragraphs are
  * already handled by the hast-level rehypeShowRawTags (they never become
@@ -245,35 +258,71 @@ export function remarkCollapseUnknownTagRuns(options: { extraKnownTags?: Iterabl
     const out: any[] = [];
     for (let i = 0; i < children.length; i++) {
       const node = children[i];
-      const open = node?.type === 'html' ? node.value?.trim().match(OPEN_TAG_LINE_RE) : null;
       const openOff = node?.position?.start?.offset;
-      if (!open || openOff == null || isKnown(open[1])) {
+      const v = node?.type === 'html' && typeof node.value === 'string' ? node.value : null;
+      const open =
+        v == null || openOff == null
+          ? null
+          : v.trim().match(OPEN_TAG_LINE_RE) ?? v.match(OPEN_TAG_FIRST_LINE_RE);
+      if (!open || isKnown(open[1])) {
         out.push(node);
         continue;
       }
-      // Scan forward for a lone close tag of the SAME name (a different
-      // tag's close does not end the run). ponytail: nested same-name opens
-      // inside the run are not tracked — the FIRST matching close wins and
-      // the region renders literal up to it (raw source display, so content
-      // is never lost); balance-tracking only if a real doc nests these.
+      // Scan forward for the close of the SAME name (a different tag's close
+      // does not end the run): a lone root close-tag html node, or — because
+      // a type-7 close tag cannot interrupt a paragraph — an inline close-tag
+      // html child at the END of a paragraph (CommonMark puts `</name>` on
+      // the line right after paragraph content INTO that paragraph). ponytail:
+      // nested same-name opens inside the run are not tracked — the FIRST
+      // matching close wins and the region renders literal up to it (raw
+      // source display, so content is never lost); balance-tracking only if a
+      // real doc nests these. Self-contained no-blank regions (`<a>…</a>` in
+      // one html node) ARE scanned by the first-line open match but find no
+      // lone/inline close node — they fall to stage 2, as before.
       let j = -1;
+      let closeEndOff: number | null = null;
+      let closeEndPos: any = null;
       for (let k = i + 1; k < children.length; k++) {
         const sib = children[k];
-        if (sib?.type !== 'html') continue;
-        const close = sib.value?.trim().match(CLOSE_TAG_LINE_RE);
-        if (close && close[1] === open[1] && sib.position?.end?.offset != null) {
+        if (sib?.type === 'html') {
+          const close = sib.value?.trim().match(CLOSE_TAG_LINE_RE);
+          if (close && close[1] === open[1] && sib.position?.end?.offset != null) {
+            j = k;
+            closeEndOff = sib.position.end.offset;
+            closeEndPos = sib.position.end;
+            break;
+          }
+        } else if (sib?.type === 'paragraph' && Array.isArray(sib.children)) {
+          const idx = sib.children.findIndex(
+            (c: any) =>
+              c?.type === 'html' &&
+              c.value?.trim().match(CLOSE_TAG_LINE_RE)?.[1] === open[1] &&
+              c.position?.end?.offset != null,
+          );
+          if (idx < 0) continue;
+          // ponytail ceiling: meaningful children AFTER the inline close would
+          // be source-wise outside the region but position-wise inside the
+          // paragraph — such a paragraph is NOT accepted as the region end and
+          // the scan continues. Whitespace-only tails are fine (the raw slice
+          // stops at the close tag's end offset). Revisit only if a real doc
+          // puts content after an inline close of the same name.
+          const hasTail = sib.children.slice(idx + 1).some(
+            (c: any) => (c?.type === 'text' ? (c.value ?? '').trim() !== '' : true),
+          );
+          if (hasTail) continue;
           j = k;
+          closeEndOff = sib.children[idx].position.end.offset;
+          closeEndPos = sib.children[idx].position.end;
           break;
         }
       }
-      // No matching close (or its offsets are missing): leave the lone open
-      // tag to the hast-level plugin.
-      if (j < 0) {
+      // No matching close (or its offsets are missing): leave the open tag to
+      // the hast-level plugin.
+      if (j < 0 || closeEndOff == null) {
         out.push(node);
         continue;
       }
-      const closeNode = children[j];
-      const raw = src.slice(openOff, closeNode.position.end.offset);
+      const raw = src.slice(openOff, closeEndOff);
       const kids: any[] = [];
       // Skip empty parts but keep every break, so blank lines between the
       // tags display as blank lines.
@@ -289,8 +338,10 @@ export function remarkCollapseUnknownTagRuns(options: { extraKnownTags?: Iterabl
         data: { hProperties: { className: ['md-raw-tag-block'] } },
         // Position spans the whole run: rehypeBlankGap advances its line
         // cursor for ANY positioned root node, so the region's source lines
-        // count as content, not blank lines.
-        position: { start: node.position.start, end: closeNode.position.end },
+        // count as content, not blank lines. Ends at the close tag itself —
+        // when the close is inline in a paragraph, any paragraph tail after
+        // it (whitespace) is not part of the region.
+        position: { start: node.position.start, end: closeEndPos },
       });
       i = j;
     }

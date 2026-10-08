@@ -239,4 +239,105 @@ describe('remarkCollapseUnknownTagRuns', () => {
     expect(ps).toHaveLength(1);
     expect(textOf(ps[0].children)).toBe(md);
   });
+
+  it('does not collapse a multi-line block whose first line is a known tag', () => {
+    // The first-line open-tag regex matches `<div>\n`, but isKnown(div) must
+    // reject it BEFORE the close scan — a raw known-tag block keeps its real
+    // element rendering (heading nests inside the div after rehypeRaw).
+    const tree = hastOf('<div>\n\n# H\n\n</div>');
+    const kids = tree.children as any[];
+    expect(kids.some((n: any) => n.properties?.className?.includes('md-raw-tag-block'))).toBe(false);
+    const div = kids.find((n: any) => n.tagName === 'div');
+    expect(div).toBeTruthy();
+    // The blank-line-separated heading parses as real markdown and NESTS in
+    // the div (rehypeRaw keeps the element open to the close tag).
+    const findTag = (n: any, tag: string): any =>
+      n.tagName === tag ? n : (n.children ?? []).some((c: any) => findTag(c, tag));
+    expect(kids.some((n: any) => findTag(n, 'h1'))).toBe(true);
+  });
+
+  it('rejects an inline close with meaningful tail and ignores a different-name inline close', () => {
+    // (b) guard: an inline `</foo>` mid-paragraph with content AFTER it is not
+    // a region end (the tail is source-wise outside the region) — the scan
+    // continues to the lone root close. A different-name inline close never
+    // ends the run.
+    const tail = '<foo>\n\na </foo> b\n\n</foo>';
+    const tailTree = hastOf(tail);
+    const tailPs = (tailTree.children as any[]).filter((n: any) => n.tagName === 'p');
+    expect(tailPs).toHaveLength(1);
+    expect(textOf(tailPs[0].children)).toBe(tail);
+
+    const other = '<foo>\n\na </baz>\n\n</foo>';
+    const otherTree = hastOf(other);
+    const otherPs = (otherTree.children as any[]).filter((n: any) => n.tagName === 'p');
+    expect(otherPs).toHaveLength(1);
+    expect(textOf(otherPs[0].children)).toBe(other);
+  });
+
+  it('collapses a region whose close tag is inline in a trailing paragraph (type-7 close cannot interrupt a paragraph)', () => {
+    // Real-doc regression: the open tag shares its html node with the first
+    // content line, the region contains blank lines (heading/list parse as
+    // markdown), and the `</guidelines>` line follows a paragraph line with
+    // no blank line between — CommonMark makes it an INLINE html child of
+    // that paragraph. Before the fix, the inline close never ended the run,
+    // rehypeRaw kept <guidelines> open until EOF, and stage 2 synthesized a
+    // stray `</guidelines>` at the end wrapping the tail regions.
+    const md = [
+      '<guidelines>',
+      'Task context order ...',
+      '',
+      '## Available indexes',
+      '- a',
+      '- b',
+      '',
+      'Discover more via: `python3 ...`',
+      '</guidelines>',
+      '',
+      '<task-status>',
+      'Status: NO ACTIVE TASK',
+      '</task-status>',
+      '',
+      '<ready>',
+      'Context loaded. Follow <task-status>. Load details.',
+    ].join('\n');
+    const tree = hastOf(md);
+    const kids = tree.children as any[];
+    const allText = textOf(kids);
+
+    // No root-level <guidelines> element wrapping the tail regions.
+    const tagNames: string[] = [];
+    const walk = (n: any) => {
+      if (n.tagName) tagNames.push(n.tagName);
+      (n.children ?? []).forEach(walk);
+    };
+    kids.forEach(walk);
+    expect(tagNames).not.toContain('guidelines');
+
+    // `</guidelines>` occurs exactly ONCE in the rendered text — the stray
+    // synthesized second close is gone.
+    expect(allText.split('</guidelines>')).toHaveLength(2);
+
+    // The guidelines region collapses to ONE raw block holding the source
+    // from `<guidelines>` to the inline `</guidelines>`.
+    const collapsed = kids.filter(
+      (n) => n.properties?.className?.includes('md-raw-tag-block') && textOf([n]).includes('## Available indexes'),
+    );
+    expect(collapsed).toHaveLength(1);
+    expect(textOf(collapsed[0].children).startsWith('<guidelines>')).toBe(true);
+    expect(textOf(collapsed[0].children).endsWith('</guidelines>')).toBe(true);
+    // Inner markdown stayed literal.
+    expect(collapsed[0].children.some((n: any) => n.tagName === 'h1' || n.tagName === 'ul')).toBe(false);
+
+    // The task-status and ready regions are NOT inside the guidelines block:
+    // each renders as its own root child.
+    const statusBlock = kids.find((n) => textOf([n]).includes('Status: NO ACTIVE TASK'));
+    expect(statusBlock).toBeTruthy();
+    expect(statusBlock).not.toBe(collapsed[0]);
+
+    // The unclosed <ready> region's synthesized close is the LAST content.
+    const last = kids[kids.length - 1];
+    // textOf drops <br> (the leading \n of the inner slice becomes a br), so
+    // this is the concatenated text: open tag + inner source + </ready>.
+    expect(textOf([last])).toBe('<ready>Context loaded. Follow <task-status>. Load details.</ready>');
+  });
 });
