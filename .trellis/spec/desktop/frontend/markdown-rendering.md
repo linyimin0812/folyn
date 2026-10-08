@@ -121,7 +121,7 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 
 **Problem**: `rehypeRaw` (MarkdownPreview-only pipeline) parses raw HTML into real hast elements, so a machine-oriented marker like `<workflow-state>…</workflow-state>` renders as an invisible DOM custom element — the tag itself vanishes, only inner text shows.
 
-**Solution**: `rehypeShowRawTags` (components/file-types/markdown/rehypeShowRawTags.ts) runs immediately AFTER `rehypeRaw` and BEFORE `rehypeHighlight`/`rehypeMathjax`. Any element whose tagName is neither a known HTML/SVG tag nor in `extraKnownTags` is spliced open: `[text("<tag attrs>"), ...children, text("</tag>")]` — tags become literal text, children keep normal rendering. Newlines in the spliced content get `<br>` spliced inline (remark-breaks never sees raw-HTML content — it runs at mdast level before rehypeRaw; without this, `\n` collapses to a space).
+**Solution**: `rehypeShowRawTags` (components/file-types/markdown/rehypeShowRawTags.ts) runs immediately AFTER `rehypeRaw` and BEFORE `rehypeHighlight`/`rehypeMathjax`. Any element whose tagName is neither a known HTML/SVG tag nor in `extraKnownTags` is spliced open: `[text("<tag attrs>"), ...children, text("</tag>")]` — tags become literal text, children keep normal rendering. Newlines render as `<br>` both inside the spliced content AND between sibling spliced tags (any level that spliced converts its direct text-child `\n`). Safe because after remark-breaks no markdown text node contains `\n` (every `\n` came from raw HTML) and code text is nested in `pre>code`, never a direct child.
 
 **Contract**:
 

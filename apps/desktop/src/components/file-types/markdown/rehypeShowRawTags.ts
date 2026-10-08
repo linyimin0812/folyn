@@ -13,11 +13,15 @@
  * literal text nodes, the children keep their normal rendering (bold, links,
  * …). Known tags (<b>, <img>, <svg>, …) are untouched.
  *
- * Newlines inside the spliced content: remark-breaks turns single \n into
- * <br> at mdast level BEFORE rehypeRaw, so it never sees raw-HTML content —
- * an HTML text node's \n would collapse to a space. We splice <br> ourselves
- * for \n in the unknown tag's inner text nodes (mirroring remark-breaks),
- * and ONLY there — the rest of the tree is untouched.
+ * Newlines in raw-HTML text: remark-breaks turns single \n into <br> at mdast
+ * level BEFORE rehypeRaw, so it never sees raw-HTML content — an HTML text
+ * node's \n would collapse to a space. After remark-breaks, no markdown text
+ * node contains \n, so any \n in a text node here came from raw HTML. We
+ * splice <br> ourselves (mirroring remark-breaks) for \n inside an unknown
+ * tag's inner content, and — when a level spliced at least one unknown tag —
+ * for \n in that level's sibling text nodes too (e.g. the newline BETWEEN two
+ * sibling <workflow-state> blocks). Code content lives in pre>code (never a
+ * direct child), so the per-level pass never touches it.
  *
  * extraKnownTags: container-directive tag names (:::name → <name>) come from
  * a dynamic registry and are mapped to React components in
@@ -83,7 +87,8 @@ const brNode = () => ({ type: 'element', tagName: 'br', properties: {}, children
 
 // ponytail: raw-HTML content bypasses remark-breaks (mdast-level, runs before
 // rehypeRaw), so a lone \n would collapse to a space in the HTML text node —
-// splice <br> inline, only for text inside spliced unknown-tag content.
+// splice <br> inline. Idempotent (br is an element), so levels that already
+// split can't double-split.
 function newlineTextToBr(node: any): any[] {
   if (node?.type !== 'text' || !node.value.includes('\n')) return [node];
   const out: any[] = [];
@@ -94,21 +99,34 @@ function newlineTextToBr(node: any): any[] {
   return out;
 }
 
-/** Returns the node list that replaces `node` in its parent's children. */
-function unwrapUnknownTags(node: any, isKnown: (tag: string) => boolean): any[] {
-  if (node?.type !== 'element') return [node];
-  if (isKnown(node.tagName)) {
-    if (Array.isArray(node.children)) node.children = node.children.flatMap((n: any) => unwrapUnknownTags(n, isKnown));
-    return [node];
+/**
+ * Per-level pass over one parent's child list. Unknown elements are spliced
+ * open into [text("<tag attrs>"), ...children, text("</tag>")] (their inner
+ * content always gets newline→br); known elements recurse into their own
+ * children. If the level spliced anything, its sibling text nodes also get
+ * newline→br — otherwise HTML whitespace collapsing eats the \n between two
+ * spliced tags.
+ */
+function processLevel(children: any[], isKnown: (tag: string) => boolean): any[] {
+  const out: any[] = [];
+  let spliced = false;
+  for (const child of children) {
+    if (child?.type === 'element' && !isKnown(child.tagName)) {
+      const inner = processLevel(child.children ?? [], isKnown).flatMap(newlineTextToBr);
+      out.push(
+        textNode(`<${child.tagName}${serializeAttrs(child.properties)}>`),
+        ...inner,
+        textNode(`</${child.tagName}>`),
+      );
+      spliced = true;
+    } else {
+      if (Array.isArray(child?.children)) {
+        child.children = processLevel(child.children, isKnown);
+      }
+      out.push(child);
+    }
   }
-  const inner = (node.children ?? [])
-    .flatMap((n: any) => unwrapUnknownTags(n, isKnown))
-    .flatMap(newlineTextToBr);
-  return [
-    textNode(`<${node.tagName}${serializeAttrs(node.properties)}>`),
-    ...inner,
-    textNode(`</${node.tagName}>`),
-  ];
+  return spliced ? out.flatMap(newlineTextToBr) : out;
 }
 
 export function rehypeShowRawTags(options: { extraKnownTags?: Iterable<string> } = {}) {
@@ -116,7 +134,7 @@ export function rehypeShowRawTags(options: { extraKnownTags?: Iterable<string> }
   const isKnown = (tag: string) => KNOWN_TAGS.has(tag) || (extra ? extra.has(tag) : false);
   return (tree: any) => {
     if (Array.isArray(tree.children)) {
-      tree.children = tree.children.flatMap((n: any) => unwrapUnknownTags(n, isKnown));
+      tree.children = processLevel(tree.children, isKnown);
     }
   };
 }

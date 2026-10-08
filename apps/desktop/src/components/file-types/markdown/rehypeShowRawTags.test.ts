@@ -36,6 +36,25 @@ describe('rehypeShowRawTags', () => {
     expect(kids[4]).toMatchObject({ type: 'text', value: '</workflow-state>' });
   });
 
+  it('renders a <br> between sibling unknown tags separated by a newline', () => {
+    // The \n between the two tags is a root-level text node (from raw HTML);
+    // HTML whitespace collapsing would turn it into a space without this.
+    const tree = hastOf('<workflow-state>\na\n</workflow-state>\n<workflow-state>\nb\n</workflow-state>');
+    const kids = tree.children as any[];
+    const closeIdx = kids.findIndex((n) => n.type === 'text' && n.value === '</workflow-state>');
+    const openIdx = kids.findIndex((n) => n.type === 'text' && n.value === '<workflow-state>');
+    expect(closeIdx).toBeGreaterThanOrEqual(0);
+    expect(openIdx).toBeGreaterThanOrEqual(0);
+    expect(openIdx).toBeLessThan(closeIdx);
+    // The SECOND opening tag (the one after the close) must be separated by a br.
+    const nextOpenIdx = kids.findIndex(
+      (n, i) => i > closeIdx && n.type === 'text' && n.value === '<workflow-state>',
+    );
+    expect(nextOpenIdx).toBe(closeIdx + 2);
+    expect(kids[closeIdx + 1]).toMatchObject({ type: 'element', tagName: 'br' });
+    expect(kids[nextOpenIdx + 1]).toMatchObject({ type: 'element', tagName: 'br' });
+  });
+
   it('leaves newline-free unknown-tag content as single text nodes', () => {
     // Single-line raw HTML is inline (not an HTML block), so it lands in a <p>.
     const tree = hastOf('<workflow-state>task done</workflow-state>');
