@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "验证插件挂载顺序与管线约定一致"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "质量检查基线"}

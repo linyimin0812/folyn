@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "预览管线约定（remark/rehype 插件顺序、组件映射），新插件必须挂进现有管线"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "新文件命名与组件写法约定"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "测试/质量要求"}
