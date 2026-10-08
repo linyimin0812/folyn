@@ -5,14 +5,17 @@ import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
 import { rehypeShowRawTags } from './rehypeShowRawTags';
 
-// Build a hast tree the way MarkdownPreview does (raw HTML enabled).
+// Build a hast tree the way MarkdownPreview does (raw HTML enabled). The
+// source string is passed as the vfile (mirrors processSync(md)) so the
+// plugin's transformer receives file.value and can slice raw inner content
+// by position — without it the fallback path silently masks the feature.
 function hastOf(md: string, extraKnownTags?: Iterable<string>) {
-  return unified()
+  const proc = unified()
     .use(remarkParse)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
-    .use(rehypeShowRawTags, { extraKnownTags })
-    .runSync(unified().use(remarkParse).parse(md)) as any;
+    .use(rehypeShowRawTags, { extraKnownTags });
+  return proc.runSync(proc.parse(md), md) as any;
 }
 
 function textOf(nodes: any[]): string {
@@ -63,12 +66,17 @@ describe('rehypeShowRawTags', () => {
     expect(para.children.every((n: any) => n.type === 'text')).toBe(true);
   });
 
-  it('shows unknown inline tags, keeps inner markdown rendering', () => {
+  it('shows unknown inline tags with inner markdown as raw source', () => {
     const tree = hastOf('a <foo>**bold**</foo> b');
     const para = (tree.children as any[]).find((k) => k.tagName === 'p');
-    expect(textOf(para.children)).toBe('a <foo></foo> b');
-    const strong = para.children.find((c: any) => c.tagName === 'strong');
-    expect(textOf(strong.children)).toBe('bold');
+    expect(textOf(para.children)).toBe('a <foo>**bold**</foo> b');
+    expect(para.children.some((n: any) => n.tagName === 'strong')).toBe(false);
+  });
+
+  it('renders inner content with markdown and a nested tag as one raw slice', () => {
+    const tree = hastOf('<foo>**b** <bar>x</bar></foo>');
+    const para = (tree.children as any[]).find((k) => k.tagName === 'p');
+    expect(textOf(para.children)).toBe('<foo>**b** <bar>x</bar></foo>');
   });
 
   it('serializes attributes of unknown tags', () => {

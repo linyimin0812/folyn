@@ -9,9 +9,14 @@
  *
  * Elements whose tagName is NOT a known HTML/SVG tag (and not an explicitly
  * passed extra-known tag) are spliced open into
- * [text("<tag attrs>"), ...children, text("</tag>")] — the tags become
- * literal text nodes, the children keep their normal rendering (bold, links,
- * …). Known tags (<b>, <img>, <svg>, …) are untouched.
+ * [text("<tag attrs>"), ...inner, text("</tag>")] — the tags become literal
+ * text nodes. The inner content is shown as RAW SOURCE: sliced from the
+ * vfile's markdown string between the first child's start and last child's
+ * end offset, so inner markdown (`**bold**`, nested tags, …) displays
+ * literally instead of rendering. When the vfile value or child positions
+ * are unavailable (a pre-parsed tree without a source), the inner children
+ * fall back to their normal recursive rendering. Known tags (<b>, <img>,
+ * <svg>, …) are untouched.
  *
  * Newlines in raw-HTML text: remark-breaks turns single \n into <br> at mdast
  * level BEFORE rehypeRaw, so it never sees raw-HTML content — an HTML text
@@ -100,19 +105,45 @@ function newlineTextToBr(node: any): any[] {
 }
 
 /**
+ * Inner content of an unknown element. When the vfile carries the source
+ * string the tree's positions index into, the raw source between the first
+ * child's start and last child's end offset replaces the children (ONE text
+ * node, newline→br applied) — inner markdown/nested tags display literally.
+ * Fallback (no src or missing child positions): recurse into the children,
+ * keeping their normal rendering.
+ */
+function rawInner(child: any, isKnown: (tag: string) => boolean, src: string | null): any[] {
+  const kids = child.children ?? [];
+  const first = kids[0];
+  const last = kids[kids.length - 1];
+  const startOff = first?.position?.start?.offset;
+  const endOff = last?.position?.end?.offset;
+  if (src == null || startOff == null || endOff == null) {
+    return processLevel(kids, isKnown, src).flatMap(newlineTextToBr);
+  }
+  return [
+    {
+      type: 'text',
+      value: src.slice(startOff, endOff),
+      position: { start: first.position.start, end: last.position.end },
+    },
+  ].flatMap(newlineTextToBr);
+}
+
+/**
  * Per-level pass over one parent's child list. Unknown elements are spliced
- * open into [text("<tag attrs>"), ...children, text("</tag>")] (their inner
+ * open into [text("<tag attrs>"), ...rawInner, text("</tag>")] (inner
  * content always gets newline→br); known elements recurse into their own
  * children. If the level spliced anything, its sibling text nodes also get
  * newline→br — otherwise HTML whitespace collapsing eats the \n between two
  * spliced tags.
  */
-function processLevel(children: any[], isKnown: (tag: string) => boolean): any[] {
+function processLevel(children: any[], isKnown: (tag: string) => boolean, src: string | null): any[] {
   const out: any[] = [];
   let spliced = false;
   for (const child of children) {
     if (child?.type === 'element' && !isKnown(child.tagName)) {
-      const inner = processLevel(child.children ?? [], isKnown).flatMap(newlineTextToBr);
+      const inner = rawInner(child, isKnown, src);
       // Stamp the element's position on the open/close text nodes: a raw HTML
       // block occupies real source lines, and rehypeBlankGap reads
       // position.end.line to advance its line cursor — unpositioned, those
@@ -125,7 +156,7 @@ function processLevel(children: any[], isKnown: (tag: string) => boolean): any[]
       spliced = true;
     } else {
       if (Array.isArray(child?.children)) {
-        child.children = processLevel(child.children, isKnown);
+        child.children = processLevel(child.children, isKnown, src);
       }
       out.push(child);
     }
@@ -136,9 +167,12 @@ function processLevel(children: any[], isKnown: (tag: string) => boolean): any[]
 export function rehypeShowRawTags(options: { extraKnownTags?: Iterable<string> } = {}) {
   const extra = options.extraKnownTags ? new Set(options.extraKnownTags) : null;
   const isKnown = (tag: string) => KNOWN_TAGS.has(tag) || (extra ? extra.has(tag) : false);
-  return (tree: any) => {
+  // file.value is the exact markdown string the tree's positions index into
+  // (MarkdownPreview calls processSync(transformedString), so they align).
+  return (tree: any, file: any) => {
+    const src = typeof file?.value === 'string' ? file.value : null;
     if (Array.isArray(tree.children)) {
-      tree.children = processLevel(tree.children, isKnown);
+      tree.children = processLevel(tree.children, isKnown, src);
     }
   };
 }
