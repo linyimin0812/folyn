@@ -167,9 +167,15 @@ export function usePreviewCursorSync({
     if (containerWrap && target !== containerWrap) {
       const tLine = Number(target.getAttribute('data-source-line'));
       const tIsCode = target.tagName === 'PRE' && target.closest('.code-block-wrapper') != null;
+      // A raw-tag block's span comes from data-raw-line-span — the blank-run
+      // scanner stops at the region's FIRST internal blank line (same root
+      // cause as the main lastSrcLine below).
+      const tRawSpan = Number(target.getAttribute('data-raw-line-span'));
       const tClose = tIsCode
         ? codeBlockCloseLine(srcLines, tLine)
-        : blockLastSrcLine(srcLines, tLine);
+        : Number.isFinite(tRawSpan) && tRawSpan >= 1
+          ? tLine + tRawSpan - 1
+          : blockLastSrcLine(srcLines, tLine);
       const covered = !target.hasAttribute('data-container') && cursorLine <= tClose;
       let nextInside = false;
       if (!covered && cursorLine > tClose) {
@@ -195,7 +201,16 @@ export function usePreviewCursorSync({
     // height needed — editor vs preview line heights differ, and a guessed
     // value drifted).
     const isCodeBlock = el.tagName === 'PRE' && el.closest('.code-block-wrapper');
-    const lastSrcLine = el.hasAttribute('data-container')
+    // p.md-raw-tag-block carries its source-line span: the blank-run scanner
+    // below stops at the region's FIRST internal blank line, so a cursor
+    // anywhere past it misdetected as a gap and jumped the preview past the
+    // whole region (the reported 标签预览光标对齐效果很不好). The span is
+    // exact — one line per source line, blank lines included.
+    const rawSpan = Number(el.getAttribute('data-raw-line-span'));
+    const isRawTagBlock = Number.isFinite(rawSpan) && rawSpan >= 1;
+    const lastSrcLine = isRawTagBlock
+      ? blockSrcLine + rawSpan - 1
+      : el.hasAttribute('data-container')
       ? directiveCloseLine(srcLines, blockSrcLine) // a directive block's span = open..closing fence (inner ::: fences don't close it)
       : isCodeBlock
         ? codeBlockCloseLine(srcLines, blockSrcLine) // closing fence: cursor on/after it is the gap
@@ -353,6 +368,17 @@ export function usePreviewCursorSync({
       }
       const rel = targetLineY != null ? cursorScreenY - targetLineY : blockRelativeOffsetY(cursorBlockOffsetY, anchorLine, blockSrcLine, editorLineHeight ?? 0);
       alignPoint = containerAlignPoint(blockOffset, rel, cursorScreenY - containerRect.top);
+    } else if (isRawTagBlock) {
+      // The CSS line-height pin (.md-preview .md-raw-tag-block) renders ONE
+      // line height per source line (brs + blank lines included), so the
+      // mapping is per-line EXACT — no editor metrics (the editor's markdown
+      // parser is raw-tag-blind, so its blank-delimited block fraction
+      // mis-maps the region). Step = blockHeight / span ≈ the pinned line
+      // height; clamped to the last line (cursor on the close-tag line and
+      // below ride at the block bottom). inGap is false here by construction
+      // (lastSrcLine already covers the whole region).
+      alignPoint = blockOffset +
+        Math.min(Math.max(0, cursorLine - blockSrcLine), rawSpan - 1) * (blockHeight / rawSpan);
     } else {
       // Non-code block: headings center on the cursor line (block center,
       // so the highlight box is symmetric around the cursor instead of

@@ -194,6 +194,87 @@ function layoutWrapDoc(root: HTMLElement): Layout {
   return { tops, heights, hiddenRoot };
 }
 
+// RAW-TAG doc: a blank-line-containing unknown-tag region (stage-1 collapsed
+// into ONE p.md-raw-tag-block) deep in a tall doc. The region's INTERNAL
+// blank lines must not read as a gap to the next block.
+const RAW_DOC = [
+  ...Array.from({ length: 10 }, (_, i) => ['para ' + i, '']),
+  '<workflow-state>',
+  'task one',
+  '',
+  'task two',
+  '',
+  'task three',
+  '</workflow-state>',
+  '',
+  'para after',
+].flat().join('\n');
+
+const RAW_BLOCK_LINE = 21; // data-source-line of the collapsed region
+const RAW_SPAN = 7; // source lines 21..27 (blank lines included)
+const RAW_BLOCK_H = RAW_SPAN * LH; // CSS pin: one line height per source line
+
+function layoutRawDoc(root: HTMLElement): Layout {
+  const tops = new Map<HTMLElement, number>();
+  const heights = new Map<HTMLElement, number>();
+  let y = 0;
+  for (let i = 0; i < 10; i++) {
+    const p = root.querySelector(`[data-source-line="${i * 2 + 1}"]`) as HTMLElement;
+    if (p) { tops.set(p, y); heights.set(p, LH); }
+    y += 2 * LH; // para + one blank-line gap
+  }
+  const raw = root.querySelector(`[data-source-line="${RAW_BLOCK_LINE}"]`) as HTMLElement;
+  if (raw) { tops.set(raw, y); heights.set(raw, RAW_BLOCK_H); }
+  const after = root.querySelector('[data-source-line="29"]') as HTMLElement;
+  if (after) { tops.set(after, y + RAW_BLOCK_H + LH); heights.set(after, LH); }
+  return { tops, heights };
+}
+
+describe('MarkdownPreview cursor-sync (raw-tag regions)', () => {
+  it('cursor past the region\u2019s first internal blank line maps per-line inside the block (no jump to the next block)', () => {
+    // RED pre-fix: blockLastSrcLine's blank-run scan stopped at line 23 (the
+    // region's first internal blank), so cursorLine 24 > lastSrcLine 22 read
+    // as a GAP → the preview aligned to the block AFTER the region and the
+    // highlight jumped off the raw-tag block (the reported 标签预览光标
+    // 对齐效果很不好).
+    const utils = render(
+      <MarkdownPreview content={RAW_DOC} filePath="/tmp/note.md" vaultRoot="" onChange={() => {}} cursorLine={0} cursorViewportY={0} editorViewportTop={0} hasSelection={false} />,
+    );
+    const root = utils.container.querySelector('.md-preview') as HTMLElement;
+    const scrollContainer = root.parentElement as HTMLElement;
+    const layout = layoutRawDoc(root);
+    stubGeometry(root, scrollContainer, layout);
+    const raw = root.querySelector(`[data-source-line="${RAW_BLOCK_LINE}"]`) as HTMLElement;
+    const after = root.querySelector('[data-source-line="29"]') as HTMLElement;
+
+    // The stamped span reaches the DOM (rehypeRaw camelCases data-* property
+    // names, so the plugin derives it from position instead).
+    expect(raw.getAttribute('data-raw-line-span')).toBe(String(RAW_SPAN));
+
+    // Cursor on line 24 (task two — past the internal blank at line 23).
+    const CURSOR_DEPTH = 200;
+    driveCursor(utils, RAW_DOC, 24, { offset: 0, anchor: RAW_BLOCK_LINE, viewportY: CURSOR_DEPTH });
+
+    // Per-line exact mapping: line 24 is the block's 4th source line → its
+    // top lands at the cursor's screen Y (block top depth = 200 − 3×LH).
+    const rawTopDepth = raw.getBoundingClientRect().top - VIEWPORT_TOP;
+    expect(Math.abs(rawTopDepth - (CURSOR_DEPTH - 3 * LH))).toBeLessThan(4);
+    // The scroll engaged on the geometry (alignPoint 480+72 = 552 → scrollTop
+    // 352), NOT the pre-fix gap jump to the next block (672 → 472).
+    expect(Math.abs(scrollContainer.scrollTop - 352)).toBeLessThan(4);
+    // The highlight stays on the raw-tag block, not the block after it.
+    expect(raw.classList.contains('cursor-sync-active')).toBe(true);
+    expect(after.classList.contains('cursor-sync-active')).toBe(false);
+
+    // Cursor on the region's last line (27) still maps inside (block bottom).
+    driveCursor(utils, RAW_DOC, 27, { offset: 0, anchor: RAW_BLOCK_LINE, viewportY: CURSOR_DEPTH });
+    const rawTopDepth2 = raw.getBoundingClientRect().top - VIEWPORT_TOP;
+    expect(Math.abs(rawTopDepth2 - (CURSOR_DEPTH - (RAW_SPAN - 1) * LH))).toBeLessThan(4);
+
+    cleanup();
+  });
+});
+
 describe('MarkdownPreview cursor-sync (tabs)', () => {
   it('TALL doc: active content pins to the cursor; hidden lines pin the container', () => {
     const utils = render(

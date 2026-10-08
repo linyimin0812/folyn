@@ -163,6 +163,20 @@ describe('rehypeShowRawTags', () => {
     expect(para.children[0].tagName).toBe('tabs');
     expect(para.children[0].children[0].tagName).toBe('tab');
   });
+
+  it('stamps data-raw-line-span on stage-2 root blocks, not on inline spans', () => {
+    // Cursor-sync's per-line mapping reads this: the no-blank block spans
+    // exactly its 3 source lines; the inline chip has no span attr (the
+    // enclosing paragraph's normal mapping covers it).
+    const block = hastOf('<workflow-state>\ntask\n</workflow-state>');
+    const p = rawTagSpans(block.children as any[])[0];
+    expect(Number(p.properties?.['data-raw-line-span'])).toBe(3);
+
+    const inline = hastOf('a <foo>x</foo> b');
+    const para = (inline.children as any[]).find((k) => k.tagName === 'p');
+    const span = rawTagSpans(para.children)[0];
+    expect(span.properties?.['data-raw-line-span']).toBeUndefined();
+  });
 });
 
 describe('remarkCollapseUnknownTagRuns', () => {
@@ -188,6 +202,10 @@ describe('remarkCollapseUnknownTagRuns', () => {
     expect(p.children.filter((n: any) => n.tagName === 'br')).toHaveLength(8);
     // rehypeBlankGap contract: the collapsed paragraph spans the region.
     expect(p.position).toMatchObject({ start: { line: 1 }, end: { line: 9 } });
+    // Cursor-sync contract: the span covers ALL 9 source lines — the blank-run
+    // scanner would stop at the first internal blank (line 2) and misread the
+    // rest of the region as a gap.
+    expect(Number(p.properties?.['data-raw-line-span'])).toBe(9);
   });
 
   it('leaves a no-blank-line unknown-tag block to the hast-level plugin', () => {

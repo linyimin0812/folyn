@@ -216,6 +216,30 @@ export function rehypeShowRawTags(options: { extraKnownTags?: Iterable<string> }
     const src = typeof file?.value === 'string' ? file.value : null;
     if (Array.isArray(tree.children)) {
       tree.children = processLevel(tree.children, isKnown, src, true);
+      // Stamp the root raw-tag blocks' source-line span (covers BOTH stages'
+      // root output — stage 1's collapsed paragraphs AND stage 2's own root
+      // wrappers live in tree.children here). Not via stage 1's
+      // data.hProperties: rehypeRaw's property round-trip renames data-*
+      // keys to camelCase (data-raw-line-span → dataRawLineSpan), so the
+      // span is derived from the block's POSITION instead, which both
+      // stages already set to span the whole region. Cursor-sync reads the
+      // attribute: the CSS line-height pin renders one line height per
+      // source line, so the effect maps the cursor per-line exactly —
+      // without the span, its blank-run scanner stops at the region's FIRST
+      // internal blank line and misreads the rest of the region as a gap.
+      // The inline span.md-raw-tag never gets it (the enclosing paragraph's
+      // normal mapping covers it).
+      for (const child of tree.children) {
+        if (
+          child?.type === 'element' && child.tagName === 'p' &&
+          Array.isArray(child.properties?.className) &&
+          child.properties.className.includes('md-raw-tag-block') &&
+          child.position?.start?.line != null && child.position?.end?.line != null
+        ) {
+          child.properties['data-raw-line-span'] =
+            child.position.end.line - child.position.start.line + 1;
+        }
+      }
     }
   };
 }
