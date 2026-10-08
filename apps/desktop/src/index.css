@@ -488,6 +488,13 @@ mjx-container svg {
    descend at the editor's rate past blank lines (cursor-sync alignment).
    Empty spacer — height set inline as calc(N * 1.8em); zero everything else. */
 .md-preview > .md-blank-gap { margin: -8px 0; padding: 0; line-height: 0; }
+/* ponytail: raw-tag blocks (rehypeShowRawTags) render ONE source line per
+   text line / br; pinning line-height to the editor's measured line height
+   (--md-gap-line, same rate as .md-blank-gap) makes the block's rendered
+   height equal its editor line span → the cursor-sync fractional mapping
+   becomes per-line exact and blocks below stop drifting. Layout only — the
+   md-raw-tag classes are otherwise unstyled. */
+.md-preview .md-raw-tag-block { line-height: var(--md-gap-line, 1.6em); }
 .md-preview a { color: var(--acc); text-decoration: none; }
 .md-preview a:hover { text-decoration: underline; }
 .md-preview strong { font-weight: 700; }
