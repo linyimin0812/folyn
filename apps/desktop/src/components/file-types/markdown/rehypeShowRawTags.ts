@@ -34,6 +34,21 @@
  * containers (tabs, tab, …) keep rendering. An UNREGISTERED directive name
  * has no component and shows as literal text (same rule as raw HTML).
  *
+ * Two-stage design:
+ * 1. `remarkCollapseUnknownTagRuns` (mdast level, right after remarkParse)
+ *    collapses ROOT-level runs — from a lone unknown OPEN tag (a single-line
+ *    `html` node) to the next lone close tag of the same name — into ONE
+ *    paragraph of raw source. Needed because CommonMark ends an HTML block
+ *    at the first BLANK line: a blank-line-separated region parses into
+ *    markdown siblings (headings and fenced code render for real!) and the
+ *    open/close tags become separate root `html` nodes, so this hast-level
+ *    plugin alone can never reassemble it. Inline unknown tags (inside
+ *    paragraphs) are NOT collapsed there — root-level walk only; stage 2
+ *    covers them.
+ * 2. `rehypeShowRawTags` (this rehype plugin) handles what's left: blocks
+ *    with no blank lines inside (single multi-line `html` node), inline
+ *    unknown tags, and unmatched tags.
+ *
  * MUST run right after rehypeRaw and before rehypeMathjax: MathJax emits
  * <mjx-container> elements LATER in the pipeline, so they never pass through
  * here. previewComponentMap's style/script filters run at React level and
@@ -174,5 +189,84 @@ export function rehypeShowRawTags(options: { extraKnownTags?: Iterable<string> }
     if (Array.isArray(tree.children)) {
       tree.children = processLevel(tree.children, isKnown, src);
     }
+  };
+}
+
+// ---- Stage 1: mdast-level run collapser ----
+// Lone tags on a line of their own. Single-line only ([^>\n] in the attr
+// class): a multi-line html node value is the no-blank-line block owned by
+// the hast-level stage 2 above.
+const OPEN_TAG_LINE_RE = /^<([a-zA-Z][\w-]*)(?:[ \t][^>\n]*)?>$/;
+const CLOSE_TAG_LINE_RE = /^<\/([a-zA-Z][\w-]*)[ \t]*>$/;
+
+/**
+ * Remark plugin: collapse a root-level run of unknown-tag blocks — lone open
+ * `html` node … lone close `html` node of the same name — into ONE paragraph
+ * of raw source, so blank-line-separated regions (where CommonMark ends the
+ * HTML block at the first blank line and the inner content parses as real
+ * markdown) display as literal text instead of rendering.
+ *
+ * ponytail: ROOT-level walk only — inline unknown tags inside paragraphs are
+ * already handled by the hast-level rehypeShowRawTags (they never become
+ * root `html` nodes). Escalate to a full-tree walk only if a real doc shows
+ * a blank-line region nested inside a blockquote/list.
+ */
+export function remarkCollapseUnknownTagRuns(options: { extraKnownTags?: Iterable<string> } = {}) {
+  const extra = options.extraKnownTags ? new Set(options.extraKnownTags) : null;
+  const isKnown = (tag: string) => KNOWN_TAGS.has(tag) || (extra ? extra.has(tag) : false);
+  return (tree: any, file: any) => {
+    const src = typeof file?.value === 'string' ? file.value : null;
+    if (src == null || !Array.isArray(tree.children)) return;
+    const children: any[] = tree.children;
+    const out: any[] = [];
+    for (let i = 0; i < children.length; i++) {
+      const node = children[i];
+      const open = node?.type === 'html' ? node.value?.trim().match(OPEN_TAG_LINE_RE) : null;
+      const openOff = node?.position?.start?.offset;
+      if (!open || openOff == null || isKnown(open[1])) {
+        out.push(node);
+        continue;
+      }
+      // Scan forward for a lone close tag of the SAME name (a different
+      // tag's close does not end the run). ponytail: nested same-name opens
+      // inside the run are not tracked — the FIRST matching close wins and
+      // the region renders literal up to it (raw source display, so content
+      // is never lost); balance-tracking only if a real doc nests these.
+      let j = -1;
+      for (let k = i + 1; k < children.length; k++) {
+        const sib = children[k];
+        if (sib?.type !== 'html') continue;
+        const close = sib.value?.trim().match(CLOSE_TAG_LINE_RE);
+        if (close && close[1] === open[1] && sib.position?.end?.offset != null) {
+          j = k;
+          break;
+        }
+      }
+      // No matching close (or its offsets are missing): leave the lone open
+      // tag to the hast-level plugin.
+      if (j < 0) {
+        out.push(node);
+        continue;
+      }
+      const closeNode = children[j];
+      const raw = src.slice(openOff, closeNode.position.end.offset);
+      const kids: any[] = [];
+      // Skip empty parts but keep every break, so blank lines between the
+      // tags display as blank lines.
+      raw.split('\n').forEach((part: string, idx: number) => {
+        if (idx > 0) kids.push({ type: 'break' });
+        if (part) kids.push({ type: 'text', value: part });
+      });
+      out.push({
+        type: 'paragraph',
+        children: kids,
+        // Position spans the whole run: rehypeBlankGap advances its line
+        // cursor for ANY positioned root node, so the region's source lines
+        // count as content, not blank lines.
+        position: { start: node.position.start, end: closeNode.position.end },
+      });
+      i = j;
+    }
+    tree.children = out;
   };
 }

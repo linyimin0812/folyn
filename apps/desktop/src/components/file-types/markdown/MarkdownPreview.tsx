@@ -16,7 +16,7 @@ import { jsx, jsxs } from 'react/jsx-runtime';
 import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { rehypeBlankGap } from './rehypeBlankGap';
-import { rehypeShowRawTags } from './rehypeShowRawTags';
+import { rehypeShowRawTags, remarkCollapseUnknownTagRuns } from './rehypeShowRawTags';
 import { planGapHeights } from './gapCompensation';
 import { VaultContext } from '@folyn/container-extensions';
 import { getHandlerByExtension, getHandlerById, getModeComponent } from "@/components/file-types/registry";
@@ -182,6 +182,10 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     try {
       const pipeline = unified()
         .use(remarkParse)
+        // Stage 1 of unknown-tag display: collapse blank-line-separated
+        // unknown-tag runs into literal text BEFORE any markdown plugin
+        // runs, so the region's inner markdown never parses.
+        .use(remarkCollapseUnknownTagRuns, { extraKnownTags: Object.keys(componentMap) })
         .use(remarkMath)
         .use(remarkGfm)
         .use(remarkBreaks)
