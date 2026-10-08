@@ -116,19 +116,21 @@ describe('rehypeBlankGap', () => {
     const gaps = kids.filter((k) => k.properties?.className?.includes('md-blank-gap'));
     expect(gaps).toHaveLength(1);
     expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
-    // No leading gap: the first root node is the spliced tag chip (span,
-    // carries the element's position), and the cursor (not a gap div) is what
-    // advances past it.
-    expect(kids[0].tagName).toBe('span');
-    expect(kids[0].properties?.className).toContain('md-raw-tag');
+    // No leading gap: the first root node is the spliced tag block — a
+    // positioned p (BLOCK_TAGS branch, starts at line 1 → leading = 0).
+    expect(kids[0].tagName).toBe('p');
+    expect(kids[0].properties?.className).toContain('md-raw-tag-block');
     expect(kids[0].position?.end?.line).toBe(3);
   });
 
   it('advances the line cursor past a raw-tag block between paragraphs', () => {
-    // p (1), tag block (3-5), h1 (7) → only one gap, 1 blank line, before h1.
+    // p (1), tag block (3-5), h1 (7). The tag block is a positioned root p
+    // (BLOCK_TAGS), so the blank line before IT also renders a gap — exactly
+    // like any other block — plus the one before the h1.
     const tree = rawHastOf('para\n\n<workflow-state>\ntask\n</workflow-state>\n\n# Head');
     const gaps = topChildren(tree).filter((k) => k.properties?.className?.includes('md-blank-gap'));
-    expect(gaps).toHaveLength(1);
+    expect(gaps).toHaveLength(2);
     expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
+    expect(gaps[1].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
   });
 });

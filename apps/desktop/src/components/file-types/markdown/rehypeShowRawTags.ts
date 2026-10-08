@@ -10,8 +10,11 @@
  * Elements whose tagName is NOT a known HTML/SVG tag (and not an explicitly
  * passed extra-known tag) are spliced open into
  * [text("<tag attrs>"), ...inner, text("</tag>")] — the tags become literal
- * text nodes — and the whole run is wrapped in a <span class="md-raw-tag">
- * (inline chip styling, carries the element's position). The inner content is shown as RAW SOURCE: sliced from the
+ * text nodes — and the run is wrapped: ROOT-level splices in a
+ * <p class="md-raw-tag-block"> (the SAME class as stage 1's collapsed
+ * paragraph, so a tag region looks uniform whether or not it contains blank
+ * lines), non-root (inline, inside a paragraph) in a <span class="md-raw-tag">
+ * (inline chip styling). Both carry the element's position. The inner content is shown as RAW SOURCE: sliced from the
  * vfile's markdown string between the first child's start and last child's
  * end offset, so inner markdown (`**bold**`, nested tags, …) displays
  * literally instead of rendering. When the vfile value or child positions
@@ -50,7 +53,9 @@
  *    covers them.
  * 2. `rehypeShowRawTags` (this rehype plugin) handles what's left: blocks
  *    with no blank lines inside (single multi-line `html` node), inline
- *    unknown tags, and unmatched tags.
+ *    unknown tags, and unmatched tags. Root-level splices wrap in
+ *    p.md-raw-tag-block — identical to stage 1's collapsed paragraph — so
+ *    the rendering is uniform regardless of blank lines.
  *
  * MUST run right after rehypeRaw and before rehypeMathjax: MathJax emits
  * <mjx-container> elements LATER in the pipeline, so they never pass through
@@ -137,7 +142,7 @@ function rawInner(child: any, isKnown: (tag: string) => boolean, src: string | n
   const startOff = first?.position?.start?.offset;
   const endOff = last?.position?.end?.offset;
   if (src == null || startOff == null || endOff == null) {
-    return processLevel(kids, isKnown, src).flatMap(newlineTextToBr);
+    return processLevel(kids, isKnown, src, false).flatMap(newlineTextToBr);
   }
   return [
     {
@@ -154,24 +159,32 @@ function rawInner(child: any, isKnown: (tag: string) => boolean, src: string | n
  * content always gets newline→br); known elements recurse into their own
  * children. If the level spliced anything, its sibling text nodes also get
  * newline→br — otherwise HTML whitespace collapsing eats the \n between two
- * spliced tags.
+ * spliced tags. Root-level splices are wrapped in p.md-raw-tag-block (same
+ * class as stage 1's collapsed paragraph); non-root ones in span.md-raw-tag.
  */
-function processLevel(children: any[], isKnown: (tag: string) => boolean, src: string | null): any[] {
+function processLevel(
+  children: any[],
+  isKnown: (tag: string) => boolean,
+  src: string | null,
+  isRoot: boolean,
+): any[] {
   const out: any[] = [];
   let spliced = false;
   for (const child of children) {
     if (child?.type === 'element' && !isKnown(child.tagName)) {
       const inner = rawInner(child, isKnown, src);
-      // Wrap the spliced run in an inline chip (span.md-raw-tag). The span
-      // carries the element's position and is the parent-level node list
-      // entry: rehypeBlankGap's else-branch advances its line cursor from any
-      // positioned root node, so a raw HTML block's source lines still count
-      // as content, not blanks, for the NEXT block's gap. The open/close text
-      // nodes keep the position too (inner nodes, same contract).
+      // Wrap the spliced run. ROOT level → p.md-raw-tag-block, the same
+      // class (and tag) stage 1 emits for its collapsed paragraph, so a tag
+      // region looks identical whether or not it contains blank lines; as a
+      // positioned BLOCK_TAGS element, rehypeBlankGap's block branch computes
+      // gap/leading from its source lines. Non-root → the span.md-raw-tag
+      // inline chip, whose position advances rehypeBlankGap's line cursor via
+      // the else-branch. The open/close text nodes keep the position too
+      // (inner nodes, same contract).
       out.push({
         type: 'element',
-        tagName: 'span',
-        properties: { className: ['md-raw-tag'] },
+        tagName: isRoot ? 'p' : 'span',
+        properties: { className: [isRoot ? 'md-raw-tag-block' : 'md-raw-tag'] },
         children: [
           { type: 'text', value: `<${child.tagName}${serializeAttrs(child.properties)}>`, position: child.position },
           ...inner,
@@ -182,7 +195,7 @@ function processLevel(children: any[], isKnown: (tag: string) => boolean, src: s
       spliced = true;
     } else {
       if (Array.isArray(child?.children)) {
-        child.children = processLevel(child.children, isKnown, src);
+        child.children = processLevel(child.children, isKnown, src, false);
       }
       out.push(child);
     }
@@ -198,7 +211,7 @@ export function rehypeShowRawTags(options: { extraKnownTags?: Iterable<string> }
   return (tree: any, file: any) => {
     const src = typeof file?.value === 'string' ? file.value : null;
     if (Array.isArray(tree.children)) {
-      tree.children = processLevel(tree.children, isKnown, src);
+      tree.children = processLevel(tree.children, isKnown, src, true);
     }
   };
 }
