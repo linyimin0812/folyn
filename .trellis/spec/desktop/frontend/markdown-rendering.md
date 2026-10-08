@@ -117,6 +117,22 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 
 **Why**: the user's source convention — writing inline math on its own line for editing clarity — is reasonable; the rendering should not punish it. A custom remark plugin walking mdast would be larger; the segment-based pass reuses the existing scanner and is ~30 lines. `renderMarkdownToReact` calls it internally; `MarkdownPreview.tsx` (which has its own pipeline) calls it explicitly. The fix is a no-op for callers that don't use `remark-breaks` — a `\n` that would collapse to a space anyway now collapses one step earlier.
 
+### Pattern: Show unknown raw-HTML tags as literal text (`rehypeShowRawTags`)
+
+**Problem**: `rehypeRaw` (MarkdownPreview-only pipeline) parses raw HTML into real hast elements, so a machine-oriented marker like `<workflow-state>…</workflow-state>` renders as an invisible DOM custom element — the tag itself vanishes, only inner text shows.
+
+**Solution**: `rehypeShowRawTags` (components/file-types/markdown/rehypeShowRawTags.ts) runs immediately AFTER `rehypeRaw` and BEFORE `rehypeHighlight`/`rehypeMathjax`. Any element whose tagName is neither a known HTML/SVG tag nor in `extraKnownTags` is spliced open: `[text("<tag attrs>"), ...children, text("</tag>")]` — tags become literal text, children keep normal rendering. Newlines in the spliced content get `<br>` spliced inline (remark-breaks never sees raw-HTML content — it runs at mdast level before rehypeRaw; without this, `\n` collapses to a space).
+
+**Contract**:
+
+- `MarkdownPreview.tsx` passes `extraKnownTags: Object.keys(componentMap)` — container directives (`:::name` → `<name>`, remark-directive-rehype) are mapped to React components by tagName in `previewComponentMap`, so ALL componentMap keys MUST be in extraKnownTags or the directive structure is destroyed (regression: cursor-sync tabs tests fail on `[data-hides-inactive]` = null).
+- `mjx-container` is emitted by `rehypeMathjax` AFTER this plugin — never whitelisted, never affected. Do not move this plugin after `rehypeMathjax`.
+- `style`/`script` filtering stays at React level (previewComponentMap) — only known tags, unaffected.
+- Unregistered directive names have no component → render as literal text (same rule as raw HTML).
+- Known-tags whitelist (HTML + common SVG) lives in the plugin; parse5 ignores the self-closing slash on non-void tags, so `<foo/>` arrives as an OPEN tag absorbing trailing inline content — render what the parser saw, do not re-synthesize the slash.
+
+**Why**: Smallest viable diff at tree level; no new dependency (hast-util-to-html), no source-regex preprocessing (code-block context makes that fragile). Tests: `rehypeShowRawTags.test.ts` (splice structure, br parity, attrs, nested, code-block untouched, extraKnownTags).
+
 ### Pattern: Reuse MarkdownPreview for export via hidden DOM
 
 **Problem**: `exportService` needs HTML with the same rendering as preview (math, code, directives, image resolution).

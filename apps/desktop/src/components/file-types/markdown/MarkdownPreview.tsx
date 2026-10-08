@@ -16,6 +16,7 @@ import { jsx, jsxs } from 'react/jsx-runtime';
 import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { rehypeBlankGap } from './rehypeBlankGap';
+import { rehypeShowRawTags } from './rehypeShowRawTags';
 import { planGapHeights } from './gapCompensation';
 import { VaultContext } from '@folyn/container-extensions';
 import { getHandlerByExtension, getHandlerById, getModeComponent } from "@/components/file-types/registry";
@@ -188,6 +189,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         .use(remarkDirectiveRehype)
         .use(remarkRehype, { allowDangerousHtml: true })
         .use(rehypeRaw)
+        .use(rehypeShowRawTags, { extraKnownTags: Object.keys(componentMap) })
         .use(rehypeHighlight, { languages: allLowlightGrammars, ignoreMissing: true } as any)
         .use(rehypeRemoveCodeBreaks)
         .use(rehypeMarkResultBlock)
