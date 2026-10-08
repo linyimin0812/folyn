@@ -26,6 +26,14 @@
  * `offset` option shifts them to match the editor's frontmatter-adjusted
  * line numbers, though it cancels out of the gap math).
  *
+ * Non-block root nodes with a position MUST still advance the line cursor
+ * (prevEndLine): the text nodes rehypeShowRawTags splices from raw-HTML
+ * blocks — and, pre-existing, raw elements outside BLOCK_TAGS — occupy real
+ * source lines. Skipping them counted those lines as blanks, so the block
+ * AFTER a raw tag block got a gap sized for the whole tag block (a huge
+ * blank band). No gap div is inserted before non-block nodes; only the
+ * cursor advances.
+ *
  * The gap is `aria-hidden` and carries no content — purely a vertical
  * spacer so layout matches the editor.
  *
@@ -96,6 +104,11 @@ export function rehypeBlankGap(options: { offset?: number; totalLines?: number }
           if (leading > 0) next.push(gapDiv(leading));
         }
         prevEndLine = Math.max(prevEndLine ?? 0, endLine);
+      } else if (node?.position?.end?.line != null) {
+        // Non-block positioned node (spliced raw-tag text / raw non-block
+        // element): it occupies source lines, so advance the cursor — but
+        // insert no gap before it (it is not a block-level layout block).
+        prevEndLine = Math.max(prevEndLine ?? 0, node.position.end.line + offset);
       }
       next.push(node);
     }

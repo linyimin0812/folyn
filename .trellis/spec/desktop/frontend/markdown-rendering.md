@@ -129,6 +129,7 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 - `mjx-container` is emitted by `rehypeMathjax` AFTER this plugin — never whitelisted, never affected. Do not move this plugin after `rehypeMathjax`.
 - `style`/`script` filtering stays at React level (previewComponentMap) — only known tags, unaffected.
 - Unregistered directive names have no component → render as literal text (same rule as raw HTML).
+- The spliced open/close text nodes carry the source element's `position` — `rehypeBlankGap` advances `prevEndLine` for ANY positioned root node (not just `BLOCK_TAGS` elements), so raw-HTML blocks' source lines count as content, not blank lines (otherwise a tag block before a heading produced a large blank band in sync view).
 - Known-tags whitelist (HTML + common SVG) lives in the plugin; parse5 ignores the self-closing slash on non-void tags, so `<foo/>` arrives as an OPEN tag absorbing trailing inline content — render what the parser saw, do not re-synthesize the slash.
 
 **Why**: Smallest viable diff at tree level; no new dependency (hast-util-to-html), no source-regex preprocessing (code-block context makes that fragile). Tests: `rehypeShowRawTags.test.ts` (splice structure, br parity, attrs, nested, code-block untouched, extraKnownTags).

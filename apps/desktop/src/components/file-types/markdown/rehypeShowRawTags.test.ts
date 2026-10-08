@@ -105,6 +105,18 @@ describe('rehypeShowRawTags', () => {
     expect(textOf([code]) + textOf(code.children)).toContain('<workflow-state>');
   });
 
+  it('stamps the element position on the spliced open/close text nodes', () => {
+    // rehypeBlankGap reads position.end.line to advance its line cursor past
+    // raw-HTML blocks — unpositioned, the tag block's lines count as blanks
+    // for the next block's gap.
+    const tree = hastOf('<workflow-state>\ntask\n</workflow-state>\n\n# Head');
+    const kids = tree.children as any[];
+    const open = kids.find((n) => n.type === 'text' && n.value === '<workflow-state>');
+    const close = kids.find((n) => n.type === 'text' && n.value === '</workflow-state>');
+    expect(open.position).toMatchObject({ start: { line: 1 }, end: { line: 3 } });
+    expect(close.position).toMatchObject({ start: { line: 1 }, end: { line: 3 } });
+  });
+
   it('keeps extraKnownTags as elements (container directives have React components)', () => {
     const tree = hastOf('<tabs><tab>x</tab></tabs>', ['tabs', 'tab']);
     const para = (tree.children as any[]).find((k) => k.tagName === 'p');

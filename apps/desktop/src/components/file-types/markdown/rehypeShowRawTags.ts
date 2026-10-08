@@ -113,10 +113,14 @@ function processLevel(children: any[], isKnown: (tag: string) => boolean): any[]
   for (const child of children) {
     if (child?.type === 'element' && !isKnown(child.tagName)) {
       const inner = processLevel(child.children ?? [], isKnown).flatMap(newlineTextToBr);
+      // Stamp the element's position on the open/close text nodes: a raw HTML
+      // block occupies real source lines, and rehypeBlankGap reads
+      // position.end.line to advance its line cursor — unpositioned, those
+      // lines would count as blanks for the NEXT block's gap.
       out.push(
-        textNode(`<${child.tagName}${serializeAttrs(child.properties)}>`),
+        { type: 'text', value: `<${child.tagName}${serializeAttrs(child.properties)}>`, position: child.position },
         ...inner,
-        textNode(`</${child.tagName}>`),
+        { type: 'text', value: `</${child.tagName}>`, position: child.position },
       );
       spliced = true;
     } else {

@@ -3,7 +3,9 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkBreaks from 'remark-breaks';
 import remarkRehype from 'remark-rehype';
+import rehypeRaw from 'rehype-raw';
 import { rehypeBlankGap } from './rehypeBlankGap';
+import { rehypeShowRawTags } from './rehypeShowRawTags';
 
 // Build a hast tree the way MarkdownPreview does (remark-breaks so single
 // newlines stay in one paragraph; rehypeBlankGap inserts blank-line gaps).
@@ -18,6 +20,19 @@ function hastOf(md: string, offset = 0) {
 
 function topChildren(tree: any): any[] {
   return Array.isArray(tree.children) ? tree.children : [];
+}
+
+// Raw-HTML pipeline the way MarkdownPreview orders it (rehypeRaw →
+// rehypeShowRawTags → rehypeBlankGap) — exercises the gap math against the
+// spliced text nodes a raw tag block produces.
+function rawHastOf(md: string, offset = 0) {
+  return unified()
+    .use(remarkParse)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
+    .use(rehypeShowRawTags)
+    .use(rehypeBlankGap, { offset })
+    .runSync(unified().use(remarkParse).parse(md)) as any;
 }
 
 describe('rehypeBlankGap', () => {
@@ -90,5 +105,27 @@ describe('rehypeBlankGap', () => {
     expect(gaps.length).toBe(2);
     expect(gaps[0].properties.style).toBe('height:calc(3 * var(--md-gap-line, 1.6em))');
     expect(gaps[1].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
+  });
+
+  it('sizes the gap after a spliced raw-tag block by its real end line, not by all its lines', () => {
+    // Tag block occupies lines 1-3, blank line 4, h1 at line 5 → gap of 1.
+    // Pre-fix: the spliced text nodes were skipped, so lines 1-3 counted as
+    // blanks and the h1 got a 4-line blank band.
+    const tree = rawHastOf('<workflow-state>\ntask\n</workflow-state>\n\n# Head');
+    const kids = topChildren(tree);
+    const gaps = kids.filter((k) => k.properties?.className?.includes('md-blank-gap'));
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
+    // No leading gap: the first root node is the spliced tag text, and the
+    // cursor (not a gap div) is what advances past it.
+    expect(kids[0].type).toBe('text');
+  });
+
+  it('advances the line cursor past a raw-tag block between paragraphs', () => {
+    // p (1), tag block (3-5), h1 (7) → only one gap, 1 blank line, before h1.
+    const tree = rawHastOf('para\n\n<workflow-state>\ntask\n</workflow-state>\n\n# Head');
+    const gaps = topChildren(tree).filter((k) => k.properties?.className?.includes('md-blank-gap'));
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
   });
 });
