@@ -1069,3 +1069,47 @@ Fixed faint cursor-sync block highlight in dark mode: raised accent color-mix fr
 ### Next Steps
 
 - None - task complete
+
+
+## Session 31: Markdown preview: render unknown raw-HTML tags as literal text
+
+**Date**: 2026-10-08
+**Task**: Markdown preview: render unknown raw-HTML tags as literal text
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+Unknown/non-standard raw-HTML tags in the MarkdownPreview pipeline now render as literal text: two-stage collapse (mdast run collapser for blank-line-split regions + hast splice for the rest), raw-source inner content, br parity for newlines, unified p.md-raw-tag-block wrapper, blank-gap line counting, stray-close-tag fix for inline type-7 closes, and per-line cursor-sync alignment via data-raw-line-span.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5fc8c21a` | (see git log) |
+| `b6b13f24` | (see git log) |
+| `924019a2` | (see git log) |
+| `73a1b36d` | (see git log) |
+| `05c7bb1d` | (see git log) |
+| `11dc8104` | (see git log) |
+| `30c7b144` | (see git log) |
+| `8dfaf08d` | (see git log) |
+| `17e0c511` | (see git log) |
+| `ea62f1c4` | (see git log) |
+| `8093756c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
