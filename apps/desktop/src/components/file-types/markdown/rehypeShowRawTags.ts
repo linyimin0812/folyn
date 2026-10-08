@@ -10,7 +10,8 @@
  * Elements whose tagName is NOT a known HTML/SVG tag (and not an explicitly
  * passed extra-known tag) are spliced open into
  * [text("<tag attrs>"), ...inner, text("</tag>")] — the tags become literal
- * text nodes. The inner content is shown as RAW SOURCE: sliced from the
+ * text nodes — and the whole run is wrapped in a <span class="md-raw-tag">
+ * (inline chip styling, carries the element's position). The inner content is shown as RAW SOURCE: sliced from the
  * vfile's markdown string between the first child's start and last child's
  * end offset, so inner markdown (`**bold**`, nested tags, …) displays
  * literally instead of rendering. When the vfile value or child positions
@@ -38,7 +39,9 @@
  * 1. `remarkCollapseUnknownTagRuns` (mdast level, right after remarkParse)
  *    collapses ROOT-level runs — from a lone unknown OPEN tag (a single-line
  *    `html` node) to the next lone close tag of the same name — into ONE
- *    paragraph of raw source. Needed because CommonMark ends an HTML block
+ *    paragraph of raw source, tagged `md-raw-tag-block` (via mdast
+ *    data.hProperties → remark-rehype) so the whole region renders as a raw
+ *    source block (mono, subtle chrome — softer than a real code block). Needed because CommonMark ends an HTML block
  *    at the first BLANK line: a blank-line-separated region parses into
  *    markdown siblings (headings and fenced code render for real!) and the
  *    open/close tags become separate root `html` nodes, so this hast-level
@@ -159,15 +162,23 @@ function processLevel(children: any[], isKnown: (tag: string) => boolean, src: s
   for (const child of children) {
     if (child?.type === 'element' && !isKnown(child.tagName)) {
       const inner = rawInner(child, isKnown, src);
-      // Stamp the element's position on the open/close text nodes: a raw HTML
-      // block occupies real source lines, and rehypeBlankGap reads
-      // position.end.line to advance its line cursor — unpositioned, those
-      // lines would count as blanks for the NEXT block's gap.
-      out.push(
-        { type: 'text', value: `<${child.tagName}${serializeAttrs(child.properties)}>`, position: child.position },
-        ...inner,
-        { type: 'text', value: `</${child.tagName}>`, position: child.position },
-      );
+      // Wrap the spliced run in an inline chip (span.md-raw-tag). The span
+      // carries the element's position and is the parent-level node list
+      // entry: rehypeBlankGap's else-branch advances its line cursor from any
+      // positioned root node, so a raw HTML block's source lines still count
+      // as content, not blanks, for the NEXT block's gap. The open/close text
+      // nodes keep the position too (inner nodes, same contract).
+      out.push({
+        type: 'element',
+        tagName: 'span',
+        properties: { className: ['md-raw-tag'] },
+        children: [
+          { type: 'text', value: `<${child.tagName}${serializeAttrs(child.properties)}>`, position: child.position },
+          ...inner,
+          { type: 'text', value: `</${child.tagName}>`, position: child.position },
+        ],
+        position: child.position,
+      });
       spliced = true;
     } else {
       if (Array.isArray(child?.children)) {
@@ -260,6 +271,9 @@ export function remarkCollapseUnknownTagRuns(options: { extraKnownTags?: Iterabl
       out.push({
         type: 'paragraph',
         children: kids,
+        // data.hProperties → remark-rehype emits class="md-raw-tag-block" on
+        // the hast <p>, so the whole region renders as a raw source block.
+        data: { hProperties: { className: ['md-raw-tag-block'] } },
         // Position spans the whole run: rehypeBlankGap advances its line
         // cursor for ANY positioned root node, so the region's source lines
         // count as content, not blank lines.

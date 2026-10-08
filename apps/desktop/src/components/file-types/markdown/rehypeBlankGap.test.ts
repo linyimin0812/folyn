@@ -116,9 +116,12 @@ describe('rehypeBlankGap', () => {
     const gaps = kids.filter((k) => k.properties?.className?.includes('md-blank-gap'));
     expect(gaps).toHaveLength(1);
     expect(gaps[0].properties.style).toBe('height:calc(1 * var(--md-gap-line, 1.6em))');
-    // No leading gap: the first root node is the spliced tag text, and the
-    // cursor (not a gap div) is what advances past it.
-    expect(kids[0].type).toBe('text');
+    // No leading gap: the first root node is the spliced tag chip (span,
+    // carries the element's position), and the cursor (not a gap div) is what
+    // advances past it.
+    expect(kids[0].tagName).toBe('span');
+    expect(kids[0].properties?.className).toContain('md-raw-tag');
+    expect(kids[0].position?.end?.line).toBe(3);
   });
 
   it('advances the line cursor past a raw-tag block between paragraphs', () => {

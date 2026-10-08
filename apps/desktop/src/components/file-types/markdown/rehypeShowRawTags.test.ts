@@ -19,11 +19,21 @@ function hastOf(md: string, extraKnownTags?: Iterable<string>) {
   return proc.runSync(proc.parse(md), md) as any;
 }
 
+// Recursive text collector: spliced unknown-tag runs live INSIDE a
+// span.md-raw-tag wrapper, so flat text-node filtering would miss them.
 function textOf(nodes: any[]): string {
   return nodes
-    .filter((n) => n.type === 'text')
-    .map((n) => n.value)
+    .map((n) => {
+      if (n.type === 'text') return n.value;
+      if (Array.isArray(n?.children)) return textOf(n.children);
+      return '';
+    })
     .join('');
+}
+
+// The span.md-raw-tag chip wrapping a spliced unknown-tag run.
+function rawTagSpans(nodes: any[]): any[] {
+  return nodes.filter((n) => n.tagName === 'span' && n.properties?.className?.includes('md-raw-tag'));
 }
 
 describe('rehypeShowRawTags', () => {
@@ -32,12 +42,17 @@ describe('rehypeShowRawTags', () => {
     // rehypeRaw) — the plugin must splice the <br> itself.
     const tree = hastOf('<workflow-state>\ntask done\n</workflow-state>');
     const kids = tree.children as any[];
-    expect(kids).toHaveLength(5);
-    expect(kids[0]).toMatchObject({ type: 'text', value: '<workflow-state>' });
-    expect(kids[1]).toMatchObject({ type: 'element', tagName: 'br' });
-    expect(kids[2]).toMatchObject({ type: 'text', value: 'task done' });
-    expect(kids[3]).toMatchObject({ type: 'element', tagName: 'br' });
-    expect(kids[4]).toMatchObject({ type: 'text', value: '</workflow-state>' });
+    // The spliced run is wrapped in one span.md-raw-tag chip (inline styling).
+    expect(kids).toHaveLength(1);
+    expect(kids[0].tagName).toBe('span');
+    expect(kids[0].properties?.className).toContain('md-raw-tag');
+    const inner = kids[0].children as any[];
+    expect(inner).toHaveLength(5);
+    expect(inner[0]).toMatchObject({ type: 'text', value: '<workflow-state>' });
+    expect(inner[1]).toMatchObject({ type: 'element', tagName: 'br' });
+    expect(inner[2]).toMatchObject({ type: 'text', value: 'task done' });
+    expect(inner[3]).toMatchObject({ type: 'element', tagName: 'br' });
+    expect(inner[4]).toMatchObject({ type: 'text', value: '</workflow-state>' });
   });
 
   it('renders a <br> between sibling unknown tags separated by a newline', () => {
@@ -45,18 +60,16 @@ describe('rehypeShowRawTags', () => {
     // HTML whitespace collapsing would turn it into a space without this.
     const tree = hastOf('<workflow-state>\na\n</workflow-state>\n<workflow-state>\nb\n</workflow-state>');
     const kids = tree.children as any[];
-    const closeIdx = kids.findIndex((n) => n.type === 'text' && n.value === '</workflow-state>');
-    const openIdx = kids.findIndex((n) => n.type === 'text' && n.value === '<workflow-state>');
-    expect(closeIdx).toBeGreaterThanOrEqual(0);
-    expect(openIdx).toBeGreaterThanOrEqual(0);
-    expect(openIdx).toBeLessThan(closeIdx);
-    // The SECOND opening tag (the one after the close) must be separated by a br.
-    const nextOpenIdx = kids.findIndex(
-      (n, i) => i > closeIdx && n.type === 'text' && n.value === '<workflow-state>',
-    );
-    expect(nextOpenIdx).toBe(closeIdx + 2);
-    expect(kids[closeIdx + 1]).toMatchObject({ type: 'element', tagName: 'br' });
-    expect(kids[nextOpenIdx + 1]).toMatchObject({ type: 'element', tagName: 'br' });
+    const spans = rawTagSpans(kids);
+    expect(spans).toHaveLength(2);
+    // Each chip holds its own tag's full spliced run.
+    expect(textOf(spans[0].children)).toBe('<workflow-state>a</workflow-state>');
+    expect(textOf(spans[1].children)).toBe('<workflow-state>b</workflow-state>');
+    // The two chips are separated by a <br>, not a collapsed space.
+    const brs = kids.filter((n) => n.tagName === 'br');
+    expect(brs).toHaveLength(1);
+    expect(kids.indexOf(brs[0])).toBe(kids.indexOf(spans[0]) + 1);
+    expect(kids.indexOf(spans[1])).toBe(kids.indexOf(brs[0]) + 1);
   });
 
   it('leaves newline-free unknown-tag content as single text nodes', () => {
@@ -64,7 +77,10 @@ describe('rehypeShowRawTags', () => {
     const tree = hastOf('<workflow-state>task done</workflow-state>');
     const para = (tree.children as any[]).find((k) => k.tagName === 'p');
     expect(textOf(para.children)).toBe('<workflow-state>task done</workflow-state>');
-    expect(para.children.every((n: any) => n.type === 'text')).toBe(true);
+    const spans = rawTagSpans(para.children);
+    expect(spans).toHaveLength(1);
+    // Inside the chip it is all plain text — no nested element structure.
+    expect(spans[0].children.every((n: any) => n.type === 'text')).toBe(true);
   });
 
   it('shows unknown inline tags with inner markdown as raw source', () => {
@@ -114,14 +130,18 @@ describe('rehypeShowRawTags', () => {
     expect(textOf([code]) + textOf(code.children)).toContain('<workflow-state>');
   });
 
-  it('stamps the element position on the spliced open/close text nodes', () => {
+  it('stamps the element position on the chip and the spliced open/close text nodes', () => {
     // rehypeBlankGap reads position.end.line to advance its line cursor past
     // raw-HTML blocks — unpositioned, the tag block's lines count as blanks
-    // for the next block's gap.
+    // for the next block's gap. The span chip is the root-level entry, so it
+    // must carry the position (its inner text nodes keep it too).
     const tree = hastOf('<workflow-state>\ntask\n</workflow-state>\n\n# Head');
     const kids = tree.children as any[];
-    const open = kids.find((n) => n.type === 'text' && n.value === '<workflow-state>');
-    const close = kids.find((n) => n.type === 'text' && n.value === '</workflow-state>');
+    const spans = rawTagSpans(kids);
+    expect(spans).toHaveLength(1);
+    expect(spans[0].position).toMatchObject({ start: { line: 1 }, end: { line: 3 } });
+    const open = spans[0].children.find((n: any) => n.type === 'text' && n.value === '<workflow-state>');
+    const close = spans[0].children.find((n: any) => n.type === 'text' && n.value === '</workflow-state>');
     expect(open.position).toMatchObject({ start: { line: 1 }, end: { line: 3 } });
     expect(close.position).toMatchObject({ start: { line: 1 }, end: { line: 3 } });
   });
@@ -148,6 +168,9 @@ describe('remarkCollapseUnknownTagRuns', () => {
     expect(kids).toHaveLength(1);
     const p = kids[0];
     expect(p.tagName).toBe('p');
+    // The collapsed region renders as a raw source block (md-raw-tag-block
+    // via mdast data.hProperties → remark-rehype).
+    expect(p.properties?.className).toContain('md-raw-tag-block');
     // remark-rehype renders each mdast `break` as [br, text('\n')], so the
     // paragraph's text content is the raw source verbatim.
     expect(textOf(p.children)).toBe(md);
@@ -159,11 +182,14 @@ describe('remarkCollapseUnknownTagRuns', () => {
 
   it('leaves a no-blank-line unknown-tag block to the hast-level plugin', () => {
     // No blank line inside → one multi-line html node → the mdast regex
-    // (single-line only) does not match; stage 2 splices it at hast level.
+    // (single-line only) does not match; stage 2 splices it at hast level
+    // (one span.md-raw-tag chip, no md-raw-tag-block paragraph).
     const tree = hastOf('<workflow-state>\ntask\n</workflow-state>');
     const kids = tree.children as any[];
     expect(kids.find((n) => n.tagName === 'p')).toBeUndefined();
-    expect(kids[0]).toMatchObject({ type: 'text', value: '<workflow-state>' });
+    const spans = rawTagSpans(kids);
+    expect(spans).toHaveLength(1);
+    expect(kids[0]).toBe(spans[0]);
     expect(textOf(kids)).toBe('<workflow-state>task</workflow-state>');
   });
 
