@@ -1,0 +1,49 @@
+%% Folyn 微内核 + 扩展化架构：扩展经宿主运行时的能力服务调用内核
+flowchart TD
+    E1("编辑器扩展<br/>CodeMirror·MD 预览")
+    E2("AI 聊天扩展<br/>chat 面板·模型注册")
+    E3("宠物扩展<br/>多窗口·快捷面板")
+    E4("终端扩展<br/>xterm·PTY")
+    E5("Vault/Git 扩展<br/>文件树·版本历史")
+    E6("活动采集扩展<br/>github·IMAP 收集器")
+
+    H("扩展宿主运行时 extension-host<br/>能力注册·沙箱·RPC 总线")
+
+    C1("HTTP 能力<br/>fetch 代理·绕过 CSP")
+    C2("AI 能力<br/>模型调用·SSE 流式")
+    C3("存储能力<br/>vault 读写·对象存储")
+    C4("系统能力<br/>剪贴板·通知·终端")
+
+    K("微内核 (Rust) src-tauri<br/>窗口·文件·安全·语音·PTY")
+
+    SB("沙箱隔离层<br/>sandboxLoader·origin 白名单")
+
+    B1("内置扩展包<br/>rich-text·dbml·carousel")
+    B2("扩展 SDK<br/>类型契约 packages/sdk")
+    B3("脚手架 CLI<br/>create-folyn-extension")
+    B4("外部三方扩展<br/>社区/市场分发")
+
+    E1 --> H
+    E2 --> H
+    E3 --> H
+    E4 --> H
+    E5 --> H
+    E6 --> H
+    H --> C1
+    H --> C2
+    H --> C3
+    H --> C4
+    C1 -->|"reqwest"| K
+    C2 --> K
+    C3 -->|"文件IO"| K
+    C4 --> K
+    B1 -->|"trusted 装载"| H
+    B4 -->|"安装校验"| K
+    B4 -->|"校验后"| SB
+    SB -->|"受限调用"| H
+    B3 -.-> B4
+    B2 -.-> B1
+    B2 -.-> B4
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class E1,E2,E3,E4,E5,E6,H,C1,C2,C3,C4,K,B1,B2,B3,B4 base;

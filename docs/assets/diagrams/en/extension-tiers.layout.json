@@ -1,0 +1,30 @@
+{
+  "width": 1560,
+  "height": 760,
+  "nodes": [
+    {"id": "T1", "x": 380, "y": 80, "width": 260, "lines": ["trusted extension", "built-in · TOFU user pin"], "decision": false},
+    {"id": "T2", "x": 380, "y": 180, "width": 260, "lines": ["TOFU trust gate", "user pin + integrity"], "decision": true},
+    {"id": "T3", "x": 380, "y": 300, "width": 280, "lines": ["blob URL + import()", "inject host main realm"], "decision": false},
+    {"id": "T4", "x": 380, "y": 430, "width": 300, "lines": ["runs in host main realm", "full power · DOM · Tauri API"], "decision": false},
+    {"id": "T5", "x": 380, "y": 560, "width": 280, "lines": ["in-process contributions", "commands · features · tools"], "decision": false},
+    {"id": "S1", "x": 1180, "y": 80, "width": 240, "lines": ["sandbox extension", "third-party · marketplace"], "decision": false},
+    {"id": "S2", "x": 1180, "y": 180, "width": 260, "lines": ["install check (Rust)", "manifest · origin allowlist"], "decision": true},
+    {"id": "S3", "x": 1180, "y": 300, "width": 280, "lines": ["hidden iframe", "allow-scripts · no same-origin"], "decision": false},
+    {"id": "S4", "x": 1180, "y": 430, "width": 300, "lines": ["opaque origin isolation", "no DOM · no Tauri API"], "decision": false},
+    {"id": "S5", "x": 1180, "y": 560, "width": 300, "lines": ["RPC bridge (postMessage)", "sole channel · per-call perms"], "decision": false},
+    {"id": "HC", "x": 780, "y": 700, "width": 380, "lines": ["extension host runtime", "adapters → kernel services"], "decision": false}
+  ],
+  "edges": [
+    {"source": "T1", "target": "T2", "points": [[380, 109], [380, 151]], "label": null, "dashed": false},
+    {"source": "T2", "target": "T3", "points": [[380, 209], [380, 271]], "label": null, "dashed": false},
+    {"source": "T3", "target": "T4", "points": [[380, 329], [380, 401]], "label": null, "dashed": false},
+    {"source": "T4", "target": "T5", "points": [[380, 459], [380, 531]], "label": null, "dashed": false},
+    {"source": "S1", "target": "S2", "points": [[1180, 109], [1180, 151]], "label": null, "dashed": false},
+    {"source": "S2", "target": "S3", "points": [[1180, 209], [1180, 271]], "label": null, "dashed": false},
+    {"source": "S3", "target": "S4", "points": [[1180, 329], [1180, 401]], "label": null, "dashed": false},
+    {"source": "S4", "target": "S5", "points": [[1180, 459], [1180, 531]], "label": null, "dashed": false},
+    {"source": "T5", "target": "HC", "points": [[380, 589], [380, 630], [700, 630], [700, 671]], "label": ["full direct access", 540, 630], "dashed": false},
+    {"source": "S5", "target": "HC", "points": [[1180, 589], [1180, 630], [860, 630], [860, 671]], "label": ["restricted proxy", 1020, 630], "dashed": false},
+    {"source": "HC", "target": "S5", "points": [[970, 700], [1240, 700], [1240, 589]], "label": ["response · push", 1240, 650], "dashed": false}
+  ]
+}

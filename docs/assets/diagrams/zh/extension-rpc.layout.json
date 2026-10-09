@@ -1,0 +1,33 @@
+{
+  "width": 1700,
+  "height": 940,
+  "nodes": [
+    {"id": "HOST", "x": 430, "y": 70, "width": 340, "lines": ["宿主 RpcBridge", "主窗口 realm·message 监听"], "decision": false},
+    {"id": "IFRM", "x": 1270, "y": 70, "width": 340, "lines": ["扩展 sandbox iframe", "不透明 origin·隔离 realm"], "decision": false},
+    {"id": "R1", "x": 1270, "y": 200, "width": 340, "lines": ["扩展调用宿主能力", "api.fs.read(path)"], "decision": false},
+    {"id": "L2", "x": 430, "y": 320, "width": 340, "lines": ["接收 request·验来源", "source === iframe 窗口"], "decision": false},
+    {"id": "L3", "x": 430, "y": 440, "width": 340, "lines": ["dispatchExtensionRpc", "按 manifest permissions 门控"], "decision": false},
+    {"id": "L4", "x": 430, "y": 560, "width": 340, "lines": ["执行能力·sendResponse", "fs glob·http origins·ai"], "decision": false},
+    {"id": "R2", "x": 1270, "y": 560, "width": 340, "lines": ["按 id 匹配 Promise", "resolve 返回调用方"], "decision": false},
+    {"id": "L5", "x": 430, "y": 680, "width": 340, "lines": ["宿主推送消息", "lifecycle·env-event·ai-stream"], "decision": false},
+    {"id": "R3", "x": 1270, "y": 680, "width": 340, "lines": ["扩展监听 message", "onEvent 更新 UI·流式渲染"], "decision": false},
+    {"id": "L6", "x": 430, "y": 800, "width": 340, "lines": ["宿主调用扩展命令", "⌘P 命令·30s 超时"], "decision": false},
+    {"id": "R4", "x": 1270, "y": 800, "width": 340, "lines": ["iframe 执行 command", "返回 invoke-result"], "decision": false}
+  ],
+  "edges": [
+    {"source": "IFRM", "target": "R1", "points": [[1270, 99], [1270, 171]], "label": null, "dashed": false},
+    {"source": "HOST", "target": "L2", "points": [[430, 99], [430, 291]], "label": null, "dashed": false},
+    {"source": "R1", "target": "L2", "points": [[1100, 200], [850, 200], [850, 320], [600, 320]], "label": ["request {id, method, params}", 850, 260], "dashed": false},
+    {"source": "L2", "target": "L3", "points": [[430, 349], [430, 411]], "label": null, "dashed": false},
+    {"source": "L3", "target": "L4", "points": [[430, 469], [430, 531]], "label": null, "dashed": false},
+    {"source": "L4", "target": "R2", "points": [[600, 560], [1100, 560]], "label": ["response {id, result/error}", 850, 560], "dashed": false},
+    {"source": "R2", "target": "R1", "points": [[1440, 560], [1480, 560], [1480, 200], [1440, 200]], "label": ["返回调用方", 1480, 380], "dashed": false},
+    {"source": "L4", "target": "L5", "points": [[430, 589], [430, 651]], "label": null, "dashed": false},
+    {"source": "L5", "target": "R3", "points": [[600, 680], [1100, 680]], "label": ["lifecycle · env-event · ai-stream", 850, 680], "dashed": false},
+    {"source": "R2", "target": "R3", "points": [[1270, 589], [1270, 651]], "label": null, "dashed": false},
+    {"source": "L5", "target": "L6", "points": [[430, 709], [430, 771]], "label": null, "dashed": false},
+    {"source": "L6", "target": "R4", "points": [[600, 800], [1100, 800]], "label": ["invoke {id, command}", 850, 800], "dashed": false},
+    {"source": "R3", "target": "R4", "points": [[1270, 709], [1270, 771]], "label": null, "dashed": false},
+    {"source": "R4", "target": "L6", "points": [[1270, 829], [1270, 870], [430, 870], [430, 829]], "label": ["invoke-result {id, result}", 850, 870], "dashed": false}
+  ]
+}

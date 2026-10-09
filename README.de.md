@@ -196,6 +196,46 @@ folyn/
 
 Siehe `docs/extensions.html` für Details.
 
+### Architekturdiagramme
+
+Entwurfsdiagramme zum Erweiterungssystem und zur Aktivitätensammel-Pipeline (editierbare Quellen unter `docs/assets/diagrams/`):
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/architecture.svg" alt="Architektur" />
+</p>
+
+**Mikrokernel + Erweiterungen** — die Extension-Host-Runtime vermittelt zwischen Funktionserweiterungen und den Fähigkeitsdiensten des Rust-Microkernels; Drittanbieter-Erweiterungen gelangen über die Sandbox-Isolationsschicht hinein.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-tiers.svg" alt="Vertrauensstufen der Erweiterungen" />
+</p>
+
+**Trusted-/Sandbox-Erweiterungen** — Trusted-Pakete werden per TOFU angepinnt und laufen im Haupt-Realm des Hosts; Sandbox-Pakete laufen in einem Iframe mit opaker Origin — ohne DOM und ohne Tauri-API.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-rpc.svg" alt="postMessage-RPC-Protokoll" />
+</p>
+
+**postMessage-RPC-Protokoll** — Request/Response, Host-Push und umgekehrte Kommandoaufrufe über die Host/Iframe-Grenze, mit Berechtigungsprüfung pro Aufruf.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-collector.svg" alt="Aktivitätensammler" />
+</p>
+
+**Aktivitätensammler** — die Poll-/Webhook-Runtime treibt die Schleife Sammeln → Anonymisieren → Ingest → Cursor-Vorschub; der Cursor rückt erst nach erfolgreichem Push vor.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-schema.svg" alt="Schema der Aktivitätsdatenbank" />
+</p>
+
+**Schema der Aktivitätsdatenbank** — SQLite-Tabellen pro Vault für Ereignisse, Entitäten, Relationen, Sammel-Cursor und Laufhistorie.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/sdk-surface.svg" alt="SDK-Fähigkeitenfläche" />
+</p>
+
+**SDK-Fähigkeitenfläche** — die als [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk) veröffentlichten Typverträge: Extension-Einstieg, ExtensionApi-Fähigkeitsgrenze (vault, editor, ai, network, terminal, export, commands, events, storage, env, Registries), contributes-Deklarationspunkte und Dev-Werkzeuge.
+
 ## Getting Started
 
 ### Prerequisites

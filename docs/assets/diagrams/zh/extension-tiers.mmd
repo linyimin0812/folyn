@@ -1,0 +1,26 @@
+%% Folyn 扩展信任分级原理：trusted 进宿主主 realm，sandbox 走 iframe 隔离 + RPC 桥
+flowchart TD
+    T1("trusted 扩展包<br/>内置·TOFU 用户置信")
+    T2{"TOFU 信任门<br/>用户 pin+完整性校验"}
+    T3("blob URL + import()<br/>注入宿主主 realm")
+    T4("宿主主 realm 运行<br/>完整能力·DOM·Tauri API")
+    T5("进程内贡献注册<br/>commands·features·tools")
+
+    S1("sandbox 扩展包<br/>三方·市场分发")
+    S2{"安装校验 (Rust)<br/>manifest·origin 白名单"}
+    S3("隐藏 iframe<br/>allow-scripts·无 same-origin")
+    S4("不透明 origin 隔离<br/>无 DOM·无 Tauri API")
+    S5("RPC 桥 (postMessage)<br/>唯一通道·逐调用查权限")
+
+    HC("扩展宿主运行时<br/>能力适配器→微内核服务")
+
+    T1 --> T2 --> T3 --> T4 --> T5
+    S1 --> S2 --> S3 --> S4 --> S5
+    T5 -->|"完整能力直调"| HC
+    S5 -->|"受限能力代理"| HC
+    HC -->|"response·推送"| S5
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    classDef decision fill:#edf4f3,stroke:#648c84,color:#1f2937,stroke-width:1px;
+    class T1,T3,T4,T5,S1,S3,S4,S5,HC base;
+    class T2,S2 decision;

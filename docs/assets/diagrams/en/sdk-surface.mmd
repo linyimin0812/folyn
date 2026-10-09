@@ -1,0 +1,42 @@
+%% Folyn extension SDK surface: type contracts exposed by folyn-extension-sdk — Extension entry, ExtensionApi capability boundary, contributes points, and dev tools
+flowchart TD
+    ROOT("folyn-extension-sdk<br/>type contracts · dev tools · on npm")
+    DEV("dev tools<br/>validateManifest · DisposableStore")
+    ENT("Extension entry<br/>activate · deactivate lifecycle")
+    CTX("ExtensionContext<br/>manifest · vault · ui · signal · logger")
+    CONTRIB("contributes points<br/>commands · collectors · fileTypes · …")
+    HUB("ExtensionApi boundary<br/>host-injected · per-call permission gating")
+
+    VAULT("vault file access<br/>read/write · text · binary")
+    EDITOR("editor access<br/>selection read · replace")
+    AI("ai capability<br/>chat · pairs · edit · streaming")
+    NET("network http<br/>fetch · origin allowlist")
+    TERM("terminal<br/>open · close · session")
+    EXP("export service<br/>query · run · progress · cancel")
+    CMD("commands registry<br/>⌘P · keybindings")
+    EVT("events bus<br/>on · emit")
+    STO("storage<br/>extension-private get/set")
+    ENV("env<br/>theme · locale · platform")
+    FT("fileTypes registry<br/>resolve · Handler")
+    EXPR("exporters registry<br/>register · list")
+
+    ROOT --> DEV
+    ROOT --> ENT
+    ENT --> HUB
+    ENT --> CTX
+    CTX --> CONTRIB
+    HUB --> VAULT
+    HUB --> EDITOR
+    HUB --> AI
+    HUB --> NET
+    HUB --> TERM
+    HUB --> EXP
+    HUB --> CMD
+    HUB --> EVT
+    HUB --> STO
+    HUB --> ENV
+    HUB --> FT
+    HUB --> EXPR
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class ROOT,DEV,ENT,CTX,CONTRIB,HUB,VAULT,EDITOR,AI,NET,TERM,EXP,CMD,EVT,STO,ENV,FT,EXPR base;

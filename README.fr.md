@@ -194,6 +194,46 @@ folyn/
 
 Voir `docs/extensions.html` pour les détails.
 
+### Schémas d'architecture
+
+Diagrammes de conception du système d'extensions et du pipeline de collecte d'activité (sources éditables dans `docs/assets/diagrams/`) :
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/architecture.svg" alt="Architecture" />
+</p>
+
+**Micro-noyau + extensions** — le runtime hôte d'extensions fait le lien entre les extensions fonctionnelles et les services de capacité du micro-noyau Rust ; les extensions tierces passent par la couche d'isolement sandbox.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-tiers.svg" alt="Niveaux de confiance des extensions" />
+</p>
+
+**Extensions trusted / sandbox** — les paquets trusted sont épinglés via TOFU et s'exécutent dans le realm principal de l'hôte ; les paquets sandbox s'exécutent dans une iframe à origine opaque, sans DOM ni API Tauri.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-rpc.svg" alt="Protocole RPC postMessage" />
+</p>
+
+**Protocole RPC postMessage** — request/response, push de l'hôte et invocation inversée de commandes à travers la frontière hôte/iframe, avec contrôle des permissions à chaque appel.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-collector.svg" alt="Collecteurs d'activité" />
+</p>
+
+**Collecteurs d'activité** — le runtime poll/webhook pilote la boucle collecte → anonymisation → ingestion → avancement du curseur ; le curseur n'avance qu'après un push réussi.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-schema.svg" alt="Schéma de la base d'activité" />
+</p>
+
+**Schéma de la base d'activité** — tables SQLite par vault pour les événements, entités, relations, curseurs de collecte et historique d'exécution.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/sdk-surface.svg" alt="Surface du SDK d'extensions" />
+</p>
+
+**Surface du SDK** — les contrats de types publiés sous [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk) : entrée Extension, frontière de capacité ExtensionApi (vault, editor, ai, network, terminal, export, commands, events, storage, env, registres), points de déclaration contributes et outils de dev.
+
 ## Getting Started
 
 ### Prerequisites

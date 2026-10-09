@@ -1,0 +1,26 @@
+%% Folyn extension trust tiers: trusted runs in the host main realm, sandbox runs in an iframe + RPC bridge
+flowchart TD
+    T1("trusted extension<br/>built-in · TOFU user pin")
+    T2{"TOFU trust gate<br/>user pin + integrity"}
+    T3("blob URL + import()<br/>inject host main realm")
+    T4("runs in host main realm<br/>full power · DOM · Tauri API")
+    T5("in-process contributions<br/>commands · features · tools")
+
+    S1("sandbox extension<br/>third-party · marketplace")
+    S2{"install check (Rust)<br/>manifest · origin allowlist"}
+    S3("hidden iframe<br/>allow-scripts · no same-origin")
+    S4("opaque origin isolation<br/>no DOM · no Tauri API")
+    S5("RPC bridge (postMessage)<br/>sole channel · per-call perms")
+
+    HC("extension host runtime<br/>adapters → kernel services")
+
+    T1 --> T2 --> T3 --> T4 --> T5
+    S1 --> S2 --> S3 --> S4 --> S5
+    T5 -->|"full direct access"| HC
+    S5 -->|"restricted proxy"| HC
+    HC -->|"response · push"| S5
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    classDef decision fill:#edf4f3,stroke:#648c84,color:#1f2937,stroke-width:1px;
+    class T1,T3,T4,T5,S1,S3,S4,S5,HC base;
+    class T2,S2 decision;

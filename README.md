@@ -194,6 +194,46 @@ folyn/
 
 See `docs/extensions.html` for details.
 
+### Architecture Diagrams
+
+Design diagrams for the extension system and the activity collection pipeline (editable sources live in `docs/assets/diagrams/`):
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/architecture.svg" alt="Architecture" />
+</p>
+
+**Microkernel + extensions** — the extension host runtime mediates between feature extensions and the Rust microkernel's capability services; third-party extensions enter through the sandbox isolation layer.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-tiers.svg" alt="Extension trust tiers" />
+</p>
+
+**Trusted vs sandbox extensions** — trusted packages are TOFU-pinned and run in the host main realm; sandbox packages run inside an opaque-origin iframe with no DOM or Tauri access.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-rpc.svg" alt="Extension RPC protocol" />
+</p>
+
+**postMessage RPC protocol** — request/response, host push, and reverse command invocation across the host/iframe boundary, with per-call permission gating.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-collector.svg" alt="Activity collectors" />
+</p>
+
+**Activity collectors** — the poll/webhook runtime drives the collect → redact → ingest → cursor-advance loop; the cursor only moves after a successful push.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-schema.svg" alt="Activity database schema" />
+</p>
+
+**Activity database schema** — per-vault SQLite tables for events, entities, relations, collector cursors, and run history.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/sdk-surface.svg" alt="Extension SDK surface" />
+</p>
+
+**SDK surface** — the type contracts published as [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk): the Extension entry, the ExtensionApi capability boundary (vault, editor, AI, network, terminal, export, commands, events, storage, env, registries), contributes declaration points, and dev tools.
+
 ## Getting Started
 
 ### Prerequisites

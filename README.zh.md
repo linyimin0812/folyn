@@ -194,6 +194,46 @@ folyn/
 
 详见 `docs/extensions.html`。
 
+### 架构图
+
+扩展系统与活动采集链路的设计图（可编辑源文件在 `docs/assets/diagrams/`）：
+
+<p align="center">
+  <img src="docs/assets/diagrams/zh/architecture.svg" alt="整体架构" />
+</p>
+
+**微内核 + 扩展化** — 扩展宿主运行时承上启下，功能扩展向下调用 Rust 微内核的能力服务；三方扩展经沙箱隔离层接入。
+
+<p align="center">
+  <img src="docs/assets/diagrams/zh/extension-tiers.svg" alt="扩展信任分级" />
+</p>
+
+**trusted / sandbox 扩展** — trusted 包经 TOFU 置信后注入宿主主 realm 运行；sandbox 包在不透明 origin 的 iframe 中运行，无 DOM 与 Tauri API。
+
+<p align="center">
+  <img src="docs/assets/diagrams/zh/extension-rpc.svg" alt="postMessage RPC 协议" />
+</p>
+
+**postMessage RPC 协议** — 宿主与 iframe 之间的 request/response、宿主推送与反向命令调用，逐调用按 manifest 权限门控。
+
+<p align="center">
+  <img src="docs/assets/diagrams/zh/activity-collector.svg" alt="活动采集器" />
+</p>
+
+**活动采集器** — 轮询/webhook 运行时驱动「采集 → 脱敏 → 入库 → 游标推进」闭环，推送成功后才推进游标。
+
+<p align="center">
+  <img src="docs/assets/diagrams/zh/activity-schema.svg" alt="活动数据库 ER 图" />
+</p>
+
+**活动数据库 ER 图** — 每 vault 一个 SQLite 库，存事件、实体、关系、采集器游标与运行记录。
+
+<p align="center">
+  <img src="docs/assets/diagrams/zh/sdk-surface.svg" alt="扩展 SDK 功能点" />
+</p>
+
+**SDK 功能点** — 以 [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk) 发布的类型契约：Extension 入口、ExtensionApi 能力边界（vault、editor、ai、network、terminal、export、commands、events、storage、env、各类注册表）、contributes 声明点与 dev 工具。
+
 ## Getting Started
 
 ### Prerequisites

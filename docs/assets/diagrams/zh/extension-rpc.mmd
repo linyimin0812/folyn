@@ -1,0 +1,33 @@
+%% Folyn sandbox 扩展 postMessage RPC 协议：宿主 realm 与 iframe 隔离 realm 之间的消息帧
+flowchart TD
+    HOST("宿主 RpcBridge<br/>主窗口 realm·message 监听")
+    IFRM("扩展 sandbox iframe<br/>不透明 origin·隔离 realm")
+
+    R1("扩展调用宿主能力<br/>api.fs.read(path)")
+    L2("接收 request·验来源<br/>source === iframe 窗口")
+    L3("dispatchExtensionRpc<br/>按 manifest permissions 门控")
+    L4("执行能力·sendResponse<br/>fs glob·http origins·ai")
+    R2("按 id 匹配 Promise<br/>resolve 返回调用方")
+
+    L5("宿主推送消息<br/>lifecycle·env-event·ai-stream")
+    R3("扩展监听 message<br/>onEvent 更新 UI·流式渲染")
+
+    L6("宿主调用扩展命令<br/>⌘P 命令·30s 超时")
+    R4("iframe 执行 command<br/>返回 invoke-result")
+
+    IFRM --> R1
+    HOST --> L2
+    R1 -->|"request {id, method, params}"| L2
+    L2 --> L3 --> L4
+    L4 -->|"response {id, result/error}"| R2
+    R2 -->|"返回调用方"| R1
+    L4 --> L5
+    L5 -->|"lifecycle · env-event · ai-stream"| R3
+    R2 --> R3
+    L5 --> L6
+    L6 -->|"invoke {id, command}"| R4
+    R3 --> R4
+    R4 -->|"invoke-result {id, result}"| L6
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class HOST,IFRM,R1,L2,L3,L4,R2,L5,R3,L6,R4 base;

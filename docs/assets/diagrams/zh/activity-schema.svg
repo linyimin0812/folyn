@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="800" viewBox="0 0 1560 800" font-family="-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif">
+  <rect width="1560" height="800" fill="#ffffff"/>
+
+  <!-- 关系连线（先画线，实体框覆盖端点） -->
+  <g fill="none" stroke="#94a3b8" stroke-width="1">
+    <line x1="370" y1="200" x2="620" y2="200"/>
+    <polyline points="220,328 220,490 700,490 700,560"/>
+    <polyline points="280,328 280,470 860,470 860,560"/>
+    <line x1="940" y1="388" x2="940" y2="560"/>
+    <line x1="1180" y1="140" x2="980" y2="140" stroke-dasharray="5 4"/>
+    <polyline points="1180,430 1080,430 1080,250 980,250" stroke-dasharray="5 4"/>
+  </g>
+
+  <!-- 基数标注 -->
+  <g font-size="12" font-weight="600" fill="#2563a6">
+    <text x="386" y="194">1</text>
+    <text x="604" y="194" text-anchor="end">N</text>
+    <text x="234" y="352">1</text>
+    <text x="708" y="554">N</text>
+    <text x="294" y="352">1</text>
+    <text x="868" y="554">N</text>
+    <text x="930" y="412" text-anchor="end">1</text>
+    <text x="930" y="548" text-anchor="end">N</text>
+    <text x="1170" y="158" text-anchor="end">1</text>
+    <text x="990" y="158">N</text>
+    <text x="1170" y="424" text-anchor="end">1</text>
+    <text x="990" y="244">N</text>
+  </g>
+
+  <!-- 关系胶囊标签 -->
+  <g font-size="12" fill="#2563a6" text-anchor="middle">
+    <rect x="463" y="188" width="64" height="24" rx="12" fill="#f5f9ff" stroke="#d2e1f1"/>
+    <text x="495" y="204">actor</text>
+    <rect x="408" y="478" width="104" height="24" rx="12" fill="#f5f9ff" stroke="#d2e1f1"/>
+    <text x="460" y="494">from_entity</text>
+    <rect x="514" y="458" width="92" height="24" rx="12" fill="#f5f9ff" stroke="#d2e1f1"/>
+    <text x="560" y="474">to_entity</text>
+    <rect x="899" y="433" width="82" height="24" rx="12" fill="#f5f9ff" stroke="#d2e1f1"/>
+    <text x="940" y="449">event_id</text>
+    <rect x="992" y="128" width="176" height="24" rx="12" fill="#f5f9ff" stroke="#d2e1f1"/>
+    <text x="1080" y="144">source = collector_id</text>
+    <rect x="996" y="328" width="168" height="24" rx="12" fill="#f5f9ff" stroke="#d2e1f1"/>
+    <text x="1080" y="344">collector_id → source</text>
+  </g>
+
+  <!-- entities -->
+  <g>
+    <rect x="70" y="140" width="300" height="188" rx="14" fill="#f8fafc" stroke="#94a3b8"/>
+    <line x1="70" y1="174" x2="370" y2="174" stroke="#94a3b8"/>
+    <text x="220" y="162" font-size="13" font-weight="700" fill="#1f2937" text-anchor="middle">entities</text>
+    <g font-size="12" fill="#1f2937">
+      <text x="84" y="189"><tspan font-weight="700" fill="#2563a6">PK </tspan>id TEXT</text>
+      <text x="84" y="211">type TEXT</text>
+      <text x="84" y="233">identity_key TEXT</text>
+      <text x="84" y="255">display_name TEXT</text>
+      <text x="84" y="277">metadata_json TEXT</text>
+      <text x="84" y="299">created_at INTEGER</text>
+      <text x="84" y="321" font-style="italic" fill="#6b7280">UNIQUE(type, identity_key)</text>
+    </g>
+  </g>
+
+  <!-- activity_events -->
+  <g>
+    <rect x="620" y="90" width="360" height="298" rx="14" fill="#f8fafc" stroke="#94a3b8"/>
+    <line x1="620" y1="124" x2="980" y2="124" stroke="#94a3b8"/>
+    <text x="800" y="112" font-size="13" font-weight="700" fill="#1f2937" text-anchor="middle">activity_events</text>
+    <g font-size="12" fill="#1f2937">
+      <text x="634" y="139"><tspan font-weight="700" fill="#2563a6">PK </tspan>id TEXT</text>
+      <text x="634" y="161">type TEXT</text>
+      <text x="634" y="183">source TEXT</text>
+      <text x="634" y="205"><tspan font-weight="700" fill="#2563a6">FK </tspan>actor_entity_id TEXT</text>
+      <text x="634" y="227">occurred_at INTEGER</text>
+      <text x="634" y="249">created_at INTEGER</text>
+      <text x="634" y="271">title TEXT</text>
+      <text x="634" y="293">summary TEXT</text>
+      <text x="634" y="315">url TEXT</text>
+      <text x="634" y="337">payload_json TEXT</text>
+      <text x="634" y="359">raw_json TEXT</text>
+      <text x="634" y="381">ai_summary TEXT</text>
+    </g>
+  </g>
+
+  <!-- relations -->
+  <g>
+    <rect x="620" y="560" width="360" height="166" rx="14" fill="#f8fafc" stroke="#94a3b8"/>
+    <line x1="620" y1="594" x2="980" y2="594" stroke="#94a3b8"/>
+    <text x="800" y="582" font-size="13" font-weight="700" fill="#1f2937" text-anchor="middle">relations</text>
+    <g font-size="12" fill="#1f2937">
+      <text x="634" y="609"><tspan font-weight="700" fill="#2563a6">PK </tspan>id TEXT</text>
+      <text x="634" y="631"><tspan font-weight="700" fill="#2563a6">FK </tspan>from_entity_id TEXT</text>
+      <text x="634" y="653"><tspan font-weight="700" fill="#2563a6">FK </tspan>to_entity_id TEXT</text>
+      <text x="634" y="675">relation_type TEXT</text>
+      <text x="634" y="697"><tspan font-weight="700" fill="#2563a6">FK </tspan>activity_event_id TEXT</text>
+      <text x="634" y="719">occurred_at INTEGER</text>
+    </g>
+  </g>
+
+  <!-- collector_cursors -->
+  <g>
+    <rect x="1180" y="90" width="310" height="100" rx="14" fill="#f8fafc" stroke="#94a3b8"/>
+    <line x1="1180" y1="124" x2="1490" y2="124" stroke="#94a3b8"/>
+    <text x="1335" y="112" font-size="13" font-weight="700" fill="#1f2937" text-anchor="middle">collector_cursors</text>
+    <g font-size="12" fill="#1f2937">
+      <text x="1194" y="139"><tspan font-weight="700" fill="#2563a6">PK </tspan>collector_id TEXT</text>
+      <text x="1194" y="161">cursor TEXT</text>
+      <text x="1194" y="183">updated_at INTEGER</text>
+    </g>
+  </g>
+
+  <!-- collect_runs -->
+  <g>
+    <rect x="1180" y="350" width="310" height="232" rx="14" fill="#f8fafc" stroke="#94a3b8"/>
+    <line x1="1180" y1="384" x2="1490" y2="384" stroke="#94a3b8"/>
+    <text x="1335" y="372" font-size="13" font-weight="700" fill="#1f2937" text-anchor="middle">collect_runs</text>
+    <g font-size="12" fill="#1f2937">
+      <text x="1194" y="399"><tspan font-weight="700" fill="#2563a6">PK </tspan>id INTEGER</text>
+      <text x="1194" y="421">collector_id TEXT</text>
+      <text x="1194" y="443">collector_name TEXT</text>
+      <text x="1194" y="465">started_at INTEGER</text>
+      <text x="1194" y="487">finished_at INTEGER</text>
+      <text x="1194" y="509">accepted INTEGER</text>
+      <text x="1194" y="531">deduped INTEGER</text>
+      <text x="1194" y="553">outcome TEXT</text>
+      <text x="1194" y="575">logs TEXT</text>
+    </g>
+  </g>
+
+  <text x="70" y="770" font-size="12" fill="#6b7280">库：activity.sqlite（~/.folyn/activity/&lt;vault-key&gt;/，每 vault 一个）· relations 三列为显式外键，actor_entity_id 与 collector_id↔source 为逻辑关联（虚线，无约束）</text>
+</svg>

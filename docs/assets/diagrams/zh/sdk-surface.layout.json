@@ -1,0 +1,43 @@
+{
+  "width": 1650,
+  "height": 850,
+  "nodes": [
+    {"id":"HUB","x":850,"y":90,"width":700,"lines":["ExtensionApi 能力边界","宿主注入实现·逐调用权限门控"]},
+    {"id":"VAULT","x":320,"y":300,"width":280,"lines":["vault 文件能力","read/write·text·binary"]},
+    {"id":"EDITOR","x":700,"y":300,"width":280,"lines":["editor 编辑能力","selection 读取·替换"]},
+    {"id":"AI","x":1080,"y":300,"width":280,"lines":["ai 能力","chat·pairs·edit·流式"]},
+    {"id":"NET","x":1460,"y":300,"width":280,"lines":["network http","fetch·origin 白名单"]},
+    {"id":"TERM","x":320,"y":420,"width":280,"lines":["terminal 终端","open·close·session"]},
+    {"id":"EXP","x":700,"y":420,"width":280,"lines":["export 导出服务","查询·执行·进度·取消"]},
+    {"id":"CMD","x":1080,"y":420,"width":280,"lines":["commands 命令注册","⌘P·keybinding"]},
+    {"id":"EVT","x":1460,"y":420,"width":280,"lines":["events 事件总线","on·emit"]},
+    {"id":"STO","x":320,"y":540,"width":280,"lines":["storage 存储","扩展私有 get/set"]},
+    {"id":"ENV","x":700,"y":540,"width":280,"lines":["env 环境","主题·语言·平台"]},
+    {"id":"FT","x":1080,"y":540,"width":280,"lines":["fileTypes 注册","resolve·Handler"]},
+    {"id":"EXPR","x":1460,"y":540,"width":280,"lines":["exporters 注册","register·list"]},
+    {"id":"ENT","x":320,"y":680,"width":300,"lines":["Extension 入口","activate·deactivate 生命周期"]},
+    {"id":"CTX","x":700,"y":680,"width":300,"lines":["ExtensionContext","manifest·vault·ui·signal·logger"]},
+    {"id":"CONTRIB","x":1080,"y":680,"width":300,"lines":["contributes 声明点","commands·collectors·fileTypes·…"]},
+    {"id":"DEV","x":1460,"y":680,"width":300,"lines":["dev 工具","validateManifest·DisposableStore"]},
+    {"id":"ROOT","x":320,"y":790,"width":300,"lines":["folyn-extension-sdk","类型契约·dev 工具·npm 发布"]}
+  ],
+  "edges": [
+    {"source":"ROOT","target":"DEV","points":[[470,790],[1460,790],[1460,709]],"label":null,"dashed":false},
+    {"source":"ROOT","target":"ENT","points":[[320,761],[320,709]],"label":null,"dashed":false},
+    {"source":"ENT","target":"HUB","points":[[170,680],[90,680],[90,35],[560,35],[560,61]],"label":null,"dashed":false},
+    {"source":"ENT","target":"CTX","points":[[470,680],[550,680]],"label":null,"dashed":false},
+    {"source":"CTX","target":"CONTRIB","points":[[850,680],[930,680]],"label":null,"dashed":false},
+    {"source":"HUB","target":"VAULT","points":[[500,90],[320,90],[320,271]],"label":null,"dashed":false},
+    {"source":"HUB","target":"EDITOR","points":[[700,119],[700,271]],"label":null,"dashed":false},
+    {"source":"HUB","target":"AI","points":[[1080,119],[1080,271]],"label":null,"dashed":false},
+    {"source":"HUB","target":"NET","points":[[1150,61],[1150,25],[1460,25],[1460,271]],"label":null,"dashed":false},
+    {"source":"HUB","target":"TERM","points":[[520,119],[520,420],[460,420]],"label":null,"dashed":false},
+    {"source":"HUB","target":"EXP","points":[[870,119],[870,420],[840,420]],"label":null,"dashed":false},
+    {"source":"HUB","target":"CMD","points":[[1180,119],[1180,150],[1240,150],[1240,420],[1220,420]],"label":null,"dashed":false},
+    {"source":"HUB","target":"EVT","points":[[1200,75],[1280,75],[1280,420],[1320,420]],"label":null,"dashed":false},
+    {"source":"HUB","target":"STO","points":[[540,119],[540,540],[460,540]],"label":null,"dashed":false},
+    {"source":"HUB","target":"ENV","points":[[885,119],[885,540],[840,540]],"label":null,"dashed":false},
+    {"source":"HUB","target":"FT","points":[[1200,99],[1255,99],[1255,540],[1220,540]],"label":null,"dashed":false},
+    {"source":"HUB","target":"EXPR","points":[[1200,87],[1268,87],[1268,540],[1320,540]],"label":null,"dashed":false}
+  ]
+}

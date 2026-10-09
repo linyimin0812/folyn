@@ -1,0 +1,31 @@
+%% Folyn 活动采集器原理与架构：trusted 扩展声明采集器，宿主轮询/webhook 运行时驱动 collect→脱敏→入库→游标推进闭环
+flowchart TD
+    SCH("调度器/手动触发<br/>60s 下限·防重入")
+    CUR("读游标<br/>activity_get_cursor")
+    CTX("ctx 能力注入<br/>exec·http·frontWindow 等固定命令")
+    COL("impl.collect(ctx)<br/>返回 events + nextCursor")
+    PRIV("applyPrivacy 脱敏<br/>redact 正则·默认丢 raw")
+    ING("activity_push_events<br/>Rust ingest·去重·入库")
+    SET("推进游标<br/>activity_set_cursor")
+
+    EXT("采集器扩展 (trusted)<br/>window·github·email·file·webhook")
+    RG("collectorAdapter·注册表<br/>声明折叠+impl 映射")
+
+    WH("webhook 监听<br/>tiny_http→onWebhook·推送模式")
+
+    K("微内核 Rust activity<br/>SQLite·固定命令·webhook 服务")
+    TL("时间线·指标·采集记录<br/>ActivityPage·CollectLogView")
+    AI("AI 摘要·报告<br/>allowAiSummary 门控")
+
+    EXT --> RG
+    SCH --> CUR --> CTX --> COL
+    RG -->|"调度 impl.collect"| COL
+    COL --> PRIV --> ING
+    WH -->|"onWebhook 事件"| ING
+    ING --> SET --> K
+    SET -->|"游标仅成功后推进"| SCH
+    K -->|"query·runs"| TL
+    K --> AI
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class SCH,CUR,CTX,COL,PRIV,ING,SET,EXT,RG,WH,K,TL,AI base;

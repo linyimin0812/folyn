@@ -1,0 +1,33 @@
+%% Folyn sandbox extension postMessage RPC protocol: message frames between the host realm and the iframe realm
+flowchart TD
+    HOST("host RpcBridge<br/>main-window realm · message listener")
+    IFRM("extension sandbox iframe<br/>opaque origin · isolated realm")
+
+    R1("extension calls host API<br/>api.fs.read(path)")
+    L2("receive request · verify source<br/>source === iframe window")
+    L3("dispatchExtensionRpc<br/>gated by manifest permissions")
+    L4("execute capability · sendResponse<br/>fs glob · http origins · ai")
+    R2("match Promise by id<br/>resolve to the caller")
+
+    L5("host pushes messages<br/>lifecycle · env-event · ai-stream")
+    R3("extension listens to message<br/>onEvent updates UI · streams")
+
+    L6("host invokes extension command<br/>⌘P commands · 30s timeout")
+    R4("iframe runs command<br/>returns invoke-result")
+
+    IFRM --> R1
+    HOST --> L2
+    R1 -->|"request {id, method, params}"| L2
+    L2 --> L3 --> L4
+    L4 -->|"response {id, result/error}"| R2
+    R2 -->|"returns to caller"| R1
+    L4 --> L5
+    L5 -->|"lifecycle · env-event · ai-stream"| R3
+    R2 --> R3
+    L5 --> L6
+    L6 -->|"invoke {id, command}"| R4
+    R3 --> R4
+    R4 -->|"invoke-result {id, result}"| L6
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class HOST,IFRM,R1,L2,L3,L4,R2,L5,R3,L6,R4 base;

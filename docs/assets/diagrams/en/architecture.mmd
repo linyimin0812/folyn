@@ -1,0 +1,44 @@
+%% Folyn architecture: microkernel (Rust) + extension host runtime with capability services
+flowchart TD
+    E1("Editor extension<br/>CodeMirror · MD preview")
+    E2("AI chat extension<br/>chat panel · model registry")
+    E3("Pet extension<br/>multi-window · quick panel")
+    E4("Terminal extension<br/>xterm · PTY")
+    E5("Vault/Git extension<br/>file tree · history")
+    E6("Activity collectors<br/>github · IMAP collectors")
+    H("Extension host runtime<br/>capability · sandbox · RPC bus")
+    C1("HTTP capability<br/>fetch proxy · CSP bypass")
+    C2("AI capability<br/>model calls · SSE streaming")
+    C3("Storage capability<br/>vault IO · object storage")
+    C4("System capability<br/>clipboard · notify · PTY")
+    K("Microkernel (Rust) src-tauri<br/>window · fs · security · voice · PTY")
+    SB("Sandbox isolation<br/>sandboxLoader · allowlist")
+    B1("Built-in extensions<br/>rich-text · dbml · carousel")
+    B2("Extension SDK<br/>type contracts packages/sdk")
+    B3("Scaffold CLI<br/>create-folyn-extension")
+    B4("Third-party extensions<br/>community / marketplace")
+
+    E1 --> H
+    E2 --> H
+    E3 --> H
+    E4 --> H
+    E5 --> H
+    E6 --> H
+    H --> C1
+    H --> C2
+    H --> C3
+    H --> C4
+    C1 -->|"reqwest"| K
+    C2 --> K
+    C3 -->|"File IO"| K
+    C4 --> K
+    B1 -->|"trusted load"| H
+    B4 -->|"install check"| K
+    B4 --> SB
+    SB -->|"restricted calls"| H
+    B3 -.-> B4
+    B2 -.-> B1
+    B2 -.-> B4
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class E1,E2,E3,E4,E5,E6,H,C1,C2,C3,C4,K,SB,B1,B2,B3,B4 base;

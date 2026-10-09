@@ -1,0 +1,31 @@
+%% Folyn activity collector principle and architecture: collect → redact → ingest → cursor-advance loop
+flowchart TD
+    SCH("scheduler / manual run<br/>60s floor · no re-entry")
+    CUR("read cursor<br/>activity_get_cursor")
+    CTX("ctx capability injection<br/>exec · http · fixed commands")
+    COL("impl.collect(ctx)<br/>returns events + nextCursor")
+    PRIV("applyPrivacy redaction<br/>redact regex · drop raw")
+    ING("activity_push_events<br/>Rust ingest · dedup · store")
+    SET("advance cursor<br/>activity_set_cursor")
+
+    EXT("collector extensions (trusted)<br/>window · github · email · file · webhook")
+    RG("collectorAdapter · registry<br/>declarations + impl map")
+
+    WH("webhook listener<br/>tiny_http → onWebhook push")
+
+    K("microkernel Rust activity<br/>SQLite · commands · webhook")
+    TL("timeline · metrics · runs<br/>ActivityPage · CollectLogView")
+    AI("AI summary · reports<br/>allowAiSummary gated")
+
+    EXT --> RG
+    SCH --> CUR --> CTX --> COL
+    RG -->|"dispatch impl.collect"| COL
+    COL --> PRIV --> ING
+    WH -->|"onWebhook events"| ING
+    ING --> SET --> K
+    SET -->|"advance only on success"| SCH
+    K -->|"query · runs"| TL
+    K --> AI
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class SCH,CUR,CTX,COL,PRIV,ING,SET,EXT,RG,WH,K,TL,AI base;

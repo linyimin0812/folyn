@@ -1,0 +1,33 @@
+{
+  "width": 1700,
+  "height": 940,
+  "nodes": [
+    {"id": "HOST", "x": 430, "y": 70, "width": 340, "lines": ["host RpcBridge", "main-window realm · message listener"], "decision": false},
+    {"id": "IFRM", "x": 1270, "y": 70, "width": 340, "lines": ["extension sandbox iframe", "opaque origin · isolated realm"], "decision": false},
+    {"id": "R1", "x": 1270, "y": 200, "width": 340, "lines": ["extension calls host API", "api.fs.read(path)"], "decision": false},
+    {"id": "L2", "x": 430, "y": 320, "width": 340, "lines": ["receive request · verify source", "source === iframe window"], "decision": false},
+    {"id": "L3", "x": 430, "y": 440, "width": 340, "lines": ["dispatchExtensionRpc", "gated by manifest permissions"], "decision": false},
+    {"id": "L4", "x": 430, "y": 560, "width": 340, "lines": ["execute capability · sendResponse", "fs glob · http origins · ai"], "decision": false},
+    {"id": "R2", "x": 1270, "y": 560, "width": 340, "lines": ["match Promise by id", "resolve to the caller"], "decision": false},
+    {"id": "L5", "x": 430, "y": 680, "width": 340, "lines": ["host pushes messages", "lifecycle · env-event · ai-stream"], "decision": false},
+    {"id": "R3", "x": 1270, "y": 680, "width": 340, "lines": ["extension listens to message", "onEvent updates UI · streams"], "decision": false},
+    {"id": "L6", "x": 430, "y": 800, "width": 340, "lines": ["host invokes extension command", "⌘P commands · 30s timeout"], "decision": false},
+    {"id": "R4", "x": 1270, "y": 800, "width": 340, "lines": ["iframe runs command", "returns invoke-result"], "decision": false}
+  ],
+  "edges": [
+    {"source": "IFRM", "target": "R1", "points": [[1270, 99], [1270, 171]], "label": null, "dashed": false},
+    {"source": "HOST", "target": "L2", "points": [[430, 99], [430, 291]], "label": null, "dashed": false},
+    {"source": "R1", "target": "L2", "points": [[1100, 200], [850, 200], [850, 320], [600, 320]], "label": ["request {id, method, params}", 850, 260], "dashed": false},
+    {"source": "L2", "target": "L3", "points": [[430, 349], [430, 411]], "label": null, "dashed": false},
+    {"source": "L3", "target": "L4", "points": [[430, 469], [430, 531]], "label": null, "dashed": false},
+    {"source": "L4", "target": "R2", "points": [[600, 560], [1100, 560]], "label": ["response {id, result/error}", 850, 560], "dashed": false},
+    {"source": "R2", "target": "R1", "points": [[1440, 560], [1480, 560], [1480, 200], [1440, 200]], "label": ["returns to caller", 1480, 380], "dashed": false},
+    {"source": "L4", "target": "L5", "points": [[430, 589], [430, 651]], "label": null, "dashed": false},
+    {"source": "L5", "target": "R3", "points": [[600, 680], [1100, 680]], "label": ["lifecycle · env-event · ai-stream", 850, 680], "dashed": false},
+    {"source": "R2", "target": "R3", "points": [[1270, 589], [1270, 651]], "label": null, "dashed": false},
+    {"source": "L5", "target": "L6", "points": [[430, 709], [430, 771]], "label": null, "dashed": false},
+    {"source": "L6", "target": "R4", "points": [[600, 800], [1100, 800]], "label": ["invoke {id, command}", 850, 800], "dashed": false},
+    {"source": "R3", "target": "R4", "points": [[1270, 709], [1270, 771]], "label": null, "dashed": false},
+    {"source": "R4", "target": "L6", "points": [[1270, 829], [1270, 870], [430, 870], [430, 829]], "label": ["invoke-result {id, result}", 850, 870], "dashed": false}
+  ]
+}

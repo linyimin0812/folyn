@@ -1,0 +1,42 @@
+%% Folyn 扩展 SDK 功能点：folyn-extension-sdk 暴露的类型契约 —— Extension 入口、ExtensionApi 能力边界、contributes 声明点与 dev 工具
+flowchart TD
+    ROOT("folyn-extension-sdk<br/>类型契约·dev 工具·npm 发布")
+    DEV("dev 工具<br/>validateManifest·DisposableStore")
+    ENT("Extension 入口<br/>activate·deactivate 生命周期")
+    CTX("ExtensionContext<br/>manifest·vault·ui·signal·logger")
+    CONTRIB("contributes 声明点<br/>commands·collectors·fileTypes·…")
+    HUB("ExtensionApi 能力边界<br/>宿主注入实现·逐调用权限门控")
+
+    VAULT("vault 文件能力<br/>read/write·text·binary")
+    EDITOR("editor 编辑能力<br/>selection 读取·替换")
+    AI("ai 能力<br/>chat·pairs·edit·流式")
+    NET("network http<br/>fetch·origin 白名单")
+    TERM("terminal 终端<br/>open·close·session")
+    EXP("export 导出服务<br/>查询·执行·进度·取消")
+    CMD("commands 命令注册<br/>⌘P·keybinding")
+    EVT("events 事件总线<br/>on·emit")
+    STO("storage 存储<br/>扩展私有 get/set")
+    ENV("env 环境<br/>主题·语言·平台")
+    FT("fileTypes 注册<br/>resolve·Handler")
+    EXPR("exporters 注册<br/>register·list")
+
+    ROOT --> DEV
+    ROOT --> ENT
+    ENT --> HUB
+    ENT --> CTX
+    CTX --> CONTRIB
+    HUB --> VAULT
+    HUB --> EDITOR
+    HUB --> AI
+    HUB --> NET
+    HUB --> TERM
+    HUB --> EXP
+    HUB --> CMD
+    HUB --> EVT
+    HUB --> STO
+    HUB --> ENV
+    HUB --> FT
+    HUB --> EXPR
+
+    classDef base fill:#f8fafc,stroke:#94a3b8,color:#1f2937,stroke-width:1px;
+    class ROOT,DEV,ENT,CTX,CONTRIB,HUB,VAULT,EDITOR,AI,NET,TERM,EXP,CMD,EVT,STO,ENV,FT,EXPR base;

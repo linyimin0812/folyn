@@ -194,6 +194,46 @@ folyn/
 
 詳細は `docs/extensions.html` を参照。
 
+### アーキテクチャ図
+
+拡張システムとアクティビティ収集パイプラインの設計図（編集可能なソースは `docs/assets/diagrams/`）：
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/architecture.svg" alt="アーキテクチャ" />
+</p>
+
+**マイクロカーネル + 拡張** — 拡張ホストランタイムが機能拡張と Rust マイクロカーネルの能力サービスの仲介を行い、サードパーティ拡張はサンドボックス隔離層経由で接続。
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-tiers.svg" alt="拡張の信頼階層" />
+</p>
+
+**trusted / sandbox 拡張** — trusted パッケージは TOFU で信頼されホストのメインレルムで実行、sandbox パッケージは不透明オリジンの iframe 内で実行（DOM・Tauri API なし）。
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-rpc.svg" alt="postMessage RPC プロトコル" />
+</p>
+
+**postMessage RPC プロトコル** — ホストと iframe 間の request/response、ホストpush、逆方向のコマンド呼び出し。呼び出しごとに manifest 権限でゲート。
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-collector.svg" alt="アクティビティコレクター" />
+</p>
+
+**アクティビティコレクター** — ポーリング / webhook ランタイムが「収集 → マスキング → 取り込み → カーソル進行」ループを駆動。push 成功後にのみカーソルが進む。
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-schema.svg" alt="アクティビティ DB スキーマ" />
+</p>
+
+**アクティビティ DB スキーマ** — vault ごとの SQLite にイベント・エンティティ・リレーション・収集カーソル・実行履歴を格納。
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/sdk-surface.svg" alt="拡張 SDK の機能面" />
+</p>
+
+**SDK の機能面** — [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk) として公開される型契約：Extension エントリ、ExtensionApi 能力境界（vault・editor・ai・network・terminal・export・commands・events・storage・env・各レジストリ）、contributes 宣言点、dev ツール。
+
 ## Getting Started
 
 ### Prerequisites

@@ -194,6 +194,46 @@ folyn/
 
 Ver `docs/extensions.html` para detalles.
 
+### Diagramas de arquitectura
+
+Diagramas de diseño del sistema de extensiones y del pipeline de recolección de actividad (fuentes editables en `docs/assets/diagrams/`):
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/architecture.svg" alt="Arquitectura" />
+</p>
+
+**Micronúcleo + extensiones** — el runtime del host de extensiones media entre las extensiones funcionales y los servicios de capacidad del micronúcleo en Rust; las extensiones de terceros entran por la capa de aislamiento sandbox.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-tiers.svg" alt="Niveles de confianza de extensiones" />
+</p>
+
+**Extensiones trusted / sandbox** — los paquetes trusted se fijan por TOFU y se ejecutan en el realm principal del host; los paquetes sandbox se ejecutan en un iframe de origen opaco, sin DOM ni API de Tauri.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/extension-rpc.svg" alt="Protocolo RPC postMessage" />
+</p>
+
+**Protocolo RPC postMessage** — request/response, push del host e invocación inversa de comandos a través de la frontera host/iframe, con verificación de permisos por llamada.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-collector.svg" alt="Colectores de actividad" />
+</p>
+
+**Colectores de actividad** — el runtime de poll/webhook impulsa el bucle recolectar → anonimizar → ingerir → avanzar cursor; el cursor solo avanza tras un push exitoso.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/activity-schema.svg" alt="Esquema de la base de datos de actividad" />
+</p>
+
+**Esquema de la base de datos de actividad** — tablas SQLite por vault para eventos, entidades, relaciones, cursores de colector e historial de ejecuciones.
+
+<p align="center">
+  <img src="docs/assets/diagrams/en/sdk-surface.svg" alt="Superficie del SDK de extensiones" />
+</p>
+
+**Superficie del SDK** — los contratos de tipos publicados como [`folyn-extension-sdk`](https://www.npmjs.com/package/folyn-extension-sdk): entrada Extension, frontera de capacidades ExtensionApi (vault, editor, ai, network, terminal, export, commands, events, storage, env, registros), puntos de declaración contributes y herramientas de dev.
+
 ## Getting Started
 
 ### Prerequisites

@@ -1,0 +1,56 @@
+%% Folyn activity SQLite schema (~/.folyn/activity/<vault-key>/activity.sqlite, one DB per vault)
+%% Note: the three relations FKs are declared REFERENCES; actor_entity_id and collector_id↔source are logical links (no constraint)
+erDiagram
+    entities {
+        TEXT id PK
+        TEXT type
+        TEXT identity_key
+        TEXT display_name
+        TEXT metadata_json
+        INTEGER created_at
+    }
+    activity_events {
+        TEXT id PK
+        TEXT type
+        TEXT source
+        TEXT actor_entity_id FK
+        INTEGER occurred_at
+        INTEGER created_at
+        TEXT title
+        TEXT summary
+        TEXT url
+        TEXT payload_json
+        TEXT raw_json
+        TEXT ai_summary
+    }
+    relations {
+        TEXT id PK
+        TEXT from_entity_id FK
+        TEXT to_entity_id FK
+        TEXT relation_type
+        TEXT activity_event_id FK
+        INTEGER occurred_at
+    }
+    collector_cursors {
+        TEXT collector_id PK
+        TEXT cursor
+        INTEGER updated_at
+    }
+    collect_runs {
+        INTEGER id PK
+        TEXT collector_id
+        TEXT collector_name
+        INTEGER started_at
+        INTEGER finished_at
+        INTEGER accepted
+        INTEGER deduped
+        TEXT outcome
+        TEXT logs
+    }
+
+    entities ||--o{ activity_events : "actor"
+    entities ||--o{ relations : "from_entity"
+    entities ||--o{ relations : "to_entity"
+    activity_events ||--o{ relations : "event"
+    collector_cursors ||..o{ activity_events : "source"
+    collect_runs ||..o{ activity_events : "source"

@@ -1,0 +1,34 @@
+{
+  "width": 1560,
+  "height": 1040,
+  "nodes": [
+    {"id": "SCH", "x": 430, "y": 80, "width": 340, "lines": ["scheduler / manual run", "60s floor · no re-entry"], "decision": false},
+    {"id": "CUR", "x": 430, "y": 200, "width": 340, "lines": ["read cursor", "activity_get_cursor"], "decision": false},
+    {"id": "CTX", "x": 430, "y": 320, "width": 340, "lines": ["ctx capability injection", "exec · http · fixed commands"], "decision": false},
+    {"id": "COL", "x": 430, "y": 440, "width": 340, "lines": ["impl.collect(ctx)", "returns events + nextCursor"], "decision": false},
+    {"id": "PRIV", "x": 430, "y": 560, "width": 340, "lines": ["applyPrivacy redaction", "redact regex · drop raw"], "decision": false},
+    {"id": "ING", "x": 430, "y": 680, "width": 340, "lines": ["activity_push_events", "Rust ingest · dedup · store"], "decision": false},
+    {"id": "SET", "x": 430, "y": 800, "width": 340, "lines": ["advance cursor", "activity_set_cursor"], "decision": false},
+    {"id": "K", "x": 430, "y": 920, "width": 340, "lines": ["microkernel Rust activity", "SQLite · commands · webhook"], "decision": false},
+    {"id": "EXT", "x": 1270, "y": 80, "width": 340, "lines": ["collector extensions (trusted)", "window · github · email · file · webhook"], "decision": false},
+    {"id": "RG", "x": 1270, "y": 200, "width": 340, "lines": ["collectorAdapter · registry", "declarations + impl map"], "decision": false},
+    {"id": "WH", "x": 1270, "y": 560, "width": 340, "lines": ["webhook listener", "tiny_http → onWebhook push"], "decision": false},
+    {"id": "TL", "x": 950, "y": 920, "width": 280, "lines": ["timeline · metrics · runs", "ActivityPage · CollectLogView"], "decision": false},
+    {"id": "AI", "x": 1300, "y": 920, "width": 300, "lines": ["AI summary · reports", "allowAiSummary gated"], "decision": false}
+  ],
+  "edges": [
+    {"source": "EXT", "target": "RG", "points": [[1270, 109], [1270, 171]], "label": null, "dashed": false},
+    {"source": "SCH", "target": "CUR", "points": [[430, 109], [430, 171]], "label": null, "dashed": false},
+    {"source": "CUR", "target": "CTX", "points": [[430, 229], [430, 291]], "label": null, "dashed": false},
+    {"source": "CTX", "target": "COL", "points": [[430, 349], [430, 411]], "label": null, "dashed": false},
+    {"source": "RG", "target": "COL", "points": [[1270, 229], [1270, 440], [600, 440]], "label": ["dispatch impl.collect", 935, 440], "dashed": false},
+    {"source": "COL", "target": "PRIV", "points": [[430, 469], [430, 531]], "label": null, "dashed": false},
+    {"source": "PRIV", "target": "ING", "points": [[430, 589], [430, 651]], "label": null, "dashed": false},
+    {"source": "WH", "target": "ING", "points": [[1100, 560], [1100, 660], [600, 660]], "label": ["onWebhook events", 850, 660], "dashed": false},
+    {"source": "ING", "target": "SET", "points": [[430, 709], [430, 771]], "label": null, "dashed": false},
+    {"source": "SET", "target": "K", "points": [[430, 829], [430, 891]], "label": null, "dashed": false},
+    {"source": "SET", "target": "SCH", "points": [[260, 800], [80, 800], [80, 80], [260, 80]], "label": ["advance only on success", 170, 800], "dashed": false},
+    {"source": "K", "target": "TL", "points": [[600, 920], [810, 920]], "label": ["query · runs", 705, 920], "dashed": false},
+    {"source": "K", "target": "AI", "points": [[430, 949], [430, 985], [1300, 985], [1300, 949]], "label": null, "dashed": false}
+  ]
+}
