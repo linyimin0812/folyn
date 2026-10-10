@@ -34,6 +34,20 @@ export function useGlobalShortcuts() {
           openPanel();
         }
       }
+      // ESC exits focus mode (专注模式). Skipped when a modal layer that also
+      // owns ESC (command palette, search panel) is open, so one ESC closes
+      // that layer first instead of both at once.
+      if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        const { focusMode, setFocusMode } = useEditorViewStateStore.getState();
+        if (
+          focusMode &&
+          !useCommandPaletteStore.getState().isOpen &&
+          !useSearchStore.getState().isOpen
+        ) {
+          e.preventDefault();
+          setFocusMode(false);
+        }
+      }
       // Focus mode — Cmd/Ctrl+Shift+Enter. Hides every sidebar/dock/topbar/
       // status bar so only the editor/preview area is visible.
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key === 'Enter') {
