@@ -169,7 +169,10 @@
       "link": "Insert link",
       "togglePetPanel": "Open pet panel",
       "cursorSync": "Cursor sync",
-      "presentationMode": "Presentation mode"
+      "presentationMode": "Presentation mode",
+      "previewZoomIn": "Preview zoom in",
+      "previewZoomOut": "Preview zoom out",
+      "previewZoomReset": "Reset preview zoom"
     },
     "appItems": {
       "focusMode": "Toggle focus mode",

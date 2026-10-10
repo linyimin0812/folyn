@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppearanceStore, clampMdPreviewZoom } from '@/store/appearanceStore';
+import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
+import { eventMatchesShortcut } from '@/utils/shortcutAccelerator';
 
 // ponytail: CSS `zoom` (WebKit-native) instead of transform:scale — the
 // browser recomputes scrollHeight/Width for us, so no wrapper-size math.
@@ -65,19 +67,25 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
     el.addEventListener('wheel', onWheel, { passive: false });
 
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      // Rebindable via Settings → Shortcuts (prefsStore previewZoomIn/Out/
+      // Reset); read at match time so re-recording takes effect immediately.
+      const find = (id: string): ShortcutItem | undefined =>
+        usePrefsStore.getState().shortcuts.find((s) => s.id === id);
       const rect = el.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
-      if (e.key === '0') {
-        e.preventDefault();
-        apply(1, cx, cy, true);
-      } else if (e.key === '=' || e.key === '+') {
+      const zoomIn = find('previewZoomIn');
+      const zoomOut = find('previewZoomOut');
+      const zoomReset = find('previewZoomReset');
+      if (zoomIn && eventMatchesShortcut(e, zoomIn.keys)) {
         e.preventDefault();
         apply(zoomRef.current * KEY_STEP, cx, cy, true);
-      } else if (e.key === '-' || e.key === '_') {
+      } else if (zoomOut && eventMatchesShortcut(e, zoomOut.keys)) {
         e.preventDefault();
         apply(zoomRef.current / KEY_STEP, cx, cy, true);
+      } else if (zoomReset && eventMatchesShortcut(e, zoomReset.keys)) {
+        e.preventDefault();
+        apply(1, cx, cy, true);
       }
     };
     window.addEventListener('keydown', onKey);

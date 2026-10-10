@@ -169,7 +169,10 @@
       "link": "リンクを挿入",
       "togglePetPanel": "桌宠パネルを開く",
       "cursorSync": "カーソル同期",
-      "presentationMode": "プレゼンテーションモード"
+      "presentationMode": "プレゼンテーションモード",
+      "previewZoomIn": "プレビュー拡大",
+      "previewZoomOut": "プレビュー縮小",
+      "previewZoomReset": "プレビュー縮尺リセット"
     },
     "appItems": {
       "focusMode": "フォーカスモード切替",

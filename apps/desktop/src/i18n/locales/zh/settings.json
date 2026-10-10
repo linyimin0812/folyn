@@ -169,7 +169,10 @@
       "link": "插入链接",
       "togglePetPanel": "唤起桌宠面板",
       "cursorSync": "光标同步",
-      "presentationMode": "演示模式"
+      "presentationMode": "演示模式",
+      "previewZoomIn": "预览放大",
+      "previewZoomOut": "预览缩小",
+      "previewZoomReset": "重置预览缩放"
     },
     "appItems": {
       "focusMode": "切换专注模式",

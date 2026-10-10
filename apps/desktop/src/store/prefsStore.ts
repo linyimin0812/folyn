@@ -44,6 +44,12 @@ export function buildDefaultShortcuts(primaryMod: '⌘' | 'Ctrl'): ShortcutItem[
     // (toggles editorViewStateStore.presentationMode). Rebindable: useGlobalShortcuts
     // reads this entry from prefsStore at match time. Not OS-registered.
     { id: 'presentationMode', name: '演示模式', keys: [primaryMod, 'Shift', 'F5'] },
+    // DOCUMENT-level shortcuts — handled in usePreviewZoom's keydown listener
+    // (markdown preview-only mode zoom). Rebindable: usePreviewZoom reads these
+    // from prefsStore at match time. Not OS-registered.
+    { id: 'previewZoomIn', name: '预览放大', keys: [primaryMod, '='] },
+    { id: 'previewZoomOut', name: '预览缩小', keys: [primaryMod, '-'] },
+    { id: 'previewZoomReset', name: '重置预览缩放', keys: [primaryMod, '0'] },
   ];
 }
 
