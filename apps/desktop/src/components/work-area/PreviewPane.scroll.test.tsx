@@ -91,3 +91,18 @@ describe('PreviewPane scroll on tab switch', () => {
     expect(prevBody().scrollTop).toBe(777);
   });
 });
+
+// Zoom plumbing regression: usePreviewZoom/cursor-sync/gap-compensation
+// walk `.md-preview`.parentElement for the scroll container, so the Preview
+// must stay `.prev-body`'s DIRECT child — an intermediate zoom wrapper div
+// here broke split-mode cursor alignment once already.
+describe('PreviewPane zoom plumbing (DOM structure)', () => {
+  it('renders the Preview as .prev-body direct child with --md-zoom defaulting to 1', () => {
+    render(
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="split" />,
+    );
+    const body = prevBody();
+    expect(body.firstElementChild?.textContent).toBe('preview');
+    expect(body.style.getPropertyValue('--md-zoom')).toBe('1');
+  });
+});

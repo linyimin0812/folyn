@@ -11,6 +11,14 @@ export type LinkOpenMode = 'external' | 'internal';
 export const FONT_SIZE_MIN = 8;
 export const FONT_SIZE_MAX = 28;
 
+export const MD_PREVIEW_ZOOM_MIN = 0.5;
+export const MD_PREVIEW_ZOOM_MAX = 3;
+
+export function clampMdPreviewZoom(v: number): number {
+  if (!Number.isFinite(v)) return 1;
+  return Math.min(MD_PREVIEW_ZOOM_MAX, Math.max(MD_PREVIEW_ZOOM_MIN, v));
+}
+
 export function clampFontSize(v: number): number {
   return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, v));
 }
@@ -56,6 +64,7 @@ export const PERSIST_KEYS_APPEARANCE = [
   'linkOpenMode',
   'vaultName',
   'showTrayIcon',
+  'mdPreviewZoom',
 ] as const;
 
 export interface AppearanceState {
@@ -72,6 +81,8 @@ export interface AppearanceState {
   linkOpenMode: LinkOpenMode;
   vaultName: string;
   showTrayIcon: boolean;
+  /** Markdown preview visual zoom (preview-only mode). 1 = 100%. */
+  mdPreviewZoom: number;
 
   setTheme: (theme: Theme) => void;
   codeTheme: CodeThemeId;
@@ -89,6 +100,7 @@ export interface AppearanceState {
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
   setShowTrayIcon: (v: boolean) => void;
+  setMdPreviewZoom: (v: number) => void;
 
   /** Load this store's slice from the persisted `settings:all` blob. */
   hydrate: (blob: Record<string, unknown>) => void;
@@ -109,6 +121,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   linkOpenMode: 'external' as LinkOpenMode,
   vaultName: 'my-vault',
   showTrayIcon: false,
+  mdPreviewZoom: 1,
 
   setTheme: (theme) => {
     const actual = theme === 'system'
@@ -161,6 +174,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
   setShowTrayIcon: (v) => { set({ showTrayIcon: v }); persist(); },
+  setMdPreviewZoom: (v) => { set({ mdPreviewZoom: clampMdPreviewZoom(v) }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AppearanceState> = {};
@@ -177,6 +191,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.linkOpenMode !== undefined) patch.linkOpenMode = blob.linkOpenMode as LinkOpenMode;
     if (blob.vaultName !== undefined) patch.vaultName = blob.vaultName as string;
     if (blob.showTrayIcon !== undefined) patch.showTrayIcon = blob.showTrayIcon as boolean;
+    if (typeof blob.mdPreviewZoom === 'number' && Number.isFinite(blob.mdPreviewZoom)) patch.mdPreviewZoom = clampMdPreviewZoom(blob.mdPreviewZoom);
     if (blob.excludePatterns !== undefined) {
       // Per-dir backfill: append each missing built-in managed dir without
       // duplicating ones already present. Mirrors the legacy settingsStore
