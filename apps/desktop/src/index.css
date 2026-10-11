@@ -449,6 +449,11 @@ mjx-container svg {
    default 1 everywhere else — split mode must stay 1:1 with the editor so
    cursor-sync / gap-compensation geometry stays exact. */
 .md-preview { zoom: var(--md-zoom, 1); }
+/* Zoom flicker fix: WebKit scroll anchoring adjusts scrollTop on every
+   zoom-induced relayout and fights usePreviewZoom's per-frame anchor
+   compensation (content oscillates vertically). Exclude the preview from
+   anchor selection entirely. */
+.md-preview, .md-preview * { overflow-anchor: none; }
 /* Presentation mode (演示模式) — slides get larger body text and a wider
    measure so the deck reads from a distance. */
 .presentation-mode .md-preview { font-size: 19px; max-width: 1280px; }

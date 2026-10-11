@@ -78,11 +78,19 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
       raf = 0;
       if (target === cur) return;
       const next = Math.abs(target - cur) < SETTLE_EPS ? target : cur + (target - cur) * SMOOTHING;
-      const rect = el.getBoundingClientRect();
       const ratio = next / cur;
+      // Read scroll + container rect BEFORE writing the zoom var: reading
+      // after would force a new-zoom layout and could return a
+      // browser-adjusted/clamped scrollTop, corrupting the compensation.
+      // The container rect itself doesn't change with content zoom.
+      const rect = el.getBoundingClientRect();
+      const ax = anchorX - rect.left;
+      const ay = anchorY - rect.top;
+      const top = el.scrollTop;
+      const left = el.scrollLeft;
       el.style.setProperty('--md-zoom', String(next));
-      el.scrollTop = compensateScroll(el.scrollTop, anchorY - rect.top, ratio);
-      el.scrollLeft = compensateScroll(el.scrollLeft, anchorX - rect.left, ratio);
+      el.scrollTop = compensateScroll(top, ay, ratio);
+      el.scrollLeft = compensateScroll(left, ax, ratio);
       cur = next;
       if (target !== cur) raf = requestAnimationFrame(frame);
     };
