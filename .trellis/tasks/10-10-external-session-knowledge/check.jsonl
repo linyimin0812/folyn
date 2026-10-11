@@ -1,1 +1,8 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/10-10-external-session-knowledge/spec.md", "reason": "Implementation decisions to verify against: capture immutability, missing-material honesty, no unselected content to AI"}
+{"file": ".trellis/tasks/10-10-external-session-knowledge/tickets-draft.md", "reason": "Per-slice acceptance scope and test decisions"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Frontend review checklist and forbidden patterns"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type safety review for the capture contract"}
+{"file": ".trellis/spec/desktop/backend/quality-guidelines.md", "reason": "Backend review checklist if Rust commands were added"}
+{"file": ".trellis/spec/desktop/backend/error-handling.md", "reason": "Error contract compliance"}
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "Vault write correctness and VaultError handling"}
+{"file": ".trellis/spec/guides/index.md", "reason": "Cross-package thinking guides"}

@@ -1,1 +1,16 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/10-10-external-session-knowledge/research/session-sources.md", "reason": "Source formats for Codex/Claude Code/pi local session records, official reading APIs, branching and attachment rules"}
+{"file": ".trellis/tasks/10-10-external-session-knowledge/research/folyn-integration.md", "reason": "Reusable Folyn capabilities (panels, ChatMessageList, SaveMessageDialog, runRigChat) and integration design constraints"}
+{"file": ".trellis/tasks/10-10-external-session-knowledge/spec.md", "reason": "Confirmed implementation decisions: capture contract, adapter rules, AI note flow, evidence bundle"}
+{"file": ".trellis/tasks/10-10-external-session-knowledge/tickets-draft.md", "reason": "The 7 vertical slices in order, their scope and acceptance focus"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend guidelines entry: React 18 + Zustand + Tailwind + Tauri invoke patterns"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "Where new services/components/stores must live in apps/desktop/src"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "Component patterns for the new Sessions panel and capture dialogs"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "Custom hook / data-fetching patterns for session list and detail loading"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Zustand store conventions for the new sessions store"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Type patterns for the shared capture/selection contract across sources"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18next namespaces and tauriInvoke wrapper conventions for new UI strings"}
+{"file": ".trellis/spec/desktop/backend/index.md", "reason": "Tauri Rust backend conventions if native fs reads are needed"}
+{"file": ".trellis/spec/desktop/backend/error-handling.md", "reason": "Result<T,String> error contract for new commands"}
+{"file": ".trellis/spec/vault-provider/frontend/index.md", "reason": "VaultProvider/VaultManager contract used to save markdown and evidence bundles"}
+{"file": ".trellis/spec/vault-provider/frontend/component-guidelines.md", "reason": "Provider capabilities and binary-preserving write operations for assets"}
+{"file": ".trellis/spec/vault-provider/frontend/quality-guidelines.md", "reason": "VaultError typed codes and required patterns when writing files"}
