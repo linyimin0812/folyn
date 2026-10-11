@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Double-click selection bisect — md-preview CSS</title>
+<style>
+  /* Same webfont source the app uses (apps/desktop/src/index.css line 1) */
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
+
+  html, body { margin: 0; padding: 0; }
+
+  /* V2: typography only */
+  .v2 { font-family: 'Sora', sans-serif; font-size: 14px; line-height: 1.6; }
+
+  /* V3: V2 + md-preview block rules */
+  .v3 { font-family: 'Sora', sans-serif; font-size: 14px; line-height: 1.6;
+        overflow-wrap: break-word; max-width: 800px; margin-left: auto; margin-right: auto;
+        text-align: left; }
+
+  /* V4: V3 inside .prev-body-like scroll container */
+  .v4-outer { overflow: auto; scrollbar-gutter: stable; padding: 8px 32px 100vh;
+              height: 420px; border: 1px solid #ccc; }
+
+  p { margin: 0 0 1em 0; }
+  .marker { font-weight: inherit; }
+  .case-label { font: 11px monospace; color: #888; margin: 18px 0 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="case-label">V1 control — no styles</div>
+<div id="v1">
+  <p id="v1-en">The <b id="v1e" class="marker">quick</b> brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine.</p>
+  <p id="v1-zh">今天天气很好，我们一起去<b id="v1z" class="marker">公园</b>散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。</p>
+</div>
+
+<div class="case-label">V2 typography — Sora 14px / line-height 1.6</div>
+<div id="v2" class="v2">
+  <p id="v2-en">The <b id="v2e" class="marker">quick</b> brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine.</p>
+  <p id="v2-zh">今天天气很好，我们一起去<b id="v2z" class="marker">公园</b>散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。</p>
+</div>
+
+<div class="case-label">V3 V2 + md-preview block rules — overflow-wrap / max-width 800 / margin auto / text-align left</div>
+<div id="v3" class="v3">
+  <p id="v3-en">The <b id="v3e" class="marker">quick</b> brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine.</p>
+  <p id="v3-zh">今天天气很好，我们一起去<b id="v3z" class="marker">公园</b>散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。</p>
+</div>
+
+<div class="case-label">V4 V3 inside prev-body-like scroll container — overflow auto / scrollbar-gutter stable / padding 8px 32px 100vh</div>
+<div id="v4" class="v4-outer">
+  <div id="v4-inner" class="v3">
+    <p id="v4-en">The <b id="v4e" class="marker">quick</b> brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine. The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the distant hills and the evening breeze carries the scent of pine.</p>
+    <p id="v4-zh">今天天气很好，我们一起去<b id="v4z" class="marker">公园</b>散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。今天天气很好，我们一起去公园散步，欣赏美丽的风景，然后回家喝茶聊天，说说今天的见闻。</p>
+  </div>
+</div>
+
+</body>
+</html>

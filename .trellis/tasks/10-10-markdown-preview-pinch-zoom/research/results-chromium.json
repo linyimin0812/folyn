@@ -1,0 +1,499 @@
+{
+  "browser": "chromium",
+  "engineVersion": "156.0.8078.4",
+  "fontInfo": {
+    "soraLoaded": true,
+    "computedV2": "Sora, sans-serif",
+    "glyphInSora": true
+  },
+  "results": [
+    {
+      "v": "v1",
+      "lang": "en",
+      "mode": "marked",
+      "target": "v1e",
+      "para": "v1-en",
+      "point": {
+        "x": 46.6,
+        "y": 44
+      },
+      "caret": {
+        "node": "text",
+        "off": 2,
+        "ctx": "quick"
+      },
+      "sel": {
+        "empty": false,
+        "text": "quick",
+        "len": 5,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "quick",
+        "tail": "quick"
+      }
+    },
+    {
+      "v": "v1",
+      "lang": "en",
+      "mode": "mid",
+      "word": "riverbank",
+      "nth": 3,
+      "para": "v1-en",
+      "point": {
+        "x": 471.6,
+        "y": 80
+      },
+      "caret": {
+        "node": "text",
+        "off": 377,
+        "ctx": "verban"
+      },
+      "sel": {
+        "empty": false,
+        "text": "riverbank",
+        "len": 9,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 381,
+        "endOff": 390,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "riverbank",
+        "tail": "riverbank"
+      }
+    },
+    {
+      "v": "v1",
+      "lang": "zh",
+      "mode": "marked",
+      "target": "v1z",
+      "para": "v1-zh",
+      "point": {
+        "x": 208,
+        "y": 225
+      },
+      "caret": {
+        "node": "text",
+        "off": 1,
+        "ctx": "公园"
+      },
+      "sel": {
+        "empty": false,
+        "text": "公园",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "公园",
+        "tail": "公园"
+      }
+    },
+    {
+      "v": "v1",
+      "lang": "zh",
+      "mode": "mid",
+      "word": "风景",
+      "nth": 3,
+      "para": "v1-zh",
+      "point": {
+        "x": 720,
+        "y": 247
+      },
+      "caret": {
+        "node": "text",
+        "off": 93,
+        "ctx": "丽的风景，然"
+      },
+      "sel": {
+        "empty": false,
+        "text": "风景",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 106,
+        "endOff": 108,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "风景",
+        "tail": "风景"
+      }
+    },
+    {
+      "v": "v2",
+      "lang": "en",
+      "mode": "marked",
+      "target": "v2e",
+      "para": "v2-en",
+      "point": {
+        "x": 48.7,
+        "y": 369
+      },
+      "caret": {
+        "node": "text",
+        "off": 2,
+        "ctx": "quick"
+      },
+      "sel": {
+        "empty": false,
+        "text": "quick",
+        "len": 5,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "quick",
+        "tail": "quick"
+      }
+    },
+    {
+      "v": "v2",
+      "lang": "en",
+      "mode": "mid",
+      "word": "riverbank",
+      "nth": 3,
+      "para": "v2-en",
+      "point": {
+        "x": 724.5,
+        "y": 393.8
+      },
+      "caret": {
+        "node": "text",
+        "off": 377,
+        "ctx": "verban"
+      },
+      "sel": {
+        "empty": false,
+        "text": "riverbank",
+        "len": 9,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 381,
+        "endOff": 390,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "riverbank",
+        "tail": "riverbank"
+      }
+    },
+    {
+      "v": "v2",
+      "lang": "zh",
+      "mode": "marked",
+      "target": "v2z",
+      "para": "v2-zh",
+      "point": {
+        "x": 182,
+        "y": 449.9
+      },
+      "caret": {
+        "node": "text",
+        "off": 1,
+        "ctx": "公园"
+      },
+      "sel": {
+        "empty": false,
+        "text": "公园",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "公园",
+        "tail": "公园"
+      }
+    },
+    {
+      "v": "v2",
+      "lang": "zh",
+      "mode": "mid",
+      "word": "风景",
+      "nth": 3,
+      "para": "v2-zh",
+      "point": {
+        "x": 504,
+        "y": 438.3
+      },
+      "caret": {
+        "node": "text",
+        "off": 93,
+        "ctx": "丽的风景，然"
+      },
+      "sel": {
+        "empty": false,
+        "text": "风景",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 106,
+        "endOff": 108,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "风景",
+        "tail": "风景"
+      }
+    },
+    {
+      "v": "v3",
+      "lang": "en",
+      "mode": "marked",
+      "target": "v3e",
+      "para": "v3-en",
+      "point": {
+        "x": 148.7,
+        "y": 450.5
+      },
+      "caret": {
+        "node": "text",
+        "off": 2,
+        "ctx": "quick"
+      },
+      "sel": {
+        "empty": false,
+        "text": "quick",
+        "len": 5,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "quick",
+        "tail": "quick"
+      }
+    },
+    {
+      "v": "v3",
+      "lang": "en",
+      "mode": "mid",
+      "word": "riverbank",
+      "nth": 3,
+      "para": "v3-en",
+      "point": {
+        "x": 438.6,
+        "y": 393.6
+      },
+      "caret": {
+        "node": "text",
+        "off": 377,
+        "ctx": "verban"
+      },
+      "sel": {
+        "empty": false,
+        "text": "riverbank",
+        "len": 9,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 381,
+        "endOff": 390,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "riverbank",
+        "tail": "riverbank"
+      }
+    },
+    {
+      "v": "v3",
+      "lang": "zh",
+      "mode": "marked",
+      "target": "v3z",
+      "para": "v3-zh",
+      "point": {
+        "x": 282,
+        "y": 450.2
+      },
+      "caret": {
+        "node": "text",
+        "off": 1,
+        "ctx": "公园"
+      },
+      "sel": {
+        "empty": false,
+        "text": "公园",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "公园",
+        "tail": "公园"
+      }
+    },
+    {
+      "v": "v3",
+      "lang": "zh",
+      "mode": "mid",
+      "word": "风景",
+      "nth": 3,
+      "para": "v3-zh",
+      "point": {
+        "x": 800,
+        "y": 427.5
+      },
+      "caret": {
+        "node": "text",
+        "off": 93,
+        "ctx": "丽的风景，然"
+      },
+      "sel": {
+        "empty": false,
+        "text": "风景",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 106,
+        "endOff": 108,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "风景",
+        "tail": "风景"
+      }
+    },
+    {
+      "v": "v4",
+      "lang": "en",
+      "mode": "marked",
+      "target": "v4e",
+      "para": "v4-en",
+      "point": {
+        "x": 148.7,
+        "y": 450.1
+      },
+      "caret": {
+        "node": "text",
+        "off": 2,
+        "ctx": "quick"
+      },
+      "sel": {
+        "empty": false,
+        "text": "quick",
+        "len": 5,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "quick",
+        "tail": "quick"
+      }
+    },
+    {
+      "v": "v4",
+      "lang": "en",
+      "mode": "mid",
+      "word": "riverbank",
+      "nth": 3,
+      "para": "v4-en",
+      "point": {
+        "x": 438.6,
+        "y": 394.3
+      },
+      "caret": {
+        "node": "text",
+        "off": 377,
+        "ctx": "verban"
+      },
+      "sel": {
+        "empty": false,
+        "text": "riverbank",
+        "len": 9,
+        "paraLen": 1311,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 381,
+        "endOff": 390,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "riverbank",
+        "tail": "riverbank"
+      }
+    },
+    {
+      "v": "v4",
+      "lang": "zh",
+      "mode": "marked",
+      "target": "v4z",
+      "para": "v4-zh",
+      "point": {
+        "x": 282,
+        "y": 449.8
+      },
+      "caret": {
+        "node": "text",
+        "off": 1,
+        "ctx": "公园"
+      },
+      "sel": {
+        "empty": false,
+        "text": "公园",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": null,
+        "endOff": null,
+        "anchorParent": "B",
+        "focusParent": "B",
+        "snippet": "公园",
+        "tail": "公园"
+      }
+    },
+    {
+      "v": "v4",
+      "lang": "zh",
+      "mode": "mid",
+      "word": "风景",
+      "nth": 3,
+      "para": "v4-zh",
+      "point": {
+        "x": 800,
+        "y": 427.2
+      },
+      "caret": {
+        "node": "text",
+        "off": 93,
+        "ctx": "丽的风景，然"
+      },
+      "sel": {
+        "empty": false,
+        "text": "风景",
+        "len": 2,
+        "paraLen": 252,
+        "anchorIn": true,
+        "focusIn": true,
+        "startOff": 106,
+        "endOff": 108,
+        "anchorParent": "P",
+        "focusParent": "P",
+        "snippet": "风景",
+        "tail": "风景"
+      }
+    }
+  ]
+}

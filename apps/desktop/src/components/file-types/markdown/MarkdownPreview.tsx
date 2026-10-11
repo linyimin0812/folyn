@@ -293,9 +293,38 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     getFileIcon: (path: string) => createElement(FileIcon, { filename: path }),
   }), [resolvedVaultRoot, filePath, renderFile, openFile]);
 
+  // ponytail: WebKit double-click fix — when the two taps of a double-click
+  // drift slightly (trackpad) or the layout shifts between them, WKWebView
+  // treats it as a double-click-drag and selects from the word to a distant
+  // point (存量 bug, both EN and ZH, present at zoom 1). Suppress the native
+  // selection (preventDefault on the 2nd mousedown, detail===2) and select
+  // the word under the pointer ourselves: caretRangeFromPoint +
+  // Range.expand('word') — WebKit/Chromium only, which is every Tauri
+  // webview. Non-text targets (images, gaps) fall through untouched, and
+  // triple-click (detail 3, paragraph) keeps native behavior.
+  const handleWordSelect = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0 || e.detail !== 2) return;
+    const doc = document as Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    if (typeof doc.caretRangeFromPoint !== 'function') return;
+    const range = doc.caretRangeFromPoint(e.clientX, e.clientY);
+    if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return;
+    e.preventDefault();
+    try { (range as Range & { expand?: (unit: string) => void }).expand?.('word'); } catch { /* keep the point range */ }
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, []);
+
   return (
     <VaultContext.Provider value={vaultContextValue}>
-      <div className="md-preview" ref={containerRef} style={{ '--md-gap-line': editorLineHeight > 0 ? `${editorLineHeight}px` : undefined } as React.CSSProperties}>
+      <div
+        className="md-preview"
+        ref={containerRef}
+        onMouseDown={handleWordSelect}
+        style={{ '--md-gap-line': editorLineHeight > 0 ? `${editorLineHeight}px` : undefined } as React.CSSProperties}
+      >
         {meta && <SkillMetaCard meta={meta} />}
         {reactContent}
       </div>
