@@ -151,6 +151,29 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 
 ## Gotchas
 
+### Preview double-click word selection
+
+`MarkdownPreview` installs `installPreviewWordSelection(root)` from
+`previewWordSelection.ts`; the returned cleanup removes all listeners and the
+pending animation frame. Only left-button mousedown with `detail === 2` on
+preview text is intercepted; ordinary drag selection, triple clicks, and
+interactive controls retain native behavior.
+
+Do not use `Range.expand('word')` here: captured WKWebView selections expanded
+to a bare newline, painted as a full-width highlight. Resolve the glyph under
+the pointer using `caretRangeFromPoint` and the preceding glyph's rectangles,
+then use `Intl.Segmenter` word boundaries. A caret on a glyph's right half sits
+after that glyph; segmenting its offset directly can choose the next word or
+whitespace. Inline formatting shares word boundaries; nested blocks and `br`
+separate them. Ranges must stay inside the owning preview.
+
+Hold the word through `selectionchange` until the animation frame after
+mouseup/dblclick: native selection changes can run after event dispatch.
+Release on the next mousedown, blur, and unmount. Regression coverage lives in
+`MarkdownPreview.selection.test.tsx` (logged newline expansion and lifecycle)
+and the task's `selection-browser.mjs` (actual WebKit/Chromium glyph hit testing
+and double clicks). jsdom cannot verify browser layout or physical input.
+
 > **Warning**: `text \\[x\\] end` (markdown `\\` = literal backslash, writer meant `\` + `[x\]` text) is misread as `\[x\]` math by `transformMathBrackets`. Rare in prose. Accept the tradeoff; do not add a full LaTeX parser for this edge case.
 
 > **Warning**: Editor and renderer can disagree on `\\$x$` — editor's `(?<!\\)` lookbehind in `findMathSegments` treats `\\$` as escaped (no highlight on following `$x$`), while remark-parse treats `\\` as literal `\` and renders `$x$` as math. Rare. Documented ceiling.

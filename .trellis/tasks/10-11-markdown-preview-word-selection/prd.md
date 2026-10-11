@@ -13,9 +13,10 @@ Double-clicking preview text must select only the clicked word, as requested by 
 
 ## Acceptance Criteria
 
-- WebKit browser regression reproduces the faulty selection before the fix and selects the expected word after it.
-- Targeted tests cover selection lifecycle and component integration.
-- No whole-project compile or build.
+- [x] Component regression replays the captured faulty selection before the fix and selects the expected word after it.
+- [x] WebKit and Chromium browser checks select the expected English/Chinese words using actual glyph hit testing and mouse double clicks.
+- [x] Targeted tests cover selection lifecycle and component integration.
+- [x] No whole-project compile or build.
 
 ## Technical Notes
 
