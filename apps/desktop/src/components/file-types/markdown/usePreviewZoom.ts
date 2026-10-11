@@ -19,18 +19,29 @@ const COMMIT_DELAY_MS = 200;
 const SMOOTHING = 0.28;
 const SETTLE_EPS = 0.0015;
 
-/**
- * Anchor-compensated scroll so the content point under `anchor` (viewport
- * coords inside the scroll container) stays put when zoom scales by `ratio`.
- * Content px = scroll + anchor; keep fixed → scroll' = (scroll + anchor)·ratio − anchor.
- */
-export function compensateScroll(scroll: number, anchor: number, ratio: number): number {
-  return (scroll + anchor) * ratio - anchor;
-}
-
 /** Cap a per-event zoom factor to ±WHEEL_EVENT_MAX_RATIO so detents don't lurch. */
 export function capWheelFactor(factor: number): number {
   return Math.min(WHEEL_EVENT_MAX_RATIO, Math.max(1 / WHEEL_EVENT_MAX_RATIO, factor));
+}
+
+/**
+ * Deepest descendant of `root` whose (post-zoom) rect contains the point —
+ * the zoom anchor. Walking rects instead of elementFromPoint because WebKit
+ * returns ancestor containers for points inside zoomed subtrees.
+ */
+function findAnchorEl(root: Element, x: number, y: number): Element | null {
+  let best: Element | null = null;
+  const walk = (node: Element) => {
+    for (const child of Array.from(node.children)) {
+      const r = child.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        best = child;
+        walk(child);
+      }
+    }
+  };
+  walk(root);
+  return best;
 }
 
 /**
@@ -40,11 +51,15 @@ export function capWheelFactor(factor: number): number {
  * — NO extra wrapper div: cursor-sync/gap-compensation walk
  * `.md-preview`.parentElement for the scroll container.
  *
- * Smoothness: wheel/key events only move a TARGET zoom; a rAF loop eases the
- * applied zoom toward it (exponential ease-out, per-frame scroll
- * compensation at the gesture anchor). Wheel events are capped per-event so
- * a mouse detent glides instead of lurching. Store commit is debounced so
- * Tauri persistence isn't hammered mid-gesture.
+ * Smoothness + no-jump model (measured, see research/zoom-jump-traces.md):
+ * CSS zoom re-wraps text in discrete line steps (zoom divides the available
+ * width, so heights move NON-linearly) — a linear `(scrollTop+anchor)·ratio`
+ * compensation under-corrects and the content lurches. Instead each frame
+ * PINS a measured anchor element: write the new zoom, read the anchor's
+ * rect.top, correct scrollTop by the observed delta. Self-correcting (the
+ * ≤1px scrollTop rounding is absorbed by the next frame's measurement).
+ * Wheel/key events only move a TARGET zoom; the rAF loop eases toward it.
+ * Store commit is debounced so Tauri persistence isn't hammered mid-gesture.
  */
 export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTMLDivElement | null>) {
   const zoom = useAppearanceStore((s) => s.mdPreviewZoom);
@@ -63,8 +78,11 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
     el.style.setProperty('--md-zoom', String(cur));
     let raf = 0;
     let commitTimer: number | undefined;
-    let anchorX = 0;
-    let anchorY = 0;
+    // Gesture anchor: pinned at the FIRST input of a gesture, held until the
+    // animation settles. Pinning the element under the initial pointer (not
+    // per-event) keeps re-pins from re-basing mid-gesture.
+    let anchorEl: Element | null = null;
+    let anchorTop = 0;
 
     const scheduleCommit = () => {
       window.clearTimeout(commitTimer);
@@ -76,31 +94,30 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
 
     const frame = () => {
       raf = 0;
-      if (target === cur) return;
+      if (target === cur) { anchorEl = null; return; }
       const next = Math.abs(target - cur) < SETTLE_EPS ? target : cur + (target - cur) * SMOOTHING;
-      const ratio = next / cur;
-      // Read scroll + container rect BEFORE writing the zoom var: reading
-      // after would force a new-zoom layout and could return a
-      // browser-adjusted/clamped scrollTop, corrupting the compensation.
-      // The container rect itself doesn't change with content zoom.
-      const rect = el.getBoundingClientRect();
-      const ax = anchorX - rect.left;
-      const ay = anchorY - rect.top;
-      const top = el.scrollTop;
-      const left = el.scrollLeft;
       el.style.setProperty('--md-zoom', String(next));
-      el.scrollTop = compensateScroll(top, ay, ratio);
-      el.scrollLeft = compensateScroll(left, ax, ratio);
+      // Measured anchor pinning: compensate by what we OBSERVE, not by a
+      // ratio (zoom re-wraps text non-linearly). Re-check isConnected — a
+      // re-parse could have swapped the node out mid-gesture.
+      if (anchorEl && anchorEl.isConnected) {
+        const newTop = anchorEl.getBoundingClientRect().top;
+        const delta = newTop - anchorTop;
+        if (Math.abs(delta) > 0.01) el.scrollTop += delta;
+      }
       cur = next;
       if (target !== cur) raf = requestAnimationFrame(frame);
+      else anchorEl = null;
     };
 
     const startZoom = (nextTarget: number, clientX: number, clientY: number) => {
       const next = clampMdPreviewZoom(nextTarget);
       if (next === target && raf === 0) return;
+      if (!anchorEl) {
+        anchorEl = findAnchorEl(el, clientX, clientY) ?? el.firstElementChild;
+        if (anchorEl) anchorTop = anchorEl.getBoundingClientRect().top;
+      }
       target = next;
-      anchorX = clientX;
-      anchorY = clientY;
       if (!raf) raf = requestAnimationFrame(frame);
       scheduleCommit();
     };

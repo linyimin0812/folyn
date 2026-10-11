@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CSS zoom scroll-compensation repro</title>
+<style>
+  body { margin: 0; font-family: -apple-system, "PingFang SC", sans-serif; }
+  /* Faithful to apps/desktop/src/index.css + PreviewPane.tsx:
+     .prev-body: overflow-auto, pt-2 px-8 pb-[100vh], scrollbar-gutter: stable
+     .md-preview: zoom via --md-zoom var set on the SCROLLER, max-width 800, centered */
+  .prev-body { height: 400px; overflow: auto; padding: 8px 32px 100vh; scrollbar-gutter: stable; }
+  .md-preview { zoom: var(--md-zoom, 1); max-width: 800px; margin: 0 auto;
+                font-size: 14px; line-height: 1.6; overflow-wrap: break-word; }
+  /* V-D toggle: app CSS has this (index.css:456); ?anchor=none adds it */
+  .noanchor .md-preview, .noanchor .md-preview * { overflow-anchor: none; }
+  #sentinel { background: #ff08; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="prev-body" id="scroller">
+  <div class="md-preview" id="md"></div>
+</div>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const variant = (params.get('variant') || 'A').toUpperCase(); // A | B | C | E
+  const dir = params.get('dir') || 'in'; // in = 1->1.5, out = 1.5->1
+  const anchorMode = params.get('anchor') || 'none'; // none = app CSS, default = engine anchoring on
+  if (anchorMode === 'none') document.documentElement.classList.add('noanchor');
+
+  const scroller = document.getElementById('scroller');
+  const md = document.getElementById('md');
+
+  // ~40 paragraphs of mixed EN/ZH text
+  const sentences = [
+    'The quick brown fox jumps over the lazy dog while the river flows quietly past the village bridge.',
+    '在软件工程中，渐进式迭代往往比一次性交付大型功能更能降低风险，也更容易获得反馈。',
+    'Layout engines recompute box geometry synchronously whenever a style change invalidates the render tree.',
+    '缩放比例的变化会影响内容的整体高度，从而使滚动容器的可滚动范围随之改变。',
+    'A scroll anchor is a DOM point the browser tries to keep visually stationary during layout shifts.',
+    '每帧补偿滚动位置需要先读取旧布局下的 scrollTop，再写入新的缩放值，最后写入补偿后的滚动位置。',
+    'WebKit and Blink differ in when they clamp or rescale scroll offsets after content size changes.',
+    '中文排版在字号放大时通常不会产生额外的连字符换行，但英文单词可能触发 overflow-wrap。',
+    'The rAF callback runs before paint, so reads inside it observe the previous frame’s layout unless forced.',
+    '测量哨兵元素的视口位置可以判断内容是否发生了非连续的跳变，然后又部分回退。',
+    'Fractional scroll offsets are preserved by modern engines, so compensation math stays sub-pixel accurate.',
+    '锚点补偿公式为 scrollNew = (scrollOld + anchor) * ratio - anchor，其中 anchor 是视口内固定点。',
+    'Prefer measuring visual positions via getBoundingClientRect rather than offsetTop when zoom is involved.',
+    '滚动容器的底部填充为 100vh，这是为了让小文档也能滚动到内容底部并保持阅读上下文。',
+    'When the content shrinks below the current scroll extent, engines clamp scrollTop to the new maximum.',
+    '键盘缩放使用视口中心作为锚点，而触摸捏合缩放使用手指位置作为锚点，两者共用同一套补偿逻辑。',
+    'Deterministic animations make cross-engine traces comparable frame by frame without timing noise.',
+    '若引擎在两帧之间自行调整了滚动位置，我们写入的补偿值就会被覆盖，从而导致内容跳变。',
+  ];
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < 40; i++) {
+    if (i === 20) {
+      const p = document.createElement('p');
+      p.id = 'sentinel';
+      p.textContent = 'SENTINEL 哨兵 — visual position probe';
+      frag.appendChild(p);
+    }
+    const p = document.createElement('p');
+    p.textContent = sentences[i % sentences.length];
+    frag.appendChild(p);
+  }
+  md.appendChild(frag);
+
+  const sentinel = document.getElementById('sentinel');
+  const ANCHOR_Y = 200; // viewport-center anchor (scroller is 400px tall), as keyboard zoom uses
+  const FRAMES = 30;
+  const Z0 = 1, Z1 = 1.5;
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+  const ZSTART = dir === 'out' ? Z1 : Z0;
+  const zAt = (i) => dir === 'out'
+    ? Z1 - (Z1 - Z0) * easeOutCubic((i + 1) / FRAMES)
+    : Z0 + (Z1 - Z0) * easeOutCubic((i + 1) / FRAMES);
+  const raf = () => new Promise((r) => requestAnimationFrame(r));
+  const visY = () => sentinel.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+
+  window.__meta = { variant, dir, anchorMode, anchorY: ANCHOR_Y, frames: FRAMES, z0: Z0, z1: Z1 };
+  window.__trace = [];
+  window.__stepTest = null;
+  window.__done = false;
+
+  // V-B extra: single-step zoom 1 -> 1.5, scrollTop before/after.
+  async function stepTest() {
+    scroller.style.setProperty('--md-zoom', '1');
+    scroller.scrollTop = 300;
+    void scroller.scrollHeight; // force layout so scrollTop=300 is clamped/committed at z=1
+    const before = scroller.scrollTop;
+    scroller.style.setProperty('--md-zoom', '1.5');
+    const raw = scroller.scrollTop;              // read before forcing layout (may be stale)
+    void scroller.offsetHeight;                  // force layout at z=1.5
+    const afterLayout = scroller.scrollTop;      // value after layout ran
+    const visBefore = visY(); void scroller.offsetHeight;
+    await raf();
+    return { before, raw, afterLayout, nextFrame: scroller.scrollTop, nextFrameVis: visY(), visBefore };
+  }
+
+  // V-E: measurement-based compensation. Pin the actual DOM node under the
+  // viewport-center anchor: write zoom, measure how much that node's rect.top
+  // moved, correct scrollTop by exactly that delta (browser scroll-anchoring
+  // logic, done manually).
+  async function runE() {
+    scroller.style.setProperty('--md-zoom', String(ZSTART));
+    scroller.scrollTop = 0;
+    void scroller.offsetHeight;
+    scroller.scrollTop = Math.max(0, (sentinel.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop) - 140);
+    await raf(); await raf();
+    const r0 = scroller.getBoundingClientRect();
+    // elementFromPoint is unreliable inside zoomed subtrees in WebKit (returns
+    // the container); walk md's block children and pick the one covering the
+    // anchor viewport line (rects are true viewport px - verified).
+    const targetY = r0.top + ANCHOR_Y;
+    let anchorEl = sentinel;
+    for (const child of md.children) {
+      if (child.getBoundingClientRect().top <= targetY) anchorEl = child;
+    }
+    window.__anchorTag = anchorEl.tagName + ':' + (anchorEl.textContent || '').slice(0, 18);
+    let cur = ZSTART;
+    for (let i = 0; i < FRAMES; i++) {
+      await raf();
+      const preScroll = scroller.scrollTop;
+      const preVis = visY();
+      const preTop = anchorEl.getBoundingClientRect().top; // old layout
+      const z = zAt(i);
+      scroller.style.setProperty('--md-zoom', String(z));
+      const postTop = anchorEl.getBoundingClientRect().top; // forces layout with new zoom
+      const shift = postTop - preTop;
+      scroller.scrollTop += shift;
+      cur = z;
+      const postVis = visY();
+      window.__trace.push({
+        f: i, z: +z.toFixed(4),
+        preScroll: +preScroll.toFixed(2), preVis: +preVis.toFixed(2),
+        postScroll: +scroller.scrollTop.toFixed(2), postVis: +postVis.toFixed(2),
+        intended: null, immediate: null,
+        anchorVis: +(anchorEl.getBoundingClientRect().top - scroller.getBoundingClientRect().top).toFixed(2),
+        shift: +shift.toFixed(2),
+      });
+    }
+    await raf();
+    window.__final = {
+      initialScroll: 0,
+      finalPreScroll: +scroller.scrollTop.toFixed(2), finalPreVis: +visY().toFixed(2),
+      finalPostScroll: +scroller.scrollTop.toFixed(2), finalPostVis: +visY().toFixed(2),
+    };
+  }
+
+  async function run() {
+    // reset to start zoom and put the sentinel ~60px above the anchor (visible, near anchor)
+    scroller.style.setProperty('--md-zoom', String(ZSTART));
+    scroller.scrollTop = 0;
+    void scroller.offsetHeight;
+    scroller.scrollTop = Math.max(0, (sentinel.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop) - 140);
+    await raf(); await raf(); // settle
+
+    const compensatePerFrame = variant === 'A';
+    const initialScroll = scroller.scrollTop;
+    let cur = ZSTART;
+
+    for (let i = 0; i < FRAMES; i++) {
+      await raf(); // we are now inside rAF callback for frame i (after frame i-1's paint)
+      // NEXT-FRAME PRE-WRITE probe: engine may have mutated scrollTop between our write and now
+      const preScroll = scroller.scrollTop;
+      const preVis = visY();
+
+      const z = zAt(i);
+      const ratio = z / cur;
+      // Read scrollTop BEFORE writing the zoom var (same order as usePreviewZoom.frame)
+      const top = scroller.scrollTop;
+      scroller.style.setProperty('--md-zoom', String(z));
+      let intended = null, immediate = null;
+      if (compensatePerFrame) {
+        intended = (top + ANCHOR_Y) * ratio - ANCHOR_Y;
+        scroller.scrollTop = intended;
+        immediate = scroller.scrollTop; // same-callback read-back: clamped?
+      }
+      cur = z;
+      const postVis = visY(); // forces layout with this frame's writes -> what gets painted
+      window.__trace.push({
+        f: i, z: +z.toFixed(4),
+        preScroll: +preScroll.toFixed(2), preVis: +preVis.toFixed(2),
+        postScroll: +scroller.scrollTop.toFixed(2), postVis: +postVis.toFixed(2),
+        intended: intended === null ? null : +intended.toFixed(2),
+        immediate: immediate === null ? null : +immediate.toFixed(2),
+      });
+    }
+
+    // settle: one extra frame after the animation (final painted state)
+    await raf();
+    let finalPreScroll = scroller.scrollTop, finalPreVis = visY();
+
+    // V-C: single final scrollTop write after the animated zoom
+    if (variant === 'C') {
+      const finalTarget = (initialScroll + ANCHOR_Y) * (Z1 / Z0) - ANCHOR_Y;
+      scroller.scrollTop = finalTarget;
+      await raf();
+      window.__finalWrite = { initialScroll: +initialScroll.toFixed(2), target: +finalTarget.toFixed(2) };
+    }
+    const finalPostScroll = scroller.scrollTop, finalPostVis = visY();
+    window.__final = {
+      initialScroll: +initialScroll.toFixed(2),
+      finalPreScroll: +finalPreScroll.toFixed(2), finalPreVis: +finalPreVis.toFixed(2),
+      finalPostScroll: +finalPostScroll.toFixed(2), finalPostVis: +finalPostVis.toFixed(2),
+    };
+  }
+
+  (async () => {
+    if (variant === 'E') await runE();
+    else await run();
+    if (variant === 'B') window.__stepTest = await stepTest();
+    window.__done = true;
+  })();
+})();
+</script>
+</body>
+</html>
