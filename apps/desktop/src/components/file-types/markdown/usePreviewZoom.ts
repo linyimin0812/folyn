@@ -110,7 +110,7 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
       else anchorEl = null;
     };
 
-    const startZoom = (nextTarget: number, clientX: number, clientY: number) => {
+    const startZoom = (nextTarget: number, clientX: number, clientY: number, animate: boolean) => {
       const next = clampMdPreviewZoom(nextTarget);
       if (next === target && raf === 0) return;
       if (!anchorEl) {
@@ -118,15 +118,30 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
         if (anchorEl) anchorTop = anchorEl.getBoundingClientRect().top;
       }
       target = next;
-      if (!raf) raf = requestAnimationFrame(frame);
-      scheduleCommit();
+      if (animate) {
+        if (!raf) raf = requestAnimationFrame(frame);
+        scheduleCommit();
+        return;
+      }
+      // Keyboard steps: jump straight to the target (no easing), like the
+      // pre-animation behavior — one synchronous apply + immediate commit.
+      el.style.setProperty('--md-zoom', String(target));
+      if (anchorEl && anchorEl.isConnected) {
+        const newTop = anchorEl.getBoundingClientRect().top;
+        const delta = newTop - anchorTop;
+        if (Math.abs(delta) > 0.01) el.scrollTop += delta;
+      }
+      cur = target;
+      anchorEl = null;
+      window.clearTimeout(commitTimer);
+      useAppearanceStore.getState().setMdPreviewZoom(target);
     };
 
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey || e.deltaY === 0) return;
       e.preventDefault();
       const factor = capWheelFactor(Math.exp(-e.deltaY * WHEEL_SENSITIVITY));
-      startZoom(target * factor, e.clientX, e.clientY);
+      startZoom(target * factor, e.clientX, e.clientY, true);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
 
@@ -145,7 +160,7 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
       if (next === undefined) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
-      startZoom(next, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      startZoom(next, rect.left + rect.width / 2, rect.top + rect.height / 2, false);
     };
     window.addEventListener('keydown', onKey);
 
