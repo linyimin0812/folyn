@@ -296,25 +296,165 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // ponytail: WebKit double-click fix — when the two taps of a double-click
   // drift slightly (trackpad) or the layout shifts between them, WKWebView
   // treats it as a double-click-drag and selects from the word to a distant
-  // point (存量 bug, both EN and ZH, present at zoom 1). Suppress the native
-  // selection (preventDefault on the 2nd mousedown, detail===2) and select
-  // the word under the pointer ourselves: caretRangeFromPoint +
-  // Range.expand('word') — WebKit/Chromium only, which is every Tauri
-  // webview. Non-text targets (images, gaps) fall through untouched, and
-  // triple-click (detail 3, paragraph) keeps native behavior.
+  // point (存量 bug, both EN and ZH, present at zoom 1). Intercept the 2nd
+  // mousedown (detail===2) and select the word under the pointer ourselves:
+  // caretRangeFromPoint + Range.expand('word') — WebKit/Chromium only, which
+  // is every Tauri webview. Non-text targets (images, gaps) fall through
+  // untouched, and triple-click (detail 3, paragraph) keeps native behavior.
+  // Real-WKWebView follow-up (live-repro'd via /tmp/folyn-dbl-debug.log):
+  // (1) the native drag extension runs on mousemove/mouseup AFTER our
+  // mousedown preventDefault, so we re-assert the word on every move until
+  // mouseup; (2) a 2nd click landing on a non-text gap element bailed out
+  // and let the native gesture run wild — now we still preventDefault there;
+  // (3) the 2nd click can resolve to an inter-element whitespace text node —
+  // expand('word') returns a bare "\n", which WebKit paints as a
+  // full-line-width highlight (the actual "大片") — handled below by picking
+  // the nearest real word. Trade-off: word-then-drag extend-by-word is dead
+  // in the preview; read-only pane, nobody complained.
+  const gestureWordRef = useRef<Range | null>(null);
+
+  useEffect(() => {
+    const sameRange = (a: Range, b: Range) =>
+      a.startContainer === b.startContainer && a.startOffset === b.startOffset
+      && a.endContainer === b.endContainer && a.endOffset === b.endOffset;
+    const reassert = () => {
+      const word = gestureWordRef.current;
+      if (!word) return;
+      const sel = window.getSelection();
+      if (!sel || (sel.rangeCount === 1 && sameRange(sel.getRangeAt(0), word))) return;
+      const dbg = (window as unknown as { __dbl?: (s: string) => void }).__dbl;
+      dbg?.(`LOCK correct: sel was len=${sel.toString().length}`);
+      sel.removeAllRanges();
+      sel.addRange(word);
+    };
+    const endGesture = () => { reassert(); gestureWordRef.current = null; };
+    document.addEventListener('mousemove', reassert, true);
+    document.addEventListener('mouseup', endGesture, true);
+    return () => {
+      document.removeEventListener('mousemove', reassert, true);
+      document.removeEventListener('mouseup', endGesture, true);
+    };
+  }, []);
+
+  // TEMP-DEBUG dblclick: logs mousedown detail/button, handler decisions, and
+  // selection changes to console AND /tmp/folyn-dbl-debug.log (fs scope allows
+  // it). REMOVE AFTER FIX.
+  useEffect(() => {
+    const log: string[] = [`=== mount ${new Date().toISOString()} ===`];
+    const flush = () => {
+      if (!(window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) return;
+      import('@tauri-apps/plugin-fs')
+        .then((m) => m.writeTextFile('/tmp/folyn-dbl-debug.log', log.join('\n')))
+        .catch(() => { /* best-effort only */ });
+    };
+    const push = (s: string) => {
+      const line = `[dbl] ${performance.now().toFixed(0)}ms ${s}`;
+      console.log(line);
+      log.push(line);
+      if (log.length > 400) log.splice(0, 200);
+      flush();
+    };
+    (window as unknown as { __dbl?: (s: string) => void }).__dbl = push;
+    const previewRoot = () => document.querySelector('.md-preview');
+    const inside = (n: Node | null) => !!n && !!previewRoot()?.contains(n);
+    const down = (e: MouseEvent) => {
+      const sel = window.getSelection();
+      const t = e.target as Element;
+      push(`DOWN d=${e.detail} b=${e.button} tgt=${t?.tagName?.toLowerCase?.()}${t?.className && typeof t.className === 'string' ? '.' + t.className.split(' ')[0] : ''} selLen=${sel?.toString().length ?? -1}`);
+    };
+    const up = (e: MouseEvent) => {
+      const sel = window.getSelection();
+      push(`UP d=${e.detail} selLen=${sel?.toString().length ?? -1}`);
+    };
+    const dbl = (e: MouseEvent) => {
+      push(`DBLCLICK tgt=${(e.target as Element)?.tagName?.toLowerCase?.()}`);
+    };
+    const chg = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      if (!inside(sel.anchorNode) && !inside(sel.focusNode)) return;
+      const txt = sel.toString();
+      push(`SEL len=${txt.length} aIn=${inside(sel.anchorNode)} fIn=${inside(sel.focusNode)} "${txt.slice(0, 20)}…${txt.slice(-12)}"`);
+    };
+    document.addEventListener('mousedown', down, true);
+    document.addEventListener('mouseup', up, true);
+    document.addEventListener('dblclick', dbl, true);
+    document.addEventListener('selectionchange', chg);
+    return () => {
+      document.removeEventListener('mousedown', down, true);
+      document.removeEventListener('mouseup', up, true);
+      document.removeEventListener('dblclick', dbl, true);
+      document.removeEventListener('selectionchange', chg);
+      delete (window as unknown as { __dbl?: unknown }).__dbl;
+    };
+  }, []);
+
   const handleWordSelect = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0 || e.detail !== 2) return;
+    const dbg = (window as unknown as { __dbl?: (s: string) => void }).__dbl;
+    dbg?.(`HNDL d=${e.detail} b=${e.button} x=${e.clientX} y=${e.clientY}`);
+    if (e.button !== 0 || e.detail !== 2) { dbg?.('HNDL skip: not detail-2/left'); return; }
     const doc = document as Document & {
       caretRangeFromPoint?: (x: number, y: number) => Range | null;
     };
-    if (typeof doc.caretRangeFromPoint !== 'function') return;
+    if (typeof doc.caretRangeFromPoint !== 'function') { dbg?.('HNDL skip: no caretRangeFromPoint'); return; }
     const range = doc.caretRangeFromPoint(e.clientX, e.clientY);
-    if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return;
+    if (!range) { dbg?.('HNDL skip: no range'); return; }
     e.preventDefault();
+    dbg?.(`HNDL range nodeType=${range.startContainer.nodeType} off=${range.startOffset}`);
+    if (range.startContainer.nodeType !== Node.TEXT_NODE) { gestureWordRef.current = null; return; }
     try { (range as Range & { expand?: (unit: string) => void }).expand?.('word'); } catch { /* keep the point range */ }
+    // whitespace "word" (inter-element newline, padding gap): WebKit paints a
+    // whitespace-only selection as a full-line-width highlight — the "大片"
+    // the user sees. Swap in the nearest real word in the containing block.
+    if (/^\s*$/.test(range.toString())) {
+      const block = range.startContainer.parentElement?.closest('p,li,dt,dd,td,th,h1,h2,h3,h4,h5,h6,blockquote,pre,figcaption,div');
+      dbg?.(`HNDL ws-branch: nodeTxt=${JSON.stringify((range.startContainer.textContent || '').slice(0, 20))} block=${block?.tagName ?? 'null'}`);
+      if (block) {
+        const texts: Text[] = [];
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+        let flat = '';
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) { texts.push(n as Text); flat += (n as Text).data; }
+        let pointIdx = 0;
+        for (const t of texts) {
+          if (t === range.startContainer) { pointIdx += range.startOffset; break; }
+          pointIdx += t.data.length;
+        }
+        pointIdx = Math.min(Math.max(pointIdx, 0), flat.length);
+        // pointIdx is a caret position (0..flat.length, inclusive) — char at
+        // index == flat.length does not exist, so right candidate must bounds-check
+        let best = -1;
+        for (let d = 0; best < 0 && d < flat.length; d++) {
+          const rIdx = pointIdx + d;
+          if (rIdx < flat.length && !/\s/.test(flat[rIdx]!)) { best = rIdx; break; }
+          const lIdx = pointIdx - 1 - d;
+          if (lIdx >= 0 && !/\s/.test(flat[lIdx]!)) { best = lIdx; break; }
+        }
+        dbg?.(`HNDL ws-branch: flatLen=${flat.length} pointIdx=${pointIdx} best=${best}`);
+        if (best >= 0) {
+          let idx = 0;
+          for (const t of texts) {
+            if (best < idx + t.data.length) {
+              const near = document.createRange();
+              near.setStart(t, best - idx);
+              near.setEnd(t, best - idx);
+              try { (near as Range & { expand?: (unit: string) => void }).expand?.('word'); } catch { /* point range */ }
+              dbg?.(`HNDL ws-branch: near="${near.toString().slice(0, 20)}"`);
+              if (!/^\s*$/.test(near.toString())) {
+                range.setStart(near.startContainer, near.startOffset);
+                range.setEnd(near.endContainer, near.endOffset);
+              }
+              break;
+            }
+            idx += t.data.length;
+          }
+        }
+      }
+    }
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
+    gestureWordRef.current = range.cloneRange();
+    dbg?.(`HNDL set word "${sel?.toString().slice(0, 20)}" len=${sel?.toString().length}`);
   }, []);
 
   return (
