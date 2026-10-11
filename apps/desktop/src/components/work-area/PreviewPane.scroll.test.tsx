@@ -95,14 +95,23 @@ describe('PreviewPane scroll on tab switch', () => {
 // Zoom plumbing regression: usePreviewZoom/cursor-sync/gap-compensation
 // walk `.md-preview`.parentElement for the scroll container, so the Preview
 // must stay `.prev-body`'s DIRECT child — an intermediate zoom wrapper div
-// here broke split-mode cursor alignment once already.
+// here broke split-mode cursor alignment once already. The --md-zoom var is
+// owned by usePreviewZoom (set when enabled, removed when disabled) — React
+// never renders it, so mid-animation store commits can't snap it back.
 describe('PreviewPane zoom plumbing (DOM structure)', () => {
-  it('renders the Preview as .prev-body direct child with --md-zoom defaulting to 1', () => {
+  it('renders the Preview as .prev-body direct child with --md-zoom set to the store zoom when enabled', () => {
     render(
-      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="split" />,
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" />,
     );
     const body = prevBody();
     expect(body.firstElementChild?.textContent).toBe('preview');
     expect(body.style.getPropertyValue('--md-zoom')).toBe('1');
+  });
+
+  it('removes --md-zoom in split mode (CSS fallback keeps 1:1 editor geometry)', () => {
+    render(
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="split" />,
+    );
+    expect(prevBody().style.getPropertyValue('--md-zoom')).toBe('');
   });
 });

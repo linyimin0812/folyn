@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useAppearanceStore, clampMdPreviewZoom } from '@/store/appearanceStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import { eventMatchesShortcut } from '@/utils/shortcutAccelerator';
@@ -48,20 +48,19 @@ export function capWheelFactor(factor: number): number {
  */
 export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTMLDivElement | null>) {
   const zoom = useAppearanceStore((s) => s.mdPreviewZoom);
-  const zoomRef = useRef(zoom);
-  // Sync the ref only when the store value changes OUTSIDE the gesture loop
-  // (reset / hydrate / another pane). Re-assigning every render would fight
-  // the loop: the store lags the animation until the debounced commit.
-  useEffect(() => {
-    if (zoom !== zoomRef.current) zoomRef.current = zoom;
-  }, [zoom]);
 
   useEffect(() => {
     if (!enabled) return;
     const el = scrollRef.current;
     if (!el) return;
-    let cur = zoomRef.current;
+    // The hook OWNS the --md-zoom property for the session it is enabled:
+    // React also rendering it (from the store) would overwrite the var with
+    // the committed target mid-animation on every debounced store commit —
+    // the visible snap-back flicker. On disable the property is removed so
+    // the CSS var fallback (1) restores 1:1 split-mode geometry.
+    let cur = clampMdPreviewZoom(useAppearanceStore.getState().mdPreviewZoom);
     let target = cur;
+    el.style.setProperty('--md-zoom', String(cur));
     let raf = 0;
     let commitTimer: number | undefined;
     let anchorX = 0;
@@ -85,7 +84,6 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
       el.scrollTop = compensateScroll(el.scrollTop, anchorY - rect.top, ratio);
       el.scrollLeft = compensateScroll(el.scrollLeft, anchorX - rect.left, ratio);
       cur = next;
-      zoomRef.current = next;
       if (target !== cur) raf = requestAnimationFrame(frame);
     };
 
@@ -131,6 +129,7 @@ export function usePreviewZoom(enabled: boolean, scrollRef: React.RefObject<HTML
       if (raf) cancelAnimationFrame(raf);
       el.removeEventListener('wheel', onWheel);
       window.removeEventListener('keydown', onKey);
+      el.style.removeProperty('--md-zoom');
     };
   }, [enabled, scrollRef]);
 

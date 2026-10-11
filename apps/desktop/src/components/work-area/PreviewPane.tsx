@@ -99,7 +99,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // preview-only mode: split mode must stay 1:1 with the editor so the
     // cursor-sync / gap-compensation line grid stays exact.
     const zoomEnabled = viewMode === 'preview' && activeTab.fileType === 'markdown' && !markmapMode;
-    const zoom = usePreviewZoom(zoomEnabled, bodyRef);
+    usePreviewZoom(zoomEnabled, bodyRef);
 
     // Resolve the markdown file's asset base so markmap nodes can inline
     // relative `![](img.png)` references (mirrors MarkdownPreview's own
@@ -234,13 +234,13 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 ref={setBodyRef}
                 onScroll={handleBodyScroll}
                 onClick={handlePreviewClick}
-                style={{ '--md-zoom': zoomEnabled ? zoom : 1 } as React.CSSProperties}
               >
                 {/* ponytail: no zoom wrapper div — cursor-sync and gap
                     compensation walk `.md-preview`.parentElement for the
                     scroll container; an extra layer broke that chain (split
-                    alignment regression). Zoom applies via the --md-zoom var
-                    above + the `.md-preview { zoom: var(--md-zoom, 1) }` rule. */}
+                    alignment regression). Zoom is the --md-zoom CSS var,
+                    owned exclusively by usePreviewZoom (NOT React-rendered —
+                    a React write mid-animation caused snap-back flicker). */}
                 <Preview
                   content={activeTab.content}
                   filePath={activeTab.path}
