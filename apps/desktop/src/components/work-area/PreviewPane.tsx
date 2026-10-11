@@ -149,7 +149,10 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // fell below ~20% of the viewport, so the alignment scroll was clamped
     // to 0 and the highlight drifted far below the cursor (the reported
     // "内容较少时光标对齐效果很少，高亮偏移光标很远"). 100vh guarantees
-    // the preview stays scrollable down to an empty doc.
+    // the preview stays scrollable down to an empty doc. 100vh is applied
+    // ONLY in split mode (cursor-sync lives there); pure preview mode has no
+    // cursor to sync, so a full-viewport pad is dead whitespace — it gets a
+    // small pb-[20vh] breathing room instead (用户反馈: 预览模式底部空白过大).
     // Previously a hardcoded list of built-in ids gated this — that forced
     // every extension file-type to either inherit markdown's bottom pad
     // (broken) or edit host source to be added to the list.
@@ -230,7 +233,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   still mounts on demand to avoid running markmap-lib transform
                   in the background for every markdown file. */}
               <div
-                className={`prev-body flex-1 overflow-auto pt-2 px-8 pb-[100vh] ${markmapMode ? 'hidden' : 'block'}${viewMode === 'split' ? ' is-jumpable' : ''}`}
+                className={`prev-body flex-1 overflow-auto pt-2 px-8 ${viewMode === 'split' ? 'pb-[100vh] is-jumpable' : 'pb-[20vh]'}${markmapMode ? 'hidden' : 'block'}`}
                 ref={setBodyRef}
                 onScroll={handleBodyScroll}
                 onClick={handlePreviewClick}
