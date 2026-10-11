@@ -1113,3 +1113,46 @@ Unknown/non-standard raw-HTML tags in the MarkdownPreview pipeline now render as
 ### Next Steps
 
 - None - task complete
+
+
+## Session 32: Markdown preview pinch zoom + ESC focus mode + double-click word selection
+
+**Date**: 2026-10-11
+**Task**: Markdown preview pinch zoom + ESC focus mode + double-click word selection
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+Preview-only markdown zoom: CSS zoom via --md-zoom var (no wrapper div — keeps cursor-sync parentElement chain), pinch/ctrl+wheel with measured anchor pinning (per-frame rect delta, NOT linear ratio — zoom re-wraps text non-linearly; research/zoom-jump-traces.md), Cmd±/0 rebindable shortcuts (instant, no easing), persisted in appearanceStore, split mode stays 1:1. ESC exits focus mode (guards for palette/search). Double-click word selection fixed via caretRangeFromPoint + expand('word') with WKWebView live-repro hardening (parallel work continued in 10-11 task; TEMP-DEBUG block pending removal).
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `aeacce13` | (see git log) |
+| `56d792bc` | (see git log) |
+| `72e96575` | (see git log) |
+| `0dccf5fe` | (see git log) |
+| `fa3afa72` | (see git log) |
+| `a9856aea` | (see git log) |
+| `b636370b` | (see git log) |
+| `714b4961` | (see git log) |
+| `cd0a007c` | (see git log) |
+| `f438817a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

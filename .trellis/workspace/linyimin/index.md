@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 31
-- **Last Active**: 2026-10-08
+- **Total Sessions**: 32
+- **Last Active**: 2026-10-11
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1115 | Active |
+| `journal-1.md` | ~1158 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 32 | 2026-10-11 | Markdown preview pinch zoom + ESC focus mode + double-click word selection | `aeacce13`, `56d792bc`, `72e96575`, `0dccf5fe`, `fa3afa72`, `a9856aea`, `b636370b`, `714b4961`, `cd0a007c`, `f438817a` | `master` |
 | 31 | 2026-10-08 | Markdown preview: render unknown raw-HTML tags as literal text | `5fc8c21a`, `b6b13f24`, `924019a2`, `73a1b36d`, `05c7bb1d`, `11dc8104`, `30c7b144`, `8dfaf08d`, `17e0c511`, `ea62f1c4`, `8093756c` | `master` |
 | 30 | 2026-10-07 | Dark mode cursor-sync highlight visibility fix | `0bb8604c` | `master` |
 | 29 | 2026-10-07 | 演示模式（Yuque 风格）全屏阅读 | `18210204` | `master` |
