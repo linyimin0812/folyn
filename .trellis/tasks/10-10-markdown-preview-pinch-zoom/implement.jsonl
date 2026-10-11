@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "Markdown 预览渲染管线与同步机制约束"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React 组件规范"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "appearanceStore 持久化模式"}
+{"file": ".trellis/spec/desktop/frontend/hook-guidelines.md", "reason": "自定义 hook 约定（手势/快捷键 hook）"}

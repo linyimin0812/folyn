@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8">
+<style>body{margin:16px} body>div{margin:0 0 80px; font-size:14px; max-width:420px;}</style>
+<div id="plain"></div>
+<div id="zoom1" style="zoom:1"></div>
+<div id="zoomvar" style="zoom:var(--z,1)"></div>
+<div id="zoom15" style="zoom:1.5"></div>
+<script>
+for (const id of ['plain','zoom1','zoomvar','zoom15']) {
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    const words = [];
+    for (let j = 0; j < 40; j++) words.push('w' + (i * 40 + j));
+    html += '<p>' + words.join(' ') + '.</p>';
+  }
+  document.getElementById(id).innerHTML = html;
+}
+window.report = () => getSelection().toString();
+window.wordInfo = (id, word) => {
+  const p = document.querySelectorAll('#' + id + ' p');
+  let node = null, pi = -1;
+  for (let k = 0; k < p.length; k++) {
+    if (p[k].firstChild.textContent.indexOf(word) !== -1) { node = p[k].firstChild; pi = k; break; }
+  }
+  const i = node.textContent.indexOf(word);
+  const r = document.createRange();
+  r.setStart(node, i); r.setEnd(node, i + word.length);
+  const b = r.getBoundingClientRect();
+  return { paragraph: pi, offset: i, cx: b.x + b.width / 2, cy: b.y + b.height / 2, rect: { x: b.x, y: b.y, w: b.width, h: b.height } };
+};
+</script>

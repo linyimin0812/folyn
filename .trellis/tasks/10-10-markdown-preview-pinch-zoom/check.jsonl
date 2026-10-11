@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "质量检查标准"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "验证预览同步行为未被破坏"}
