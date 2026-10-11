@@ -4,6 +4,18 @@ A Tauri desktop app with an embedded AI pet (Cloudia) that surfaces notification
 
 ## Language
 
+**会话知识沉淀**:
+用户主动选择外部编程助手会话中的一段对话或整个会话，将其中有价值的内容整理为 Folyn 中可长期查阅、复用的知识。外部会话包括 Codex、Claude Code、pi 等工具中的会话；会话是知识素材来源。是否收录由用户主动决定。
+_Avoid_: 会话同步（未区分素材获取与知识收录）、自动知识收录（不符合用户主动选取的边界）。
+
+**会话原文摘录**:
+用户在 Folyn 中浏览外部会话并主动选择内容后，直接保存的原始对话内容；它是会话知识沉淀的一种形式。
+_Avoid_: 整理笔记（经过提炼的知识内容）。
+
+**会话整理笔记**:
+用户在 Folyn 中浏览外部会话并主动选择内容后，由 AI 提炼、经用户编辑确认再保存的知识笔记；它与会话原文摘录并列支持。
+_Avoid_: 自动知识收录（未经用户确认）、原文摘录（未经提炼）。
+
 **Bubble Template AI Agent**:
 The "AI 生成" entry point in `BubbleTemplateBlock` (settings → notifications). A multi-turn LLM chat that clarifies the user's intent and drafts a `BubbleTemplate`. Despite the label "AI Agent", it is NOT an agent loop — no tools, no file access, no self-sanitization. Backed by `runRigChat` (multi-turn, tool-free, history persisted by the rig backend keyed by `sessionId`). Accepts three input modes: free text, HTML file upload (read as text, injected into the prompt), and image file upload (vision; sent as image content blocks, requires the rig backend extension recorded in ADR-0001). Output is a `BubbleTemplate` JSON in a `\`\`json` code fence that enters the same `tryImport` validation + `addTemplate` path as user-pasted JSON. See ADR-0001 for the rejected alternatives (agent loop, plugin agent).
 _Avoid_: Template Agent, Feature Agent (overlaps with `runFeatureAgent`-backed feature agents like wiki), Plugin Agent (overlaps with `buildPluginAi.agent`).
