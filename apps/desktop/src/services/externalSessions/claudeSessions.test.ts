@@ -111,16 +111,91 @@ describe('discoverClaudeSessions', () => {
     expect(sessions[0]?.startedAt).toBe(Date.parse('2026-10-10T10:00:01.000Z'));
   });
 
-  it('uses a custom-title entry when present', async () => {
+  it('uses an ai-title entry (aiTitle field) when present', async () => {
     const file = `${ROOT}/-work-alpha/11111111-2222-3333-4444-555555555555.jsonl`;
     const files = {
       [file]: [
-        entry('custom-title', { title: 'Rollout parsing' }),
         userText('how do I parse the rollout format?'),
+        entry('ai-title', { aiTitle: '预览页双击选词' }),
       ].join('\n'),
     };
     const { sessions } = await discoverClaudeSessions(ROOT, createMemFs(files));
-    expect(sessions[0]?.title).toBe('Rollout parsing');
+    expect(sessions[0]?.title).toBe('预览页双击选词');
+  });
+
+  it('a regenerated ai-title (two records) — the LAST one wins', async () => {
+    const file = `${ROOT}/-work-alpha/11111111-2222-3333-4444-555555555555.jsonl`;
+    const files = {
+      [file]: [
+        entry('ai-title', { aiTitle: 'first title' }),
+        userText('prompt'),
+        entry('ai-title', { aiTitle: 'regenerated title' }),
+      ].join('\n'),
+    };
+    const { sessions } = await discoverClaudeSessions(ROOT, createMemFs(files));
+    expect(sessions[0]?.title).toBe('regenerated title');
+  });
+
+  it('a custom-title entry (customTitle field) beats an ai-title', async () => {
+    const file = `${ROOT}/-work-alpha/11111111-2222-3333-4444-555555555555.jsonl`;
+    const files = {
+      [file]: [
+        entry('ai-title', { aiTitle: 'ai title' }),
+        userText('prompt'),
+        entry('custom-title', { customTitle: 'my own name' }),
+      ].join('\n'),
+    };
+    const { sessions } = await discoverClaudeSessions(ROOT, createMemFs(files));
+    expect(sessions[0]?.title).toBe('my own name');
+  });
+
+  it('big-record heads: the first typed prompt deep in the file becomes the title', async () => {
+    // The real-data shape: six multi-100KB records (assistant tool calls, no
+    // title fields, no typed prompt) before line 7's real prompt — all inside
+    // the port's 2MB head budget.
+    const file = `${ROOT}/-work-alpha/11111111-2222-3333-4444-555555555555.jsonl`;
+    const filler = 'x'.repeat(100_000);
+    const files = {
+      [file]: [
+        ...Array.from({ length: 6 }, () =>
+          entry('assistant', {
+            message: { role: 'assistant', content: [toolUse('toolu_x', 'Read', { filler })] },
+          }),
+        ),
+        userText('the actual first prompt'),
+      ].join('\n'),
+    };
+    const { sessions, errors } = await discoverClaudeSessions(ROOT, createMemFs(files));
+    expect(errors).toEqual([]);
+    expect(sessions[0]?.title).toBe('the actual first prompt');
+  });
+
+  it('framework-injected prompts (/clear, bash-input, reminders) never become the title — assistant text is the fallback', async () => {
+    const file = `${ROOT}/-work-alpha/11111111-2222-3333-4444-555555555555.jsonl`;
+    const files = {
+      [file]: [
+        userText('<command-name>/clear</command-name><command-message>clear</command-message>'),
+        userText('<bash-input>echo $CLAUDE_PROJECT_DIR</bash-input>'),
+        userText('<system-reminder>context low</system-reminder>'),
+        userText('<local-command-stdout>ok</local-command-stdout>'),
+        assistantBlocks([{ type: 'text', text: 'the assistant answer' }]),
+      ].join('\n'),
+    };
+    const { sessions } = await discoverClaudeSessions(ROOT, createMemFs(files));
+    expect(sessions[0]?.title).toBe('the assistant answer');
+  });
+
+  it('an injected first prompt is skipped — a later real prompt still wins', async () => {
+    const file = `${ROOT}/-work-alpha/11111111-2222-3333-4444-555555555555.jsonl`;
+    const files = {
+      [file]: [
+        userText('<command-name>/clear</command-name>'),
+        userText('real question'),
+        assistantBlocks([{ type: 'text', text: 'later answer' }]),
+      ].join('\n'),
+    };
+    const { sessions } = await discoverClaudeSessions(ROOT, createMemFs(files));
+    expect(sessions[0]?.title).toBe('real question');
   });
 
   it('a missing root is an empty source, not an error', async () => {
@@ -328,5 +403,27 @@ describe('readClaudeSession', () => {
     expect(detail.messages[0]?.rawRecord).toContain('how do I parse the rollout format?');
     const owner = detail.messages.find((m) => m.toolCalls.length > 0);
     expect(owner?.rawToolRecords[0]).toContain('tool_result');
+  });
+
+  it('refines to assistant text when no usable user prompt exists', async () => {
+    const file = `${ROOT}/-work-alpha/11111111-2222-3333-4444-555555555555.jsonl`;
+    const files = {
+      [file]: [
+        userText('<command-name>/clear</command-name>'), // injected, not a title
+        assistantBlocks([{ type: 'text', text: 'the assistant answer' }]),
+      ].join('\n'),
+    };
+    const summary: ExternalSessionSummary = {
+      source: 'claude',
+      sessionId: '11111111-2222-3333-4444-555555555555',
+      filePath: file,
+      title: '',
+      cwd: null,
+      startedAt: null,
+      updatedAt: null,
+      parentSessionId: null,
+    };
+    const detail = await readClaudeSession(summary, createMemFs(files));
+    expect(detail.summary.title).toBe('the assistant answer');
   });
 });

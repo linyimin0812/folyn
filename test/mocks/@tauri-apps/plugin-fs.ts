@@ -119,24 +119,33 @@ export const readDir = vi.fn(async (p: string) => {
 });
 
 
-export const readTextFileLines = vi.fn(async (p: string) => {
+export interface MockFileHandle {
+  /** Mirrors the real FileHandle.read: fills `buffer`, returns bytes read or null at EOF. */
+  read(buffer: Uint8Array): Promise<number | null>;
+  /** vi.fn so tests can assert the handle was closed exactly once. */
+  close: ReturnType<typeof vi.fn>;
+}
+
+export const open = vi.fn(async (p: string): Promise<MockFileHandle> => {
   const node = getNode(root, p);
   if (!node || node.type !== 'file') throw new Error(`File not found: ${p}`);
-  const lines = new TextDecoder().decode(node.content).split('\n');
-  let i = 0;
-  const iterator: AsyncIterableIterator<string> = {
-    async next() {
-      return i < lines.length ? { value: lines[i++]!, done: false } : { value: undefined as never, done: true };
+  const content = node.content;
+  let offset = 0;
+  let closed = false;
+  const close = vi.fn(async () => {
+    closed = true;
+  });
+  return {
+    async read(buffer) {
+      if (closed) throw new Error(`read after close: ${p}`);
+      const n = Math.min(buffer.byteLength, content.length - offset);
+      if (n <= 0) return null;
+      buffer.set(content.subarray(offset, offset + n));
+      offset += n;
+      return n;
     },
-    async return() {
-      i = lines.length;
-      return { value: undefined as never, done: true };
-    },
-    [Symbol.asyncIterator]() {
-      return iterator;
-    },
+    close,
   };
-  return iterator;
 });
 
 
@@ -174,7 +183,7 @@ export const __internals = {
     for (const fn of [
       readTextFile,
       readFile,
-      readTextFileLines,
+      open,
       writeTextFile,
       writeFile,
       mkdir,

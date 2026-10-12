@@ -64,8 +64,9 @@ export interface ClaudeDiscovery {
 }
 
 // ponytail: head-read bound for discovery summaries. The first typed prompt
-// usually lands within the first ~40 lines; sessions with very long hook /
-// attachment preambles fall back to a detail-read title refinement.
+// usually lands within the first ~40 lines; big-record sessions (multi-100KB
+// lines) rely on the port's 2MB byte budget, and sessions where even that
+// misses the prompt fall back to assistant text / a detail-read refinement.
 const HEAD_LINES = 80;
 
 function parseTimestamp(value: unknown): number | null {
@@ -82,7 +83,8 @@ interface ClaudeRecord {
   cwd?: unknown;
   sessionId?: unknown;
   message?: { role?: string; content?: unknown };
-  title?: unknown;
+  aiTitle?: unknown;
+  customTitle?: unknown;
 }
 
 interface ContentBlock {
@@ -150,12 +152,38 @@ function toolResultText(content: unknown): string {
   return '';
 }
 
+// Framework-injected prompt strings (tool/framework output echoed as user
+// text, e.g. slash-command wrappers, shell input, system reminders) are not
+// conversation — never usable as a title.
+const INJECTED_PROMPT_PREFIXES = [
+  '<command-name>', '<bash-input>', '<local-command', '<system-reminder',
+];
+
+function isInjectedPromptText(text: string): boolean {
+  const trimmed = text.trim();
+  return INJECTED_PROMPT_PREFIXES.some((p) => trimmed.startsWith(p));
+}
+
+/** Single-lined, 48-char truncated title form. */
+function oneLineTitle(text: string): string {
+  const oneLine = text.trim().replace(/\s+/g, ' ');
+  return oneLine.length > 48 ? `${oneLine.slice(0, 48)}…` : oneLine;
+}
+
 /** First displayed user message, single-lined, for title fallback. */
 function firstUserText(messages: ExternalSessionMessage[]): string | null {
-  const first = messages.find((m) => m.role === 'user' && m.content.trim() !== '');
+  const first = messages.find(
+    (m) => m.role === 'user' && m.content.trim() !== '' && !isInjectedPromptText(m.content),
+  );
   if (!first) return null;
-  const oneLine = first.content.trim().replace(/\s+/g, ' ');
-  return oneLine.length > 48 ? `${oneLine.slice(0, 48)}…` : oneLine;
+  return oneLineTitle(first.content);
+}
+
+/** First assistant message with text — last-resort title before giving up. */
+function firstAssistantText(messages: ExternalSessionMessage[]): string | null {
+  const first = messages.find((m) => m.role === 'assistant' && m.content.trim() !== '');
+  if (!first) return null;
+  return oneLineTitle(first.content);
 }
 
 // ── Discovery ──────────────────────────────────────────────────────────────────
@@ -168,7 +196,10 @@ interface HeadScan {
 }
 
 /** Bounded head scan: cwd/sessionId/start from the first records, title from
- * a `custom-title`/`ai-title` entry or the first typed prompt. */
+ * `custom-title` (customTitle) / `ai-title` (aiTitle) entries — LAST one wins,
+ * titles can be regenerated mid-session — then the first REAL typed prompt
+ * (framework-injected strings like `<command-name>` wrappers are skipped),
+ * then the first assistant text, else ''. */
 async function scanHead(filePath: string, fs: ClaudeSessionFs): Promise<HeadScan | null> {
   let lines: string[];
   try {
@@ -177,6 +208,10 @@ async function scanHead(filePath: string, fs: ClaudeSessionFs): Promise<HeadScan
     return null; // unreadable head — surfaced as a discovery error by caller
   }
   const scan: HeadScan = { cwd: null, sessionId: null, startedAt: null, title: '' };
+  let aiTitle: string | null = null;
+  let customTitle: string | null = null;
+  let promptFallback: string | null = null;
+  let assistantFallback: string | null = null;
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed === '') continue;
@@ -189,17 +224,35 @@ async function scanHead(filePath: string, fs: ClaudeSessionFs): Promise<HeadScan
     if (scan.cwd === null && typeof record.cwd === 'string') scan.cwd = record.cwd;
     if (scan.sessionId === null && typeof record.sessionId === 'string') scan.sessionId = record.sessionId;
     if (scan.startedAt === null) scan.startedAt = parseTimestamp(record.timestamp);
-    if (scan.title === '' && (record.type === 'custom-title' || record.type === 'ai-title')) {
-      if (typeof record.title === 'string' && record.title !== '') scan.title = record.title;
+    if (record.type === 'ai-title' && typeof record.aiTitle === 'string' && record.aiTitle !== '') {
+      aiTitle = record.aiTitle;
     }
-    if (scan.title === '' && record.type === 'user' && record.isMeta !== true) {
+    if (record.type === 'custom-title' && typeof record.customTitle === 'string' && record.customTitle !== '') {
+      customTitle = record.customTitle;
+    }
+    if (promptFallback === null && record.type === 'user' && record.isMeta !== true) {
       const content = record.message?.content;
-      if (typeof content === 'string' && content.trim() !== '') {
-        const oneLine = content.trim().replace(/\s+/g, ' ');
-        scan.title = oneLine.length > 48 ? `${oneLine.slice(0, 48)}…` : oneLine;
+      if (typeof content === 'string' && content.trim() !== '' && !isInjectedPromptText(content)) {
+        promptFallback = oneLineTitle(content);
       }
     }
+    if (assistantFallback === null && record.type === 'assistant' && record.isSidechain !== true) {
+      const content = record.message?.content;
+      const text =
+        typeof content === 'string'
+          ? content
+          : isBlockArray(content)
+            ? content
+                .map((b) => (b.type === 'text' && typeof b.text === 'string' ? b.text : ''))
+                .join('')
+            : '';
+      if (text.trim() !== '') assistantFallback = oneLineTitle(text);
+    }
   }
+  // custom-title (user-set) > ai-title > first real typed prompt > first
+  // assistant text — prompt/assistant only fill in when NO title record was
+  // found at all.
+  scan.title = customTitle ?? aiTitle ?? promptFallback ?? assistantFallback ?? '';
   return scan;
 }
 
@@ -466,7 +519,8 @@ export async function readClaudeSession(
 ): Promise<ExternalSessionDetail> {
   const text = await fs.readTextFile(summary.filePath);
   const { messages, warnings, firstCwd, firstTimestamp } = parseClaudeTranscript(text);
-  const refinedTitle = summary.title || firstUserText(messages) || summary.sessionId.slice(0, 8);
+  const refinedTitle =
+    summary.title || firstUserText(messages) || firstAssistantText(messages) || summary.sessionId.slice(0, 8);
   return {
     summary: {
       ...summary,

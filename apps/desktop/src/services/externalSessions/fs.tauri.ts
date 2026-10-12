@@ -3,8 +3,10 @@
  *
  * - `tauriSessionFs`: reads local Codex rollout and Claude Code transcript
  *   files through `@tauri-apps/plugin-fs` (read-only — never writes, resumes
- *   or migrates source sessions). `readLines` uses `readTextFileLines` so
- *   bounded head reads do not load whole multi-MB transcripts. Satisfies both
+ *   or migrates source sessions). `readLines` streams chunks through ONE
+ *   `open()`ed FileHandle (line+2MB-byte budget) and closes it explicitly —
+ *   `readTextFileLines`' iterator has no `return()`, so breaking early leaked
+ *   the Rust-side file handle (FD exhaustion after ~256 files). Satisfies both
  *   `CodexSessionFs` and `ClaudeSessionFs` (the superset with `mtime`).
  * - `vaultCapturePort`: binds the CURRENT VaultManager at bind time — the
  *   write goes to the vault the user confirmed, even if the app switches
@@ -13,22 +15,59 @@
  *
  * Thin pass-throughs (no unit tests — mirrors versionHistoryFs.tauri.ts).
  */
-import { exists, readDir, readTextFile, readTextFileLines, stat } from '@tauri-apps/plugin-fs';
+import { exists, open, readDir, readTextFile, stat } from '@tauri-apps/plugin-fs';
 import { useVaultStore } from '@/store/vaultStore';
 import type { ClaudeSessionFs } from './claudeSessions';
 import type { CodexSessionFs } from './codexSessions';
 import type { CaptureWritePort } from './captureService';
 
+/** Head-read byte cap. Real transcripts carry multi-100KB JSONL records (the
+ * first typed prompt can sit ~90KB in), so 64KB was too tight — 2MB covers
+ * every adapter's HEAD_LINES (≤ 80) with room to spare. Bytes past the cap
+ * are a truncated final line, dropped honestly. */
+const HEAD_BYTES = 2 * 1024 * 1024;
+const CHUNK_BYTES = 64 * 1024;
+
 export const tauriSessionFs: ClaudeSessionFs = {
   readLines: async (path, maxLines) => {
-    const iterator = await readTextFileLines(path);
-    const lines: string[] = [];
-    for await (const line of iterator) {
-      lines.push(line);
-      if (lines.length >= maxLines) break;
+    const fh = await open(path); // read-only by default
+    try {
+      const decoder = new TextDecoder('utf-8');
+      const chunk = new Uint8Array(CHUNK_BYTES);
+      const lines: string[] = [];
+      let pending = ''; // partial line carried across chunks
+      let total = 0;
+      let capCut = false;
+      for (;;) {
+        const nread = await fh.read(chunk);
+        if (nread == null || nread === 0) break; // EOF
+        let take = nread;
+        if (total + nread > HEAD_BYTES) {
+          take = HEAD_BYTES - total; // stop exactly at the byte cap
+          capCut = true;
+        }
+        total += take;
+        // stream: true carries a multi-byte sequence split across chunks
+        pending += decoder.decode(chunk.subarray(0, take), { stream: !capCut });
+        let start = 0;
+        for (;;) {
+          const nl = pending.indexOf('\n', start);
+          if (nl === -1) break;
+          lines.push(pending.slice(start, nl).replace(/\r$/, ''));
+          start = nl + 1;
+          if (lines.length >= maxLines) return lines; // finally still closes
+        }
+        pending = pending.slice(start);
+        if (capCut) break;
+      }
+      if (!capCut) {
+        pending += decoder.decode(); // flush a split multi-byte tail at EOF
+        if (pending !== '') lines.push(pending.replace(/\r$/, ''));
+      }
+      return lines; // capCut: the trailing partial line is dropped, not guessed
+    } finally {
+      await fh.close(); // always released, even when maxLines stops early
     }
-    void iterator.return?.(); // release the underlying file handle
-    return lines;
   },
   readTextFile: (path) => readTextFile(path),
   listJsonlFiles: async (dir) => {
