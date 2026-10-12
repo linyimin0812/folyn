@@ -1,0 +1,123 @@
+{
+  "title": "Sesiones",
+  "list": {
+    "refresh": "Actualizar",
+    "searchPlaceholder": "Buscar sesiones o proyectos…",
+    "searchClear": "Borrar búsqueda",
+    "source": "Origen",
+    "allSources": "Todos los orígenes",
+    "unknownProject": "Proyecto desconocido",
+    "loading": "Leyendo sesiones locales…",
+    "empty": "No se encontraron sesiones externas legibles",
+    "sourceError": "Algunos orígenes fallaron al leer: {{errors}}",
+    "all": "Todo"
+  },
+  "detail": {
+    "back": "Volver a la lista",
+    "branch": "Rama",
+    "selectHint": "Usa la casilla junto a un mensaje para incluirlo en una captura",
+    "missingNotice": "La selección tiene {{count}} elementos faltantes; se listarán explícitamente en la captura",
+    "warnings": "Avisos de lectura: {{warnings}}",
+    "saveSelected": "Capturar selección",
+    "selectAllBranch": "Seleccionar rama",
+    "selectAllBranchHint": "Capturar la rama completa (rama actual)",
+    "selectionSummary": "{{messages}} mensajes · {{ranges}} fragmentos de texto seleccionados",
+    "toolEvidence": "Registros de herramientas que se incluirán: {{items}}",
+    "showTools": "Mostrar herramientas"
+  },
+  "range": {
+    "selectText": "Seleccionar texto",
+    "title": "Seleccionar fragmento de texto",
+    "hint": "Arrastra para seleccionar el texto a capturar (solo se captura el texto seleccionado, no el resto del mensaje)",
+    "source": "Texto original del mensaje",
+    "empty": "Todavía no hay texto seleccionado",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "remove": "Quitar este fragmento de texto"
+  },
+  "save": {
+    "success": "Capturado: {{path}}",
+    "incomplete": "Capturado (incompleto, {{count}} elementos faltantes): {{path}}",
+    "exists": "Ya existe un archivo con ese nombre; elige otro",
+    "failed": "Error al capturar: {{error}}",
+    "readFailed": "Error al leer esta conversación: {{error}}",
+    "noVault": "Abre primero un almacén",
+    "vaultOnly": "Las capturas solo se guardan en el almacén actual",
+    "stale": "El origen de la selección ha cambiado ({{ids}}); vuelve a seleccionar y captura de nuevo"
+  },
+  "gen": {
+    "generate": "Organizar con IA",
+    "generating": "Generando una nota organizada…",
+    "cancelGenerate": "Cancelar generación",
+    "noModel": "No hay un modelo de chat utilizable configurado: elige proveedor, modelo y clave de API en los ajustes de servicios de modelos",
+    "tooLarge": "La selección es demasiado grande para el modelo ({{actual}} / límite {{limit}} caracteres); reduce la selección",
+    "unsupportedImage": "El modelo actual {{model}} no admite imágenes o no se puede confirmar (la selección contiene {{count}} imagen(es))",
+    "textOnly": "Organizar solo con texto",
+    "insufficient": "El material seleccionado es insuficiente para una nota útil: selecciona más evidencia",
+    "failed": "Error de generación: {{error}}",
+    "retry": "Reintentar",
+    "dismiss": "Cerrar",
+    "draftTitle": "Nota organizada (editable)",
+    "draftHint": "Al confirmar se guarda esta nota junto con los registros originales y adjuntos seleccionados (paquete de evidencia) en el vault actual",
+    "draftBody": "Contenido de la nota",
+    "saveDraft": "Guardar en el vault",
+    "cancelDraft": "Cancelar"
+  },
+  "nav": {
+    "openSource": "Abrir origen (lee el localizador del portapapeles)",
+    "clipboardNoLocator": "El contenido del portapapeles no es un localizador válido; copia primero el bloque de código folyn-session al final de la nota",
+    "sourceMissing": "La sesión de origen ya no existe; se muestra la copia de evidencia guardada en el momento de la captura",
+    "evidenceUnavailable": "No se pudo leer el paquete de evidencia guardado: {{error}}",
+    "noEvidencePath": "El localizador no incluye la ruta del paquete de evidencia",
+    "changedNotice": "Parte del contenido seleccionado cambió o desapareció desde la captura ({{ids}}); esto es la fuente más reciente y puede diferir de la copia guardada",
+    "branchChanged": "La rama registrada en el momento de la captura ya no existe; se muestra otra rama que puede no coincidir con la copia guardada."
+  },
+  "evidence": {
+    "title": "Copia de evidencia",
+    "capturedAt": "Capturado el",
+    "records": "Registros de origen seleccionados",
+    "excerpt": "Fragmento {{coords}}",
+    "noRawRecords": "(solo el fragmento — no se conservó el mensaje completo)",
+    "assets": "Adjuntos ({{count}})",
+    "unsupported": "Formato de paquete de evidencia no reconocido: {{format}}"
+  },
+  "source": {
+    "codex": "Codex",
+    "claude": "Claude Code",
+    "pi": "pi",
+    "claudeShort": "Claude"
+  },
+  "note": {
+    "provenance": {
+      "source": "Herramienta de origen",
+      "sessionId": "Sesión",
+      "project": "Proyecto",
+      "branch": "Rama",
+      "captureTime": "Capturado",
+      "evidence": "Registros originales y adjuntos"
+    },
+    "completeness": {
+      "complete": "Captura completa (sin material faltante)",
+      "incomplete": "Captura incompleta: {{count}} elementos faltantes (ver abajo)"
+    },
+    "role": {
+      "user": "Usuario",
+      "assistant": "Asistente"
+    },
+    "imageAlt": "imagen adjunta",
+    "toolCall": "Llamada de herramienta",
+    "toolInput": "Entrada",
+    "toolOutput": "Salida",
+    "toolOutputMissing": "(sin resultado en el registro origen)",
+    "missing": {
+      "title": "Elementos faltantes e incompletos",
+      "item": "{{id}} — {{kind}}: {{reason}}",
+      "kind": {
+        "image": "imagen",
+        "tool-output": "resultado de herramienta"
+      }
+    },
+    "unknown": "desconocido",
+    "excerpt": "Fragmento"
+  }
+}

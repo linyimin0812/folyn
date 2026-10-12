@@ -89,6 +89,17 @@ describe('useAppearanceStore setters', () => {
     expect(payload.showAiPanel).toBe(false);
     setSpy.mockRestore();
   });
+
+  it('setEnableSessionsPanel updates state and persists', () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useAppearanceStore.getState().setEnableSessionsPanel(false);
+    expect(useAppearanceStore.getState().enableSessionsPanel).toBe(false);
+    vi.advanceTimersByTime(400);
+    expect(setSpy).toHaveBeenCalled();
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.enableSessionsPanel).toBe(false);
+    setSpy.mockRestore();
+  });
 });
 
 describe('useAppearanceStore.hydrate', () => {
@@ -125,6 +136,11 @@ describe('useAppearanceStore.hydrate', () => {
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(document.documentElement.style.getPropertyValue('--font-ui')).toBe("'Inter', sans-serif");
     expect(document.documentElement.style.getPropertyValue('--ui-font-size')).toBe('22px');
+  });
+
+  it('applies enableSessionsPanel from the blob', () => {
+    useAppearanceStore.getState().hydrate({ enableSessionsPanel: false });
+    expect(useAppearanceStore.getState().enableSessionsPanel).toBe(false);
   });
 
   it('missing fields keep defaults', () => {

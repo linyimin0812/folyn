@@ -69,6 +69,10 @@
         "label": "Aktivitätsbereich",
         "description": "Aktivitätserfassung: Chronik, Metriken, Entitätsgraph und Berichte"
       },
+      "sessions": {
+        "label": "KI-Sitzungssammlung",
+        "description": "Lokale Codex-, Claude-Code- und pi-Sitzungen durchsuchen und erfassen"
+      },
       "tray": {
         "label": "Tray-Icon anzeigen",
         "description": "App-Icon im System-Tray anzeigen; Klick für dasselbe Schnellaktionsmenü wie das Pet-Rechtsklickmenü"

@@ -1,0 +1,123 @@
+{
+  "title": "会话",
+  "list": {
+    "refresh": "刷新",
+    "searchPlaceholder": "搜索会话或项目…",
+    "searchClear": "清空搜索",
+    "source": "来源",
+    "allSources": "全部来源",
+    "unknownProject": "未知项目",
+    "loading": "正在读取本地会话…",
+    "empty": "未发现可读取的外部会话",
+    "sourceError": "部分来源读取失败：{{errors}}",
+    "all": "全部"
+  },
+  "detail": {
+    "back": "返回列表",
+    "branch": "分支",
+    "selectHint": "点击消息右侧的方框选择要收录的内容",
+    "missingNotice": "所选内容含 {{count}} 项缺失素材，收录时将明确标注",
+    "warnings": "读取警告：{{warnings}}",
+    "saveSelected": "收录所选",
+    "selectAllBranch": "全选分支",
+    "selectAllBranchHint": "收录整条分支（仅当前分支）",
+    "selectionSummary": "已选 {{messages}} 条消息 · {{ranges}} 段文字",
+    "toolEvidence": "将一并收录的工具记录：{{items}}",
+    "showTools": "显示工具"
+  },
+  "range": {
+    "selectText": "选择文字",
+    "title": "选择文字片段",
+    "hint": "在原文中拖选要收录的文字（仅收录所选文字，不含消息其余内容）",
+    "source": "消息原文",
+    "empty": "尚未选择文字",
+    "confirm": "确定",
+    "cancel": "取消",
+    "remove": "移除该文字片段"
+  },
+  "save": {
+    "success": "已收录：{{path}}",
+    "incomplete": "已收录（不完整，缺失 {{count}} 项）：{{path}}",
+    "exists": "已存在同名文件，请更换文件名",
+    "failed": "收录失败：{{error}}",
+    "readFailed": "读取会话失败：{{error}}",
+    "noVault": "请先打开一个知识库",
+    "vaultOnly": "收录仅支持保存到当前知识库",
+    "stale": "所选内容的来源已变化（{{ids}}），请重新选择后再收录"
+  },
+  "gen": {
+    "generate": "AI 整理",
+    "generating": "正在生成整理笔记…",
+    "cancelGenerate": "取消生成",
+    "noModel": "尚未配置可用的聊天模型，请先在模型服务设置中选择 provider、model 并填写密钥",
+    "tooLarge": "所选内容过大（{{actual}} / 上限 {{limit}} 字符），请缩小选择范围",
+    "unsupportedImage": "当前模型 {{model}} 不支持或无法确认支持图片输入（所选含 {{count}} 张图片）",
+    "textOnly": "仅用文字整理",
+    "insufficient": "所选内容信息不足，难以整理出有价值的笔记，请补充选择更多素材",
+    "failed": "生成失败：{{error}}",
+    "retry": "重试",
+    "dismiss": "关闭",
+    "draftTitle": "整理笔记（可编辑）",
+    "draftHint": "确认保存时将连同所选原文副本与附件（证据包）一并写入当前知识库",
+    "draftBody": "笔记内容",
+    "saveDraft": "保存到知识库",
+    "cancelDraft": "取消"
+  },
+  "nav": {
+    "openSource": "打开来源（读取剪贴板中的定位信息）",
+    "clipboardNoLocator": "剪贴板内容不是有效的来源定位；请先复制笔记末尾 folyn-session 代码块",
+    "sourceMissing": "来源会话已不存在，已打开收录时保存的证据副本",
+    "evidenceUnavailable": "无法读取收录时的证据副本：{{error}}",
+    "noEvidencePath": "定位信息中未包含证据包路径",
+    "changedNotice": "部分所选内容自采集后已变化或缺失（{{ids}}）；当前显示为最新来源，未必与收录副本一致",
+    "branchChanged": "收录时所在的分支已不存在；当前显示的是其他分支，未必与收录副本一致"
+  },
+  "evidence": {
+    "title": "证据副本",
+    "capturedAt": "采集时间",
+    "records": "所选原始记录",
+    "excerpt": "节选 {{coords}}",
+    "noRawRecords": "（仅保留节选，未保存整条消息原文）",
+    "assets": "附件（{{count}}）",
+    "unsupported": "无法识别的证据包格式：{{format}}"
+  },
+  "source": {
+    "codex": "Codex",
+    "claude": "Claude Code",
+    "pi": "pi",
+    "claudeShort": "Claude"
+  },
+  "note": {
+    "provenance": {
+      "source": "来源工具",
+      "sessionId": "会话",
+      "project": "项目",
+      "branch": "分支",
+      "captureTime": "采集时间",
+      "evidence": "原始记录与附件"
+    },
+    "completeness": {
+      "complete": "完整收录（未发现缺失素材）",
+      "incomplete": "不完整收录：{{count}} 项缺失（见下方说明）"
+    },
+    "role": {
+      "user": "用户",
+      "assistant": "助手"
+    },
+    "imageAlt": "附件图片",
+    "toolCall": "工具调用",
+    "toolInput": "输入",
+    "toolOutput": "输出",
+    "toolOutputMissing": "（源记录中无结果）",
+    "missing": {
+      "title": "缺失与不完整项",
+      "item": "{{id}} — {{kind}}：{{reason}}",
+      "kind": {
+        "image": "图片",
+        "tool-output": "工具结果"
+      }
+    },
+    "unknown": "未知",
+    "excerpt": "节选"
+  }
+}

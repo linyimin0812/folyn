@@ -99,6 +99,7 @@ export const PetPanelSearchResults = forwardRef<
   // (neither of its two rows).
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const enableActivityPanel = useAppearanceStore((s) => s.enableActivityPanel);
+  const enableSessionsPanel = useAppearanceStore((s) => s.enableSessionsPanel);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Vault files, ALL types (PRD 09-19-pet-search-all-files) — the tree the
@@ -186,6 +187,14 @@ export const PetPanelSearchResults = forwardRef<
             r.builtin &&
             r.entry.id === 'builtin:activity' &&
             !enableActivityPanel
+          ) {
+            return false;
+          }
+          // Same gate for the sessions panel.
+          if (
+            r.builtin &&
+            r.entry.id === 'builtin:sessions' &&
+            !enableSessionsPanel
           ) {
             return false;
           }

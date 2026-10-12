@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, ListTodo, Copy, X } from 'lucide-react';
+import { Send, ListTodo, Copy, X, TextSelect } from 'lucide-react';
 import type { CliMessage } from '@folyn/cli-adapter';
 import { isTauri } from '@/utils/platform';
 import { MessageContent } from './MessageContent';
@@ -28,6 +28,11 @@ export interface ChatMessageListProps {
    *  the clipboard; Save opens the save dialog. */
   onBatchCopy?: () => void;
   onBatchSave?: () => void;
+  /** Per-message text-range affordance (multi-select mode only): renders a
+   *  "选择文字" button on each message row with content. The consumer owns
+   *  the range UI (e.g. an excerpt picker) — the shared component only
+   *  reports which message the user wants to select text in. */
+  onEnterTextSelect?: (msg: CliMessage) => void;
   /** Plaintext rendering path for assistant messages (pet chat). When true,
    *  the markdown pipeline is skipped and `msg.content` is rendered as-is.
    *  Defaults to false (markdown, AiPanel path). */
@@ -210,7 +215,9 @@ function SelectToggleButton({
   return (
     <button
       type="button"
-      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors"
+      className={`inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
+        selected ? 'text-acc hover:bg-accdim' : 'text-t3 hover:bg-hov hover:text-t1'
+      }`}
       onClick={() => onToggle(msg.id)}
       aria-label={selected ? '取消选中' : '选中'}
       aria-pressed={selected}
@@ -230,6 +237,39 @@ function SelectToggleButton({
   );
 }
 
+/** Selection marker: a thin accent bar directly below a selected message's
+ *  content column (NOT spanning the select-toggle gutter). The slot renders
+ *  with a stable height whenever multi-select mode is on, so toggling a
+ *  selection never shifts the list — transparent when unselected. */
+function SelectMarkerBar({ selected }: { selected: boolean }) {
+  return (
+    <div
+      data-testid="msg-select-bar"
+      className={`w-full h-[2px] my-[2px] rounded-full transition-colors duration-[120ms] ${
+        selected ? 'bg-accdim' : 'bg-transparent'
+      }`}
+    />
+  );
+}
+
+function TextSelectButton({ msg, onClick }: { msg: CliMessage; onClick: (msg: CliMessage) => void }) {
+  // The affordance is sessions-panel UX — the key lives in the sessions
+  // namespace; every locale registers it (see apps/desktop/src/i18n/index.ts).
+  const { t } = useTranslation();
+  const label = t('sessions:range.selectText');
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors"
+      onClick={() => onClick(msg)}
+      aria-label={label}
+      title={label}
+    >
+      <TextSelect size={14} />
+    </button>
+  );
+}
+
 function MultiSelectToolbar({
   count,
   onCopy,
@@ -243,13 +283,13 @@ function MultiSelectToolbar({
 }) {
   const btn = 'inline-flex items-center justify-center w-7 h-7 rounded-md text-t3 hover:bg-hov hover:text-t1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
   return (
-    <div className="self-center mt-1 mb-1 inline-flex items-center justify-between gap-2 py-1 px-2 border border-brd rounded-md bg-surf">
-      <span className="text-[11px] text-t2 whitespace-nowrap">已选 {count} 条</span>
+    <div className="self-center mt-1 mb-1 inline-flex items-center justify-between gap-2.5 py-1 px-2.5 border border-brd rounded-lg bg-panel shadow-[0_4px_12px_rgba(0,0,0,.15)]">
+      <span className="text-[11px] text-t1 font-medium whitespace-nowrap">已选 {count} 条</span>
       <div className="flex gap-0.5">
         <button type="button" className={btn} onClick={onCopy} disabled={count === 0} aria-label="复制已选" title="复制已选">
           <Copy size={14} />
         </button>
-        <button type="button" className={btn} onClick={onSave} disabled={count === 0} aria-label="保存已选" title="保存已选">
+        <button type="button" className={`${btn} text-acc hover:bg-accdim hover:text-acc`} onClick={onSave} disabled={count === 0} aria-label="保存已选" title="保存已选">
           <Send size={14} />
         </button>
         <button type="button" className={btn} onClick={onClose} aria-label="退出多选" title="退出多选">
@@ -306,6 +346,7 @@ function DefaultMessageRow({
   onEnterMultiSelect,
   selectedIds,
   onToggleSelect,
+  onEnterTextSelect,
 }: {
   msg: CliMessage;
   isLast: boolean;
@@ -323,6 +364,7 @@ function DefaultMessageRow({
   onEnterMultiSelect?: () => void;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  onEnterTextSelect?: (msg: CliMessage) => void;
 }) {
   const isAssistant = msg.role === 'assistant';
   // Per-bubble cursor on the last assistant msg while streaming, for any
@@ -335,17 +377,31 @@ function DefaultMessageRow({
   //    meta at the bottom-right. Multi-line input preserved via pre-wrap. ──
   if (!isAssistant) {
     const userSelected = selectedIds?.has(msg.id) ?? false;
+    const showUserMarker = Boolean(multiSelectMode && onToggleSelect);
     return (
       <div className="chat-msg-row justify-end">
-        <div className="chat-msg-bubble chat-msg-bubble-user">
-          <AttachmentsRow msg={msg} />
-          <div className="chat-msg-user-text">{msg.content}</div>
-          {msg.timestamp ? (
-            <div className="chat-msg-user-meta">{formatTimestamp(msg.timestamp)}</div>
-          ) : null}
+        {/* Column wrapper so the marker bar sits BELOW the bubble (matching
+            its width) instead of beside it; max-w mirrors the bubble's own
+            88% cap so long messages keep their shape. */}
+        <div className="flex flex-col items-end max-w-[88%]">
+          <div
+            className={`chat-msg-bubble chat-msg-bubble-user transition-shadow duration-[120ms]${
+              userSelected ? ' shadow-[inset_0_0_0_1.5px_rgba(255,255,255,.85)]' : ''
+            }`}
+          >
+            <AttachmentsRow msg={msg} />
+            <div className="chat-msg-user-text">{msg.content}</div>
+            {msg.timestamp ? (
+              <div className="chat-msg-user-meta">{formatTimestamp(msg.timestamp)}</div>
+            ) : null}
+          </div>
+          {showUserMarker && <SelectMarkerBar selected={userSelected} />}
         </div>
         {multiSelectMode && onToggleSelect && (
           <SelectToggleButton msg={msg} selected={userSelected} onToggle={onToggleSelect} />
+        )}
+        {multiSelectMode && onEnterTextSelect && msg.content && (
+          <TextSelectButton msg={msg} onClick={onEnterTextSelect} />
         )}
       </div>
     );
@@ -355,6 +411,7 @@ function DefaultMessageRow({
   //    as a small meta line above it; copy / save actions on hover. ──
   const hasActions = Boolean(msg.content) && (showCopy || onSaveToFile || onEnterMultiSelect);
   const selected = selectedIds?.has(msg.id) ?? false;
+  const showAiMarker = Boolean(multiSelectMode && onToggleSelect);
   return (
     <div className="chat-msg-row">
       <div className="flex flex-col flex-1 min-w-0">
@@ -363,7 +420,15 @@ function DefaultMessageRow({
             {renderPairTag(msg)}
           </span>
         ) : null}
-        <div className="chat-msg-bubble chat-msg-bubble-ai">
+        {/* Selected state: accent inner ring + translucent accent fill (both
+            box-shadows, so the `.chat-msg-bubble-ai` border/background CSS
+            keeps winning where they overlap). The checked toggle icon is the
+            non-color cue. */}
+        <div
+          className={`chat-msg-bubble chat-msg-bubble-ai transition-shadow duration-[120ms]${
+            selected ? ' shadow-[inset_0_0_0_1.5px_var(--acc),inset_0_0_0_999px_var(--accglow)]' : ''
+          }`}
+        >
 
         {msg.thinking && (
           <details className="msg-thinking" open={streaming && isLast}>
@@ -401,9 +466,15 @@ function DefaultMessageRow({
           </div>
         )}
         </div>
+        {/* Marker bar spans the content column only (the flex-1 wrapper), not
+            the select-toggle gutter on the row's right edge. */}
+        {showAiMarker && <SelectMarkerBar selected={selected} />}
       </div>
       {multiSelectMode && onToggleSelect && (
         <SelectToggleButton msg={msg} selected={selected} onToggle={onToggleSelect} />
+      )}
+      {multiSelectMode && onEnterTextSelect && msg.content && (
+        <TextSelectButton msg={msg} onClick={onEnterTextSelect} />
       )}
     </div>
   );
@@ -431,6 +502,7 @@ export function ChatMessageList({
   onToggleSelect,
   onBatchCopy,
   onBatchSave,
+  onEnterTextSelect,
   className,
 }: ChatMessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -500,6 +572,7 @@ export function ChatMessageList({
             onEnterMultiSelect={onEnterMultiSelect}
             selectedIds={selectedIds}
             onToggleSelect={onToggleSelect}
+            onEnterTextSelect={onEnterTextSelect}
           />
         );
       })}

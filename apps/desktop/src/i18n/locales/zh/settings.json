@@ -65,6 +65,10 @@
         "label": "活动面板",
         "description": "活动采集：时间线、指标、实体图谱与报告"
       },
+      "sessions": {
+        "label": "AI会话收集",
+        "description": "浏览与收录本机 Codex、Claude Code、pi 会话"
+      },
       "translation": {
         "label": "翻译面板",
         "description": "双栏翻译（原文 → 译文），可选翻译模型"

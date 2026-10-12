@@ -1,0 +1,123 @@
+{
+  "title": "Sessions",
+  "list": {
+    "refresh": "Rafraîchir",
+    "searchPlaceholder": "Rechercher des sessions ou des projets…",
+    "searchClear": "Effacer la recherche",
+    "source": "Source",
+    "allSources": "Toutes les sources",
+    "unknownProject": "Projet inconnu",
+    "loading": "Lecture des sessions locales…",
+    "empty": "Aucune session externe lisible trouvée",
+    "sourceError": "Certaines sources n'ont pas pu être lues : {{errors}}",
+    "all": "Tout"
+  },
+  "detail": {
+    "back": "Retour à la liste",
+    "branch": "Branche",
+    "selectHint": "Utilisez la case à cocher d'un message pour l'inclure dans une capture",
+    "missingNotice": "La sélection contient {{count}} éléments manquants ; ils seront listés explicitement dans la capture",
+    "warnings": "Avertissements de lecture : {{warnings}}",
+    "saveSelected": "Capturer la sélection",
+    "selectAllBranch": "Sélectionner la branche",
+    "selectAllBranchHint": "Capturer toute la branche (branche actuelle)",
+    "selectionSummary": "{{messages}} messages · {{ranges}} extraits de texte sélectionnés",
+    "toolEvidence": "Enregistrements d'outils inclus : {{items}}",
+    "showTools": "Afficher les outils"
+  },
+  "range": {
+    "selectText": "Sélectionner du texte",
+    "title": "Sélectionner un extrait de texte",
+    "hint": "Sélectionnez par glissement le texte à capturer (seul le texte sélectionné est capturé, pas le reste du message)",
+    "source": "Texte original du message",
+    "empty": "Aucun texte sélectionné pour le moment",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "remove": "Retirer cet extrait de texte"
+  },
+  "save": {
+    "success": "Capturé : {{path}}",
+    "incomplete": "Capturé (incomplet, {{count}} éléments manquants) : {{path}}",
+    "exists": "Un fichier portant ce nom existe déjà — choisissez-en un autre",
+    "failed": "Échec de la capture : {{error}}",
+    "readFailed": "Échec de lecture de la conversation : {{error}}",
+    "noVault": "Ouvrez d'abord un coffre",
+    "vaultOnly": "Les captures sont enregistrées uniquement dans le coffre actuel",
+    "stale": "La source de la sélection a changé ({{ids}}) ; sélectionnez à nouveau puis capturez"
+  },
+  "gen": {
+    "generate": "Organiser avec l'IA",
+    "generating": "Génération d'une note organisée…",
+    "cancelGenerate": "Annuler la génération",
+    "noModel": "Aucun modèle de chat utilisable n'est configuré — choisissez d'abord un fournisseur, un modèle et une clé API dans les paramètres des services de modèles",
+    "tooLarge": "La sélection est trop volumineuse pour le modèle ({{actual}} / limite {{limit}} caractères) ; réduisez la sélection",
+    "unsupportedImage": "Le modèle actuel {{model}} ne prend pas en charge les images en entrée, ou sa capacité est inconnue (la sélection contient {{count}} image(s))",
+    "textOnly": "Organiser en texte seul",
+    "insufficient": "Le matériel sélectionné est insuffisant pour une note utile — sélectionnez davantage de preuves",
+    "failed": "Échec de la génération : {{error}}",
+    "retry": "Réessayer",
+    "dismiss": "Fermer",
+    "draftTitle": "Note organisée (modifiable)",
+    "draftHint": "La confirmation enregistre cette note avec les enregistrements et pièces jointes sélectionnés (paquet de preuves) dans le vault actuel",
+    "draftBody": "Contenu de la note",
+    "saveDraft": "Enregistrer dans le vault",
+    "cancelDraft": "Annuler"
+  },
+  "nav": {
+    "openSource": "Ouvrir la source (lit le localisateur depuis le presse-papiers)",
+    "clipboardNoLocator": "Le contenu du presse-papiers n'est pas un localisateur valide ; copiez d'abord le bloc de code folyn-session à la fin de la note",
+    "sourceMissing": "La session source n'existe plus ; la copie de preuve enregistrée au moment de la capture est affichée",
+    "evidenceUnavailable": "Impossible de lire le paquet de preuves enregistré : {{error}}",
+    "noEvidencePath": "Le localisateur ne contient pas le chemin du paquet de preuves",
+    "changedNotice": "Une partie du contenu sélectionné a changé ou disparu depuis la capture ({{ids}}) ; ceci est la source la plus récente, qui peut différer de la copie enregistrée",
+    "branchChanged": "La branche enregistrée lors de la capture n'existe plus ; une autre branche est affichée et peut ne pas correspondre à la copie enregistrée."
+  },
+  "evidence": {
+    "title": "Copie de preuve",
+    "capturedAt": "Capturé le",
+    "records": "Enregistrements sources sélectionnés",
+    "excerpt": "Extrait {{coords}}",
+    "noRawRecords": "(extrait uniquement — le message complet n’a pas été conservé)",
+    "assets": "Pièces jointes ({{count}})",
+    "unsupported": "Format de paquet de preuves non reconnu : {{format}}"
+  },
+  "source": {
+    "codex": "Codex",
+    "claude": "Claude Code",
+    "pi": "pi",
+    "claudeShort": "Claude"
+  },
+  "note": {
+    "provenance": {
+      "source": "Outil source",
+      "sessionId": "Session",
+      "project": "Projet",
+      "branch": "Branche",
+      "captureTime": "Capturé le",
+      "evidence": "Enregistrements originaux et pièces jointes"
+    },
+    "completeness": {
+      "complete": "Capture complète (aucun élément manquant)",
+      "incomplete": "Capture incomplète : {{count}} éléments manquants (voir ci-dessous)"
+    },
+    "role": {
+      "user": "Utilisateur",
+      "assistant": "Assistant"
+    },
+    "imageAlt": "image jointe",
+    "toolCall": "Appel d'outil",
+    "toolInput": "Entrée",
+    "toolOutput": "Sortie",
+    "toolOutputMissing": "(aucun résultat dans l'enregistrement source)",
+    "missing": {
+      "title": "Éléments manquants et incomplets",
+      "item": "{{id}} — {{kind}} : {{reason}}",
+      "kind": {
+        "image": "image",
+        "tool-output": "résultat d'outil"
+      }
+    },
+    "unknown": "inconnu",
+    "excerpt": "Extrait"
+  }
+}

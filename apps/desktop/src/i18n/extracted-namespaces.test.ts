@@ -29,7 +29,15 @@ import enRustErrors from './locales/en/rustErrors.json';
 import zhPet from './locales/zh/pet.json';
 import enPet from './locales/en/pet.json';
 import zhMarkmap from './locales/zh/markmap.json';
+import zhActivity from './locales/zh/activity.json';
+import zhSessions from './locales/zh/sessions.json';
+import zhTerminal from './locales/zh/terminal.json';
+import zhBrowser from './locales/zh/browser.json';
 import enMarkmap from './locales/en/markmap.json';
+import enActivity from './locales/en/activity.json';
+import enSessions from './locales/en/sessions.json';
+import enTerminal from './locales/en/terminal.json';
+import enBrowser from './locales/en/browser.json';
 
 const zhBundles = {
   common: zhCommon,
@@ -44,6 +52,10 @@ const zhBundles = {
   rustErrors: zhRustErrors,
   pet: zhPet,
   markmap: zhMarkmap,
+  activity: zhActivity,
+  sessions: zhSessions,
+  terminal: zhTerminal,
+  browser: zhBrowser,
 } as const;
 
 const enBundles = {
@@ -59,6 +71,10 @@ const enBundles = {
   rustErrors: enRustErrors,
   pet: enPet,
   markmap: enMarkmap,
+  activity: enActivity,
+  sessions: enSessions,
+  terminal: enTerminal,
+  browser: enBrowser,
 } as const;
 
 /** Recursively collect the tree of object keys (paths joined by '.'). */

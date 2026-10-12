@@ -244,6 +244,48 @@ describe('ChatMessageList', () => {
     render(<ChatMessageList messages={messages} streaming={false} />);
     expect(screen.queryByTestId('msg-pair-tag')).toBeNull();
   });
+
+  // Selection marker bar: stable transparent slot on EVERY row in
+  // multi-select mode; visible (accent) only under selected messages.
+  it('multi-select renders a selection marker bar under selected messages only', () => {
+    const messages: CliMessage[] = [
+      mkMsg({ id: 'u1', role: 'user', content: 'hi' }),
+      mkMsg({ id: 'a1', role: 'assistant', content: 'reply' }),
+    ];
+    const onToggle = vi.fn();
+    const { container, rerender } = render(
+      <ChatMessageList
+        messages={messages}
+        streaming={false}
+        multiSelectMode
+        onToggleSelect={onToggle}
+        selectedIds={new Set(['a1'])}
+      />,
+    );
+    // stable slot on both rows (user + assistant) — no layout jump on toggle
+    expect(container.querySelectorAll('[data-testid="msg-select-bar"]')).toHaveLength(2);
+    // only the selected assistant message shows the accent bar
+    expect(container.querySelectorAll('[data-testid="msg-select-bar"].bg-accdim')).toHaveLength(1);
+
+    rerender(
+      <ChatMessageList
+        messages={messages}
+        streaming={false}
+        multiSelectMode
+        onToggleSelect={onToggle}
+        selectedIds={new Set(['u1', 'a1'])}
+      />,
+    );
+    expect(container.querySelectorAll('[data-testid="msg-select-bar"].bg-accdim')).toHaveLength(2);
+  });
+
+  it('selection marker bar slots are absent outside multi-select mode', () => {
+    const messages: CliMessage[] = [mkMsg({ id: 'a1', role: 'assistant', content: 'x' })];
+    const { container } = render(
+      <ChatMessageList messages={messages} streaming={false} selectedIds={new Set(['a1'])} />,
+    );
+    expect(container.querySelectorAll('[data-testid="msg-select-bar"]')).toHaveLength(0);
+  });
 });
 
 /** Tiny helper: pull the first call's first argument off a vi.fn (avoids the

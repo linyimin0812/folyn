@@ -1,6 +1,6 @@
 /**
  * Shared contract for external-session knowledge capture (Trellis task
- * 10-10-external-session-knowledge, slice 1).
+ * 10-10-external-session-knowledge, slices 1-4).
  *
  * Two layers, kept strictly separate:
  *  - `ExternalSessionMessage` — the DISPLAY projection (what the Sessions
@@ -9,13 +9,15 @@
  *    back a message. Evidence captures copy these; `CliMessage` is NOT a
  *    lossless archive format.
  *
- * Slice 1 ships the Codex adapter only; `ExternalSessionSource` grows with
- * the Claude Code (slice 2) and pi (slice 3) adapters without changing the
- * list/detail/capture contracts below.
+ * Slices 1-3 ship the Codex, Claude Code and pi adapters. Slice 3 adds the
+ * branch projection: pi records form a parent-child tree; the detail carries
+ * the projected messages of ONE branch plus the branch list to switch to.
+ * Slice 4 adds text-range selection: one contiguous excerpt inside a single
+ * message, identified by coordinates against the message's canonical text.
  */
 
 /** Source tools with locally persisted, readable session records. */
-export type ExternalSessionSource = 'codex';
+export type ExternalSessionSource = 'codex' | 'claude' | 'pi';
 
 export interface ExternalSessionSummary {
   source: ExternalSessionSource;
@@ -75,9 +77,47 @@ export interface ExternalSessionMessage {
   rawToolRecords: string[];
 }
 
+/** One branch of a session's parent-child record tree (slice 3, pi).
+ * `id` is stable source identity (the branch-tip record id); `label` is a
+ * human fallback (first words of the branch's first user message). */
+export interface ExternalSessionBranch {
+  id: string;
+  label: string;
+}
+
+/** Branch info for linear (single-branch) sources — Codex/Claude Code store
+ * one branch per physical file, so they report this trivial branch and the
+ * UI contract stays uniform across sources. */
+export const LINEAR_BRANCH: { currentId: string; all: ExternalSessionBranch[] } = {
+  currentId: 'main',
+  all: [{ id: 'main', label: '' }],
+};
+
+/** One contiguous verbatim text excerpt selected inside a single message
+ * (slice 4). Coordinates are half-open [start, end) against the message's
+ * CANONICAL TEXT — `ExternalSessionMessage.content`, the concatenated
+ * verbatim text parts of the source record. The definition is uniform across
+ * all three adapters, so coordinates reproduce the same slice everywhere.
+ *
+ * v1 model: one range per message. A range contributes ONLY that text: the
+ * rest of the message, its images and its tool records stay OUT of the
+ * capture (selecting text does not authorize the rest of the message). */
+export interface TextRangeSelection {
+  messageId: string;
+  start: number;
+  end: number;
+}
+
 export interface ExternalSessionDetail {
   summary: ExternalSessionSummary;
   messages: ExternalSessionMessage[];
   /** Session-level problems (unparsable lines, trailing incomplete record). */
   warnings: string[];
+  /** Branch projection (slice 3): which branch `messages` belongs to and the
+   * branches the user can switch to. Selected evidence always comes from the
+   * current branch — other branches are never silently included. */
+  branch: {
+    currentId: string;
+    all: ExternalSessionBranch[];
+  };
 }

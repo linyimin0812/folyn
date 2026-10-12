@@ -1,0 +1,123 @@
+{
+  "title": "Sitzungen",
+  "list": {
+    "refresh": "Aktualisieren",
+    "searchPlaceholder": "Sitzungen oder Projekte suchen…",
+    "searchClear": "Suche löschen",
+    "source": "Quelle",
+    "allSources": "Alle Quellen",
+    "unknownProject": "Unbekanntes Projekt",
+    "loading": "Lokale Sitzungen werden gelesen…",
+    "empty": "Keine lesbaren externen Sitzungen gefunden",
+    "sourceError": "Einige Quellen konnten nicht gelesen werden: {{errors}}",
+    "all": "Alle"
+  },
+  "detail": {
+    "back": "Zurück zur Liste",
+    "branch": "Branch",
+    "selectHint": "Mit dem Kontrollkästchen neben einer Nachricht nimmst du sie in eine Erfassung auf",
+    "missingNotice": "Die Auswahl enthält {{count}} fehlende Elemente; sie werden in der Erfassung ausdrücklich aufgeführt",
+    "warnings": "Lesehinweise: {{warnings}}",
+    "saveSelected": "Auswahl erfassen",
+    "selectAllBranch": "Branch auswählen",
+    "selectAllBranchHint": "Gesamten Branch erfassen (aktueller Branch)",
+    "selectionSummary": "{{messages}} Nachrichten · {{ranges}} Textauszüge ausgewählt",
+    "toolEvidence": "Mit erfasste Werkzeugaufzeichnungen: {{items}}",
+    "showTools": "Werkzeuge anzeigen"
+  },
+  "range": {
+    "selectText": "Text auswählen",
+    "title": "Textauszug auswählen",
+    "hint": "Markiere den zu erfassenden Text durch Ziehen (nur der markierte Text wird erfasst, nicht der Rest der Nachricht)",
+    "source": "Originaltext der Nachricht",
+    "empty": "Noch kein Text ausgewählt",
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen",
+    "remove": "Diesen Textauszug entfernen"
+  },
+  "save": {
+    "success": "Erfasst: {{path}}",
+    "incomplete": "Erfasst (unvollständig, {{count}} fehlende Elemente): {{path}}",
+    "exists": "Eine Datei mit diesem Namen existiert bereits — wähle einen anderen",
+    "failed": "Erfassung fehlgeschlagen: {{error}}",
+    "readFailed": "Unterhaltung konnte nicht gelesen werden: {{error}}",
+    "noVault": "Zuerst einen Tresor öffnen",
+    "vaultOnly": "Erfassungen werden nur im aktuellen Tresor gespeichert",
+    "stale": "Die Quelle der Auswahl hat sich geändert ({{ids}}); bitte neu auswählen und erneut erfassen"
+  },
+  "gen": {
+    "generate": "Mit KI ordnen",
+    "generating": "Notiz wird erstellt…",
+    "cancelGenerate": "Erstellung abbrechen",
+    "noModel": "Kein nutzbares Chat-Modell konfiguriert — wähle zuerst Provider, Modell und API-Schlüssel in den Modell-Dienst-Einstellungen",
+    "tooLarge": "Die Auswahl ist zu groß für das Modell ({{actual}} / Limit {{limit}} Zeichen); verkleinere die Auswahl",
+    "unsupportedImage": "Das aktuelle Modell {{model}} unterstützt keine Bildeingabe oder es ist unbekannt (die Auswahl enthält {{count}} Bild(er))",
+    "textOnly": "Nur mit Text ordnen",
+    "insufficient": "Das ausgewählte Material reicht für eine nützliche Notiz nicht aus — wähle mehr Belege aus",
+    "failed": "Erstellung fehlgeschlagen: {{error}}",
+    "retry": "Erneut versuchen",
+    "dismiss": "Schließen",
+    "draftTitle": "Ordnungsnotiz (editierbar)",
+    "draftHint": "Beim Bestätigen wird diese Notiz zusammen mit den ausgewählten Originalaufzeichnungen und Anhängen (Evidenzpaket) in den aktuellen Vault geschrieben",
+    "draftBody": "Notizinhalt",
+    "saveDraft": "In Vault speichern",
+    "cancelDraft": "Abbrechen"
+  },
+  "nav": {
+    "openSource": "Quelle öffnen (liest den Quellenverweis aus der Zwischenablage)",
+    "clipboardNoLocator": "Der Inhalt der Zwischenablage ist kein gültiger Quellenverweis; kopiere zuerst den folyn-session-Codeblock am Ende der Notiz",
+    "sourceMissing": "Die Quellsitzung existiert nicht mehr; die zum Erfassungszeitpunkt gespeicherte Beweiskopie wird angezeigt",
+    "evidenceUnavailable": "Das gespeicherte Beweispaket konnte nicht gelesen werden: {{error}}",
+    "noEvidencePath": "Der Quellenverweis enthält keinen Pfad zum Beweispaket",
+    "changedNotice": "Teile des ausgewählten Inhalts haben sich seit der Erfassung geändert oder fehlen ({{ids}}); dies ist die aktuelle Quelle, die von der gespeicherten Kopie abweichen kann",
+    "branchChanged": "Der zum Erfassungszeitpunkt aufgezeichnete Zweig existiert nicht mehr; es wird ein anderer Zweig angezeigt, der nicht mit der gespeicherten Kopie übereinstimmen muss."
+  },
+  "evidence": {
+    "title": "Beweiskopie",
+    "capturedAt": "Erfasst am",
+    "records": "Ausgewählte Quellaufzeichnungen",
+    "excerpt": "Auszug {{coords}}",
+    "noRawRecords": "(nur der Auszug — die vollständige Nachricht wurde nicht gespeichert)",
+    "assets": "Anhänge ({{count}})",
+    "unsupported": "Unbekanntes Beweispaket-Format: {{format}}"
+  },
+  "source": {
+    "codex": "Codex",
+    "claude": "Claude Code",
+    "pi": "pi",
+    "claudeShort": "Claude"
+  },
+  "note": {
+    "provenance": {
+      "source": "Quell-Tool",
+      "sessionId": "Sitzung",
+      "project": "Projekt",
+      "branch": "Branch",
+      "captureTime": "Erfasst am",
+      "evidence": "Originale Aufzeichnungen & Anhänge"
+    },
+    "completeness": {
+      "complete": "Vollständige Erfassung (kein fehlendes Material)",
+      "incomplete": "Unvollständige Erfassung: {{count}} fehlende Elemente (siehe unten)"
+    },
+    "role": {
+      "user": "Benutzer",
+      "assistant": "Assistent"
+    },
+    "imageAlt": "Anhangbild",
+    "toolCall": "Werkzeugaufruf",
+    "toolInput": "Eingabe",
+    "toolOutput": "Ausgabe",
+    "toolOutputMissing": "(kein Ergebnis im Quell-Datensatz)",
+    "missing": {
+      "title": "Fehlende und unvollständige Elemente",
+      "item": "{{id}} — {{kind}}: {{reason}}",
+      "kind": {
+        "image": "Bild",
+        "tool-output": "Werkzeugergebnis"
+      }
+    },
+    "unknown": "unbekannt",
+    "excerpt": "Auszug"
+  }
+}

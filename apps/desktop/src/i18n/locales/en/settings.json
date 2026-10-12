@@ -65,6 +65,10 @@
         "label": "Activity panel",
         "description": "Activity collection: timeline, metrics, entity graph and reports"
       },
+      "sessions": {
+        "label": "AI session collection",
+        "description": "Browse and capture local Codex, Claude Code, and pi sessions"
+      },
       "translation": {
         "label": "Translation panel",
         "description": "Two-pane translator (source → target) with LLM picker"

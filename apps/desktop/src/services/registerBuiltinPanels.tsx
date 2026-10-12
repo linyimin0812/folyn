@@ -27,9 +27,12 @@
  */
 
 import type { ReactNode } from 'react';
+import { MessagesSquare } from 'lucide-react';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useAppearanceStore } from '@/store/appearanceStore';
 import { FilesPanel } from '@/components/sidebar/FilesPanel';
+import { SessionsPanel } from '@/components/sessions/SessionsPanel';
 
 // ── Built-in icons (reuse the exact SVGs from the pre-PR2 ActivityBar) ──────────
 const FilesIcon: ReactNode = (
@@ -37,6 +40,12 @@ const FilesIcon: ReactNode = (
     <path d="M3 7V17a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
   </svg>
 );
+
+// Sessions panel (external conversation browsing) — MessagesSquare: two stacked
+// bubbles read as "a collection of conversations" and stay distinct from the
+// neighbors (folder, Activity pulse line, translation, gear). Same 18px /
+// stroke-1.6 metrics as the files icon.
+const SessionsIcon: ReactNode = <MessagesSquare size={18} strokeWidth={1.6} />;
 
 let wired = false;
 
@@ -55,6 +64,20 @@ export function registerBuiltinPanels(): () => void {
     component: FilesPanel,
     order: 0,
     visible: true,
+    builtin: true,
+  });
+
+  // sessions — external conversation browsing + capture (Codex, Claude Code, pi).
+  // Visibility follows the appearanceStore enable flag (Extensions settings
+  // toggle); read at register time so a persisted `false` (hydrated later,
+  // which fires the subscription below) still converges to hidden.
+  fps.register({
+    id: 'sessions',
+    title: '会话',
+    icon: SessionsIcon,
+    component: SessionsPanel,
+    order: 20,
+    visible: useAppearanceStore.getState().enableSessionsPanel,
     builtin: true,
   });
 
@@ -89,11 +112,24 @@ export function registerBuiltinPanels(): () => void {
   // call still covers the case where a future change persists activePanel.
   mirrorActive(useEditorStore.getState().activePanel);
 
-  // Dispose: tears down the subscription and resets the `wired` guard so
+  // ── enableSessionsPanel flag → featurePanelStore visibility ──
+  // The Extensions settings toggle (and the persisted-blob hydrate, which is
+  // just a `set`) flips the appearanceStore flag; this subscription mirrors it
+  // into the panel registry. Re-running mirrorActive afterwards applies the
+  // general fallback rule: if sessions was the active panel and just became
+  // invisible, the active panel re-routes to 'files'.
+  const unsubSessions = useAppearanceStore.subscribe((state, prev) => {
+    if (state.enableSessionsPanel === prev.enableSessionsPanel) return;
+    useFeaturePanelStore.getState().setVisible('sessions', state.enableSessionsPanel);
+    mirrorActive(useEditorStore.getState().activePanel);
+  });
+
+  // Dispose: tears down the subscriptions and resets the `wired` guard so
   // tests can re-invoke `registerBuiltinPanels`. Production never calls this
   // — the panels/subscriptions live for the app session.
   return () => {
     unsubEditor();
+    unsubSessions();
     wired = false;
   };
 }

@@ -1,8 +1,8 @@
 /**
- * Tests for the PR2 built-in panel registration + visibility/active sync.
+ * Tests for the built-in panel registration + visibility/active sync.
  *
  * Covers the contract that `registerBuiltinPanels` fulfills:
- * - 1 built-in panel registered with correct id + order.
+ * - 2 built-in panels registered with correct id + order.
  * - editorStore.activePanel → featurePanelStore.activePanelId mirror.
  * - Persisted-invalid-id fallback (active points at an unregistered panel →
  *   re-route to 'files').
@@ -13,11 +13,20 @@ import { registerBuiltinPanels } from './registerBuiltinPanels';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
+import { storageClient } from '@/utils/storageClient';
 
 function resetStores() {
   useFeaturePanelStore.setState({ panels: [], activePanelId: null });
   useEditorStore.setState({ activePanel: 'files', activeTabId: null, tabs: [] });
-  useAppearanceStore.setState({});
+  // Explicit flag reset — setState({}) merges nothing, so a flag flipped in a
+  // test would leak into the next one.
+  useAppearanceStore.setState({
+    enableActivityPanel: true,
+    enableTranslationPanel: true,
+    enableSessionsPanel: true,
+  });
+  // Cancel any persist debounce scheduled by setEnableSessionsPanel.
+  storageClient.__resetForTesting();
 }
 
 beforeEach(() => {
@@ -29,20 +38,21 @@ afterEach(() => {
 });
 
 describe('registerBuiltinPanels: built-in registration', () => {
-  it('registers exactly the 1 built-in panel', () => {
+  it('registers exactly the 2 built-in panels', () => {
     const dispose = registerBuiltinPanels();
     const ids = useFeaturePanelStore.getState().panels.map((p) => p.id);
-    expect(ids).toEqual(['files']);
+    expect(ids).toEqual(['files', 'sessions']);
     dispose();
   });
 
-  it('assigns the spec-mandated order value (0)', () => {
+  it('assigns the spec-mandated order values', () => {
     const dispose = registerBuiltinPanels();
     const byId = Object.fromEntries(
       useFeaturePanelStore.getState().panels.map((p) => [p.id, p.order]),
     );
     expect(byId).toEqual({
       files: 0,
+      sessions: 20,
     });
     dispose();
   });
@@ -69,11 +79,59 @@ describe('registerBuiltinPanels: built-in registration', () => {
   it('is idempotent — a second call is a no-op (wired guard)', () => {
     const dispose1 = registerBuiltinPanels();
     const dispose2 = registerBuiltinPanels(); // no-op, returns disposer that does nothing
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(1);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
     dispose2();
     // The second dispose is a no-op — panels still present until dispose1.
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(1);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
     dispose1();
+  });
+});
+
+describe('registerBuiltinPanels: sessions enable-flag wiring', () => {
+  it('registers sessions hidden when the flag is off at register time', () => {
+    useAppearanceStore.setState({ enableSessionsPanel: false });
+    const dispose = registerBuiltinPanels();
+    const sessions = useFeaturePanelStore.getState().panels.find((p) => p.id === 'sessions');
+    expect(sessions?.visible).toBe(false);
+    dispose();
+  });
+
+  it('toggling the flag off hides the panel and re-routes an active sessions panel to files', () => {
+    const dispose = registerBuiltinPanels();
+    useEditorStore.getState().setActivePanel('sessions');
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('sessions');
+
+    useAppearanceStore.getState().setEnableSessionsPanel(false);
+    const sessions = useFeaturePanelStore.getState().panels.find((p) => p.id === 'sessions');
+    expect(sessions?.visible).toBe(false);
+    expect(useEditorStore.getState().activePanel).toBe('files');
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
+    dispose();
+  });
+
+  it('toggling the flag back on restores visibility', () => {
+    const dispose = registerBuiltinPanels();
+    useAppearanceStore.getState().setEnableSessionsPanel(false);
+    useAppearanceStore.getState().setEnableSessionsPanel(true);
+    const sessions = useFeaturePanelStore.getState().panels.find((p) => p.id === 'sessions');
+    expect(sessions?.visible).toBe(true);
+    dispose();
+  });
+
+  it('hiding sessions while another panel is active does not change the active panel', () => {
+    const dispose = registerBuiltinPanels();
+    useEditorStore.getState().setActivePanel('files');
+    useAppearanceStore.getState().setEnableSessionsPanel(false);
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
+    dispose();
+  });
+
+  it('hydrate (persisted flag off) hides the panel after registration', () => {
+    const dispose = registerBuiltinPanels();
+    useAppearanceStore.getState().hydrate({ enableSessionsPanel: false });
+    const sessions = useFeaturePanelStore.getState().panels.find((p) => p.id === 'sessions');
+    expect(sessions?.visible).toBe(false);
+    dispose();
   });
 });
 

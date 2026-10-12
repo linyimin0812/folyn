@@ -5,6 +5,9 @@ import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useVaultStore } from '@/store/vaultStore';
+import { useSessionsUiStore } from '@/store/sessionsUiStore';
+import { SessionDetailView } from '@/components/sessions/SessionDetailView';
+import { EvidenceViewer } from '@/components/sessions/EvidenceViewer';
 import { isTauri } from '@/utils/platform';
 import type { FolynEditorHandle } from '@/editor/EditorView';
 import { EditorView } from '@codemirror/view';
@@ -54,6 +57,21 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const editorFont = useEditorPrefsStore((s) => s.editorFont);
   const editorFontSize = useEditorPrefsStore((s) => s.editorFontSize);
   const vaultRoot = useVaultStore((s) => s.currentVault?.basePath ?? '');
+
+  // ── Sessions panel main-area views ─────────────────────────────────────
+  // ponytail: the Sessions SIDEBAR is list-only (224px); the conversation
+  // detail and the saved-evidence fallback render here in the work area
+  // (VersionHistoryContentView precedent: a full-area view replacing the
+  // empty state). No file tab ever gets activity === 'sessions' (detectActivity
+  // always returns 'files'), so this branch only replaces the empty state.
+  const sessionsDetail = useSessionsUiStore((s) => s.detail);
+  const sessionsDetailLoading = useSessionsUiStore((s) => s.detailLoading);
+  const sessionsEvidence = useSessionsUiStore((s) => s.evidence);
+  const closeEvidence = useSessionsUiStore((s) => s.closeEvidence);
+  const showSessionsEvidence = activePanel === 'sessions' && sessionsEvidence !== null;
+  const showSessionsDetail = activePanel === 'sessions'
+    && sessionsEvidence === null
+    && (sessionsDetail !== null || sessionsDetailLoading);
 
   const editorRef = useRef<FolynEditorHandle>(null);
   // Preview body div (forwarded ref from PreviewPane) so the outline sidebar —
@@ -245,9 +263,19 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
       <div className="flex-1 flex overflow-hidden" ref={splitContainerRef}>
 
       {tabs.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
-          {t(`shell:workArea.empty.${activePanel === 'calendar' ? 'calendar' : 'files'}`)}
-        </div>
+        showSessionsEvidence ? (
+          // Saved-evidence fallback (slice 6): the live source is gone — the
+          // frozen capture from the vault is the basis. Back returns to the
+          // list (the sidebar stays mounted either way).
+          <EvidenceViewer record={sessionsEvidence!.record} onBack={closeEvidence} />
+        ) : showSessionsDetail ? (
+          // One open external conversation, full work-area width.
+          <SessionDetailView />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
+            {t(`shell:workArea.empty.${activePanel === 'calendar' ? 'calendar' : 'files'}`)}
+          </div>
+        )
       ) : showVersionHistoryDiff ? (
         // ponytail: editor area swapped for the version-history content view.
         // Renders in place of CodeMirror / custom editor / preview split so

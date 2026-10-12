@@ -69,6 +69,10 @@
         "label": "Panneau d'activité",
         "description": "Collecte d'activité : chronologie, métriques, graphe d'entités et rapports"
       },
+      "sessions": {
+        "label": "Collecte de sessions IA",
+        "description": "Parcourir et collecter les sessions locales Codex, Claude Code et pi"
+      },
       "tray": {
         "label": "Afficher l'icône dans la barre",
         "description": "Afficher l'icône dans la barre système ; clic pour le même menu d'actions rapides que le clic droit du pet"

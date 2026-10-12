@@ -163,12 +163,14 @@ export interface ExtensionRow {
  * are bound in the UI via appearanceStore, not here, to keep the store
  * decoupled from appearanceStore's hook shape.
  *
- * ponytail: activity + translation listed first so they surface at the top
+ * ponytail: activity + sessions + translation listed in enable-default
+ * order so they surface at the top
  * of the Extensions settings page — both panels are enabled by default, so
  * they should be the first things visible. Order is render-order,
  * not feature-priority. */
 export const BUILTIN_PANEL_DEFS = [
   { id: 'builtin:activity', nameKey: 'settings:appearance.panels.activity.label', descKey: 'settings:appearance.panels.activity.description', flag: 'enableActivityPanel' as const },
+  { id: 'builtin:sessions', nameKey: 'settings:appearance.panels.sessions.label', descKey: 'settings:appearance.panels.sessions.description', flag: 'enableSessionsPanel' as const },
   { id: 'builtin:translation', nameKey: 'settings:appearance.panels.translation.label', descKey: 'settings:appearance.panels.translation.description', flag: 'enableTranslationPanel' as const },
 ] as const;
 

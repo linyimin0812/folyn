@@ -60,6 +60,7 @@ export const PERSIST_KEYS_APPEARANCE = [
   // shows on first launch; user can hide it from Extensions settings.
   'enableTranslationPanel',
   'enableActivityPanel',
+  'enableSessionsPanel',
   'excludePatterns',
   'linkOpenMode',
   'vaultName',
@@ -77,6 +78,7 @@ export interface AppearanceState {
   showHiddenFiles: boolean;
   enableTranslationPanel: boolean;
   enableActivityPanel: boolean;
+  enableSessionsPanel: boolean;
   excludePatterns: string;
   linkOpenMode: LinkOpenMode;
   vaultName: string;
@@ -96,6 +98,7 @@ export interface AppearanceState {
   setShowHiddenFiles: (v: boolean) => void;
   setEnableTranslationPanel: (v: boolean) => void;
   setEnableActivityPanel: (v: boolean) => void;
+  setEnableSessionsPanel: (v: boolean) => void;
   setExcludePatterns: (v: string) => void;
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
@@ -117,6 +120,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   showHiddenFiles: true,
   enableTranslationPanel: true,
   enableActivityPanel: true,
+  enableSessionsPanel: true,
   excludePatterns: DEFAULT_EXCLUDE_PATTERNS,
   linkOpenMode: 'external' as LinkOpenMode,
   vaultName: 'my-vault',
@@ -170,6 +174,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   setShowHiddenFiles: (v) => { set({ showHiddenFiles: v }); persist(); },
   setEnableTranslationPanel: (v) => { set({ enableTranslationPanel: v }); persist(); },
   setEnableActivityPanel: (v) => { set({ enableActivityPanel: v }); persist(); },
+  setEnableSessionsPanel: (v) => { set({ enableSessionsPanel: v }); persist(); },
   setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
@@ -188,6 +193,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.showHiddenFiles !== undefined) patch.showHiddenFiles = blob.showHiddenFiles as boolean;
     if (blob.enableTranslationPanel !== undefined) patch.enableTranslationPanel = blob.enableTranslationPanel as boolean;
     if (blob.enableActivityPanel !== undefined) patch.enableActivityPanel = blob.enableActivityPanel as boolean;
+    if (blob.enableSessionsPanel !== undefined) patch.enableSessionsPanel = blob.enableSessionsPanel as boolean;
     if (blob.linkOpenMode !== undefined) patch.linkOpenMode = blob.linkOpenMode as LinkOpenMode;
     if (blob.vaultName !== undefined) patch.vaultName = blob.vaultName as string;
     if (blob.showTrayIcon !== undefined) patch.showTrayIcon = blob.showTrayIcon as boolean;

@@ -1,0 +1,123 @@
+{
+  "title": "セッション",
+  "list": {
+    "refresh": "更新",
+    "searchPlaceholder": "セッションやプロジェクトを検索…",
+    "searchClear": "検索をクリア",
+    "source": "ソース",
+    "allSources": "すべてのソース",
+    "unknownProject": "不明なプロジェクト",
+    "loading": "ローカルセッションを読み込み中…",
+    "empty": "読み取り可能な外部セッションがありません",
+    "sourceError": "一部のソースの読み取りに失敗しました：{{errors}}",
+    "all": "すべて"
+  },
+  "detail": {
+    "back": "一覧に戻る",
+    "branch": "ブランチ",
+    "selectHint": "メッセージ右側のチェックボックスで収録対象を選択します",
+    "missingNotice": "選択内容に {{count}} 件の欠落素材があります。収録時に明示されます",
+    "warnings": "読み取り警告：{{warnings}}",
+    "saveSelected": "選択を収録",
+    "selectAllBranch": "ブランチ全選択",
+    "selectAllBranchHint": "ブランチ全体を収録（現在のブランチ）",
+    "selectionSummary": "メッセージ {{messages}} 件 · テキスト抜粋 {{ranges}} 件を選択",
+    "toolEvidence": "合わせて収録されるツール記録：{{items}}",
+    "showTools": "ツールを表示"
+  },
+  "range": {
+    "selectText": "テキストを選択",
+    "title": "テキスト抜粋を選択",
+    "hint": "収録する文字を原文内でドラッグして選択してください（選択した文字のみ収録し、メッセージの残りは含みません）",
+    "source": "メッセージ原文",
+    "empty": "まだ文字が選択されていません",
+    "confirm": "確定",
+    "cancel": "キャンセル",
+    "remove": "このテキスト抜粋を削除"
+  },
+  "save": {
+    "success": "収録しました：{{path}}",
+    "incomplete": "収録しました（不完全、{{count}} 件欠落）：{{path}}",
+    "exists": "同名のファイルが存在します。別の名前を指定してください",
+    "failed": "収録に失敗しました：{{error}}",
+    "readFailed": "会話の読み取りに失敗しました：{{error}}",
+    "noVault": "先にボールトを開いてください",
+    "vaultOnly": "収録は現在のボールトへの保存のみ対応しています",
+    "stale": "選択内容のソースが変化しました（{{ids}}）。再選択してから収録してください"
+  },
+  "gen": {
+    "generate": "AI で整理",
+    "generating": "整理ノートを生成中…",
+    "cancelGenerate": "生成をキャンセル",
+    "noModel": "利用可能なチャットモデルが未設定です。先にモデルサービス設定で provider・model・API キーを選択してください",
+    "tooLarge": "選択内容が大きすぎます（{{actual}} / 上限 {{limit}} 文字）。選択範囲を狭めてください",
+    "unsupportedImage": "現在のモデル {{model}} は画像入力をサポートしていないか判定できません（選択内に {{count}} 枚の画像）",
+    "textOnly": "テキストのみで整理",
+    "insufficient": "選択された素材では有用なノートを整理できません。素材を追加選択してください",
+    "failed": "生成に失敗しました：{{error}}",
+    "retry": "再試行",
+    "dismiss": "閉じる",
+    "draftTitle": "整理ノート（編集可能）",
+    "draftHint": "保存を確認すると、選択した原文・添付の証拠バンドルとともに現在のボールトへ書き込まれます",
+    "draftBody": "ノート本文",
+    "saveDraft": "ボールトに保存",
+    "cancelDraft": "キャンセル"
+  },
+  "nav": {
+    "openSource": "ソースを開く（クリップボードの位置情報を読み取る）",
+    "clipboardNoLocator": "クリップボードの内容が有効なソース位置情報ではありません。ノート末尾の folyn-session コードブロックを先にコピーしてください",
+    "sourceMissing": "ソースセッションは既に存在しません。収録時に保存した証拠コピーを表示しています",
+    "evidenceUnavailable": "収録時の証拠バンドルを読み込めませんでした：{{error}}",
+    "noEvidencePath": "位置情報に証拠バンドルのパスが含まれていません",
+    "changedNotice": "採集以降に一部の選択内容が変化または消失しました（{{ids}}）。現在表示しているのは最新のソースであり、収録コピーと一致するとは限りません",
+    "branchChanged": "収録時のブランチは既に存在しません。別のブランチを表示しており、保存したコピーと一致しない可能性があります。"
+  },
+  "evidence": {
+    "title": "証拠コピー",
+    "capturedAt": "採集日時",
+    "records": "選択された元の記録",
+    "excerpt": "抜粋 {{coords}}",
+    "noRawRecords": "（抜粋のみ保存 — メッセージ全体の原文は保存されていません）",
+    "assets": "添付（{{count}}）",
+    "unsupported": "認識できない証拠バンドル形式：{{format}}"
+  },
+  "source": {
+    "codex": "Codex",
+    "claude": "Claude Code",
+    "pi": "pi",
+    "claudeShort": "Claude"
+  },
+  "note": {
+    "provenance": {
+      "source": "ソースツール",
+      "sessionId": "セッション",
+      "project": "プロジェクト",
+      "branch": "ブランチ",
+      "captureTime": "収録時刻",
+      "evidence": "元の記録と添付"
+    },
+    "completeness": {
+      "complete": "完全な収録（欠落素材なし）",
+      "incomplete": "不完全な収録：{{count}} 件の欠落（下記参照）"
+    },
+    "role": {
+      "user": "ユーザー",
+      "assistant": "アシスタント"
+    },
+    "imageAlt": "添付画像",
+    "toolCall": "ツール呼び出し",
+    "toolInput": "入力",
+    "toolOutput": "出力",
+    "toolOutputMissing": "（ソース記録に結果なし）",
+    "missing": {
+      "title": "欠落と不完全な項目",
+      "item": "{{id}} — {{kind}}：{{reason}}",
+      "kind": {
+        "image": "画像",
+        "tool-output": "ツール結果"
+      }
+    },
+    "unknown": "不明",
+    "excerpt": "抜粋"
+  }
+}

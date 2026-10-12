@@ -1,0 +1,123 @@
+{
+  "title": "Sessions",
+  "list": {
+    "refresh": "Refresh",
+    "searchPlaceholder": "Search sessions or projects…",
+    "searchClear": "Clear search",
+    "source": "Source",
+    "allSources": "All sources",
+    "unknownProject": "Unknown project",
+    "all": "All",
+    "loading": "Reading local sessions…",
+    "empty": "No readable external sessions found",
+    "sourceError": "Some sources failed to read: {{errors}}"
+  },
+  "detail": {
+    "back": "Back to list",
+    "branch": "Branch",
+    "selectHint": "Use the checkbox on a message to include it in a capture",
+    "missingNotice": "The selection has {{count}} missing items; they will be listed explicitly in the capture",
+    "warnings": "Read warnings: {{warnings}}",
+    "saveSelected": "Capture selection",
+    "selectAllBranch": "Select branch",
+    "selectAllBranchHint": "Capture the entire branch (current branch only)",
+    "selectionSummary": "{{messages}} messages · {{ranges}} text excerpts selected",
+    "toolEvidence": "Tool records to be included: {{items}}",
+    "showTools": "Show tools"
+  },
+  "range": {
+    "selectText": "Select text",
+    "title": "Select a text excerpt",
+    "hint": "Drag to select the text to capture (only the selected text is captured, not the rest of the message)",
+    "source": "Message source text",
+    "empty": "No text selected yet",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "remove": "Remove this text excerpt"
+  },
+  "save": {
+    "success": "Captured: {{path}}",
+    "incomplete": "Captured (incomplete, {{count}} missing items): {{path}}",
+    "exists": "A file with this name already exists — choose another name",
+    "failed": "Capture failed: {{error}}",
+    "readFailed": "Failed to read this conversation: {{error}}",
+    "noVault": "Open a vault first",
+    "vaultOnly": "Captures save to the current vault only",
+    "stale": "The source of the selection has changed ({{ids}}); please reselect and capture again"
+  },
+  "gen": {
+    "generate": "Organize with AI",
+    "generating": "Generating an organized note…",
+    "cancelGenerate": "Cancel generation",
+    "noModel": "No usable chat model is configured — pick a provider, model and API key in Model Services settings first",
+    "tooLarge": "The selection is too large for the model ({{actual}} / limit {{limit}} characters); narrow the selection",
+    "unsupportedImage": "The current model {{model}} does not support image input, or its capability is unknown (the selection contains {{count}} image(s))",
+    "textOnly": "Organize text only",
+    "insufficient": "The selected material is insufficient for a useful note — select more evidence",
+    "failed": "Generation failed: {{error}}",
+    "retry": "Retry",
+    "dismiss": "Close",
+    "draftTitle": "Organized note (editable)",
+    "draftHint": "Confirming saves this note together with the selected verbatim records and attachments (evidence bundle) into the current vault",
+    "draftBody": "Note content",
+    "saveDraft": "Save to vault",
+    "cancelDraft": "Cancel"
+  },
+  "nav": {
+    "openSource": "Open source (reads the locator from the clipboard)",
+    "clipboardNoLocator": "Clipboard content is not a valid source locator; copy the folyn-session code block at the end of the note first",
+    "sourceMissing": "The source session no longer exists; the evidence bundle saved at capture time is shown",
+    "evidenceUnavailable": "Could not read the saved evidence bundle: {{error}}",
+    "noEvidencePath": "The locator carries no evidence bundle path",
+    "changedNotice": "Some selected content changed or vanished since capture ({{ids}}); this is the latest source, which may differ from the saved copy",
+    "branchChanged": "The branch recorded at capture time no longer exists; a different branch is shown and may not match the saved copy."
+  },
+  "evidence": {
+    "title": "Evidence copy",
+    "capturedAt": "Captured at",
+    "records": "Selected source records",
+    "excerpt": "Excerpt {{coords}}",
+    "noRawRecords": "(excerpt only — the full message was not retained)",
+    "assets": "Attachments ({{count}})",
+    "unsupported": "Unrecognized evidence bundle format: {{format}}"
+  },
+  "source": {
+    "codex": "Codex",
+    "claude": "Claude Code",
+    "claudeShort": "Claude",
+    "pi": "pi"
+  },
+  "note": {
+    "provenance": {
+      "source": "Source tool",
+      "sessionId": "Session",
+      "project": "Project",
+      "branch": "Branch",
+      "captureTime": "Captured at",
+      "evidence": "Original records & attachments"
+    },
+    "completeness": {
+      "complete": "Complete capture (no missing material found)",
+      "incomplete": "Incomplete capture: {{count}} missing items (see below)"
+    },
+    "role": {
+      "user": "User",
+      "assistant": "Assistant"
+    },
+    "imageAlt": "attachment image",
+    "toolCall": "Tool call",
+    "toolInput": "Input",
+    "toolOutput": "Output",
+    "toolOutputMissing": "(no result in the source record)",
+    "missing": {
+      "title": "Missing and incomplete items",
+      "item": "{{id}} — {{kind}}: {{reason}}",
+      "kind": {
+        "image": "image",
+        "tool-output": "tool result"
+      }
+    },
+    "unknown": "unknown",
+    "excerpt": "Excerpt"
+  }
+}

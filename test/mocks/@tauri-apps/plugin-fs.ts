@@ -118,6 +118,28 @@ export const readDir = vi.fn(async (p: string) => {
   }));
 });
 
+
+export const readTextFileLines = vi.fn(async (p: string) => {
+  const node = getNode(root, p);
+  if (!node || node.type !== 'file') throw new Error(`File not found: ${p}`);
+  const lines = new TextDecoder().decode(node.content).split('\n');
+  let i = 0;
+  const iterator: AsyncIterableIterator<string> = {
+    async next() {
+      return i < lines.length ? { value: lines[i++]!, done: false } : { value: undefined as never, done: true };
+    },
+    async return() {
+      i = lines.length;
+      return { value: undefined as never, done: true };
+    },
+    [Symbol.asyncIterator]() {
+      return iterator;
+    },
+  };
+  return iterator;
+});
+
+
 export const stat = vi.fn(async (p: string) => {
   const node = getNode(root, p);
   if (!node) throw new Error(`Not found: ${p}`);
@@ -152,6 +174,7 @@ export const __internals = {
     for (const fn of [
       readTextFile,
       readFile,
+      readTextFileLines,
       writeTextFile,
       writeFile,
       mkdir,

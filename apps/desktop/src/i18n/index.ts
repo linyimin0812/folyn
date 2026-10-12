@@ -28,8 +28,10 @@ import zhBrowser from './locales/zh/browser.json';
 import enBrowser from './locales/en/browser.json';
 import zhMarkmap from './locales/zh/markmap.json';
 import zhActivity from './locales/zh/activity.json';
+import zhSessions from './locales/zh/sessions.json';
 import enMarkmap from './locales/en/markmap.json';
 import enActivity from './locales/en/activity.json';
+import enSessions from './locales/en/sessions.json';
 import jaCommon from './locales/ja/common.json';
 import jaShell from './locales/ja/shell.json';
 import jaTopbar from './locales/ja/topbar.json';
@@ -45,6 +47,7 @@ import jaTerminal from './locales/ja/terminal.json';
 import jaBrowser from './locales/ja/browser.json';
 import jaMarkmap from './locales/ja/markmap.json';
 import jaActivity from './locales/ja/activity.json';
+import jaSessions from './locales/ja/sessions.json';
 import esCommon from './locales/es/common.json';
 import esShell from './locales/es/shell.json';
 import esTopbar from './locales/es/topbar.json';
@@ -60,6 +63,7 @@ import esTerminal from './locales/es/terminal.json';
 import esBrowser from './locales/es/browser.json';
 import esMarkmap from './locales/es/markmap.json';
 import esActivity from './locales/es/activity.json';
+import esSessions from './locales/es/sessions.json';
 import deCommon from './locales/de/common.json';
 import deShell from './locales/de/shell.json';
 import deTopbar from './locales/de/topbar.json';
@@ -75,6 +79,7 @@ import deTerminal from './locales/de/terminal.json';
 import deBrowser from './locales/de/browser.json';
 import deMarkmap from './locales/de/markmap.json';
 import deActivity from './locales/de/activity.json';
+import deSessions from './locales/de/sessions.json';
 import frCommon from './locales/fr/common.json';
 import frShell from './locales/fr/shell.json';
 import frTopbar from './locales/fr/topbar.json';
@@ -90,6 +95,7 @@ import frTerminal from './locales/fr/terminal.json';
 import frBrowser from './locales/fr/browser.json';
 import frMarkmap from './locales/fr/markmap.json';
 import frActivity from './locales/fr/activity.json';
+import frSessions from './locales/fr/sessions.json';
 
 // ponytail: static bundle import (no lazy loading). Bundle size is bounded
 // by the namespace count; add lazy loading only when total JSON exceeds a
@@ -142,6 +148,7 @@ export const NAMESPACES = [
   'browser',
   'markmap',
   'activity',
+  'sessions',
 ] as const;
 
 void i18n.use(initReactI18next).init({
@@ -162,6 +169,7 @@ void i18n.use(initReactI18next).init({
       browser: zhBrowser,
       markmap: zhMarkmap,
       activity: zhActivity,
+      sessions: zhSessions,
     },
     en: {
       common: enCommon,
@@ -179,6 +187,7 @@ void i18n.use(initReactI18next).init({
       browser: enBrowser,
       markmap: enMarkmap,
       activity: enActivity,
+      sessions: enSessions,
     },
     ja: {
       common: jaCommon,
@@ -196,6 +205,7 @@ void i18n.use(initReactI18next).init({
       browser: jaBrowser,
       markmap: jaMarkmap,
       activity: jaActivity,
+      sessions: jaSessions,
     },
     es: {
       common: esCommon,
@@ -213,6 +223,7 @@ void i18n.use(initReactI18next).init({
       browser: esBrowser,
       markmap: esMarkmap,
       activity: esActivity,
+      sessions: esSessions,
     },
     de: {
       common: deCommon,
@@ -230,6 +241,7 @@ void i18n.use(initReactI18next).init({
       browser: deBrowser,
       markmap: deMarkmap,
       activity: deActivity,
+      sessions: deSessions,
     },
     fr: {
       common: frCommon,
@@ -247,6 +259,7 @@ void i18n.use(initReactI18next).init({
       browser: frBrowser,
       markmap: frMarkmap,
       activity: frActivity,
+      sessions: frSessions,
     },
   },
   lng: detectInitialLocale(),

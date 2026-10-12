@@ -27,6 +27,8 @@
  * tests). Reads never resume, migrate or mutate source sessions.
  */
 
+import { LINEAR_BRANCH } from './types';
+import { errorToMessage } from './errorToMessage';
 import type {
   ExternalSessionDetail,
   ExternalSessionMessage,
@@ -169,7 +171,7 @@ export async function discoverCodexSessions(root: string, fs: CodexSessionFs): P
     try {
       files = await fs.listJsonlFiles(dir);
     } catch (err) {
-      errors.push(`${dir}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`${dir}: ${errorToMessage(err)}`);
       continue;
     }
     for (const filePath of files.sort()) {
@@ -181,7 +183,7 @@ export async function discoverCodexSessions(root: string, fs: CodexSessionFs): P
           sessions.push(summary);
         }
       } catch (err) {
-        errors.push(`${filePath}: ${err instanceof Error ? err.message : String(err)}`);
+        errors.push(`${filePath}: ${errorToMessage(err)}`);
       }
     }
   }
@@ -249,6 +251,16 @@ function normalizeToolOutput(output: unknown): string | null {
 const TOOL_CALL_TYPES = new Set(['function_call', 'custom_tool_call']);
 const TOOL_OUTPUT_TYPES = new Set(['function_call_output', 'custom_tool_call_output']);
 
+// Known-and-expected non-displayable response_item payloads — silently
+// excluded from the projection (and from warnings). `reasoning` is encrypted
+// model reasoning present in EVERY real rollout; `agent_message` is
+// multi-agent task-delegation machinery (author `/root` → recipient
+// `/root/<task>`, `Message Type: NEW_TASK`, typically encrypted_content), not
+// displayable conversation; the tool-ish calls below are known activity
+// without a displayable payload in this projection. Only genuinely unknown
+// payload types warn (real format-drift signal).
+const KNOWN_UNDISPLAYABLE_TYPES = new Set(['reasoning', 'agent_message', 'web_search_call', 'local_shell_call']);
+
 function isUserConversationMessage(payload: ResponseItemPayload): boolean {
   if (payload.role !== 'user') return false;
   const kinds = payload.internal_chat_message_metadata_passthrough?.content_item_kinds;
@@ -269,7 +281,8 @@ function firstUserText(messages: ExternalSessionMessage[]): string | null {
 /**
  * Parse a full rollout JSONL text into a display projection. A trailing
  * unfinished line is skipped with a warning — preceding complete records stay
- * intact. Unknown record types are counted in the warnings, not displayed.
+ * intact. Known non-displayable payload types are skipped silently; genuinely
+ * unknown payload types are counted in the warnings, not displayed.
  */
 export function parseCodexRollout(text: string): {
   summaryMeta: Record<string, unknown> | null;
@@ -399,10 +412,13 @@ export function parseCodexRollout(text: string): {
       continue;
     }
 
-    // reasoning (encrypted), web_search_call, local_shell_call, … — counted
-    // honestly, not displayed. ponytail: retained-as-evidence for unknown
-    // types arrives when a real rollout on some machine needs it.
-    skippedTypes.set(type || '(empty)', (skippedTypes.get(type || '(empty)') ?? 0) + 1);
+    // reasoning (encrypted), web_search_call, local_shell_call — known
+    // non-displayable, skipped silently (see KNOWN_UNDISPLAYABLE_TYPES).
+    // ponytail: retained-as-evidence for unknown types arrives when a real
+    // rollout on some machine needs it.
+    if (!KNOWN_UNDISPLAYABLE_TYPES.has(type)) {
+      skippedTypes.set(type || '(empty)', (skippedTypes.get(type || '(empty)') ?? 0) + 1);
+    }
   }
 
   // Calls whose result never arrived are missing tool output — explicit.
@@ -440,5 +456,6 @@ export async function readCodexSession(
     },
     messages,
     warnings,
+    branch: LINEAR_BRANCH, // one rollout file = one linear branch
   };
 }
