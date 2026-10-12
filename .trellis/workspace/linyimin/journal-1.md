@@ -1156,3 +1156,38 @@ Preview-only markdown zoom: CSS zoom via --md-zoom var (no wrapper div — keeps
 ### Next Steps
 
 - None - task complete
+
+
+## Session 33: 外部会话知识沉淀：三来源浏览、选择与收录（全量实现 + 多轮 UI 打磨）
+
+**Date**: 2026-10-12
+**Task**: 外部会话知识沉淀：三来源浏览、选择与收录（全量实现 + 多轮 UI 打磨）
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+实现 external-session-knowledge 全部 7 个 slice：Codex/Claude Code/pi 只读适配器（分支树、事件去重、工具关联、诚实缺失状态）、会话侧栏（项目分组树、实时搜索、来源筛选、底部刷新）、主区详情视图（消息/文字范围/整分支选择、纯文本阅读模式、选择横线标记）、原文摘录 + AI 整理笔记（可选且持久化的服务商 pair、独立隔离请求、可编辑草稿确认）、证据包/定位块源导航、扩展页开关。多轮 check 修复完整性判定、错误信息序列化（errorToMessage）、渲染 bug 与 i18n 空转守卫；多轮 UI 打磨含 headless Chrome 像素对齐测量。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b6d4b83c` | (see git log) |
+| `2c63ef8f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
