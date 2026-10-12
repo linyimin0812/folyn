@@ -139,7 +139,7 @@ export async function saveExternalSessionCapture(
   return saveVerbatimCapture(dir, filename, input, port);
 }
 
-export type { ExternalSessionDetail, ExternalSessionMessage, ExternalSessionSummary, TextRangeSelection } from './types';
+export type { ExternalSessionDetail, ExternalSessionMessage, ExternalSessionSource, ExternalSessionSummary, TextRangeSelection } from './types';
 export { CaptureConflictError, StaleSelectionError, verifySelectionFresh } from './captureService';
 export type { CaptureMissingItem, CaptureResult, SaveCaptureInput } from './captureService';
 export { EVIDENCE_FORMAT } from './captureService';
