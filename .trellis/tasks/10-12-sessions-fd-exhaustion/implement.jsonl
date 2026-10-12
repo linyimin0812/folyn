@@ -1,0 +1,3 @@
+{"file": ".trellis/tasks/archive/2026-10/10-10-external-session-knowledge/spec.md", "reason": "Capture contract and read-only source rules the fix must preserve"}
+{"file": ".trellis/spec/desktop/frontend/external-sessions.md", "reason": "The externalSessions module contract incl. readLines port semantics"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend conventions entry"}
