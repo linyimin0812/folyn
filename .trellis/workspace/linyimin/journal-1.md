@@ -1191,3 +1191,37 @@ Preview-only markdown zoom: CSS zoom via --md-zoom var (no wrapper div — keeps
 ### Next Steps
 
 - None - task complete
+
+
+## Session 34: 会话发现 FD 泄漏与 Claude 标题修复
+
+**Date**: 2026-10-12
+**Task**: 会话发现 FD 泄漏与 Claude 标题修复
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+真实数据暴露的两个发现阶段 bug：① readTextFileLines 迭代器无 return()，头读取提前 break 每文件泄漏一个 Rust 侧句柄，串行扫 300+ 文件耗尽 256 FD（unreadable head / EMFILE）——readLines 改为单 FileHandle 流式读取（open→分块 read→finally close，行数或 2MB 双预算）；② Claude 标题字段名错误（读不存在的 title，真实为 aiTitle/customTitle），且回退链未过滤 <command-name> 等框架注入提示、大记录文件标题在 64KB 头之外——修正字段名（最后一条生效）、注入过滤、新增首条助手文字回退。190 个测试通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9cb2a126` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
