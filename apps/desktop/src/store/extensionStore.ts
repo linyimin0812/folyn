@@ -371,7 +371,8 @@ async function fetchRows(): Promise<ExtensionRow[]> {
       return { entry, state, error, icon, description, contributesContainers };
     }),
   );
-  return [...builtinRows, ...rows];
+  // Registry order is oldest installation first; keep built-ins ahead of newest-first external rows.
+  return [...builtinRows, ...rows.reverse()];
 }
 
 /** Parse a extension's manifest into consent-prompt data: human-readable
