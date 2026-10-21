@@ -580,6 +580,16 @@ describe('dispatchExtensionRpc / ai:chat', () => {
     expect(runRigChatMock).not.toHaveBeenCalled();
   });
 
+  it('forwards history-free background chat without changing provider/model', async () => {
+    const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
+    await dispatchExtensionRpc(manifest, 'demo', 'ai:chat', {
+      sessionId: 'article-fragment', prompt: 'translate', persistHistory: false,
+    }, async (p) => p, () => {});
+    expect(runRigChatMock).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: 'article-fragment', historyMode: 'none', provider: 'anthropic', model: 'sonnet', apiKey: 'sk-test',
+    }));
+  });
+
   it('returns { jobId } and streams deltas via ai:chat-poll (tool-window fetch path)', async () => {
     const manifest = sandboxManifest({ permissions: { ai: { chat: true } } });
     runRigChatMock.mockImplementation(async (p: { onEvent: (e: { type: string; content?: string }) => void }) => {

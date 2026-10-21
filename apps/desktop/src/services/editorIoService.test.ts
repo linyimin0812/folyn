@@ -154,3 +154,18 @@ describe('editorIoService.openDroppedFiles', () => {
     expect(n).toBe(0);
   });
 });
+
+describe('editorIoService dirty empty note', () => {
+  it('does not reload disk content after the user intentionally clears an open note', async () => {
+    editorState.tabs = [{ id: 'v1:empty.md', name: 'empty.md', path: 'empty.md', content: '', isDirty: true, fileType: 'markdown', activity: 'files' }];
+    editorState.activeTabId = 'v1:empty.md';
+    const readText = vi.fn(async () => 'old disk text');
+    // Earlier tests may spy the vault getter; restore the actual module mock.
+    const { useVaultStore } = await import('@/store/vaultStore');
+    vi.spyOn(useVaultStore, 'getState').mockReturnValue({ activeVaultId: 'v1', isLoading: false } as never);
+    await openFile('empty.md', 'empty.md', { expectedVaultId: 'v1', readText });
+    expect(readText).not.toHaveBeenCalled();
+    expect(editorState.tabs[0].content).toBe('');
+    expect(editorState.tabs[0].isDirty).toBe(true);
+  });
+});

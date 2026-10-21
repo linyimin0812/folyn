@@ -1,0 +1,79 @@
+{
+  "blocker_page_completed": true,
+  "cancelled_window_closed": true,
+  "direct_without_browser_id": {
+    "error": "error sending request for url (https://p0.meituan.net/meituantechblog/f0ae68810ba98d662aa1d1d984b2a4e6144954.png): client error (Connect): Connection reset by peer (os error 54)"
+  },
+  "explicit_shipping_browser_image": {
+    "bytes": 141725,
+    "headers": {
+      "content-type": "image/png",
+      "x-folyn-rendered": "true"
+    },
+    "status": 200,
+    "url": "https://p0.meituan.net/meituantechblog/f0ae68810ba98d662aa1d1d984b2a4e6144954.png"
+  },
+  "first_production_fetch": {
+    "bytes": 141725,
+    "headers": {
+      "access-control-allow-methods": "GET,OPTIONS,HEAD",
+      "access-control-allow-origin": "*",
+      "access-control-allow-private-network": "true",
+      "age": "845771",
+      "cache-control": "max-age=5184000",
+      "content-type": "image/png",
+      "date": "Sun, 18 Oct 2026 05:47:26 GMT",
+      "last-modified": "Sat, 08 Aug 2026 23:12:11 +0000",
+      "m-traceid": "8htfs0lwliiq24jw2lqa",
+      "server": "openresty",
+      "timing-allow-origin": "*",
+      "x-cache": "MISS from cache.51cdn.com",
+      "x-response-cache": "miss",
+      "x-via": "1.1 PS-XUZ-01tkk119:4 (Cdn Cache Server V2.0), 1.1 ianxun33:2 (Cdn Cache Server V2.0), 1.1 PSmglsjLAX2ui163:9 (Cdn Cache Server V2.0), 1.1 PSmgzjgORD1dr60:19 (Cdn Cache Server V2.0)",
+      "x-ws-request-id": "6ad45d6d_PSmgzjgORD1dr60_9189-57406"
+    },
+    "status": 200,
+    "url": "https://p0.meituan.net/meituantechblog/f0ae68810ba98d662aa1d1d984b2a4e6144954.png"
+  },
+  "foreign_cancel_preserves_owner_window": true,
+  "original_bytes_not_canvas": true,
+  "pair_elapsed_ms": 2331,
+  "peak_acquisition_windows": 1,
+  "private_image_rejected": "private/local network destinations are blocked",
+  "queued_cancel_accepted": true,
+  "queued_cancel_error": "subscription render cancelled",
+  "queued_without_second_window": true,
+  "second_concurrent_production_fetch": {
+    "bytes": 141725,
+    "headers": {
+      "content-type": "image/png",
+      "x-folyn-rendered": "true"
+    },
+    "status": 200,
+    "url": "https://p0.meituan.net/meituantechblog/f0ae68810ba98d662aa1d1d984b2a4e6144954.png"
+  },
+  "successful_windows_closed": true,
+  "test_scope": "shipping native source; only installed registry authorization is stubbed; real isolated WKWebView/network/image script",
+  "url": "https://p0.meituan.net/meituantechblog/f0ae68810ba98d662aa1d1d984b2a4e6144954.png",
+  "without_render_grant": {
+    "error": "error sending request for url (https://p0.meituan.net/meituantechblog/f0ae68810ba98d662aa1d1d984b2a4e6144954.png): client error (Connect): Connection reset by peer (os error 54); browser image fallback: permissions.subscriptions.render is required"
+  },
+  "browser_image_artifact": {
+    "bytes": 141725,
+    "sha256": "b682c39890d28e32eaf5b9aa7337a307b71b17d27aca1feb468a4d0e388ee2dd",
+    "dimensions": [
+      1322,
+      594
+    ],
+    "mime": "image/png",
+    "matches_initial_WK_probe": true
+  },
+  "checks": {
+    "capability_tests": 9,
+    "native_helper_tests": 10,
+    "native_metadata": "passed",
+    "debug_binary_symbol": "subscription_render::render_image and subscriptions::request_error present",
+    "debug_binary_mtime": "2026-10-18T13:44:13+08:00",
+    "installed_plugin_end_to_end": false
+  }
+}

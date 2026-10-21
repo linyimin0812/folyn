@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/extension-sdk/frontend/contracts-guidelines.md", "reason": "Subscription capability cross-layer contract and implementation policy"}
+{"file": ".trellis/spec/extension-host/frontend/lifecycle-guidelines.md", "reason": "Subscription capability cross-layer contract and implementation policy"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Subscription capability cross-layer contract and implementation policy"}
+{"file": ".trellis/spec/desktop/backend/quality-guidelines.md", "reason": "Subscription capability cross-layer contract and implementation policy"}
+{"file": ".trellis/spec/desktop/frontend/tauri-window-patterns.md", "reason": "Isolated native acquisition windows and explicit custom-command IPC denial"}

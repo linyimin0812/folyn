@@ -167,6 +167,16 @@ describe('buildExtensionAi / ai.chat', () => {
     expect(params.provider).toBe('anthropic');
     expect(params.model).toBe('sonnet');
     expect(params.apiKey).toBe('sk-test');
+    expect(runRigChatMock.mock.calls[0][0]).not.toHaveProperty('historyMode');
+  });
+
+  it('skips host history for independent tasks without changing the selected pair', async () => {
+    const ai = buildExtensionAi(manifest({ permissions: { ai: { chat: true } } }));
+    await ai.chat({ sessionId: 'article-fragment', prompt: 'translate', persistHistory: false, provider: 'openai', model: 'gpt-x', onEvent: vi.fn() });
+    expect(runRigChatMock).toHaveBeenCalledWith(expect.objectContaining({
+      historyMode: 'none', sessionId: 'article-fragment', provider: 'openai', model: 'gpt-x', apiKey: 'sk-oai',
+    }));
+    expect(aiStoreMock.createSession).not.toHaveBeenCalled();
   });
 
   it('routes stream to aiStore when useSharedSession=true', async () => {

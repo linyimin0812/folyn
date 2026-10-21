@@ -424,6 +424,10 @@ function parsePermissionLines(manifest: {
   if (perms) {
     if (perms.fs) out.push('文件读写（受限于插件数据目录）');
     if (perms.http) out.push('网络请求（受限于声明的 origin 白名单）');
+    if (perms.subscriptions) {
+      out.push('订阅：读写选定知识库、访问任意公开 HTTP(S) 网站并下载图片（二进制）');
+      if (typeof perms.subscriptions === 'object' && perms.subscriptions !== null && 'render' in perms.subscriptions && perms.subscriptions.render === true) out.push('订阅网页渲染：在独立隐私浏览器中执行公开网站脚本以提取内容');
+    }
     if (perms.clipboard) out.push('剪贴板读写');
     if (perms.dialog) out.push('文件对话框');
     if (perms.window) out.push('打开工具窗口');

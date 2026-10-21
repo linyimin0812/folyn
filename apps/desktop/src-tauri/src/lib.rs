@@ -15,6 +15,8 @@ mod extension_security;
 mod extension_install;
 mod extension_lifecycle;
 mod extension_fetch;
+mod subscriptions;
+mod subscription_render;
 mod extension_rpc;
 mod chat;
 mod list_models;
@@ -754,7 +756,8 @@ pub fn run() {
             Ok(())
         }
         })
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler({
+            let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             commands::open_file,
             commands::drain_pending_open_files,
             commands::save_file,
@@ -855,6 +858,10 @@ pub fn run() {
             extension_lifecycle::get_extension_record,
             extension_lifecycle::read_extension_file,
             extension_fetch::extension_http_fetch,
+            subscriptions::subscription_fetch,
+            subscription_render::subscription_render,
+            subscription_render::subscription_cancel_renders,
+            subscriptions::subscription_vault_io,
             extension_fetch::fetch_url,
             extension_rpc::extension_rpc_respond,
             voice::voice_start,
@@ -867,7 +874,16 @@ pub fn run() {
             voice::voice_set_global_hotkey,
             voice::voice_orb_hide,
             voice::voice_debug_frontmost,
-        ]);
+        ];
+            move |invoke: tauri::ipc::Invoke| {
+                // Acquisition webviews run untrusted pages. Custom app commands
+                // bypass plugin ACL, so deny them before generated dispatch.
+                if subscription_render::is_acquisition_webview(invoke.message.webview_ref().label()) {
+                    invoke.resolver.reject("app IPC is disabled in subscription acquisition webviews");
+                    true
+                } else { handler(invoke) }
+            }
+        });
 
     // Single-instance guard (Windows + macOS). On Windows, "Open With" on an
     // associated file while Folyn is running launches a SECOND process; on

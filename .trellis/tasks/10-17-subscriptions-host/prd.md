@@ -1,0 +1,6 @@
+# Subscription host integration
+
+User approved host edits alongside subscription extension. Provide trusted-only `api.subscriptions` with explicit `{ vault: true, network: true }` permission, physical-root-pinned vault sessions, durable exclusive create, public HTTP(S) bounded text/binary fetching, real file change notifications, settings/vault navigation and page unread badge. API matches extension host.ts. No full project builds or publishing. Do not commit without workflow approval.
+
+## General website acquisition expansion (2026-10-18)
+User explicitly requires general blogs/websites and authorizes host edits plus native compilation/testing. Add optional explicitly granted `subscriptions.render` and `api.subscriptions.render(url)` isolated browser DOM acquisition for dynamic/hydrated public sites. No user cookies/app IPC, no downloads/popups/auth solving, validate public HTTP(S) main navigation, bounded document/time/concurrency and cleanup on timeout/dispose. Preserve inert structured-data scripts/XML roots. Improve HTTP browser compatibility, decompression and BOM/header/meta charset decoding without weakening private-network/DNS/redirect defenses. Direct fetch remains no-proxy because proxy destination DNS cannot be pinned; isolated browser follows OS proxy, with main-navigation validation but browser-owned DNS/subresources. No commits/publishing.

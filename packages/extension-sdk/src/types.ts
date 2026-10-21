@@ -92,6 +92,9 @@ export interface ExtensionManifest {
 //     ever gains enforcement, but do not rely on them to confine trusted code.
 
 export interface ExtensionPermissions {
+  /** Trusted subscriptions: pinned local vault access and public HTTP(S)
+   * text/binary downloads. Explicitly consented with the trusted extension. */
+  subscriptions?: { vault: boolean; network: boolean; render?: boolean };
   fs?: { scope: string[] };
   http?: { origins: string[] };
   clipboard?: boolean;
@@ -183,6 +186,9 @@ export interface ExtensionAiChatParams {
   /** When true, the host also surfaces the turn in aiPanel (aiStore session).
    * Defaults to false (extension-only, not in UI). */
   useSharedSession?: boolean;
+  /** False skips loading and saving host chat history for independent tasks
+   * such as article fragments. Omitted/true preserves normal history. */
+  persistHistory?: boolean;
   /** Optional pair override from {@link ExtensionAiCapability.pairs}. Omitted →
    * the host's extensionPair (Extensions Settings) default. The provider slot
    * must exist and be configured, else the call rejects. */

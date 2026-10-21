@@ -9,7 +9,7 @@
  */
 
 import type { Disposable } from './Disposable';
-import type { ExtensionManifest, ExtensionAiCapability, ExtensionEnv, ExtensionHttpCapability } from './types';
+import type { ExtensionManifest, ExtensionAiCapability, ExtensionEnv, ExtensionHttpCapability, ExtensionHttpResponse } from './types';
 import type { ExportService } from './export-service';
 
 // ── Extension entry (doc §4.1) ──────────────────────────────────────────────
@@ -257,7 +257,64 @@ export interface ExporterRegistryApi {
   list(fileType?: string): unknown[];
 }
 
+/** A Markdown snapshot. Unsaved editor text takes priority over disk content. */
+export interface ExtensionNoteSnapshot {
+  path: string;
+  title: string;
+  text: string;
+}
+
+/** A snapshot pinned to one local vault root; paths are always relative. */
+export interface ExtensionVaultSession {
+  id: string;
+  name: string;
+  readText(path: string): Promise<string>;
+  readBinary(path: string): Promise<Uint8Array>;
+  writeText(path: string, content: string): Promise<void>;
+  writeBinary(path: string, content: Uint8Array): Promise<void>;
+  /** Publishes complete content atomically and never replaces an existing file. */
+  createText(path: string, content: string): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  /** Removes a file or directory tree; succeeds when absent. Rejects symlinks
+   * in the requested path. Links inside a removed tree are never followed. */
+  remove(path: string): Promise<void>;
+  assetUrl(path: string): Promise<string>;
+  /** Rejects if this session is no longer the active vault. */
+  open(path: string): Promise<void>;
+  chooseDirectory(): Promise<string | null>;
+  /** Choose Markdown files inside the current vault. Cancellation returns []. */
+  chooseNotes(): Promise<ExtensionNoteSnapshot[]>;
+  /** Read a current-vault Markdown snapshot, preferring unsaved editor text. */
+  readNote(path: string): Promise<ExtensionNoteSnapshot>;
+  /** Append as one undoable native-editor edit only if the current note exactly
+   * matches expectedText. Opens the editor and follows its auto-save setting;
+   * success does not promise a disk save when auto-save is disabled.
+   * Rejects stale vaults, changed text and unavailable/read-only editors. */
+  appendNote(path: string, text: string, expectedText: string): Promise<void>;
+}
+export interface ExtensionVaultFileChange {
+  vaultId: string;
+  path: string;
+  newPath?: string;
+  deleted?: boolean;
+}
+export interface ExtensionSubscriptions {
+  /** Isolated public-page DOM acquisition. Available only with the explicit
+   * subscriptions.render grant. Synthetic status 200 denotes a DOM snapshot. */
+  render?(url: string): Promise<ExtensionHttpResponse & { url: string }>;
+  current(): ExtensionVaultSession | null;
+  onChange(handler: (session: ExtensionVaultSession | null) => void): Disposable;
+  onFileChange(handler: (event: ExtensionVaultFileChange) => void): Disposable;
+  openExternal(url: string): Promise<void>;
+  openSettings(): void;
+  openVaults(): void;
+  setBadge(value: number): void;
+  /** Binary bodies are base64 encoded; url is the final redirected URL. */
+  fetch(url: string, binary?: boolean): Promise<ExtensionHttpResponse & { url: string }>;
+}
+
 export interface ExtensionApi {
+  readonly subscriptions?: ExtensionSubscriptions;
   readonly vault: VaultApi;
   readonly vaultConfig: VaultConfigApi;
   readonly files: FileApi;

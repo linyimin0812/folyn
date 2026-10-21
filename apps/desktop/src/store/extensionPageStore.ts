@@ -31,6 +31,7 @@ export interface PageEntry {
   component: ComponentType;
   /** Sort key among extension page-nav buttons. */
   order: number;
+  badge?: number;
 }
 
 interface ExtensionPageState {
@@ -40,6 +41,7 @@ interface ExtensionPageState {
   register: (entry: PageEntry) => void;
   /** Unregister a page by id. If it was the current page, the adapter falls back to 'editor'. */
   unregister: (id: string) => void;
+  setBadge: (id: string, badge: number) => void;
 }
 
 export const useExtensionPageStore = create<ExtensionPageState>((set, get) => ({
@@ -56,6 +58,11 @@ export const useExtensionPageStore = create<ExtensionPageState>((set, get) => ({
     // ponytail: array index = registration sequence (register only appends,
     // unregister preserves relative order). Used as sort tie-break.
     set({ pages: [...get().pages, entry] });
+  },
+
+  setBadge: (id, badge) => {
+    if (!get().pages.some(p => p.id === id && p.badge !== badge)) return;
+    set({ pages: get().pages.map(p => p.id === id ? { ...p, badge } : p) });
   },
 
   unregister: (id) => {

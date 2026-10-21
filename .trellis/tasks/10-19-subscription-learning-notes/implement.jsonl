@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Editor-owned policy and targeted verification"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "CodeMirror lifecycle and undo"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Strict typed boundaries"}
+{"file": ".trellis/spec/extension-sdk/frontend/contracts-guidelines.md", "reason": "SDK type-only contract and shipped docs"}
+{"file": ".trellis/spec/extension-host/frontend/subscriptions-contract.md", "reason": "Pinned vault, grants and stale-session rules"}

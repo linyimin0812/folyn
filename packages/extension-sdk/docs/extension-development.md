@@ -1472,3 +1472,30 @@ real marketplace exists with a concrete publisher-identity need.
 
 Install any via Settings → Extensions → 从文件夹安装… to manually QA the full
 pipeline.
+
+## Trusted subscriptions capability
+
+`permissions.subscriptions: { vault: true, network: true }` enables optional `api.subscriptions` for approved trusted extensions. This grant explicitly includes read/write access to the selected local or GitHub vault and arbitrary public HTTP(S) text and binary downloads. Sandbox extensions cannot use it.
+
+`current()` returns an `ExtensionVaultSession` pinned to a physical root. Relative paths reject traversal and symlinks. `createText` atomically publishes complete, synced content without replacing an existing path, including concurrent creates. `writeText`/`writeBinary` atomically replace. Vault switching immediately emits `null` during transition, then the new snapshot; old in-flight IO continues against its captured root. `open` refuses stale sessions. `chooseDirectory` only accepts a directory inside the snapshot root.
+
+`fetch(url, binary?)` returns `{ status, headers, body, url }`; `url` is the final redirect destination and binary bodies are base64. Requests have a 30-second overall timeout, at most 8 redirects, and 8 MiB text / 20 MiB binary limits. Each redirect is resolved and pinned to public IPs, with proxy use disabled; credentials, private/local addresses and non-HTTP(S) URLs are rejected.
+
+`onFileChange` receives host move/delete operations and native watcher paired-rename/remove events with `{ vaultId, path, newPath?, deleted? }`. Some filesystem watchers emit unpaired rename events; these cannot reliably infer the new path. `setBadge` updates the extension page/panel count. Dispose unsubscribes host listeners and clears the badge.
+
+`ExtensionAiChatParams.persistHistory?: boolean` controls host chat-session history. Pass `false` for independent article translations or summaries to forward `historyMode: 'none'` (neither load nor save global host chat files). Omitted/true retains the existing history behavior. Provider/model selection and `useSharedSession` UI behavior are unchanged; leave shared sessions disabled for background fragment jobs. Supported by trusted capability and sandbox RPC.
+
+
+### Learning-note handoff
+
+`ExtensionNoteSnapshot` is `{ path: string, title: string, text: string }`. Pinned sessions expose `chooseNotes(): Promise<ExtensionNoteSnapshot[]>`, `readNote(path): Promise<ExtensionNoteSnapshot>`, and `appendNote(path, text, expectedText): Promise<void>` under the existing subscriptions grant. The native picker accepts multiple `.md` files within the current vault; cancellation returns `[]`. Reads validate native grant/path/symlink rules and prefer unsaved native-editor buffers, including intentionally empty notes. These operations reject stale/disposed sessions rather than delivering old-vault learning context.
+
+`appendNote` opens the selected note in a native source editor and compares the current text with the reviewed `expectedText` before and after editor mounting. It inserts one isolated, undoable transaction at the end, retaining existing unsaved text. A changed note, switched vault/tab, unavailable source mode or read-only editor rejects without an append. Success means the content reached the native editor and follows the user's normal auto-save preference; it does **not** promise a disk save when auto-save is off. Tell the user to confirm saving in the editor. New-note creation can still use atomic `createText` followed by `open`.
+
+### Public rendered-page acquisition
+
+Declare `permissions.subscriptions.render: true` to expose optional `api.subscriptions.render(url)`. It returns `{ status, headers, body, url }` with a serialized DOM, final URL, synthetic status 200 and `x-folyn-rendered` / `x-folyn-status-unavailable` headers. Main HTTP status is not exposed by Tauri's browser API. Incognito acquisition uses a separate temporary profile, no existing user cookies, no app IPC, no downloads or new windows. Executable scripts/event handlers are removed from the snapshot; inert JSON/LD+JSON scripts and XML document roots remain available for extraction. It never clicks, logs in or solves verification.
+
+The renderer permits one concurrent page, at most 28 seconds overall, 12 navigation retries and an 8 MiB UTF-8 snapshot. It checks stable DOM/text/link dimensions for at least 1.5 seconds after initial hydration, triggers at most four viewport scroll steps, and accepts useful short pages after 12 seconds. Visible verification/password gates, timeout, excessive size/navigation, cancellation and unsupported webviews return explicit errors. Extension disposal cancels outstanding jobs and closes isolated windows; profile cleanup retries after native handle release.
+
+Direct HTTP keeps resolved public IP pinning, redirects and no-proxy behavior. It now uses browser-compatible request headers and bounded gzip/brotli/deflate decoding, BOM/header/XML/meta charset decoding, and gzip magic sniffing for text `.xml.gz` sitemaps missing Content-Encoding. Unknown content encodings reject. The isolated browser follows operating-system proxy settings. Its engine owns socket DNS and subresource loading: the host validates public HTTP(S) main-navigation DNS but cannot pin browser DNS or intercept every subresource through Tauri. Proxies which replace public DNS answers with private/fake IPs are rejected by that validation. Neither direct HTTP guards nor private-address restrictions are bypassed.

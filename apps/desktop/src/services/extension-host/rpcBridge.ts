@@ -810,8 +810,8 @@ export async function dispatchExtensionRpc(
       if (!perms?.ai?.chat) {
         throw new Error('ai:chat denied: permissions.ai.chat not granted');
       }
-      const { sessionId, prompt, provider, model, images } = (params ?? {}) as {
-        sessionId?: string; prompt?: string; provider?: string; model?: string;
+      const { sessionId, prompt, provider, model, images, persistHistory } = (params ?? {}) as {
+        sessionId?: string; prompt?: string; provider?: string; model?: string; persistHistory?: boolean;
         images?: { data?: unknown; mediaType?: unknown }[];
       };
       if (typeof sessionId !== 'string' || typeof prompt !== 'string') {
@@ -841,6 +841,7 @@ export async function dispatchExtensionRpc(
       const rigParams = {
         sessionId,
         prompt,
+        ...(persistHistory === false ? { historyMode: 'none' as const } : {}),
         provider: cfg.provider,
         model: cfg.model,
         apiKey: cfg.apiKey,

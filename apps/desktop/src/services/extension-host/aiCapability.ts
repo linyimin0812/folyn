@@ -102,6 +102,7 @@ export function buildExtensionAi(manifest: ExtensionManifest): ExtensionAiCapabi
         await runRigChat({
           sessionId: params.sessionId,
           prompt: params.prompt,
+          ...(params.persistHistory === false ? { historyMode: 'none' as const } : {}),
           provider: cfg.provider,
           model: cfg.model,
           apiKey: cfg.apiKey,

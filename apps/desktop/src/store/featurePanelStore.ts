@@ -52,6 +52,7 @@ interface FeaturePanelState {
   /** Update a panel's sort key. Used by registerBuiltinPanels to re-sort
    *  Wiki by enable timestamp when its flag flips on. */
   setOrder: (id: string, order: number) => void;
+  setBadge: (id: string, badge: number) => void;
 }
 
 export const useFeaturePanelStore = create<FeaturePanelState>((set, get) => ({
@@ -83,6 +84,11 @@ export const useFeaturePanelStore = create<FeaturePanelState>((set, get) => ({
     set({
       panels: get().panels.map((p) => (p.id === id ? { ...p, visible } : p)),
     }),
+
+  setBadge: (id, badge) => {
+    if (!get().panels.some(p => p.id === id && p.badge !== badge)) return;
+    set({ panels: get().panels.map(p => p.id === id ? { ...p, badge: badge || undefined } : p) });
+  },
 
   setOrder: (id, order) =>
     set({

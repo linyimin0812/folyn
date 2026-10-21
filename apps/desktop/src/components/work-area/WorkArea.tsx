@@ -82,9 +82,9 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   // Register the active editor handle so the ExtensionApi's `editor`
   // capability can query/replace the selection without a direct view ref.
   useEffect(() => {
-    setActiveEditorHandle(editorRef.current);
+    setActiveEditorHandle(editorRef.current, activeTab?.id ?? null);
     return () => setActiveEditorHandle(null);
-  }, [activeTabId]);
+  }, [activeTabId, activePanel, viewMode, presentationMode, versionHistoryVisible]);
 
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;

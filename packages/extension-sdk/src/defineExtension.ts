@@ -31,6 +31,12 @@ export function validateManifest(manifest: ExtensionManifest): void {
   if (manifest.tier === 'sandbox' && !manifest.html) {
     throw new Error('sandbox extensions require manifest.html');
   }
+  if (manifest.permissions?.subscriptions !== undefined) {
+    const permission = manifest.permissions.subscriptions;
+    if (manifest.tier !== 'trusted' || !permission || typeof permission !== 'object' || typeof permission.vault !== 'boolean' || typeof permission.network !== 'boolean' || (permission.render !== undefined && typeof permission.render !== 'boolean')) {
+      throw new Error('permissions.subscriptions requires a trusted extension and boolean vault/network grants');
+    }
+  }
   if (manifest.permissions?.ai) {
     const { chat, agents, edit } = manifest.permissions.ai;
     if (chat !== undefined && typeof chat !== 'boolean') {

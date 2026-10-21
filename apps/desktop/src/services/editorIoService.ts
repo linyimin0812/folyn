@@ -64,7 +64,11 @@ async function writeRawContent(filePath: string, content: string): Promise<void>
 }
 
 /** Open a file from the vault (reads content via VaultStore). */
-export async function openFile(filePath: string, name: string): Promise<void> {
+export async function openFile(filePath: string, name: string, options?: { expectedVaultId: string; readText: () => Promise<string> }): Promise<void> {
+  const assertVault = () => {
+    if (options && (useVaultStore.getState().isLoading || useVaultStore.getState().activeVaultId !== options.expectedVaultId)) throw new Error('The selected vault has changed');
+  };
+  assertVault();
   const get = useEditorStore.getState;
   const set = useEditorStore.setState;
   // External files are vault-independent: their tab id is namespaced `ext:` so
@@ -87,10 +91,11 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     const needsActivityUpdate = existing.activity !== correctActivity;
 
     // If existing tab has empty content but the file type needs content, reload it
-    if (!existing.content && getHandlerById(correctFileType)?.needsFileContent) {
+    if (!existing.content && !existing.isDirty && getHandlerById(correctFileType)?.needsFileContent) {
       try {
         const handler = getHandlerById(correctFileType);
-        const raw = await readRawContent(filePath);
+        const raw = await (options ? options.readText() : readRawContent(filePath));
+        assertVault();
         const content = handler?.deserialize ? handler.deserialize(raw) : raw;
         set((state) => ({
           tabs: state.tabs.map((t) =>
@@ -100,6 +105,7 @@ export async function openFile(filePath: string, name: string): Promise<void> {
         }));
       } catch (err) {
         console.error('[EditorStore] Failed to reload content for existing tab:', err);
+        assertVault();
         set((state) => ({
           activeTabId: existing.id,
           ...(needsFileTypeUpdate || needsActivityUpdate
@@ -133,10 +139,12 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     const handler = getHandlerById(fileType);
     let content = '';
     if (handler?.needsFileContent) {
-      const raw = await readRawContent(filePath);
+      const raw = await (options ? options.readText() : readRawContent(filePath));
+      assertVault();
       content = handler.deserialize ? handler.deserialize(raw) : raw;
       console.log(`[EditorStore] openFile: ${filePath} type=${fileType} content=${content.length} chars`);
     }
+    assertVault();
     const newTab: FileTab = {
       id: tabId,
       name,
@@ -161,6 +169,7 @@ export async function openFile(filePath: string, name: string): Promise<void> {
     }
   } catch (err) {
     console.error('[EditorStore] openFile failed:', err);
+    if (options) throw err;
   } finally {
     set({ isFileLoading: false });
   }

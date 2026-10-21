@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { emitVaultFileChange } from '@/services/extension-host/subscriptionsFileEvents';
 import {
   VaultManager,
   VaultProviderRegistry,
@@ -471,7 +472,9 @@ export const useVaultStore = create<VaultState>()(
         },
 
         deleteFile: async (filePath) => {
+          const vaultId = get().activeVaultId;
           await get().manager.deleteFile(filePath);
+          if (vaultId) emitVaultFileChange({ vaultId, path: filePath, deleted: true });
           suppressWatcherFor(filePath);
           set((state) => ({ fileTree: removeEntry(state.fileTree, filePath) }));
           void get().refreshFileTree();
@@ -485,14 +488,18 @@ export const useVaultStore = create<VaultState>()(
         },
 
         deleteDir: async (dirPath) => {
+          const vaultId = get().activeVaultId;
           await get().manager.deleteDir(dirPath);
+          if (vaultId) emitVaultFileChange({ vaultId, path: dirPath, deleted: true });
           suppressWatcherFor(dirPath);
           set((state) => ({ fileTree: removeEntry(state.fileTree, dirPath) }));
           void get().refreshFileTree();
         },
 
         renameFile: async (oldPath, newPath) => {
+          const vaultId = get().activeVaultId;
           await get().manager.rename(oldPath, newPath);
+          if (vaultId) emitVaultFileChange({ vaultId, path: oldPath, newPath });
           suppressWatcherFor(oldPath);
           suppressWatcherFor(newPath);
           // Rewrite any open tab whose path was the renamed file or lived under
@@ -505,6 +512,7 @@ export const useVaultStore = create<VaultState>()(
 
         moveFiles: async (paths, targetDir) => {
           const manager = get().manager;
+          const vaultId = get().activeVaultId;
 
           const movedMap: [string, string][] = [];
 
@@ -519,6 +527,7 @@ export const useVaultStore = create<VaultState>()(
             try {
               await manager.rename(srcPath, destPath);
               movedMap.push([srcPath, destPath]);
+              if (vaultId) emitVaultFileChange({ vaultId, path: srcPath, newPath: destPath });
             } catch (err) {
               console.error('[VaultStore] moveFiles rename failed:', srcPath, '→', destPath, err);
             }

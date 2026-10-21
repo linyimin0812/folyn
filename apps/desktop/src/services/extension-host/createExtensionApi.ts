@@ -37,6 +37,7 @@ import { registerFileTypeHandler, resolveDefault } from '@/components/file-types
 import { buildExtensionAi } from './aiCapability';
 import { buildExtensionEnv, disposeExtensionEnv } from './envCapability';
 import { buildExtensionHttp } from './httpCapability';
+import { buildSubscriptions, disposeSubscriptions } from './subscriptionsCapability';
 import type { Disposable as Disp } from 'folyn-extension-sdk';
 import { useVaultStore } from '@/store/vaultStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
@@ -249,6 +250,7 @@ const noopCommands = {
 // capability = add a factory + one registerCapability line. The createApi hook
 // (App.tsx) calls createExtensionApi → buildExtensionApi; the hook remains the
 // whole-Api override escape hatch for tests / alternate shells.
+registerCapability({ slot: 'subscriptions', build: buildSubscriptions, dispose: disposeSubscriptions });
 registerCapability({ slot: 'vault', build: () => createVaultApi() });
 registerCapability({ slot: 'vaultConfig', build: () => createVaultConfigApi() });
 registerCapability({ slot: 'storage', build: (m) => createStorageApi(m) });

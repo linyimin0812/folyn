@@ -1,0 +1,37 @@
+{
+  "cancel_accepted": true,
+  "cancel_error": "subscription render cancelled",
+  "cancel_window_closed": true,
+  "delayed_dom_and_inert_json": true,
+  "first_error": null,
+  "native_ipc_denied": true,
+  "privileged_calls": 0,
+  "response": {
+    "body": "<html lang=\"en\" data-smoke-ipc=\"denied:smoke_privileged not allowed. Plugin not found\"><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"data:,\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Render Smoke</title><style>html{color-scheme:light dark;background:light-dark(#eee,#222)}body{font:16px/1.6 system-ui,sans-serif;max-width:26em;margin:auto;padding:25vh 2em 2em;text-align:center}</style></head><body><article><h1>Delayed rendered blog</h1><p>This content was populated by JavaScript after the initial page loaded. It verifies bounded hydration before acquisition and preserves useful publication text for extraction.</p><a href=\"https://example.com/posts/a\">Article A</a><a href=\"https://example.com/posts/b\">Article B</a><script type=\"application/ld+json\">{\"@type\":\"BlogPosting\",\"headline\":\"Delayed article\"}</script></article></body></html>",
+    "status": 200,
+    "url": "https://example.com/"
+  },
+  "success_window_closed": true,
+  "timeout_error": "subscription render timed out after 10 seconds",
+  "timeout_window_closed": true,
+  "test_context": {
+    "mode": "standalone native Tauri/Wry linked against cached dependencies",
+    "navigation": "public https://example.com/ with test-only delayed DOM initialization",
+    "authorization_stubbed": true,
+    "shipping_authorization": "installed trusted/approved/enabled + manifest integrity + render grant (metadata checked)",
+    "deadline_seconds": 10,
+    "shipping_deadline_seconds": 28,
+    "ipc_denial_layer": "Tauri remote-origin ACL denied dummy command; privileged counter stayed zero; acquisition-label dispatcher predicate separately executable-tested",
+    "shipping_fixture_present": false
+  },
+  "host_debug_build": {
+    "command": "cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml",
+    "result": "passed",
+    "sdk_build": "passed; current declarations emitted",
+    "native_pure_helper_tests": "7 passed including 32-thread parent-directory creation",
+    "binary": "/Users/yiminlin/project/folyn/apps/desktop/src-tauri/target/debug/folyn",
+    "binary_contains_mkdir_fix": true,
+    "launched_by_this_subagent": false,
+    "installed_plugin_acceptance": false
+  }
+}

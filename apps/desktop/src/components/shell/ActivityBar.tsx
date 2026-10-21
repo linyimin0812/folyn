@@ -139,6 +139,7 @@ export function ActivityBar({ activePanel, onPanelChange }: ActivityBarProps) {
           title={p.title}
         >
           {p.icon}
+          {!!p.badge && <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 12, height: 12, padding: '0 2px', borderRadius: 6, background: 'var(--acc, #6366f1)', color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', pointerEvents: 'none' }}>{p.badge > 99 ? '99+' : p.badge}</span>}
         </button>
       ))}
 

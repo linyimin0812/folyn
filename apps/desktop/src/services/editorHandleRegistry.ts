@@ -9,11 +9,25 @@
 import type { FolynEditorHandle } from '@/editor/EditorView';
 
 let active: FolynEditorHandle | null = null;
+let activeTabId: string | null = null;
+const listeners = new Set<() => void>();
 
-export function setActiveEditorHandle(handle: FolynEditorHandle | null): void {
+export function setActiveEditorHandle(handle: FolynEditorHandle | null, tabId: string | null = null): void {
   active = handle;
+  activeTabId = handle ? tabId : null;
+  for (const listener of listeners) listener();
 }
 
 export function getActiveEditorHandle(): FolynEditorHandle | null {
   return active;
+}
+
+/** File-aware access prevents a delayed append from editing the previous tab. */
+export function getActiveEditorHandleFor(tabId: string): FolynEditorHandle | null {
+  return activeTabId === tabId ? active : null;
+}
+
+export function onActiveEditorHandleChange(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
 }

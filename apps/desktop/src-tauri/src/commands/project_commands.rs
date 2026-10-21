@@ -17,6 +17,7 @@ pub struct WatcherEventPayload {
     #[serde(rename = "type")]
     pub event_type: String,
     pub paths: Vec<String>,
+    pub root: String,
 }
 
 /// Start a recursive file watcher on a background thread. Returns immediately —
@@ -61,6 +62,7 @@ pub async fn start_vault_watcher(
                     let event_type = format!("{:?}", event.kind);
                     let _ = app_handle.emit("app://vault-watcher-event", WatcherEventPayload {
                         event_type,
+                        root: base_path.clone(),
                         paths: event.paths.iter().map(|p| p.to_string_lossy().into_owned()).collect(),
                     });
                 }

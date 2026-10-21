@@ -45,6 +45,10 @@ sha2 = "0.10"
 # Windows Chrome cookie/password decryption path (os_crypt.encrypted_key is
 # base64-encoded). Kept after the ed25519 signature scaffolding was removed.
 base64 = "0.22"
+# Already locked transitively; bounded subscription decoding needs direct APIs.
+encoding_rs = "0.8"
+flate2 = "1"
+brotli = "8"
 # HTTP client for the sandbox-tier `plugin_http_fetch` command. Sandbox plugins
 # run in a host-webview iframe whose `fetch()` is gated by the main page's CSP
 # `connect-src`; rather than relax CSP to admit every plugin-declared origin,

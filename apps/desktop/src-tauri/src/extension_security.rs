@@ -194,6 +194,12 @@ pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
         }
     }
 
+    if let Some(permission) = manifest.get("permissions").and_then(|p| p.get("subscriptions")) {
+        if tier != "trusted" || !permission.is_object() || !permission["vault"].is_boolean() || !permission["network"].is_boolean()
+            || permission.get("render").is_some_and(|value| !value.is_boolean()) {
+            return Err("permissions.subscriptions requires a trusted extension and boolean vault/network grants".into());
+        }
+    }
     Ok(())
 }
 
