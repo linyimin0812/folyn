@@ -862,6 +862,7 @@ pub fn run() {
             subscription_render::subscription_render,
             subscription_render::subscription_cancel_renders,
             subscriptions::subscription_vault_io,
+            subscriptions::subscription_data_io,
             extension_fetch::fetch_url,
             extension_rpc::extension_rpc_respond,
             voice::voice_start,

@@ -1,0 +1,3 @@
+{"file":"apps/desktop/src/services/extension-host/subscriptionsCapability.test.ts","reason":"Verify pinned data session and captured Vault ID"}
+{"file":"apps/desktop/src-tauri/src/subscriptions.rs","reason":"Rust helper covers Vault partitioning, unsafe IDs and symlink rejection"}
+{"file":".trellis/spec/extension-host/frontend/subscriptions-contract.md","reason":"Record private storage contract and no migration policy"}

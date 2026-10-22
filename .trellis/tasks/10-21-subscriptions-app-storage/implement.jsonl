@@ -1,0 +1,6 @@
+{"file":"packages/extension-sdk/src/extension.ts","reason":"Expose private per-Vault application data session"}
+{"file":"packages/extension-sdk/index.ts","reason":"Export the application data contract"}
+{"file":"apps/desktop/src/services/extension-host/subscriptionsCapability.ts","reason":"Pin application data IO to captured Vault ID"}
+{"file":"apps/desktop/src-tauri/src/subscriptions.rs","reason":"Authorize, validate and persist data under ~/.folyn/subscriptions/<vaultId>"}
+{"file":"apps/desktop/src-tauri/src/lib.rs","reason":"Register the native application data command"}
+{"file":".trellis/spec/extension-host/frontend/subscriptions-contract.md","reason":"Record private storage contract and no migration policy"}

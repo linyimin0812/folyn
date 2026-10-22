@@ -73,6 +73,7 @@ export type {
   ExporterRegistryApi,
   ExtensionApi,
   ExtensionSubscriptions,
+  ExtensionSubscriptionData,
   ExtensionVaultSession,
   ExtensionNoteSnapshot,
   ExtensionVaultFileChange,

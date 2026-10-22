@@ -11,6 +11,7 @@ use std::{
     path::{Component, Path, PathBuf},
     time::Duration,
 };
+use tauri::Manager;
 
 pub(crate) fn authorize(app: &tauri::AppHandle, id: &str, capability: &str) -> Result<(), String> {
     if !is_valid_extension_id(id) {
@@ -432,6 +433,105 @@ fn remove_path(path: &Path) -> Result<(), String> {
         Err(error) => Err(error.to_string()),
     }
 }
+fn safe_vault_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value != "."
+        && value != ".."
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+}
+fn ensure_real_directory(path: &Path) -> Result<(), String> {
+    match fs::create_dir(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(error.to_string()),
+    }
+    let metadata = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err("subscription data directory must not contain symlinks".into());
+    }
+    Ok(())
+}
+fn app_data_root(home: &Path, vault_id: &str) -> Result<PathBuf, String> {
+    if !safe_vault_id(vault_id) {
+        return Err("invalid vault id for subscription data".into());
+    }
+    let home = fs::canonicalize(home).map_err(|e| e.to_string())?;
+    let mut root = home.clone();
+    for part in [".folyn", "subscriptions", vault_id] {
+        root.push(part);
+        ensure_real_directory(&root)?;
+        let canonical = fs::canonicalize(&root).map_err(|e| e.to_string())?;
+        if !canonical.starts_with(&home) {
+            return Err("subscription data escaped the Folyn data directory".into());
+        }
+        root = canonical;
+    }
+    Ok(root)
+}
+fn subscription_io(
+    root: &str,
+    path: &str,
+    operation: &str,
+    content: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let writing = matches!(operation, "writeText" | "writeBinary" | "createText");
+    let path = scoped_path(root, path, writing)?;
+    match operation {
+        "readText" => fs::read_to_string(path)
+            .map(serde_json::Value::String)
+            .map_err(|e| e.to_string()),
+        "readBinary" => fs::read(path)
+            .map(|v| serde_json::Value::String(STANDARD.encode(v)))
+            .map_err(|e| e.to_string()),
+        "exists" => Ok(serde_json::Value::Bool(path.exists())),
+        "assetPath" => {
+            if !path.is_file() {
+                return Err("subscription asset is not a file".into());
+            }
+            Ok(serde_json::Value::String(
+                path.to_string_lossy().into_owned(),
+            ))
+        }
+        "remove" => remove_path(&path).map(|_| serde_json::Value::Null),
+        "writeText" | "createText" | "writeBinary" => {
+            let content = content.ok_or("missing content")?;
+            let bytes = if operation == "writeBinary" {
+                STANDARD.decode(content).map_err(|e| e.to_string())?
+            } else {
+                content.into_bytes()
+            };
+            atomic_write(&path, &bytes, operation == "createText")?;
+            Ok(serde_json::Value::Null)
+        }
+        _ => Err("unknown subscription data operation".into()),
+    }
+}
+#[tauri::command]
+pub async fn subscription_data_io(
+    app: tauri::AppHandle,
+    extension_id: String,
+    vault_id: String,
+    path: String,
+    operation: String,
+    content: Option<String>,
+) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        authorize(&app, &extension_id, "vault")?;
+        let home = app.path().home_dir().map_err(|e| e.to_string())?;
+        let root = app_data_root(&home, &vault_id)?;
+        subscription_io(
+            root.to_str().ok_or("invalid application data path")?,
+            &path,
+            &operation,
+            content,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
 #[tauri::command]
 pub async fn subscription_vault_io(
     app: tauri::AppHandle,
@@ -443,32 +543,7 @@ pub async fn subscription_vault_io(
 ) -> Result<serde_json::Value, String> {
     tauri::async_runtime::spawn_blocking(move || {
         authorize(&app, &extension_id, "vault")?;
-        let writing = matches!(
-            operation.as_str(),
-            "writeText" | "writeBinary" | "createText"
-        );
-        let path = scoped_path(&root, &path, writing)?;
-        match operation.as_str() {
-            "readText" => fs::read_to_string(path)
-                .map(serde_json::Value::String)
-                .map_err(|e| e.to_string()),
-            "readBinary" => fs::read(path)
-                .map(|v| serde_json::Value::String(STANDARD.encode(v)))
-                .map_err(|e| e.to_string()),
-            "exists" => Ok(serde_json::Value::Bool(path.exists())),
-            "remove" => remove_path(&path).map(|_| serde_json::Value::Null),
-            "writeText" | "createText" | "writeBinary" => {
-                let content = content.ok_or("missing content")?;
-                let bytes = if operation == "writeBinary" {
-                    STANDARD.decode(content).map_err(|e| e.to_string())?
-                } else {
-                    content.into_bytes()
-                };
-                atomic_write(&path, &bytes, operation == "createText")?;
-                Ok(serde_json::Value::Null)
-            }
-            _ => Err("unknown subscription vault operation".into()),
-        }
+        subscription_io(&root, &path, &operation, content)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -476,6 +551,31 @@ pub async fn subscription_vault_io(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn application_data_roots_are_vault_partitioned_and_reject_unsafe_ids() {
+        let home = std::env::temp_dir().join(format!("folyn-data-root-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&home);
+        fs::create_dir_all(&home).unwrap();
+        // temp_dir may sit behind a symlink (/var -> /private/var on macOS); app_data_root canonicalizes.
+        let home = fs::canonicalize(&home).unwrap();
+        let a = app_data_root(&home, "vault-a").unwrap();
+        let b = app_data_root(&home, "vault-b").unwrap();
+        assert_ne!(a, b);
+        assert!(a.starts_with(home.join(".folyn/subscriptions")));
+        for unsafe_id in ["../escape", "/tmp", "", ".", "vault/a"] {
+            assert!(app_data_root(&home, unsafe_id).is_err());
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let other = home.join("other");
+            fs::create_dir_all(&other).unwrap();
+            let _ = fs::remove_dir_all(home.join(".folyn"));
+            symlink(&other, home.join(".folyn")).unwrap();
+            assert!(app_data_root(&home, "vault-c").is_err());
+        }
+        let _ = fs::remove_dir_all(home);
+    }
     #[test]
     fn rejects_local_addresses_and_credentials() {
         for value in [

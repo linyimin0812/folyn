@@ -1,4 +1,4 @@
-import type { ExtensionManifest, ExtensionSubscriptions, ExtensionVaultSession, ExtensionVaultFileChange, ExtensionHttpResponse } from 'folyn-extension-sdk';
+import type { ExtensionManifest, ExtensionSubscriptions, ExtensionVaultSession, ExtensionSubscriptionData, ExtensionVaultFileChange, ExtensionHttpResponse } from 'folyn-extension-sdk';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useVaultStore } from '@/store/vaultStore';
@@ -52,8 +52,25 @@ export function buildSubscriptions(manifest: ExtensionManifest): ExtensionSubscr
         relativePath(path);
         return invoke<T>('subscription_vault_io', { extensionId: manifest.id, root: await capturedRoot, path, operation, content: content ?? null });
       };
+      const dataIo = async <T>(operation: string, path: string, content?: string): Promise<T> => {
+        if (closed) throw new Error('Subscriptions extension is inactive');
+        relativePath(path);
+        return invoke<T>('subscription_data_io', { extensionId: manifest.id, vaultId: capturedId, path, operation, content: content ?? null });
+      };
+      const data: ExtensionSubscriptionData = {
+        readText: path => dataIo<string>('readText', path),
+        async readBinary(path) { return Uint8Array.from(atob(await dataIo<string>('readBinary', path)), c => c.charCodeAt(0)); },
+        async writeText(path, content) { await dataIo('writeText', path, content); },
+        async writeBinary(path, content) {
+          let value = ''; for (const byte of content) value += String.fromCharCode(byte);
+          await dataIo('writeBinary', path, btoa(value));
+        },
+        exists: path => dataIo<boolean>('exists', path),
+        async remove(path) { await dataIo('remove', path); },
+        async assetUrl(path) { return convertFileSrc(await dataIo<string>('assetPath', path)); },
+      };
       const snapshot: ExtensionVaultSession = {
-        id: capturedId, name: vault.name,
+        id: capturedId, name: vault.name, data,
         readText: path => io<string>('readText', path),
         async readBinary(path) { return Uint8Array.from(atob(await io<string>('readBinary', path)), c => c.charCodeAt(0)); },
         async writeText(path, content) { await io('writeText',path,content); },

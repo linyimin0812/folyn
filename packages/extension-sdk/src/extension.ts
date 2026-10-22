@@ -264,8 +264,20 @@ export interface ExtensionNoteSnapshot {
   text: string;
 }
 
-/** A snapshot pinned to one local vault root; paths are always relative. */
+/** Internal application storage partitioned by the active Vault ID. */
+export interface ExtensionSubscriptionData {
+  readText(path: string): Promise<string>;
+  readBinary(path: string): Promise<Uint8Array>;
+  writeText(path: string, content: string): Promise<void>;
+  writeBinary(path: string, content: Uint8Array): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  remove(path: string): Promise<void>;
+  assetUrl(path: string): Promise<string>;
+}
 export interface ExtensionVaultSession {
+  /** A snapshot pinned to one local vault root; paths are always relative. */
+  /** Private Folyn storage for this Vault. User-authored files remain in the Vault. */
+  data: ExtensionSubscriptionData;
   id: string;
   name: string;
   readText(path: string): Promise<string>;

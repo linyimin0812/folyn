@@ -37,6 +37,19 @@ describe('subscription vault snapshots', () => {
     expect(mocks.open).not.toHaveBeenCalled();
     disposeSubscriptions(api);
   });
+  it('keeps private app data pinned to a Vault ID and never passes a Vault path', async () => {
+    const api = buildSubscriptions(manifest)!;
+    const old = api.current()!;
+    const pending = old.data.writeText('subscriptions/state.json', '{}');
+    changeVault();
+    await pending;
+    expect(mocks.invoke).toHaveBeenCalledWith('subscription_data_io', {
+      extensionId: manifest.id, vaultId: 'a', path: 'subscriptions/state.json', operation: 'writeText', content: '{}',
+    });
+    expect(api.current()?.data).not.toBe(old.data);
+    await expect(old.data.readText('../escape')).rejects.toThrow('relative');
+    disposeSubscriptions(api);
+  });
   it('stops scheduling as soon as a vault transition starts and cleans up listeners', () => {
     const api = buildSubscriptions(manifest)!; const cb = vi.fn(); api.onChange(cb);
     mocks.state.isLoading = true; for (const cb of mocks.listeners) cb();
