@@ -27,6 +27,7 @@ This directory contains guidelines for the `@folyn/desktop` frontend — a Tauri
 | [Trusted Plugin Rendering](./trusted-plugin-rendering.md) | Host exposes `window.React`; trusted blob-URL plugins use `createElement` (no JSX/runtime `import 'react'`) to share the host React instance | Filled |
 | [Tauri Window & ACL Patterns](./tauri-window-patterns.md) | Multi-window features, transparent/click-through windows, native popup menus, close-to-tray, ACL permission contract | Filled |
 | [i18n Guidelines](./i18n-guidelines.md) | i18next + react-i18next namespaces, localeStore, Rust AppError contract, tauriInvoke wrapper | Filled |
+| [Knowledge Base](./knowledge-base.md) | `__kb__/` disk format, model-bridge via runRigChat, program-write validation matrix, retrieval budget | Filled |
 
 ---
 

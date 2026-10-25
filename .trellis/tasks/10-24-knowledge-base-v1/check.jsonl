@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "前端质量检查清单"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "质量检查入口"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层数据流一致性检查"}
+{"file": "docs/design/pageindex-knowledge-base.md", "reason": "对照需求基线验收实现边界"}
+{"file": ".trellis/tasks/10-24-knowledge-base-v1/research/codebase-map.md", "reason": "核对是否按调研落点复用既有能力"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "类型检查约定"}

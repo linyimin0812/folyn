@@ -1,0 +1,13 @@
+{"file": ".trellis/tasks/10-24-knowledge-base-v1/research/codebase-map.md", "reason": "master 可复用能力与 worktree 借鉴模式清单，实现落点依据"}
+{"file": "docs/design/pageindex-knowledge-base.md", "reason": "已确认第一版需求基线（权威）"}
+{"file": "docs/adr/0005-knowledge-sources-index-and-topic-pages.md", "reason": "内容分层、收录与索引组织决策"}
+{"file": "docs/adr/0006-topic-pages-human-ai-coauthoring.md", "reason": "更新权限与模型提议/程序写入边界"}
+{"file": "docs/adr/0007-retain-cited-source-versions.md", "reason": "引用粒度与被引用版本保留规则"}
+{"file": "docs/adr/0008-structure-navigation-and-keyword-retrieval.md", "reason": "检索分层与预算约束"}
+{"file": "docs/adr/0009-knowledge-files-as-source-of-truth.md", "reason": "文件真源、稳定标识、分项发布"}
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "前端开发前置检查清单与规范入口"}
+{"file": ".trellis/spec/desktop/frontend/directory-structure.md", "reason": "新增 services/knowledge、store、面板组件的位置规范"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "knowledgeStore 需遵循的 Zustand 约定"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "TS 类型约定"}
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "面板组件约定"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "优先复用 rigChat/aiStreamUtils/vault-provider 等既有模块"}
