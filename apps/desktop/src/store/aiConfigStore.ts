@@ -96,11 +96,13 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'scriptRuntimes',
   // Per-caller (provider, model) pairs for non-AiPanel chat callers that
   // have no session to hang the pair on. pet/bubble moved to their own
-  // session stores in Phase 2; voice/extension stay here.
+  // session stores in Phase 2; voice/extension stay here. kbPair is the
+  // knowledge-base override — see resolveKbChatPair for the fallback rule.
   // ponytail: fields are nullable + optional on the persisted blob so legacy
   // blobs hydrate without migration; first use post-upgrade picks a pair.
   'voicePair',
   'extensionPair',
+  'kbPair',
 ] as const;
 
 /** A (provider, model) pair used by non-AiPanel chat callers (pet, bubble,
@@ -231,9 +233,11 @@ export interface AiConfigState {
   // each caller's settings page. AiPanel / pet / bubble use session-scoped
   // pair fields (see aiStore.AiSession / petChatStore.PetChatSession /
   // bubbleTemplateChatStore.BtSession) — NOT these globals. voice/extension
-  // have no session to hang a pair on, so they stay here.
+  // have no session to hang a pair on, so they stay here. kb likewise: the
+  // knowledge base follows the global chat pair until the user overrides it.
   voicePair: ProviderModelPair | null;
   extensionPair: ProviderModelPair | null;
+  kbPair: ProviderModelPair | null;
 
   setCliAdapter: (v: string) => void;
   setCliPath: (v: string) => void;
@@ -285,6 +289,7 @@ export interface AiConfigState {
    *  Pass null to clear. Persists via the settings:all blob. */
   setVoicePair: (pair: ProviderModelPair | null) => void;
   setExtensionPair: (pair: ProviderModelPair | null) => void;
+  setKbPair: (pair: ProviderModelPair | null) => void;
 
   /** Returns provider ids that have a non-empty apiKey (or don't require one). */
   configuredProviderIds: () => string[];
@@ -372,6 +377,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES,
   voicePair: null,
   extensionPair: null,
+  kbPair: null,
 
   setCliAdapter: (v) => {
     set((s) => {
@@ -627,6 +633,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
 
   setVoicePair: (pair) => { set({ voicePair: pair }); persist(); },
   setExtensionPair: (pair) => { set({ extensionPair: pair }); persist(); },
+  setKbPair: (pair) => { set({ kbPair: pair }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
@@ -669,6 +676,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     // now; any leftover persisted values are silently dropped here.
     patch.voicePair = isProviderModelPair(blob.voicePair) ? blob.voicePair : null;
     patch.extensionPair = isProviderModelPair(blob.extensionPair) ? blob.extensionPair : null;
+    patch.kbPair = isProviderModelPair(blob.kbPair) ? blob.kbPair : null;
 
     if (Object.keys(patch).length > 0) set(patch);
   },

@@ -27,12 +27,13 @@
  */
 
 import type { ReactNode } from 'react';
-import { MessagesSquare } from 'lucide-react';
+import { MessagesSquare, BookOpen } from 'lucide-react';
 import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { FilesPanel } from '@/components/sidebar/FilesPanel';
 import { SessionsPanel } from '@/components/sessions/SessionsPanel';
+import { KnowledgePanel } from '@/components/knowledge/KnowledgePanel';
 
 // ── Built-in icons (reuse the exact SVGs from the pre-PR2 ActivityBar) ──────────
 const FilesIcon: ReactNode = (
@@ -46,6 +47,11 @@ const FilesIcon: ReactNode = (
 // neighbors (folder, Activity pulse line, translation, gear). Same 18px /
 // stroke-1.6 metrics as the files icon.
 const SessionsIcon: ReactNode = <MessagesSquare size={18} strokeWidth={1.6} />;
+
+// Knowledge panel — 知识库（收录范围 + 资料索引 + 主题知识页 + 检索问答，
+// 见 .trellis/tasks/10-24-knowledge-base-v1 与 ADR-0005..0009）。
+// BookOpen 与 files 的文件夹、sessions 的气泡都不同形，18px / stroke-1.6 同规格。
+const KnowledgeIcon: ReactNode = <BookOpen size={18} strokeWidth={1.6} />;
 
 let wired = false;
 
@@ -63,6 +69,17 @@ export function registerBuiltinPanels(): () => void {
     icon: FilesIcon,
     component: FilesPanel,
     order: 0,
+    visible: true,
+    builtin: true,
+  });
+
+  // knowledge — 知识库（ADR-0005..0009，切片 A）。order 10：files 之后、sessions 之前。
+  fps.register({
+    id: 'knowledge',
+    title: '知识库',
+    icon: KnowledgeIcon,
+    component: KnowledgePanel,
+    order: 10,
     visible: true,
     builtin: true,
   });

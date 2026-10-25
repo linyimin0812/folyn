@@ -2,7 +2,7 @@
  * Tests for the built-in panel registration + visibility/active sync.
  *
  * Covers the contract that `registerBuiltinPanels` fulfills:
- * - 2 built-in panels registered with correct id + order.
+ * - 3 built-in panels registered with correct id + order.
  * - editorStore.activePanel → featurePanelStore.activePanelId mirror.
  * - Persisted-invalid-id fallback (active points at an unregistered panel →
  *   re-route to 'files').
@@ -38,10 +38,10 @@ afterEach(() => {
 });
 
 describe('registerBuiltinPanels: built-in registration', () => {
-  it('registers exactly the 2 built-in panels', () => {
+  it('registers exactly the 3 built-in panels', () => {
     const dispose = registerBuiltinPanels();
     const ids = useFeaturePanelStore.getState().panels.map((p) => p.id);
-    expect(ids).toEqual(['files', 'sessions']);
+    expect(ids).toEqual(['files', 'knowledge', 'sessions']);
     dispose();
   });
 
@@ -52,6 +52,7 @@ describe('registerBuiltinPanels: built-in registration', () => {
     );
     expect(byId).toEqual({
       files: 0,
+      knowledge: 10,
       sessions: 20,
     });
     dispose();
@@ -79,10 +80,10 @@ describe('registerBuiltinPanels: built-in registration', () => {
   it('is idempotent — a second call is a no-op (wired guard)', () => {
     const dispose1 = registerBuiltinPanels();
     const dispose2 = registerBuiltinPanels(); // no-op, returns disposer that does nothing
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(3);
     dispose2();
     // The second dispose is a no-op — panels still present until dispose1.
-    expect(useFeaturePanelStore.getState().panels).toHaveLength(2);
+    expect(useFeaturePanelStore.getState().panels).toHaveLength(3);
     dispose1();
   });
 });

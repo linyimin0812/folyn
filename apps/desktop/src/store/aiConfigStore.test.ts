@@ -83,6 +83,7 @@ beforeEach(() => {
     scriptRuntimes: DEFAULT_SCRIPT_RUNTIMES.map((r) => ({ ...r })),
     voicePair: null,
     extensionPair: null,
+    kbPair: null,
   });
   useAiStore.setState({ sessions: [], activeSessionId: null, inputMode: 'agent', pendingFileAttachments: [] });
 });
@@ -664,17 +665,19 @@ describe('useAiConfigStore scriptRuntimes', () => {
 });
 
 // Per-caller (provider, model) pairs — pet/bubble moved to their session
-// stores in Phase 2; only voice/extension remain here.
+// stores in Phase 2; voice/extension/kb remain here.
 describe('useAiConfigStore per-caller pairs', () => {
-  it('voicePair / extensionPair default to null', () => {
+  it('voicePair / extensionPair / kbPair default to null', () => {
     const s = useAiConfigStore.getState();
     expect(s.voicePair).toBeNull();
     expect(s.extensionPair).toBeNull();
+    expect(s.kbPair).toBeNull();
   });
 
-  it('PERSIST_KEYS_AI_CONFIG includes voicePair / extensionPair (pet/bubble dropped in Phase 2)', () => {
+  it('PERSIST_KEYS_AI_CONFIG includes voicePair / extensionPair / kbPair (pet/bubble dropped in Phase 2)', () => {
     expect(PERSIST_KEYS_AI_CONFIG).toContain('voicePair');
     expect(PERSIST_KEYS_AI_CONFIG).toContain('extensionPair');
+    expect(PERSIST_KEYS_AI_CONFIG).toContain('kbPair');
     expect(PERSIST_KEYS_AI_CONFIG).not.toContain('petPair');
     expect(PERSIST_KEYS_AI_CONFIG).not.toContain('bubblePair');
   });
@@ -682,6 +685,7 @@ describe('useAiConfigStore per-caller pairs', () => {
   it.each([
     ['setVoicePair', 'voicePair'] as const,
     ['setExtensionPair', 'extensionPair'] as const,
+    ['setKbPair', 'kbPair'] as const,
   ])('%s writes the pair and persists to the aiConfig slice', (setter, field) => {
     const setSpy = vi.spyOn(storageClient, 'set');
     const pair = { provider: 'openai', model: 'gpt-4o' };
@@ -696,6 +700,7 @@ describe('useAiConfigStore per-caller pairs', () => {
   it.each([
     ['setVoicePair', 'voicePair'] as const,
     ['setExtensionPair', 'extensionPair'] as const,
+    ['setKbPair', 'kbPair'] as const,
   ])('%s accepts null to clear the pair', (setter, field) => {
     const pair = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
     (useAiConfigStore.getState()[setter] as (p: typeof pair | null) => void)(pair);
@@ -704,10 +709,11 @@ describe('useAiConfigStore per-caller pairs', () => {
     expect(useAiConfigStore.getState()[field]).toBeNull();
   });
 
-  it('hydrate reads voice/extension pairs from the blob (pet/bubble silently dropped post-Phase 2)', () => {
+  it('hydrate reads voice/extension/kb pairs from the blob (pet/bubble silently dropped post-Phase 2)', () => {
     useAiConfigStore.getState().hydrate({
       voicePair: { provider: 'ollama', model: 'llama3' },
       extensionPair: { provider: 'openai', model: 'gpt-4o-mini' },
+      kbPair: { provider: 'openai', model: 'gpt-4o' },
       // Legacy petPair/bubblePair in the blob must be ignored (not crash).
       petPair: { provider: 'openai', model: 'gpt-4o' },
       bubblePair: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
@@ -715,6 +721,7 @@ describe('useAiConfigStore per-caller pairs', () => {
     const s = useAiConfigStore.getState();
     expect(s.voicePair).toEqual({ provider: 'ollama', model: 'llama3' });
     expect(s.extensionPair).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
+    expect(s.kbPair).toEqual({ provider: 'openai', model: 'gpt-4o' });
     // petPair/bubblePair no longer exist on the state.
     expect((s as Record<string, unknown>).petPair).toBeUndefined();
     expect((s as Record<string, unknown>).bubblePair).toBeUndefined();
@@ -722,9 +729,11 @@ describe('useAiConfigStore per-caller pairs', () => {
 
   it('hydrate falls back to null when blob omits the pair (legacy blob)', () => {
     useAiConfigStore.getState().setVoicePair({ provider: 'openai', model: 'gpt-4o' });
+    useAiConfigStore.getState().setKbPair({ provider: 'openai', model: 'gpt-4o' });
     useAiConfigStore.getState().hydrate({});
     expect(useAiConfigStore.getState().voicePair).toBeNull();
     expect(useAiConfigStore.getState().extensionPair).toBeNull();
+    expect(useAiConfigStore.getState().kbPair).toBeNull();
   });
 
   it('hydrate accepts a voice pair with a custom (non-catalog) provider id', () => {
