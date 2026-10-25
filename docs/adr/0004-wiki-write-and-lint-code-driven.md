@@ -1,5 +1,7 @@
 # Wiki ingest write-and-lint is code-driven; agent only does semantic generation
 
+后续设计说明（2026-10-24）：本次基于结构导航的知识库设计中，正文按知识内容组织的规则见 ADR-0006，证据状态与不汇总置信度的规则见 ADR-0007，分别替代本文的按资料追加正文及按来源数量评级规则。本文其余内容记录既有 Wiki 决策，不表示新知识库已实现或完整采用全部旧机制。
+
 The wiki feature agent (`__wiki__/.claude/agents/wiki.md`) is reduced from four actions (ingest / generate / lint / query) to **semantic-only** actions: `ingest` (extract entities/concepts as JSON), `overview` (rewrite the overview summary), and `lint_semantic` (the S1 "two entity pages describe the same concept, suggest merge" check). All deterministic writes and checks move into desktop code:
 
 - **`generate` is deleted.** Writing `entities/` `concepts/` `sources/` pages, appending to `index.md` / `log.md`, and the frontmatter merge rules (C2.b union + body `## Update` section + contradiction→ReviewItem) live in a code-side `wikiPageWriter`. The agent no longer touches the file system except for `overview.md`.
