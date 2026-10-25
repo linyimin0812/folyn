@@ -8,6 +8,7 @@ import { useVaultStore } from '@/store/vaultStore';
 import { useSessionsUiStore } from '@/store/sessionsUiStore';
 import { SessionDetailView } from '@/components/sessions/SessionDetailView';
 import { EvidenceViewer } from '@/components/sessions/EvidenceViewer';
+import { KnowledgeWorkbench } from '@/components/knowledge/KnowledgeWorkbench';
 import { isTauri } from '@/utils/platform';
 import type { FolynEditorHandle } from '@/editor/EditorView';
 import { EditorView } from '@codemirror/view';
@@ -271,6 +272,12 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
         ) : showSessionsDetail ? (
           // One open external conversation, full work-area width.
           <SessionDetailView />
+        ) : activePanel === 'knowledge' ? (
+          // Knowledge workbench (reading workbench layout): four pages in the
+          // main area while the sidebar owns topic navigation + 待处理 entries.
+          // No file tab ever gets activity === 'knowledge' (detectActivity is
+          // always 'files'), so this branch only replaces the empty state.
+          <KnowledgeWorkbench />
         ) : (
           <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">
             {t(`shell:workArea.empty.${activePanel === 'calendar' ? 'calendar' : 'files'}`)}
