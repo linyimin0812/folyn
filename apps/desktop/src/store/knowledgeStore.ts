@@ -1,6 +1,6 @@
 /**
- * 知识库运行时状态（Zustand，无持久化 —— 真源在 `<vault>/__kb__/` 文件，
- * ADR-0009；面板挂载/切 Vault /构建与审阅操作后从 manifest 水合）。
+ * 知识库运行时状态（Zustand，无持久化 —— 真源在 `~/.folyn/vaults/<vaultId>/__kb__/`
+ * 文件，ADR-0009/0011；面板挂载/切 Vault /构建与审阅操作后从 manifest 水合）。
  *
  * 页面/选中主题是跨区域共享 UI 状态（侧栏导航 ↔ 主工作区四页），仿
  * sessionsUiStore 的协调方式放在这里；磁盘读写全部走 services/knowledge/*。

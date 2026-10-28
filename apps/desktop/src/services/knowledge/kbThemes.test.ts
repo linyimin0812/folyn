@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { KbFs } from './kbFs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { KbFs, KbGenStore } from './kbFs';
 import type { BuildOptions } from './knowledgeBuild';
 
 const testState = vi.hoisted(() => ({
   vaultId: 'vault-a', writeGate: null as Promise<void> | null, files: {} as Record<string, string>, build: vi.fn(), ask: vi.fn(),
 }));
+// 生成物存储 fake（ADR-0011：KB 生成物不再走 manager）—— 键为绝对路径。
+const gen = vi.hoisted(() => ({ files: {} as Record<string, string> }));
 vi.mock('@/store/vaultStore', () => ({ useVaultStore: { getState: () => ({ activeVaultId: testState.vaultId, isLoading: false, manager: {
   readFile: async (path: string) => { const key = `${testState.vaultId}:${path}`; if (!(key in testState.files)) throw new Error(`ENOENT: ${path}`); return testState.files[key]!; },
   writeFile: async (path: string, content: string) => { if (testState.writeGate) await testState.writeGate; testState.files[`${testState.vaultId}:${path}`] = content; },
@@ -14,11 +16,22 @@ vi.mock('./knowledgeBuild', () => ({ buildKnowledge: testState.build }));
 vi.mock('./kbAsk', () => ({ askKnowledge: testState.ask, invalidateKbIndexCache: vi.fn() }));
 vi.mock('./kbReviewActions', () => ({ applyReview: vi.fn(), discardReview: vi.fn() }));
 vi.mock('./kbVerify', () => ({ verifyTopicRef: vi.fn() }));
+// knowledgeStore → fileWatcher → file-types registry → open-color JSON（Node ESM
+// collect 失败，同 TopicReader.test 的处理）：mock 掉监听单例。
+vi.mock('@/utils/fileWatcher', () => ({ suppressWatcherFor: vi.fn() }));
 import { useKnowledgeStore, activeThemeFs } from '@/store/knowledgeStore';
 import { readThemeRegistry, themeKbFs } from './kbThemes';
-import { readManifest, writeManifest, writeTopicRefs, readTopicRefs } from './kbFs';
+import { readManifest, setKbGenStoreForTests, writeManifest, writeTopicRefs, readTopicRefs } from './kbFs';
 import { writeDeletions, readDeletions } from './kbDeletions';
 import { kbThemeRegistryPath, kbTopicPagePath } from './kbPaths';
+
+const genStore: KbGenStore = {
+  resolveBase: async (vaultId) => `/fixtures/folyn/vaults/${vaultId}`,
+  readFile: async (abs) => { if (!(abs in gen.files)) throw new Error(`ENOENT: ${abs}`); return gen.files[abs]!; },
+  writeFile: async (abs, content) => { if (testState.writeGate) await testState.writeGate; gen.files[abs] = content; },
+  exists: async (abs) => abs in gen.files,
+  rename: async (o, n) => { gen.files[n] = gen.files[o]!; delete gen.files[o]; },
+};
 
 const state = () => useKnowledgeStore.getState();
 async function theme(name: string) { expect((await state().createTheme({ name, goal: `${name} goal`, scope: ['notes'] })).ok).toBe(true); return state().activeThemeId!; }
@@ -26,12 +39,16 @@ function deferred<T>() { let resolve!: (value: T) => void; const promise = new P
 beforeEach(() => {
   testState.vaultId = `vault-${Math.random().toString(36).slice(2)}`;
   testState.writeGate = null;
-  testState.files = {}; testState.build.mockReset().mockResolvedValue(undefined); testState.ask.mockReset();
+  testState.files = {}; gen.files = {};
+  testState.build.mockReset().mockResolvedValue(undefined); testState.ask.mockReset();
   useKnowledgeStore.setState({ themes: [], activeThemeId: null, contextVaultId: null });
+  setKbGenStoreForTests(genStore);
 });
+afterEach(() => setKbGenStoreForTests(null));
 
 describe('Independent configured themes', () => {
   it('persists registry selection and never reads or migrates legacy root configuration', async () => {
+    // 旧位置（vault 内 `__kb__`）的存量数据：留在原地，不读不迁（ADR-0011）。
     testState.files[`${testState.vaultId}:__kb__/manifest.json`] = '{"goal":"legacy"}';
     await state().loadFromManifest(); expect(state().themes).toEqual([]); expect(state().goal).toBe('');
     const a = await theme('A'); const b = await theme('B');
@@ -39,6 +56,10 @@ describe('Independent configured themes', () => {
     const registry = await readThemeRegistry(themeKbFs(testState.vaultId, a));
     expect(registry.activeThemeId).toBe(a); expect(registry.themes.map((t) => t.name)).toEqual(['A', 'B']);
     expect(testState.files[`${testState.vaultId}:__kb__/manifest.json`]).toBe('{"goal":"legacy"}');
+    // 生成物全部落在 ~/.folyn/vaults/<vaultId>/__kb__/，vault 内除预置的旧位置
+    // 存量外不再出现任何 __kb__ 写入。
+    expect(Object.keys(testState.files).filter((key) => key.includes('__kb__'))).toEqual([`${testState.vaultId}:__kb__/manifest.json`]);
+    expect(Object.keys(gen.files).every((key) => key.startsWith(`/fixtures/folyn/vaults/${testState.vaultId}/__kb__/`))).toBe(true);
     expect(a).not.toBe(b); expect(activeThemeFs().root).toContain(a);
   });
 
@@ -123,7 +144,7 @@ describe('Independent configured themes', () => {
 
   it('refuses corrupt or unreadable registries instead of resetting them to empty themes', async () => {
     const a = await theme('A'); const port = themeKbFs(testState.vaultId, a);
-    testState.files[`${testState.vaultId}:${kbThemeRegistryPath}`] = '{bad';
+    gen.files[`/fixtures/folyn/vaults/${testState.vaultId}/${kbThemeRegistryPath}`] = '{bad';
     await expect(readThemeRegistry(port)).rejects.toThrow();
     await expect(readThemeRegistry({ ...port, readFile: async () => { throw new Error('permission denied'); } })).rejects.toThrow('permission denied');
   });

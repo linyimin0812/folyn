@@ -1,7 +1,7 @@
 /**
- * 知识库（切片 A）数据类型 —— 文件真源的磁盘格式契约（ADR-0009）。
+ * 知识库（切片 A）数据类型 —— 文件真源的磁盘格式契约（ADR-0009/0011）。
  *
- * 这些接口描述 `<vault>/__kb__/` 下各 JSON / Markdown 文件的结构。
+ * 这些接口描述 `~/.folyn/vaults/<vaultId>/__kb__/` 下各 JSON / Markdown 文件的结构。
  * 新增到已持久化 schema 的字段一律 optional（见 type-safety.md）。
  */
 

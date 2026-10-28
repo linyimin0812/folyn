@@ -2,12 +2,19 @@
  * 知识库 FS 端口 + 原子写 + SHA-256 + JSON 读写。
  *
  * 模式沿用 versionHistoryService：纯逻辑接收注入的 `KbFs` 端口（可测试），
- * `vaultKbFs()` 是接 vaultStore.manager 的真实适配器。原子写 = `.tmp` + rename，
+ * `vaultKbFs()` 是真实适配器。原子写 = `.tmp` + rename，
  * 崩溃后目标文件要么旧要么新，不出现半截 JSON。
+ *
+ * 双路由（ADR-0011）：KB 生成物（`__kb__/...` 逻辑路径）存
+ * `~/.folyn/vaults/<vaultId>/__kb__/`，解析为绝对路径直写 tauri fs（KbGenStore）；
+ * 源资料（用户自己的文件）仍在 vault 内，vault 相对路径走 vaultStore.manager。
  */
 
+import { homeDir, join } from '@tauri-apps/api/path';
+import { exists as tauriExists, mkdir, readTextFile, rename as tauriRename, writeTextFile } from '@tauri-apps/plugin-fs';
 import { useVaultStore } from '@/store/vaultStore';
 import {
+  isKbPath,
   kbManifestPath,
   kbReviewsPath,
   kbDeletionsPath,
@@ -32,9 +39,65 @@ export interface KbFs {
   writeFile(path: string, content: string): Promise<void>;
   exists(path: string): Promise<boolean>;
   rename(oldPath: string, newPath: string): Promise<void>;
+  /**
+   * KB 生成物 → 绝对磁盘路径（编辑器打开快照/主题页用，外部路径先例 drops）；
+   * 源资料（vault 相对）→ null，仍按 vault 路径打开。测试 fake 可不实现。
+   */
+  absPath?: (path: string) => Promise<string | null>;
 }
 
-/** `.tmp` + rename 原子写。writeFile 自带父目录创建（tauriProvider）。 */
+// ── KB 生成物存储（ADR-0011：~/.folyn/vaults/<vaultId>/__kb__/）─────────────────
+
+/**
+ * 生成物后端端口：接收已解析的绝对路径。真实实现走 tauri fs；
+ * base（`~/.folyn/vaults/<vaultId>`）解析是异步的，模块级缓存 homeDir
+ * （versionHistory.ts 同款 —— homeDir 是会话级常量）。
+ */
+export interface KbGenStore {
+  resolveBase(vaultId: string): Promise<string>;
+  readFile(absPath: string): Promise<string>;
+  writeFile(absPath: string, content: string): Promise<void>;
+  exists(absPath: string): Promise<boolean>;
+  rename(oldAbsPath: string, newAbsPath: string): Promise<void>;
+}
+
+// ponytail: 模块级缓存 homeDir，versionHistory versionsBase 同款（会话级常量）。
+let folynVaultsBase = '';
+
+function parentDir(p: string): string {
+  const i = p.lastIndexOf('/');
+  if (i < 0) return p;
+  return i === 0 ? '/' : p.slice(0, i);
+}
+
+const tauriKbGenStore: KbGenStore = {
+  // ponytail: base 不含 __kb__ —— 逻辑路径本身带 `__kb__/` 前缀，拼接即得新根。
+  resolveBase: (vaultId) => resolveVaultsBase().then((base) => join(base, vaultId)),
+  readFile: (abs) => readTextFile(abs),
+  writeFile: async (abs, content) => {
+    await mkdir(parentDir(abs), { recursive: true });
+    await writeTextFile(abs, content);
+  },
+  exists: (abs) => tauriExists(abs),
+  rename: (o, n) => tauriRename(o, n),
+};
+
+async function resolveVaultsBase(): Promise<string> {
+  if (!folynVaultsBase) {
+    const home = (await homeDir()).replace(/\/+$/, '');
+    folynVaultsBase = await join(home, '.folyn', 'vaults');
+  }
+  return folynVaultsBase;
+}
+
+let genStore: KbGenStore = tauriKbGenStore;
+
+/** 测试注入：替换生成物存储。传 null 恢复默认 tauri 实现。勿在产品代码调用。 */
+export function setKbGenStoreForTests(store: KbGenStore | null): void {
+  genStore = store ?? tauriKbGenStore;
+}
+
+/** `.tmp` + rename 原子写。父目录创建：manager（tauriProvider）与 KbGenStore.writeFile 均自带。 */
 export async function kbWriteAtomic(fs: KbFs, path: string, content: string): Promise<void> {
   const tmp = `${path}.tmp`;
   await fs.writeFile(tmp, content);
@@ -109,12 +172,21 @@ export async function ensureDeletionsPlaceholder(fs: KbFs): Promise<void> {
   }
 }
 
-/** 真实适配器：vaultStore.manager（vault 相对路径）。exists 用读探测 —— manager 无 exists。 */
+/**
+ * 真实适配器（双路由，ADR-0011）：
+ * - `__kb__/...` 生成物 → `~/.folyn/vaults/<vaultId>/` 下的绝对路径，走 KbGenStore（tauri fs）；
+ * - 其余（源资料，vault 相对）→ vaultStore.manager。
+ * 两条路由共用同一 vault 切换 guard。manager 无 exists —— 源资料路径用读探测。
+ */
 export function vaultKbFs(expectedVaultId = useVaultStore.getState().activeVaultId): KbFs {
   const manager = useVaultStore.getState().manager;
   const guard = () => {
     const vault = useVaultStore.getState();
     if (!expectedVaultId || vault.activeVaultId !== expectedVaultId || vault.isLoading) throw new Error('Vault 已切换，已停止当前知识操作。');
+  };
+  const genAbs = async (p: string): Promise<string> => {
+    if (!expectedVaultId) throw new Error('Vault 已切换，已停止当前知识操作。');
+    return `${await genStore.resolveBase(expectedVaultId)}/${p}`;
   };
   return {
     listSourceTree: async () => {
@@ -125,9 +197,31 @@ export function vaultKbFs(expectedVaultId = useVaultStore.getState().activeVault
       const walk = (items: typeof entries) => { for (const entry of items) { result.push({ path: entry.path, type: entry.type }); if (entry.type === 'dir' && entry.children) walk(entry.children); } };
       walk(entries); return result;
     },
-    readFile: (p) => { guard(); return manager.readFile(p); },
-    writeFile: (p, c) => { guard(); return manager.writeFile(p, c); },
-    exists: async (p) => { guard(); try { await manager.readFile(p); guard(); return true; } catch (error) { guard(); return false; } },
-    rename: (o, n) => { guard(); return manager.rename(o, n); },
+    absPath: (p) => (isKbPath(p) ? genAbs(p) : Promise.resolve(null)),
+    // guard 保持同步抛出（原适配器语义）；生成物路由的二次 guard 在 await 后。
+    readFile: (p) => {
+      guard();
+      if (isKbPath(p)) return genAbs(p).then((abs) => { guard(); return genStore.readFile(abs); });
+      return manager.readFile(p);
+    },
+    writeFile: (p, c) => {
+      guard();
+      if (isKbPath(p)) return genAbs(p).then((abs) => { guard(); return genStore.writeFile(abs, c); });
+      return manager.writeFile(p, c);
+    },
+    exists: async (p) => {
+      guard();
+      if (isKbPath(p)) { const abs = await genAbs(p); guard(); return genStore.exists(abs); }
+      try { await manager.readFile(p); guard(); return true; } catch { guard(); return false; }
+    },
+    rename: (o, n) => {
+      guard();
+      // 原子写的 tmp 与目标同目录同路由；跨路由 rename 属调用方错误，显式拒绝。
+      if (isKbPath(o) !== isKbPath(n)) throw new Error(`rename 不支持跨存储路由：${o} → ${n}`);
+      if (isKbPath(o)) {
+        return Promise.all([genAbs(o), genAbs(n)]).then(([a, b]) => { guard(); return genStore.rename(a, b); });
+      }
+      return manager.rename(o, n);
+    },
   };
 }

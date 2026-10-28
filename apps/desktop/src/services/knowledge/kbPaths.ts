@@ -1,7 +1,10 @@
 /**
- * `<vault>/__kb__/` 目录布局（ADR-0009 文件真源）。
+ * 知识库逻辑路径（ADR-0011）。
  *
- * 全部路径是 vault 相对路径，交给 vaultStore.manager（tauriProvider）执行。
+ * 全部路径仍按 `__kb__/...` 相对派生（同步、与存储根无关）；执行层
+ * （vaultKbFs）按前缀路由：`__kb__` 生成物 → `~/.folyn/vaults/<vaultId>/`
+ * 绝对路径走 tauri fs，源资料 → vaultStore.manager（vault 相对）。磁盘布局
+ * 见 ADR-0009/0011；manifest 中记录的主题页路径保持本层语义不变。
  */
 
 export const KB_DIR = '__kb__';

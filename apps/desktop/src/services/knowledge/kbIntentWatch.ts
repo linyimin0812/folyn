@@ -11,6 +11,9 @@
  * - 用户编辑后的 hash 成为新的程序基线（ADR-0006：不能覆盖用户已经
  *   编辑的新版本 —— 后续自动追加以合并方式保留用户正文）。
  * - 生命周期与 kbAutoBuild 一致：KnowledgePanel 挂载时 start，卸载时 stop。
+ * - ADR-0011 后主题页存 `~/.folyn/`（vault 之外）：vault watcher 看不到 KB
+ *   文件变更，本订阅对迁移后的生成物不再触发（保留接线无害；页内编辑
+ *   保存本就走 suppressWatcherFor，语义不变）。
  */
 
 import { subscribeVaultChanges } from '@/utils/fileWatcher';

@@ -20,7 +20,7 @@ import { FolynEditor } from '@/editor/EditorView';
 import { useEditorStore } from '@/store/editorStore';
 import { activeThemeFs, useKnowledgeStore } from '@/store/knowledgeStore';
 import { openFile } from '@/services/editorIoService';
-import { sha256Hex } from '@/services/knowledge/kbFs';
+import { sha256Hex, type KbFs } from '@/services/knowledge/kbFs';
 import { readTopicRefs } from '@/services/knowledge/kbFs';
 import { kbSourceSnapshotPath } from '@/services/knowledge/kbPaths';
 import { parseTopicPage, stripFootnoteDefs } from '@/services/knowledge/topicSynth';
@@ -41,6 +41,12 @@ function openInEditor(path: string): void {
   void openFile(path, name);
   // 打开的标签页属于 files 面板（detectActivity 恒为 'files'），切回去才能看到。
   useEditorStore.getState().setActivePanel('files');
+}
+
+/** KB 生成物（快照等）在 vault 之外（ADR-0011），编辑器打开需要绝对路径
+ *  （openFile 外部路径先例：drops）；无 absPath 的 fs（测试 fake）回退原路径。 */
+async function openKbFileInEditor(fs: KbFs, path: string): Promise<void> {
+  openInEditor((await fs.absPath?.(path)) ?? path);
 }
 
 export function TopicReader(): React.JSX.Element {
@@ -185,7 +191,7 @@ function SelectedTopic({ topic, readKey }: { topic: { tpId: string; title: strin
           <article className="kb-document">
             <ReaderHeader topic={topic} status={status} refsCount={refs.length} editing={editing} saving={saving} onEdit={enterEdit} onSave={handleSave} onCancel={handleCancel} />
             {status === 'loading' && <div role="status" className="flex items-center gap-2 text-t3 text-[13px]"><Loader2 size={15} className="animate-spin" />正在读取主题与引用…</div>}
-            {status === 'error' && <div role="alert" className="text-[13px] text-t2 leading-7"><p>无法读取主题文件。请确认文件仍在当前 Vault 中。</p><button className={`${BTN} mt-3`} onClick={() => setAttempt((n) => n + 1)}>重新读取</button></div>}
+            {status === 'error' && <div role="alert" className="text-[13px] text-t2 leading-7"><p>无法读取主题文件。请检查知识库存储目录。</p><button className={`${BTN} mt-3`} onClick={() => setAttempt((n) => n + 1)}>重新读取</button></div>}
             {status === 'ready' && <>
               {refsUnavailable && <p role="status" className="mb-5 text-[12px] text-t3">引用信息暂时无法读取，正文仍可阅读。</p>}
               {body.trim() ? <MarkdownWithCitations body={body} onCite={selectCitation} /> : <p className="text-[13px] text-t3">这个主题还没有正文，点击上方「编辑知识页」补充。</p>}
@@ -386,7 +392,7 @@ function CitationPanel({ citation, onClose }: { citation: KbRef; onClose: () => 
               打开当前原文
             </button>
           )}
-          <button className={BTN} onClick={() => openInEditor(kbSourceSnapshotPath(citation.srcId, citation.versionHash, fs.root))}>
+          <button className={BTN} onClick={() => { void openKbFileInEditor(fs, kbSourceSnapshotPath(citation.srcId, citation.versionHash, fs.root)); }}>
             <History size={12} />
             打开引用时版本
           </button>
@@ -444,7 +450,7 @@ function RefStatusBlock({ citation, removed }: { citation: KbRef; removed: boole
   );
 }
 
-/** 引用时版本的原文摘录（ADR-0007：引用版本快照随 Vault 携带）。 */
+/** 引用时版本的原文摘录（ADR-0007；快照存 ~/.folyn，ADR-0011）。 */
 function SnapshotExcerpt({
   srcId,
   versionHash,
@@ -481,7 +487,7 @@ function SnapshotExcerpt({
 
   if (missing) {
     return (
-      <div className="text-t3 text-[11px]">引用时版本的原文快照暂时无法读取。请检查 Vault 中的历史文件。</div>
+      <div className="text-t3 text-[11px]">引用时版本的原文快照暂时无法读取。请检查知识库存储目录中的历史文件。</div>
     );
   }
   if (text === null) return <div role="status" className="text-t3 text-[12px]">正在读取引用时原文…</div>;

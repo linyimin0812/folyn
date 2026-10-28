@@ -5,6 +5,8 @@ export interface KbTheme { id: string; name: string }
 export interface KbThemeRegistry { themes: KbTheme[]; activeThemeId: string | null }
 
 export function themeKbFs(vaultId: string, themeId: string): KbFs {
+  // root 仍是 `__kb__/themes/<id>` 逻辑前缀；`__kb__` 生成物的读写路由由
+  // vaultKbFs 统一处理（ADR-0011：~/.folyn/vaults/<vaultId>/__kb__/）。
   return { ...vaultKbFs(vaultId), root: kbThemeRoot(themeId) };
 }
 
