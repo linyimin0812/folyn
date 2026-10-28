@@ -174,7 +174,7 @@ function SelectedTopic({ topic, readKey }: { topic: { tpId: string; title: strin
       {editing ? (
         // 编辑态与真实编辑器同布局（参考 EditorPane）：外层 flex 列 + overflow-hidden，
         // cm-wrapper flex:1 撑满可用高度，滚动由 CodeMirror 自身接管。
-        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-surf">
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-panel">
           <article className="kb-document shrink-0" style={{ paddingBottom: 0 }}>
             <ReaderHeader topic={topic} status={status} refsCount={refs.length} editing={editing} saving={saving} onEdit={enterEdit} onSave={handleSave} onCancel={handleCancel} />
             {refsUnavailable && <p role="status" className="text-[12px] text-t3">{t('knowledge:reader.refsUnavailable')}</p>}

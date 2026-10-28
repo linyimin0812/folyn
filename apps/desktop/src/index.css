@@ -407,6 +407,8 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .kb-document { width: 100%; max-width: 860px; padding: 24px 28px 40px; margin-inline: auto; }
 /* 编辑态列与 kb-document 同宽（正文行起点与阅读态对齐），高度仍由 flex 链撑满。 */
 .kb-edit-column { width: 100%; max-width: 860px; margin-inline: auto; padding-inline: 28px; }
+/* 编辑态背景已与阅读态一致（bg-panel），行号栏同底以免切换跳变（参考 SourceEditCanvas 的 var(--panel) gutter）。 */
+.kb-edit-column .cm-gutters { background: var(--panel); }
 .kb-document-title { font-size: 24px; font-weight: 600; line-height: 1.45; color: var(--t1); overflow-wrap: anywhere; }
 .kb-reader { flex-direction: column; }
 .kb-citation-panel { width: 100%; max-height: 48%; border-top-width: 1px; }
