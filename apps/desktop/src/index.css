@@ -448,8 +448,9 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .kb-workspace-loading { display: flex; align-items: center; justify-content: center; gap: 9px; flex: 1; font-size: 13px; color: var(--t3); }
 .kb-workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px 12px; flex-shrink: 0; }
 .kb-workspace-context { min-width: 0; }
-.kb-workspace-context h1 { margin-top: 4px; color: var(--t1); font-size: 22px; font-weight: 600; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-workspace-context p { color: var(--t3); font-size: 12px; line-height: 1.7; margin-top: 6px; max-width: 600px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.kb-workspace-titleline { display: flex; align-items: baseline; gap: 10px; min-width: 0; margin-top: 4px; }
+.kb-workspace-titleline h1 { min-width: 0; color: var(--t1); font-size: 22px; font-weight: 600; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-workspace-titleline p { min-width: 0; color: var(--t3); font-size: 12px; line-height: 1.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kb-workspace-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .kb-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; color: var(--t3); flex-shrink: 0; }
 .kb-icon-action:hover { background: var(--hov); color: var(--t1); }
