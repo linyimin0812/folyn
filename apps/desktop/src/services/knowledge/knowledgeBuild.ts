@@ -26,6 +26,7 @@ import { reconcileMovedSources } from './kbMoveReconcile';
 import { ingestSource, KbBuildCancelled, type KbProcessHooks } from './sourceIngest';
 import { synthTopicsForSource } from './topicSynth';
 import { invalidateKbIndexCache } from './kbAsk';
+import i18n from '@/i18n';
 
 /** 资料级并行：同时处理的资料份数上限（worker pool）。 */
 export const SOURCE_CONCURRENCY = 3;
@@ -154,7 +155,7 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
       onStream: opts.onStream ? (text) => { opts.onStream?.(text, path); } : undefined,
       shouldCancel: opts.shouldCancel,
     };
-    let failurePhase = '生成资料索引失败';
+    let failurePhase = i18n.t('knowledge:build.phaseIndexing');
     try {
       const srcId = srcIdByPath.get(path) ?? `src-${generateShortId()}`;
       srcIdByPath.set(path, srcId);
@@ -164,7 +165,7 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
       const ingested = await ingestSource(fs, srcId, path, manifest, hooks);
 
       if (!ingested.skipped) {
-        failurePhase = '整理主题知识失败';
+        failurePhase = i18n.t('knowledge:build.phaseSynthesizing');
         item.status = 'synthesizing';
         emit();
         const content = await fs.readFile(path);
@@ -173,6 +174,7 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
           manifest,
           nav,
           goal,
+          language: manifest.language ?? 'auto',
           srcId,
           srcPath: path,
           versionHash: ingested.versionHash,
@@ -182,7 +184,7 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
         });
       }
 
-      failurePhase = '发布资料结果失败';
+      failurePhase = i18n.t('knowledge:build.phasePublishing');
       const prev = manifest.sources[srcId];
       // 重新构建新对象（不带 removed）—— 显式重新收录会清除「已停止跟踪」标记。
       manifest.sources[srcId] = {
@@ -198,7 +200,7 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
       });
 
       item.status = ingested.skipped ? 'skipped' : 'done';
-      item.message = ingested.skipped ? '内容未变化' : undefined;
+      item.message = ingested.skipped ? i18n.t('knowledge:build.unchanged') : undefined;
     } catch (err) {
       if (err instanceof KbBuildCancelled) {
         // 协作取消：该项未发布，回到 pending（与未开始项一致）；已发布部分保留。

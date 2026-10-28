@@ -7,11 +7,21 @@
 
 import type { VaultEntry } from '@folyn/vault-provider';
 
+/**
+ * 主题级内容语言偏好（manifest.language）：
+ * - auto = 跟随资料原文语言（模型自判，程序不做语言检测）；
+ * - zh / en = 固定输出语言。缺省（旧 manifest 无字段）视为 auto。
+ * 结构化 JSON 字段名与校验逻辑不随语言变化，只有值文本跟随。
+ */
+export type KbLanguage = 'auto' | 'zh' | 'en';
+
 /** manifest.json — 知识库目标、收录范围、稳定标识注册表。 */
 export interface KbManifest {
   goal: string;
   /** 用户选定的收录范围（vault 相对路径，文件或目录）。 */
   scope: string[];
+  /** 内容语言偏好（缺省 auto = 跟随资料原文语言）。 */
+  language?: KbLanguage;
   /** srcId -> 资料登记项。 */
   sources: Record<string, KbSourceEntry>;
   /** tpId -> 主题知识页登记项。 */

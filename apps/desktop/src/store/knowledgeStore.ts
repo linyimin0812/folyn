@@ -25,8 +25,9 @@ import { errText } from '@/utils/errText';
 import { askKnowledge, invalidateKbIndexCache, type KbAskTurn } from '@/services/knowledge/kbAsk';
 import { applyReview, discardReview } from '@/services/knowledge/kbReviewActions';
 import { verifyTopicRef } from '@/services/knowledge/kbVerify';
-import type { KbReviewItem } from '@/services/knowledge/kbTypes';
+import type { KbLanguage, KbReviewItem } from '@/services/knowledge/kbTypes';
 import { useVaultStore } from '@/store/vaultStore';
+import i18n from '@/i18n';
 
 export type KbPage = 'knowledge' | 'ask' | 'sources' | 'reviews';
 
@@ -46,7 +47,7 @@ interface KnowledgeState {
   themes: KbTheme[];
   activeThemeId: string | null;
   contextVaultId: string | null;
-  createTheme: (config: { name: string; goal: string; scope: string[] }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  createTheme: (config: { name: string; goal: string; scope: string[]; language?: KbLanguage }) => Promise<{ ok: true } | { ok: false; error: string }>;
   selectTheme: (id: string) => Promise<void>;
   reconcileTopicEdits: (paths: string[]) => Promise<void>;
   /** 是否已从 manifest 水合（避免空态闪烁）。 */
@@ -56,6 +57,8 @@ interface KnowledgeState {
   goal: string;
   /** 用户选定的收录范围（vault 相对路径）。 */
   scope: string[];
+  /** 内容语言偏好（manifest.language；缺省 auto = 跟随资料原文语言）。 */
+  language: KbLanguage;
   /** manifest 中的主题页清单（点击在主区阅读 / 用现有编辑器打开）。 */
   topics: { tpId: string; title: string; path: string }[];
   /** manifest 中的资料登记（状态派生 + 引用面板查当前版本）。 */
@@ -104,8 +107,8 @@ interface KnowledgeState {
   loadFromManifest: () => Promise<void>;
   setPage: (page: KbPage) => void;
   setActiveTopic: (tpId: string | null) => void;
-  /** 保存 goal/scope 到 manifest（构建前调用；构建也会采纳当前值）。 */
-  saveConfig: (config: { goal: string; scope: string[]; name?: string }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** 保存 goal/scope/language 到 manifest（构建前调用；构建也会采纳当前值）。 */
+  saveConfig: (config: { goal: string; scope: string[]; name?: string; language?: KbLanguage }) => Promise<{ ok: true } | { ok: false; error: string }>;
   build: (only?: string[]) => Promise<void>;
   cancelBuildRequested: () => void;
   /** 停止跟踪一份资料：移出收录范围 + manifest 标记 removed（保留知识与历史引用）。 */
@@ -130,7 +133,7 @@ function activeVaultId(): string | null {
 export function activeThemeFs(): KbFs {
   const state = useKnowledgeStore.getState();
   const vaultId = activeVaultId();
-  if (!vaultId || state.contextVaultId !== vaultId || !state.activeThemeId) throw new Error('请先选择一个知识主题。');
+  if (!vaultId || state.contextVaultId !== vaultId || !state.activeThemeId) throw new Error(i18n.t('knowledge:store.selectThemeFirst'));
   return themeKbFs(vaultId, state.activeThemeId);
 }
 
@@ -140,6 +143,7 @@ const initialSession: Partial<KnowledgeState> = {
   dataVersion: 0,
   goal: '',
   scope: [],
+  language: 'auto' as KbLanguage,
   topics: [],
   sources: {},
   navigation: [],
@@ -174,7 +178,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
   const capture = (): OperationContext => {
     const vaultId = activeVaultId();
     const themeId = get().activeThemeId;
-    if (!vaultId || get().contextVaultId !== vaultId || !themeId) throw new Error('请先选择知识主题。');
+    if (!vaultId || get().contextVaultId !== vaultId || !themeId) throw new Error(i18n.t('knowledge:store.selectThemeRequired'));
     return { vaultId, themeId, key: JSON.stringify([vaultId, themeId]), fs: themeKbFs(vaultId, themeId) };
   };
   const snapshot = (): Partial<KnowledgeState> => Object.fromEntries(Object.keys(initialSession).map((key) => [key, get()[key as keyof KnowledgeState]]));
@@ -199,9 +203,9 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
     if (!result) return;
     const [manifest, reviews, nav] = result;
     if (hydrationVersions.get(ctx.key) !== version) return;
-    if (!manifest) throw new Error('主题配置不存在或不可读，请检查该主题的 manifest.json。');
+    if (!manifest) throw new Error(i18n.t('knowledge:store.manifestUnreadable'));
     commit(ctx, (state) => ({ loaded: true, dataVersion: state.dataVersion + 1,
-      goal: manifest?.goal ?? '', scope: manifest?.scope ?? [],
+      goal: manifest?.goal ?? '', scope: manifest?.scope ?? [], language: manifest?.language ?? 'auto',
       topics: manifest ? Object.entries(manifest.topics).map(([tpId, topic]) => ({ tpId, title: topic.title, path: topic.path })) : [],
       sources: manifest?.sources ?? {}, navigation: nav.topics, reviews,
     }));
@@ -211,15 +215,15 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
     themes: [], activeThemeId: null, contextVaultId: null,
     openSourceSettings: (sourceEntry) => set({ sourceEntry, page: 'sources' }),
     closeSourceSettings: () => set({ sourceEntry: 'closed' }),
-    createTheme: async ({ name, goal, scope }) => {
+    createTheme: async ({ name, goal, scope, language }) => {
       const vaultId = activeVaultId();
-      if (!vaultId) return { ok: false, error: '请先打开 Vault。' };
-      if (!name.trim() || !goal.trim()) return { ok: false, error: '请填写主题名称与目标。' };
+      if (!vaultId) return { ok: false, error: i18n.t('knowledge:store.openVaultFirst') };
+      if (!name.trim() || !goal.trim()) return { ok: false, error: i18n.t('knowledge:store.nameAndGoalRequired') };
       const id = `theme-${generateShortId()}`;
       try {
-        await writeManifest(themeKbFs(vaultId, id), { goal: goal.trim(), scope: [...scope], sources: {}, topics: {} });
+        await writeManifest(themeKbFs(vaultId, id), { goal: goal.trim(), scope: [...scope], language: language ?? 'auto', sources: {}, topics: {} });
         const registry = await updateThemeRegistry(vaultId, (value) => { value.themes.push({ id, name: name.trim() }); value.activeThemeId = id; });
-        if (activeVaultId() !== vaultId) return { ok: false, error: 'Vault 已切换。' };
+        if (activeVaultId() !== vaultId) return { ok: false, error: i18n.t('knowledge:store.vaultSwitched') };
         registryVersion += 1;
         if (get().contextVaultId !== vaultId) {
           if (get().activeThemeId && get().contextVaultId) sessions.set(JSON.stringify([get().contextVaultId, get().activeThemeId]), snapshot());
@@ -228,7 +232,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
         set({ themes: registry.themes });
         await get().selectTheme(id);
         return { ok: true };
-      } catch (error) { return { ok: false, error: `创建主题失败：${errText(error)}` }; }
+      } catch (error) { return { ok: false, error: i18n.t('knowledge:store.createThemeFailed', { error: errText(error) }) }; }
     },
     selectTheme: async (id) => {
       const vaultId = activeVaultId();
@@ -242,7 +246,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
         await hydrate(ctx);
         if (request !== selectionRequest || !isCurrent(ctx)) return;
         await updateThemeRegistry(vaultId, (registry) => { registry.activeThemeId = id; });
-      } catch (error) { commit(ctx, { loaded: true, buildError: `读取主题失败：${errText(error)}` }); }
+      } catch (error) { commit(ctx, { loaded: true, buildError: i18n.t('knowledge:store.readThemeFailed', { error: errText(error) }) }); }
     },
     loadFromManifest: async () => {
       const vaultId = activeVaultId();
@@ -259,7 +263,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
         if (get().activeThemeId) await hydrate(capture());
         else if (registry.activeThemeId ?? registry.themes[0]?.id) await get().selectTheme(registry.activeThemeId ?? registry.themes[0]!.id);
         else set({ loaded: true, buildError: '' });
-      } catch (error) { if (activeVaultId() === vaultId && version === registryVersion) set({ loaded: true, buildError: `读取知识主题失败：${errText(error)}` }); }
+      } catch (error) { if (activeVaultId() === vaultId && version === registryVersion) set({ loaded: true, buildError: i18n.t('knowledge:store.readThemesFailed', { error: errText(error) }) }); }
     },
   reconcileTopicEdits: async (paths) => {
     let ctx: OperationContext;
@@ -274,36 +278,37 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
         changed = result.changed || changed;
       }
       if (changed) { invalidateKbIndexCache(); await hydrate(ctx); }
-    } catch (error) { commit(ctx, { refNotice: `人工编辑核对失败：${errText(error)}` }); }
+    } catch (error) { commit(ctx, { refNotice: i18n.t('knowledge:store.reconcileFailed', { error: errText(error) }) }); }
     finally { endMutation(ctx); }
   },
   setPage: (page) => set({ page }),
   setActiveTopic: (tpId) => set({ activeTpId: tpId, page: tpId ? 'knowledge' : get().page }),
 
-  saveConfig: async ({ goal, scope, name }) => {
+  saveConfig: async ({ goal, scope, name, language }) => {
     let ctx: OperationContext;
     try { ctx = capture(); } catch (error) { return { ok: false, error: errText(error) }; }
-    if (getFor(ctx).buildRunning || mutations.has(ctx.key)) return { ok: false, error: '当前主题正在写入，请完成或停止后再修改配置。' };
-    if (name !== undefined && !name.trim()) return { ok: false, error: '请填写主题名称。' };
-    if (!beginMutation(ctx)) return { ok: false, error: '当前主题正在写入，请稍后重试。' };
+    if (getFor(ctx).buildRunning || mutations.has(ctx.key)) return { ok: false, error: i18n.t('knowledge:store.writeInProgress') };
+    if (name !== undefined && !name.trim()) return { ok: false, error: i18n.t('knowledge:store.nameRequired') };
+    if (!beginMutation(ctx)) return { ok: false, error: i18n.t('knowledge:store.writeInProgressRetry') };
     try {
       const manifest = await readManifest(ctx.fs);
-      if (!manifest) throw new Error('主题配置不存在，请重新创建主题。');
+      if (!manifest) throw new Error(i18n.t('knowledge:store.configMissing'));
       manifest.goal = goal; manifest.scope = [...scope];
+      if (language !== undefined) manifest.language = language;
       await writeManifest(ctx.fs, manifest);
       if (name !== undefined) {
         const registry = await updateThemeRegistry(ctx.vaultId, (value) => {
           const theme = value.themes.find((theme) => theme.id === ctx.themeId);
-          if (!theme) throw new Error('主题不存在。');
+          if (!theme) throw new Error(i18n.t('knowledge:store.themeMissing'));
           theme.name = name.trim();
         });
         if (activeVaultId() === ctx.vaultId && get().contextVaultId === ctx.vaultId) set({ themes: registry.themes });
       }
       await hydrate(ctx);
-      commit(ctx, { goal, scope: [...scope], buildError: '' });
-      if (!isCurrent(ctx)) return { ok: false, error: '主题已切换，设置已保存在原主题。' };
+      commit(ctx, { goal, scope: [...scope], ...(language !== undefined ? { language } : {}), buildError: '' });
+      if (!isCurrent(ctx)) return { ok: false, error: i18n.t('knowledge:store.themeSwitchedSaved') };
       return { ok: true };
-    } catch (error) { return { ok: false, error: `保存设置失败：${errText(error)}` }; }
+    } catch (error) { return { ok: false, error: i18n.t('knowledge:store.saveConfigFailed', { error: errText(error) }) }; }
     finally { endMutation(ctx); }
   },
 
@@ -311,7 +316,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
     let ctx: OperationContext;
     try { ctx = capture(); } catch { return; }
     if (getFor(ctx).buildRunning) return;
-    if (mutations.has(ctx.key)) { commit(ctx, { buildError: '当前主题正在保存修改，请稍后再整理。' }); return; }
+    if (mutations.has(ctx.key)) { commit(ctx, { buildError: i18n.t('knowledge:store.buildWhileSaving') }); return; }
     const { goal, scope } = get();
     if (scope.length === 0 && !only) {
       commit(ctx, { buildItems: [], buildCurrentIndex: -1 });
@@ -350,7 +355,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
     } catch (err) {
       // 整体失败（如目录扫描/manifest 写入）；单项收录失败在 buildItems 里逐项展示。
       console.error('[KnowledgeStore] build failed:', err);
-      commit(ctx, { buildError: `构建失败：${errText(err)}` });
+      commit(ctx, { buildError: i18n.t('knowledge:store.buildFailed', { error: errText(err) }) });
     } finally {
       commit(ctx, { buildRunning: false, buildCurrentIndex: -1 });
     }
@@ -361,7 +366,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
   stopTracking: async (srcId) => {
     let ctx: OperationContext;
     try { ctx = capture(); } catch { return; }
-    if (!beginMutation(ctx)) { commit(ctx, { reviewNotice: '当前主题正在写入，请稍后重试。' }); return; }
+    if (!beginMutation(ctx)) { commit(ctx, { reviewNotice: i18n.t('knowledge:store.writeInProgressRetry') }); return; }
     try {
     commit(ctx, { reviewNotice: '' });
     const fs = ctx.fs;
@@ -377,7 +382,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
       await hydrate(ctx);
     } catch (err) {
       console.error('[KnowledgeStore] stopTracking failed:', err);
-      commit(ctx, { reviewNotice: `停止跟踪失败：${errText(err)}` });
+      commit(ctx, { reviewNotice: i18n.t('knowledge:store.stopTrackingFailed', { error: errText(err) }) });
     }
     } finally { endMutation(ctx); }
   },
@@ -406,7 +411,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
       }));
     } catch (err) {
       // 失败轮与取消轮同构：answer 空 + note 说明原因（answer 非空的轮次才会注入后续上下文）。
-      commit(ctx, (state) => ({ askTurns: [...state.askTurns, { question, answer: '', evidence: [], note: `提问失败：${errText(err)}` }], askPhase: '' }));
+      commit(ctx, (state) => ({ askTurns: [...state.askTurns, { question, answer: '', evidence: [], note: i18n.t('knowledge:store.askFailed', { error: errText(err) }) }], askPhase: '' }));
     } finally {
       commit(ctx, { askRunning: false, cancelAsk: false });
     }
@@ -421,7 +426,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
   applyReviewItem: async (id, editedBody) => {
     let ctx: OperationContext;
     try { ctx = capture(); } catch { return; }
-    if (!beginMutation(ctx)) { commit(ctx, { reviewNotice: '当前主题正在写入，请稍后重试。' }); return; }
+    if (!beginMutation(ctx)) { commit(ctx, { reviewNotice: i18n.t('knowledge:store.writeInProgressRetry') }); return; }
     try {
     const review = getFor(ctx).reviews.find((r) => r.id === id);
     if (!review) return;
@@ -436,10 +441,10 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
       commit(ctx, {
         reviewNotice:
           review.reason === 'restore-suggestion'
-            ? '已恢复内容并重编引用，对应删除意图已解除。'
+            ? i18n.t('knowledge:store.appliedRestore')
             : review.reason === 'add-ref'
-              ? '已为既有结论补充来源引用（未改动正文）。'
-              : '已采用修订并写入主题页。',
+              ? i18n.t('knowledge:store.appliedAddRef')
+              : i18n.t('knowledge:store.appliedReview'),
       });
       await hydrate(ctx);
     } else {
@@ -452,7 +457,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
   discardReviewItem: async (id) => {
     let ctx: OperationContext;
     try { ctx = capture(); } catch { return; }
-    if (!beginMutation(ctx)) { commit(ctx, { reviewNotice: '当前主题正在写入，请稍后重试。' }); return; }
+    if (!beginMutation(ctx)) { commit(ctx, { reviewNotice: i18n.t('knowledge:store.writeInProgressRetry') }); return; }
     try {
     const review = getFor(ctx).reviews.find((r) => r.id === id);
     if (!review) return;
@@ -461,14 +466,14 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
       commit(ctx, {
         reviewNotice:
           review.reason === 'restore-suggestion'
-            ? '已保留删除意图，丢弃该恢复建议。'
+            ? i18n.t('knowledge:store.discardedRestore')
             : review.reason === 'add-ref'
-              ? '已丢弃该补充引用建议。'
-              : '已保留当前正文，丢弃该修订。',
+              ? i18n.t('knowledge:store.discardedAddRef')
+              : i18n.t('knowledge:store.discardedReview'),
       });
       await hydrate(ctx);
     } catch (err) {
-      commit(ctx, { reviewNotice: `操作失败：${errText(err)}` });
+      commit(ctx, { reviewNotice: i18n.t('knowledge:store.actionFailed', { error: errText(err) }) });
     }
     } finally { endMutation(ctx); }
   },
@@ -476,7 +481,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
   verifyTopicRefItem: async (tpId, refId) => {
     let ctx: OperationContext;
     try { ctx = capture(); } catch { return; }
-    if (!beginMutation(ctx)) { commit(ctx, { refNotice: '当前主题正在写入，请稍后重试。' }); return; }
+    if (!beginMutation(ctx)) { commit(ctx, { refNotice: i18n.t('knowledge:store.writeInProgressRetry') }); return; }
     try {
     commit(ctx, { refNotice: '', verifyingRefId: refId });
     const fs = ctx.fs;
@@ -486,22 +491,22 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
       const ref = refs.find((r) => r.id === refId);
       const topicPath = manifest?.topics[tpId]?.path;
       if (!ref || !topicPath) {
-        commit(ctx, { refNotice: '引用或主题页不存在，无法核验。' });
+        commit(ctx, { refNotice: i18n.t('knowledge:store.refOrTopicMissing') });
         return;
       }
       const outcome = await verifyTopicRef(fs, ref, topicPath);
       if (outcome.ok) {
         commit(ctx, {
           refNotice: outcome.supported
-            ? `核验通过：${outcome.reason}`
-            : `原文不支持该说法：${outcome.reason}（正文保留，改写须经审阅）`,
+            ? i18n.t('knowledge:store.verifyPassed', { reason: outcome.reason })
+            : i18n.t('knowledge:store.verifyUnsupported', { reason: outcome.reason }),
         });
       } else {
         commit(ctx, { refNotice: outcome.message });
       }
       await hydrate(ctx); // dataVersion+1 → 阅读视图重读 refs
     } catch (err) {
-      commit(ctx, { refNotice: `核验失败：${errText(err)}` });
+      commit(ctx, { refNotice: i18n.t('knowledge:store.verifyFailed', { error: errText(err) }) });
     } finally {
       commit(ctx, { verifyingRefId: null });
     }
@@ -510,11 +515,11 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
 
   saveTopicPage: async (tpId, content) => {
     let ctx: OperationContext;
-    try { ctx = capture(); } catch { return { ok: false, error: '请先选择知识主题。' }; }
-    if (!beginMutation(ctx)) return { ok: false, error: '当前主题正在写入，请稍后重试。' };
+    try { ctx = capture(); } catch { return { ok: false, error: i18n.t('knowledge:store.selectThemeRequired') }; }
+    if (!beginMutation(ctx)) return { ok: false, error: i18n.t('knowledge:store.writeInProgressRetry') };
     try {
       const topicPath = (await readManifest(ctx.fs))?.topics[tpId]?.path;
-      if (!topicPath) return { ok: false, error: '主题页不存在或不可读，无法保存。' };
+      if (!topicPath) return { ok: false, error: i18n.t('knowledge:store.topicPageMissing') };
       // 用户编辑：不更新 lastProgramHash —— 页 hash 漂移触发 ADR-0006 的
       // user-edited 降级（AI 追加内容进审阅），这是有意保持的语义。
       suppressWatcherFor(topicPath);
@@ -523,7 +528,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
       await hydrate(ctx); // dataVersion+1 → 阅读视图重读正文与引用
       return { ok: true };
     } catch (err) {
-      return { ok: false, error: `保存失败：${errText(err)}` };
+      return { ok: false, error: i18n.t('knowledge:store.saveTopicFailed', { error: errText(err) }) };
     } finally { endMutation(ctx); }
   },
   };

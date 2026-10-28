@@ -4,6 +4,7 @@
  */
 
 import { isKbPath } from '@/services/knowledge/kbPaths';
+import i18n from '@/i18n';
 import type { VaultEntry } from '@folyn/vault-provider';
 
 export const BTN =
@@ -42,13 +43,5 @@ export function isRowInScope(row: TreeRow, scope: string[]): boolean {
 
 /** 构建分项状态文案（buildItems → UI）。 */
 export function buildStatusLabel(status: string): string {
-  switch (status) {
-    case 'pending': return '待处理';
-    case 'indexing': return '生成资料索引…';
-    case 'synthesizing': return '合成主题页…';
-    case 'done': return '完成';
-    case 'skipped': return '跳过（内容未变化）';
-    case 'error': return '失败';
-    default: return status;
-  }
+  return i18n.t(`knowledge:build.status.${status}`);
 }

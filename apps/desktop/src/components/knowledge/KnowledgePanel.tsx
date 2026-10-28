@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowUpRight, BookOpen, Check, ChevronDown, Layers3, Plus, Settings2 } from 'lucide-react';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { useVaultStore } from '@/store/vaultStore';
@@ -8,6 +9,7 @@ import { startKbIntentWatch, stopKbIntentWatch } from '@/services/knowledge/kbIn
 import { useThemeUiStore } from './themeUiStore';
 
 export function KnowledgePanel(): React.JSX.Element {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const switcherRef = useRef<HTMLDivElement>(null);
@@ -61,8 +63,8 @@ export function KnowledgePanel(): React.JSX.Element {
   return <div className="kb-sidebar flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
     <div className="kb-theme-switcher">
       <div className="kb-theme-switcher-heading">
-        <span id="kb-theme-label">知识主题</span>
-        <button className="kb-theme-create" aria-label="新建知识主题" title="新建知识主题" onClick={() => setCreateOpen(true)}><Plus size={14} /></button>
+        <span id="kb-theme-label">{t('knowledge:panel.themeLabel')}</span>
+        <button className="kb-theme-create" aria-label={t('knowledge:panel.createTheme')} title={t('knowledge:panel.createTheme')} onClick={() => setCreateOpen(true)}><Plus size={14} /></button>
       </div>
       <div className="kb-theme-select-wrap" ref={switcherRef}>
         <button type="button" role="combobox" className="kb-theme-select-trigger" aria-labelledby="kb-theme-label kb-theme-value" aria-haspopup="listbox" aria-expanded={menuOpen} aria-controls={menuOpen ? 'kb-theme-options' : undefined} aria-activedescendant={menuOpen && themes[highlighted] ? `kb-theme-option-${highlighted}` : undefined} disabled={!loaded || themes.length === 0} onClick={() => menuOpen ? setMenuOpen(false) : openMenu()} onKeyDown={(event) => {
@@ -78,23 +80,23 @@ export function KnowledgePanel(): React.JSX.Element {
           } else if (event.key === 'Tab') setMenuOpen(false);
         }}>
           <span className="kb-theme-select-icon" aria-hidden="true"><Layers3 size={15} strokeWidth={1.6} /></span>
-          <span id="kb-theme-value" className="kb-theme-select-value" title={selectedTheme?.name}>{selectedTheme?.name ?? (loaded ? '尚无主题' : '正在读取…')}</span>
+          <span id="kb-theme-value" className="kb-theme-select-value" title={selectedTheme?.name}>{selectedTheme?.name ?? (loaded ? t('knowledge:panel.noThemes') : t('knowledge:panel.loading'))}</span>
           <ChevronDown className="kb-theme-select-chevron" size={14} aria-hidden="true" />
         </button>
-        {menuOpen && <div id="kb-theme-options" className="kb-theme-options" role="listbox" aria-label="知识主题">
+        {menuOpen && <div id="kb-theme-options" className="kb-theme-options" role="listbox" aria-label={t('knowledge:panel.themeLabel')}>
           {themes.map((theme, index) => <div key={theme.id} id={`kb-theme-option-${index}`} role="option" aria-selected={theme.id === activeThemeId} className={`kb-theme-option${index === highlighted ? ' is-highlighted' : ''}${theme.id === activeThemeId ? ' is-selected' : ''}`} onMouseEnter={() => setHighlighted(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseTheme(index)}>
             <span className="kb-theme-option-icon" aria-hidden="true"><Layers3 size={14} strokeWidth={1.6} /></span><span className="kb-theme-option-name" title={theme.name}>{theme.name}</span>{theme.id === activeThemeId && <Check size={14} aria-hidden="true" />}
           </div>)}
         </div>}
       </div>
     </div>
-    <nav aria-label="主题知识页" className="kb-sidebar-nav">
-      <button className={`kb-sidebar-overview${page === 'knowledge' && !activeTpId ? ' is-active' : ''}`} disabled={!activeThemeId} onClick={() => { setActiveTopic(null); setPage('knowledge'); }}><BookOpen size={14} strokeWidth={1.5} />知识概览<span>{topics.length}</span></button>
-      <div className="kb-sidebar-section-label">知识页</div>
-      {!loaded ? <p className="kb-sidebar-hint">正在读取…</p> : topics.length === 0 ? <p className="kb-sidebar-hint">{activeThemeId ? '整理资料后，知识页会出现在这里。' : '先创建一个主题，定义你的知识方向。'}</p> : <div className="kb-sidebar-pages">{topics.map((topic) => <button key={topic.tpId} className={topic.tpId === activeTpId && page === 'knowledge' ? 'is-active' : ''} title={topic.title} aria-current={topic.tpId === activeTpId && page === 'knowledge' ? 'page' : undefined} onClick={() => setActiveTopic(topic.tpId)}><span className="kb-sidebar-page-icon" aria-hidden="true"><FileIcon filename={topic.path} /></span><span className="kb-sidebar-page-title">{topic.title}</span></button>)}</div>}
-      {reviews.length > 0 && <button className="kb-sidebar-task" onClick={() => setPage('reviews')}><span>待审阅修订</span><span>{reviews.length}<ArrowUpRight size={12} /></span></button>}
-      {failedCount > 0 && <button className="kb-sidebar-task" onClick={() => setPage('sources')}><span>资料处理失败</span><span>{failedCount}<ArrowUpRight size={12} /></span></button>}
+    <nav aria-label={t('knowledge:panel.navLabel')} className="kb-sidebar-nav">
+      <button className={`kb-sidebar-overview${page === 'knowledge' && !activeTpId ? ' is-active' : ''}`} disabled={!activeThemeId} onClick={() => { setActiveTopic(null); setPage('knowledge'); }}><BookOpen size={14} strokeWidth={1.5} />{t('knowledge:panel.overview')}<span>{topics.length}</span></button>
+      <div className="kb-sidebar-section-label">{t('knowledge:panel.pagesLabel')}</div>
+      {!loaded ? <p className="kb-sidebar-hint">{t('knowledge:panel.loading')}</p> : topics.length === 0 ? <p className="kb-sidebar-hint">{activeThemeId ? t('knowledge:panel.hintTopics') : t('knowledge:panel.hintNoTheme')}</p> : <div className="kb-sidebar-pages">{topics.map((topic) => <button key={topic.tpId} className={topic.tpId === activeTpId && page === 'knowledge' ? 'is-active' : ''} title={topic.title} aria-current={topic.tpId === activeTpId && page === 'knowledge' ? 'page' : undefined} onClick={() => setActiveTopic(topic.tpId)}><span className="kb-sidebar-page-icon" aria-hidden="true"><FileIcon filename={topic.path} /></span><span className="kb-sidebar-page-title">{topic.title}</span></button>)}</div>}
+      {reviews.length > 0 && <button className="kb-sidebar-task" onClick={() => setPage('reviews')}><span>{t('knowledge:panel.pendingReviews')}</span><span>{reviews.length}<ArrowUpRight size={12} /></span></button>}
+      {failedCount > 0 && <button className="kb-sidebar-task" onClick={() => setPage('sources')}><span>{t('knowledge:panel.failedItems')}</span><span>{failedCount}<ArrowUpRight size={12} /></span></button>}
     </nav>
-    {activeThemeId && <footer className="kb-sidebar-footer"><button onClick={() => openSourceSettings('settings')}><Settings2 size={14} strokeWidth={1.5} />主题设置</button><button onClick={() => openSourceSettings('add')}><Plus size={14} />添加资料</button></footer>}
+    {activeThemeId && <footer className="kb-sidebar-footer"><button onClick={() => openSourceSettings('settings')}><Settings2 size={14} strokeWidth={1.5} />{t('knowledge:panel.settings')}</button><button onClick={() => openSourceSettings('add')}><Plus size={14} />{t('knowledge:panel.addSources')}</button></footer>}
   </div>;
 }

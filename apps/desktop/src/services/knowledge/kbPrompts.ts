@@ -1,11 +1,24 @@
 /**
- * 知识库各模型调用的 prompt 构造（中文）。
+ * 知识库各模型调用的 prompt 构造（指令为中文，值文本语言由指令控制）。
  *
  * 模型只输出 JSON 提议；行号、锚文本、目标文件版本由程序校验后才写入
  * （ADR-0006「模型提议、程序写入」）。
  */
 
+import type { KbLanguage } from './kbTypes';
+
 const JSON_ONLY = '只输出一个 JSON 对象，不要输出其他文字，不要使用 Markdown 代码围栏。';
+
+/**
+ * 内容语言指令（注入所有产出用户可见文本的 prompt：合成 / 问答回答 / 引用核验）。
+ * auto = 指示模型以资料原文语言输出（模型自判，程序不做语言检测）；
+ * 指定语言 = 指示以该语言输出。指令本身用中文表述即可，模型可执行。
+ */
+export function kbLanguageDirective(language: KbLanguage = 'auto'): string {
+  if (language === 'zh') return '所有面向用户的文本内容（标题、正文、结论、回答、核验理由等）一律使用中文。';
+  if (language === 'en') return 'Write all user-facing text content (titles, body, claims, answers, verification reasons, etc.) in English.';
+  return '所有面向用户的文本内容（标题、正文、结论、回答、核验理由等）使用资料原文的语言。';
+}
 
 export const KB_INDEX_PREAMBLE = `你是资料索引编目员。你的任务是阅读一份资料的一个片段，为它建立结构索引。
 要求：
@@ -44,6 +57,7 @@ export function kbSynthPrompt(
   chunkText: string,
   chunkFirstLine: number,
   existingTopics: { title: string }[],
+  language: KbLanguage = 'auto',
 ): string {
   return [
     '## 知识库目标',
@@ -61,6 +75,9 @@ export function kbSynthPrompt(
     '',
     `## 资料片段（从第 ${chunkFirstLine} 行开始，行号是整份文件的绝对行号）`,
     chunkText,
+    '',
+    '## 输出语言',
+    kbLanguageDirective(language),
     '',
     '输出格式：',
     '{"topics":[{"title":"主题标题","mode":"new","sections":[{"heading":"章节标题","body":"章节导语（可以引用原文观点，用你自己的话组织）","claims":[{"text":"结论句子","anchorText":"原文锚文本","startLine":12,"endLine":18}]}]}]}',
@@ -97,7 +114,7 @@ export const KB_ANSWER_PREAMBLE = `你是知识库问答的回答层。你会收
 - 引用结论时标注来源路径与行号范围（如 path.md L12-L18）。
 - 如证据带有状态标记（如来源已移除、版本不一致），如实转述，不要自行给出置信度评分。
 - 会话上下文只用于理解当前问题的指代与承接，不要把其中旧回答当作证据复述。
-- 用中文回答，简洁分段。`;
+- 简洁分段。`;
 
 /** 回答层注入的会话上下文轮数上限（检索仍只按当前问题）。 */
 export const KB_MAX_HISTORY_TURNS = 6;
@@ -107,6 +124,7 @@ export function kbAnswerPrompt(
   evidenceBlocks: string,
   gaps: string,
   history: { question: string; answer: string }[] = [],
+  language: KbLanguage = 'auto',
 ): string {
   const prior = history.slice(-KB_MAX_HISTORY_TURNS);
   return [
@@ -123,6 +141,9 @@ export function kbAnswerPrompt(
     evidenceBlocks || '（无证据）',
     gaps ? `\n## 检索缺口\n${gaps}` : '',
     '',
+    '## 输出语言',
+    kbLanguageDirective(language),
+    '',
     '请回答用户问题。',
   ]
     .filter(Boolean)
@@ -135,7 +156,7 @@ export const KB_VERIFY_PREAMBLE = `你是引用核验员。判断给出的原文
 - 如实给出理由；证据不足时判为不支持并说明缺口。
 ${JSON_ONLY}`;
 
-export function kbVerifyPrompt(claim: string, anchorText: string, excerpt: string): string {
+export function kbVerifyPrompt(claim: string, anchorText: string, excerpt: string, language: KbLanguage = 'auto'): string {
   return [
     '## 知识页中的说法（可能已被人工修改）',
     claim,
@@ -145,6 +166,9 @@ export function kbVerifyPrompt(claim: string, anchorText: string, excerpt: strin
     '',
     '## 原文摘录（引用时版本）',
     excerpt || '（空）',
+    '',
+    '## 输出语言（reason 字段）',
+    kbLanguageDirective(language),
     '',
     '输出格式：',
     '{"supported":true,"reason":"1-2 句理由"}',

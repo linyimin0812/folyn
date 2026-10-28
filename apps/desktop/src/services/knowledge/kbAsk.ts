@@ -13,6 +13,7 @@ import type { KbEvidence, KbManifest } from './kbTypes';
 import { kbChatText } from './kbLlm';
 import { KB_ANSWER_PREAMBLE, KB_RETRIEVAL_PREAMBLE, kbAnswerPrompt } from './kbPrompts';
 import { runRetrievalLoop, type RetrievalResult } from './retrievalLoop';
+import i18n from '@/i18n';
 
 // ── BM25 索引缓存（内存；构建后失效。磁盘缓存推迟到实测超预算，见 bm25Index）──
 
@@ -98,8 +99,9 @@ export async function askKnowledge(
   opts: KbAskOptions = {},
 ): Promise<KbAskResult> {
   const manifest = await readManifest(fs);
-  if (!manifest) throw new Error('当前主题尚未构建');
-  opts.onProgress?.('加载检索索引');
+  if (!manifest) throw new Error(i18n.t('knowledge:ask.notBuilt'));
+  const language = manifest.language ?? 'auto';
+  opts.onProgress?.(i18n.t('knowledge:ask.phase.loadIndex'));
   const nav = await readNavigation(fs);
   const index = await ensureIndex(fs, vaultId, manifest);
 
@@ -150,7 +152,7 @@ export async function askKnowledge(
         title: entry.title,
         versionHash: await sha256Hex(content),
         text: content,
-        ...(pending > 0 ? { status: `该页有 ${pending} 项修订待审阅（正文可能已过时，新旧内容差异见审阅页）` } : {}),
+        ...(pending > 0 ? { status: i18n.t('knowledge:ask.status.pendingReviews', { count: pending }) } : {}),
       };
       return { observation, evidence };
     },
@@ -178,7 +180,7 @@ export async function askKnowledge(
             path: entry.path,
             srcId,
             title: entry.path.split('/').pop(),
-            status: '来源已移除（已停止跟踪）',
+            status: i18n.t('knowledge:ask.status.sourceRemoved'),
             text: '',
           },
         };
@@ -194,7 +196,7 @@ export async function askKnowledge(
             path: entry.path,
             srcId,
             title: entry.path.split('/').pop(),
-            status: '来源已移除',
+            status: i18n.t('knowledge:ask.status.sourceRemovedShort'),
             text: '',
           },
         };
@@ -218,7 +220,7 @@ export async function askKnowledge(
         startLine: start,
         endLine: safeEnd,
         text,
-        ...(stale ? { status: '当前文件与收录版本不一致' } : {}),
+        ...(stale ? { status: i18n.t('knowledge:ask.status.staleVersion') } : {}),
       };
       return { observation, evidence };
     },
@@ -226,7 +228,7 @@ export async function askKnowledge(
     // 预算 + 程序侧取消（取消在轮边界生效；已找到的证据不丢）。
     {
       shouldCancel: opts.shouldCancel,
-      onRound: (round) => opts.onProgress?.(`检索中（第 ${round} 轮）`),
+      onRound: (round) => opts.onProgress?.(i18n.t('knowledge:ask.phase.retrieving', { round })),
     },
   );
 
@@ -238,7 +240,7 @@ export async function askKnowledge(
 
   // 回答层：独立的第二次模型调用（不在 10 秒检索预算内）。
   // 会话上下文只进回答层；检索（上文 runRetrievalLoop）仍只按当前问题。
-  opts.onProgress?.('生成回答');
+  opts.onProgress?.(i18n.t('knowledge:ask.phase.answering'));
   const evidenceBlocks = retrieval.evidence.map((e, i) => {
     const header =
       e.kind === 'topic'
@@ -250,7 +252,7 @@ export async function askKnowledge(
     .filter((t) => t.answer !== '') // 取消/失败轮次无回答文本，不注入
     .map((t) => ({ question: t.question, answer: t.answer }));
   const answer = await kbChatText(
-    kbAnswerPrompt(question, evidenceBlocks.join('\n\n'), retrieval.note, history),
+    kbAnswerPrompt(question, evidenceBlocks.join('\n\n'), retrieval.note, history, language),
     KB_ANSWER_PREAMBLE,
   );
   return { answer, retrieval };

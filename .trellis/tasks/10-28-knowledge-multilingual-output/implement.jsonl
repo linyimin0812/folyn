@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/10-28-knowledge-multilingual-output/prd.md", "reason": "需求、决策与验收标准"}
+{"file": ".trellis/spec/desktop/frontend/knowledge-base.md", "reason": "知识库约定"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "i18n 接入规则（namespace、key 树、parity 测试）"}

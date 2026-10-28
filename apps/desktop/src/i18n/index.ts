@@ -32,6 +32,8 @@ import zhSessions from './locales/zh/sessions.json';
 import enMarkmap from './locales/en/markmap.json';
 import enActivity from './locales/en/activity.json';
 import enSessions from './locales/en/sessions.json';
+import zhKnowledge from './locales/zh/knowledge.json';
+import enKnowledge from './locales/en/knowledge.json';
 import jaCommon from './locales/ja/common.json';
 import jaShell from './locales/ja/shell.json';
 import jaTopbar from './locales/ja/topbar.json';
@@ -149,6 +151,7 @@ export const NAMESPACES = [
   'markmap',
   'activity',
   'sessions',
+  'knowledge',
 ] as const;
 
 void i18n.use(initReactI18next).init({
@@ -170,6 +173,7 @@ void i18n.use(initReactI18next).init({
       markmap: zhMarkmap,
       activity: zhActivity,
       sessions: zhSessions,
+      knowledge: zhKnowledge,
     },
     en: {
       common: enCommon,
@@ -188,6 +192,7 @@ void i18n.use(initReactI18next).init({
       markmap: enMarkmap,
       activity: enActivity,
       sessions: enSessions,
+      knowledge: enKnowledge,
     },
     ja: {
       common: jaCommon,

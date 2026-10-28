@@ -1,12 +1,13 @@
 /**
  * 「提问」页：多轮会话式问答 —— 逐轮渲染 问题 + 回答 + 证据入口，输入框置底。
  *
- * 停止检索在轮边界生效（模型调用中无法中断），已找到的证据不丢（retrievalLoop
+ * {t('knowledge:ask.stop')}检索在轮边界生效（模型调用中无法中断），已找到的证据不丢（retrievalLoop
  * 程序侧取消，取消轮次也入会话）；无答案/无证据时明确说缺证据并给出出口，不编造。
  * askPhase/askNote 只反映进行中的当前轮；历史轮次的 note 各自随轮展示。
  */
 
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import remarkGfm from 'remark-gfm';
 import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
 import { ChevronDown, ChevronRight, Eraser, ExternalLink, Loader2, Search, Square } from 'lucide-react';
@@ -27,9 +28,10 @@ function TurnView({
   evidenceOpen: boolean;
   onToggleEvidence: (index: number) => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const answerNode = useMemo(() => renderMarkdownToReact(turn.answer, { remarkExtensions: [remarkGfm] }), [turn.answer]);
   return (
-    <section className="flex flex-col gap-2.5 border border-brd rounded-lg p-4 bg-panel" aria-label={`第 ${index + 1} 轮问答`}>
+    <section className="flex flex-col gap-2.5 border border-brd rounded-lg p-4 bg-panel" aria-label={t('knowledge:ask.turnLabel', { index: index + 1 })}>
       <div className="text-[13px] font-medium text-t2 whitespace-pre-wrap">{turn.question}</div>
       {turn.answer !== '' && <div className="kb-md">{answerNode}</div>}
       {turn.note && <div className="text-[11px] text-t3">{turn.note}</div>}
@@ -41,13 +43,13 @@ function TurnView({
             onClick={() => onToggleEvidence(index)}
           >
             {evidenceOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            来源依据（{turn.evidence.length}）
+            {t('knowledge:ask.evidenceToggle', { count: turn.evidence.length })}
           </button>
           {evidenceOpen && turn.evidence.map((e, i) => (
             <button
               key={`${e.path}-${e.startLine ?? 0}-${i}`}
               className="text-left px-4 py-3 border border-brd rounded-[5px] bg-transparent cursor-pointer hover:bg-hov"
-              title={`在编辑器中打开：${e.path}`}
+              title={t('knowledge:ask.openEvidenceTitle', { path: e.path })}
               onClick={() => {
                 void openFile(e.path, e.path.split('/').pop() ?? e.path);
                 useEditorStore.getState().setActivePanel('files');
@@ -55,12 +57,12 @@ function TurnView({
             >
               <div className="text-[12px] text-t2 flex items-center gap-1 flex-wrap">
                 <ExternalLink size={10} className="shrink-0" />
-                {e.kind === 'topic' ? '主题' : '原文'} · {e.title ?? e.path}
+                {e.kind === 'topic' ? t('knowledge:ask.evidenceTopic') : t('knowledge:ask.evidenceSource')} · {e.title ?? e.path}
                 {e.startLine ? ` L${e.startLine}-L${e.endLine}` : ''}
-                {e.versionHash ? ` · 版本 ${e.versionHash.slice(0, 8)}` : ''}
+                {e.versionHash ? ` · ${t('knowledge:ask.version')} ${e.versionHash.slice(0, 8)}` : ''}
                 {e.status ? <span className="text-[#b48a3f]">· {e.status}</span> : null}
               </div>
-              <div className="mt-2 text-[13px] leading-6 text-t3 line-clamp-3 whitespace-pre-wrap">{e.text.slice(0, 160) || '（无正文）'}</div>
+              <div className="mt-2 text-[13px] leading-6 text-t3 line-clamp-3 whitespace-pre-wrap">{e.text.slice(0, 160) || t('knowledge:ask.noText')}</div>
             </button>
           ))}
         </div>
@@ -70,6 +72,7 @@ function TurnView({
 }
 
 export function AskView(): React.JSX.Element {
+  const { t } = useTranslation();
   const askRunning = useKnowledgeStore((s) => s.askRunning);
   const askPhase = useKnowledgeStore((s) => s.askPhase);
   const askQuestion = useKnowledgeStore((s) => s.askQuestion);
@@ -91,20 +94,20 @@ export function AskView(): React.JSX.Element {
       <div className="kb-page-inner flex flex-col gap-4">
         <header className="flex items-start justify-between gap-3">
           <div>
-            <div className="kb-eyebrow">基于当前知识库</div>
-            <h1 className="kb-page-title">向知识库提问</h1>
-            <p className="kb-page-description">从主题与原文中寻找依据，并核对回答引用的证据。</p>
+            <div className="kb-eyebrow">{t('knowledge:ask.eyebrow')}</div>
+            <h1 className="kb-page-title">{t('knowledge:ask.title')}</h1>
+            <p className="kb-page-description">{t('knowledge:ask.description')}</p>
           </div>
           {askTurns.length > 0 && !askRunning && (
-            <button className={BTN} onClick={clearAsk} title="清空整个会话">
+            <button className={BTN} onClick={clearAsk} title={t('knowledge:ask.clearTitle')}>
               <Eraser size={12} />
-              清空会话
+              {t('knowledge:ask.clear')}
             </button>
           )}
         </header>
 
         {askTurns.length > 0 && (
-          <div className="flex flex-col gap-3" aria-label="会话记录">
+          <div className="flex flex-col gap-3" aria-label={t('knowledge:ask.conversationLabel')}>
             {askTurns.map((turn, i) => (
               <TurnView
                 key={i}
@@ -120,14 +123,14 @@ export function AskView(): React.JSX.Element {
         {askRunning && (
           <div role="status" className="flex flex-wrap items-center gap-2 px-3 py-3 border border-brd rounded-[5px] text-[12px] text-t2">
             <Loader2 size={13} className="animate-spin text-t3" />
-            <span>{askPhase || '检索中…'}</span>
-            <span className="text-[11px] text-t3">停止将在当前一轮结束后生效，已找到的证据会保留。</span>
+            <span>{askPhase || t('knowledge:ask.defaultPhase')}</span>
+            <span className="text-[11px] text-t3">{t('knowledge:ask.stopHint')}</span>
           </div>
         )}
 
         {noEvidence && (
           <div className="px-3 py-2.5 border border-brd rounded-[6px] text-[12px] text-t2 flex flex-col gap-1.5">
-            <span>没有找到足以支持回答的证据。可以：</span>
+            <span>{t('knowledge:ask.noEvidence')}</span>
             <div className="flex gap-1.5 flex-wrap">
               <button
                 className={BTN}
@@ -135,17 +138,17 @@ export function AskView(): React.JSX.Element {
                   inputRef.current?.focus();
                 }}
               >
-                修改问题再问
+                {t('knowledge:ask.refine')}
               </button>
               <button className={BTN} onClick={() => setPage('sources')}>
-                收录更多资料
+                {t('knowledge:ask.moreSources')}
               </button>
             </div>
           </div>
         )}
 
         <div className="flex flex-col gap-2">
-          <label className="text-[12px] font-medium text-t2" htmlFor="kb-ask">问题</label>
+          <label className="text-[12px] font-medium text-t2" htmlFor="kb-ask">{t('knowledge:ask.inputLabel')}</label>
           <div className="flex flex-col gap-3 border border-brd rounded-lg p-3 bg-panel">
             <textarea
               id="kb-ask"
@@ -153,23 +156,23 @@ export function AskView(): React.JSX.Element {
               className={`${INPUT} resize-none min-h-[92px] border-transparent bg-transparent focus:border-acc leading-7`}
               rows={3}
               aria-describedby="kb-ask-hint"
-              placeholder={askTurns.length > 0 ? '继续追问…' : '在当前知识库的知识页与原文中查找…'}
+              placeholder={askTurns.length > 0 ? t('knowledge:ask.placeholderFollow') : t('knowledge:ask.placeholderFirst')}
               value={askQuestion}
               onChange={(e) => setAskQuestion(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229 && !askRunning && askQuestion.trim()) { e.preventDefault(); void ask(); }
               }}
             />
-            <div className="flex items-center justify-between gap-3 flex-wrap"><span id="kb-ask-hint" className="text-[11px] text-t3">Enter 提问 · Shift + Enter 换行</span>
+            <div className="flex items-center justify-between gap-3 flex-wrap"><span id="kb-ask-hint" className="text-[11px] text-t3">{t('knowledge:ask.hint')}</span>
             {askRunning ? (
-              <button className={BTN} onClick={cancelAskRequested} title="停止后返回已找到的证据">
+              <button className={BTN} onClick={cancelAskRequested} title={t('knowledge:ask.stopTitle')}>
                 <Square size={12} />
-                停止
+                {t('knowledge:ask.stop')}
               </button>
             ) : (
               <button className={BTN_PRIMARY} disabled={askQuestion.trim() === ''} onClick={() => void ask()}>
                 <Search size={13} />
-                {askTurns.length > 0 ? '继续提问' : '查找依据'}
+                {askTurns.length > 0 ? t('knowledge:ask.askFollow') : t('knowledge:ask.askFirst')}
               </button>
             )}
             </div>

@@ -56,7 +56,7 @@ describe('theme workspace interaction', () => {
   it('creates a named independent theme with its own goal and source selection', async () => {
     useThemeUiStore.setState({createOpen: true}); render(<ThemeDialog />); fillTheme();
     fireEvent.click(screen.getByRole('button', {name: '创建主题'}));
-    await waitFor(() => expect(fixture.state.createTheme).toHaveBeenCalledWith({name: 'Distributed systems', goal: 'Understand consensus', scope: []}));
+    await waitFor(() => expect(fixture.state.createTheme).toHaveBeenCalledWith({name: 'Distributed systems', goal: 'Understand consensus', scope: [], language: 'auto'}));
     expect(useThemeUiStore.getState().createOpen).toBe(false);
   });
   it('cancel discards new-theme edits without changing configured themes', () => {

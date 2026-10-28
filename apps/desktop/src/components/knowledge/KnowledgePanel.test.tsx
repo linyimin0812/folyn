@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
 
 const fixture = vi.hoisted(() => ({ selectTheme: vi.fn(), setCreateOpen: vi.fn() }));
 vi.mock('@/store/vaultStore', () => ({ useVaultStore: (selector: (state: unknown) => unknown) => selector({ currentVault: null }) }));
@@ -13,7 +13,8 @@ vi.mock('@/services/knowledge/kbAutoBuild', () => ({startKbAutoBuild: vi.fn(), s
 vi.mock('@/services/knowledge/kbIntentWatch', () => ({startKbIntentWatch: vi.fn(), stopKbIntentWatch: vi.fn()}));
 vi.mock('./themeUiStore', () => ({ useThemeUiStore: (selector: (state: unknown) => unknown) => selector({ setCreateOpen: fixture.setCreateOpen }) }));
 import { KnowledgePanel } from './KnowledgePanel';
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+import i18n from '@/i18n';
+afterEach(() => { cleanup(); vi.clearAllMocks(); void i18n.changeLanguage('zh'); });
 
 describe('knowledge theme menu', () => {
   it('opens a custom menu and switches themes with the keyboard', () => {
@@ -34,5 +35,14 @@ describe('knowledge theme menu', () => {
     fireEvent.click(trigger); fireEvent.mouseDown(document.body);
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(fixture.selectTheme).not.toHaveBeenCalled();
+  });
+  it('renders panel copy in the app locale (zh default, en after switch)', async () => {
+    render(<KnowledgePanel />);
+    expect(screen.getByText('知识主题')).toBeTruthy();
+    expect(screen.getByText('知识概览')).toBeTruthy();
+    await act(async () => { void i18n.changeLanguage('en'); });
+    expect(screen.getByText('Knowledge themes')).toBeTruthy();
+    expect(screen.getByText('Knowledge overview')).toBeTruthy();
+    expect(screen.queryByText('知识主题')).toBeNull();
   });
 });

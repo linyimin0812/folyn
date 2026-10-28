@@ -19,6 +19,7 @@ import { extractJsonObject } from '@/services/aiStreamUtils';
 import { errText } from '@/utils/errText';
 import { kbRetrievalPrompt } from './kbPrompts';
 import type { KbEvidence } from './kbTypes';
+import i18n from '@/i18n';
 
 export type RetrievalAction =
   | { action: 'list_topics' }
@@ -127,13 +128,13 @@ export async function runRetrievalLoop(
   while (true) {
     if (budget.shouldCancel?.()) {
       // 用户停止：已找到的证据照常返回（丢弃证据 = 数据损失，绝不做）。
-      return { evidence, rounds, stoppedBy: 'cancelled', note: '已停止检索，返回已找到的证据。' };
+      return { evidence, rounds, stoppedBy: 'cancelled', note: i18n.t('knowledge:ask.retrieval.cancelled') };
     }
     if (Date.now() >= deadline) {
-      return { evidence, rounds, stoppedBy: 'time', note: `达到 ${timeMs / 1000} 秒检索时间上限，返回已有证据。` };
+      return { evidence, rounds, stoppedBy: 'time', note: i18n.t('knowledge:ask.retrieval.timeLimit', { seconds: timeMs / 1000 }) };
     }
     if (rounds >= maxRounds) {
-      return { evidence, rounds, stoppedBy: 'rounds', note: `达到最大检索轮数（${maxRounds}），返回已有证据。` };
+      return { evidence, rounds, stoppedBy: 'rounds', note: i18n.t('knowledge:ask.retrieval.roundLimit', { rounds: maxRounds }) };
     }
 
     budget.onRound?.(rounds + 1);
@@ -146,7 +147,7 @@ export async function runRetrievalLoop(
         evidence,
         rounds,
         stoppedBy: 'parse-error',
-        note: `模型调用失败：${errText(err)}`,
+        note: i18n.t('knowledge:ask.retrieval.modelError', { error: errText(err) }),
       };
     }
     rounds++;
@@ -156,7 +157,7 @@ export async function runRetrievalLoop(
       parseFailures++;
       history.push(`模型返回了无法解析的动作，已要求重新输出。原始输出片段：${text.slice(0, 200)}`);
       if (parseFailures >= MAX_CONSECUTIVE_PARSE_FAILURES) {
-        return { evidence, rounds, stoppedBy: 'parse-error', note: '模型连续返回无法解析的动作，检索终止。' };
+        return { evidence, rounds, stoppedBy: 'parse-error', note: i18n.t('knowledge:ask.retrieval.parseError') };
       }
       continue;
     }
@@ -184,7 +185,7 @@ export async function runRetrievalLoop(
         break;
       }
       case 'done':
-        return { evidence, rounds, stoppedBy: 'done', note: '模型判定证据已足够。' };
+        return { evidence, rounds, stoppedBy: 'done', note: i18n.t('knowledge:ask.retrieval.done') };
     }
 
     if (evidenceItem) {

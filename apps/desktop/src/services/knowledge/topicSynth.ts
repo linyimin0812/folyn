@@ -21,6 +21,7 @@ import { readDeletions, isClaimDeleted, anchorMatches } from './kbDeletions';
 import type {
   KbClaimProposal,
   KbIndexNode,
+  KbLanguage,
   KbManifest,
   KbNavigation,
   KbRef,
@@ -409,6 +410,8 @@ export async function synthTopicsForSource(opts: {
   manifest: KbManifest;
   nav: KbNavigation;
   goal: string;
+  /** 内容语言（manifest.language；缺省 auto）。 */
+  language?: KbLanguage;
   srcId: string;
   srcPath: string;
   versionHash: string;
@@ -416,7 +419,7 @@ export async function synthTopicsForSource(opts: {
   content: string;
   hooks?: KbProcessHooks;
 }): Promise<SynthTopicOutcome> {
-  const { fs, manifest, nav, goal, srcId, srcPath, versionHash, nodes, content, hooks } = opts;
+  const { fs, manifest, nav, goal, language, srcId, srcPath, versionHash, nodes, content, hooks } = opts;
   const sourceLines = content.split('\n');
   const indexSummary = buildIndexSummary(nodes);
   const reviews: KbReviewItem[] = [];
@@ -435,7 +438,7 @@ export async function synthTopicsForSource(opts: {
     if (hooks?.shouldCancel?.()) throw new KbBuildCancelled();
     hooks?.onDetail?.(chunkPhaseDetailLine('合成块', ci + 1, chunks.length, chunk.firstLine, chunk.firstLine + chunk.text.split('\n').length - 1));
     return kbChatJson<{ topics?: unknown }>(
-      kbSynthPrompt(goal, srcPath, indexSummary, chunk.text, chunk.firstLine, existingTopics),
+      kbSynthPrompt(goal, srcPath, indexSummary, chunk.text, chunk.firstLine, existingTopics, language),
       KB_SYNTH_PREAMBLE,
       { onChunk: hooks?.onStream },
     ).then((parsed) => {

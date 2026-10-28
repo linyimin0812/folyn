@@ -13,6 +13,8 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { BookOpenCheck, ExternalLink, History, Loader2, Pencil, ShieldCheck, X } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
 import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
@@ -50,6 +52,7 @@ async function openKbFileInEditor(fs: KbFs, path: string): Promise<void> {
 }
 
 export function TopicReader(): React.JSX.Element {
+  const { t } = useTranslation();
   const vaultId = useVaultStore((s) => s.activeVaultId);
   const themeId = useKnowledgeStore((s) => s.activeThemeId);
   const activeTpId = useKnowledgeStore((s) => s.activeTpId);
@@ -69,25 +72,25 @@ export function TopicReader(): React.JSX.Element {
     return (
       <div className="kb-page flex-1 min-h-0 overflow-y-auto">
         <div className="kb-page-inner">
-          <div className="kb-eyebrow">主题内的知识积累</div>
-          <h1 className="kb-page-title">知识概览</h1>
-          <p className="kb-page-description">{topics.length > 0 ? `已整理 ${topics.length} 篇知识页。打开一篇阅读，沿着引用回到原始资料。` : '从原始资料中整理知识，让零散的信息形成脉络。'}</p>
+          <div className="kb-eyebrow">{t('knowledge:reader.overviewEyebrow')}</div>
+          <h1 className="kb-page-title">{t('knowledge:reader.overviewTitle')}</h1>
+          <p className="kb-page-description">{topics.length > 0 ? t('knowledge:reader.overviewDescTopics', { count: topics.length }) : t('knowledge:reader.overviewDescEmpty')}</p>
           {topics.length > 0 ? (
             <div className="mt-4 border-t border-brd">
-              {topics.map((t) => {
-                const sourceCount = navigation.find((n) => n.tpId === t.tpId)?.sourceIds.length ?? 0;
-                const reviewCount = reviews.filter((r) => r.topicId === t.tpId).length;
-                return <button key={t.tpId} className="kb-topic-row" onClick={() => setActiveTopic(t.tpId)}>
-                  <span className="min-w-0"><span className="block text-[15px] font-medium text-t1">{t.title}</span><span className="block mt-1 text-[12px] text-t3 break-all">{sourceCount > 0 ? `${sourceCount} 份关联资料` : '打开知识页，核对原文依据'}{reviewCount > 0 ? ` · ${reviewCount} 项修订待审阅` : ''}</span></span>
-                  <span className="text-acc text-[12px] shrink-0">阅读 →</span>
+              {topics.map((tp) => {
+                const sourceCount = navigation.find((n) => n.tpId === tp.tpId)?.sourceIds.length ?? 0;
+                const reviewCount = reviews.filter((r) => r.topicId === tp.tpId).length;
+                return <button key={tp.tpId} className="kb-topic-row" onClick={() => setActiveTopic(tp.tpId)}>
+                  <span className="min-w-0"><span className="block text-[15px] font-medium text-t1">{tp.title}</span><span className="block mt-1 text-[12px] text-t3 break-all">{sourceCount > 0 ? t('knowledge:reader.relatedSources', { count: sourceCount }) : t('knowledge:reader.relatedNone')}{reviewCount > 0 ? t('knowledge:reader.reviewPending', { count: reviewCount }) : ''}</span></span>
+                  <span className="text-acc text-[12px] shrink-0">{t('knowledge:reader.read')}</span>
                 </button>;
               })}
             </div>
           ) : (
             <div className="kb-empty">
-              <h2 className="text-[18px] font-medium text-t1">{scope.length === 0 ? '为这个主题添加第一份资料' : buildRunning ? '正在整理你的资料' : '资料已就绪，开始整理知识'}</h2>
-              <p className="text-[13px] text-t3 max-w-[360px] leading-7">整理后的知识页会出现在这里。阅读时，点击引用标记即可核对原文与版本。</p>
-              <button className={BTN} onClick={() => { if (scope.length === 0) openSourceSettings('add'); else if (buildRunning) setPage('sources'); else { setPage('sources'); void build(); } }}>{scope.length === 0 ? '添加资料' : buildRunning ? '查看整理过程' : '整理资料'}</button>
+              <h2 className="text-[18px] font-medium text-t1">{scope.length === 0 ? t('knowledge:reader.emptyFirst') : buildRunning ? t('knowledge:reader.emptyBuilding') : t('knowledge:reader.emptyReady')}</h2>
+              <p className="text-[13px] text-t3 max-w-[360px] leading-7">{t('knowledge:reader.emptyHint')}</p>
+              <button className={BTN} onClick={() => { if (scope.length === 0) openSourceSettings('add'); else if (buildRunning) setPage('sources'); else { setPage('sources'); void build(); } }}>{scope.length === 0 ? t('knowledge:reader.emptyAdd') : buildRunning ? t('knowledge:reader.emptyView') : t('knowledge:reader.emptyOrganize')}</button>
             </div>
           )}
         </div>
@@ -99,6 +102,7 @@ export function TopicReader(): React.JSX.Element {
 }
 
 function SelectedTopic({ topic, readKey }: { topic: { tpId: string; title: string; path: string }; readKey: string }): React.JSX.Element {
+  const { t } = useTranslation();
   const [content, setContent] = useState<string | null>(null);
   const [refs, setRefs] = useState<KbRef[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -173,7 +177,7 @@ function SelectedTopic({ topic, readKey }: { topic: { tpId: string; title: strin
         <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden bg-surf">
           <article className="kb-document shrink-0" style={{ paddingBottom: 0 }}>
             <ReaderHeader topic={topic} status={status} refsCount={refs.length} editing={editing} saving={saving} onEdit={enterEdit} onSave={handleSave} onCancel={handleCancel} />
-            {refsUnavailable && <p role="status" className="text-[12px] text-t3">引用信息暂时无法读取，正文仍可阅读。</p>}
+            {refsUnavailable && <p role="status" className="text-[12px] text-t3">{t('knowledge:reader.refsUnavailable')}</p>}
           </article>
           <div className="kb-edit-column flex-1 min-h-0 min-w-0 flex flex-col">
             <FolynEditor
@@ -190,12 +194,12 @@ function SelectedTopic({ topic, readKey }: { topic: { tpId: string; title: strin
         <div ref={scroll} onScroll={() => readingPositions.set(readKey, { top: scroll.current?.scrollTop ?? 0, citation: citeId })} className="flex-1 min-h-0 min-w-0 overflow-y-auto [scrollbar-width:thin]">
           <article className="kb-document">
             <ReaderHeader topic={topic} status={status} refsCount={refs.length} editing={editing} saving={saving} onEdit={enterEdit} onSave={handleSave} onCancel={handleCancel} />
-            {status === 'loading' && <div role="status" className="flex items-center gap-2 text-t3 text-[13px]"><Loader2 size={15} className="animate-spin" />正在读取主题与引用…</div>}
-            {status === 'error' && <div role="alert" className="text-[13px] text-t2 leading-7"><p>无法读取主题文件。请检查知识库存储目录。</p><button className={`${BTN} mt-3`} onClick={() => setAttempt((n) => n + 1)}>重新读取</button></div>}
+            {status === 'loading' && <div role="status" className="flex items-center gap-2 text-t3 text-[13px]"><Loader2 size={15} className="animate-spin" />{t('knowledge:reader.loadingRefs')}</div>}
+            {status === 'error' && <div role="alert" className="text-[13px] text-t2 leading-7"><p>{t('knowledge:reader.readError')}</p><button className={`${BTN} mt-3`} onClick={() => setAttempt((n) => n + 1)}>{t('knowledge:reader.retry')}</button></div>}
             {status === 'ready' && <>
-              {refsUnavailable && <p role="status" className="mb-5 text-[12px] text-t3">引用信息暂时无法读取，正文仍可阅读。</p>}
-              {body.trim() ? <MarkdownWithCitations body={body} onCite={selectCitation} /> : <p className="text-[13px] text-t3">这个主题还没有正文，点击上方「编辑知识页」补充。</p>}
-              {citeId && !citedRef && <p role="status" className="mt-5 text-[12px] text-t3">未找到此引用的来源信息。</p>}
+              {refsUnavailable && <p role="status" className="mb-5 text-[12px] text-t3">{t('knowledge:reader.refsUnavailable')}</p>}
+              {body.trim() ? <MarkdownWithCitations body={body} onCite={selectCitation} /> : <p className="text-[13px] text-t3">{t('knowledge:reader.noBody')}</p>}
+              {citeId && !citedRef && <p role="status" className="mt-5 text-[12px] text-t3">{t('knowledge:reader.citeNotFound')}</p>}
             </>}
           </article>
         </div>
@@ -216,38 +220,39 @@ function ReaderHeader({ topic, status, refsCount, editing, saving, onEdit, onSav
   onSave: () => void;
   onCancel: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <header className="mb-5">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <span className="kb-eyebrow">知识页</span>
+        <span className="kb-eyebrow">{t('knowledge:reader.headerEyebrow')}</span>
         {editing ? (
           <div className="flex items-center gap-1.5">
             <button
               className={BTN_PRIMARY}
               disabled={saving}
-              title="写回主题页（用户编辑：后续 AI 追加内容须经审阅）"
+              title={t('knowledge:reader.saveTitle')}
               onClick={onSave}
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <BookOpenCheck size={13} />}
-              保存
+              {t('knowledge:reader.save')}
             </button>
-            <button className={BTN} disabled={saving} title="丢弃修改，回到阅读态" onClick={onCancel}>
-              取消
+            <button className={BTN} disabled={saving} title={t('knowledge:reader.cancelTitle')} onClick={onCancel}>
+              {t('knowledge:reader.cancel')}
             </button>
           </div>
         ) : (
           <button
             className={BTN}
-            title={`在当前页面编辑：${topic.path}`}
+            title={t('knowledge:reader.editTitle', { path: topic.path })}
             disabled={status !== 'ready'}
             onClick={onEdit}
           >
-            <Pencil size={13} />编辑知识页
+            <Pencil size={13} />{t('knowledge:reader.edit')}
           </button>
         )}
       </div>
       <h1 className="kb-document-title">{topic.title}</h1>
-      <div className="mt-3 text-[12px] text-t3 flex flex-wrap gap-x-4 gap-y-1"><span>{status === 'ready' ? `${refsCount} 处引用` : status === 'loading' ? '读取主题…' : '主题未能载入'}</span><span>{editing ? '编辑文件原文，保存后引用与版本信息随之刷新' : '点击段落引用查看原文'}</span></div>
+      <div className="mt-3 text-[12px] text-t3 flex flex-wrap gap-x-4 gap-y-1"><span>{status === 'ready' ? t('knowledge:reader.refsCount', { count: refsCount }) : status === 'loading' ? t('knowledge:reader.loadingTopic') : t('knowledge:reader.topicFailed')}</span><span>{editing ? t('knowledge:reader.metaEdit') : t('knowledge:reader.metaRead')}</span></div>
     </header>
   );
 }
@@ -268,6 +273,8 @@ function MarkdownWithCitations({ body, onCite }: { body: string; onCite: (id: st
 
 /** 引用标记锚点：`#cite-cN` 拦截为旁侧展开，其余链接原样渲染。 */
 function CiteAnchor(onCite: (id: string) => void) {
+  // ponytail: renderMarkdownToReact 急切求值组件（在 useMemo 内直接调用），
+  // Cite 里不能用 hook —— 用 i18n 单例（i18n-guidelines 非 React 层模式）。
   const Cite = (props: { href?: string; children?: ReactNode }) => {
     const href = props.href ?? '';
     if (!href.startsWith('#cite-')) return <a {...props}>{props.children}</a>;
@@ -276,8 +283,8 @@ function CiteAnchor(onCite: (id: string) => void) {
       <a
         href={href}
         className="text-acc no-underline text-[0.85em] cursor-pointer hover:underline"
-        title="查看来源依据"
-        aria-label={`查看引用 ${id} 的来源依据`}
+        title={i18n.t('knowledge:reader.citeTitle')}
+        aria-label={i18n.t('knowledge:reader.citeAria', { id })}
         onClick={(e) => {
           e.preventDefault();
           onCite(id);
@@ -291,6 +298,7 @@ function CiteAnchor(onCite: (id: string) => void) {
 }
 
 function CitationPanel({ citation, onClose }: { citation: KbRef; onClose: () => void }): React.JSX.Element {
+  const { t } = useTranslation();
   const fs = useMemo(() => activeThemeFs(), []);
   const sources = useKnowledgeStore((s) => s.sources);
   const dataVersion = useKnowledgeStore((s) => s.dataVersion);
@@ -326,19 +334,19 @@ function CitationPanel({ citation, onClose }: { citation: KbRef; onClose: () => 
     entry?.currentHash,
     diskHash,
   );
-  const hash8 = (h: string | undefined | null) => (h ?? '').slice(0, 8) || '（未知）';
+  const hash8 = (h: string | undefined | null) => (h ?? '').slice(0, 8) || t('knowledge:reader.unknownHash');
 
   return (
     <aside
       className="kb-citation-panel min-h-0 border-brd bg-panel flex flex-col overflow-hidden shrink-0"
-      aria-label="来源依据"
+      aria-label={t('knowledge:reader.panelLabel')}
     >
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-brd shrink-0">
-        <span className="text-[11px] font-semibold text-t2">来源依据 · {citation.id}</span>
+        <span className="text-[11px] font-semibold text-t2">{t('knowledge:reader.panelTitle', { id: citation.id })}</span>
         <div className="flex-1" />
         <button
           className="min-h-[28px] min-w-[28px] flex items-center justify-center rounded border-none bg-transparent text-t3 cursor-pointer hover:bg-hov hover:text-t1"
-          aria-label="关闭来源面板"
+          aria-label={t('knowledge:reader.closePanel')}
           onClick={onClose}
         >
           <X size={12} />
@@ -346,37 +354,37 @@ function CitationPanel({ citation, onClose }: { citation: KbRef; onClose: () => 
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3 text-[12px] [scrollbar-width:thin]">
         <div>
-          <div className="text-t3 text-[11px] mb-0.5">来源</div>
+          <div className="text-t3 text-[11px] mb-0.5">{t('knowledge:reader.source')}</div>
           <div className="text-t1 break-all">{entry?.path ?? citation.srcPath ?? citation.srcId}</div>
           {removed && (
-            <div className="mt-0.5 text-[#b48a3f]">来源已移除（已停止跟踪），以下为引用时保留的历史原文。</div>
+            <div className="mt-0.5 text-[#b48a3f]">{t('knowledge:reader.sourceRemovedNote')}</div>
           )}
         </div>
         <RefStatusBlock citation={citation} removed={removed} />
         <div>
-          <div className="text-t3 text-[11px] mb-0.5">位置</div>
+          <div className="text-t3 text-[11px] mb-0.5">{t('knowledge:reader.position')}</div>
           <div className="text-t1">L{citation.startLine}–L{citation.endLine}</div>
           <blockquote className="mt-1 pl-2 border-l-2 border-brd text-t2 whitespace-pre-wrap">
             {citation.anchorText}
           </blockquote>
         </div>
         <div>
-          <div className="text-t3 text-[11px] mb-0.5">版本</div>
-          <div className="text-t1">引用时：{hash8(citation.versionHash)}</div>
+          <div className="text-t3 text-[11px] mb-0.5">{t('knowledge:reader.versionLabel')}</div>
+          <div className="text-t1">{t('knowledge:reader.citedAt', { hash: hash8(citation.versionHash) })}</div>
           {removed ? (
-            <div className="text-t3">当前版本：已停止跟踪，不再读取当前文件。</div>
+            <div className="text-t3">{t('knowledge:reader.currentStopped')}</div>
           ) : (
             <>
               <div className={citationStale ? 'text-[#b48a3f]' : 'text-t2'}>
-                收录时：{hash8(entry?.currentHash)}
-                {entry ? (citationStale ? '（资料已更新，引用基于旧版本）' : '（与引用时一致）') : ''}
+                {t('knowledge:reader.ingestedAt', { hash: hash8(entry?.currentHash) })}
+                {entry ? (citationStale ? t('knowledge:reader.stale') : t('knowledge:reader.sameAsCited')) : ''}
               </div>
               <div className={diskChanged ? 'text-[#b48a3f]' : 'text-t2'}>
-                当前文件：{diskHash ? hash8(diskHash) : '（读取中或不可读）'}
+                {t('knowledge:reader.currentFile', { hash: diskHash ? hash8(diskHash) : t('knowledge:reader.diskUnreadable') })}
                 {diskHash
                   ? diskChanged
-                    ? '（较收录版本又有改动，待重新收录）'
-                    : '（与收录版本一致）'
+                    ? t('knowledge:reader.diskChanged')
+                    : t('knowledge:reader.diskSame')
                   : ''}
               </div>
             </>
@@ -389,25 +397,25 @@ function CitationPanel({ citation, onClose }: { citation: KbRef; onClose: () => 
           {!removed && entry && (
             <button className={BTN} onClick={() => openInEditor(entry.path)}>
               <ExternalLink size={12} />
-              打开当前原文
+              {t('knowledge:reader.openCurrent')}
             </button>
           )}
           <button className={BTN} onClick={() => { void openKbFileInEditor(fs, kbSourceSnapshotPath(citation.srcId, citation.versionHash, fs.root)); }}>
             <History size={12} />
-            打开引用时版本
+            {t('knowledge:reader.openSnapshot')}
           </button>
           {citation.status === 'unverified' &&
             (removed || !entry ? (
-              <span className="text-t3 text-[11px] self-center">来源已移除，不做核验。</span>
+              <span className="text-t3 text-[11px] self-center">{t('knowledge:reader.verifySkipped')}</span>
             ) : (
               <button
                 className={BTN}
                 disabled={verifyingRefId !== null}
-                title="模型读引用时原文与段落现文本，判断原文是否支持现说法"
+                title={t('knowledge:reader.verifyTitle')}
                 onClick={() => void verifyTopicRefItem(citation.topicId, citation.id)}
               >
                 {verifyingRefId === citation.id ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
-                核验引用
+                {t('knowledge:reader.verify')}
               </button>
             ))}
         </div>
@@ -423,28 +431,29 @@ function CitationPanel({ citation, onClose }: { citation: KbRef; onClose: () => 
 
 /** 引用状态（ADR-0006 删除意图 / ADR-0007 待核验与核验结果）。 */
 function RefStatusBlock({ citation, removed }: { citation: KbRef; removed: boolean }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div>
-      <div className="text-t3 text-[11px] mb-0.5">状态</div>
+      <div className="text-t3 text-[11px] mb-0.5">{t('knowledge:reader.statusLabel')}</div>
       {citation.status === 'unverified' && (
         <div className="text-[#b48a3f]">
-          引用待核验{removed ? '（来源已移除，不做核验）' : '：段落被人工修改过，原文是否支持新说法待检查。'}
+          {t('knowledge:reader.statusUnverified')}{removed ? t('knowledge:reader.statusUnverifiedRemoved') : t('knowledge:reader.statusUnverifiedHint')}
         </div>
       )}
       {citation.status === 'verified' && (
-        <div className="text-t2">核验通过{citation.verifyNote ? `：${citation.verifyNote}` : ''}</div>
+        <div className="text-t2">{t('knowledge:reader.statusVerified')}{citation.verifyNote ? `${t('knowledge:reader.colon')}${citation.verifyNote}` : ''}</div>
       )}
       {citation.status === 'unsupported' && (
         <div className="text-[#b48a3f]">
-          原文不支持该说法{citation.verifyNote ? `：${citation.verifyNote}` : ''}。正文保留；改写须经审阅。
+          {t('knowledge:reader.statusUnsupported')}{citation.verifyNote ? `${t('knowledge:reader.colon')}${citation.verifyNote}` : ''}{t('knowledge:reader.noteSuffix')}
         </div>
       )}
       {citation.status === 'deleted' && (
-        <div className="text-t2">该结论已被人工删除（删除意图已记录，不会自动恢复）。</div>
+        <div className="text-t2">{t('knowledge:reader.statusDeleted')}</div>
       )}
-      {citation.status === 'active' && <div className="text-t2">正常。</div>}
+      {citation.status === 'active' && <div className="text-t2">{t('knowledge:reader.statusActive')}</div>}
       {citation.status === 'source-removed' && (
-        <div className="text-[#b48a3f]">来源已移除（已停止跟踪）。</div>
+        <div className="text-[#b48a3f]">{t('knowledge:reader.statusSourceRemoved')}</div>
       )}
     </div>
   );
@@ -462,6 +471,7 @@ function SnapshotExcerpt({
   startLine: number;
   endLine: number;
 }): React.JSX.Element | null {
+  const { t } = useTranslation();
   const [text, setText] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
 
@@ -487,13 +497,13 @@ function SnapshotExcerpt({
 
   if (missing) {
     return (
-      <div className="text-t3 text-[11px]">引用时版本的原文快照暂时无法读取。请检查知识库存储目录中的历史文件。</div>
+      <div className="text-t3 text-[11px]">{t('knowledge:reader.snapshotMissing')}</div>
     );
   }
-  if (text === null) return <div role="status" className="text-t3 text-[12px]">正在读取引用时原文…</div>;
+  if (text === null) return <div role="status" className="text-t3 text-[12px]">{t('knowledge:reader.snapshotLoading')}</div>;
   return (
     <div>
-      <div className="text-t3 text-[11px] mb-0.5">引用时原文（L{startLine}–L{endLine}）</div>
+      <div className="text-t3 text-[11px] mb-0.5">{t('knowledge:reader.snapshotTitle', { start: startLine, end: endLine })}</div>
       <pre className="whitespace-pre-wrap text-t2 text-[11px] font-mono bg-hov rounded p-2 max-h-[220px] overflow-y-auto [scrollbar-width:thin]">{text}</pre>
     </div>
   );

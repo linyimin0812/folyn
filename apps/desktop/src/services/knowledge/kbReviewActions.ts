@@ -21,6 +21,7 @@ import { kbReviewsPath, kbDeletionsPath, kbSourceSnapshotPath } from './kbPaths'
 import { readDeletions, writeDeletions, removeDeletionIntents } from './kbDeletions';
 import { parseTopicPage, serializeTopicPage, stripFootnoteDefs, refFootnoteDef, supplementRefsToPage, nextRefNum } from './topicSynth';
 import type { KbRef, KbReviewItem } from './kbTypes';
+import i18n from '@/i18n';
 
 export type ReviewApplyOutcome =
   | { ok: true }
@@ -58,11 +59,11 @@ export async function applyReview(
   try {
     const current = await fs.readFile(review.topicPath).catch(() => null);
     if (current === null) {
-      return { ok: false, reason: 'missing-page', message: `主题页不存在或不可读：${review.topicPath}` };
+      return { ok: false, reason: 'missing-page', message: i18n.t('knowledge:review.missingPage', { path: review.topicPath }) };
     }
     const currentHash = await sha256Hex(current);
     if (review.topicHash && currentHash !== review.topicHash) {
-      return { ok: false, reason: 'stale', message: '页面在修订生成后被修改，需重新比较后再采用。' };
+      return { ok: false, reason: 'stale', message: i18n.t('knowledge:review.stale') };
     }
 
     const manifest = await readManifest(fs);
@@ -91,7 +92,7 @@ export async function applyReview(
         })),
       });
       if (!res.ok) {
-        return { ok: false, reason: 'stale', message: `补引用未写入：${res.error}` };
+        return { ok: false, reason: 'stale', message: i18n.t('knowledge:review.addRefFailed', { error: res.error }) };
       }
       markdown = res.markdown;
       allRefs = res.refs;

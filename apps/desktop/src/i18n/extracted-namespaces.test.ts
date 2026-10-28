@@ -38,6 +38,8 @@ import enActivity from './locales/en/activity.json';
 import enSessions from './locales/en/sessions.json';
 import enTerminal from './locales/en/terminal.json';
 import enBrowser from './locales/en/browser.json';
+import zhKnowledge from './locales/zh/knowledge.json';
+import enKnowledge from './locales/en/knowledge.json';
 
 const zhBundles = {
   common: zhCommon,
@@ -56,6 +58,7 @@ const zhBundles = {
   sessions: zhSessions,
   terminal: zhTerminal,
   browser: zhBrowser,
+  knowledge: zhKnowledge,
 } as const;
 
 const enBundles = {
@@ -75,6 +78,7 @@ const enBundles = {
   sessions: enSessions,
   terminal: enTerminal,
   browser: enBrowser,
+  knowledge: enKnowledge,
 } as const;
 
 /** Recursively collect the tree of object keys (paths joined by '.'). */

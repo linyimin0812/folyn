@@ -7,6 +7,8 @@
  * 未收录/等待处理为「待处理」。
  */
 
+import i18n from '@/i18n';
+
 export type KbSourceStatus =
   | 'pending' // 待处理（范围内未收录，或排队中）
   | 'processing' // 处理中（索引/合成进行中）
@@ -64,7 +66,7 @@ export function deriveSourceStatuses(input: DeriveSourceStatusesInput): KbSource
       srcId,
       path: entry.path,
       status: 'removed',
-      message: entry.removed ? '已停止跟踪（保留知识与历史引用）' : '已移出收录范围或文件已删除',
+      message: entry.removed ? i18n.t('knowledge:sourceStatus.stoppedTracking') : i18n.t('knowledge:sourceStatus.outOfScope'),
     });
   }
   rows.sort((a, b) => a.path.localeCompare(b.path));
@@ -80,7 +82,7 @@ function rowFor(
 ): KbSourceStatusItem {
   const srcId = entry?.srcId ?? null;
   if (entry?.removed) {
-    return { srcId, path, status: 'removed', message: '已停止跟踪（保留知识与历史引用）' };
+    return { srcId, path, status: 'removed', message: i18n.t('knowledge:sourceStatus.stoppedTracking') };
   }
   if (build?.status === 'error') {
     return { srcId, path, status: 'error', message: build.message };
@@ -89,7 +91,7 @@ function rowFor(
     return { srcId, path, status: 'processing' };
   }
   if (!entry) {
-    return { srcId, path, status: 'pending', message: build ? undefined : '范围内新资料，待收录' };
+    return { srcId, path, status: 'pending', message: build ? undefined : i18n.t('knowledge:sourceStatus.newInScope') };
   }
   if (srcId && reviewSrcIds.has(srcId)) {
     return { srcId, path, status: 'review' };
@@ -101,15 +103,7 @@ function rowFor(
 }
 
 export function sourceStatusLabel(status: KbSourceStatus): string {
-  switch (status) {
-    case 'pending': return '待处理';
-    case 'processing': return '处理中';
-    case 'error': return '处理失败';
-    case 'removed': return '来源已移除';
-    case 'review': return '有修订待审阅';
-    case 'organized': return '已整理';
-    case 'indexed': return '可查原文';
-  }
+  return i18n.t(`knowledge:sourceStatus.label.${status}`);
 }
 
 /**

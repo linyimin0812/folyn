@@ -9,6 +9,7 @@
  */
 
 import { errText } from '@/utils/errText';
+import i18n from '@/i18n';
 import type { KbFs } from './kbFs';
 import { readManifest, readTopicRefs, writeTopicRefs, sha256Hex } from './kbFs';
 import { kbSourceSnapshotPath, kbTopicRefsPath } from './kbPaths';
@@ -34,7 +35,7 @@ function narrowVerdict(v: unknown): VerifyVerdict | null {
   const o = v as Record<string, unknown>;
   if (typeof o['supported'] !== 'boolean') return null;
   const reason = typeof o['reason'] === 'string' ? o['reason'].trim() : '';
-  return { supported: o['supported'], reason: reason || '（模型未给出理由）' };
+  return { supported: o['supported'], reason: reason || i18n.t('knowledge:verify.noReason') };
 }
 
 /** 正文里含 `[^cN]` 标记（非定义行）的段落文本。 */
@@ -66,7 +67,7 @@ export async function verifyTopicRef(
       return {
         ok: false,
         reason: 'source-removed',
-        message: '来源已移除（已停止跟踪），不做核验；历史原文仍可在引用面板人工核对。',
+        message: i18n.t('knowledge:verify.sourceRemoved'),
       };
     }
 
@@ -80,7 +81,7 @@ export async function verifyTopicRef(
         return {
           ok: false,
           reason: 'snapshot-missing',
-          message: '引用时版本的原文快照缺失，且当前资料版本与引用时不一致，无法核验。',
+          message: i18n.t('knowledge:verify.snapshotMissingDrift'),
         };
       }
       try {
@@ -91,7 +92,7 @@ export async function verifyTopicRef(
           return {
             ok: false,
             reason: 'snapshot-missing',
-            message: '引用时版本的原文快照缺失，当前文件内容与引用时不一致，无法核验。',
+            message: i18n.t('knowledge:verify.snapshotMissingDisk'),
           };
         }
         lines = content.split('\n');
@@ -99,7 +100,7 @@ export async function verifyTopicRef(
         return {
           ok: false,
           reason: 'snapshot-missing',
-          message: '引用时版本的原文快照缺失，当前原文也不可读。',
+          message: i18n.t('knowledge:verify.snapshotMissingUnreadable'),
         };
       }
     }
@@ -109,22 +110,25 @@ export async function verifyTopicRef(
 
     const page = await fs.readFile(topicPath).catch(() => null);
     if (page === null) {
-      return { ok: false, reason: 'paragraph-missing', message: `主题页读取失败：${topicPath}` };
+      return { ok: false, reason: 'paragraph-missing', message: i18n.t('knowledge:verify.topicReadFailed', { path: topicPath }) };
     }
     const claim = claimParagraph(page, ref.id);
     if (claim === null || claim === '') {
       return {
         ok: false,
         reason: 'paragraph-missing',
-        message: '正文中已找不到该引用标注的段落（内容可能已被删除）。',
+        message: i18n.t('knowledge:verify.paragraphMissing'),
       };
     }
 
     const verdict = narrowVerdict(
-      await kbChatJson(kbVerifyPrompt(claim, ref.anchorText, excerpt), KB_VERIFY_PREAMBLE),
+      await kbChatJson(
+        kbVerifyPrompt(claim, ref.anchorText, excerpt, manifest.language ?? 'auto'),
+        KB_VERIFY_PREAMBLE,
+      ),
     );
     if (!verdict) {
-      return { ok: false, reason: 'error', message: '模型未返回有效的核验结果。' };
+      return { ok: false, reason: 'error', message: i18n.t('knowledge:verify.invalidVerdict') };
     }
 
     // 状态落盘（只动这一条 ref）。
