@@ -1225,3 +1225,45 @@ Preview-only markdown zoom: CSS zoom via --md-zoom var (no wrapper div — keeps
 ### Next Steps
 
 - None - task complete
+
+
+## Session 35: 知识库大批量迭代：存储迁移、并行提速、多轮问答、多语言等 13 项归档
+
+**Date**: 2026-10-28
+**Task**: 知识库大批量迭代：存储迁移、并行提速、多轮问答、多语言等 13 项归档
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+知识库（KB）系列一日完成并归档 13 个任务：页内编辑换真实 FolynEditor（860px 同列宽、persistTabScroll 修复）；生成物存储迁至 ~/.folyn/vaults/<vaultId>/__kb__（路由适配器 + ADR-0011，源资料不动）；构建两级并行（资料 3 + 块 3、全局在途 6、kbWriteQueue 防丢更新、取消不留半态）；模型选择框只留收录表单并加宽；问答多轮会话（6 轮上下文、失败轮不泄漏）；头部名称与目标同行；扩展设置页启用开关（持久化 flag + 面板可见性镜像）；多语言（主题级 language auto/zh/en 注入合成/问答/核验 prompt + knowledge namespace 342 key）；编辑态背景与阅读态一致。测试基线 196→230+ 全绿。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b1dae05c` | (see git log) |
+| `fa8abd72` | (see git log) |
+| `f293b997` | (see git log) |
+| `e780f0b5` | (see git log) |
+| `750dca13` | (see git log) |
+| `cc1fd93e` | (see git log) |
+| `a75d0c7f` | (see git log) |
+| `d07c6ad2` | (see git log) |
+| `952ba789` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
