@@ -96,10 +96,27 @@ export const KB_ANSWER_PREAMBLE = `你是知识库问答的回答层。你会收
 - 只依据证据回答；证据不足以支持的部分明确说明"证据中没有"。
 - 引用结论时标注来源路径与行号范围（如 path.md L12-L18）。
 - 如证据带有状态标记（如来源已移除、版本不一致），如实转述，不要自行给出置信度评分。
+- 会话上下文只用于理解当前问题的指代与承接，不要把其中旧回答当作证据复述。
 - 用中文回答，简洁分段。`;
 
-export function kbAnswerPrompt(question: string, evidenceBlocks: string, gaps: string): string {
+/** 回答层注入的会话上下文轮数上限（检索仍只按当前问题）。 */
+export const KB_MAX_HISTORY_TURNS = 6;
+
+export function kbAnswerPrompt(
+  question: string,
+  evidenceBlocks: string,
+  gaps: string,
+  history: { question: string; answer: string }[] = [],
+): string {
+  const prior = history.slice(-KB_MAX_HISTORY_TURNS);
   return [
+    ...(prior.length > 0
+      ? [
+        '## 会话上下文（此前问答，仅供承接理解；检索与证据仍只针对当前问题）',
+        ...prior.map((t) => `问：${t.question}\n答：${t.answer}`),
+        '',
+      ]
+      : []),
     `## 用户问题\n${question}`,
     '',
     '## 检索证据',

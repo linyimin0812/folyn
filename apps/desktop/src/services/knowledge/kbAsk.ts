@@ -75,10 +75,20 @@ export interface KbAskResult {
   retrieval: RetrievalResult;
 }
 
+/** 会话轮次（运行时态，不落盘；切主题/切 Vault 由 store 重置）。 */
+export interface KbAskTurn {
+  question: string;
+  answer: string;
+  evidence: KbEvidence[];
+  note?: string;
+}
+
 /** UI 可选接线：阶段文案 + 程序侧取消（轮边界生效，不丢已找到的证据）。 */
 export interface KbAskOptions {
   onProgress?: (phase: string) => void;
   shouldCancel?: () => boolean;
+  /** 此前会话轮次：注入回答层 prompt 作上下文；检索仍只按当前问题。 */
+  priorTurns?: KbAskTurn[];
 }
 
 export async function askKnowledge(
@@ -227,6 +237,7 @@ export async function askKnowledge(
   }
 
   // 回答层：独立的第二次模型调用（不在 10 秒检索预算内）。
+  // 会话上下文只进回答层；检索（上文 runRetrievalLoop）仍只按当前问题。
   opts.onProgress?.('生成回答');
   const evidenceBlocks = retrieval.evidence.map((e, i) => {
     const header =
@@ -235,8 +246,11 @@ export async function askKnowledge(
         : `### 证据 ${i + 1}【原文】${e.path}${e.versionHash ? ` 版本 ${hash8(e.versionHash)}` : ''}${e.startLine ? ` L${e.startLine}-L${e.endLine}` : ''}`;
     return [header, e.status ? `状态：${e.status}` : '', e.text].filter(Boolean).join('\n');
   });
+  const history = (opts.priorTurns ?? [])
+    .filter((t) => t.answer !== '') // 取消/失败轮次无回答文本，不注入
+    .map((t) => ({ question: t.question, answer: t.answer }));
   const answer = await kbChatText(
-    kbAnswerPrompt(question, evidenceBlocks.join('\n\n'), retrieval.note),
+    kbAnswerPrompt(question, evidenceBlocks.join('\n\n'), retrieval.note, history),
     KB_ANSWER_PREAMBLE,
   );
   return { answer, retrieval };

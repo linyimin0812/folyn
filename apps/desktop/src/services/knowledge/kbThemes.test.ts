@@ -95,7 +95,17 @@ describe('Independent configured themes', () => {
     state().setAskQuestion('A question'); const answer = deferred<{answer:string;retrieval:{evidence:[];note:string}}>(); testState.ask.mockReturnValue(answer.promise);
     const operation = state().ask(); await state().selectTheme(b);
     answer.resolve({answer:'A answer',retrieval:{evidence:[],note:'A note'}}); await operation;
-    expect(state().askAnswer).toBe(''); await state().selectTheme(a); expect(state().askAnswer).toBe('A answer');
+    expect(state().askTurns).toEqual([]); await state().selectTheme(a);
+    expect(state().askTurns).toEqual([{ question: 'A question', answer: 'A answer', evidence: [], note: 'A note' }]);
+  });
+
+  it('records a failed ask as an answer-empty turn (note only) and clearAsk wipes the conversation', async () => {
+    const a = await theme('A'); await state().selectTheme(a);
+    state().setAskQuestion('Failing question'); testState.ask.mockRejectedValue(new Error('boom'));
+    await state().ask();
+    expect(state().askTurns).toEqual([{ question: 'Failing question', answer: '', evidence: [], note: '提问失败：boom' }]);
+    state().clearAsk();
+    expect(state().askTurns).toEqual([]); expect(state().askQuestion).toBe('');
   });
 
   it('guards captured FS after a Vault switch and never writes into the incoming Vault', async () => {

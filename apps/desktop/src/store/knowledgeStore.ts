@@ -22,10 +22,10 @@ import {
 import { suppressWatcherFor } from '@/utils/fileWatcher';
 import { buildKnowledge, type BuildItemProgress } from '@/services/knowledge/knowledgeBuild';
 import { errText } from '@/utils/errText';
-import { askKnowledge, invalidateKbIndexCache } from '@/services/knowledge/kbAsk';
+import { askKnowledge, invalidateKbIndexCache, type KbAskTurn } from '@/services/knowledge/kbAsk';
 import { applyReview, discardReview } from '@/services/knowledge/kbReviewActions';
 import { verifyTopicRef } from '@/services/knowledge/kbVerify';
-import type { KbEvidence, KbReviewItem } from '@/services/knowledge/kbTypes';
+import type { KbReviewItem } from '@/services/knowledge/kbTypes';
 import { useVaultStore } from '@/store/vaultStore';
 
 export type KbPage = 'knowledge' | 'ask' | 'sources' | 'reviews';
@@ -91,12 +91,11 @@ interface KnowledgeState {
   /** 逐份资料的详细过程（构建开始清空；结束后内存态保留供回看，不持久化）。 */
   buildDetails: Record<string, KbBuildDetail>;
 
-  /** 问答。 */
+  /** 问答：会话轮次（运行时态，不落盘；切主题/切 Vault 重置）。
+   *  askQuestion 是输入框草稿；askPhase/askNote 只反映进行中的当前轮。 */
   askRunning: boolean;
   askQuestion: string;
-  askAnswer: string;
-  askEvidence: KbEvidence[];
-  askNote: string;
+  askTurns: KbAskTurn[];
   /** 检索阶段文案（加载索引 / 第 N 轮 / 生成回答）。 */
   askPhase: string;
   cancelAsk: boolean;
@@ -160,9 +159,7 @@ const initialSession: Partial<KnowledgeState> = {
   buildDetails: {},
   askRunning: false,
   askQuestion: '',
-  askAnswer: '',
-  askEvidence: [],
-  askNote: '',
+  askTurns: [],
   askPhase: '',
   cancelAsk: false
 };
@@ -394,20 +391,22 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
     const question = getFor(ctx).askQuestion.trim();
     const vaultId = activeVaultId();
     if (!question || !vaultId) return;
-    commit(ctx, { askRunning: true, askAnswer: '', askEvidence: [], askNote: '', askPhase: '', cancelAsk: false });
+    const priorTurns = getFor(ctx).askTurns;
+    commit(ctx, { askRunning: true, askQuestion: '', askPhase: '', cancelAsk: false });
     try {
       const result = await askKnowledge(question, ctx.fs, vaultId, {
+        priorTurns,
         onProgress: (phase) => commit(ctx, { askPhase: phase }),
         shouldCancel: () => getFor(ctx).cancelAsk,
       });
-      commit(ctx, {
-        askAnswer: result.answer,
-        askEvidence: result.retrieval.evidence,
-        askNote: result.retrieval.note,
+      // 取消轮次也入会话：已找到的证据不丢（answer 为空、note 说明已停止）。
+      commit(ctx, (state) => ({
+        askTurns: [...state.askTurns, { question, answer: result.answer, evidence: result.retrieval.evidence, ...(result.retrieval.note ? { note: result.retrieval.note } : {}) }],
         askPhase: '',
-      });
+      }));
     } catch (err) {
-      commit(ctx, { askAnswer: `提问失败：${errText(err)}`, askPhase: '' });
+      // 失败轮与取消轮同构：answer 空 + note 说明原因（answer 非空的轮次才会注入后续上下文）。
+      commit(ctx, (state) => ({ askTurns: [...state.askTurns, { question, answer: '', evidence: [], note: `提问失败：${errText(err)}` }], askPhase: '' }));
     } finally {
       commit(ctx, { askRunning: false, cancelAsk: false });
     }
@@ -415,8 +414,9 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
 
   cancelAskRequested: () => set({ cancelAsk: true }),
 
+  /** 清空重置整个会话（含输入草稿）；取消只中断当前轮，不动这里。 */
   clearAsk: () =>
-    set({ askQuestion: '', askAnswer: '', askEvidence: [], askNote: '', askPhase: '', cancelAsk: false }),
+    set({ askQuestion: '', askTurns: [], askPhase: '', cancelAsk: false }),
 
   applyReviewItem: async (id, editedBody) => {
     let ctx: OperationContext;

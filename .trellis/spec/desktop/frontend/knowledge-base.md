@@ -20,6 +20,7 @@
 - Ingest (`sourceIngest.ts`): `ingestSource(...)` → `{ index, srcId }`; `validateIndexNodes(nodes, lineCount)` → narrowed nodes (out-of-range / overlapping nodes are dropped, not fatal).
 - Synthesis (`topicSynth.ts`): model proposals are narrowed by `validateClaims` before any write; auto-write only for new pages and new-section appends.
 - Retrieval (`retrievalLoop.ts`): `runRetrievalLoop(...)` executes model-issued JSON actions (`list_topics` / `open_topic` / `search` / `read_source` / `done`) and returns structured evidence only. The final answer is a **separate** `kbChatText` call (retrieval and answering are evaluated independently, ADR-0008).
+- **Multi-turn ask contract** (2026-10-28): the ask page is a conversation of `KbAskTurn { question, answer, evidence, note? }` held in `knowledgeStore.askTurns` (runtime only, in `initialSession`, reset per theme/vault switch). `askKnowledge` takes `priorTurns` and injects them **only into the answer-layer prompt** — retrieval always runs on the current question alone (no multi-turn retrieval stacking); the injected history is capped at `KB_MAX_HISTORY_TURNS = 6` (latest turns). Turns with an **empty answer are dropped whole from the context** (question included — no self-questions without answers). Cancelled and failed turns still land in the conversation with `answer: ''` + a `note` (stopped / `提问失败：…`) and keep their evidence; `clearAsk` wipes the entire conversation, while cancel only interrupts the in-flight turn.
 
 ### 3. Contracts
 
@@ -151,7 +152,7 @@ if (applied > 0) {
 ### Model selection entry (2026-10-28)
 
 - `KnowledgeModelSelector` wraps the real `PairSelector`, labels its purpose, anchors the dropdown left, and routes an empty enabled-model list to `navStore` models settings.
-- The workbench shows this control when source forms are closed; its selection updates global `kbPair` directly. Add/settings forms use local pair drafts and publish only after successful configuration save. Cancel/failed save must not mutate the committed pair.
+- The workbench header does NOT render this control (removed 10-28: it cluttered the reading view); the sources add/settings form is the only model-configuration entry. It uses a local pair draft and publishes only after successful configuration save. Cancel/failed save must not mutate the committed pair. The trigger is capped at `max-w-[min(100%,420px)]` so provider/model names stay readable.
 - Do not replace PairSelector with a null stub in source workflow regression tests: it masks missing provider options and missing settings routes. Exercise enabled pairs and an empty list.
 
 ### Density and file-browser consistency (2026-10-28)
