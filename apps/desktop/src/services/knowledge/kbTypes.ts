@@ -61,14 +61,23 @@ export interface KbRef {
   topicId: string;
   /** 原文锚文本（双保险：与行范围一起定位证据）。 */
   anchorText: string;
+  /** 引用标注的知识页结论句（删除意图/引用核验的段落基线；旧记录可能缺省）。 */
+  claimText?: string;
   srcId: string;
   /** 引用发生时的资料路径（快照式记录；路径移动后以 manifest 为准）。 */
   srcPath?: string;
   versionHash: string;
   startLine: number;
   endLine: number;
-  /** 切片 A 只有 active；unverified / source-removed 状态留给切片 C/D。 */
-  status: 'active' | 'unverified' | 'source-removed';
+  /**
+   * active = 正常；unverified = 引用待核验（段落被人工修改，ADR-0007）；
+   * deleted = 结论被人工删除（删除意图已记录，ADR-0006）；verified /
+   * unsupported = 核验结果（原文支持 / 不支持该说法）；source-removed =
+   * 来源已停止跟踪（ADR-0007）。
+   */
+  status: 'active' | 'unverified' | 'deleted' | 'verified' | 'unsupported' | 'source-removed';
+  /** 最近一次核验的理由（status 为 verified/unsupported 时存在）。 */
+  verifyNote?: string;
 }
 
 /** navigation.json — 全库主题导航（ADR-0005）。 */
@@ -82,14 +91,20 @@ export interface KbNavigationTopic {
   sourceIds: string[];
 }
 
-/** reviews.json — 待审阅修订（切片 A 只落记录；apply/discard 在 kbReviewActions）。 */
+/** reviews.json — 待审阅修订（apply/discard 在 kbReviewActions）。 */
 export interface KbReviewItem {
   id: string;
   topicId: string;
   topicPath: string;
-  /** 目前只有 user-edited（目标页被人工编辑，追加内容降级进审阅）。
-   * 冲突 / 恢复建议类型留给切片 B/C，schema 出现新值时 UI 再分支。 */
-  reason: 'user-edited';
+  /**
+   * user-edited = 目标页被人工编辑，追加内容降级进审阅（ADR-0006）；
+   * restore-suggestion = 提议内容命中人工删除意图，恢复需用户确认
+   * （ADR-0006「尊重人工删除意图」：新证据可形成待确认的恢复建议）；
+   * add-ref = 重复佐证补引用（提议命中既有结论，但目标页被人工编辑 →
+   * 降级进审阅；采用 = 只补引用标记与 refs，不改写正文，ADR-0006
+   * 「重复佐证仅补充来源引用，不重复生成正文」）。
+   */
+  reason: 'user-edited' | 'restore-suggestion' | 'add-ref';
   /** 原本要追加的 Markdown 片段（完整主题页格式，含脚注定义行）。 */
   proposedMarkdown: string;
   /** 修订生成时目标页内容的 hash —— 采用时程序复核，页面已变化则标记需重新比较。 */
@@ -100,11 +115,14 @@ export interface KbReviewItem {
   status: 'pending';
 }
 
-/** deletions.json — 人工删除意图（切片 C 起用，切片 A 只占位）。 */
+/** deletions.json — 人工删除意图（ADR-0006：记录删除意图，不自动恢复）。 */
 export interface KbDeletionIntent {
   id: string;
   topicId: string;
   anchorText: string;
+  /** 来源引用信息（命中恢复建议与「恢复」后清除意图用）。 */
+  srcId?: string;
+  versionHash?: string;
   createdAt: number;
 }
 

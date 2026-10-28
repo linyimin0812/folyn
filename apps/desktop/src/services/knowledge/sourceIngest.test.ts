@@ -1,5 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
-import { validateIndexNodes, chunkContent } from './sourceIngest';
+import { validateIndexNodes, chunkContent, chunkPhaseDetailLine, indexNodesDetailLine } from './sourceIngest';
+
+describe('chunkPhaseDetailLine / indexNodesDetailLine — 构建详细过程行', () => {
+  it('renders chunk phase lines with real noun, index and absolute line range', () => {
+    expect(chunkPhaseDetailLine('索引块', 1, 3, 1, 120)).toBe('索引块 1/3（第 1–120 行）');
+    expect(chunkPhaseDetailLine('合成块', 2, 5, 121, 240)).toBe('合成块 2/5（第 121–240 行）');
+  });
+
+  it('renders model-returned vs program-kept node counts', () => {
+    expect(indexNodesDetailLine(7, 5)).toBe('模型返回 7 个节点，校验保留 5 个');
+    expect(indexNodesDetailLine(0, 0)).toBe('模型返回 0 个节点，校验保留 0 个');
+  });
+});
 
 describe('validateIndexNodes — 行范围校验（程序写入前）', () => {
   it('keeps valid nodes, drops out-of-bounds / non-integer / inverted ranges', () => {

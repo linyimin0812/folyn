@@ -103,6 +103,7 @@ export const PERSIST_KEYS_AI_CONFIG = [
   'voicePair',
   'extensionPair',
   'kbPair',
+  'kbAutoBuild',
 ] as const;
 
 /** A (provider, model) pair used by non-AiPanel chat callers (pet, bubble,
@@ -238,6 +239,9 @@ export interface AiConfigState {
   voicePair: ProviderModelPair | null;
   extensionPair: ProviderModelPair | null;
   kbPair: ProviderModelPair | null;
+  // kbAutoBuild — 收录范围内文件变更自动触发增量收录（后台跑模型花钱，
+  // 用户可关）。默认开；关闭后仍可手动「构建/更新」。
+  kbAutoBuild: boolean;
 
   setCliAdapter: (v: string) => void;
   setCliPath: (v: string) => void;
@@ -290,6 +294,7 @@ export interface AiConfigState {
   setVoicePair: (pair: ProviderModelPair | null) => void;
   setExtensionPair: (pair: ProviderModelPair | null) => void;
   setKbPair: (pair: ProviderModelPair | null) => void;
+  setKbAutoBuild: (enabled: boolean) => void;
 
   /** Returns provider ids that have a non-empty apiKey (or don't require one). */
   configuredProviderIds: () => string[];
@@ -378,6 +383,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   voicePair: null,
   extensionPair: null,
   kbPair: null,
+  kbAutoBuild: true,
 
   setCliAdapter: (v) => {
     set((s) => {
@@ -634,6 +640,7 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
   setVoicePair: (pair) => { set({ voicePair: pair }); persist(); },
   setExtensionPair: (pair) => { set({ extensionPair: pair }); persist(); },
   setKbPair: (pair) => { set({ kbPair: pair }); persist(); },
+  setKbAutoBuild: (enabled) => { set({ kbAutoBuild: enabled }); persist(); },
 
   hydrate: (blob) => {
     const patch: Partial<AiConfigState> = {};
@@ -677,6 +684,8 @@ export const useAiConfigStore = create<AiConfigState>((set, get) => ({
     patch.voicePair = isProviderModelPair(blob.voicePair) ? blob.voicePair : null;
     patch.extensionPair = isProviderModelPair(blob.extensionPair) ? blob.extensionPair : null;
     patch.kbPair = isProviderModelPair(blob.kbPair) ? blob.kbPair : null;
+    // Legacy blobs without kbAutoBuild hydrate to true (default-on).
+    patch.kbAutoBuild = typeof blob.kbAutoBuild === 'boolean' ? blob.kbAutoBuild : true;
 
     if (Object.keys(patch).length > 0) set(patch);
   },

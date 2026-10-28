@@ -12,6 +12,8 @@ export const KB_INDEX_PREAMBLE = `你是资料索引编目员。你的任务是�
 - 优先使用资料已有的标题/章节结构；无标题或章节过长时，提出语义分段。
 - 每个节点必须对应真实、可核验的原文行号范围，行号是整份文件的绝对行号（1 开始，含端点）。
 - 不改写原文，只描述它。
+- 不要逐行列举原文内容（不要出现「第 N 行：……」式的罗列）；直接基于标题结构与段落主题概括出节点。
+- 思考过程从简，不要在内部推理中复述原文；把输出预算留给 JSON 本身。
 ${JSON_ONLY}`;
 
 export function kbIndexPrompt(chunkText: string, chunkFirstLine: number): string {
@@ -108,4 +110,26 @@ export function kbAnswerPrompt(question: string, evidenceBlocks: string, gaps: s
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+export const KB_VERIFY_PREAMBLE = `你是引用核验员。判断给出的原文摘录是否支持知识页中的说法。
+要求：
+- 只检查原文是否支持该说法，不判定该说法本身是否真实可靠（ADR-0007：核验与事实可靠性区分）。
+- 如实给出理由；证据不足时判为不支持并说明缺口。
+${JSON_ONLY}`;
+
+export function kbVerifyPrompt(claim: string, anchorText: string, excerpt: string): string {
+  return [
+    '## 知识页中的说法（可能已被人工修改）',
+    claim,
+    '',
+    '## 引用记录的原文锚文本',
+    anchorText,
+    '',
+    '## 原文摘录（引用时版本）',
+    excerpt || '（空）',
+    '',
+    '输出格式：',
+    '{"supported":true,"reason":"1-2 句理由"}',
+  ].join('\n');
 }

@@ -6,7 +6,7 @@
  */
 
 import type { KbFs } from './kbFs';
-import { sha256Hex, readManifest, readNavigation } from './kbFs';
+import { sha256Hex, readManifest, readNavigation, readReviews } from './kbFs';
 import type { KbBm25Index, KbDoc } from './bm25Index';
 import { buildBm25Index, bm25Search } from './bm25Index';
 import type { KbEvidence, KbManifest } from './kbTypes';
@@ -16,11 +16,13 @@ import { runRetrievalLoop, type RetrievalResult } from './retrievalLoop';
 
 // ── BM25 索引缓存（内存；构建后失效。磁盘缓存推迟到实测超预算，见 bm25Index）──
 
-let cached: { vaultId: string; index: KbBm25Index } | null = null;
+const cached = new Map<string, KbBm25Index>();
+let cacheEpoch = 0;
 
 /** 构建完成后调用，使下一次提问重建索引。 */
 export function invalidateKbIndexCache(): void {
-  cached = null;
+  cacheEpoch += 1;
+  cached.clear();
 }
 
 async function loadDocs(fs: KbFs, manifest: KbManifest): Promise<KbDoc[]> {
@@ -54,10 +56,13 @@ async function loadDocs(fs: KbFs, manifest: KbManifest): Promise<KbDoc[]> {
 }
 
 async function ensureIndex(fs: KbFs, vaultId: string, manifest: KbManifest): Promise<KbBm25Index> {
-  if (cached && cached.vaultId === vaultId) return cached.index;
+  const key = JSON.stringify([vaultId, fs.root ?? '__kb__']);
+  const previous = cached.get(key);
+  if (previous) return previous;
+  const epoch = cacheEpoch;
   const docs = await loadDocs(fs, manifest);
   const index = buildBm25Index(docs);
-  cached = { vaultId, index };
+  if (epoch === cacheEpoch) cached.set(key, index);
   return index;
 }
 
@@ -83,7 +88,7 @@ export async function askKnowledge(
   opts: KbAskOptions = {},
 ): Promise<KbAskResult> {
   const manifest = await readManifest(fs);
-  if (!manifest) throw new Error('知识库尚未构建（找不到 __kb__/manifest.json）');
+  if (!manifest) throw new Error('当前主题尚未构建');
   opts.onProgress?.('加载检索索引');
   const nav = await readNavigation(fs);
   const index = await ensureIndex(fs, vaultId, manifest);
@@ -91,6 +96,13 @@ export async function askKnowledge(
   const sourceBySrcId = manifest.sources;
   const topicByTpId = manifest.topics;
   const navByTpId = new Map(nav.topics.map((t) => [t.tpId, t]));
+  // 切片 D：命中主题页若有待审阅修订，证据附状态说明（ADR-0006：审阅不阻断
+  // 问答读取，但须说明该页有修订待审阅）。状态随证据进入回答层 prompt。
+  const pendingReviewCount = new Map<string, number>();
+  for (const r of await readReviews(fs)) {
+    if (r.status !== 'pending') continue;
+    pendingReviewCount.set(r.topicId, (pendingReviewCount.get(r.topicId) ?? 0) + 1);
+  }
 
   const retrieval = await runRetrievalLoop(
     question,
@@ -120,6 +132,7 @@ export async function askKnowledge(
         .map((p) => `  - ${p}`)
         .join('\n');
       const observation = `「${entry.title}」(${entry.path}，关联资料：\n${related || '  无'})\n\n${content}`;
+      const pending = pendingReviewCount.get(tpId) ?? 0;
       const evidence: KbEvidence = {
         kind: 'topic',
         path: entry.path,
@@ -127,6 +140,7 @@ export async function askKnowledge(
         title: entry.title,
         versionHash: await sha256Hex(content),
         text: content,
+        ...(pending > 0 ? { status: `该页有 ${pending} 项修订待审阅（正文可能已过时，新旧内容差异见审阅页）` } : {}),
       };
       return { observation, evidence };
     },

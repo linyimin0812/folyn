@@ -7,11 +7,11 @@ import { isKbPath } from '@/services/knowledge/kbPaths';
 import type { VaultEntry } from '@folyn/vault-provider';
 
 export const BTN =
-  'flex items-center gap-1 px-2 py-1 rounded text-[12px] border border-brd bg-transparent text-t2 cursor-pointer transition-colors duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex shrink-0 items-center justify-center gap-1.5 min-h-[32px] px-3 py-1.5 rounded-md text-[12px] border border-brd bg-transparent text-t2 cursor-pointer motion-safe:transition-colors motion-safe:duration-[120ms] hover:bg-hov hover:text-t1 disabled:opacity-50 disabled:cursor-not-allowed';
 export const BTN_PRIMARY =
-  'flex items-center gap-1 px-2.5 py-1 rounded text-[12px] border border-acc bg-accdim text-acc cursor-pointer transition-colors duration-[120ms] hover:bg-acc hover:text-white disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex shrink-0 items-center justify-center gap-1.5 min-h-[32px] px-3.5 py-1.5 rounded-md text-[12px] border border-acc bg-acc text-white cursor-pointer motion-safe:transition-colors motion-safe:duration-[120ms] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed';
 export const INPUT =
-  'w-full px-2 py-1 rounded-[5px] border border-brd bg-inp text-t1 text-[13px] outline-none font-ui focus:border-acc';
+  'w-full min-w-0 px-2.5 py-2 rounded-[5px] border border-brd bg-inp text-t1 text-[13px] outline-none font-ui transition-[border-color,box-shadow] duration-100 focus:border-acc focus:shadow-[0_0_0_2px_var(--accdim)]';
 
 export interface TreeRow {
   path: string;
@@ -37,10 +37,7 @@ export function buildRows(fileTree: VaultEntry[]): TreeRow[] {
 /** 行是否被收录（自身在 scope，或被 scope 中的目录覆盖）。 */
 export function isRowInScope(row: TreeRow, scope: string[]): boolean {
   if (scope.includes(row.path)) return true;
-  if (row.type === 'file') {
-    return scope.some((p) => row.path.startsWith(`${p}/`));
-  }
-  return false;
+  return scope.some((p) => row.path.startsWith(`${p}/`));
 }
 
 /** 构建分项状态文案（buildItems → UI）。 */

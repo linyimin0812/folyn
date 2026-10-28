@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveSourceStatuses, sourceStatusLabel, type DeriveSourceStatusesInput } from './sourceStatus';
+import { deriveSourceStatuses, sourceStatusLabel, citationVersionWarn, type DeriveSourceStatusesInput } from './sourceStatus';
 
 function input(overrides: Partial<DeriveSourceStatusesInput> = {}): DeriveSourceStatusesInput {
   return {
@@ -88,5 +88,25 @@ describe('deriveSourceStatuses — 状态派生', () => {
     for (const s of ['pending', 'processing', 'error', 'removed', 'review', 'organized', 'indexed'] as const) {
       expect(sourceStatusLabel(s).length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('citationVersionWarn — 引用面板三方版本判定（切片 B）', () => {
+  it('全部一致：无告警', () => {
+    expect(citationVersionWarn('h1', 'h1', 'h1')).toEqual({ citationStale: false, diskChanged: false });
+  });
+
+  it('引用落后于收录版本（资料已更新）：citationStale', () => {
+    expect(citationVersionWarn('h-old', 'h-new', 'h-new')).toEqual({ citationStale: true, diskChanged: false });
+  });
+
+  it('磁盘较收录版本又有改动：diskChanged（可与 citationStale 并存）', () => {
+    expect(citationVersionWarn('h1', 'h1', 'h-disk')).toEqual({ citationStale: false, diskChanged: true });
+    expect(citationVersionWarn('h-old', 'h1', 'h-disk')).toEqual({ citationStale: true, diskChanged: true });
+  });
+
+  it('未读磁盘（null）或未收录（undefined）不判对应侧', () => {
+    expect(citationVersionWarn('h1', 'h1', null)).toEqual({ citationStale: false, diskChanged: false });
+    expect(citationVersionWarn('h1', undefined, 'h1')).toEqual({ citationStale: false, diskChanged: false });
   });
 });

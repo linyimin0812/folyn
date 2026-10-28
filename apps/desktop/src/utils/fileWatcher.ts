@@ -32,6 +32,22 @@ export function resumeWatcher() {
   paused = false;
 }
 
+// ── Vault 变更订阅（非编辑器消费者，如知识库自动收录）──────────────────────────
+
+type VaultChangeListener = (relativePaths: string[]) => void;
+const vaultChangeListeners = new Set<VaultChangeListener>();
+
+/**
+ * 订阅 vault 内文件变更（vault 相对路径）。已过 pause / suppress /
+ * 代码写入（suppressWatcherFor）过滤；编辑器标签页同步逻辑（tab 匹配、
+ * isDirty 跳过）不适用于订阅者 —— 它们只关心「路径变了」。
+ * 返回退订函数。
+ */
+export function subscribeVaultChanges(listener: VaultChangeListener): () => void {
+  vaultChangeListeners.add(listener);
+  return () => vaultChangeListeners.delete(listener);
+}
+
 let pendingRefresh: ReturnType<typeof setTimeout> | null = null;
 
 function scheduleFileTreeRefresh() {
@@ -73,12 +89,27 @@ async function handleWatchEvent(event: WatcherEvent) {
   const { diffReviewMode, diffFilePath } = useDiffReviewStore.getState();
   const vaultId = useVaultStore.getState().activeVaultId || '';
 
+  // 先收集本轮全部已过滤的相对路径，通知非编辑器订阅者（知识库自动收录），
+  // 再跑逐标签页同步 —— 编辑器专属跳过（无 tab / isDirty）不影响订阅者。
+  const relativePaths: string[] = [];
   for (const changedPath of event.paths) {
     if (!changedPath.startsWith(currentBasePath)) continue;
-
     const relativePath = changedPath.slice(currentBasePath.length).replace(/^\//, '');
     if (!relativePath) continue;
     if (suppressedPaths.has(relativePath)) continue;
+    relativePaths.push(relativePath);
+  }
+  if (relativePaths.length > 0) {
+    for (const listener of vaultChangeListeners) {
+      try {
+        listener(relativePaths);
+      } catch (err) {
+        console.error('[FileWatcher] change listener failed:', err);
+      }
+    }
+  }
+
+  for (const relativePath of relativePaths) {
     if (diffReviewMode && relativePath === diffFilePath) continue;
 
     const tabId = `${vaultId}:${relativePath}`;

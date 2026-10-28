@@ -25,6 +25,9 @@ import type {
 } from './kbTypes';
 
 export interface KbFs {
+  /** Generated paths are absolute within the Vault, while source paths remain unchanged. */
+  root?: string;
+  listSourceTree?: () => Promise<{ path: string; type: 'file' | 'dir' }[]>;
   readFile(path: string): Promise<string>;
   writeFile(path: string, content: string): Promise<void>;
   exists(path: string): Promise<boolean>;
@@ -58,68 +61,73 @@ async function readJson<T>(fs: KbFs, path: string, what: string): Promise<T | nu
 }
 
 export async function readManifest(fs: KbFs): Promise<KbManifest | null> {
-  return readJson<KbManifest>(fs, kbManifestPath(), 'manifest.json');
+  return readJson<KbManifest>(fs, kbManifestPath(fs.root), 'manifest.json');
 }
 
 export async function writeManifest(fs: KbFs, manifest: KbManifest): Promise<void> {
-  await kbWriteAtomic(fs, kbManifestPath(), JSON.stringify(manifest, null, 2));
+  await kbWriteAtomic(fs, kbManifestPath(fs.root), JSON.stringify(manifest, null, 2));
 }
 
 export async function readSourceIndex(fs: KbFs, srcId: string): Promise<KbSourceIndex | null> {
-  return readJson<KbSourceIndex>(fs, kbSourceIndexPath(srcId), `source index ${srcId}`);
+  return readJson<KbSourceIndex>(fs, kbSourceIndexPath(srcId, fs.root), `source index ${srcId}`);
 }
 
 export async function writeSourceIndex(fs: KbFs, index: KbSourceIndex): Promise<void> {
-  await kbWriteAtomic(fs, kbSourceIndexPath(index.srcId), JSON.stringify(index, null, 2));
+  await kbWriteAtomic(fs, kbSourceIndexPath(index.srcId, fs.root), JSON.stringify(index, null, 2));
 }
 
 export async function readTopicRefs(fs: KbFs, tpId: string): Promise<KbRef[]> {
-  return (await readJson<KbRef[]>(fs, kbTopicRefsPath(tpId), `refs ${tpId}`)) ?? [];
+  return (await readJson<KbRef[]>(fs, kbTopicRefsPath(tpId, fs.root), `refs ${tpId}`)) ?? [];
 }
 
 export async function writeTopicRefs(fs: KbFs, tpId: string, refs: KbRef[]): Promise<void> {
-  await kbWriteAtomic(fs, kbTopicRefsPath(tpId), JSON.stringify(refs, null, 2));
+  await kbWriteAtomic(fs, kbTopicRefsPath(tpId, fs.root), JSON.stringify(refs, null, 2));
 }
 
 export async function readNavigation(fs: KbFs): Promise<KbNavigation> {
-  return (await readJson<KbNavigation>(fs, kbNavigationPath(), 'navigation.json')) ?? { topics: [] };
+  return (await readJson<KbNavigation>(fs, kbNavigationPath(fs.root), 'navigation.json')) ?? { topics: [] };
 }
 
 export async function writeNavigation(fs: KbFs, nav: KbNavigation): Promise<void> {
-  await kbWriteAtomic(fs, kbNavigationPath(), JSON.stringify(nav, null, 2));
+  await kbWriteAtomic(fs, kbNavigationPath(fs.root), JSON.stringify(nav, null, 2));
 }
 
 export async function readReviews(fs: KbFs): Promise<KbReviewItem[]> {
-  return (await readJson<KbReviewItem[]>(fs, kbReviewsPath(), 'reviews.json')) ?? [];
+  return (await readJson<KbReviewItem[]>(fs, kbReviewsPath(fs.root), 'reviews.json')) ?? [];
 }
 
 export async function appendReviews(fs: KbFs, items: KbReviewItem[]): Promise<void> {
   const existing = await readReviews(fs);
-  await kbWriteAtomic(fs, kbReviewsPath(), JSON.stringify([...existing, ...items], null, 2));
+  await kbWriteAtomic(fs, kbReviewsPath(fs.root), JSON.stringify([...existing, ...items], null, 2));
 }
 
 /** 切片 A 只保证 deletions.json 落盘占位（schema 就绪，逻辑在切片 C）。 */
 export async function ensureDeletionsPlaceholder(fs: KbFs): Promise<void> {
-  const p = kbDeletionsPath();
+  const p = kbDeletionsPath(fs.root);
   if (!(await fs.exists(p))) {
     await kbWriteAtomic(fs, p, JSON.stringify([] satisfies KbDeletionIntent[], null, 2));
   }
 }
 
 /** 真实适配器：vaultStore.manager（vault 相对路径）。exists 用读探测 —— manager 无 exists。 */
-export function vaultKbFs(): KbFs {
-  const manager = () => useVaultStore.getState().manager;
+export function vaultKbFs(expectedVaultId = useVaultStore.getState().activeVaultId): KbFs {
+  const manager = useVaultStore.getState().manager;
+  const guard = () => {
+    const vault = useVaultStore.getState();
+    if (!expectedVaultId || vault.activeVaultId !== expectedVaultId || vault.isLoading) throw new Error('Vault 已切换，已停止当前知识操作。');
+  };
   return {
-    readFile: (p) => manager().readFile(p),
-    writeFile: (p, c) => manager().writeFile(p, c),
-    exists: async (p) => {
-      try {
-        await manager().readFile(p);
-        return true;
-      } catch {
-        return false;
-      }
+    listSourceTree: async () => {
+      guard();
+      const entries = await manager.listFiles('', true, true, ['__kb__', '.git', 'node_modules']);
+      guard();
+      const result: { path: string; type: 'file' | 'dir' }[] = [];
+      const walk = (items: typeof entries) => { for (const entry of items) { result.push({ path: entry.path, type: entry.type }); if (entry.type === 'dir' && entry.children) walk(entry.children); } };
+      walk(entries); return result;
     },
-    rename: (o, n) => manager().rename(o, n),
+    readFile: (p) => { guard(); return manager.readFile(p); },
+    writeFile: (p, c) => { guard(); return manager.writeFile(p, c); },
+    exists: async (p) => { guard(); try { await manager.readFile(p); guard(); return true; } catch (error) { guard(); return false; } },
+    rename: (o, n) => { guard(); return manager.rename(o, n); },
   };
 }

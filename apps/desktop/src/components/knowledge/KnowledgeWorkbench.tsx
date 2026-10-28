@@ -1,13 +1,7 @@
-/**
- * 知识库主工作区视图（阅读工作台布局，notes「 folyn-knowledge-ui-notes.md」）。
- *
- * WorkArea 在 `activePanel === 'knowledge'` 且无 knowledge 标签页时挂载本组件
- * （SessionDetailView 同款门控）。四页：知识 / 提问 / 资料 / 审阅；来源依据按需
- * 在知识页旁侧展开。未配置（无 manifest 或空 goal）时主区渲染「设置知识库」引导。
- */
-
 import { useEffect } from 'react';
-import { BookOpen, FileText, ListChecks, MessageCircleQuestion } from 'lucide-react';
+import { BookOpen, FileText, ListChecks, Loader2, MessageCircleQuestion, Play, Plus, Settings2, Square } from 'lucide-react';
+import { useAiConfigStore } from '@/store/aiConfigStore';
+import { KnowledgeModelSelector } from './KnowledgeModelSelector';
 import { useVaultStore } from '@/store/vaultStore';
 import { useKnowledgeStore, type KbPage } from '@/store/knowledgeStore';
 import { SetupView } from './SetupView';
@@ -15,71 +9,61 @@ import { TopicReader } from './TopicReader';
 import { AskView } from './AskView';
 import { SourcesView } from './SourcesView';
 import { ReviewsView } from './ReviewsView';
+import { ThemeDialog } from './ThemeDialog';
+import { BTN, BTN_PRIMARY } from './kbUi';
 
 const PAGES: { id: KbPage; label: string; icon: typeof BookOpen }[] = [
-  { id: 'knowledge', label: '知识', icon: BookOpen },
+  { id: 'knowledge', label: '知识页', icon: BookOpen },
   { id: 'ask', label: '提问', icon: MessageCircleQuestion },
   { id: 'sources', label: '资料', icon: FileText },
   { id: 'reviews', label: '审阅', icon: ListChecks },
 ];
 
 export function KnowledgeWorkbench(): React.JSX.Element {
+  const kbPair = useAiConfigStore((s) => s.kbPair);
+  const setKbPair = useAiConfigStore((s) => s.setKbPair);
   const currentVault = useVaultStore((s) => s.currentVault);
   const loaded = useKnowledgeStore((s) => s.loaded);
+  const themes = useKnowledgeStore((s) => s.themes);
+  const activeThemeId = useKnowledgeStore((s) => s.activeThemeId);
   const goal = useKnowledgeStore((s) => s.goal);
   const page = useKnowledgeStore((s) => s.page);
   const setPage = useKnowledgeStore((s) => s.setPage);
   const reviews = useKnowledgeStore((s) => s.reviews);
+  const scope = useKnowledgeStore((s) => s.scope);
+  const buildRunning = useKnowledgeStore((s) => s.buildRunning);
+  const buildItems = useKnowledgeStore((s) => s.buildItems);
+  const cancelBuild = useKnowledgeStore((s) => s.cancelBuild);
+  const build = useKnowledgeStore((s) => s.build);
+  const cancelBuildRequested = useKnowledgeStore((s) => s.cancelBuildRequested);
+  const openSourceSettings = useKnowledgeStore((s) => s.openSourceSettings);
+  const sourceEntry = useKnowledgeStore((s) => s.sourceEntry);
+  const theme = themes.find((item) => item.id === activeThemeId);
+  const completed = buildItems.filter((item) => ['done', 'skipped', 'error'].includes(item.status)).length;
 
-  // 侧栏面板挂载时也会水合；这里兜底（侧栏可能在其它面板激活时未挂载）。
   useEffect(() => {
     if (currentVault) void useKnowledgeStore.getState().loadFromManifest();
   }, [currentVault]);
 
-  if (!loaded) {
-    return <div className="flex-1 flex items-center justify-center text-t3 text-[13px] select-none">读取知识库配置…</div>;
-  }
-
-  // 首次使用：未配置（无 manifest 或空 goal）→ 设置引导。
-  if (goal.trim() === '') {
-    return <SetupView />;
-  }
-
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-bg">
-      {/* 四页切换：蓝色=当前选择；审阅有待处理项时用低饱和琥珀标记数量。 */}
-      <div className="flex items-center gap-0.5 px-2 h-[30px] shrink-0 border-b border-brd">
-        {PAGES.map(({ id, label, icon: Icon }) => {
-          const active = page === id;
-          return (
-            <button
-              key={id}
-              className={`flex items-center gap-1.5 px-2.5 h-[22px] rounded text-[12px] border-none cursor-pointer transition-colors duration-[120ms] ${
-                active ? 'bg-accdim text-acc' : 'bg-transparent text-t2 hover:bg-hov hover:text-t1'
-              }`}
-              onClick={() => setPage(id)}
-            >
-              <Icon size={13} />
-              {label}
-              {id === 'reviews' && reviews.length > 0 && (
-                <span
-                  className="ml-0.5 min-w-[16px] px-1 rounded-full text-[10px] leading-[14px] text-center bg-[#b48a3f]/20 text-[#b48a3f]"
-                  title={`${reviews.length} 项待审阅`}
-                >
-                  {reviews.length}
-                </span>
-              )}
-            </button>
-          );
-        })}
+  return <div className="kb-workbench flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+    <ThemeDialog />
+    {!loaded ? <div role="status" className="kb-workspace-loading"><Loader2 size={17} className="animate-spin" />正在打开知识库…</div> : !theme ? <SetupView /> : <>
+      <header className="kb-workspace-header">
+        <div className="kb-workspace-context"><div className="kb-eyebrow">知识库<span aria-hidden="true"> / </span>当前主题</div><h1 title={theme.name}>{theme.name}</h1><p title={goal}>{goal}</p>{sourceEntry === 'closed' && <div className="mt-2"><KnowledgeModelSelector value={kbPair} onChange={setKbPair} disabled={buildRunning} panelAlign="left" /></div>}</div>
+        <div className="kb-workspace-actions">
+          <button className="kb-icon-action" aria-label="主题设置" title="编辑主题名称、目标与资料范围" onClick={() => openSourceSettings('settings')}><Settings2 size={17} strokeWidth={1.5} /></button>
+          {scope.length > 0 && <button className={BTN} disabled={buildRunning} onClick={() => openSourceSettings('add')}><Plus size={14} />添加资料</button>}
+          {buildRunning ? <button className={BTN_PRIMARY} disabled={cancelBuild} onClick={cancelBuildRequested}><Square size={12} />{cancelBuild ? '正在停止…' : '停止整理'}</button> : <button className={BTN_PRIMARY} disabled={sourceEntry !== 'closed'} onClick={() => { if (scope.length === 0) openSourceSettings('add'); else void build(); }}>{scope.length === 0 ? <Plus size={14} /> : <Play size={13} />}{scope.length === 0 ? '添加资料' : '整理 / 更新'}</button>}
+        </div>
+      </header>
+      {buildRunning && <div role="status" className="kb-workspace-progress"><Loader2 size={12} className="animate-spin" /><span>{cancelBuild ? '当前资料处理结束后停止，已完成结果会保留。' : `正在整理资料 · ${completed} / ${buildItems.length}`}</span><button onClick={() => setPage('sources')}>查看过程</button></div>}
+      <nav className="kb-workspace-tabs" aria-label="当前主题工作区">{PAGES.map(({ id, label, icon: Icon }) => <button key={id} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon size={14} strokeWidth={1.5} />{label}{id === 'reviews' && reviews.length > 0 && <span className="kb-tab-count">{reviews.length}</span>}</button>)}</nav>
+      <div key={activeThemeId} className="kb-workspace-content">
+        <div className="kb-page-slot" hidden={page !== 'knowledge'}><TopicReader /></div>
+        <div className="kb-page-slot" hidden={page !== 'ask'}><AskView /></div>
+        <div className="kb-page-slot" hidden={page !== 'sources'}><SourcesView workspaceControls /></div>
+        <div className="kb-page-slot" hidden={page !== 'reviews'}><ReviewsView /></div>
       </div>
-
-      <div className="flex-1 overflow-hidden">
-        {page === 'knowledge' && <TopicReader />}
-        {page === 'ask' && <AskView />}
-        {page === 'sources' && <SourcesView />}
-        {page === 'reviews' && <ReviewsView />}
-      </div>
-    </div>
-  );
+    </>}
+  </div>;
 }

@@ -215,6 +215,11 @@ interface FolynEditorProps {
   onCodeBlockMenuChange?: (state: CodeBlockMenuState) => void;
   onSave?: () => void;
   onImagePaste?: (file: File, previewUrl: string) => void;
+  /** ponytail: false = this editor lives outside the files-panel tab system
+   *  (e.g. the knowledge page editor): its viewport scroll must NOT be
+   *  persisted onto the files panel's active tab — that would clobber the
+   *  tab's saved scroll top and restore it wrong on the next tab switch. */
+  persistTabScroll?: boolean;
   /** ponytail: read-only mode — `EditorState.readOnly.of(true)` blocks doc-modifying
    *  transactions but keeps the cursor + selection + scroll, so the version-history
    *  snapshot view can show real CodeMirror highlighting with full text selection. */
@@ -222,7 +227,7 @@ interface FolynEditorProps {
 }
 
 export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
-  function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, initialScrollTop, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly }, ref) {
+  function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, initialScrollTop, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly, persistTabScroll = true }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [view, setView] = useState<EditorView | null>(null);
@@ -251,6 +256,8 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     onSaveRef.current = onSave;
     const onImagePasteRef = useRef(onImagePaste);
     onImagePasteRef.current = onImagePaste;
+    const persistTabScrollRef = useRef(persistTabScroll);
+    persistTabScrollRef.current = persistTabScroll;
     // ponytail: swapRef guards handleUpdate during an in-place doc swap
     //  (view.setState on tab switch). setState fires an update with
     //  docChanged=true → without the guard, onChangeRef would fire and mark
@@ -519,7 +526,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
             //  tab's editorScrollTop stale (wrong viewport on return).
             const sd = update.view.scrollDOM;
             const tabId = useEditorStore.getState().activeTabId;
-            if (sd && tabId) persistScrollTopRef.current?.(sd.scrollTop, tabId);
+            if (persistTabScrollRef.current && sd && tabId) persistScrollTopRef.current?.(sd.scrollTop, tabId);
             // ponytail: intentionally NO cursor re-measure here — pure editor
             // scrolls (wheel) must NOT drag the preview: true synchronized
             // scrolling isn't achievable (the panes re-wrap differently), so

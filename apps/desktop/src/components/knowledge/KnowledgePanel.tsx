@@ -1,124 +1,100 @@
-/**
- * 知识库侧栏（builtin panel `knowledge`）：阅读工作台布局的导航区。
- *
- * 聚焦主题导航 + 待处理入口 + 设置摘要；阅读、提问、资料管理与审阅在主工作区
- * （KnowledgeWorkbench，WorkArea 按 activePanel === 'knowledge' 挂载）。
- * 目标/收录范围的完整编辑在主区「资料」页，这里只留摘要与构建入口。
- */
-
-import { useEffect } from 'react';
-import { Loader2, Play, Settings, Square } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowUpRight, BookOpen, Check, ChevronDown, Layers3, Plus, Settings2 } from 'lucide-react';
+import { FileIcon } from '@/components/icons/FileIcon';
 import { useVaultStore } from '@/store/vaultStore';
-import { useAiConfigStore } from '@/store/aiConfigStore';
 import { useKnowledgeStore } from '@/store/knowledgeStore';
-import { KB_DIR } from '@/services/knowledge/kbPaths';
-import { BTN } from './kbUi';
-
-const SECTION_TITLE = 'text-[10px] font-semibold uppercase tracking-wide text-t3 mt-3 mb-1 px-0.5';
+import { startKbAutoBuild, stopKbAutoBuild } from '@/services/knowledge/kbAutoBuild';
+import { startKbIntentWatch, stopKbIntentWatch } from '@/services/knowledge/kbIntentWatch';
+import { useThemeUiStore } from './themeUiStore';
 
 export function KnowledgePanel(): React.JSX.Element {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const switcherRef = useRef<HTMLDivElement>(null);
   const currentVault = useVaultStore((state) => state.currentVault);
-  const kbPair = useAiConfigStore((s) => s.kbPair);
-
   const loaded = useKnowledgeStore((s) => s.loaded);
-  const goal = useKnowledgeStore((s) => s.goal);
-  const scope = useKnowledgeStore((s) => s.scope);
+  const themes = useKnowledgeStore((s) => s.themes);
+  const activeThemeId = useKnowledgeStore((s) => s.activeThemeId);
+  const selectTheme = useKnowledgeStore((s) => s.selectTheme);
   const topics = useKnowledgeStore((s) => s.topics);
   const activeTpId = useKnowledgeStore((s) => s.activeTpId);
   const reviews = useKnowledgeStore((s) => s.reviews);
-  const buildRunning = useKnowledgeStore((s) => s.buildRunning);
-  const buildItems = useKnowledgeStore((s) => s.buildItems);
-  const buildError = useKnowledgeStore((s) => s.buildError);
-
+  const page = useKnowledgeStore((s) => s.page);
   const setActiveTopic = useKnowledgeStore((s) => s.setActiveTopic);
   const setPage = useKnowledgeStore((s) => s.setPage);
-  const build = useKnowledgeStore((s) => s.build);
-  const cancelBuildRequested = useKnowledgeStore((s) => s.cancelBuildRequested);
+  const openSourceSettings = useKnowledgeStore((s) => s.openSourceSettings);
+  const setCreateOpen = useThemeUiStore((s) => s.setCreateOpen);
+  const failedCount = useKnowledgeStore((s) => s.buildItems.filter((item) => item.status === 'error').length);
 
-  // 挂载 / 切 Vault 时从 manifest 水合（主区 KnowledgeWorkbench 也兜底一次）。
+  useEffect(() => {
+    if (!menuOpen) return;
+    const dismiss = (event: MouseEvent) => {
+      if (!switcherRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', dismiss);
+    return () => document.removeEventListener('mousedown', dismiss);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (menuOpen) document.getElementById(`kb-theme-option-${highlighted}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [menuOpen, highlighted]);
+
   useEffect(() => {
     if (!currentVault) return;
     void useKnowledgeStore.getState().loadFromManifest();
+    startKbAutoBuild(); startKbIntentWatch();
+    return () => { stopKbAutoBuild(); stopKbIntentWatch(); };
   }, [currentVault]);
 
-  const failedCount = buildItems.filter((i) => i.status === 'error').length;
+  const selectedTheme = themes.find((theme) => theme.id === activeThemeId);
+  const openMenu = () => {
+    setHighlighted(Math.max(0, themes.findIndex((theme) => theme.id === activeThemeId)));
+    setMenuOpen(true);
+  };
+  const chooseTheme = (index: number) => {
+    const theme = themes[index];
+    if (!theme) return;
+    setMenuOpen(false);
+    if (theme.id !== activeThemeId) void selectTheme(theme.id);
+  };
 
-  return (
-    <div className="flex-1 overflow-y-auto px-2.5 pb-4 [scrollbar-width:thin]">
-      {/* 主题导航 */}
-      <div className={SECTION_TITLE}>主题</div>
-      {!loaded ? (
-        <div className="px-0.5 text-t3 text-[10px]">…</div>
-      ) : topics.length === 0 ? (
-        <div className="px-0.5 text-t3 text-[10px]">
-          （暂无，构建后生成；页面存于 {KB_DIR}/topics/）
-        </div>
-      ) : (
-        <div className="flex flex-col gap-[1px]">
-          {topics.map((t) => (
-            <button
-              key={t.tpId}
-              className={`text-left px-1.5 py-[3px] rounded text-[calc(var(--ui-font-size)-3px)] border-none bg-transparent cursor-pointer truncate ${
-                t.tpId === activeTpId ? 'bg-accdim text-acc' : 'text-t2 hover:bg-hov hover:text-t1'
-              }`}
-              title={t.path}
-              onClick={() => setActiveTopic(t.tpId === activeTpId ? null : t.tpId)}
-            >
-              {t.title}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* 待处理入口（低饱和琥珀 + 文字） */}
-      <div className={SECTION_TITLE}>待处理</div>
-      <button
-        className="flex items-center justify-between w-full px-1.5 py-[3px] rounded text-[calc(var(--ui-font-size)-3px)] border-none bg-transparent text-t2 cursor-pointer hover:bg-hov hover:text-t1"
-        onClick={() => setPage('reviews')}
-        disabled={reviews.length === 0}
-        title={reviews.length === 0 ? '无待审阅修订' : `${reviews.length} 项修订待审阅`}
-      >
-        <span>待审阅修订</span>
-        <span className={reviews.length > 0 ? 'text-[#b48a3f]' : 'text-t3'}>{reviews.length}</span>
-      </button>
-      {failedCount > 0 && (
-        <button
-          className="flex items-center justify-between w-full px-1.5 py-[3px] rounded text-[calc(var(--ui-font-size)-3px)] border-none bg-transparent text-t2 cursor-pointer hover:bg-hov hover:text-t1"
-          onClick={() => setPage('sources')}
-          title="处理失败的资料（可单项重试）"
-        >
-          <span>处理失败</span>
-          <span className="text-[#e05252]">{failedCount}</span>
-        </button>
-      )}
-
-      {/* 设置摘要（低频配置；完整编辑在主区「资料」页） */}
-      <div className={SECTION_TITLE}>设置</div>
-      <div className="px-0.5 mb-1 flex flex-col gap-[2px] text-[10px] text-t3">
-        <span className="truncate" title={goal}>目标：{goal || '（未设置）'}</span>
-        <span>收录：{scope.length} 项</span>
-        <span className="truncate" title={kbPair ? `${kbPair.provider} / ${kbPair.model}` : '跟随全局聊天模型'}>
-          模型：{kbPair ? `${kbPair.provider} / ${kbPair.model}` : '跟随全局'}
-        </span>
+  return <div className="kb-sidebar flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+    <div className="kb-theme-switcher">
+      <div className="kb-theme-switcher-heading">
+        <span id="kb-theme-label">知识主题</span>
+        <button className="kb-theme-create" aria-label="新建知识主题" title="新建知识主题" onClick={() => setCreateOpen(true)}><Plus size={14} /></button>
       </div>
-      <div className="flex items-center gap-1 flex-wrap">
-        <button className={BTN} onClick={() => setPage('sources')}>
-          <Settings size={12} />
-          设置知识库
+      <div className="kb-theme-select-wrap" ref={switcherRef}>
+        <button type="button" role="combobox" className="kb-theme-select-trigger" aria-labelledby="kb-theme-label kb-theme-value" aria-haspopup="listbox" aria-expanded={menuOpen} aria-controls={menuOpen ? 'kb-theme-options' : undefined} aria-activedescendant={menuOpen && themes[highlighted] ? `kb-theme-option-${highlighted}` : undefined} disabled={!loaded || themes.length === 0} onClick={() => menuOpen ? setMenuOpen(false) : openMenu()} onKeyDown={(event) => {
+          if (event.key === 'Escape' && menuOpen) { event.preventDefault(); setMenuOpen(false); }
+          else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!menuOpen) openMenu();
+            else setHighlighted((index) => Math.max(0, Math.min(themes.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1))));
+          } else if (menuOpen && (event.key === 'Home' || event.key === 'End')) {
+            event.preventDefault(); setHighlighted(event.key === 'Home' ? 0 : themes.length - 1);
+          } else if (menuOpen && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault(); chooseTheme(highlighted);
+          } else if (event.key === 'Tab') setMenuOpen(false);
+        }}>
+          <span className="kb-theme-select-icon" aria-hidden="true"><Layers3 size={15} strokeWidth={1.6} /></span>
+          <span id="kb-theme-value" className="kb-theme-select-value" title={selectedTheme?.name}>{selectedTheme?.name ?? (loaded ? '尚无主题' : '正在读取…')}</span>
+          <ChevronDown className="kb-theme-select-chevron" size={14} aria-hidden="true" />
         </button>
-        {!buildRunning ? (
-          <button className={BTN} disabled={scope.length === 0} onClick={() => void build()}>
-            <Play size={12} />
-            {topics.length > 0 ? '更新' : '构建'}
-          </button>
-        ) : (
-          <button className={BTN} onClick={cancelBuildRequested}>
-            {buildRunning ? <Loader2 size={12} className="animate-spin" /> : <Square size={12} />}
-            停止
-          </button>
-        )}
+        {menuOpen && <div id="kb-theme-options" className="kb-theme-options" role="listbox" aria-label="知识主题">
+          {themes.map((theme, index) => <div key={theme.id} id={`kb-theme-option-${index}`} role="option" aria-selected={theme.id === activeThemeId} className={`kb-theme-option${index === highlighted ? ' is-highlighted' : ''}${theme.id === activeThemeId ? ' is-selected' : ''}`} onMouseEnter={() => setHighlighted(index)} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseTheme(index)}>
+            <span className="kb-theme-option-icon" aria-hidden="true"><Layers3 size={14} strokeWidth={1.6} /></span><span className="kb-theme-option-name" title={theme.name}>{theme.name}</span>{theme.id === activeThemeId && <Check size={14} aria-hidden="true" />}
+          </div>)}
+        </div>}
       </div>
-      {buildError && <div className="mt-1 text-[10px] text-[#e05252]">{buildError}</div>}
     </div>
-  );
+    <nav aria-label="主题知识页" className="kb-sidebar-nav">
+      <button className={`kb-sidebar-overview${page === 'knowledge' && !activeTpId ? ' is-active' : ''}`} disabled={!activeThemeId} onClick={() => { setActiveTopic(null); setPage('knowledge'); }}><BookOpen size={14} strokeWidth={1.5} />知识概览<span>{topics.length}</span></button>
+      <div className="kb-sidebar-section-label">知识页</div>
+      {!loaded ? <p className="kb-sidebar-hint">正在读取…</p> : topics.length === 0 ? <p className="kb-sidebar-hint">{activeThemeId ? '整理资料后，知识页会出现在这里。' : '先创建一个主题，定义你的知识方向。'}</p> : <div className="kb-sidebar-pages">{topics.map((topic) => <button key={topic.tpId} className={topic.tpId === activeTpId && page === 'knowledge' ? 'is-active' : ''} title={topic.title} aria-current={topic.tpId === activeTpId && page === 'knowledge' ? 'page' : undefined} onClick={() => setActiveTopic(topic.tpId)}><span className="kb-sidebar-page-icon" aria-hidden="true"><FileIcon filename={topic.path} /></span><span className="kb-sidebar-page-title">{topic.title}</span></button>)}</div>}
+      {reviews.length > 0 && <button className="kb-sidebar-task" onClick={() => setPage('reviews')}><span>待审阅修订</span><span>{reviews.length}<ArrowUpRight size={12} /></span></button>}
+      {failedCount > 0 && <button className="kb-sidebar-task" onClick={() => setPage('sources')}><span>资料处理失败</span><span>{failedCount}<ArrowUpRight size={12} /></span></button>}
+    </nav>
+    {activeThemeId && <footer className="kb-sidebar-footer"><button onClick={() => openSourceSettings('settings')}><Settings2 size={14} strokeWidth={1.5} />主题设置</button><button onClick={() => openSourceSettings('add')}><Plus size={14} />添加资料</button></footer>}
+  </div>;
 }

@@ -111,3 +111,23 @@ export function sourceStatusLabel(status: KbSourceStatus): string {
     case 'indexed': return '可查原文';
   }
 }
+
+/**
+ * 引用面板三方版本不一致判定（纯函数）：引用时版本（refs.json 的
+ * versionHash）vs 收录版本（manifest currentHash）vs 磁盘当前版本。
+ * 任一相邻不一致都只作琥珀提示，不静默替换（notes 要求）：
+ * - citationStale：资料已重新收录，引用基于旧版本；
+ * - diskChanged：磁盘文件较上次收录又有改动（自动收录关闭/失败时会出现，
+ *   与 kbAsk.readSource 的「manifest vs 磁盘」检测同一口径）。
+ * diskHash 为 null（未读 / 不可读）时不判磁盘侧。
+ */
+export function citationVersionWarn(
+  citationHash: string,
+  manifestHash: string | undefined,
+  diskHash: string | null,
+): { citationStale: boolean; diskChanged: boolean } {
+  const citationStale = manifestHash !== undefined && citationHash !== manifestHash;
+  const diskChanged =
+    diskHash !== null && manifestHash !== undefined && diskHash !== manifestHash;
+  return { citationStale, diskChanged };
+}

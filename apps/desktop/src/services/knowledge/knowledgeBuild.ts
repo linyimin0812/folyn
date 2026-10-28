@@ -1,3 +1,4 @@
+import { useVaultStore } from '@/store/vaultStore';
 /**
  * 构建编排：展开收录范围 → 逐份资料「索引 → 主题合成」→ 分项发布。
  *
@@ -17,6 +18,7 @@ import {
 } from './kbFs';
 import { isKbPath } from './kbPaths';
 import type { KbManifest } from './kbTypes';
+import { reconcileMovedSources } from './kbMoveReconcile';
 import { ingestSource } from './sourceIngest';
 import { synthTopicsForSource } from './topicSynth';
 import { invalidateKbIndexCache } from './kbAsk';
@@ -66,14 +68,17 @@ export interface BuildOptions {
   only?: string[];
   /** 每份资料状态变化时回调（分项进度）。 */
   onProgress?: (items: BuildItemProgress[], currentIndex: number) => void;
+  /** 当前处理项的阶段事实行（索引/合成的真实过程，供「详细过程」展示）。 */
+  onDetail?: (line: string) => void;
+  /** 当前处理项的模型正文流增量（尾部 buffer 由调用方维护）。 */
+  onStream?: (text: string) => void;
   /** 协作取消：返回 true 时在下一份资料边界退出。 */
   shouldCancel?: () => boolean;
 }
 
 /** 获取全库文件路径清单（vaultStore.manager 的一次递归扫描；`__kb__` 在 Rust 侧剪枝）。 */
-async function listVaultTree(): Promise<{ path: string; type: 'file' | 'dir' }[]> {
-  const { useVaultStore } = await import('@/store/vaultStore');
-  const entries = await useVaultStore.getState().manager.listFiles('', true, true, ['__kb__', '.git', 'node_modules']);
+async function listVaultTree(manager: ReturnType<typeof useVaultStore.getState>['manager']): Promise<{ path: string; type: 'file' | 'dir' }[]> {
+  const entries = await manager.listFiles('', true, true, ['__kb__', '.git', 'node_modules']);
   const out: { path: string; type: 'file' | 'dir' }[] = [];
   const walk = (items: typeof entries) => {
     for (const e of items) {
@@ -87,24 +92,21 @@ async function listVaultTree(): Promise<{ path: string; type: 'file' | 'dir' }[]
 
 export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void> {
   const { goal, scope } = opts;
+  const manager = useVaultStore.getState().manager;
   const manifest: KbManifest =
     (await readManifest(fs)) ?? { goal, scope, sources: {}, topics: {} };
   // 用户当前会话里的目标/范围总是最新的（构建即采纳）。
   manifest.goal = goal;
   manifest.scope = scope;
 
-  const tree = await listVaultTree();
+  const tree = await (fs.listSourceTree ? fs.listSourceTree() : listVaultTree(manager));
   let files = expandScope(scope, tree);
   // 已停止跟踪的资料不再收录 —— 除非用户把该文件路径显式加回收录范围（= 重新收录）。
   const removedPaths = new Set(
     Object.values(manifest.sources).filter((e) => e.removed).map((e) => e.path),
   );
   files = files.filter((p) => !removedPaths.has(p) || scope.includes(p));
-  if (opts.only) {
-    const only = new Set(opts.only);
-    files = files.filter((p) => only.has(p));
-  }
-  const items: BuildItemProgress[] = files.map((path) => ({ path, status: 'pending' }));
+  const items: BuildItemProgress[] = [];
   const emit = (currentIndex: number) => opts.onProgress?.(items.map((i) => ({ ...i })), currentIndex);
 
   await ensureDeletionsPlaceholder(fs);
@@ -116,20 +118,42 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
     srcIdByPath.set(entry.path, srcId);
   }
 
+  // 移动/重命名识别（切片 B，ADR-0009）：在 only 过滤之前、对全量
+  // scopeFiles 做匹配 —— 重命名只产生新路径的 Create 事件，单文件触发
+  // （only=[新路径]）时也能把 srcId 认领回新路径；且「旧路径消失」必须对
+  // 整棵树判定，否则 only 过滤会把未列入本次处理的资料误判为已删除。
+  // 命中即改 manifest 并立即发布（分项发布，不等整批）。
+  const treePaths = new Set(tree.map((e) => e.path));
+  const movedCount = await reconcileMovedSources(fs, manifest, files, srcIdByPath, treePaths);
+  if (movedCount > 0) {
+    await writeManifest(fs, manifest);
+  }
+
+  if (opts.only) {
+    const only = new Set(opts.only);
+    files = files.filter((p) => only.has(p));
+  }
+  for (const path of files) items.push({ path, status: 'pending' });
+
   for (let i = 0; i < files.length; i++) {
     if (opts.shouldCancel?.()) break;
     const path = files[i]!;
     const item = items[i]!;
     emit(i);
+    let failurePhase = '生成资料索引失败';
     try {
       const srcId = srcIdByPath.get(path) ?? `src-${generateShortId()}`;
       srcIdByPath.set(path, srcId);
 
       item.status = 'indexing';
       emit(i);
-      const ingested = await ingestSource(fs, srcId, path, manifest);
+      const ingested = await ingestSource(fs, srcId, path, manifest, {
+        onDetail: opts.onDetail,
+        onStream: opts.onStream,
+      });
 
       if (!ingested.skipped) {
+        failurePhase = '整理主题知识失败';
         item.status = 'synthesizing';
         emit(i);
         const content = await fs.readFile(path);
@@ -143,9 +167,11 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
           versionHash: ingested.versionHash,
           nodes: ingested.nodes,
           content,
+          hooks: { onDetail: opts.onDetail, onStream: opts.onStream },
         });
       }
 
+      failurePhase = '发布资料结果失败';
       const prev = manifest.sources[srcId];
       // 重新构建新对象（不带 removed）—— 显式重新收录会清除「已停止跟踪」标记。
       manifest.sources[srcId] = {
@@ -161,7 +187,7 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
       item.message = ingested.skipped ? '内容未变化' : undefined;
     } catch (err) {
       item.status = 'error';
-      item.message = errText(err);
+      item.message = `${failurePhase}：${errText(err)}`;
       console.warn(`[kb] 收录失败: ${path} ${errText(err)}`);
     }
     emit(i);

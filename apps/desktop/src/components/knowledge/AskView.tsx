@@ -5,7 +5,9 @@
  * 程序侧取消）；无答案/无证据时明确说缺证据并给出出口，不编造。
  */
 
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
+import remarkGfm from 'remark-gfm';
+import { renderMarkdownToReact } from '@/services/markdown/renderMarkdown';
 import { ExternalLink, Loader2, Search, Square } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { useKnowledgeStore } from '@/store/knowledgeStore';
@@ -24,27 +26,33 @@ export function AskView(): React.JSX.Element {
   const cancelAskRequested = useKnowledgeStore((s) => s.cancelAskRequested);
   const setPage = useKnowledgeStore((s) => s.setPage);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const answerNode = useMemo(() => renderMarkdownToReact(askAnswer, { remarkExtensions: [remarkGfm] }), [askAnswer]);
 
   const noEvidence = !askRunning && askAnswer !== '' && askEvidence.length === 0;
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin]">
-      <div className="max-w-[720px] mx-auto flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
+    <div className="kb-page flex-1 min-h-0 min-w-0 overflow-y-auto [scrollbar-width:thin]">
+      <div className="kb-page-inner flex flex-col gap-4">
+        <header><div className="kb-eyebrow">基于当前知识库</div><h1 className="kb-page-title">向知识库提问</h1><p className="kb-page-description">从主题与原文中寻找依据，并核对回答引用的证据。</p></header>
+        <div className="flex flex-col gap-2">
           <label className="text-[12px] font-medium text-t2" htmlFor="kb-ask">问题</label>
-          <div className="flex items-stretch gap-1.5">
-            <input
+          <div className="flex flex-col gap-3 border border-brd rounded-lg p-3 bg-panel">
+            <textarea
               id="kb-ask"
               ref={inputRef}
-              className={INPUT}
+              className={`${INPUT} resize-none min-h-[92px] border-transparent bg-transparent focus:border-acc leading-7`}
+              rows={3}
+              aria-describedby="kb-ask-hint"
               placeholder="在当前知识库的知识页与原文中查找…"
               value={askQuestion}
               onChange={(e) => setAskQuestion(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.nativeEvent.isComposing && !askRunning) void ask();
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229 && !askRunning && askQuestion.trim()) { e.preventDefault(); void ask(); }
               }}
             />
+            <div className="flex items-center justify-between gap-3 flex-wrap"><span id="kb-ask-hint" className="text-[11px] text-t3">Enter 提问 · Shift + Enter 换行</span>
             {askRunning ? (
               <button className={BTN} onClick={cancelAskRequested} title="停止后返回已找到的证据">
                 <Square size={12} />
@@ -56,11 +64,12 @@ export function AskView(): React.JSX.Element {
                 查找依据
               </button>
             )}
+            </div>
           </div>
         </div>
 
         {askRunning && (
-          <div className="flex items-center gap-2 px-2 py-1.5 border border-brd rounded-[5px] text-[12px] text-t2">
+          <div role="status" className="flex flex-wrap items-center gap-2 px-3 py-3 border border-brd rounded-[5px] text-[12px] text-t2">
             <Loader2 size={13} className="animate-spin text-t3" />
             <span>{askPhase || '检索中…'}</span>
             <span className="text-[11px] text-t3">停止将在当前一轮结束后生效，已找到的证据会保留。</span>
@@ -68,9 +77,7 @@ export function AskView(): React.JSX.Element {
         )}
 
         {askAnswer && (
-          <div className="px-3 py-2.5 border border-brd rounded-[6px] text-[13px] text-t1 whitespace-pre-wrap leading-[1.7]">
-            {askAnswer}
-          </div>
+          <section aria-label="回答"><h2 className="text-[13px] font-semibold text-t2 mb-4">回答</h2><div className="kb-md">{answerNode}</div></section>
         )}
 
         {noEvidence && (
@@ -96,25 +103,25 @@ export function AskView(): React.JSX.Element {
 
         {askEvidence.length > 0 && (
           <div className="flex flex-col gap-1.5">
-            <div className="text-[11px] font-semibold text-t3">证据（{askEvidence.length}）</div>
+            <div className="text-[13px] font-semibold text-t2">来源依据（{askEvidence.length}）</div>
             {askEvidence.map((e, i) => (
               <button
                 key={`${e.path}-${e.startLine ?? 0}-${i}`}
-                className="text-left px-2.5 py-1.5 border border-brd rounded-[5px] bg-transparent cursor-pointer hover:bg-hov"
+                className="text-left px-4 py-3 border border-brd rounded-[5px] bg-transparent cursor-pointer hover:bg-hov"
                 title={`在编辑器中打开：${e.path}`}
                 onClick={() => {
                   void openFile(e.path, e.path.split('/').pop() ?? e.path);
                   useEditorStore.getState().setActivePanel('files');
                 }}
               >
-                <div className="text-[11px] text-t2 flex items-center gap-1 flex-wrap">
+                <div className="text-[12px] text-t2 flex items-center gap-1 flex-wrap">
                   <ExternalLink size={10} className="shrink-0" />
                   {e.kind === 'topic' ? '主题' : '原文'} · {e.title ?? e.path}
                   {e.startLine ? ` L${e.startLine}-L${e.endLine}` : ''}
                   {e.versionHash ? ` · 版本 ${e.versionHash.slice(0, 8)}` : ''}
                   {e.status ? <span className="text-[#b48a3f]">· {e.status}</span> : null}
                 </div>
-                <div className="text-[11px] text-t3 line-clamp-2 whitespace-pre-wrap">{e.text.slice(0, 160) || '（无正文）'}</div>
+                <div className="mt-2 text-[13px] leading-6 text-t3 line-clamp-3 whitespace-pre-wrap">{e.text.slice(0, 160) || '（无正文）'}</div>
               </button>
             ))}
           </div>

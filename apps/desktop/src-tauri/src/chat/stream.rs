@@ -15,7 +15,7 @@ use crate::errors::AppError;
 
 use super::drain::drain_loop;
 use super::params::{
-    ensure_v1_segment, resolve_adapter_family, with_thinking, ChatParams, PREAMBLE,
+    ensure_v1_segment, resolve_adapter_family, with_model_params, ChatParams, PREAMBLE,
 };
 use super::{AssistantImage, ChatChunk};
 
@@ -60,14 +60,15 @@ pub(super) async fn run_provider_stream(
                 b = b.base_url(url.clone());
             }
             // ponytail: Anthropic requires max_tokens (no default); 4096 fits most chat turns. Bump to 8192 if a user hits truncation on long responses.
-            let agent = with_thinking(
+            // A caller-supplied params.max_tokens overrides this — with_model_params applies it last.
+            let agent = with_model_params(
                 b.build()
                     .map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE))
                     .max_tokens(4096),
                 "anthropic",
-                params.thinking_budget,
+                params,
             ).build();
             // `.await` yields the stream directly (no Result wrapper); stream
             // setup/connection errors surface as `Err` items below.
@@ -79,13 +80,13 @@ pub(super) async fn run_provider_stream(
             if let Some(url) = &params.base_url {
                 b = b.base_url(url.clone());
             }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build()
                     .map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 "gemini",
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -102,13 +103,13 @@ pub(super) async fn run_provider_stream(
             if let Some(url) = &params.base_url {
                 b = b.base_url(ensure_v1_segment(url));
             }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build()
                     .map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 "moonshot",
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -123,11 +124,11 @@ pub(super) async fn run_provider_stream(
         "deepseek" => {
             let mut b = deepseek::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "deepseek", params.thinking_budget,
+                "deepseek", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -135,11 +136,11 @@ pub(super) async fn run_provider_stream(
         "groq" => {
             let mut b = groq::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "groq", params.thinking_budget,
+                "groq", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -147,11 +148,11 @@ pub(super) async fn run_provider_stream(
         "hyperbolic" => {
             let mut b = hyperbolic::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "hyperbolic", params.thinking_budget,
+                "hyperbolic", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -159,11 +160,11 @@ pub(super) async fn run_provider_stream(
         "mira" => {
             let mut b = mira::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "mira", params.thinking_budget,
+                "mira", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -171,11 +172,11 @@ pub(super) async fn run_provider_stream(
         "openrouter" => {
             let mut b = openrouter::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "openrouter", params.thinking_budget,
+                "openrouter", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -183,11 +184,11 @@ pub(super) async fn run_provider_stream(
         "perplexity" => {
             let mut b = perplexity::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "perplexity", params.thinking_budget,
+                "perplexity", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -195,11 +196,11 @@ pub(super) async fn run_provider_stream(
         "together" => {
             let mut b = together::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "together", params.thinking_budget,
+                "together", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -207,11 +208,11 @@ pub(super) async fn run_provider_stream(
         "xai" => {
             let mut b = xai::Client::builder().api_key(params.api_key.clone());
             if let Some(url) = &params.base_url { b = b.base_url(ensure_v1_segment(url)); }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build().map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
-                "xai", params.thinking_budget,
+                "xai", params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -239,12 +240,12 @@ pub(super) async fn run_provider_stream(
                 .api_version(&api_version)
                 .build()
                 .map_err(|e| e.to_string())?;
-            let agent = with_thinking(
+            let agent = with_model_params(
                 client
                     .agent(deployment_id.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 "azure-openai",
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -254,16 +255,16 @@ pub(super) async fn run_provider_stream(
             if let Some(url) = &params.base_url {
                 b = b.base_url(url.clone());
             }
-            // ponytail: cohere doesn't support reasoning — with_thinking is a
-            // no-op (thinking_params returns None). Kept in the chain for
-            // symmetry + future-compat if cohere adds reasoning later.
-            let agent = with_thinking(
+            // ponytail: cohere doesn't support reasoning — with_model_params
+            // skips thinking (thinking_params returns None) and cohere ignores
+            // req.max_tokens entirely. Kept in the chain for symmetry.
+            let agent = with_model_params(
                 b.build()
                     .map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 "cohere",
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -273,13 +274,13 @@ pub(super) async fn run_provider_stream(
             if let Some(url) = &params.base_url {
                 b = b.base_url(url.clone());
             }
-            let agent = with_thinking(
+            let agent = with_model_params(
                 b.build()
                     .map_err(|e| e.to_string())?
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 "huggingface",
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -296,12 +297,12 @@ pub(super) async fn run_provider_stream(
                 .base_url(base)
                 .build()
                 .map_err(|e| e.to_string())?;
-            let agent = with_thinking(
+            let agent = with_model_params(
                 client
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 "ollama",
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -332,12 +333,12 @@ pub(super) async fn run_provider_stream(
                 .map_err(|e| e.to_string())?
                 .with_system_instructions_as_messages()
                 .completions_api();
-            let agent = with_thinking(
+            let agent = with_model_params(
                 client
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 params.provider.as_str(),
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?
@@ -365,12 +366,12 @@ pub(super) async fn run_provider_stream(
             // correctly. Only `"openai"` reaches this arm after the reroute
             // (returns reasoning_effort). Unknown ids also fall through here
             // and return None — silently skipped.
-            let agent = with_thinking(
+            let agent = with_model_params(
                 client
                     .agent(params.model.as_str())
                     .preamble(params.preamble.as_deref().unwrap_or(PREAMBLE)),
                 params.provider.as_str(),
-                params.thinking_budget,
+                params,
             ).build();
             let mut stream = agent.stream_chat(prompt_msg.clone(), history).await;
             drain_loop(&mut stream, on_event).await?

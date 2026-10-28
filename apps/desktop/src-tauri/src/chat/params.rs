@@ -65,6 +65,21 @@ pub struct ChatParams {
     ///     (provider doesn't support reasoning, silently skipped)
     #[serde(default)]
     pub thinking_budget: Option<u32>,
+    /// Output token ceiling for this turn. Applied via rig's NATIVE
+    /// `AgentBuilder::max_tokens` field, which each provider serializes
+    /// itself (anthropic + openai chat-completions family → `max_tokens`,
+    /// openai Responses / xai → `max_output_tokens`, gemini →
+    /// `generationConfig.maxOutputTokens`; cohere / huggingface ignore it).
+    /// Deliberately NOT routed through `additional_params` — rig's
+    /// `additional_params()` REPLACES the previous value instead of merging,
+    /// so stacking it on `thinking_params` would clobber the thinking JSON.
+    /// ponytail: o-series on the chat-completions arm still gets `max_tokens`
+    /// (real OpenAI there wants `max_completion_tokens`) — only bites a custom
+    /// provider pointed at real OpenAI o-series with adapterFamily
+    /// "openai-completions"; the Responses API `_` arm is correct. Revisit if
+    /// that combo shows up.
+    #[serde(default)]
+    pub max_tokens: Option<u32>,
     /// Phase 3: bundled adapter family id (e.g. 'anthropic', 'openai-completions',
     /// 'ollama', 'gemini', 'openai'). Same value space as `provider` for
     /// bundled providers; absent → fall back to `provider.as_str()`.
@@ -155,20 +170,30 @@ pub(super) fn thinking_params(
     }
 }
 
-/// Apply thinking_params to an agent builder if the provider supports it.
-/// Generic over M (completion model) and S (tool state) — the AgentBuilder
-/// is the same concrete struct across providers, just with different M.
-/// ponytail: helper avoids 5× duplicated `if let Some(p) = ...` blocks.
-pub(super) fn with_thinking<M, S>(
+/// Apply thinking + output-limit params to an agent builder. Thinking goes
+/// through `additional_params` (provider-specific JSON, see `thinking_params`);
+/// the output limit goes through rig's native `max_tokens` builder field, so
+/// the two never fight over `additional_params` (which replaces, not merges —
+/// verified in rig-core 0.40's `AgentBuilder::additional_params`). When
+/// `max_tokens` is None the builder chain's existing value stands (anthropic
+/// arm keeps its 4096 fallback). Generic over M (completion model) and S
+/// (tool state) — the AgentBuilder is the same concrete struct across
+/// providers, just with different M.
+/// ponytail: helper avoids 17× duplicated `if let` blocks in stream.rs.
+pub(super) fn with_model_params<M, S>(
     b: AgentBuilder<M, S>,
     provider: &str,
-    budget: Option<u32>,
+    params: &ChatParams,
 ) -> AgentBuilder<M, S>
 where
     M: rig_core::completion::CompletionModel,
 {
-    match thinking_params(provider, budget) {
+    let b = match thinking_params(provider, params.thinking_budget) {
         Some(p) => b.additional_params(p),
+        None => b,
+    };
+    match params.max_tokens {
+        Some(n) => b.max_tokens(n as u64),
         None => b,
     }
 }
@@ -325,6 +350,7 @@ mod tests {
             azure_deployment_id: None,
             azure_api_version: None,
             thinking_budget: None,
+            max_tokens: None,
             adapter_family: adapter_family.map(|s| s.to_string()),
             history_mode: None,
         }
@@ -387,5 +413,25 @@ mod tests {
         let json = r#"{"sessionId":"s","provider":"openai","model":"m","apiKey":"k","prompt":"p"}"#;
         let params: ChatParams = serde_json::from_str(json).unwrap();
         assert!(params.history_mode.is_none());
+    }
+
+    // Output limit: camelCase serde + absent → None (callers that don't set
+    // maxTokens keep the provider default / anthropic's 4096 fallback).
+    #[test]
+    fn chatparams_max_tokens_camel_case_and_absent_default() {
+        let json = r#"{"sessionId":"s","provider":"openai","model":"m","apiKey":"k","prompt":"p","maxTokens":16384}"#;
+        let params: ChatParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.max_tokens, Some(16384));
+        let bare: ChatParams = serde_json::from_str(
+            r#"{"sessionId":"s","provider":"openai","model":"m","apiKey":"k","prompt":"p"}"#,
+        )
+        .unwrap();
+        assert!(bare.max_tokens.is_none());
+        // Coexists with thinkingBudget on the same payload.
+        let both: ChatParams = serde_json::from_str(
+            r#"{"sessionId":"s","provider":"openai","model":"m","apiKey":"k","prompt":"p","thinkingBudget":2048,"maxTokens":4096}"#,
+        )
+        .unwrap();
+        assert_eq!(both.max_tokens, Some(4096));
     }
 }

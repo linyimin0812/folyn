@@ -38,6 +38,24 @@ function isPosInt(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v >= 1;
 }
 
+/** 收录/合成过程的进度上报（详细过程区展示；均为可选，不影响返回值）。 */
+export interface KbProcessHooks {
+  /** 阶段事实行（真实数据行，如「索引块 1/3（第 1–120 行）」）。 */
+  onDetail?: (line: string) => void;
+  /** 当前处理项的模型正文流增量。 */
+  onStream?: (text: string) => void;
+}
+
+/** detail 行：分块进度（名词 + 序号 + 绝对行范围）。 */
+export function chunkPhaseDetailLine(noun: string, index: number, total: number, firstLine: number, lastLine: number): string {
+  return `${noun} ${index}/${total}（第 ${firstLine}–${lastLine} 行）`;
+}
+
+/** detail 行：模型返回与程序校验保留的节点数。 */
+export function indexNodesDetailLine(returned: number, kept: number): string {
+  return `模型返回 ${returned} 个节点，校验保留 ${kept} 个`;
+}
+
 /**
  * 校验模型输出的索引节点：类型收窄 + 1<=start<=end<=lineCount + 排序去重叠。
  * 无效或与已保留节点重叠的节点丢弃（console.warn 记录）。
@@ -100,6 +118,7 @@ export async function ingestSource(
   srcId: string,
   path: string,
   manifest: KbManifest,
+  hooks?: KbProcessHooks,
 ): Promise<IngestSourceResult> {
   const content = await fs.readFile(path);
   const versionHash = await sha256Hex(content);
@@ -108,19 +127,31 @@ export async function ingestSource(
   const existing = manifest.sources[srcId];
   const existingIndex = existing ? await readSourceIndex(fs, srcId) : null;
   if (existing && existingIndex && existing.currentHash === versionHash) {
+    hooks?.onDetail?.(`内容未变化，复用既有索引（${existingIndex.nodes.length} 个节点）`);
     return { srcId, versionHash, skipped: true, nodes: existingIndex.nodes };
   }
 
   const collected: KbIndexNode[] = [];
-  for (const chunk of chunkContent(content)) {
+  const chunks = chunkContent(content);
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]!;
+    hooks?.onDetail?.(chunkPhaseDetailLine('索引块', i + 1, chunks.length, chunk.firstLine, chunk.firstLine + chunk.text.split('\n').length - 1));
     const parsed = await kbChatJson<{ nodes?: unknown }>(
       kbIndexPrompt(chunk.text, chunk.firstLine),
       KB_INDEX_PREAMBLE,
+      { onChunk: hooks?.onStream },
     );
-    collected.push(...validateIndexNodes(parsed.nodes, lineCount));
+    const keptChunk = validateIndexNodes(parsed.nodes, lineCount);
+    hooks?.onDetail?.(indexNodesDetailLine(Array.isArray(parsed.nodes) ? parsed.nodes.length : 0, keptChunk.length));
+    collected.push(...keptChunk);
   }
   // 跨块去重叠（validateIndexNodes 兼做排序 + 重叠剔除）。
   const nodes = validateIndexNodes(collected, lineCount);
+  if (nodes.length === 0) {
+    hooks?.onDetail?.('模型未返回有效节点，整份作为一个节点');
+  } else if (chunks.length > 1) {
+    hooks?.onDetail?.(`跨块去重叠后共保留 ${nodes.length} 个节点`);
+  }
 
   const index: KbSourceIndex = {
     srcId,

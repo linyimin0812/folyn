@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/desktop/frontend/component-guidelines.md", "reason": "React and theme conventions"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "Store conventions"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality checks"}
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "Reuse existing markdown pipeline"}
+{"file": ".trellis/spec/desktop/frontend/knowledge-base.md", "reason": "Preserve knowledge contracts"}
+{"file": "docs/design/pageindex-knowledge-base.md", "reason": "Requirements baseline"}

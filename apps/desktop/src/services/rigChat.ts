@@ -51,6 +51,12 @@ export interface RigChatParams {
    *  per-provider application is a follow-up. The field is plumbed so the
    *  follow-up touches one arm per provider. */
   thinkingBudget?: number | null;
+  /** Output token ceiling for this turn. Applied via rig's native
+   *  AgentBuilder::max_tokens (serialized per provider inside rig:
+   *  max_tokens / max_output_tokens / generationConfig.maxOutputTokens).
+   *  Reasoning models burn much of the ceiling on hidden reasoning, so
+   *  endpoints with a small default cap truncate mid-JSON without this. */
+  maxTokens?: number;
   /** PR2e: bundled adapter family id (e.g. "anthropic" / "openai-completions"
    *  / "ollama" / "gemini" / "openai"). Same value space as `provider` for
    *  bundled providers. Rust falls back to `provider.as_str()` when absent. */
@@ -106,6 +112,7 @@ export async function runRigChat(p: RigChatParams): Promise<void> {
       azureDeploymentId: p.azureDeploymentId ?? null,
       azureApiVersion: p.azureApiVersion ?? null,
       thinkingBudget: p.thinkingBudget ?? null,
+      maxTokens: p.maxTokens ?? null,
       adapterFamily: p.adapterFamily ?? null,
       historyMode: p.historyMode ?? null,
       prompt: p.prompt,

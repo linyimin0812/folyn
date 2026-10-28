@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Frontend conventions"}
+{"file": ".trellis/spec/desktop/frontend/knowledge-base.md", "reason": "Knowledge contracts; theme boundary in current PRD supersedes old global scope"}
+{"file": "CONTEXT.md", "reason": "Theme versus knowledge-page vocabulary"}
+{"file": ".trellis/tasks/10-26-knowledge-topics-workspace/prd.md", "reason": "Confirmed independent themes and acceptance criteria"}

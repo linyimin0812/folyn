@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/desktop/frontend/knowledge-base.md", "reason": "Model/write contracts"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality rules"}
+{"file": ".trellis/spec/desktop/frontend/type-safety.md", "reason": "Narrow unknown model responses"}
+{"file": "docs/adr/0006-topic-pages-human-ai-coauthoring.md", "reason": "Program validates and writes only"}
