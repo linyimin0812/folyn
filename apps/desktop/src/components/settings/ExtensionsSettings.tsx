@@ -175,6 +175,8 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
   const setEnableActivityPanel = useAppearanceStore((s) => s.setEnableActivityPanel);
   const enableSessionsPanel = useAppearanceStore((s) => s.enableSessionsPanel);
   const setEnableSessionsPanel = useAppearanceStore((s) => s.setEnableSessionsPanel);
+  const enableKnowledgePanel = useAppearanceStore((s) => s.enableKnowledgePanel);
+  const setEnableKnowledgePanel = useAppearanceStore((s) => s.setEnableKnowledgePanel);
   // Render errors captured by PanelErrorBoundary for this extension's surfaces.
   // A extension that threw during render is isolated (never crashes the host),
   // but surfaced here so the user can see something went wrong + clear it.
@@ -196,6 +198,7 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
     ? (entry.id === 'builtin:translation' ? enableTranslationPanel
       : entry.id === 'builtin:activity' ? enableActivityPanel
       : entry.id === 'builtin:sessions' ? enableSessionsPanel
+      : entry.id === 'builtin:knowledge' ? enableKnowledgePanel
       : false)
     : state === 'active';
   const toggleBusy = isActivateBusy || isDeactivateBusy;
@@ -283,6 +286,7 @@ function ExtensionRowCard({ row }: { row: ExtensionRow }) {
                   if (entry.id === 'builtin:translation') setEnableTranslationPanel(v);
                   else if (entry.id === 'builtin:activity') setEnableActivityPanel(v);
                   else if (entry.id === 'builtin:sessions') setEnableSessionsPanel(v);
+                  else if (entry.id === 'builtin:knowledge') setEnableKnowledgePanel(v);
                   return;
                 }
                 if (v && !isActive) void activate(entry.id);

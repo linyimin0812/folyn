@@ -73,6 +73,10 @@
         "label": "Colección de sesiones IA",
         "description": "Explorar y recopilar sesiones locales de Codex, Claude Code y pi"
       },
+      "knowledge": {
+        "label": "Base de conocimiento",
+        "description": "Recopilación de fuentes, páginas de conocimiento y consulta"
+      },
       "tray": {
         "label": "Mostrar icono en bandeja",
         "description": "Mostrar icono de la app en la bandeja; clic para el mismo menú de acciones rápidas que el menú derecho de la mascota"

@@ -73,6 +73,10 @@
         "label": "AI会話収集",
         "description": "ローカルの Codex・Claude Code・pi セッションの閲覧と収集"
       },
+      "knowledge": {
+        "label": "ナレッジベース",
+        "description": "資料の収集・トピックページの生成・検索質問"
+      },
       "tray": {
         "label": "トレイアイコンを表示",
         "description": "システムトレイにアプリアイコンを表示。クリックで桌宠の右クリックメニューと同じクイックアクションメニュー"

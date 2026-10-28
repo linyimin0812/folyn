@@ -69,6 +69,10 @@
         "label": "AI session collection",
         "description": "Browse and capture local Codex, Claude Code, and pi sessions"
       },
+      "knowledge": {
+        "label": "Knowledge base",
+        "description": "Source scope, topic pages, and retrieval Q&A"
+      },
       "translation": {
         "label": "Translation panel",
         "description": "Two-pane translator (source → target) with LLM picker"

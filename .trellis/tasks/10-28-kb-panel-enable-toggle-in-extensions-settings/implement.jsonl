@@ -1,0 +1,3 @@
+{"file": ".trellis/tasks/10-28-kb-panel-enable-toggle-in-extensions-settings/prd.md", "reason": "需求、模式先例与验收标准"}
+{"file": ".trellis/spec/desktop/frontend/knowledge-base.md", "reason": "知识面板 UI 约定"}
+{"file": ".trellis/spec/desktop/frontend/i18n-guidelines.md", "reason": "新增 locale key 的规则"}

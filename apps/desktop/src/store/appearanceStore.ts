@@ -61,6 +61,7 @@ export const PERSIST_KEYS_APPEARANCE = [
   'enableTranslationPanel',
   'enableActivityPanel',
   'enableSessionsPanel',
+  'enableKnowledgePanel',
   'excludePatterns',
   'linkOpenMode',
   'vaultName',
@@ -79,6 +80,7 @@ export interface AppearanceState {
   enableTranslationPanel: boolean;
   enableActivityPanel: boolean;
   enableSessionsPanel: boolean;
+  enableKnowledgePanel: boolean;
   excludePatterns: string;
   linkOpenMode: LinkOpenMode;
   vaultName: string;
@@ -99,6 +101,7 @@ export interface AppearanceState {
   setEnableTranslationPanel: (v: boolean) => void;
   setEnableActivityPanel: (v: boolean) => void;
   setEnableSessionsPanel: (v: boolean) => void;
+  setEnableKnowledgePanel: (v: boolean) => void;
   setExcludePatterns: (v: string) => void;
   setLinkOpenMode: (v: LinkOpenMode) => void;
   setVaultName: (name: string) => void;
@@ -121,6 +124,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   enableTranslationPanel: true,
   enableActivityPanel: true,
   enableSessionsPanel: true,
+  enableKnowledgePanel: true,
   excludePatterns: DEFAULT_EXCLUDE_PATTERNS,
   linkOpenMode: 'external' as LinkOpenMode,
   vaultName: 'my-vault',
@@ -175,6 +179,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   setEnableTranslationPanel: (v) => { set({ enableTranslationPanel: v }); persist(); },
   setEnableActivityPanel: (v) => { set({ enableActivityPanel: v }); persist(); },
   setEnableSessionsPanel: (v) => { set({ enableSessionsPanel: v }); persist(); },
+  setEnableKnowledgePanel: (v) => { set({ enableKnowledgePanel: v }); persist(); },
   setExcludePatterns: (v) => { set({ excludePatterns: v }); persist(); },
   setLinkOpenMode: (v) => { set({ linkOpenMode: v }); persist(); },
   setVaultName: (name) => { set({ vaultName: name }); persist(); },
@@ -194,6 +199,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
     if (blob.enableTranslationPanel !== undefined) patch.enableTranslationPanel = blob.enableTranslationPanel as boolean;
     if (blob.enableActivityPanel !== undefined) patch.enableActivityPanel = blob.enableActivityPanel as boolean;
     if (blob.enableSessionsPanel !== undefined) patch.enableSessionsPanel = blob.enableSessionsPanel as boolean;
+    if (blob.enableKnowledgePanel !== undefined) patch.enableKnowledgePanel = blob.enableKnowledgePanel as boolean;
     if (blob.linkOpenMode !== undefined) patch.linkOpenMode = blob.linkOpenMode as LinkOpenMode;
     if (blob.vaultName !== undefined) patch.vaultName = blob.vaultName as string;
     if (blob.showTrayIcon !== undefined) patch.showTrayIcon = blob.showTrayIcon as boolean;

@@ -100,6 +100,21 @@ describe('useAppearanceStore setters', () => {
     expect(payload.enableSessionsPanel).toBe(false);
     setSpy.mockRestore();
   });
+
+  it('enableKnowledgePanel defaults to true', () => {
+    expect(useAppearanceStore.getState().enableKnowledgePanel).toBe(true);
+  });
+
+  it('setEnableKnowledgePanel updates state and persists', () => {
+    const setSpy = vi.spyOn(storageClient, 'set');
+    useAppearanceStore.getState().setEnableKnowledgePanel(false);
+    expect(useAppearanceStore.getState().enableKnowledgePanel).toBe(false);
+    vi.advanceTimersByTime(400);
+    expect(setSpy).toHaveBeenCalled();
+    const payload = setSpy.mock.calls[setSpy.mock.calls.length - 1][1] as Record<string, unknown>;
+    expect(payload.enableKnowledgePanel).toBe(false);
+    setSpy.mockRestore();
+  });
 });
 
 describe('useAppearanceStore.hydrate', () => {
@@ -141,6 +156,11 @@ describe('useAppearanceStore.hydrate', () => {
   it('applies enableSessionsPanel from the blob', () => {
     useAppearanceStore.getState().hydrate({ enableSessionsPanel: false });
     expect(useAppearanceStore.getState().enableSessionsPanel).toBe(false);
+  });
+
+  it('applies enableKnowledgePanel from the blob', () => {
+    useAppearanceStore.getState().hydrate({ enableKnowledgePanel: false });
+    expect(useAppearanceStore.getState().enableKnowledgePanel).toBe(false);
   });
 
   it('missing fields keep defaults', () => {

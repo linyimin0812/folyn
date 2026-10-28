@@ -69,6 +69,10 @@
         "label": "AI会话收集",
         "description": "浏览与收录本机 Codex、Claude Code、pi 会话"
       },
+      "knowledge": {
+        "label": "知识库",
+        "description": "收录范围、主题知识页与检索问答"
+      },
       "translation": {
         "label": "翻译面板",
         "description": "双栏翻译（原文 → 译文），可选翻译模型"

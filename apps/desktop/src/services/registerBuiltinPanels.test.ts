@@ -24,6 +24,7 @@ function resetStores() {
     enableActivityPanel: true,
     enableTranslationPanel: true,
     enableSessionsPanel: true,
+    enableKnowledgePanel: true,
   });
   // Cancel any persist debounce scheduled by setEnableSessionsPanel.
   storageClient.__resetForTesting();
@@ -132,6 +133,54 @@ describe('registerBuiltinPanels: sessions enable-flag wiring', () => {
     useAppearanceStore.getState().hydrate({ enableSessionsPanel: false });
     const sessions = useFeaturePanelStore.getState().panels.find((p) => p.id === 'sessions');
     expect(sessions?.visible).toBe(false);
+    dispose();
+  });
+});
+
+describe('registerBuiltinPanels: knowledge enable-flag wiring', () => {
+  it('registers knowledge hidden when the flag is off at register time', () => {
+    useAppearanceStore.setState({ enableKnowledgePanel: false });
+    const dispose = registerBuiltinPanels();
+    const knowledge = useFeaturePanelStore.getState().panels.find((p) => p.id === 'knowledge');
+    expect(knowledge?.visible).toBe(false);
+    dispose();
+  });
+
+  it('toggling the flag off hides the panel and re-routes an active knowledge panel to files', () => {
+    const dispose = registerBuiltinPanels();
+    useEditorStore.getState().setActivePanel('knowledge');
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('knowledge');
+
+    useAppearanceStore.getState().setEnableKnowledgePanel(false);
+    const knowledge = useFeaturePanelStore.getState().panels.find((p) => p.id === 'knowledge');
+    expect(knowledge?.visible).toBe(false);
+    expect(useEditorStore.getState().activePanel).toBe('files');
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
+    dispose();
+  });
+
+  it('toggling the flag back on restores visibility', () => {
+    const dispose = registerBuiltinPanels();
+    useAppearanceStore.getState().setEnableKnowledgePanel(false);
+    useAppearanceStore.getState().setEnableKnowledgePanel(true);
+    const knowledge = useFeaturePanelStore.getState().panels.find((p) => p.id === 'knowledge');
+    expect(knowledge?.visible).toBe(true);
+    dispose();
+  });
+
+  it('hiding knowledge while another panel is active does not change the active panel', () => {
+    const dispose = registerBuiltinPanels();
+    useEditorStore.getState().setActivePanel('files');
+    useAppearanceStore.getState().setEnableKnowledgePanel(false);
+    expect(useFeaturePanelStore.getState().activePanelId).toBe('files');
+    dispose();
+  });
+
+  it('hydrate (persisted flag off) hides the panel after registration', () => {
+    const dispose = registerBuiltinPanels();
+    useAppearanceStore.getState().hydrate({ enableKnowledgePanel: false });
+    const knowledge = useFeaturePanelStore.getState().panels.find((p) => p.id === 'knowledge');
+    expect(knowledge?.visible).toBe(false);
     dispose();
   });
 });

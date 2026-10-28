@@ -74,13 +74,16 @@ export function registerBuiltinPanels(): () => void {
   });
 
   // knowledge — 知识库（ADR-0005..0009，切片 A）。order 10：files 之后、sessions 之前。
+  // Visibility follows the appearanceStore enable flag (Extensions settings
+  // toggle), same rule as sessions: read at register time so a persisted
+  // `false` (hydrated later, which fires the subscription below) converges.
   fps.register({
     id: 'knowledge',
     title: '知识库',
     icon: KnowledgeIcon,
     component: KnowledgePanel,
     order: 10,
-    visible: true,
+    visible: useAppearanceStore.getState().enableKnowledgePanel,
     builtin: true,
   });
 
@@ -129,16 +132,24 @@ export function registerBuiltinPanels(): () => void {
   // call still covers the case where a future change persists activePanel.
   mirrorActive(useEditorStore.getState().activePanel);
 
-  // ── enableSessionsPanel flag → featurePanelStore visibility ──
+  // ── enable-flag → featurePanelStore visibility ──
   // The Extensions settings toggle (and the persisted-blob hydrate, which is
   // just a `set`) flips the appearanceStore flag; this subscription mirrors it
   // into the panel registry. Re-running mirrorActive afterwards applies the
-  // general fallback rule: if sessions was the active panel and just became
-  // invisible, the active panel re-routes to 'files'.
-  const unsubSessions = useAppearanceStore.subscribe((state, prev) => {
-    if (state.enableSessionsPanel === prev.enableSessionsPanel) return;
-    useFeaturePanelStore.getState().setVisible('sessions', state.enableSessionsPanel);
-    mirrorActive(useEditorStore.getState().activePanel);
+  // general fallback rule: if the panel was active and just became invisible,
+  // the active panel re-routes to 'files'.
+  const flagPanelIds: ['enableKnowledgePanel' | 'enableSessionsPanel', string][] = [
+    ['enableKnowledgePanel', 'knowledge'],
+    ['enableSessionsPanel', 'sessions'],
+  ];
+  const unsubPanels = useAppearanceStore.subscribe((state, prev) => {
+    let changed = false;
+    for (const [flag, panelId] of flagPanelIds) {
+      if (state[flag] === prev[flag]) continue;
+      useFeaturePanelStore.getState().setVisible(panelId, state[flag]);
+      changed = true;
+    }
+    if (changed) mirrorActive(useEditorStore.getState().activePanel);
   });
 
   // Dispose: tears down the subscriptions and resets the `wired` guard so
@@ -146,7 +157,7 @@ export function registerBuiltinPanels(): () => void {
   // — the panels/subscriptions live for the app session.
   return () => {
     unsubEditor();
-    unsubSessions();
+    unsubPanels();
     wired = false;
   };
 }

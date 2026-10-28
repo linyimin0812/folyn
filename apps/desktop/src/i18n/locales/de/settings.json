@@ -73,6 +73,10 @@
         "label": "KI-Sitzungssammlung",
         "description": "Lokale Codex-, Claude-Code- und pi-Sitzungen durchsuchen und erfassen"
       },
+      "knowledge": {
+        "label": "Wissensbasis",
+        "description": "Quellenaufnahme, Wissensseiten und Abfrage"
+      },
       "tray": {
         "label": "Tray-Icon anzeigen",
         "description": "App-Icon im System-Tray anzeigen; Klick für dasselbe Schnellaktionsmenü wie das Pet-Rechtsklickmenü"

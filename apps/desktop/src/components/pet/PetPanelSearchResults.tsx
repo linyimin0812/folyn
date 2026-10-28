@@ -100,6 +100,7 @@ export const PetPanelSearchResults = forwardRef<
   const enableTranslationPanel = useAppearanceStore((s) => s.enableTranslationPanel);
   const enableActivityPanel = useAppearanceStore((s) => s.enableActivityPanel);
   const enableSessionsPanel = useAppearanceStore((s) => s.enableSessionsPanel);
+  const enableKnowledgePanel = useAppearanceStore((s) => s.enableKnowledgePanel);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Vault files, ALL types (PRD 09-19-pet-search-all-files) — the tree the
@@ -195,6 +196,14 @@ export const PetPanelSearchResults = forwardRef<
             r.builtin &&
             r.entry.id === 'builtin:sessions' &&
             !enableSessionsPanel
+          ) {
+            return false;
+          }
+          // Same gate for the knowledge panel.
+          if (
+            r.builtin &&
+            r.entry.id === 'builtin:knowledge' &&
+            !enableKnowledgePanel
           ) {
             return false;
           }
