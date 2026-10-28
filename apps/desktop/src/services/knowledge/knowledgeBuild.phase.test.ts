@@ -3,7 +3,10 @@ import type { KbFs } from './kbFs';
 import { buildKnowledge, type BuildItemProgress } from './knowledgeBuild';
 
 const calls = vi.hoisted(() => ({ ingest: vi.fn(), synth: vi.fn() }));
-vi.mock('./sourceIngest', () => ({ ingestSource: calls.ingest }));
+vi.mock('./sourceIngest', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./sourceIngest')>()),
+  ingestSource: calls.ingest,
+}));
 vi.mock('./topicSynth', () => ({ synthTopicsForSource: calls.synth }));
 vi.mock('./kbMoveReconcile', () => ({ reconcileMovedSources: async () => 0 }));
 vi.mock('./kbAsk', () => ({ invalidateKbIndexCache: vi.fn() }));

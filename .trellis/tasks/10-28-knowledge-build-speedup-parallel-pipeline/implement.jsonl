@@ -1,0 +1,3 @@
+{"file": ".trellis/tasks/10-28-knowledge-build-speedup-parallel-pipeline/prd.md", "reason": "需求与验收标准"}
+{"file": ".trellis/spec/desktop/frontend/knowledge-base.md", "reason": "知识库约定（构建/发布契约需同步修订）"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "store 互斥与守卫模式"}

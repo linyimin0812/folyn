@@ -1,12 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
 import { validateClaims, buildTopicContent, parseTopicPage, serializeTopicPage, synthTopicsForSource, synthProposalDetailLine, synthOutcomeDetailLine } from './topicSynth';
+import { KB_CHUNK_CONCURRENCY, KbBuildCancelled } from './sourceIngest';
 import type { KbFs } from './kbFs';
 import { sha256Hex } from './kbFs';
 import type { KbManifest, KbNavigation, KbRef, KbReviewItem } from './kbTypes';
 
 // 模型响应注入（synthTopicsForSource 内部走 kbChatJson）。
-const llm = vi.hoisted(() => ({ response: {} as unknown }));
-vi.mock('./kbLlm', () => ({ kbChatJson: async () => llm.response }));
+// impl 非空时优先（并行/计数用例注入自定义行为），否则返回固定 response。
+const llm = vi.hoisted(() => ({
+  response: {} as unknown,
+  impl: null as ((prompt: string) => Promise<unknown>) | null,
+}));
+vi.mock('./kbLlm', () => ({ kbChatJson: (prompt: string) => (llm.impl ? llm.impl(prompt) : Promise.resolve(llm.response)) }));
 
 const SOURCE = ['标题行', '第二行：窗口管理', '第三行', '第四行：透明窗口', ''];
 
@@ -572,5 +577,199 @@ describe('synthTopicsForSource — 详细过程上报（hooks，真实数据行�
       '模型提议 1 个主题',
       '合成提议：新增 1 / 补引用 0 / 审阅 0',
     ]);
+  });
+});
+
+describe('synthTopicsForSource — 块级并行与写入串行化', () => {
+  /** 长文（≥ 4 个合成块）：每行 1000 字符。 */
+  const longContent = Array.from({ length: 50 }, (_, i) => `第${i + 1}行 ${'x'.repeat(1000)}`).join('\n');
+
+  it('caps concurrent chunk calls at KB_CHUNK_CONCURRENCY', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let active = 0;
+    let peak = 0;
+    llm.impl = async () => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((r) => setTimeout(r, 5));
+      active--;
+      return { topics: [] };
+    };
+    try {
+      const outcome = await synthTopicsForSource({
+        fs: memFs(),
+        manifest: { goal: 'g', scope: [], sources: {}, topics: {} },
+        nav: { topics: [] },
+        goal: '目标',
+        srcId: 'src-1',
+        srcPath: 'notes/a.md',
+        versionHash: 'h',
+        nodes: [],
+        content: longContent,
+      });
+      expect(outcome.applied).toBe(0);
+      expect(peak).toBe(KB_CHUNK_CONCURRENCY);
+    } finally {
+      llm.impl = null;
+      warn.mockRestore();
+    }
+  });
+
+  it('cooperative cancel rejects with KbBuildCancelled before any write', async () => {
+    const fs = memFs();
+    await expect(synthTopicsForSource({
+      fs,
+      manifest: { goal: 'g', scope: [], sources: {}, topics: {} },
+      nav: { topics: [] },
+      goal: '目标',
+      srcId: 'src-1',
+      srcPath: 'notes/a.md',
+      versionHash: 'h',
+      nodes: [],
+      content: SOURCE.join('\n'),
+      hooks: { shouldCancel: () => true },
+    })).rejects.toBeInstanceOf(KbBuildCancelled);
+    expect(Object.keys(fs.files)).toHaveLength(0);
+  });
+
+  it("'new' proposal whose title matches an existing topic appends instead of creating a duplicate page", async () => {
+    // 并行快照下模型可能不知道同名主题已存在 —— 落盘阶段按标题命中走 append。
+    const fs = memFs();
+    const page = serializeTopicPage(
+      { id: 'tp-1', title: '窗口管理', sources: ['src-1'] },
+      '# 窗口管理\n\n- 旧结论 [^c1]\n\n[^c1]: src-1 · notes/a.md · L1-L1 · 旧锚\n',
+    );
+    const manifest: KbManifest = {
+      goal: '目标', scope: [], sources: {},
+      topics: { 'tp-1': { path: '__kb__/topics/tp-1.md', title: '窗口管理', lastProgramHash: await sha256Hex(page) } },
+    };
+    fs.files['__kb__/topics/tp-1.md'] = page;
+    fs.files['__kb__/topics/tp-1.refs.json'] = JSON.stringify([{
+      id: 'c1', topicId: 'tp-1', anchorText: '旧锚', claimText: '旧结论', srcId: 'src-1',
+      srcPath: 'notes/a.md', versionHash: 'h1', startLine: 1, endLine: 1, status: 'active',
+    }]);
+    llm.response = {
+      topics: [
+        {
+          title: '窗口管理',
+          mode: 'new',
+          sections: [
+            { heading: '透明窗口', body: '', claims: [{ text: '支持透明窗口', anchorText: '透明窗口', startLine: 4, endLine: 4 }] },
+          ],
+        },
+      ],
+    };
+    const outcome = await synthTopicsForSource({
+      fs, manifest, nav: { topics: [] }, goal: '目标',
+      srcId: 'src-2', srcPath: 'notes/b.md', versionHash: 'h2',
+      nodes: [], content: SOURCE.join('\n'),
+    });
+    expect(outcome.applied).toBe(1);
+    expect(Object.keys(manifest.topics)).toHaveLength(1); // 不重复建页
+    const result = fs.files['__kb__/topics/tp-1.md']!;
+    expect(result).toContain('- 旧结论 [^c1]');
+    expect(result).toContain('- 支持透明窗口 [^c2]'); // 追加进既有页
+  });
+
+  it('two parallel sources proposing the same new title merge into one page (shared manifest)', async () => {
+    // 并行构建共享同一 manifest 对象：先落盘的 'new' 建页，后者按标题命中走
+    // append —— 不重复建页，两份结论进同一页，refs 各归各源、脚注不冲突。
+    const fs = memFs();
+    const manifest: KbManifest = { goal: '目标', scope: [], sources: {}, topics: {} };
+    const nav: KbNavigation = { topics: [] };
+    let call = 0;
+    llm.impl = async () => {
+      call++;
+      return {
+        topics: [
+          {
+            title: '窗口管理',
+            mode: 'new',
+            sections: [
+              {
+                heading: call === 1 ? '窗口管理' : '透明窗口',
+                body: '',
+                claims: [call === 1
+                  ? { text: '结论一', anchorText: '窗口管理', startLine: 2, endLine: 2 }
+                  : { text: '结论二', anchorText: '透明窗口', startLine: 4, endLine: 4 }],
+              },
+            ],
+          },
+        ],
+      };
+    };
+    try {
+      const outcomes = await Promise.all([1, 2].map((i) => synthTopicsForSource({
+        fs, manifest, nav, goal: '目标',
+        srcId: `src-${i}`, srcPath: `notes/${i}.md`, versionHash: `h${i}`,
+        nodes: [], content: SOURCE.join('\n'),
+      })));
+      expect(outcomes.map((o) => o.applied)).toEqual([1, 1]);
+      expect(Object.keys(manifest.topics)).toHaveLength(1); // 只建一页
+      const tpId = Object.keys(manifest.topics)[0]!;
+      const page = fs.files[`__kb__/topics/${tpId}.md`]!;
+      expect(page).toContain('结论一');
+      expect(page).toContain('结论二');
+      const refs = JSON.parse(fs.files[`__kb__/topics/${tpId}.refs.json`]!) as KbRef[];
+      expect(refs).toHaveLength(2);
+      expect(new Set(refs.map((r) => r.srcId))).toEqual(new Set(['src-1', 'src-2']));
+    } finally {
+      llm.impl = null;
+    }
+  });
+
+  it('parallel sources degrade to reviews without losing updates in reviews.json', async () => {
+    // 两份资料并行合成同一主题名各自的页（不同 tpId），均命中「用户编辑过」
+    // 降级进审阅 —— appendReviews 是读-改-写，人为交错的延迟写入下必须经
+    // 串行队列，两条审阅都不丢。
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const files: Record<string, string> = {};
+    const delayedFs: KbFs = {
+      readFile: async (p) => { if (!(p in files)) throw new Error(`ENOENT: ${p}`); return files[p]!; },
+      writeFile: async (p, c) => { await new Promise((r) => setTimeout(r, 5)); files[p] = c; },
+      exists: async (p) => p in files,
+      rename: async (o, n) => { files[n] = files[o]!; delete files[o]; },
+    };
+    const manifests: KbManifest[] = [];
+    for (const i of [1, 2]) {
+      const tpId = `tp-${i}`;
+      const page = serializeTopicPage(
+        { id: tpId, title: '窗口管理', sources: [`src-${i}`] },
+        `# 窗口管理\n\n- 旧结论 [^c1]\n\n[^c1]: src-${i} · notes/a.md · L1-L1 · 旧锚\n`,
+      );
+      const manifest: KbManifest = {
+        goal: '目标', scope: [], sources: {},
+        topics: { [tpId]: { path: `__kb__/topics/${tpId}.md`, title: '窗口管理', lastProgramHash: 'stale-program-hash' } },
+      };
+      files[`__kb__/topics/${tpId}.md`] = page;
+      files[`__kb__/topics/${tpId}.refs.json`] = JSON.stringify([{
+        id: 'c1', topicId: tpId, anchorText: '旧锚', claimText: '旧结论', srcId: `src-${i}`,
+        srcPath: 'notes/a.md', versionHash: 'h', startLine: 1, endLine: 1, status: 'active',
+      }]);
+      manifests.push(manifest);
+    }
+    llm.response = {
+      topics: [
+        {
+          title: '窗口管理',
+          mode: 'append',
+          sections: [{ heading: '新章节', body: '', claims: [{ text: '新结论', anchorText: '第二行', startLine: 2, endLine: 2 }] }],
+        },
+      ],
+    };
+    try {
+      await Promise.all(manifests.map((manifest, i) => synthTopicsForSource({
+        fs: delayedFs, manifest, nav: { topics: [] }, goal: '目标',
+        srcId: `src-${i + 1}`, srcPath: 'notes/a.md', versionHash: 'h',
+        nodes: [], content: SOURCE.join('\n'),
+      })));
+      const reviews = JSON.parse(files['__kb__/reviews.json']!) as KbReviewItem[];
+      expect(reviews).toHaveLength(2);
+      expect(new Set(reviews.map((r) => r.topicId))).toEqual(new Set(['tp-1', 'tp-2']));
+      expect(reviews.every((r) => r.reason === 'user-edited')).toBe(true);
+    } finally {
+      llm.impl = null;
+      warn.mockRestore();
+    }
   });
 });

@@ -15,7 +15,7 @@
 
 import { generateShortId } from '@/utils/idGenerator';
 import type { KbFs } from './kbFs';
-import { sha256Hex, kbWriteAtomic, readTopicRefs, writeTopicRefs, appendReviews } from './kbFs';
+import { sha256Hex, kbWriteAtomic, kbWriteQueue, readTopicRefs, writeTopicRefs, appendReviews } from './kbFs';
 import { kbTopicPagePath, kbSourceSnapshotPath } from './kbPaths';
 import { readDeletions, isClaimDeleted, anchorMatches } from './kbDeletions';
 import type {
@@ -28,7 +28,15 @@ import type {
 } from './kbTypes';
 import { kbChatJson } from './kbLlm';
 import { KB_SYNTH_PREAMBLE, kbSynthPrompt } from './kbPrompts';
-import { chunkContent, buildIndexSummary, chunkPhaseDetailLine, type KbProcessHooks } from './sourceIngest';
+import {
+  chunkContent,
+  buildIndexSummary,
+  chunkPhaseDetailLine,
+  mapWithConcurrency,
+  KB_CHUNK_CONCURRENCY,
+  KbBuildCancelled,
+  type KbProcessHooks,
+} from './sourceIngest';
 
 // ── 主题页 Markdown 序列化/解析（frontmatter 用正则，先例 wikiPageWriter）──────
 
@@ -416,19 +424,29 @@ export async function synthTopicsForSource(opts: {
   let newContent = 0;
   let addRef = 0;
 
+  // 块级并行，两阶段：
+  // 1) 各块 LLM 调用受限并发 —— existingTopics 取开始时快照（并行下前块新建的
+  //    主题不会进入后块 prompt）；
+  // 2) 提议落盘按块序串行执行（applyProposal 整段进写入串行队列），'new' 提议
+  //    命中同名既有主题时按 append 处理，保持串行版「不重复建页」语义。
+  const existingTopics = Object.entries(manifest.topics).map(([tpId, t]) => ({ tpId, title: t.title }));
   const chunks = chunkContent(content);
-  for (let ci = 0; ci < chunks.length; ci++) {
-    const chunk = chunks[ci]!;
+  const proposalsPerChunk = await mapWithConcurrency(chunks, KB_CHUNK_CONCURRENCY, (chunk, ci) => {
+    if (hooks?.shouldCancel?.()) throw new KbBuildCancelled();
     hooks?.onDetail?.(chunkPhaseDetailLine('合成块', ci + 1, chunks.length, chunk.firstLine, chunk.firstLine + chunk.text.split('\n').length - 1));
-    // 每块重取：同一份资料前一块新建的主题，后一块的 append 提议能对上。
-    const existingTopics = Object.entries(manifest.topics).map(([tpId, t]) => ({ tpId, title: t.title }));
-    const parsed = await kbChatJson<{ topics?: unknown }>(
+    return kbChatJson<{ topics?: unknown }>(
       kbSynthPrompt(goal, srcPath, indexSummary, chunk.text, chunk.firstLine, existingTopics),
       KB_SYNTH_PREAMBLE,
       { onChunk: hooks?.onStream },
-    );
-    const proposals = narrowTopicProposals(parsed.topics);
-    hooks?.onDetail?.(synthProposalDetailLine(proposals.length));
+    ).then((parsed) => {
+      const proposals = narrowTopicProposals(parsed.topics);
+      hooks?.onDetail?.(synthProposalDetailLine(proposals.length));
+      return proposals;
+    });
+  });
+
+  for (const proposals of proposalsPerChunk) {
+    if (hooks?.shouldCancel?.()) throw new KbBuildCancelled();
     for (const proposal of proposals) {
       const sections: { heading: string; body: string; claims: KbClaimProposal[] }[] = [];
       for (const section of proposal.sections) {
@@ -462,7 +480,7 @@ export async function synthTopicsForSource(opts: {
 /** 提议落点：新建/追加正文、仅补引用、未写入（含降级进审阅）。 */
 type ApplyProposalResult = 'new-content' | 'add-ref' | 'none';
 
-async function applyProposal(args: {
+interface ApplyProposalArgs {
   fs: KbFs;
   manifest: KbManifest;
   nav: KbNavigation;
@@ -471,14 +489,20 @@ async function applyProposal(args: {
   srcPath: string;
   versionHash: string;
   reviews: KbReviewItem[];
-}): Promise<ApplyProposalResult> {
+}
+
+async function applyProposal(args: ApplyProposalArgs): Promise<ApplyProposalResult> {
+  // 读页/refs/deletions → 计算改写 → 落盘是跨文件读-改-写：整段进写入串行队列，
+  // 防止并行资料对同一主题页丢更新（kbWriteAtomic 固定 .tmp 名也靠此防撞）。
+  return kbWriteQueue(() => applyProposalLocked(args));
+}
+
+async function applyProposalLocked(args: ApplyProposalArgs): Promise<ApplyProposalResult> {
   const { fs, manifest, nav, proposal, srcId, srcPath, versionHash, reviews } = args;
 
-  // append 按标题匹配已有 tpId；匹配不到当 new 处理。
-  let tpId: string | null = null;
-  if (proposal.mode === 'append') {
-    tpId = Object.entries(manifest.topics).find(([, t]) => t.title === proposal.title)?.[0] ?? null;
-  }
+  // 标题命中既有主题 → 统一走 append（并行快照下模型可能不知道前块/他源新建的
+  // 同名主题；'new' 也不再重复建页 —— 与串行版的意图一致）。
+  let tpId: string | null = Object.entries(manifest.topics).find(([, t]) => t.title === proposal.title)?.[0] ?? null;
 
   if (tpId === null) {
     tpId = `tp-${generateShortId()}`;

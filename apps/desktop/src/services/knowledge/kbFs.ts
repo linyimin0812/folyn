@@ -104,6 +104,21 @@ export async function kbWriteAtomic(fs: KbFs, path: string, content: string): Pr
   await fs.rename(tmp, path);
 }
 
+// ── 写入串行队列（并行构建正确性关键）──────────────────────────────────────────
+// kbWriteAtomic 用固定 `.tmp` 名：并行写同一文件（manifest/navigation/reviews/
+// refs）会撞 tmp；appendReviews / topicSynth.applyProposal 这类「读-改-写」并发
+// 会丢更新。构建期所有跨文件读-改-写整段经此互斥（promise 链）；共享 manifest/
+// nav 对象的内存修改保持「同步段内修改」模式不变（写回时 JSON.stringify 取到的
+// 总是已含全部同步修改的快照）。非构建路径（saveConfig / 审阅 / 核验 / 页内编辑）
+// 已由 knowledgeStore 的 mutationRunning 与 buildRunning 互斥，不必入队。
+// ponytail: 全局单队列（锁粒度粗），构建写入量小；如成瓶颈再按文件分锁。
+let kbWriteChain: Promise<unknown> = Promise.resolve();
+export function kbWriteQueue<T>(section: () => Promise<T>): Promise<T> {
+  const run = kbWriteChain.then(section, section);
+  kbWriteChain = run.then(() => undefined, () => undefined);
+  return run;
+}
+
 export async function sha256Hex(content: string): Promise<string> {
   const data = new TextEncoder().encode(content);
   const buf = await crypto.subtle.digest('SHA-256', data);
@@ -160,8 +175,11 @@ export async function readReviews(fs: KbFs): Promise<KbReviewItem[]> {
 }
 
 export async function appendReviews(fs: KbFs, items: KbReviewItem[]): Promise<void> {
-  const existing = await readReviews(fs);
-  await kbWriteAtomic(fs, kbReviewsPath(fs.root), JSON.stringify([...existing, ...items], null, 2));
+  // 读-改-写整段入串行队列：并行合成（多份资料同时降级进审阅）下不丢更新。
+  await kbWriteQueue(async () => {
+    const existing = await readReviews(fs);
+    await kbWriteAtomic(fs, kbReviewsPath(fs.root), JSON.stringify([...existing, ...items], null, 2));
+  });
 }
 
 /** 切片 A 只保证 deletions.json 落盘占位（schema 就绪，逻辑在切片 C）。 */

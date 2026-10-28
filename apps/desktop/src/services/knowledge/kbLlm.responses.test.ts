@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RigChatParams } from '@/services/rigChat';
 import { runRigChat } from '@/services/rigChat';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { kbChatJson, kbChatText } from './kbLlm';
+import { kbChatJson, kbChatText, KB_MAX_CONCURRENT_LLM_CALLS } from './kbLlm';
 
 vi.mock('@/services/rigChat', () => ({ runRigChat: vi.fn() }));
 const chat = vi.mocked(runRigChat);
@@ -227,5 +227,26 @@ describe('stream handler passthrough (onChunk / onThinking)', () => {
     const chunks: string[] = [];
     await expect(kbChatText('prompt', 'preamble', { onChunk: (t) => chunks.push(t) })).resolves.toBe('Hello world');
     expect(chunks).toEqual(['Hello ', 'world']);
+  });
+});
+
+describe('global in-flight cap (parallel build)', () => {
+  it('caps concurrent model calls at KB_MAX_CONCURRENT_LLM_CALLS', async () => {
+    let active = 0;
+    let peak = 0;
+    chat.mockImplementation(async (params: RigChatParams) => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active--;
+      params.onEvent({ type: 'text', content: '{"nodes":[]}' });
+      params.onEvent({ type: 'done' });
+    });
+    const results = await Promise.all(
+      Array.from({ length: KB_MAX_CONCURRENT_LLM_CALLS * 2 }, () => kbChatJson('prompt', 'preamble')),
+    );
+    expect(results).toHaveLength(KB_MAX_CONCURRENT_LLM_CALLS * 2);
+    // 峰值恰好压满上限：闸门既不超限、也真实生效（未退化成串行以外的旁路）。
+    expect(peak).toBe(KB_MAX_CONCURRENT_LLM_CALLS);
   });
 });

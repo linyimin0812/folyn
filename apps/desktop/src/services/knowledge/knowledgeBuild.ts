@@ -1,9 +1,12 @@
 import { useVaultStore } from '@/store/vaultStore';
 /**
- * 构建编排：展开收录范围 → 逐份资料「索引 → 主题合成」→ 分项发布。
+ * 构建编排：展开收录范围 → 资料级并行（worker pool）逐份「索引 → 主题合成」→
+ * 分项发布；单份资料内部索引块/合成块受限并发（sourceIngest / topicSynth）。
  *
  * 分项发布（ADR-0009）：每份资料处理完即原子写回 manifest（视为发布），
- * 不等整批；中断时已发布项保持完整，未完成项不进入检索。
+ * 不等整批；中断时已发布项保持完整，未完成项不进入检索。跨文件落盘
+ * （manifest+nav、主题页/refs、reviews）经 kbFs 的写入串行队列，并行下
+ * 不撞 `.tmp` 名、不丢读-改-写更新。
  */
 
 import { generateShortId } from '@/utils/idGenerator';
@@ -15,13 +18,17 @@ import {
   readNavigation,
   writeNavigation,
   ensureDeletionsPlaceholder,
+  kbWriteQueue,
 } from './kbFs';
 import { isKbPath } from './kbPaths';
 import type { KbManifest } from './kbTypes';
 import { reconcileMovedSources } from './kbMoveReconcile';
-import { ingestSource } from './sourceIngest';
+import { ingestSource, KbBuildCancelled, type KbProcessHooks } from './sourceIngest';
 import { synthTopicsForSource } from './topicSynth';
 import { invalidateKbIndexCache } from './kbAsk';
+
+/** 资料级并行：同时处理的资料份数上限（worker pool）。 */
+export const SOURCE_CONCURRENCY = 3;
 
 /** 知识库第一版直接支持的资料类型（ADR-0005）。 */
 const SOURCE_EXTS = ['.md', '.txt', '.markdown'];
@@ -66,13 +73,14 @@ export interface BuildOptions {
   scope: string[];
   /** 只处理指定路径（单项重试）。缺省处理全部收录范围。 */
   only?: string[];
-  /** 每份资料状态变化时回调（分项进度）。 */
-  onProgress?: (items: BuildItemProgress[], currentIndex: number) => void;
-  /** 当前处理项的阶段事实行（索引/合成的真实过程，供「详细过程」展示）。 */
-  onDetail?: (line: string) => void;
-  /** 当前处理项的模型正文流增量（尾部 buffer 由调用方维护）。 */
-  onStream?: (text: string) => void;
-  /** 协作取消：返回 true 时在下一份资料边界退出。 */
+  /** 每份资料状态变化时回调（分项进度）。completed = done/skipped/error 的份数
+   *  （并行模型下没有单一「当前项」，多项同处非 pending 态属预期）。 */
+  onProgress?: (items: BuildItemProgress[], completed: number) => void;
+  /** 阶段事实行（索引/合成的真实过程，供「详细过程」展示）；path 标识所属资料。 */
+  onDetail?: (line: string, path: string) => void;
+  /** 模型正文流增量（path 标识所属资料；尾部 buffer 由调用方维护）。 */
+  onStream?: (text: string, path: string) => void;
+  /** 协作取消：worker 取任务与块循环边界检查；在途模型调用不可中断（文档化上限）。 */
   shouldCancel?: () => boolean;
 }
 
@@ -107,7 +115,6 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
   );
   files = files.filter((p) => !removedPaths.has(p) || scope.includes(p));
   const items: BuildItemProgress[] = [];
-  const emit = (currentIndex: number) => opts.onProgress?.(items.map((i) => ({ ...i })), currentIndex);
 
   await ensureDeletionsPlaceholder(fs);
   const nav = await readNavigation(fs);
@@ -134,28 +141,32 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
     files = files.filter((p) => only.has(p));
   }
   for (const path of files) items.push({ path, status: 'pending' });
+  const TERMINAL: readonly BuildItemProgress['status'][] = ['done', 'skipped', 'error'];
+  const emit = () =>
+    opts.onProgress?.(items.map((i) => ({ ...i })), items.filter((i) => TERMINAL.includes(i.status)).length);
 
-  for (let i = 0; i < files.length; i++) {
-    if (opts.shouldCancel?.()) break;
+  const processFile = async (i: number): Promise<void> => {
     const path = files[i]!;
     const item = items[i]!;
-    emit(i);
+    // detail/stream 显式携带资料路径 —— 并行下没有单一「当前项」可推断归属。
+    const hooks: KbProcessHooks = {
+      onDetail: opts.onDetail ? (line) => { opts.onDetail?.(line, path); } : undefined,
+      onStream: opts.onStream ? (text) => { opts.onStream?.(text, path); } : undefined,
+      shouldCancel: opts.shouldCancel,
+    };
     let failurePhase = '生成资料索引失败';
     try {
       const srcId = srcIdByPath.get(path) ?? `src-${generateShortId()}`;
       srcIdByPath.set(path, srcId);
 
       item.status = 'indexing';
-      emit(i);
-      const ingested = await ingestSource(fs, srcId, path, manifest, {
-        onDetail: opts.onDetail,
-        onStream: opts.onStream,
-      });
+      emit();
+      const ingested = await ingestSource(fs, srcId, path, manifest, hooks);
 
       if (!ingested.skipped) {
         failurePhase = '整理主题知识失败';
         item.status = 'synthesizing';
-        emit(i);
+        emit();
         const content = await fs.readFile(path);
         await synthTopicsForSource({
           fs,
@@ -167,7 +178,7 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
           versionHash: ingested.versionHash,
           nodes: ingested.nodes,
           content,
-          hooks: { onDetail: opts.onDetail, onStream: opts.onStream },
+          hooks,
         });
       }
 
@@ -179,19 +190,40 @@ export async function buildKnowledge(fs: KbFs, opts: BuildOptions): Promise<void
         currentHash: ingested.versionHash,
         indexVersion: (prev?.indexVersion ?? 0) + (ingested.skipped ? 0 : 1),
       };
-      // 分项发布：manifest 原子写回即该项对检索可见。
-      await writeManifest(fs, manifest);
-      await writeNavigation(fs, nav);
+      // 分项发布：manifest+nav 原子写回即该项对检索可见（跨文件写经串行队列，
+      // 并行 worker 间不撞 `.tmp` 名；manifest/nav 内存修改保持同步段模式）。
+      await kbWriteQueue(async () => {
+        await writeManifest(fs, manifest);
+        await writeNavigation(fs, nav);
+      });
 
       item.status = ingested.skipped ? 'skipped' : 'done';
       item.message = ingested.skipped ? '内容未变化' : undefined;
     } catch (err) {
-      item.status = 'error';
-      item.message = `${failurePhase}：${errText(err)}`;
-      console.warn(`[kb] 收录失败: ${path} ${errText(err)}`);
+      if (err instanceof KbBuildCancelled) {
+        // 协作取消：该项未发布，回到 pending（与未开始项一致）；已发布部分保留。
+        item.status = 'pending';
+        item.message = undefined;
+      } else {
+        item.status = 'error';
+        item.message = `${failurePhase}：${errText(err)}`;
+        console.warn(`[kb] 收录失败: ${path} ${errText(err)}`);
+      }
     }
-    emit(i);
-  }
+    emit();
+  };
+
+  // 资料级并行：worker pool。每个 worker 在任务边界检查协作取消。
+  let nextIndex = 0;
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      if (opts.shouldCancel?.()) return;
+      const i = nextIndex++;
+      if (i >= files.length) return;
+      await processFile(i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(0, Math.min(SOURCE_CONCURRENCY, files.length)) }, () => worker()));
 
   invalidateKbIndexCache();
 }

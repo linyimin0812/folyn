@@ -2,6 +2,7 @@
  * 资料收录：读文件 → hash → 模型提索引节点 → 程序校验行范围 → 写 index.json。
  *
  * 长文按行边界分块多次调用模型（每块返回自己的 nodes，行号为绝对行号），程序合并。
+ * 块级并行：单份资料内的索引块 LLM 调用受限并发（结果按块序合并，语义不变）。
  * 校验失败的节点丢弃并 console.warn（prd「程序校验」）。
  */
 
@@ -10,6 +11,38 @@ import { sha256Hex, writeSourceIndex, readSourceIndex } from './kbFs';
 import type { KbIndexNode, KbManifest, KbSourceIndex } from './kbTypes';
 import { kbChatJson } from './kbLlm';
 import { KB_INDEX_PREAMBLE, kbIndexPrompt } from './kbPrompts';
+
+/** 单份资料内索引块 / 合成块的 LLM 调用并发上限。 */
+export const KB_CHUNK_CONCURRENCY = 3;
+
+/**
+ * 并行构建的协作取消信号：块循环边界抛出（在途模型调用不可中断，文档化上限）。
+ * 调用方（knowledgeBuild）捕获后把该项留在 pending（已发布部分保留），不标 error。
+ */
+export class KbBuildCancelled extends Error {
+  constructor() {
+    super('已取消');
+    this.name = 'KbBuildCancelled';
+  }
+}
+
+/** 受限并发映射：结果与输入同序（并行不改变合并次序）；任一失败整体 reject。 */
+export async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]!, i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(0, Math.min(limit, items.length)) }, () => worker()));
+  return results;
+}
 
 /** 按行边界切块。返回 { text, firstLine }（firstLine 为 1-based 绝对行号）。 */
 export function chunkContent(content: string, maxChars = 9000): { text: string; firstLine: number }[] {
@@ -44,6 +77,8 @@ export interface KbProcessHooks {
   onDetail?: (line: string) => void;
   /** 当前处理项的模型正文流增量。 */
   onStream?: (text: string) => void;
+  /** 协作取消：块循环边界检查，返回 true 时抛 KbBuildCancelled。 */
+  shouldCancel?: () => boolean;
 }
 
 /** detail 行：分块进度（名词 + 序号 + 绝对行范围）。 */
@@ -131,22 +166,23 @@ export async function ingestSource(
     return { srcId, versionHash, skipped: true, nodes: existingIndex.nodes };
   }
 
-  const collected: KbIndexNode[] = [];
+  // 块级并行：LLM 调用受限并发；结果按块序合并（validateIndexNodes 兼做
+  // 排序 + 跨块去重叠，与串行版一致）。
   const chunks = chunkContent(content);
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]!;
+  const chunkNodes = await mapWithConcurrency(chunks, KB_CHUNK_CONCURRENCY, (chunk, i) => {
+    if (hooks?.shouldCancel?.()) throw new KbBuildCancelled();
     hooks?.onDetail?.(chunkPhaseDetailLine('索引块', i + 1, chunks.length, chunk.firstLine, chunk.firstLine + chunk.text.split('\n').length - 1));
-    const parsed = await kbChatJson<{ nodes?: unknown }>(
+    return kbChatJson<{ nodes?: unknown }>(
       kbIndexPrompt(chunk.text, chunk.firstLine),
       KB_INDEX_PREAMBLE,
       { onChunk: hooks?.onStream },
-    );
-    const keptChunk = validateIndexNodes(parsed.nodes, lineCount);
-    hooks?.onDetail?.(indexNodesDetailLine(Array.isArray(parsed.nodes) ? parsed.nodes.length : 0, keptChunk.length));
-    collected.push(...keptChunk);
-  }
-  // 跨块去重叠（validateIndexNodes 兼做排序 + 重叠剔除）。
-  const nodes = validateIndexNodes(collected, lineCount);
+    ).then((parsed) => {
+      const keptChunk = validateIndexNodes(parsed.nodes, lineCount);
+      hooks?.onDetail?.(indexNodesDetailLine(Array.isArray(parsed.nodes) ? parsed.nodes.length : 0, keptChunk.length));
+      return keptChunk;
+    });
+  });
+  const nodes = validateIndexNodes(chunkNodes.flat(), lineCount);
   if (nodes.length === 0) {
     hooks?.onDetail?.('模型未返回有效节点，整份作为一个节点');
   } else if (chunks.length > 1) {

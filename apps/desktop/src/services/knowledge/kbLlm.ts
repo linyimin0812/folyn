@@ -32,6 +32,29 @@ function requireChatPair() {
  *  16384 覆盖常见端点；端点上限更低时由其自行 clamp 或报错（错误信息已含截断诊断）。 */
 const KB_MAX_OUTPUT_TOKENS = 16384;
 
+/** 全局在途 LLM 调用上限（单一常量处控制）：并行构建（资料级 + 块级）下
+ *  所有 kbChatText / kbChatJson（含格式纠错的第二次调用）共用此闸门，
+ *  避免触发 provider 速率限制。 */
+export const KB_MAX_CONCURRENT_LLM_CALLS = 6;
+
+let llmActive = 0;
+const llmWaiters: (() => void)[] = [];
+
+// ponytail: 全局单一闸门（简单计数 + FIFO 等待），锁粒度粗；如需按 provider
+// 分配额度再升级为按 pair 的多闸门。
+async function withLlmSlot<T>(call: () => Promise<T>): Promise<T> {
+  while (llmActive >= KB_MAX_CONCURRENT_LLM_CALLS) {
+    await new Promise<void>((release) => llmWaiters.push(release));
+  }
+  llmActive++;
+  try {
+    return await call();
+  } finally {
+    llmActive--;
+    llmWaiters.shift()?.();
+  }
+}
+
 /** 流式透出句柄：正文/思考增量原样发出，不改变返回值、重试与兜底行为。 */
 export interface KbChatStreamHandlers {
   /** 正文增量（collectResponse 的 text 累积处发出）。 */
@@ -52,7 +75,7 @@ async function collectResponse(
   let thinking = '';
   let doneObserved = false;
   let err: string | null = null;
-  await runRigChat({
+  await withLlmSlot(() => runRigChat({
     sessionId: `kb-${generateShortId()}`,
     prompt,
     preamble,
@@ -73,7 +96,7 @@ async function collectResponse(
       else if (e.type === 'done') doneObserved = true;
       else if (e.type === 'error') err = e.content ?? 'chat error';
     },
-  });
+  }));
   if (err !== null) throw new Error(err || 'chat error');
   return { text: text.trim(), thinking: thinking.trim(), doneObserved };
 }

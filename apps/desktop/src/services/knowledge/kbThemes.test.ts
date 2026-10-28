@@ -83,7 +83,7 @@ describe('Independent configured themes', () => {
     testState.build.mockImplementation((port: KbFs, options: BuildOptions) => { fs = port; opts = options; return pending.promise; });
     const operation = state().build();
     await state().selectTheme(b); expect(state().askQuestion).toBe(''); expect(state().buildRunning).toBe(false);
-    opts.onProgress?.([{path: 'notes/a.md', status: 'indexing'}], 0); opts.onDetail?.('A detail'); opts.onStream?.('A stream');
+    opts.onProgress?.([{path: 'notes/a.md', status: 'indexing'}], 0); opts.onDetail?.('A detail', 'notes/a.md'); opts.onStream?.('A stream', 'notes/a.md');
     expect(state().buildItems).toEqual([]); expect(fs.root).toBe(`__kb__/themes/${a}`);
     pending.resolve(); await operation;
     await state().selectTheme(a); expect(state().askQuestion).toBe('A question'); expect(state().page).toBe('ask');

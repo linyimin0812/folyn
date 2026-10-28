@@ -82,6 +82,8 @@ interface KnowledgeState {
   buildRunning: boolean;
   mutationRunning: boolean;
   buildItems: BuildItemProgress[];
+  /** 并行构建模型：已完成数（done/skipped/error）—— 没有单一「当前项」，
+   *  UI 进度条/文案由 buildItems 状态派生（如「已处理 N / M 份资料」）。 */
   buildCurrentIndex: number;
   cancelBuild: boolean;
   /** 构建整体失败（如目录扫描失败）；单项失败在 buildItems 里。 */
@@ -319,30 +321,28 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => {
       return;
     }
     commit(ctx, { buildRunning: true, cancelBuild: false, buildItems: [], buildCurrentIndex: -1, buildError: '', buildDetails: {} });
-    // 逐项 detail：onProgress 先切换 currentPath，onDetail/onStream 只落在当前项名下。
+    // 逐项 detail：并行构建下回调显式携带资料路径（无单一「当前项」），按路径落键。
     const details: Record<string, KbBuildDetail> = {};
-    let currentPath: string | null = null;
-    const currentDetail = () => {
-      if (!currentPath) return null;
-      return details[currentPath] ?? (details[currentPath] = { lines: [], stream: '' });
+    const detailFor = (path: string): KbBuildDetail | null => {
+      if (!path) return null;
+      return details[path] ?? (details[path] = { lines: [], stream: '' });
     };
     try {
       await buildKnowledge(ctx.fs, {
         goal,
         scope,
         ...(only ? { only } : {}),
-        onProgress: (items, currentIndex) => {
-          currentPath = items[currentIndex]?.path ?? null;
-          commit(ctx, { buildItems: items, buildCurrentIndex: currentIndex });
+        onProgress: (items, completed) => {
+          commit(ctx, { buildItems: items, buildCurrentIndex: completed });
         },
-        onDetail: (line) => {
-          const detail = currentDetail();
+        onDetail: (line, path) => {
+          const detail = detailFor(path);
           if (!detail) return;
           detail.lines.push(line);
           commit(ctx, { buildDetails: { ...details } });
         },
-        onStream: (text) => {
-          const detail = currentDetail();
+        onStream: (text, path) => {
+          const detail = detailFor(path);
           if (!detail || !text) return;
           detail.stream = streamTailBuffer(detail.stream, text);
           commit(ctx, { buildDetails: { ...details } });
