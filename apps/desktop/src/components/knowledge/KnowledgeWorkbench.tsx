@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
 import { BookOpen, FileText, ListChecks, Loader2, MessageCircleQuestion, Play, Plus, Settings2, Square } from 'lucide-react';
-import { useAiConfigStore } from '@/store/aiConfigStore';
-import { KnowledgeModelSelector } from './KnowledgeModelSelector';
 import { useVaultStore } from '@/store/vaultStore';
 import { useKnowledgeStore, type KbPage } from '@/store/knowledgeStore';
 import { SetupView } from './SetupView';
@@ -20,8 +18,6 @@ const PAGES: { id: KbPage; label: string; icon: typeof BookOpen }[] = [
 ];
 
 export function KnowledgeWorkbench(): React.JSX.Element {
-  const kbPair = useAiConfigStore((s) => s.kbPair);
-  const setKbPair = useAiConfigStore((s) => s.setKbPair);
   const currentVault = useVaultStore((s) => s.currentVault);
   const loaded = useKnowledgeStore((s) => s.loaded);
   const themes = useKnowledgeStore((s) => s.themes);
@@ -49,7 +45,7 @@ export function KnowledgeWorkbench(): React.JSX.Element {
     <ThemeDialog />
     {!loaded ? <div role="status" className="kb-workspace-loading"><Loader2 size={17} className="animate-spin" />正在打开知识库…</div> : !theme ? <SetupView /> : <>
       <header className="kb-workspace-header">
-        <div className="kb-workspace-context"><div className="kb-eyebrow">知识库<span aria-hidden="true"> / </span>当前主题</div><h1 title={theme.name}>{theme.name}</h1><p title={goal}>{goal}</p>{sourceEntry === 'closed' && <div className="mt-2"><KnowledgeModelSelector value={kbPair} onChange={setKbPair} disabled={buildRunning} panelAlign="left" /></div>}</div>
+        <div className="kb-workspace-context"><div className="kb-eyebrow">知识库<span aria-hidden="true"> / </span>当前主题</div><h1 title={theme.name}>{theme.name}</h1><p title={goal}>{goal}</p></div>
         <div className="kb-workspace-actions">
           <button className="kb-icon-action" aria-label="主题设置" title="编辑主题名称、目标与资料范围" onClick={() => openSourceSettings('settings')}><Settings2 size={17} strokeWidth={1.5} /></button>
           {scope.length > 0 && <button className={BTN} disabled={buildRunning} onClick={() => openSourceSettings('add')}><Plus size={14} />添加资料</button>}

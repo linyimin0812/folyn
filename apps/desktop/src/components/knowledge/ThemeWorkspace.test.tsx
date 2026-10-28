@@ -17,7 +17,6 @@ import { SetupView } from './SetupView';
 import { ThemeDialog } from './ThemeDialog';
 import { KnowledgeWorkbench } from './KnowledgeWorkbench';
 import { useAiConfigStore } from '@/store/aiConfigStore';
-import { useNavStore } from '@/store/navStore';
 import { useThemeUiStore } from './themeUiStore';
 
 beforeAll(() => {
@@ -41,20 +40,11 @@ function fillTheme() {
 }
 
 describe('theme workspace interaction', () => {
-  it('lets users select a real provider/model directly from the reading workspace', () => {
-    useAiConfigStore.setState({providerSettings: {anthropic: {id: 'anthropic', enabled: true, selectedModelIds: ['claude-fixture'], baseUrl: '', apiKey: '', extra: {}}, openai: {id: 'openai', enabled: true, selectedModelIds: ['gpt-fixture'], baseUrl: '', apiKey: '', extra: {}}}});
+  it('keeps the reading workspace header free of the model selector (intake form is the only entry)', () => {
+    useAiConfigStore.setState({providerSettings: {openai: {id: 'openai', enabled: true, selectedModelIds: ['gpt-fixture'], baseUrl: '', apiKey: '', extra: {}}}});
     render(<KnowledgeWorkbench />);
-    fireEvent.click(screen.getByTestId('pair-selector'));
-    expect(screen.getAllByRole('option')).toHaveLength(2);
-    fireEvent.mouseDown(screen.getByRole('option', {name: /gpt-fixture/}));
-    expect(useAiConfigStore.getState().kbPair).toEqual({provider: 'openai', model: 'gpt-fixture'});
-  });
-  it('provides a model settings route without opening theme settings first', () => {
-    useNavStore.setState({currentPage: 'editor', settingsTab: 'appearance'});
-    render(<KnowledgeWorkbench />);
-    fireEvent.click(screen.getByRole('button', {name: '前往模型设置'}));
-    expect(useNavStore.getState().currentPage).toBe('settings');
-    expect(useNavStore.getState().settingsTab).toBe('models');
+    expect(screen.queryByTestId('pair-selector')).toBeNull();
+    expect(screen.queryByRole('group', {name: '整理模型'})).toBeNull();
   });
 
   it('shows a registry read failure and offers a real retry instead of silently appearing empty', async () => {

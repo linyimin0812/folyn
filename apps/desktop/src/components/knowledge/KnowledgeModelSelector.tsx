@@ -13,7 +13,7 @@ export function KnowledgeModelSelector({ value, onChange, disabled, panelAlign =
   return <div role="group" aria-label="整理模型" className="flex flex-wrap min-w-0 max-w-full gap-2 items-center text-[12px] text-t2">
     <span>整理模型</span>
     <PairSelector value={value} onChange={onChange} disabled={disabled} panelAlign={panelAlign}
-      className="max-w-[min(100%,260px)]"
+      className="max-w-[min(100%,420px)]"
       onOpenSettings={() => {
         if (disabled) return;
         useNavStore.getState().setSettingsTab('models');
