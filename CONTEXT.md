@@ -92,13 +92,37 @@ _Avoid_: 整理笔记（经过提炼的知识内容）。
 用户在 Folyn 中浏览外部会话并主动选择内容后，由 AI 提炼、经用户编辑确认再保存的知识笔记；它与会话原文摘录并列支持。
 _Avoid_: 自动知识收录（未经用户确认）、原文摘录（未经提炼）。
 
+**工作事项**:
+用户为某一天手动创建的一项待办工作，归属于唯一的日期，状态为未完成或已完成；可选带有当天内的时间段、高/中/低优先级、预估工时、标签、纯文本备注和关联文件。未完成的事项不会自动转到其他日期，用户可手动改期；取消即删除。
+_Avoid_: 日程事件（仅表示带时间段的日历条目）、每日笔记（已移除的 Vault 文件概念）、任务（与 Trellis 开发任务混淆）。
+
+**工作日程**:
+用户本人的全部工作事项，按日期组织；与 Vault 无关，切换 Vault 后保持不变。
+_Avoid_: 日历（不包含外部日历事件）、Vault 内容（不属于任何知识库）。
+
+**时间段**:
+工作事项被安排在当天内进行的开始与结束时刻，不跨越午夜；不同事项的时间段可以重叠。
+_Avoid_: 预估工时（完成所需时长，与安排时刻相互独立）。
+
+**预估工时**:
+用户估计完成一项工作事项所需的时长，与时间段相互独立，不记录实际用时。
+_Avoid_: 时间段（安排在何时进行）、实际用时（当前不记录）。
+
+**关联文件**:
+工作事项指向某个 Vault 中一份文件的记录，分为产出和相关资料两类，同一事项中一份文件只属于一类。它记住文件所属的 Vault，只有该 Vault 打开时才能打开文件；文件改名、移动或删除后不自动更新。
+_Avoid_: 原始资料（知识整理所依据的来源内容）、来源引用（知识页内容与原文依据的关联）、附件（文件不复制到工作日程中）。
+
+**产出**:
+完成工作事项所产生的关联文件。
+_Avoid_: 成果（未限定为文件）、知识页（主题内整理生成的内容）。
+
+**相关资料**:
+做工作事项时参考的关联文件。
+_Avoid_: 原始资料（知识整理的来源内容）。
+
 **Bubble Template AI Agent**:
 The "AI 生成" entry point in `BubbleTemplateBlock` (settings → notifications). A multi-turn LLM chat that clarifies the user's intent and drafts a `BubbleTemplate`. Despite the label "AI Agent", it is NOT an agent loop — no tools, no file access, no self-sanitization. Backed by `runRigChat` (multi-turn, tool-free, history persisted by the rig backend keyed by `sessionId`). Accepts three input modes: free text, HTML file upload (read as text, injected into the prompt), and image file upload (vision; sent as image content blocks, requires the rig backend extension recorded in ADR-0001). Output is a `BubbleTemplate` JSON in a `\`\`json` code fence that enters the same `tryImport` validation + `addTemplate` path as user-pasted JSON. See ADR-0001 for the rejected alternatives (agent loop, plugin agent).
-_Avoid_: Template Agent, Feature Agent (overlaps with `runFeatureAgent`-backed feature agents like wiki), Plugin Agent (overlaps with `buildPluginAi.agent`).
-
-**Feature Agent**:
-A vault-scoped agent loop backed by `runFeatureAgent` — spawns the `claude-cli` sidecar with tools, file-system access, and a canonical `agents/<feature>.md` system prompt seeded into `<vault>/__<feature>__/.claude/`. Currently registered: schedule, wiki. Distinct from the Bubble Template AI Agent despite both being called "agent" in casual speech.
-_Avoid_: AI Agent (ambiguous — could mean either Bubble Template AI Agent or a Feature Agent).
+_Avoid_: Template Agent, Plugin Agent (overlaps with `buildPluginAi.agent`).
 
 **Version Snapshot**:
 The content of a Versionable File at a single moment, stored as a blob file named by the SHA-256 of its UTF-8 bytes under `~/.folyn/vaults/<vaultId>/versions/blobs/`. Snapshots are taken on file save and on tab close; identical-to-last-hash writes are skipped (dedup). Restore always snapshots the current state first, then overwrites with the chosen snapshot's blob.
