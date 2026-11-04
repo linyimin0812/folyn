@@ -16,6 +16,14 @@ export function patternToRegExp(pattern: string): RegExp {
   return new RegExp(`^${escaped}$`);
 }
 
+/** Split the newline-separated exclude setting, dropping blanks and `#` comments. */
+export function parseExcludePatterns(raw: string): string[] {
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'));
+}
+
 /** Check if a file/folder name matches any of the exclude patterns. */
 export function matchesAnyPattern(name: string, patterns: string[]): boolean {
   return patterns.some((pattern) => {

@@ -4,7 +4,14 @@ import {
   matchesAnyPattern,
   findMatchedPattern,
   mergeGitignoreEntries,
+  parseExcludePatterns,
 } from './excludePattern';
+
+describe('excludePattern: parseExcludePatterns', () => {
+  it('drops blank lines and comments and trims the rest', () => {
+    expect(parseExcludePatterns('# note\n\n  __wiki__  \n*.log')).toEqual(['__wiki__', '*.log']);
+  });
+});
 
 describe('excludePattern: patternToRegExp', () => {
   it('matches literal names exactly', () => {

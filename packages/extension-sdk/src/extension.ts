@@ -154,12 +154,30 @@ export interface ExtensionContext {
 // terminal/export). Loaders receive `api` and forward it to the extension
 // module's lifecycle hook.
 
+/** Identity of a vault; `id` stays stable when the vault is renamed. */
+export interface ExtensionVaultInfo {
+  id: string;
+  name: string;
+}
+
+/** A file in a vault. `path` is vault-relative. */
+export interface ExtensionVaultFile {
+  path: string;
+  name: string;
+}
+
 /**
  * Vault-scoped filesystem access. All paths are vault-relative (or, for
  * {@link toAssetUrl}/{@link resolvePath}, vault-rooted). Extensions never
  * receive other vaults' physical paths (doc §5.2).
  */
 export interface VaultApi {
+  /** The active vault, or null while none is open or one is still loading.
+   *  Trusted tier only, like {@link VaultApi.listFiles}. */
+  current(): ExtensionVaultInfo | null;
+  /** Every file in the active vault, re-read from disk on each call. Hidden
+   *  files and the user's exclude patterns are left out, as in the file panel. */
+  listFiles(): Promise<ExtensionVaultFile[]>;
   readText(path: string): Promise<string>;
   readBinary(path: string): Promise<Uint8Array>;
   writeText(path: string, content: string): Promise<void>;
@@ -196,6 +214,8 @@ export interface VaultConfigApi {
 }
 
 export interface FileApi {
+  /** Open a file of the active vault and bring the editor page to the front.
+   *  Rejects when the file does not exist. */
   open(path: string, opts?: { providerId?: string; mode?: string }): Promise<void>;
 }
 

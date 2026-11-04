@@ -15,7 +15,7 @@ import { resolveBasePath } from '@/utils/pathResolver';
 import { isExternalPath } from '@/utils/isExternalPath';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { cloneRepo, ensureGitignoreEntries, type BranchStrategy } from '@/services/gitService';
-import { matchesAnyPattern } from '@/utils/excludePattern';
+import { matchesAnyPattern, parseExcludePatterns } from '@/utils/excludePattern';
 import { insertEntry, removeEntry, renameEntry, copyEntry } from '@/utils/treeUtils';
 import { BUILTIN_EXCLUDE_DIRS } from './appearanceStore';
 
@@ -402,11 +402,7 @@ export const useVaultStore = create<VaultState>()(
             const showHidden = useAppearanceStore.getState().showHiddenFiles;
             const entries = await get().manager.listFiles('', true, showHidden);
 
-            const excludeRaw = useAppearanceStore.getState().excludePatterns || '';
-            const patterns = excludeRaw
-              .split('\n')
-              .map((line) => line.trim())
-              .filter((line) => line.length > 0 && !line.startsWith('#'));
+            const patterns = parseExcludePatterns(useAppearanceStore.getState().excludePatterns || '');
 
             const filterEntries = (items: VaultEntry[]): VaultEntry[] => {
               if (patterns.length === 0) return items;

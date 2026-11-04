@@ -56,6 +56,8 @@ export type {
   FileTypeExtensionUIContext,
   VaultContext,
   VaultApi,
+  ExtensionVaultInfo,
+  ExtensionVaultFile,
   VaultConfigApi,
   FileApi,
   EditorApi,

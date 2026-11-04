@@ -38,10 +38,14 @@ import { buildExtensionAi } from './aiCapability';
 import { buildExtensionEnv, disposeExtensionEnv } from './envCapability';
 import { buildExtensionHttp } from './httpCapability';
 import { buildSubscriptions, disposeSubscriptions } from './subscriptionsCapability';
-import type { Disposable as Disp } from 'folyn-extension-sdk';
+import type { Disposable as Disp, ExtensionVaultFile } from 'folyn-extension-sdk';
+import type { VaultEntry } from '@folyn/vault-provider';
+import { useAppearanceStore } from '@/store/appearanceStore';
+import { useNavStore } from '@/store/navStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
 import { storageClient } from '@/utils/storageClient';
+import { matchesAnyPattern, parseExcludePatterns } from '@/utils/excludePattern';
 import { openFile } from '@/services/editorIoService';
 import { getActiveEditorHandle } from '@/services/editorHandleRegistry';
 import { useTerminalStore } from '@/store/terminalStore';
@@ -95,6 +99,25 @@ void import('@tauri-apps/api/core')
 /** Build a real VaultApi for a manifest (Tauri-backed, vault-scoped). */
 function createVaultApi(): VaultApi {
   return {
+    current() {
+      const { currentVault, isLoading } = useVaultStore.getState();
+      return currentVault && !isLoading ? { id: currentVault.id, name: currentVault.name } : null;
+    },
+    async listFiles() {
+      const patterns = parseExcludePatterns(useAppearanceStore.getState().excludePatterns || '');
+      // The scan prunes exact names during the walk; wildcards are matched below.
+      const entries = await useVaultStore.getState().manager.listFiles('', true, false, patterns);
+      const files: ExtensionVaultFile[] = [];
+      const collect = (items: VaultEntry[]) => {
+        for (const entry of items) {
+          if (matchesAnyPattern(entry.name, patterns)) continue;
+          if (entry.type === 'dir') collect(entry.children ?? []);
+          else files.push({ path: entry.path, name: entry.name });
+        }
+      };
+      collect(entries);
+      return files;
+    },
     async readText(path) {
       const abs = await resolveVaultPath(path);
       const { readTextFile } = await import('@tauri-apps/plugin-fs');
@@ -163,8 +186,11 @@ function createStorageApi(manifest: ExtensionManifest): ExtensionStorageApi {
 function createFilesApi(): FileApi {
   return {
     async open(path) {
+      const { exists } = await import('@tauri-apps/plugin-fs');
+      if (!(await exists(await resolveVaultPath(path)))) throw new Error(`[extension-api] file not found: ${path}`);
       const name = path.split('/').pop() || path;
       await openFile(path, name);
+      useNavStore.getState().setCurrentPage('editor');
     },
   };
 }
