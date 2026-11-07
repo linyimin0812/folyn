@@ -1709,6 +1709,7 @@ dependencies = [
  "objc2 0.5.2",
  "parking_lot",
  "pbkdf2 0.13.0",
+ "percent-encoding",
  "portable-pty",
  "reqwest",
  "rig-core",

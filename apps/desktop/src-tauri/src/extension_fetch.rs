@@ -5,18 +5,25 @@
 //! re-checks the extension manifest's `permissions.http.origins` allowlist as
 //! defense-in-depth behind the JS-side `isOriginAllowed` fast-fail.
 //!
+//! `extension_http_download` applies the same check but streams the body to the
+//! extension's downloads directory; see `extension_download`.
+//!
 //! `fetch_url` is the ungated host-allowlisted GET used for catalog refresh
 //! (models.dev / openrouter.ai) — the webview cannot `fetch()` these
 //! directly due to CORS.
 
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
+use tauri_plugin_opener::OpenerExt;
 
 use crate::errors::AppError;
 use crate::extension_commands::{is_valid_extension_id, extensions_dir};
+use crate::extension_download::{build_request, download_to_dir, response_headers, safe_file_name, DownloadResult, Progress};
 use crate::extension_security::check_http_origin;
 
 // ── sandbox http:fetch (CSP bypass via Rust) ─────────────────────────────────
@@ -32,6 +39,16 @@ use crate::extension_security::check_http_origin;
 // Contract (matches the old JS `fetch()` return shape so rpcBridge is unchanged):
 //   request:  { extensionId, url, method?, headers?, body? }
 //   response: { status: u16, headers: HashMap<String,String>, body: String }
+
+/// One saved download, as `extension_downloads_list` reports it.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct DownloadedFile {
+    pub name: String,
+    pub size: u64,
+    /// Milliseconds since the epoch, so the UI can order by recency.
+    #[serde(rename = "modifiedMs")]
+    pub modified: u64,
+}
 
 /// Response shape returned by `extension_http_fetch`. Mirrors the object the old
 /// JS `fetch()` branch returned so the rpcBridge caller is unchanged.
@@ -60,45 +77,19 @@ async fn reqwest_fetch(
     headers: Option<HashMap<String, String>>,
     body: Option<String>,
 ) -> Result<HttpResponse, String> {
-    let method_str = method.as_deref().unwrap_or("GET").to_ascii_uppercase();
-    let method = reqwest::Method::from_bytes(method_str.as_bytes())
-        .map_err(|e| format!("invalid method {method_str}: {e}"))?;
-
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(30))
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()
         .map_err(|e| format!("reqwest client build failed: {e}"))?;
 
-    let mut req = client.request(method, url);
-    if let Some(headers) = headers {
-        for (k, v) in headers {
-            // Silently skip headers reqwest rejects (e.g. forbidden header
-            // names like `Host`); a malformed header must not abort the whole
-            // call.
-            if let Ok(name) = reqwest::header::HeaderName::try_from(k.as_str()) {
-                if let Ok(val) = reqwest::header::HeaderValue::try_from(v) {
-                    req = req.header(name, val);
-                }
-            }
-        }
-    }
-    if let Some(body) = body {
-        req = req.body(body);
-    }
-
-    let resp = req
+    let resp = build_request(&client, url, method, headers, body)?
         .send()
         .await
         .map_err(|e| format!("http:fetch request failed: {e}"))?;
 
     let status = resp.status().as_u16();
-    let mut out_headers: HashMap<String, String> = HashMap::new();
-    for (name, value) in resp.headers().iter() {
-        if let Ok(v) = value.to_str() {
-            out_headers.insert(name.as_str().to_ascii_lowercase(), v.to_string());
-        }
-    }
+    let out_headers = response_headers(&resp);
     let body = resp
         .text()
         .await
@@ -147,24 +138,144 @@ pub async fn extension_http_fetch(
     headers: Option<HashMap<String, String>>,
     body: Option<String>,
 ) -> Result<HttpResponse, AppError> {
-    // Load the extension's manifest from disk and re-check the origin allowlist.
-    // The JS rpcBridge already fast-fails on non-allowlisted origins; this is
-    // the defense-in-depth layer that holds even if the JS bridge is bypassed.
+    check_extension_origin(&app, &extension_id, &url)?;
+    reqwest_fetch(&url, method, headers, body).await.map_err(AppError::from)
+}
+
+/// Load the extension's manifest from disk and re-check the origin allowlist.
+/// The JS side already fast-fails on non-allowlisted origins; this is the
+/// defense-in-depth layer that holds even if the JS bridge is bypassed.
+fn check_extension_origin(app: &tauri::AppHandle, extension_id: &str, url: &str) -> Result<(), AppError> {
     // Reject path-traversal/path-separator chars in `extension_id` so a caller
     // cannot point at another extension's manifest and read its declared origins.
     // `extension_id` is a bare id segment (`<id>`, not a path).
-    if !is_valid_extension_id(&extension_id) {
-        return Err(format!("http:fetch denied: invalid extension id: {extension_id}").into());
-    }
-    let dir = extensions_dir(&app)?;
-    let manifest_path = dir.join(&extension_id).join("manifest.json");
+    validate_extension_id(extension_id, "http:fetch")?;
+    let dir = extensions_dir(app)?;
+    let manifest_path = dir.join(extension_id).join("manifest.json");
     let manifest_str = fs::read_to_string(&manifest_path)
         .map_err(|e| format!("failed to read manifest for {extension_id}: {e}"))?;
     let manifest: serde_json::Value =
         serde_json::from_str(&manifest_str).map_err(|e| e.to_string())?;
-    check_http_origin(&manifest, &url)?;
+    check_http_origin(&manifest, url)?;
+    Ok(())
+}
 
-    reqwest_fetch(&url, method, headers, body).await.map_err(AppError::from)
+/// `~/.folyn/extension-data/<id>/downloads`. Deliberately outside
+/// `~/.folyn/extensions/<id>/`, which reinstalling or updating wipes.
+fn extension_downloads_dir(app: &tauri::AppHandle, extension_id: &str) -> Result<PathBuf, AppError> {
+    validate_extension_id(extension_id, "http:download")?;
+    let home = app.path().home_dir().map_err(|e| e.to_string())?;
+    Ok(home.join(".folyn").join("extension-data").join(extension_id).join("downloads"))
+}
+
+/// Ids the extension APIs accept: no '.', '/' or '\\', so a resolved path can
+/// never leave the directory the id is joined onto.
+fn validate_extension_id(extension_id: &str, capability: &str) -> Result<(), AppError> {
+    if is_valid_extension_id(extension_id) {
+        return Ok(());
+    }
+    Err(format!("{capability} denied: invalid extension id: {extension_id}").into())
+}
+
+/// Stream a remote file into the extension's downloads directory, under the
+/// same origin check as `extension_http_fetch`. Progress goes to `on_progress`.
+#[tauri::command]
+pub async fn extension_http_download(
+    app: tauri::AppHandle,
+    extension_id: String,
+    url: String,
+    method: Option<String>,
+    headers: Option<HashMap<String, String>>,
+    body: Option<String>,
+    on_progress: tauri::ipc::Channel<Progress>,
+) -> Result<DownloadResult, AppError> {
+    check_extension_origin(&app, &extension_id, &url)?;
+    let dir = extension_downloads_dir(&app, &extension_id)?;
+    download_to_dir(&dir, &url, method, headers, body, |progress| {
+        // A failed send means the page is gone; the download itself continues.
+        let _ = on_progress.send(progress);
+    })
+    .await
+    .map_err(AppError::from)
+}
+
+/// Reveal a file from the extension's downloads directory in the system file
+/// manager. `name` must be a bare file name, so nothing outside it is reachable.
+#[tauri::command]
+pub async fn extension_reveal_download(
+    app: tauri::AppHandle,
+    extension_id: String,
+    name: String,
+) -> Result<(), AppError> {
+    let path = downloaded_file(&app, &extension_id, &name)?;
+    app.opener().reveal_item_in_dir(path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Absolute path of one downloaded file. The render path needs it: the host
+/// reads and renders the file itself.
+#[tauri::command]
+pub async fn extension_download_path(
+    app: tauri::AppHandle,
+    extension_id: String,
+    name: String,
+) -> Result<String, AppError> {
+    let path = downloaded_file(&app, &extension_id, &name)?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Files in the extension's downloads directory, newest first. The extension
+/// lists remote files, so it needs this to know which ones it already saved and
+/// to offer opening them instead of downloading again.
+#[tauri::command]
+pub async fn extension_downloads_list(
+    app: tauri::AppHandle,
+    extension_id: String,
+) -> Result<Vec<DownloadedFile>, AppError> {
+    let dir = extension_downloads_dir(&app, &extension_id)?;
+    let entries = match fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        // A fresh extension has not downloaded anything yet.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e.to_string().into()),
+    };
+    let mut files: Vec<DownloadedFile> = entries
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            let metadata = entry.metadata().ok()?;
+            if !metadata.is_file() {
+                return None;
+            }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            // A `.part` file is a download still in flight, never a saved one.
+            if name.starts_with('.') {
+                return None;
+            }
+            let modified = metadata
+                .modified()
+                .ok()
+                .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            Some(DownloadedFile { name, size: metadata.len(), modified })
+        })
+        .collect();
+    files.sort_by(|a, b| b.modified.cmp(&a.modified));
+    Ok(files)
+}
+
+/// Absolute path of one downloaded file. `name` must be a bare file name that
+/// `download` could have produced, so nothing outside the directory is reachable.
+fn downloaded_file(app: &tauri::AppHandle, extension_id: &str, name: &str) -> Result<PathBuf, AppError> {
+    validate_extension_id(extension_id, "http:download")?;
+    if safe_file_name(name).as_deref() != Some(name) {
+        return Err(format!("http:download denied: invalid file name: {name}").into());
+    }
+    let path = extension_downloads_dir(app, extension_id)?.join(name);
+    if !path.is_file() {
+        return Err(format!("http:download: no downloaded file named {name}").into());
+    }
+    Ok(path)
 }
 
 // ── Unit tests ───────────────────────────────────────────────────────────────

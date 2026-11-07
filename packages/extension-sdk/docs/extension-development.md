@@ -971,6 +971,59 @@ const { body } = await http().fetch('https://api.example.com/data.json');
 const data = JSON.parse(body);
 ```
 
+**Binary files — `download`.** `fetch` decodes the body as text, so it cannot
+carry a ZIP or PDF. Trusted extensions use `api.network.download(url, init)`,
+which streams the body to `~/.folyn/extension-data/<id>/downloads/` in Rust. That
+directory survives updates and reinstalls and is not removed on uninstall. Same
+origin check as `fetch`; redirects are not followed, so a token header cannot
+reach an undeclared origin.
+
+```ts
+const result = await api.network.download(url, {
+  method: 'POST',
+  headers,
+  body,
+  onProgress: ({ received, total }) => showProgress(received, total),
+});
+if (!result.saved) return showError(result.body); // non-2xx or JSON: nothing written
+
+// `api.downloads` locates the saved files:
+const path = await api.downloads.path(result.name); // absolute path
+const saved = await api.downloads.list();           // [{ name, size, modifiedMs }]
+await api.downloads.reveal(result.name);            // reveal in the OS file manager
+```
+
+List saved files with `list()` so a page can offer **open** for one it already
+downloaded instead of downloading again.
+
+**Showing and editing a file — `api.fileView.component()`.** This hands you the
+Vault editor's own editor and preview: `FolynEditor` (the CodeMirror instance the
+editor page mounts, so keybindings, highlighting and the user's editor
+preferences are the Vault's) plus the file type's own preview component. It owns
+the edit / split / preview switch, so your page shows the same three modes
+without reimplementing them. Never download a single document just to display
+it: read the text and pass it in.
+
+```tsx
+const FileView = api.fileView.component();   // once, in activate()
+
+// Remote text (e.g. an OpenAPI text/read): pass the text plus a name with its
+// extension, which selects the handler. `onSave` fires on ⌘/Ctrl+S.
+<FileView path="Java.md" content={text} onSave={saveBack}/>
+
+// A saved download: pass its absolute path and let its own handler read it
+// (images, PDFs open straight in preview).
+<FileView path={await api.downloads.path('截图.png')}/>
+```
+
+`onChange` fires on every keystroke. A format the app cannot display renders an
+in-pane notice instead of failing.
+
+**File icons.** `api.icons.render(fileName, { isDir })` returns the same 16×16
+markup the Vault file tree uses (extension map, extension-provided icons,
+light/dark theme), so a remote listing looks native:
+`<span dangerouslySetInnerHTML={{ __html: icon.svg }} />`.
+
 **Why this design**: the manifest is the single source of truth — adding
 a new remote origin does not require editing Folyn source or the main
 window CSP. The host enforces the allowlist twice (JS-side fast-fail +

@@ -14,6 +14,7 @@ mod extension_commands;
 mod extension_security;
 mod extension_install;
 mod extension_lifecycle;
+mod extension_download;
 mod extension_fetch;
 mod subscriptions;
 mod subscription_render;
@@ -858,6 +859,10 @@ pub fn run() {
             extension_lifecycle::get_extension_record,
             extension_lifecycle::read_extension_file,
             extension_fetch::extension_http_fetch,
+            extension_fetch::extension_http_download,
+            extension_fetch::extension_reveal_download,
+            extension_fetch::extension_download_path,
+            extension_fetch::extension_downloads_list,
             subscriptions::subscription_fetch,
             subscription_render::subscription_render,
             subscription_render::subscription_cancel_renders,

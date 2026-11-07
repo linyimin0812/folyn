@@ -15,8 +15,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ExtensionManifest } from '@folyn/extension-host';
 import { buildExtensionHttp } from './httpCapability';
 
+// `Channel` is a real class on the Tauri side; the mock keeps `onmessage` so a
+// test can push progress the way Rust would.
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
+  Channel: class {
+    onmessage: (message: unknown) => void = () => {};
+  },
 }));
 
 import { invoke as mockInvoke } from '@tauri-apps/api/core';
@@ -110,5 +115,59 @@ describe('buildExtensionHttp', () => {
     expect(mockInvoke).toHaveBeenCalledWith('extension_http_fetch', expect.objectContaining({
       headers: { 'x-trace': 'abc' },
     }));
+  });
+});
+
+describe('buildExtensionHttp download', () => {
+  const origin = 'https://api.example.com';
+
+  it('invokes extension_http_download with the serialized init', async () => {
+    const saved = { saved: true, status: 200, name: 'a.zip', path: '/d/a.zip', size: 3 };
+    vi.mocked(mockInvoke).mockResolvedValueOnce(saved);
+
+    const result = await buildExtensionHttp(makeManifest([origin])).download(`${origin}/file`, {
+      method: 'POST',
+      headers: { 'X-Token': 't' },
+      body: '{}',
+    });
+
+    expect(result).toEqual(saved);
+    expect(mockInvoke).toHaveBeenCalledWith('extension_http_download', {
+      extensionId: 'plantuml-extension',
+      url: `${origin}/file`,
+      method: 'POST',
+      headers: { 'X-Token': 't' },
+      body: '{}',
+      onProgress: expect.anything(),
+    });
+  });
+
+  it('rejects an undeclared origin before invoking Rust', async () => {
+    await expect(buildExtensionHttp(makeManifest([origin])).download('https://evil.com/file')).rejects.toThrow(
+      /permissions\.http\.origins/,
+    );
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  it('reports streamed progress through a channel', async () => {
+    vi.mocked(mockInvoke).mockImplementationOnce(async (_cmd, args) => {
+      const channel = (args as { onProgress: { onmessage: (p: unknown) => void } }).onProgress;
+      channel.onmessage({ received: 5, total: 10 });
+      channel.onmessage({ received: 10, total: 10 });
+      return { saved: true, status: 200, name: 'a.zip', path: '/d/a.zip', size: 10 };
+    });
+    const seen: unknown[] = [];
+
+    await buildExtensionHttp(makeManifest([origin])).download(`${origin}/file`, { onProgress: (p) => seen.push(p) });
+
+    expect(seen).toEqual([{ received: 5, total: 10 }, { received: 10, total: 10 }]);
+  });
+
+  it('downloads without a progress listener', async () => {
+    vi.mocked(mockInvoke).mockResolvedValueOnce({ saved: false, status: 500, headers: {}, body: 'boom' });
+
+    const result = await buildExtensionHttp(makeManifest([origin])).download(`${origin}/file`);
+
+    expect(result).toMatchObject({ saved: false, status: 500 });
   });
 });
