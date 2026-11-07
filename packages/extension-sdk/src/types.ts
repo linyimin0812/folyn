@@ -16,6 +16,7 @@
  *   block is informational (not enforced) for this tier.
  */
 
+import type { ComponentType } from 'react';
 import type { Disposable } from './Disposable';
 
 /** Execution tier — determines loader, isolation, and capability surface. */
@@ -49,7 +50,102 @@ export interface ExtensionHttpCapability {
    * if the URL's origin is not declared in the manifest.
    */
   fetch(url: string, init?: ExtensionHttpInit): Promise<ExtensionHttpResponse>;
+  /**
+   * Download a remote file into this extension's own downloads directory
+   * (`~/.folyn/extension-data/<id>/downloads/`, kept across updates and
+   * reinstalls). Same origin check as {@link fetch}. The body streams to disk
+   * in Rust and never crosses IPC. The name comes from `Content-Disposition`
+   * (else the URL's last segment); an existing file is never overwritten —
+   * the name gains a ` (n)` suffix instead.
+   *
+   * A non-2xx or `application/json` response is not saved: it resolves with
+   * `saved: false` and the text body, so callers can surface the API error.
+   *
+   * `onProgress` reports bytes received while the body streams.
+   */
+  download(url: string, init?: ExtensionHttpInit & ExtensionDownloadOptions): Promise<ExtensionDownloadResult>;
 }
+
+export interface ExtensionDownloadOptions {
+  /** Bytes received so far, and the total from `Content-Length` when the
+   *  server sent one. The last call reports the finished size. */
+  onProgress?: (progress: { received: number; total?: number }) => void;
+}
+
+/**
+ * The files {@link ExtensionHttpCapability.download} saved, addressed by the
+ * `name` it returned. They live in the extension's own directory,
+ * `~/.folyn/extension-data/<id>/downloads/`.
+ */
+export interface ExtensionDownloadsCapability {
+  /** Files already saved in this extension's downloads directory, newest
+   *  first. Lets a page show "open" for a file it already downloaded. */
+  list(): Promise<ExtensionDownloadedFile[]>;
+  /** Absolute path of a saved file, for {@link ExtensionPreviewCapability}. */
+  path(name: string): Promise<string>;
+  /** Reveal the file in the system file manager. */
+  reveal(name: string): Promise<void>;
+}
+
+/** One file in an extension's downloads directory. */
+export interface ExtensionDownloadedFile {
+  name: string;
+  size: number;
+  /** Milliseconds since the epoch, for ordering. */
+  modifiedMs: number;
+}
+
+/**
+ * The editor's own file view, as a component an extension can mount.
+ *
+ * This is not a re-implementation and not exported HTML: it mounts the same
+ * editor and preview the Vault editor page mounts (EditorPane / the file
+ * type's preview mode), resolved through the same `detectFileType` → handler
+ * path. A file shown here looks and behaves exactly like one opened from the
+ * Vault, including edit and split.
+ */
+export interface ExtensionFileViewCapability {
+  /** The view component. Mount it directly:
+   *  `<FileView path={name} content={text} onSave={save}/>` */
+  component(): ComponentType<ExtensionFileViewProps>;
+}
+
+export interface ExtensionFileViewProps {
+  /** A local absolute path (a saved download), or a bare file name with its
+   *  extension when `content` carries the text. */
+  path: string;
+  /** The file's text. Omit for formats the host reads itself (images, PDF). */
+  content?: string;
+  /** Fires on every edit, with the new full text. */
+  onChange?(content: string): void;
+  /** Fires on the save shortcut (⌘/Ctrl+S) and on the view's save button. */
+  onSave?(content: string): void;
+}
+
+/**
+ * The host's file icons, so an extension can list remote files with the same
+ * icons the Vault file tree uses.
+ */
+export interface ExtensionIconsCapability {
+  /**
+   * Icon for a file name, resolved exactly as the Vault file tree resolves it:
+   * the same extension map, icons supplied by file-type extensions, and the
+   * current light/dark theme. The markup comes from the host's own components,
+   * so it may be injected with `dangerouslySetInnerHTML`.
+   */
+  render(fileName: string, opts?: { isDir?: boolean }): Promise<ExtensionIcon>;
+}
+
+/** Result of {@link ExtensionIconsCapability.render}. */
+export interface ExtensionIcon {
+  /** `<svg>` or `<img>` markup sized 16×16. */
+  svg: string;
+}
+
+/** Result of {@link ExtensionHttpCapability.download}. */
+export type ExtensionDownloadResult =
+  | { saved: true; status: number; name: string; path: string; size: number }
+  | { saved: false; status: number; headers: Record<string, string>; body: string };
 
 
 // ── Manifest ───────────────────────────────────────────────────────────────

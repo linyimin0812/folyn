@@ -13,6 +13,7 @@
  */
 
 import type {
+  ExtensionDownloadResult,
   ExtensionHttpCapability,
   ExtensionHttpInit,
   ExtensionHttpResponse,
@@ -45,6 +46,25 @@ export function buildExtensionHttp(manifest: ExtensionManifest): ExtensionHttpCa
         },
       );
       return { status: resp.status, headers: resp.headers, body: resp.body };
+    },
+    async download(url, init) {
+      assertHttpPermission(manifest, url);
+      const { invoke, Channel } = await import('@tauri-apps/api/core');
+      // Rust streams the body to disk and reports each chunk here; the file
+      // itself never crosses IPC.
+      const onProgress = new Channel<{ received: number; total?: number }>();
+      if (init?.onProgress) {
+        const report = init.onProgress;
+        onProgress.onmessage = (progress) => report(progress);
+      }
+      return invoke<ExtensionDownloadResult>('extension_http_download', {
+        extensionId: manifest.id,
+        url,
+        method: typeof init?.method === 'string' ? init.method : undefined,
+        headers: normalizeHeaders(init?.headers),
+        body: typeof init?.body === 'string' ? init.body : undefined,
+        onProgress,
+      });
     },
   };
 }

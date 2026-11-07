@@ -43,6 +43,14 @@ export type {
   ExtensionHttpCapability,
   ExtensionHttpInit,
   ExtensionHttpResponse,
+  ExtensionDownloadResult,
+  ExtensionDownloadOptions,
+  ExtensionDownloadsCapability,
+  ExtensionFileViewProps,
+  ExtensionFileViewCapability,
+  ExtensionDownloadedFile,
+  ExtensionIconsCapability,
+  ExtensionIcon,
 } from './src/types';
 export { DisposableStore, combineSignals } from './src/runtime';
 export type { Registry } from './src/registry';

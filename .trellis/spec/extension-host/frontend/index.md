@@ -18,6 +18,7 @@ The host owns the **lifecycle state machine and transactional activation — not
 |-------|-------------|--------|
 | [Lifecycle Guidelines](./lifecycle-guidelines.md) | State machine, transactional activation, AbortSignal, error isolation | Filled |
 | [Subscriptions Contract](./subscriptions-contract.md) | Trusted pinned vault and public download capability | Filled |
+| [Network Download Contract](./network-download-contract.md) | `network.fetch` vs `network.download`, origin gate, download directory | Filled |
 | [Quality Guidelines](./quality-guidelines.md) | Forbidden imports, capability injection, testing with fakes | Filled |
 
 Directory/type guidelines are N/A — the package is 4 small source files (`ExtensionHost.ts`, `ExtensionRuntime.ts`, `capabilityRegistry.ts`, `contributionAdapterRegistry.ts`) with co-located vitest suites; types all come from `folyn-extension-sdk`.

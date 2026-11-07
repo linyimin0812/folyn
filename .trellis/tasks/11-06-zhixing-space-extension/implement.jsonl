@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/extension-host/frontend/quality-guidelines.md", "reason": "宿主能力注入与测试约定"}
+{"file": ".trellis/spec/extension-host/frontend/subscriptions-contract.md", "reason": "trusted 能力与本地存储边界的先例"}
+{"file": ".trellis/spec/extension-sdk/frontend/contracts-guidelines.md", "reason": "新增 SDK 契约的规则"}
+{"file": ".trellis/spec/extension-host/frontend/network-download-contract.md", "reason": "本次新增的下载契约"}

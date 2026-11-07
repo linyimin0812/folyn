@@ -9,7 +9,7 @@
  */
 
 import type { Disposable } from './Disposable';
-import type { ExtensionManifest, ExtensionAiCapability, ExtensionEnv, ExtensionHttpCapability, ExtensionHttpResponse } from './types';
+import type { ExtensionManifest, ExtensionAiCapability, ExtensionDownloadsCapability, ExtensionEnv, ExtensionIconsCapability, ExtensionFileViewCapability, ExtensionHttpCapability, ExtensionHttpResponse } from './types';
 import type { ExportService } from './export-service';
 
 // ── Extension entry (doc §4.1) ──────────────────────────────────────────────
@@ -339,6 +339,12 @@ export interface ExtensionApi {
 
   readonly ai: AiApi;
   readonly network: NetworkApi;
+  /** Files saved by `network.download`, in this extension's own directory. */
+  readonly downloads: ExtensionDownloadsCapability;
+  /** Host file icons, shared with the Vault file tree. */
+  readonly icons: ExtensionIconsCapability;
+  /** The editor's own file view (edit / split / preview), for extension pages. */
+  readonly fileView: ExtensionFileViewCapability;
   readonly env: EnvApi;
   readonly terminal: TerminalApi;
   readonly export: ExportService;

@@ -38,6 +38,9 @@ import { buildExtensionAi } from './aiCapability';
 import { buildExtensionEnv, disposeExtensionEnv } from './envCapability';
 import { buildExtensionHttp } from './httpCapability';
 import { buildSubscriptions, disposeSubscriptions } from './subscriptionsCapability';
+import { buildExtensionDownloads } from './downloadsCapability';
+import { buildExtensionIcons } from './iconsCapability';
+import { buildExtensionFileView } from './fileViewCapability';
 import type { Disposable as Disp } from 'folyn-extension-sdk';
 import { useVaultStore } from '@/store/vaultStore';
 import { useVaultConfigStore } from '@/store/vaultConfigStore';
@@ -260,6 +263,9 @@ registerCapability({ slot: 'terminal', build: () => createTerminalApi() });
 registerCapability({ slot: 'events', build: () => createEventsApi() });
 registerCapability({ slot: 'ai', build: (m) => buildExtensionAi(m) });
 registerCapability({ slot: 'network', build: (m) => buildExtensionHttp(m) });
+registerCapability({ slot: 'downloads', build: (m) => buildExtensionDownloads(m) });
+registerCapability({ slot: 'icons', build: () => buildExtensionIcons() });
+registerCapability({ slot: 'fileView', build: (m) => buildExtensionFileView(m) });
 registerCapability({
   slot: 'env',
   build: () => buildExtensionEnv(),

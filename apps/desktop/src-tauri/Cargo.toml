@@ -64,6 +64,8 @@ brotli = "8"
 # the default set; the old JS `fetch()` spoke HTTP/2 and honored `HTTP_PROXY`,
 # so dropping either would be a silent behavioral regression for plugins.
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "charset", "http2", "system-proxy"] }
+# Already locked transitively; decodes `Content-Disposition` download file names.
+percent-encoding = "2"
 # chat mode (rig) LLM client. `default-features = false` + `reqwest`/`derive`/
 # `rustls` re-selects rig-core's default set explicitly so a future default
 # change can't silently pull `native-tls` (and system OpenSSL on Linux). All
