@@ -1,6 +1,7 @@
 import { useMemo, useRef, useEffect, useCallback, useState } from 'react';
 import { Code2, Eye } from 'lucide-react';
 import { useAiConfigStore } from '@/store/aiConfigStore';
+import { isShortcutCandidate } from '@/utils/iframeShortcuts';
 import {
   formatResultBlock,
   mapLanguageToRuntime,
@@ -233,6 +234,14 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
               // tab, or activate-if-already-open — the user's "detect if
               // already open" expectation is handled by openFile's existing
               // dedup on `ext:<path>` tab id).
+              // Keys pressed inside this iframe never reach the app's
+              // shortcut handler. This code runs in the app (same-origin
+              // iframe), so replay shortcut candidates on the app document.
+              doc.addEventListener('keydown', (ev) => {
+                if (!isShortcutCandidate(ev)) return;
+                const { key, code, metaKey, ctrlKey, altKey, shiftKey } = ev;
+                document.dispatchEvent(new KeyboardEvent('keydown', { key, code, metaKey, ctrlKey, altKey, shiftKey, bubbles: true, cancelable: true }));
+              }, true);
               const fwdDragOver = (ev: Event) => {
                 const de = ev as DragEvent;
                 if (!de.dataTransfer?.types?.includes('Files')) return;

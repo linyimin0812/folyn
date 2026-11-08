@@ -101,4 +101,11 @@ describe('injectPreviewBootstrap', () => {
     expect((out.match(/<html/gi) || []).length).toBe(1);
     expect((out.match(/<\/body>/gi) || []).length).toBe(1);
   });
+
+  it('forwards shortcut keys to the app, which the sandboxed iframe otherwise swallows', () => {
+    const doc = new DOMParser().parseFromString(injectPreviewBootstrap('<p>x</p>'), 'text/html');
+    const script = doc.querySelector('script[data-folyn-preview="anchors"]')?.textContent ?? '';
+    expect(script).toContain("addEventListener('keydown'");
+    expect(script).toContain('folyn:shortcut-key');
+  });
 });

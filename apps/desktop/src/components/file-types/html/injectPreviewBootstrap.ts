@@ -14,6 +14,8 @@
  * never executes scripts, so this injection is safe to run on untrusted HTML.
  */
 
+import { IFRAME_KEY_FORWARDER } from '@/utils/iframeShortcuts';
+
 const BOOTSTRAP_STYLE = 'html,body{color-scheme:light !important;background:#fff !important}';
 
 const BOOTSTRAP_SCRIPT = `(function(){
@@ -56,7 +58,8 @@ const BOOTSTRAP_SCRIPT = `(function(){
     if(files) for(var i=0;i<files.length;i++) arr.push(files[i]);
     if(arr.length > 0) window.parent.postMessage({ type: 'folyn:open-dropped-files', files: arr }, '*');
   });
-})();`;
+})();
+${IFRAME_KEY_FORWARDER}`;
 
 /**
  * Inject the bootstrap `<style>` (light canvas) + `<script>` (anchor nav) into

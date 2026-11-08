@@ -12,6 +12,7 @@ import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import { useCommandPaletteStore } from '@/store/commandPaletteStore';
 import { eventMatchesShortcut } from '@/utils/shortcutAccelerator';
+import { listenForForwardedKeys } from '@/utils/iframeShortcuts';
 
 export function useGlobalShortcuts() {
   // ── Global Ctrl+S / Cmd+S and Cmd+Shift+F ──
@@ -100,6 +101,12 @@ export function useGlobalShortcuts() {
       }
     };
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    // Sandboxed preview iframes (HTML files) post their shortcut keys here;
+    // they are replayed on this document and reach handleKeyDown above.
+    const stopForwarding = listenForForwardedKeys();
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      stopForwarding();
+    };
   }, []);
 }
