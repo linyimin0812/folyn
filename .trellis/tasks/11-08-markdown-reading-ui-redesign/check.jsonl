@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/desktop/frontend/markdown-rendering.md", "reason": "Verify cursor-sync / gap geometry not broken by spacing changes"}
+{"file": ".trellis/spec/desktop/frontend/quality-guidelines.md", "reason": "Quality bar for frontend changes"}

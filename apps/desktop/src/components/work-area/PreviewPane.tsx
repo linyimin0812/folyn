@@ -9,6 +9,13 @@ import { MarkmapCanvas } from '../file-types/markmap/MarkmapCanvas';
 import { resolveAssetBase } from '../file-types/previewPath';
 import { usePreviewZoom } from '../file-types/markdown/usePreviewZoom';
 
+// Quiet floating preview tools: bare icons, faint at rest, clearer while the
+// preview pane is hovered (`group/prev` on the pane root), full + hover fill on
+// the button itself. Active state = accent icon at full opacity.
+function previewToolClass(active = false): string {
+  return `flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer transition-[opacity,color,background-color] duration-[140ms] hover:opacity-100 hover:bg-hov ${active ? 'opacity-100 text-acc' : 'opacity-35 group-hover/prev:opacity-70 text-t2 hover:text-t1'}`;
+}
+
 interface PreviewPaneProps {
   activeTab: FileTab;
   Preview: ComponentType<PreviewProps>;
@@ -160,14 +167,14 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
 
     return (
       <div
-        className="flex-1 flex flex-col overflow-hidden min-w-[200px]"
+        className="group/prev flex-1 flex flex-col overflow-hidden min-w-[200px]"
         style={{ ...(viewMode === 'split' ? { flexGrow: previewFlex, flexBasis: 0 } : {}), position: 'relative' }}
       >
         {/* Preview-mode toggle (markmap) + outline toggle -- markdown only */}
         {activeTab.fileType === 'markdown' && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-1.5">
             <button
-              className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${markmapMode ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
+              className={previewToolClass(markmapMode)}
               onClick={() => setMarkmapMode((v) => !v)}
               title={markmapMode ? '正常预览' : '思维导图预览'}
             >
@@ -184,7 +191,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
               </svg>
             </button>
             <button
-              className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${outlineVisible ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
+              className={previewToolClass(outlineVisible)}
               onClick={toggleOutline}
               title="大纲"
             >
@@ -196,7 +203,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
               </svg>
             </button>
             <button
-              className="flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2"
+              className={previewToolClass()}
               onClick={togglePresentationMode}
               title={t('editor:presentation.enter')}
             >
@@ -210,7 +217,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
             </button>
             {viewMode === 'split' && (
               <button
-                className={`flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer border transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${cursorSyncPreview ? 'bg-act text-acc border-acc' : 'bg-panel border-brd text-t3 hover:bg-hov hover:text-t1 hover:border-brd2'}`}
+                className={previewToolClass(cursorSyncPreview)}
                 onClick={() => setCursorSyncPreview(!cursorSyncPreview)}
                 title={cursorSyncPreview ? t('editor:previewToolbar.cursorSyncOn') : t('editor:previewToolbar.cursorSyncOff')}
               >
@@ -233,7 +240,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   still mounts on demand to avoid running markmap-lib transform
                   in the background for every markdown file. */}
               <div
-                className={`prev-body flex-1 overflow-auto pt-2 px-8 ${viewMode === 'split' ? 'pb-[100vh] is-jumpable' : 'pb-[20vh]'}${markmapMode ? 'hidden' : 'block'}`}
+                className={`prev-body md-doc-surface flex-1 overflow-auto pt-2 px-8 ${viewMode === 'split' ? 'pb-[100vh] is-jumpable' : 'pb-[20vh]'} ${markmapMode ? 'hidden' : 'block'}`}
                 ref={setBodyRef}
                 onScroll={handleBodyScroll}
                 onClick={handlePreviewClick}
@@ -256,7 +263,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 />
               </div>
               {markmapMode && (
-                <div className="prev-body flex-1 h-full overflow-hidden">
+                <div className="prev-body md-doc-surface flex-1 h-full overflow-hidden">
                   <MarkmapCanvas
                     content={activeTab.content}
                     assetBase={markmapAssetBase}

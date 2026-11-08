@@ -126,6 +126,7 @@ export const LIGHT_THEME_VARS = `
   --acc: #3a6ef0; --acc2: #6a3af0; --accdim: #dce8ff; --accglow: rgba(58,110,240,.08);
   --green: #22a863; --gdim: #dcf5e8; --amber: #d4820a; --red: #d94040;
   --cyan: #0a8ab8; --purple: #8040d0; --card: #fff; --inp: #f4f5f8;
+  --doc-bg: #ffffff; --doc-fill: #f6f7f9; --doc-line: #ebedf0;
   --font-ui: 'Sora', sans-serif; --font-mono: 'DM Mono', monospace; --ui-font-size: 14px;
 }
 `;
@@ -138,6 +139,7 @@ export const DARK_THEME_VARS = `
   --acc: #5b8af5; --acc2: #7c5bf5; --accdim: #131d42; --accglow: rgba(91,138,245,.1);
   --green: #3dd68c; --gdim: #0b2418; --amber: #f5a623; --red: #f06a6a;
   --cyan: #5dd8f5; --purple: #b87cf5; --card: #111420; --inp: #0f1219;
+  --doc-bg: #16171b; --doc-fill: #1e1f24; --doc-line: #2a2c33;
   --font-ui: 'Sora', sans-serif; --font-mono: 'DM Mono', monospace; --ui-font-size: 14px;
 }
 `;
@@ -206,7 +208,7 @@ export async function renderMarkdownToHtmlViaDom(
   // but layout still computes — x6 needs real offsetWidth/Height to mount.
   container.setAttribute('data-export-root', '');
   container.setAttribute('data-theme', theme);
-  const bg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const bg = theme === 'dark' ? '#16171b' : '#fff';
   const fg = theme === 'dark' ? '#e2e8f8' : '#1a2040';
   container.style.cssText =
     `position:absolute;left:-9999px;top:0;width:800px;height:auto;background:${bg};color:${fg};visibility:hidden;`;
@@ -761,7 +763,7 @@ export function buildStandaloneDocHtml(opts: {
 }): string {
   const { title, bodyHtml, css, theme, codeTheme, codeThemeCss } = opts;
   const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
-  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const bodyBg = theme === 'dark' ? '#16171b' : '#fff';
   const safeTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   return `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="${theme}" data-code-theme="${codeTheme}">

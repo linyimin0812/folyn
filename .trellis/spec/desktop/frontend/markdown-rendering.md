@@ -151,6 +151,22 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 
 ## Gotchas
 
+### Preview block margins are coupled to `.md-blank-gap`
+
+Top-level flow blocks (`p`, `ul`/`ol`, `table`, `pre`/`.code-block-wrapper`,
+`blockquote`, callout) all use `margin: 0 0 1em`. In split mode
+`rehypeBlankGap` inserts `.md-blank-gap` between blocks, and its
+`margin: -1em 0 0` cancels the preceding block's bottom margin so the gap
+alone defines the inter-block space (the editor's descent rate). Changing a
+block's bottom margin without changing the gap's negative margin (or vice
+versa) shifts every synced block. `:first-child` gap keeps `margin-top: 0`
+(nothing above to cancel). Headings keep their own top margin — runtime gap
+compensation (`gapCompensation.ts`) measures and absorbs it.
+
+Reading-surface tokens `--doc-bg` / `--doc-fill` / `--doc-line` exist only for
+markdown tabs (`.md-doc-surface` on EditorPane body + PreviewPane `.prev-body`);
+`exportService.ts` `LIGHT_THEME_VARS` / `DARK_THEME_VARS` must define them too.
+
 ### Preview double-click word selection
 
 `MarkdownPreview` installs `installPreviewWordSelection(root)` from

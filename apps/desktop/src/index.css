@@ -59,6 +59,8 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
   --ic-ts: #3178c6; --ic-js: #e8b800; --ic-js-fg: #1a1a1a; --ic-json: #a67c2e;
   --ic-css: #663399; --ic-yaml: #b45309; --ic-py: #3572a5; --ic-sql: #0d7d72;
   --ic-pdf: #d93030;
+  /* Markdown reading surface (editor + preview of markdown tabs only) */
+  --doc-bg: #ffffff; --doc-fill: #f6f7f9; --doc-line: #ebedf0;
   /* CodeMirror token colors — light values match defaultHighlightStyle */
   --cm-meta: #404740; --cm-keyword: #708; --cm-atom: #219; --cm-number: #164;
   --cm-string: #a11; --cm-regexp: #e40; --cm-var-def: #00f; --cm-var-local: #30a;
@@ -78,6 +80,8 @@ aside button[data-tip]::after { bottom: auto; top: 100%; margin-bottom: 0; margi
   --ic-ts: #60a5fa; --ic-js: #facc15; --ic-js-fg: #1a1a1a; --ic-json: #fbbf24;
   --ic-css: #a78bfa; --ic-yaml: #f59e0b; --ic-py: #60a5fa; --ic-sql: #2dd4bf;
   --ic-pdf: #f87171;
+  /* Markdown reading surface (editor + preview of markdown tabs only) */
+  --doc-bg: #16171b; --doc-fill: #1e1f24; --doc-line: #2a2c33;
   /* CodeMirror token colors — dark values matched to .hljs dark palette */
   --cm-meta: #bbb529; --cm-keyword: #cc7832; --cm-atom: #6897bb; --cm-number: #6897bb;
   --cm-string: #6a8759; --cm-regexp: #e40; --cm-var-def: #ffc66d; --cm-var-local: #9876aa;
@@ -227,6 +231,10 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .cm-wrapper .cm-cursor { border-left-color: var(--acc); }
 .cm-wrapper .cm-foldGutter { width: 12px; }
 .cm-wrapper .cm-foldGutter .cm-gutterElement { padding: 0 !important; }
+/* Markdown tabs: editor + preview share the neutral reading surface. */
+.md-doc-surface { background: var(--doc-bg); }
+.md-doc-surface .cm-wrapper .cm-gutters { background: var(--doc-bg); color: var(--t4); }
+.md-doc-surface .cm-wrapper .cm-activeLineGutter { background: transparent !important; color: var(--t2); }
 
 /* ── CodeMirror autocomplete tooltip (file-preview src picker etc.) ── */
 .cm-tooltip.cm-tooltip-autocomplete {
@@ -594,7 +602,7 @@ mjx-container svg {
 }
 
 /* ── Markdown Preview (targets rendered HTML) ── */
-.md-preview { font-family: var(--font-ui); font-size: 14px; line-height: 1.6; color: var(--t1); overflow-wrap: break-word; text-align: left; max-width: 800px; margin-left: auto; margin-right: auto; }
+.md-preview { font-family: var(--font-ui); font-size: 15px; line-height: 1.75; color: color-mix(in srgb, var(--t1) 90%, transparent); overflow-wrap: break-word; text-align: left; max-width: 720px; margin-left: auto; margin-right: auto; }
 /* Preview-only-mode visual zoom (pinch / ctrl+wheel / Cmd±/0). The var lives
    on the .prev-body scroll container (set by PreviewPane + usePreviewZoom);
    default 1 everywhere else — split mode must stay 1:1 with the editor so
@@ -606,23 +614,11 @@ mjx-container svg {
    anchor selection entirely. */
 .md-preview, .md-preview * { overflow-anchor: none; }
 /* Presentation mode (演示模式) — slides get larger body text and a wider
-   measure so the deck reads from a distance. */
-.presentation-mode .md-preview { font-size: 19px; max-width: 1280px; }
-/* Presentation mode: code blocks, tables and mono run-output carry their own
-   explicit font-size (12px/11px) and would stay small while the body scales
-   to 19px. Scale each by the same 19/14 ≈ 1.36 ratio: 12px → 16.5px, 11px →
-   15px. Selectors mirror the base rules above; specificity (.presentation-mode
-   + .md-preview) + source order beat them. hljs spans have no font-size and
-   inherit. */
-.presentation-mode .md-preview code { font-size: 16.5px; }
-.presentation-mode .md-preview th, .presentation-mode .md-preview td { font-size: 16.5px; }
-.presentation-mode .md-preview blockquote.run-result { font-size: 16.5px; }
-.presentation-mode .code-block-inner pre code,
-.presentation-mode .code-block-inner .code-ln,
-.presentation-mode .code-run-output { font-size: 16.5px; }
-.presentation-mode .code-run-status { font-size: 15px; }
+   measure so the deck reads from a distance. Headings, code, tables and run
+   output are em-sized, so they scale with the body automatically. */
+.presentation-mode .md-preview { font-size: 20px; max-width: 1280px; }
 /* Preview frame variant for the Containers settings modal: full width
-   (no 800px cap) and flattened first/last vertical margins so the preview's
+   (no 720px cap) and flattened first/last vertical margins so the preview's
    top + bottom spacing is symmetric inside the frame's `p-4` padding —
    container components set inline marginBottom:1.5rem which otherwise
    makes the bottom gap bigger than the top. */
@@ -634,21 +630,31 @@ mjx-container svg {
 .translation-result .md-preview { font-size: var(--ui-font-size); line-height: 1.6; text-align: justify; }
 .translation-result .md-preview > :first-child { margin-top: 0; }
 .translation-result .md-preview > :last-child { margin-bottom: 0; }
-.md-preview h1 { font-size: 28px; font-weight: 700; line-height: 1.3; margin: 8px 0 12px; border-bottom: 1px solid var(--brd); padding-bottom: 4px; }
-.md-preview h2 { font-size: 22px; font-weight: 700; line-height: 1.3; margin: 20px 0 10px; }
-.md-preview h3 { font-size: 18px; font-weight: 600; line-height: 1.3; margin: 16px 0 8px; }
-.md-preview h4 { font-size: 15px; font-weight: 600; line-height: 1.3; margin: 12px 0 6px; }
-.md-preview h5, .md-preview h6 { font-size: 13px; font-weight: 600; line-height: 1.3; margin: 10px 0 4px; }
+/* Headings in em (26 / 21 / 17.5 / 15.5 / 15 px at the 15px body) so
+   presentation and translation sizes scale with the body. More space above
+   than below ties each heading to the text it introduces. */
+.md-preview :is(h1,h2,h3,h4,h5,h6) { color: var(--t1); line-height: 1.35; }
+.md-preview h1 { font-size: 1.733em; font-weight: 700; margin: 1.2em 0 .6em; letter-spacing: -.01em; }
+.md-preview h2 { font-size: 1.4em; font-weight: 650; margin: 1.8em 0 .6em; }
+.md-preview h3 { font-size: 1.167em; font-weight: 600; margin: 1.6em 0 .5em; }
+.md-preview h4 { font-size: 1.033em; font-weight: 600; margin: 1.4em 0 .4em; }
+.md-preview h5, .md-preview h6 { font-size: 1em; font-weight: 600; margin: 1.3em 0 .4em; color: var(--t2); }
+/* A heading that opens the document sits flush with the editor's line 1. */
+.md-preview > :is(h1,h2,h3,h4,h5,h6):first-child { margin-top: 0; }
 /* ponytail: in split mode a preview heading is clickable (jumps the
    editor to it). Pointer cursor is the only affordance — no hover
    highlight so reading stays calm. Scoped to .is-jumpable so
    preview-only mode stays inert. */
 .prev-body.is-jumpable .md-preview :is(h1,h2,h3,h4,h5,h6) { cursor: pointer; }
-.md-preview p { margin: 8px 0; }
+.md-preview p { margin: 0 0 1em; }
 /* ponytail: blank-line gaps inserted by rehypeBlankGap so preview blocks
    descend at the editor's rate past blank lines (cursor-sync alignment).
-   Empty spacer — height set inline as calc(N * 1.8em); zero everything else. */
-.md-preview > .md-blank-gap { margin: -8px 0; padding: 0; line-height: 0; }
+   Empty spacer — height set inline; the -1em top margin cancels the
+   preceding block's 1em bottom margin (p / list / table / code / quote all
+   use `0 0 1em`) so the gap alone defines the inter-block space. */
+.md-preview > .md-blank-gap { margin: -1em 0 0; padding: 0; line-height: 0; }
+/* The leading gap (leading blanks / frontmatter) has no block above to cancel. */
+.md-preview > .md-blank-gap:first-child { margin-top: 0; }
 /* ponytail: raw-tag blocks (rehypeShowRawTags) render ONE source line per
    text line / br; pinning line-height to the editor's measured line height
    (--md-gap-line, same rate as .md-blank-gap) makes the block's rendered
@@ -656,18 +662,18 @@ mjx-container svg {
    becomes per-line exact and blocks below stop drifting. Layout only — the
    md-raw-tag classes are otherwise unstyled. */
 .md-preview .md-raw-tag-block { line-height: var(--md-gap-line, 1.6em); }
-.md-preview a { color: var(--acc); text-decoration: none; }
-.md-preview a:hover { text-decoration: underline; }
+.md-preview a { color: var(--acc); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; text-decoration-color: color-mix(in srgb, var(--acc) 35%, transparent); transition: text-decoration-color .12s; }
+.md-preview a:hover { text-decoration-color: var(--acc); }
 .md-preview strong { font-weight: 700; }
 .md-preview em { font-style: italic; }
 .md-preview del { text-decoration: line-through; color: var(--t3); }
-.md-preview code { font-family: var(--font-mono); font-size: 12px; background: var(--surf); padding: 2px 5px; border-radius: 3px; border: 1px solid var(--brd); }
-.md-preview pre code, .code-block-wrapper pre code { background: none; border: none; padding: 12px 16px; border-radius: 0; }
-.code-block-wrapper { border: 1px solid var(--brd); border-radius: 6px; margin: 12px 0; position: relative; max-height: 420px; overflow: hidden; }
+.md-preview code { font-family: var(--font-mono); font-size: .88em; background: var(--doc-fill); padding: .15em .4em; border-radius: 4px; border: none; }
+.md-preview pre code, .code-block-wrapper pre code { font-size: .86em; background: none; border: none; padding: 12px 16px; border-radius: 0; }
+.code-block-wrapper { border-radius: 8px; margin: 0 0 1em; position: relative; max-height: 420px; overflow: hidden; }
 .code-block-wrapper--no-height-cap { max-height: none; overflow: visible; padding: 8px; box-sizing: border-box; }
 .code-block-wrapper--empty-html { min-height: 60px; }
 .code-block-empty-html { flex: 1; }
-.code-block-inner { display: flex; max-height: 420px; overflow: hidden; background: var(--surf); }
+.code-block-inner { display: flex; max-height: 420px; overflow: hidden; background: var(--doc-fill); }
 /* ponytail: only the code block the cursor is in expands (split-mode alignment);
    others stay capped so a long block doesn't dominate the preview. A fixed cap
    breaks alignment — blockHeight would be capped while intraFrac spans the full
@@ -683,14 +689,14 @@ mjx-container svg {
 .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre::-webkit-scrollbar-thumb, .code-block-inner pre::-webkit-scrollbar-thumb, .code-block-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
 .code-block-wrapper:hover .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre:hover::-webkit-scrollbar-thumb, .code-block-wrapper:hover .code-block-inner pre::-webkit-scrollbar-thumb, .code-block-wrapper:hover .code-block-scroll::-webkit-scrollbar-thumb { background: var(--t4); }
 .code-block-inner::-webkit-scrollbar-track, .md-preview > pre::-webkit-scrollbar-track, .code-block-inner pre::-webkit-scrollbar-track, .code-block-scroll::-webkit-scrollbar-track { background: transparent; border: none; box-shadow: none; margin: 0; }
-.code-block-inner .code-line-numbers { overflow-y: auto; overflow-x: hidden; flex-shrink: 0; z-index: 1; padding: 12px 0; border-right: 1px solid var(--brd); background: var(--surf2); user-select: none; white-space: nowrap; scrollbar-width: none; }
+.code-block-inner .code-line-numbers { overflow-y: auto; overflow-x: hidden; flex-shrink: 0; z-index: 1; padding: 12px 0; background: transparent; user-select: none; white-space: nowrap; scrollbar-width: none; }
 .code-block-inner .code-line-numbers::-webkit-scrollbar { display: none; }
-.code-block-inner .code-ln { display: block; padding: 0 10px; text-align: right; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--t3); min-width: 32px; }
-.code-block-inner pre { margin: 0; border: none; border-radius: 0; background: var(--surf); padding: 0; overflow: visible; }
+.code-block-inner .code-ln { display: block; padding: 0 0 0 14px; text-align: right; font-family: var(--font-mono); font-size: .86em; line-height: 1.6; color: var(--t4); min-width: 32px; }
+.code-block-inner pre { margin: 0; border: none; border-radius: 0; background: transparent; padding: 0; overflow: visible; }
 .code-block-inner .code-block-scroll > pre { display: inline-block; min-width: 100%; }
-.code-block-inner pre code { display: block; padding: 12px 16px; font-size: 12px; line-height: 1.6; color: var(--t1); background: none; border: none; white-space: pre; }
+.code-block-inner pre code { display: block; padding: 12px 16px; font-size: .86em; line-height: 1.6; color: var(--t1); background: none; border: none; white-space: pre; }
 .code-block-inner pre code br { display: none; }
-.md-preview > pre { background: var(--surf); border: 1px solid var(--brd); border-radius: 6px; padding: 12px 16px; margin: 12px 0; max-height: 420px; overflow: auto; }
+.md-preview > pre { background: var(--doc-fill); border: none; border-radius: 8px; padding: 12px 16px; margin: 0 0 1em; max-height: 420px; overflow: auto; }
 .code-copy-btn { position: absolute; top: 4px; right: 8px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 3px; line-height: 1; color: var(--t3); background: none; border: none; cursor: pointer; opacity: 0; transition: opacity .15s, color .12s, background .12s; z-index: 3; }
 .code-block-wrapper:hover .code-copy-btn { opacity: .7; }
 .code-copy-btn:hover { opacity: 1 !important; color: var(--t1); background: var(--hov); }
@@ -702,34 +708,42 @@ mjx-container svg {
    body does — so the absolutely-positioned sync icon (.code-sync-btn, top-right)
    and the status row stay pinned while long output (e.g. dir listing) scrolls
    under them. max-height caps the panel; flex column lets the body flex/shrink. */
-.code-run-output { position: relative; border-top: 1px solid var(--brd); background: var(--surf2, var(--surf)); padding: 8px 12px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--t2); max-height: 240px; display: flex; flex-direction: column; }
+.code-run-output { position: relative; border-top: 1px solid var(--doc-line); background: var(--doc-fill); padding: 8px 12px; font-family: var(--font-mono, ui-monospace, monospace); font-size: .8em; color: var(--t2); max-height: 240px; display: flex; flex-direction: column; }
 .code-run-output-body { overflow: auto; min-height: 0; }
 .code-run-output pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: none; border: none; padding: 0; }
 .code-run-stderr { color: var(--red, #f06a6a); }
-.code-run-status { display: flex; align-items: center; gap: 6px; color: var(--t3); font-size: 11px; margin-top: 4px; }
+.code-run-status { display: flex; align-items: center; gap: 6px; color: var(--t3); font-size: .92em; margin-top: 4px; }
 /* ponytail: matching background + radius so the pinned sync chip stays a
    clean opaque square while output scrolls under it (transparent bg would let
    text bleed through the icon). Opacity still drives the dim→bright hover. */
-.code-sync-btn { position: absolute; top: 6px; right: 6px; padding: 2px; line-height: 1; background: var(--surf2, var(--surf)); border: none; border-radius: 3px; cursor: pointer; color: var(--t3); opacity: .7; transition: opacity .12s, color .12s; z-index: 2; }
+.code-sync-btn { position: absolute; top: 6px; right: 6px; padding: 2px; line-height: 1; background: var(--doc-fill); border: none; border-radius: 3px; cursor: pointer; color: var(--t3); opacity: .7; transition: opacity .12s, color .12s; z-index: 2; }
 .code-sync-btn:hover { opacity: 1; color: var(--t1); }
-.md-preview blockquote { border-left: 3px solid var(--acc); padding: 4px 16px; margin: 12px 0; color: var(--t2); background: var(--surf); border-radius: 0 6px 6px 0; }
+.md-preview blockquote { border-left: 3px solid var(--brd2); padding: 0 0 0 1em; margin: 0 0 1em; color: var(--t2); }
+.md-preview blockquote > :last-child { margin-bottom: 0; }
 /* ponytail: run output synced to the editor lands as a `> ` blockquote, but
    blockquotes default to the proportional body font + collapsed spaces — so
    dir's column alignment (and any monospace table) scrambles. rehypeMarkResult
    Block tags the blockquote right after a `<!-- Result -->` comment with
    .run-result; restore monospace + pre-wrap so spaces/columns survive. */
-.md-preview blockquote.run-result { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; white-space: pre-wrap; color: var(--t2); font-style: normal; }
-.md-preview ul { padding-left: 24px; margin: 8px 0; list-style-type: disc; }
-.md-preview ol { padding-left: 24px; margin: 8px 0; list-style-type: decimal; }
-.md-preview li { margin: 4px 0; }
-.md-preview li::marker { color: var(--t1); }
+.md-preview blockquote.run-result { font-family: var(--font-mono, ui-monospace, monospace); font-size: .8em; white-space: pre-wrap; color: var(--t2); font-style: normal; }
+.md-preview ul { padding-left: 1.5em; margin: 0 0 1em; list-style-type: disc; }
+.md-preview ol { padding-left: 1.5em; margin: 0 0 1em; list-style-type: decimal; }
+.md-preview li { margin: .3em 0; }
+.md-preview li > :is(ul,ol) { margin: .3em 0 0; }
+.md-preview li::marker { color: var(--t3); }
 .md-preview ul.contains-task-list { list-style-type: none; padding-left: 4px; }
-.md-preview hr { border: none; border-top: 1px solid var(--brd); margin: 20px 0; }
-.md-preview table { border-collapse: collapse; width: 100%; margin: 12px 0; table-layout: fixed; }
-.md-preview th, .md-preview td { border: 1px solid var(--brd); padding: 6px 12px; font-size: 12px; text-align: left; }
+.md-preview hr { border: none; border-top: 1px solid var(--doc-line); margin: 2em 0; }
+/* ponytail: width:100% + table-layout:fixed is deliberate — split mode must
+   never scroll horizontally (wide tables wrap inside their cells). */
+.md-preview table { border-collapse: collapse; width: 100%; margin: 0 0 1em; table-layout: fixed; }
+.md-preview th, .md-preview td { border: none; border-bottom: 1px solid var(--doc-line); padding: .5em .8em; font-size: .92em; text-align: left; }
 .md-preview td { overflow-wrap: break-word; }
-.md-preview th { background: var(--surf); font-weight: 600; }
+.md-preview th { font-weight: 600; color: var(--t1); border-bottom-color: var(--t4); }
 .md-preview img { max-width: 100%; border-radius: 6px; margin: 8px auto; display: block; }
+/* Callout (container-extensions CalloutExtension): its body inherits the
+   preview's size/line-height; collapse the edge margins inside the tint. */
+.docmd-callout-body > :first-child { margin-top: 0; }
+.docmd-callout-body > :last-child { margin-bottom: 0; }
 /* ponytail: inline-block shrink-to-fit + max-width:100% on inner media → wrapper
    tracks the rendered media size when state is null. On drag, inline width
    overrides shrink-to-fit. > :not(.resize-handle) neutralizes mermaid's flex
