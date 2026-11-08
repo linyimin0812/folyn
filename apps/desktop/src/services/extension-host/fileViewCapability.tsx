@@ -24,6 +24,8 @@ import { FolynEditor } from '@/editor/EditorView';
 import { detectFileType } from '@/store/editorStore';
 import { getHandlerById, getModeComponent, getSupportedModes } from '@/components/file-types/registry';
 import { useExtensionFileViewStore } from '@/store/extensionFileViewStore';
+import { externalFileProvider } from '@/services/externalFileProvider';
+import { isExternalPath } from '@/utils/isExternalPath';
 
 /** The modes this view knows how to render, in top-bar order. */
 const ORDER: ViewMode[] = ['edit', 'split', 'preview'];
@@ -51,6 +53,22 @@ function ExtensionFileView({ path, content = '', onChange, onSave }: ExtensionFi
   const mode = useExtensionFileViewStore((s) => s.mode);
   const [text, setText] = useState(content);
 
+  // A handler that renders from text (SVG, markdown, CSV…) needs the file's
+  // contents. When the page passes only a local path — a saved download —
+  // read it here, the way the Vault editor reads a file before its preview.
+  const needsText = !!handler?.needsFileContent && !content && isExternalPath(path);
+  const [reading, setReading] = useState(needsText);
+  useEffect(() => {
+    if (!needsText) return;
+    let cancelled = false;
+    setReading(true);
+    externalFileProvider.readFile(path)
+      .then((value) => { if (!cancelled) setText(value); })
+      .catch(() => { /* left empty: the notice below explains */ })
+      .finally(() => { if (!cancelled) setReading(false); });
+    return () => { cancelled = true; };
+  }, [needsText, path]);
+
   // Publish this view's modes, and land on a mode it actually offers.
   useEffect(() => {
     const store = useExtensionFileViewStore.getState();
@@ -70,6 +88,7 @@ function ExtensionFileView({ path, content = '', onChange, onSave }: ExtensionFi
   }, [path, text]);
   useEffect(() => () => { useExtensionFileViewStore.setState({ current: null }); }, []);
 
+  if (reading) return null;
   if (fileType === 'unsupported' || (!Preview && !text)) {
     return <Notice text={`Folyn 没有可显示 .${ext || '?'} 文件的视图。`}/>;
   }
