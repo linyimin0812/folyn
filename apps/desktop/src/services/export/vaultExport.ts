@@ -247,7 +247,7 @@ async function fileToBodyFragment(
       html: page,
       css: '',
       canvas: true,
-      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}\n<script>${VT_CANVAS_GESTURE_SCRIPT}</script>\n</body>\n</html>`,
+      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#16171b' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}\n<script>${VT_CANVAS_GESTURE_SCRIPT}</script>\n</body>\n</html>`,
     };
   }
 
@@ -261,7 +261,7 @@ async function fileToBodyFragment(
       html: page,
       css: '',
       canvas: true,
-      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}\n<script>${VT_CANVAS_GESTURE_SCRIPT}</script>\n</body>\n</html>`,
+      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#16171b' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}\n<script>${VT_CANVAS_GESTURE_SCRIPT}</script>\n</body>\n</html>`,
     };
   }
 
@@ -274,7 +274,7 @@ async function fileToBodyFragment(
     return {
       html: `<iframe srcdoc="${srcdoc}" style="width:100%;height:100%;border:0;display:block"></iframe>`,
       css: '',
-      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:auto;background:${theme === 'dark' ? '#0b0d14' : '#fff'}}iframe{width:100%;height:100vh;border:0}</style></head>\n<body><iframe srcdoc="${srcdoc}"></iframe></body>\n</html>`,
+      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:auto;background:${theme === 'dark' ? '#16171b' : '#fff'}}iframe{width:100%;height:100vh;border:0}</style></head>\n<body><iframe srcdoc="${srcdoc}"></iframe></body>\n</html>`,
     };
   }
 
@@ -295,7 +295,7 @@ async function fileToBodyFragment(
     const title = escapeHtml(i18n.t('editor:export.vault.unsupported.title'));
     const desc = escapeHtml(i18n.t('editor:export.vault.unsupported.desc', { name: file.name }));
     const page = `<div class="vt-unsupported"><div class="vt-unsupported-icon">?</div><div class="vt-unsupported-title">${title}</div><div class="vt-unsupported-desc">${desc}</div></div>`;
-    const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+    const bodyBg = theme === 'dark' ? '#16171b' : '#fff';
     const color = theme === 'dark' ? '#8a92b2' : '#4a5378';
     const descColor = theme === 'dark' ? '#5b6480' : '#7a83a0';
     const locale = i18n.language?.split('-')[0] || 'zh';
@@ -523,7 +523,7 @@ function assembleSingleHtml(
 ): string {
   const treeHtml = buildTreeHtml(tree, files);
   const themeVars = theme === 'dark' ? DARK_THEME_VARS : LIGHT_THEME_VARS;
-  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const bodyBg = theme === 'dark' ? '#16171b' : '#fff';
   const docSections = docs
     .map((d) => d.standalone
       ? `    <section class="vt-doc vt-doc-fit${d.canvas ? ' vt-doc-canvas' : ''}" data-doc="${d.docId}">${d.html}</section>`
@@ -577,7 +577,7 @@ function assembleFolderIndexHtml(
   vaultName: string,
   theme: 'light' | 'dark',
 ): string {
-  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const bodyBg = theme === 'dark' ? '#16171b' : '#fff';
   const fileNames = new Map(files.map((f) => [f.path, 'docs/' + safeDocFileName(f.docId, f.name)]));
   const treeHtml = buildFolderTreeHtml(tree, fileNames);
   return `<!DOCTYPE html>

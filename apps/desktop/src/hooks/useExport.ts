@@ -293,14 +293,14 @@ ${svg}
     body = await inlineImages(renderedBody, vaultRoot, path);
   }
 
-  const bodyBg = theme === 'dark' ? '#0b0d14' : '#fff';
+  const bodyBg = theme === 'dark' ? '#16171b' : '#fff';
   return `<!DOCTYPE html>
 <html lang="zh-CN" data-theme="${theme}" data-code-theme="${codeTheme}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(name.replace(/\.md$/, ''))}</title>
-  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n${RESIZABLE_MEDIA_OVERRIDE}\n</style>
+  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 720px; width: 100%; }\n${RESIZABLE_MEDIA_OVERRIDE}\n</style>
   <script>${CONTAINER_INTERACT_SCRIPT}</script>
   <script>${IMAGE_LIGHTBOX_SCRIPT}</script>
 </head>

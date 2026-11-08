@@ -105,3 +105,29 @@ Preview typography:
   `components/file-types/markdown/CodeBlockWrapper.tsx`,
   `packages/container-extensions/src/extensions/CalloutExtension.tsx`.
 * No whole-project builds (AGENTS.md).
+
+## Round 2 (user feedback: "预览看着太素了" + sync export styles)
+
+### Richer preview details (user picked: heading accents, accent touches, table fill + zebra)
+
+* h1: short accent underline — `padding-bottom: .4em; background: linear-gradient(var(--acc), var(--acc)) left bottom / 2.4em 3px no-repeat` (no pseudo, no border).
+* h2: hairline full-width underline `border-bottom: 1px solid var(--doc-line); padding-bottom: .3em`.
+* h3: small accent dot before the text (`::before`, ~.4em round, `--acc`, vertically centred, margin-right .5em).
+* Inline code: accent tint — bg `color-mix(--acc 8%, transparent)`, text `color-mix(--acc 80%, --t1)`. Code inside `pre` must reset to normal `--t1`/no bg.
+* List markers: `color-mix(--acc 55%, --t3)`.
+* Blockquote: bar `color-mix(--acc 45%, transparent)`, bg `color-mix(--acc 4%, transparent)`, padding `.6em 1em`, radius `0 6px 6px 0`. `.run-result` keeps mono.
+* `mark` (raw `<mark>`): highlighter — bg `color-mix(#f5c542 35%, transparent)`, color inherit, small radius/padding.
+* Tables: header fill `--doc-fill`; zebra even body rows faint fill; 1px `--doc-line` outer frame with 8px radius (`border-collapse: separate; border-spacing: 0`, round corner cells). Keep `width:100%; table-layout: fixed`.
+
+### Export parity
+
+All DOM exports (`renderMarkdownToHtmlViaDom` → single HTML, vault export, PDF) already embed the
+`.md-preview` root and dump index.css via `collectAppCss()`, so the preview rules apply. The legacy
+element rules in `HTML_STYLES` (headings, p, code, pre, blockquote, lists, table, hr, hljs, steps)
+now LEAK old looks wherever `.md-preview` no longer sets a property (e.g. h1 border-bottom, pre
+border, blockquote bg, th/td vertical borders). Fix:
+* Reduce `HTML_STYLES` to the document shell: body (`var(--font-ui)`, 15px/1.75, `var(--t1)`), MathJax
+  pin, `img { cursor: zoom-in }`, resizable-media rules, print rules. Remove every rule duplicated by
+  index.css.
+* Reading column `.md-preview { max-width: 800px }` → 720px in `useExport.ts` and `buildStandaloneDocHtml`.
+* Dark export bg `#0b0d14` → `#16171b` (`--doc-bg`) everywhere (`useExport.ts`, `vaultExport.ts`).

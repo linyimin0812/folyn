@@ -28,10 +28,10 @@ describe('hasContainerSyntax', () => {
 });
 
 describe('HTML_STYLES', () => {
-  it('includes body, heading, and code block styles', () => {
-    expect(HTML_STYLES).toContain('body {');
-    expect(HTML_STYLES).toContain('h1 {');
-    expect(HTML_STYLES.toLowerCase()).toContain('pre');
+  it('is a document shell: themed body, no element rules duplicated from index.css', () => {
+    expect(HTML_STYLES).toContain('body { font-family: var(--font-ui)');
+    expect(HTML_STYLES).toContain('color: var(--t1)');
+    expect(HTML_STYLES).not.toMatch(/(^|\s)(h1|pre|blockquote|table|\.hljs)\s*\{/);
   });
   it('includes resizable-media rules for image size parity with preview', () => {
     expect(HTML_STYLES).toContain('.resizable-media');

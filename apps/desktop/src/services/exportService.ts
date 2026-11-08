@@ -211,7 +211,7 @@ export async function renderMarkdownToHtmlViaDom(
   const bg = theme === 'dark' ? '#16171b' : '#fff';
   const fg = theme === 'dark' ? '#e2e8f8' : '#1a2040';
   container.style.cssText =
-    `position:absolute;left:-9999px;top:0;width:800px;height:auto;background:${bg};color:${fg};visibility:hidden;`;
+    `position:absolute;left:-9999px;top:0;width:720px;height:auto;background:${bg};color:${fg};visibility:hidden;`;
   document.body.appendChild(container);
 
   const root = createRoot(container);
@@ -446,17 +446,14 @@ export async function applyContainerEnhancers(
 }
 
 /**
- * Styles for exported HTML / PDF.
- * These mirror the .md-preview styles from index.css with CSS variables
- * resolved to the light-theme palette so the export looks identical to the
- * in-app preview.
+ * Document shell for exported HTML / PDF. Every markdown export embeds the
+ * `.md-preview` root plus the app stylesheet (collectAppCss), so element
+ * styling (headings, code, tables, hljs, steps …) comes from index.css —
+ * do not duplicate it here or stale element rules leak wherever
+ * `.md-preview` leaves a property unset.
  */
 export const HTML_STYLES = `
-    body {
-      max-width: 800px; margin: 0 auto; padding: 40px 20px;
-      font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 14px; line-height: 1.8; color: #1a2040; word-break: break-word;
-    }
+    body { font-family: var(--font-ui); font-size: 15px; line-height: 1.75; color: var(--t1); word-break: break-word; }
 
     /* MathJax: pin mjx-container to a stable font + size so the SVG
        width="Xex" resolves consistently regardless of whether 'Sora'
@@ -464,55 +461,6 @@ export const HTML_STYLES = `
        the full rationale. */
     ${MATHJAX_CONTAINER_CSS}
 
-    /* Headings */
-    h1 { font-size: 28px; font-weight: 700; margin: 8px 0 12px; border-bottom: 1px solid #dde2f0; padding-bottom: 8px; }
-    h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; }
-    h3 { font-size: 18px; font-weight: 600; margin: 16px 0 8px; }
-    h4 { font-size: 15px; font-weight: 600; margin: 12px 0 6px; }
-    h5, h6 { font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
-
-    /* Inline */
-    p { margin: 8px 0; }
-    a { color: #3a6ef0; text-decoration: none; }
-    strong { font-weight: 700; }
-    em { font-style: italic; }
-    del { text-decoration: line-through; color: #8892b0; }
-
-    /* Code */
-    code {
-      font-family: 'DM Mono', monospace; font-size: 12px;
-      background: #f8f9fd; padding: 2px 5px; border-radius: 3px;
-      border: 1px solid #dde2f0;
-    }
-    pre {
-      background: #f8f9fd; border: 1px solid #dde2f0; border-radius: 6px;
-      padding: 12px 16px; overflow-x: auto; margin: 12px 0;
-    }
-    pre code {
-      background: none; border: none; padding: 0; font-size: 12px;
-      line-height: 1.6; color: #1a2040;
-    }
-
-    /* Blockquote */
-    blockquote {
-      border-left: 3px solid #3a6ef0; padding: 4px 16px; margin: 12px 0;
-      color: #4a5580; background: #f8f9fd; border-radius: 0 6px 6px 0;
-    }
-
-    /* Lists */
-    ul { padding-left: 24px; margin: 8px 0; list-style-type: disc; }
-    ol { padding-left: 24px; margin: 8px 0; list-style-type: decimal; }
-    li { margin: 4px 0; }
-    ul.contains-task-list { list-style-type: none; padding-left: 4px; }
-    input[type="checkbox"] { margin-right: 6px; }
-
-    /* Table */
-    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-    th, td { border: 1px solid #dde2f0; padding: 6px 12px; font-size: 12px; text-align: left; }
-    th { background: #f8f9fd; font-weight: 600; }
-
-    /* Image */
-    img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
     img { cursor: zoom-in; }
 
     /* Resizable media wrapper — mirrors .md-preview .resizable-media rules
@@ -524,47 +472,7 @@ export const HTML_STYLES = `
     .resizable-media img,
     .resizable-media svg { width: 100% !important; height: auto !important; display: block; margin: 0; max-width: none !important; }
 
-    /* Horizontal rule */
-    hr { border: none; border-top: 1px solid #dde2f0; margin: 20px 0; }
-
-    /* Syntax highlighting (light theme) */
-    .hljs { background: #f8f9fd; }
-    .hljs-comment, .hljs-quote { color: #940; }
-    .hljs-keyword, .hljs-selector-tag { color: #708; }
-    .hljs-number, .hljs-literal { color: #164; }
-    .hljs-string, .hljs-addition { color: #a11; }
-    .hljs-regexp { color: #e40; }
-    .hljs-tag, .hljs-name { color: #170; }
-    .hljs-attr, .hljs-variable, .hljs-template-variable { color: #00c; }
-    .hljs-attribute { color: #00c; }
-    .hljs-type, .hljs-built_in, .hljs-builtin-name, .hljs-class .hljs-title { color: #085; }
-    .hljs-meta { color: #555; }
-    .hljs-title, .hljs-function .hljs-title { color: #00f; }
-    .hljs-section { color: #00f; }
-    .hljs-deletion { color: #a11; }
-    .hljs-symbol, .hljs-bullet { color: #708; }
-    .hljs-link { color: #219; }
-    .hljs-emphasis { font-style: italic; }
-    .hljs-strong { font-weight: bold; }
-
-    /*
-     * Steps container: layout + CSS counter cannot be expressed via inline
-     * styles, so we keep these rules here. All other container styles are
-     * rendered as inline styles by the shared React components.
-     */
-    .docmd-steps { position: relative; padding-left: 3rem; margin: 1.5rem 0; counter-reset: docmd-step; }
-    .docmd-steps-line { position: absolute; left: calc(1rem - 1px); top: 1rem; bottom: 1rem; width: 2px; background-color: #dde2f0; }
-    .docmd-step { position: relative; margin-bottom: 2.5rem; counter-increment: docmd-step; }
-    .docmd-step-number {
-      position: absolute; left: -2.75rem; top: 0; width: 1.5rem; height: 1.5rem;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 600; font-size: 0.75rem; line-height: 1; color: #4a5580; z-index: 1;
-      background-color: #f8f9fd; border: 1px solid #dde2f0; border-radius: 50%;
-    }
-    .docmd-step-number::before { content: counter(docmd-step); }
-
     @media print {
-      body { max-width: none; padding: 20px; }
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 `;
@@ -607,7 +515,7 @@ export const CONTAINER_INTERACT_SCRIPT = `
  * resolves to the replaced element's default 300px for images WITHOUT
  * intrinsic dimensions (e.g. SVG <img> with viewBox but no width/height).
  * In the preview such images fill the .md-preview width because the img's
- * max-width:100% caps against the 800px parent. This override switches the
+ * max-width:100% caps against the 720px parent. This override switches the
  * wrapper to width:100% — but ONLY for wrappers whose direct child is an
  * <img> (`:has(> img)`). Diagram fences (plantuml/mermaid/graphviz/markmap)
  * render inline <svg> with intrinsic dimensions inside nested divs, so they
@@ -750,7 +658,7 @@ export const CODE_INTERACT_SCRIPT = `
  * Assemble a standalone HTML document shell — the exact shell used by
  * single-file export (exportActiveHtml), reused by vault folder-mode export
  * so every per-doc page is consistent with single-doc export: same
- * HTML_STYLES, theme vars, code theme, runtime font vars, 800px centered
+ * HTML_STYLES, theme vars, code theme, runtime font vars, 720px centered
  * reading column, container-interact + lightbox scripts.
  */
 export function buildStandaloneDocHtml(opts: {
@@ -772,7 +680,7 @@ export function buildStandaloneDocHtml(opts: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <base target="_blank">
   <title>${safeTitle}</title>
-  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 800px; width: 100%; }\n${CANVAS_DOC_STYLES}\n${CODE_DOC_STYLES}\n${RESIZABLE_MEDIA_OVERRIDE}\n</style>
+  <style>${HTML_STYLES}\n${themeVars}\n${codeThemeCss}\n${runtimeFontVars()}\n${css}\nhtml, body { height: auto !important; min-height: 100vh !important; overflow: auto !important; background: ${bodyBg} !important; }\nbody { display: flex !important; justify-content: center !important; align-items: flex-start !important; max-width: none !important; margin: 0 !important; padding: 40px 20px !important; }\n.md-preview { max-width: 720px; width: 100%; }\n${CANVAS_DOC_STYLES}\n${CODE_DOC_STYLES}\n${RESIZABLE_MEDIA_OVERRIDE}\n</style>
   <script>${CONTAINER_INTERACT_SCRIPT}</script>
   <script>${IMAGE_LIGHTBOX_SCRIPT}</script>
   <script>${CODE_INTERACT_SCRIPT}</script>
