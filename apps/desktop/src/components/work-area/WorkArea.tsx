@@ -34,7 +34,7 @@ import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 const neverAborts: AbortSignal = new AbortController().signal;
 
 /** The loading skeleton stays at least this long on every file open or tab switch. */
-const MIN_SKELETON_MS = 500;
+const MIN_SKELETON_MS = 100;
 /** Length of the slide-in once the skeleton goes away. */
 const REVEAL_MS = 300;
 
