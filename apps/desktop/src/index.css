@@ -187,13 +187,6 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 .ed-loading {
   position: absolute; inset: 0; z-index: 10;
   display: flex; flex-direction: column; background: var(--surf);
-  animation: fadeIn .2s cubic-bezier(.2,.8,.2,1);
-}
-@keyframes ed-loadbar { 0% { transform: translateX(-100%) scaleX(.3); } 50% { transform: translateX(30%) scaleX(.6); } 100% { transform: translateX(100%) scaleX(.3); } }
-.ed-loadbar { position: relative; height: 2px; flex-shrink: 0; overflow: hidden; }
-.ed-loadbar::after {
-  content: ''; position: absolute; inset: 0; background: var(--acc); transform-origin: left;
-  animation: ed-loadbar 1s cubic-bezier(.2,.8,.2,1) infinite;
 }
 .ed-doc-skeleton {
   display: flex; flex-direction: column; gap: 12px;
@@ -207,8 +200,7 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
 }
 .ed-skel-title { height: 18px; width: 46%; margin-bottom: 8px; }
 @media (prefers-reduced-motion: reduce) {
-  .ed-loading, .ed-skel { animation: none; }
-  .ed-loadbar::after { animation-duration: 3s; }
+  .ed-skel { animation: none; }
 }
 
 /* ── CodeMirror ── */

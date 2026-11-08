@@ -33,6 +33,11 @@ import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 // AbortController through EditorStore if a future editor needs cancellation.
 const neverAborts: AbortSignal = new AbortController().signal;
 
+/** The loading skeleton stays at least this long on every file open or tab switch. */
+const MIN_SKELETON_MS = 500;
+/** Length of the slide-in once the skeleton goes away. */
+const REVEAL_MS = 300;
+
 export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const { t } = useTranslation();
   const viewMode = useEditorStore((state) => state.viewMode);
@@ -52,7 +57,11 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
 
   // Filter tabs by the active activity panel
   const tabs = allTabs.filter((t) => t.activity === activePanel);
-  const activeTab = tabs.find((t) => t.id === activeTabId);
+  // The tab whose content is rendered. It trails activeTabId by a frame on a
+  // switch so the loading skeleton paints before the new file renders (a large
+  // markdown file blocks the main thread for a few hundred ms).
+  const [shownTabId, setShownTabId] = useState(activeTabId);
+  const activeTab = tabs.find((t) => t.id === shownTabId);
   const showLineNumbers = useEditorPrefsStore((s) => s.showLineNumbers);
   const settingsTabSize = useEditorPrefsStore((s) => s.tabSize);
   const wrapColumn = useEditorPrefsStore((s) => s.wrapColumn);
@@ -86,7 +95,7 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   useEffect(() => {
     setActiveEditorHandle(editorRef.current, activeTab?.id ?? null);
     return () => setActiveEditorHandle(null);
-  }, [activeTabId, activePanel, viewMode, presentationMode, versionHistoryVisible]);
+  }, [shownTabId, activePanel, viewMode, presentationMode, versionHistoryVisible]);
 
   // Get the handler for the active tab
   const handler = activeTab ? getHandlerById(activeTab.fileType) : undefined;
@@ -111,7 +120,9 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
       prevTabIdRef.current = activeTabId;
     }
 
-    if (activeTabId && handler) {
+    // Wait until the active tab is the one rendered: during a switch the store's
+    // viewMode already belongs to the new tab while the old one is still shown.
+    if (activeTabId && handler && shownTabId === activeTabId) {
       const supported = getSupportedModes(handler);
       if (supported.length > 0 && !supported.includes(viewMode)) {
         // 当前 viewMode 不被该文件类型支持（如从 HTML 的 'visual' 切到 markdown），
@@ -121,7 +132,7 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
         setViewMode(getDefaultMode(handler)!);
       }
     }
-  }, [activeTabId, handler, viewMode, setViewMode, activeTab]);
+  }, [activeTabId, shownTabId, handler, viewMode, setViewMode, activeTab]);
 
   // Pane resize (editor vs preview split ratio)
   const [editorFlex, setEditorFlex] = useState(1);
@@ -129,23 +140,57 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const splitDragging = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  // Bring the content in when another file becomes active, with the extension
-  // file views' motion (fzs-view-in: fade up from 4px below). Animated in place
-  // (no remount) so CodeMirror keeps its state. A click's re-render, including
-  // the editor's document swap and the preview's re-parse in effects, finishes
-  // before the next paint, so the animation starts in a layout effect. Web
-  // tabs are native webviews drawn over the page, which can't be animated.
-  const activeIsWeb = activeTab?.fileType === 'web';
+  // Loading skeleton on every file open and tab switch: it covers the content
+  // area from the click, for at least MIN_SKELETON_MS and until the file has
+  // loaded, while the new file renders underneath; then the content slides up
+  // into place. Web tabs are native webviews drawn over the page and get none.
+  const activeIsWeb = tabs.find((t) => t.id === activeTabId)?.fileType === 'web';
+  const [skeletonSince, setSkeletonSince] = useState<number | null>(null);
   useLayoutEffect(() => {
+    if (!activeTabId || activeIsWeb) {
+      setShownTabId(activeTabId);
+      if (!isFileLoading) setSkeletonSince(null);
+      return;
+    }
+    // A newly opened file already shows it from the start of loading.
+    setSkeletonSince((since) => since ?? performance.now());
+    // Render the new tab after the skeleton has painted: the timeout queued
+    // from a frame callback runs once that frame is on screen.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => setShownTabId(activeTabId), 0);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (isFileLoading) setSkeletonSince((since) => since ?? performance.now());
+  }, [isFileLoading]);
+  useEffect(() => {
+    if (skeletonSince === null || isFileLoading || shownTabId !== activeTabId) return;
+    const timer = setTimeout(
+      () => setSkeletonSince(null),
+      Math.max(0, skeletonSince + MIN_SKELETON_MS - performance.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [skeletonSince, isFileLoading, shownTabId, activeTabId]);
+
+  const showSkeleton = skeletonSince !== null;
+  const skeletonWasShownRef = useRef(false);
+  useLayoutEffect(() => {
+    const wasShown = skeletonWasShownRef.current;
+    skeletonWasShownRef.current = showSkeleton;
     const container = splitContainerRef.current;
-    if (!activeTabId || !container || activeIsWeb) return;
+    if (!wasShown || showSkeleton || !container || !activeTab || activeIsWeb) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const animation = container.animate(
-      [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' },
+      [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
+      { duration: REVEAL_MS, easing: 'cubic-bezier(.2,.8,.2,1)' },
     );
     return () => animation.cancel();
-  }, [activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showSkeleton]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -282,7 +327,7 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           if TabBar ever gets horizontal padding. */}
       <div className="flex-1 flex overflow-hidden relative" ref={splitContainerRef}>
 
-      {isFileLoading && <FileLoadingView label={t('shell:workArea.loading')} />}
+      {showSkeleton && <FileLoadingView label={t('shell:workArea.loading')} />}
 
       {tabs.length === 0 ? (
         showSessionsEvidence ? (

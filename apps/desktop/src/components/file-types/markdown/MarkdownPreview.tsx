@@ -64,19 +64,24 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // flash the previous doc while a debounce window runs. parsedContent is
   // what the DOM shows, so the cursor-sync effect and its srcLines read it
   // (not the live content, which can be a few keystrokes ahead).
-  const [parsedContent, setParsedContent] = useState(content);
+  const [parsedState, setParsedContent] = useState(content);
+  // Another file: show its content in this same render instead of after an
+  // effect, so a tab switch parses once rather than old text, then new text.
+  const [parsedPath, setParsedPath] = useState(filePath);
+  const switchedFile = filePath !== parsedPath;
+  if (switchedFile) {
+    setParsedPath(filePath);
+    setParsedContent(content);
+  }
+  const parsedContent = switchedFile ? content : parsedState;
   const parseRef = useRef(parsedContent);
   parseRef.current = parsedContent;
-  const lastParsedPathRef = useRef(filePath);
   const pendingSinceRef = useRef(0);
   useEffect(() => {
-    if (filePath !== lastParsedPathRef.current) {
-      lastParsedPathRef.current = filePath;
+    if (content === parsedContent) {
       pendingSinceRef.current = 0;
-      setParsedContent(content);
       return;
     }
-    if (content === parsedContent) return;
     if (content.length <= PARSE_DEBOUNCE_CHARS) {
       pendingSinceRef.current = 0;
       setParsedContent(content);
@@ -93,7 +98,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
       setParsedContent(content);
     }, wait);
     return () => clearTimeout(t);
-  }, [content, filePath, parsedContent]);
+  }, [content, parsedContent]);
 
   usePreviewCursorSync({
     containerRef,
