@@ -19,6 +19,7 @@ import { registerBuiltinExtensions } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { getActiveContainers } from '@/services/containerRegistryService';
 import { transformMathBrackets, MATHJAX_CONTAINER_CSS } from '@/services/markdown/renderMarkdown';
+import { remarkSourceListNumbers } from '@/components/file-types/markdown/remarkSourceListNumbers';
 
 import * as excalidrawExporter from './export/excalidraw';
 import * as drawioExporter from './export/drawio';
@@ -93,6 +94,7 @@ export function renderMarkdownToHtml(markdown: string, _vaultRoot?: string): str
     .use(remarkParse)
     .use(remarkMath)
     .use(remarkGfm)
+    .use(remarkSourceListNumbers)
     .use(remarkBreaks)
     .use(remarkDirective)
     .use(remarkDirectiveRehype)

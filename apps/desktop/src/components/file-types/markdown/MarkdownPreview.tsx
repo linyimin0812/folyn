@@ -17,6 +17,7 @@ import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/ren
 import { rehypeSourceLine } from './rehypeSourceLine';
 import { rehypeBlankGap } from './rehypeBlankGap';
 import { rehypeShowRawTags, remarkCollapseUnknownTagRuns } from './rehypeShowRawTags';
+import { remarkSourceListNumbers } from './remarkSourceListNumbers';
 import { planGapHeights } from './gapCompensation';
 import { VaultContext } from '@folyn/container-extensions';
 import { getHandlerByExtension, getHandlerById, getModeComponent } from "@/components/file-types/registry";
@@ -194,6 +195,7 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         .use(remarkCollapseUnknownTagRuns, { extraKnownTags: Object.keys(componentMap) })
         .use(remarkMath)
         .use(remarkGfm)
+        .use(remarkSourceListNumbers)
         .use(remarkBreaks)
         .use(remarkDirective)
         .use(remarkDirectiveRehype)
