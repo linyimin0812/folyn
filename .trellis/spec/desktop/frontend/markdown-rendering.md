@@ -171,7 +171,8 @@ loop picks the later (`<pre>`) element, and `codeBlockAlignPoint` measures the
 lives on `.code-block-inner` only, so the header is never clipped.
 
 Reading-surface tokens `--doc-bg` / `--doc-fill` / `--doc-line` exist only for
-markdown tabs (`.md-doc-surface` on EditorPane body + PreviewPane `.prev-body`);
+the reading surface (`.doc-surface` on the EditorPane body for ALL file types +
+the markdown PreviewPane `.prev-body`; other FolynEditor hosts stay on `--surf`);
 `exportService.ts` `LIGHT_THEME_VARS` / `DARK_THEME_VARS` must define them too.
 
 ### Preview double-click word selection

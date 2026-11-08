@@ -45,8 +45,8 @@ Current state (from repo):
 
 * Preview body font follows the UI font (`var(--font-ui)`, user-selectable in Appearance); only size,
   line height, spacing and measure change.
-* Background scope = markdown area only (editor + preview of markdown tabs). Sidebar, tab bar and
-  other file types keep the current theme. Editor and preview share the same surface color.
+* Background scope = the shell CodeMirror editor (all file types) + the markdown preview. Sidebar, tab
+  bar and non-markdown previews keep the current theme. Editor and preview share the same surface color.
 * Light: pure white reading surface. Dark: dark reading surface.
 * Preview typography per the four principles.
 
@@ -60,8 +60,8 @@ Tokens (new, in both theme blocks, scoped by use not by selector):
 * `--doc-fill`: subtle fill for code blocks / table header / callouts — light `#f6f7f9`, dark `#1e1f24`.
 * `--doc-line`: hairline for table rows / hr — light `#ebedf0`, dark `#2a2c33`.
 
-Surfaces: markdown EditorPane body + CodeMirror gutters + PreviewPane `.prev-body` use `--doc-bg`
-(markdown tabs only).
+Surfaces: EditorPane body + CodeMirror gutters (all file types, class `.doc-surface`) + markdown
+PreviewPane `.prev-body` use `--doc-bg`.
 
 Preview typography:
 * body 15px / line-height 1.75, `--t1` slightly softened; measure `max-width: 720px`.
