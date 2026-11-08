@@ -53,6 +53,7 @@
     }
   },
   "workArea": {
+    "loading": "Opening file",
     "empty": {
       "files": "No open files"
     },

@@ -53,6 +53,7 @@
     }
   },
   "workArea": {
+    "loading": "正在打开文件",
     "empty": {
       "files": "暂无打开的文件"
     },

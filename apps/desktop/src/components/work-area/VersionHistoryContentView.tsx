@@ -100,7 +100,6 @@ export function VersionHistoryContentView() {
           onContentChange={noop}
           onSave={noop}
           externalContentVersion={0}
-          isFileLoading={false}
           showLineNumbers={showLineNumbers}
           tabSize={tabSize}
           wrapColumn={wrapColumn}

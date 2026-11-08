@@ -184,10 +184,31 @@ html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999
   border: 2px solid var(--brd); border-top-color: var(--acc);
   border-radius: 50%; animation: spin .6s linear infinite; flex-shrink: 0;
 }
-.ed-loading-overlay {
+.ed-loading {
   position: absolute; inset: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--surf); color: var(--t3); font-size: 13px;
+  display: flex; flex-direction: column; background: var(--surf);
+  animation: fadeIn .2s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes ed-loadbar { 0% { transform: translateX(-100%) scaleX(.3); } 50% { transform: translateX(30%) scaleX(.6); } 100% { transform: translateX(100%) scaleX(.3); } }
+.ed-loadbar { position: relative; height: 2px; flex-shrink: 0; overflow: hidden; }
+.ed-loadbar::after {
+  content: ''; position: absolute; inset: 0; background: var(--acc); transform-origin: left;
+  animation: ed-loadbar 1s cubic-bezier(.2,.8,.2,1) infinite;
+}
+.ed-doc-skeleton {
+  display: flex; flex-direction: column; gap: 12px;
+  max-width: 760px; width: 100%; margin: 0 auto; padding: 28px 32px;
+}
+@keyframes ed-shimmer { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+.ed-skel {
+  display: block; height: 10px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--act) 30%, color-mix(in srgb, var(--act) 35%, var(--panel)) 50%, var(--act) 70%);
+  background-size: 220% 100%; animation: ed-shimmer 1.2s ease-in-out infinite;
+}
+.ed-skel-title { height: 18px; width: 46%; margin-bottom: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .ed-loading, .ed-skel { animation: none; }
+  .ed-loadbar::after { animation-duration: 3s; }
 }
 
 /* ── CodeMirror ── */

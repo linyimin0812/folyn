@@ -16,7 +16,6 @@ interface EditorPaneProps {
   onContentChange: (tabId: string, content: string) => void;
   onSave: (tabId: string) => void;
   externalContentVersion: number;
-  isFileLoading: boolean;
   showLineNumbers: boolean;
   tabSize: number;
   wrapColumn: number;
@@ -35,7 +34,6 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
       onContentChange,
       onSave,
       externalContentVersion,
-      isFileLoading,
       showLineNumbers,
       tabSize,
       wrapColumn,
@@ -210,11 +208,6 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
       <div className="flex-1 flex flex-col overflow-hidden border-r border-brd min-w-[200px]" style={style}>
         <DiffReviewBar editorRef={editorRef} activeTab={activeTab} />
         <div className="flex-1 overflow-hidden flex flex-col bg-surf min-h-0 relative">
-          {isFileLoading && (
-            <div className="ed-loading-overlay">
-              <span className="ft-spinner" /> 加载文件中…
-            </div>
-          )}
           <FolynEditor
             key={`${showLineNumbers}-${tabSize}-${wrapColumn}-${editorFont}-${editorFontSize}`}
             ref={editorRef}

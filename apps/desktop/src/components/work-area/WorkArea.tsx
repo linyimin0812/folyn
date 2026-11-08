@@ -23,6 +23,7 @@ import { OutlineSidebar } from './OutlineSidebar';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
 import { PresentationOverlay } from './PresentationOverlay';
+import { FileLoadingView } from './FileLoadingView';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 
 // ponytail: inline `kind: 'component'` editors (Excalidraw / rich-text / web)
@@ -274,7 +275,9 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           is flex-col and includes TabBar; its rect happens to share the same
           horizontal extent, but pinning the ref here is the correct invariant
           if TabBar ever gets horizontal padding. */}
-      <div className="flex-1 flex overflow-hidden" ref={splitContainerRef}>
+      <div className="flex-1 flex overflow-hidden relative" ref={splitContainerRef}>
+
+      {isFileLoading && <FileLoadingView label={t('shell:workArea.loading')} />}
 
       {tabs.length === 0 ? (
         showSessionsEvidence ? (
@@ -313,7 +316,6 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           onContentChange={updateTabContent}
           onSave={(tabId) => markTabDirty(tabId, false)}
           externalContentVersion={externalContentVersion}
-          isFileLoading={isFileLoading}
           showLineNumbers={showLineNumbers}
           tabSize={settingsTabSize}
           wrapColumn={wrapColumn}
