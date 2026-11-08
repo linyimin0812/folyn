@@ -101,7 +101,7 @@ function ExtensionFileView({ path, content = '', onChange, onSave, resolveAsset,
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       <div className="flex-1 flex overflow-hidden min-h-0">
         {showEditor && (
-          <div className={showPreview ? 'flex-1 flex flex-col overflow-hidden border-r border-brd min-w-[200px]' : 'flex-1 flex flex-col overflow-hidden'}>
+          <div className={showPreview ? 'doc-surface flex-1 flex flex-col overflow-hidden border-r border-brd min-w-[200px]' : 'doc-surface flex-1 flex flex-col overflow-hidden'}>
             <FolynEditor
               filePath={path}
               initialContent={text}
@@ -117,7 +117,7 @@ function ExtensionFileView({ path, content = '', onChange, onSave, resolveAsset,
         {showPreview && Preview && (
           // Same body wrapper (and reading padding) the editor's preview pane uses.
           <div className={fileType === 'markdown'
-            ? 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[20vh]'
+            ? 'prev-body doc-surface flex-1 overflow-auto pt-2 px-8 pb-[20vh]'
             : 'prev-body flex-1 h-full overflow-auto'}
           >
             <AssetResolverContext.Provider value={resolveAsset ?? null}>
