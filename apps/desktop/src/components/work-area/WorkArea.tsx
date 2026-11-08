@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, type ComponentType } from 'react';
+import { useRef, useState, useCallback, useEffect, useLayoutEffect, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
@@ -129,17 +129,32 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const splitDragging = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fade the content in when another file opens, like extension file views.
-  // Animated in place (no remount) so CodeMirror and webviews keep their state.
-  useEffect(() => {
+  // Fade the content in when another file becomes active, like extension file
+  // views. Animated in place (no remount) so CodeMirror and webviews keep their
+  // state. The new content renders hidden and the fade starts two frames later:
+  // on a tab switch the editor and preview swap documents in effects and a
+  // follow-up render, and a fade started at commit would play over the old
+  // document and be over before the new one painted.
+  useLayoutEffect(() => {
     const container = splitContainerRef.current;
     if (!activeTabId || !container) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const animation = container.animate(
-      [{ opacity: 0 }, { opacity: 1 }],
-      { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' },
-    );
-    return () => animation.cancel();
+    container.style.opacity = '0';
+    let animation: Animation | undefined;
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        container.style.opacity = '';
+        animation = container.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' },
+        );
+      });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      container.style.opacity = '';
+      animation?.cancel();
+    };
   }, [activeTabId]);
 
   useEffect(() => {
