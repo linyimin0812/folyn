@@ -66,5 +66,21 @@ export function buildExtensionHttp(manifest: ExtensionManifest): ExtensionHttpCa
         onProgress,
       });
     },
+    async fetchBytes(url, init) {
+      assertHttpPermission(manifest, url);
+      const { invoke } = await import('@tauri-apps/api/core');
+      // Rust returns the body as base64 so binary survives the JSON IPC hop.
+      const resp = await invoke<{ status: number; headers: Record<string, string>; body: string }>(
+        'extension_http_fetch_bytes',
+        {
+          extensionId: manifest.id,
+          url,
+          method: typeof init?.method === 'string' ? init.method : undefined,
+          headers: normalizeHeaders(init?.headers),
+          body: typeof init?.body === 'string' ? init.body : undefined,
+        },
+      );
+      return { status: resp.status, headers: resp.headers, body: Uint8Array.from(atob(resp.body), (c) => c.charCodeAt(0)) };
+    },
   };
 }

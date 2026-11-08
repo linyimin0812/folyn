@@ -8,7 +8,15 @@
  */
 
 import { create } from 'zustand';
-import type { ViewMode } from 'folyn-extension-sdk';
+import type { ExtensionAssetResolver, ViewMode } from 'folyn-extension-sdk';
+
+/** A document an extension page shows; `resolveAsset` loads the images it
+ *  references when the document is not on disk. */
+export interface ExtensionDocument {
+  path: string;
+  content: string;
+  resolveAsset?: ExtensionAssetResolver;
+}
 
 export interface ExtensionFileViewState {
   /** Modes the mounted file view supports; empty when nothing is mounted. */
@@ -17,10 +25,10 @@ export interface ExtensionFileViewState {
   setMode: (mode: ViewMode) => void;
   /** The document the mounted file view shows, so the 演示模式 shortcut can
    *  present it the way it presents the editor's active tab. */
-  current: { path: string; content: string } | null;
+  current: ExtensionDocument | null;
   /** Markdown an extension page is showing in the Vault's 演示模式, or null. */
-  presenting: { path: string; content: string } | null;
-  setPresenting: (doc: { path: string; content: string } | null) => void;
+  presenting: ExtensionDocument | null;
+  setPresenting: (doc: ExtensionDocument | null) => void;
 }
 
 export const useExtensionFileViewStore = create<ExtensionFileViewState>((set) => ({

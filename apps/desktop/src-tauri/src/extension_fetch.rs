@@ -17,6 +17,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
@@ -54,6 +55,15 @@ pub struct DownloadedFile {
 /// JS `fetch()` branch returned so the rpcBridge caller is unchanged.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HttpResponse {
+    pub status: u16,
+    pub headers: HashMap<String, String>,
+    pub body: String,
+}
+
+/// Response shape returned by `extension_http_fetch_bytes`: the body is
+/// base64, so binary content (images) survives the JSON IPC hop intact.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct HttpBytesResponse {
     pub status: u16,
     pub headers: HashMap<String, String>,
     pub body: String,
@@ -140,6 +150,44 @@ pub async fn extension_http_fetch(
 ) -> Result<HttpResponse, AppError> {
     check_extension_origin(&app, &extension_id, &url)?;
     reqwest_fetch(&url, method, headers, body).await.map_err(AppError::from)
+}
+
+/// `extension_http_fetch` for binary responses: same origin check, but the body
+/// is returned as base64 instead of being decoded as text. For small files an
+/// extension shows inline (an image a document references); large files go
+/// through `extension_http_download`, which streams to disk.
+#[tauri::command]
+pub async fn extension_http_fetch_bytes(
+    app: tauri::AppHandle,
+    extension_id: String,
+    url: String,
+    method: Option<String>,
+    headers: Option<HashMap<String, String>>,
+    body: Option<String>,
+) -> Result<HttpBytesResponse, AppError> {
+    check_extension_origin(&app, &extension_id, &url)?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        // Not followed, as in `extension_http_download`: a custom token header
+        // would reach an origin the manifest never declared.
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|e| format!("reqwest client build failed: {e}"))?;
+    let resp = build_request(&client, &url, method, headers, body)?
+        .send()
+        .await
+        .map_err(|e| format!("http:fetchBytes request failed: {e}"))?;
+    let status = resp.status().as_u16();
+    let out_headers = response_headers(&resp);
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("http:fetchBytes body read failed: {e}"))?;
+    Ok(HttpBytesResponse {
+        status,
+        headers: out_headers,
+        body: STANDARD.encode(&bytes),
+    })
 }
 
 /// Load the extension's manifest from disk and re-check the origin allowlist.

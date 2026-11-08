@@ -34,6 +34,7 @@ import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
 import { useExtensionFileViewStore } from '@/store/extensionFileViewStore';
 import { PresentationOverlay } from '@/components/work-area/PresentationOverlay';
+import { AssetResolverContext } from '@/components/file-types/markdown/assetResolver';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
 import { initExternalFileWatcher } from './utils/fileWatcher';
 import { startProvidersBroadcast } from './store/aiConfigStore';
@@ -415,12 +416,14 @@ export default function App() {
         </div>
       )}
       {currentPage.startsWith('ext:') && extensionPresenting && (
-        <PresentationOverlay
-          content={extensionPresenting.content}
-          filePath={extensionPresenting.path}
-          vaultRoot=""
-          onExit={() => useExtensionFileViewStore.getState().setPresenting(null)}
-        />
+        <AssetResolverContext.Provider value={extensionPresenting.resolveAsset ?? null}>
+          <PresentationOverlay
+            content={extensionPresenting.content}
+            filePath={extensionPresenting.path}
+            vaultRoot=""
+            onExit={() => useExtensionFileViewStore.getState().setPresenting(null)}
+          />
+        </AssetResolverContext.Provider>
       )}
 
       {showStatusBar && !(focusMode && focusablePage) && <StatusBar />}

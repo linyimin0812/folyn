@@ -171,3 +171,30 @@ describe('buildExtensionHttp download', () => {
     expect(result).toMatchObject({ saved: false, status: 500 });
   });
 });
+
+describe('buildExtensionHttp fetchBytes', () => {
+  const origin = 'https://api.example.com';
+
+  it('decodes the base64 body Rust returns into bytes', async () => {
+    vi.mocked(mockInvoke).mockResolvedValueOnce({ status: 200, headers: { 'content-type': 'image/png' }, body: btoa('\x89PNG\x00\xff') });
+
+    const result = await buildExtensionHttp(makeManifest([origin])).fetchBytes(`${origin}/file`, { method: 'POST', body: '{}' });
+
+    expect(Array.from(result.body)).toEqual([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff]);
+    expect(result).toMatchObject({ status: 200, headers: { 'content-type': 'image/png' } });
+    expect(mockInvoke).toHaveBeenCalledWith('extension_http_fetch_bytes', {
+      extensionId: 'plantuml-extension',
+      url: `${origin}/file`,
+      method: 'POST',
+      headers: undefined,
+      body: '{}',
+    });
+  });
+
+  it('rejects an undeclared origin before invoking Rust', async () => {
+    await expect(buildExtensionHttp(makeManifest([origin])).fetchBytes('https://evil.com/a.png')).rejects.toThrow(
+      /permissions\.http\.origins/,
+    );
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+});

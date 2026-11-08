@@ -1,8 +1,9 @@
-import { useEffect, useState, createElement } from 'react';
+import { useContext, useEffect, useState, createElement } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { resolveAbsolutePath } from '@/services/externalFileProvider';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { ResizableMedia } from './ResizableMedia';
+import { AssetResolverContext } from './assetResolver';
 
 /**
  * Async img renderer: resolves `~/` and `$HOME/`-prefixed paths via Tauri
@@ -11,7 +12,8 @@ import { ResizableMedia } from './ResizableMedia';
  * `convertFileSrc`. Vault-relative and `./` `../` paths join against
  * `assetBase` (the document's directory). Excalidraw paths route through
  * ExcalidrawPreview. Wrapped in ResizableMedia when a source line is
- * attached (for drag-resize writeback).
+ * attached (for drag-resize writeback). Under an {@link AssetResolverContext}
+ * (a document that is not on disk) every local reference goes to the resolver.
  */
 export function VaultImageInner(props: {
   src?: string;
@@ -25,6 +27,8 @@ export function VaultImageInner(props: {
 }): React.ReactElement {
   const { src, alt, rest, sourceLine, filePath, assetBase, contentRef, onChangeRef } = props;
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const resolveAsset = useContext(AssetResolverContext);
+  const remote = !!resolveAsset && !!src && !src.startsWith('http') && !src.startsWith('data:');
 
   // ponytail: resolve ~ / $HOME / absolute / vault-relative paths. Synchronous
   // for http/data/absolute; async for ~/ and $HOME/ (homeDir() IPC) AND for
@@ -34,6 +38,13 @@ export function VaultImageInner(props: {
     let cancelled = false;
     if (!src || src.startsWith('http') || src.startsWith('data:')) {
       setResolvedSrc(src ?? '');
+      return () => { cancelled = true; };
+    }
+    if (remote && resolveAsset) {
+      setResolvedSrc(null);
+      resolveAsset(src)
+        .then((url) => { if (!cancelled) setResolvedSrc(url ?? ''); })
+        .catch(() => { if (!cancelled) setResolvedSrc(''); });
       return () => { cancelled = true; };
     }
     const rawPath = src.replace(/^\.\//, '');
@@ -68,7 +79,7 @@ export function VaultImageInner(props: {
       setResolvedSrc(src);
     }
     return () => { cancelled = true; };
-  }, [src, assetBase]);
+  }, [src, assetBase, remote, resolveAsset]);
 
   if (!src || src.startsWith('http') || src.startsWith('data:')) {
     const imgEl = createElement('img', { src, alt, ...rest });
@@ -82,7 +93,7 @@ export function VaultImageInner(props: {
   const isAbs = /^(\/|[A-Za-z]:[\\/])/.test(imagePath);
   const isExternal = isHomeRel || isAbs;
 
-  if (imagePath.endsWith('.excalidraw')) {
+  if (imagePath.endsWith('.excalidraw') && !remote) {
     const fileDir = filePath ? filePath.substring(0, Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))) : '';
     const vaultPath = isExternal ? imagePath : (fileDir ? `${fileDir}/${imagePath}` : imagePath);
     const imgEl = createElement(ExcalidrawPreview, { filePath: vaultPath, alt });
@@ -91,7 +102,8 @@ export function VaultImageInner(props: {
   }
 
   const imgEl = createElement('img', {
-    src: resolvedSrc ?? src,
+    // A remote reference is not a loadable URL; show nothing until resolved.
+    src: resolvedSrc ?? (remote ? undefined : src),
     alt,
     loading: 'lazy',
     ...rest,

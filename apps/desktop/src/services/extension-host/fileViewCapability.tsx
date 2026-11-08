@@ -26,6 +26,7 @@ import { getHandlerById, getModeComponent, getSupportedModes } from '@/component
 import { useExtensionFileViewStore } from '@/store/extensionFileViewStore';
 import { externalFileProvider } from '@/services/externalFileProvider';
 import { isExternalPath } from '@/utils/isExternalPath';
+import { AssetResolverContext } from '@/components/file-types/markdown/assetResolver';
 
 /** The modes this view knows how to render, in top-bar order. */
 const ORDER: ViewMode[] = ['edit', 'split', 'preview'];
@@ -34,7 +35,7 @@ function Notice({ text }: { text: string }) {
   return <div className="prev-body flex-1 overflow-auto pt-2 px-8" style={{ color: 'var(--t3)', fontSize: 13 }}>{text}</div>;
 }
 
-function ExtensionFileView({ path, content = '', onChange, onSave }: ExtensionFileViewProps) {
+function ExtensionFileView({ path, content = '', onChange, onSave, resolveAsset }: ExtensionFileViewProps) {
   const ext = path.split('.').pop()?.toLowerCase() ?? '';
   const fileType = useMemo(() => detectFileType(path), [path]);
   const handler = getHandlerById(fileType);
@@ -84,8 +85,8 @@ function ExtensionFileView({ path, content = '', onChange, onSave }: ExtensionFi
 
   // Publish what is on screen, live, for the 演示模式 shortcut.
   useEffect(() => {
-    useExtensionFileViewStore.setState({ current: { path, content: text } });
-  }, [path, text]);
+    useExtensionFileViewStore.setState({ current: { path, content: text, resolveAsset } });
+  }, [path, text, resolveAsset]);
   useEffect(() => () => { useExtensionFileViewStore.setState({ current: null }); }, []);
 
   if (reading) return null;
@@ -118,7 +119,9 @@ function ExtensionFileView({ path, content = '', onChange, onSave }: ExtensionFi
             ? 'prev-body flex-1 overflow-auto pt-2 px-8 pb-[20vh]'
             : 'prev-body flex-1 h-full overflow-auto'}
           >
-            <Preview content={text} filePath={path} vaultRoot="" onChange={handleChange}/>
+            <AssetResolverContext.Provider value={resolveAsset ?? null}>
+              <Preview content={text} filePath={path} vaultRoot="" onChange={handleChange}/>
+            </AssetResolverContext.Provider>
           </div>
         )}
       </div>
@@ -130,9 +133,9 @@ export function buildExtensionFileView(_manifest: ExtensionManifest): ExtensionF
   return {
     component: () => ExtensionFileView,
     // Same guard as the Vault's togglePresentationMode: markdown only.
-    present({ path, content }) {
+    present({ path, content, resolveAsset }) {
       if (detectFileType(path) !== 'markdown') return;
-      useExtensionFileViewStore.getState().setPresenting({ path, content });
+      useExtensionFileViewStore.getState().setPresenting({ path, content, resolveAsset });
     },
   };
 }

@@ -64,6 +64,18 @@ export interface ExtensionHttpCapability {
    * `onProgress` reports bytes received while the body streams.
    */
   download(url: string, init?: ExtensionHttpInit & ExtensionDownloadOptions): Promise<ExtensionDownloadResult>;
+  /**
+   * {@link fetch} for a binary response, held in memory — an image a document
+   * references, say. Same origin check; redirects are not followed. Use
+   * {@link download} for anything large.
+   */
+  fetchBytes(url: string, init?: ExtensionHttpInit): Promise<ExtensionHttpBytesResponse>;
+}
+
+export interface ExtensionHttpBytesResponse {
+  status: number;
+  headers: Record<string, string>;
+  body: Uint8Array<ArrayBuffer>;
 }
 
 export interface ExtensionDownloadOptions {
@@ -113,8 +125,15 @@ export interface ExtensionFileViewCapability {
    * for markdown text. Esc or ←/→ behave as in the Vault. Does nothing for
    * other formats, as in the Vault.
    */
-  present(input: { path: string; content: string }): void;
+  present(input: { path: string; content: string; resolveAsset?: ExtensionAssetResolver }): void;
 }
+
+/**
+ * Turns a reference inside a document (`diagrams/a.png` in `![](diagrams/a.png)`)
+ * into a URL the view can load — typically a `blob:` URL of bytes the
+ * extension fetched. Resolve `undefined` when it cannot be loaded.
+ */
+export type ExtensionAssetResolver = (ref: string) => Promise<string | undefined>;
 
 export interface ExtensionFileViewProps {
   /** A local absolute path (a saved download), or a bare file name with its
@@ -126,6 +145,9 @@ export interface ExtensionFileViewProps {
   onChange?(content: string): void;
   /** Fires on the save shortcut (⌘/Ctrl+S) and on the view's save button. */
   onSave?(content: string): void;
+  /** For a document that is not on disk: loads the images it references.
+   *  Without it, relative references resolve against `path` on disk. */
+  resolveAsset?: ExtensionAssetResolver;
 }
 
 /**

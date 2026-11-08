@@ -43,6 +43,8 @@ export type {
   ExtensionHttpCapability,
   ExtensionHttpInit,
   ExtensionHttpResponse,
+  ExtensionHttpBytesResponse,
+  ExtensionAssetResolver,
   ExtensionDownloadResult,
   ExtensionDownloadOptions,
   ExtensionDownloadsCapability,
