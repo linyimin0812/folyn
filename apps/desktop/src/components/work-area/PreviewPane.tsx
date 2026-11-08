@@ -240,7 +240,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   still mounts on demand to avoid running markmap-lib transform
                   in the background for every markdown file. */}
               <div
-                className={`prev-body md-doc-surface flex-1 overflow-auto pt-2 px-8 ${viewMode === 'split' ? 'pb-[100vh] is-jumpable' : 'pb-[20vh]'} ${markmapMode ? 'hidden' : 'block'}`}
+                className={`prev-body md-doc-surface flex-1 overflow-auto pt-2 px-8 ${viewMode === 'split' ? 'pb-[100vh] is-jumpable is-split' : 'pb-[20vh]'} ${markmapMode ? 'hidden' : 'block'}`}
                 ref={setBodyRef}
                 onScroll={handleBodyScroll}
                 onClick={handlePreviewClick}

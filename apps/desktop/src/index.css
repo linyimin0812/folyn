@@ -619,6 +619,8 @@ mjx-container svg {
    measure so the deck reads from a distance. Headings, code, tables and run
    output are em-sized, so they scale with the body automatically. */
 .presentation-mode .md-preview { font-size: 20px; max-width: 1280px; }
+/* Split mode: the pane is narrow and sits beside the 13px editor — smaller body. */
+.prev-body.is-split .md-preview { font-size: 14px; line-height: 1.75; }
 /* Preview frame variant for the Containers settings modal: full width
    (no 720px cap) and flattened first/last vertical margins so the preview's
    top + bottom spacing is symmetric inside the frame's `p-4` padding —
