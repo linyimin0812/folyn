@@ -163,6 +163,13 @@ versa) shifts every synced block. `:first-child` gap keeps `margin-top: 0`
 (nothing above to cancel). Headings keep their own top margin — runtime gap
 compensation (`gapCompensation.ts`) measures and absorbs it.
 
+Code blocks with a fence language render a `.code-block-header` (label +
+actions) above `.code-block-inner`. Cursor sync is unaffected: both the
+wrapper and its inner `<pre>` carry the same `data-source-line`, the selection
+loop picks the later (`<pre>`) element, and `codeBlockAlignPoint` measures the
+`<pre>` rect — so the header sits outside the measured block. The 420px cap
+lives on `.code-block-inner` only, so the header is never clipped.
+
 Reading-surface tokens `--doc-bg` / `--doc-fill` / `--doc-line` exist only for
 markdown tabs (`.md-doc-surface` on EditorPane body + PreviewPane `.prev-body`);
 `exportService.ts` `LIGHT_THEME_VARS` / `DARK_THEME_VARS` must define them too.

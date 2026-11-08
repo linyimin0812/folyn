@@ -131,3 +131,20 @@ border, blockquote bg, th/td vertical borders). Fix:
   index.css.
 * Reading column `.md-preview { max-width: 800px }` → 720px in `useExport.ts` and `buildStandaloneDocHtml`.
 * Dark export bg `#0b0d14` → `#16171b` (`--doc-bg`) everywhere (`useExport.ts`, `vaultExport.ts`).
+
+## Round 3 (user: still too plain → picked direction "A 清朗" from research/preview-directions.html)
+
+Reference mock: `research/preview-directions.html` (classes `.md.a`). Port it to `.md-preview`:
+* Font: system Chinese sans stack `-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif`
+  (replaces `var(--font-ui)` for the preview body — supersedes the Round-1 "follow UI font" decision; user chose A
+  which was described as system sans). Code stays `var(--font-mono)`.
+* Body 16px / 1.8, letter-spacing .01em; paragraph text `color-mix(--t1 88%, --doc-bg)`. Measure stays 720px.
+* h1 30px/1.3/700, letter-spacing -.01em, NO underline accent. h2 22px/1.4/700, accent vertical bar
+  (`::before`, 4px wide, radius 2px, inset top/bottom .28em, padding-left .7em), NO bottom hairline.
+  h3 17.5px/600, NO dot. Keep em units relative to the 16px body.
+* Inline code: acc 9% tint, text acc 85% mixed with --t1.
+* Code block: `--doc-fill` bg + 1px `--doc-line` border, 8px radius, and a header row showing the fence
+  language (uppercase mono 11.5px `--t3`, letter-spacing .04em, bottom hairline). Copy button sits in that header.
+* Blockquote: 3px solid `--acc` left bar, acc 5% bg, radius 0 8px 8px 0, padding .7em 1.1em, `--t2`.
+* List markers `--acc`. Tables as now (frame, header fill, zebra). hr margin 2.4em.
+* Export: HTML_STYLES body font/size mirrors the new preview (system stack, 16px/1.8).

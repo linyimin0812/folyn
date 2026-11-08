@@ -453,7 +453,7 @@ export async function applyContainerEnhancers(
  * `.md-preview` leaves a property unset.
  */
 export const HTML_STYLES = `
-    body { font-family: var(--font-ui); font-size: 15px; line-height: 1.75; color: var(--t1); word-break: break-word; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif; font-size: 16px; line-height: 1.8; color: var(--t1); word-break: break-word; }
 
     /* MathJax: pin mjx-container to a stable font + size so the SVG
        width="Xex" resolves consistently regardless of whether 'Sora'
@@ -637,7 +637,8 @@ export const CODE_INTERACT_SCRIPT = `
   document.querySelectorAll('.code-run-btn, .code-run-output').forEach(function (e) { e.remove(); });
   document.querySelectorAll('.code-copy-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var pre = btn.parentElement && btn.parentElement.querySelector('pre');
+      var wrap = btn.closest('.code-block-wrapper');
+      var pre = wrap && wrap.querySelector('pre');
       if (!pre) return;
       var code = pre.querySelector('code') || pre;
       var text = code.textContent || '';

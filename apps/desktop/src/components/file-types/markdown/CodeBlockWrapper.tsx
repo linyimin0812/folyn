@@ -176,10 +176,67 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
   // crammed into top-right. Give it real height + right-side centered icons.
   // Applies in both source and preview views so toggling doesn't resize.
   const isEmptyHtml = isHtml && lineCount === 0;
+  // Fenced blocks with a language get a header row (label + actions). The
+  // empty-html sliver keeps its centred toggles and no header.
+  const hasHeader = !!lang && !isEmptyHtml;
+
+  const copyBtn = !isEmptyHtml && (
+    <button
+      ref={copyBtnRef}
+      className="code-copy-btn"
+      type="button"
+      onClick={handleCopy}
+      dangerouslySetInnerHTML={{ __html: COPY_SVG }}
+    />
+  );
+  const htmlToggle = isHtml && (
+    <div className={isEmptyHtml
+      ? 'absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1 z-3'
+      : 'flex items-center gap-0.5'}>
+      <button
+        type="button"
+        aria-label="source"
+        title="Source"
+        onClick={() => setHtmlView('source')}
+        className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'source' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
+      >
+        <Code2 size={13} />
+      </button>
+      <button
+        type="button"
+        aria-label="preview"
+        title="Preview"
+        onClick={() => setHtmlView('preview')}
+        className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'preview' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
+      >
+        <Eye size={13} />
+      </button>
+    </div>
+  );
+  const runBtn = runtime && (
+    <button
+      className="code-run-btn"
+      type="button"
+      title={running ? 'Stop' : 'Run'}
+      onClick={running ? handleStop : handleRun}
+      style={{ color: running || stopped ? STOP_COLOR : RUN_COLOR }}
+      dangerouslySetInnerHTML={{ __html: running ? SPINNER_SVG : (stopped ? STOP_SVG : RUN_SVG) }}
+    />
+  );
 
   // the grid must see capped code blocks: rootEl.children counts only data-source-line
   return (
     <div className={`code-block-wrapper${isHtml && htmlView === 'preview' && !isEmptyHtml ? ' code-block-wrapper--no-height-cap' : ''}${isEmptyHtml ? ' code-block-wrapper--empty-html' : ''}`} data-source-line={sourceLine}>
+      {hasHeader && (
+        <div className="code-block-header">
+          <span className="code-block-lang">{lang}</span>
+          <div className="code-block-actions">
+            {htmlToggle}
+            {runBtn}
+            {copyBtn}
+          </div>
+        </div>
+      )}
       {isEmptyHtml ? (
         <div className="code-block-empty-html" />
       ) : htmlView === 'source' || !isHtml ? (
@@ -273,49 +330,11 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
           }}
         />
       )}
-      {!isEmptyHtml && (
-        <button
-          ref={copyBtnRef}
-          className="code-copy-btn"
-          type="button"
-          onClick={handleCopy}
-          dangerouslySetInnerHTML={{ __html: COPY_SVG }}
-        />
-      )}
-      {isHtml && (
-        <div className={isEmptyHtml
-          ? 'absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1 z-3'
-          : 'absolute top-1 right-8 flex items-center gap-0.5 z-3'}>
-          <button
-            type="button"
-            aria-label="source"
-            title="Source"
-            onClick={() => setHtmlView('source')}
-            className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'source' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
-          >
-            <Code2 size={13} />
-          </button>
-          <button
-            type="button"
-            aria-label="preview"
-            title="Preview"
-            onClick={() => setHtmlView('preview')}
-            className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'preview' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
-          >
-            <Eye size={13} />
-          </button>
-        </div>
-      )}
-      {runtime && (
-        <button
-          className="code-run-btn"
-          type="button"
-          title={running ? 'Stop' : 'Run'}
-          onClick={running ? handleStop : handleRun}
-          style={{ color: running || stopped ? STOP_COLOR : RUN_COLOR }}
-          dangerouslySetInnerHTML={{ __html: running ? SPINNER_SVG : (stopped ? STOP_SVG : RUN_SVG) }}
-        />
-      )}
+      {/* No language → no header: actions float top-right over the code
+          (the empty-html sliver centres its toggle instead). */}
+      {!hasHeader && copyBtn}
+      {!hasHeader && runBtn}
+      {!hasHeader && htmlToggle}
       {runtime && hasOutput && (
         <div className="code-run-output">
           {/* ponytail: only the stdout/stderr body scrolls; the sync icon +

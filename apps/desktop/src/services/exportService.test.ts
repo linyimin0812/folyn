@@ -29,7 +29,8 @@ describe('hasContainerSyntax', () => {
 
 describe('HTML_STYLES', () => {
   it('is a document shell: themed body, no element rules duplicated from index.css', () => {
-    expect(HTML_STYLES).toContain('body { font-family: var(--font-ui)');
+    expect(HTML_STYLES).toContain("body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC'");
+    expect(HTML_STYLES).toContain('font-size: 16px; line-height: 1.8');
     expect(HTML_STYLES).toContain('color: var(--t1)');
     expect(HTML_STYLES).not.toMatch(/(^|\s)(h1|pre|blockquote|table|\.hljs)\s*\{/);
   });

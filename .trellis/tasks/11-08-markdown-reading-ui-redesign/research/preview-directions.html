@@ -1,0 +1,224 @@
+<title>Folyn Preview Directions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=LXGW+WenKai:wght@400;700&family=DM+Mono:wght@400;500&family=Sora:wght@400;600;700&display=swap">
+<style>
+/* Layout: one reading column per direction, switched by tabs; the chrome stays out of the way. */
+:root {
+  --page: #f3f4f6; --doc-bg: #ffffff; --ink: #1f2329; --ink-2: #4e5560; --ink-3: #8a919c;
+  --line: #e8eaee; --fill: #f5f6f8; --acc: #3a6ef0; --acc-2: #2f7d6d; --mark: #fbe7a1;
+  --mono: 'DM Mono', ui-monospace, Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --serif: 'Noto Serif SC', 'Songti SC', serif;
+  --kai: 'LXGW WenKai', 'Kaiti SC', serif;
+  --sora: 'Sora', 'Noto Sans SC', sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #0f1013; --doc-bg: #16171b; --ink: #e6e8ec; --ink-2: #b2b7c0; --ink-3: #7d838d;
+  --line: #2a2c33; --fill: #1e1f24; --acc: #6e95f7; --acc-2: #5fb8a5; --mark: #6b5a1e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #0f1013; --doc-bg: #16171b; --ink: #e6e8ec; --ink-2: #b2b7c0; --ink-3: #7d838d;
+  --line: #2a2c33; --fill: #1e1f24; --acc: #6e95f7; --acc-2: #5fb8a5; --mark: #6b5a1e; color-scheme: dark }
+
+body { background: var(--page); color: var(--ink); font-family: var(--sans);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 64px; }
+.bar { max-width: 860px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar h1 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+.tab { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--doc-bg); color: var(--ink-2); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--doc-bg); border-color: var(--ink); }
+.tab:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.note { max-width: 860px; margin: 0 auto 12px; font-size: 13px; color: var(--ink-3); line-height: 1.6; }
+.sheet { max-width: 860px; margin: 0 auto; background: var(--doc-bg); border-radius: 10px; padding-block: 48px 64px;
+  padding-inline: clamp(20px, 6vw, 70px); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+
+/* ── Shared markdown base (what .md-preview renders) ── */
+.md { color: var(--ink); overflow-wrap: anywhere; }
+.md > * { margin: 0 0 1em; }
+.md h1, .md h2, .md h3 { color: var(--ink); text-wrap: balance; }
+.md a { color: var(--acc); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--acc) 35%, transparent); text-underline-offset: .2em; }
+.md code { font-family: var(--mono); font-size: .86em; padding: .12em .38em; border-radius: 4px; }
+.md pre { margin: 0 0 1.2em; overflow-x: auto; border-radius: 8px; }
+.md pre code { padding: 0; background: none; color: var(--ink); font-size: .84em; line-height: 1.7; }
+.md mark { background: var(--mark); color: inherit; padding: 0 .15em; border-radius: 2px; }
+.md ul, .md ol { padding-left: 1.4em; }
+.md li { margin: .35em 0; }
+.md table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .92em; }
+.md th, .md td { text-align: left; padding: .6em .9em; border-bottom: 1px solid var(--line); }
+.md tbody tr:last-child td { border-bottom: none; }
+.tw { overflow-x: auto; margin: 0 0 1.2em; }
+.k { color: #a0469b } .s { color: #2f7d4f } .c { color: var(--ink-3); font-style: italic } .f { color: var(--acc) }
+.callout { border-radius: 8px; padding: .9em 1.1em; display: grid; grid-template-columns: auto 1fr; gap: .2em .6em; }
+.callout svg { width: 1.05em; height: 1.05em; margin-top: .3em; }
+.callout b { font-weight: 600; }
+.callout p { grid-column: 2; margin: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: .4em 1.2em; font-size: .82em; color: var(--ink-3); }
+
+/* ── A 清朗: system sans, firm hierarchy, color-coded structure ── */
+.a { font-family: var(--sans); font-size: 16px; line-height: 1.8; letter-spacing: .01em; }
+.a .meta { margin: -.4em 0 2.2em; }
+.a h1 { font-size: 30px; line-height: 1.3; font-weight: 700; margin: 0 0 .5em; letter-spacing: -.01em; }
+.a h2 { font-size: 22px; line-height: 1.4; font-weight: 700; margin: 2.2em 0 .7em; padding-left: .7em; position: relative; }
+.a h2::before { content: ''; position: absolute; left: 0; top: .28em; bottom: .28em; width: 4px; border-radius: 2px; background: var(--acc); }
+.a h3 { font-size: 17.5px; font-weight: 600; margin: 1.8em 0 .5em; color: var(--ink); }
+.a p { color: color-mix(in srgb, var(--ink) 88%, var(--doc-bg)); }
+.a code { background: color-mix(in srgb, var(--acc) 9%, transparent); color: color-mix(in srgb, var(--acc) 85%, var(--ink)); }
+.a pre { background: var(--fill); border: 1px solid var(--line); }
+.a pre .lang { display: flex; justify-content: space-between; font: 500 11.5px var(--mono); color: var(--ink-3); padding: .55em 1.1em; border-bottom: 1px solid var(--line); letter-spacing: .04em; }
+.a pre code { display: block; padding: 1em 1.2em; }
+.a blockquote { margin: 0 0 1.2em; padding: .7em 1.1em; border-left: 3px solid var(--acc); background: color-mix(in srgb, var(--acc) 5%, transparent); border-radius: 0 8px 8px 0; color: var(--ink-2); }
+.a blockquote p { margin: 0; }
+.a li::marker { color: var(--acc); }
+.a .tw { border: 1px solid var(--line); border-radius: 8px; }
+.a th { background: var(--fill); font-weight: 600; }
+.a tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--fill) 55%, transparent); }
+.a .callout { background: color-mix(in srgb, var(--acc-2) 9%, transparent); color: var(--ink); }
+.a .callout svg, .a .callout b { color: var(--acc-2); }
+.a hr { border: 0; height: 1px; background: var(--line); margin: 2.4em 0; }
+
+/* ── B 书卷: serif headings over sans body, editorial rhythm ── */
+.b { font-family: var(--sans); font-size: 16px; line-height: 1.85; }
+.b .meta { margin: 0 0 2.4em; padding-bottom: 1.4em; border-bottom: 1px solid var(--line); }
+.b h1, .b h2, .b h3 { font-family: var(--serif); }
+.b h1 { font-size: 32px; line-height: 1.3; font-weight: 700; margin: 0 0 .6em; }
+.b h2 { font-size: 23px; line-height: 1.4; font-weight: 700; margin: 2.3em 0 .8em; display: flex; align-items: baseline; gap: .55em; }
+.b h2 .no { font: 500 .6em var(--mono); color: var(--acc); letter-spacing: .06em; }
+.b h3 { font-size: 18px; font-weight: 600; margin: 1.8em 0 .5em; }
+.b p { color: var(--ink-2); }
+.b p strong { color: var(--ink); }
+.b code { background: var(--fill); color: var(--ink); border: 1px solid var(--line); }
+.b pre { background: var(--fill); padding: 1.1em 1.3em; }
+.b pre .lang { display: none; }
+.b blockquote { margin: 1.6em 0; padding: 0 0 0 1.4em; position: relative; font-family: var(--serif); font-size: 1.12em; line-height: 1.75; color: var(--ink); }
+.b blockquote::before { content: '“'; position: absolute; left: -.1em; top: -.35em; font-size: 2.6em; color: var(--acc); font-family: var(--serif); line-height: 1; }
+.b blockquote p { margin: 0; }
+.b li::marker { color: var(--ink-3); }
+.b th { font-weight: 600; color: var(--ink); border-bottom: 1.5px solid var(--ink); font-size: .9em; letter-spacing: .02em; }
+.b .callout { background: var(--fill); border-left: 3px solid var(--acc-2); border-radius: 0 8px 8px 0; }
+.b .callout svg, .b .callout b { color: var(--acc-2); }
+.b hr { border: 0; text-align: center; margin: 2.4em 0; }
+.b hr::after { content: '· · ·'; color: var(--ink-3); letter-spacing: .6em; }
+
+/* ── C 文楷: LXGW WenKai body, warm handwritten feel ── */
+.c { font-family: var(--kai); font-size: 17.5px; line-height: 1.9; }
+.c .meta { margin: -.2em 0 2.2em; font-family: var(--sans); }
+.c h1 { font-size: 32px; line-height: 1.3; font-weight: 700; margin: 0 0 .5em; }
+.c h1::after { content: ''; display: block; width: 1.6em; height: 4px; border-radius: 2px; margin-top: .45em; background: var(--acc-2); }
+.c h2 { font-size: 24px; font-weight: 700; margin: 2.2em 0 .7em; color: var(--acc-2); }
+.c h3 { font-size: 19px; font-weight: 700; margin: 1.8em 0 .5em; }
+.c p { color: var(--ink); }
+.c code { background: color-mix(in srgb, var(--acc-2) 10%, transparent); color: color-mix(in srgb, var(--acc-2) 80%, var(--ink)); }
+.c pre { background: var(--fill); padding: 1.1em 1.3em; border-radius: 10px; }
+.c pre .lang { display: none; }
+.c pre code { font-size: .8em; }
+.c blockquote { margin: 0 0 1.2em; padding: .8em 1.2em; background: color-mix(in srgb, var(--acc-2) 6%, transparent); border-radius: 10px; color: var(--ink-2); }
+.c blockquote p { margin: 0; }
+.c li::marker { color: var(--acc-2); }
+.c .tw { background: var(--fill); border-radius: 10px; padding: .3em .6em; }
+.c th { font-weight: 700; color: var(--acc-2); }
+.c td, .c th { border-bottom-color: color-mix(in srgb, var(--ink) 10%, transparent); }
+.c .callout { background: color-mix(in srgb, #d99a2b 12%, transparent); }
+.c .callout svg, .c .callout b { color: #b7791f; }
+.c hr { border: 0; height: 1px; background: var(--line); margin: 2.4em 0; }
+
+/* ── D 当前: what ships now (Sora, 15px) for comparison ── */
+.d { font-family: var(--sora); font-size: 15px; line-height: 1.75; color: color-mix(in srgb, var(--ink) 90%, transparent); max-width: 720px; margin: 0 auto; }
+.d .meta { display: none; }
+.d h1 { font-size: 26px; font-weight: 700; margin: 0 0 .6em; padding-bottom: .4em; background: linear-gradient(var(--acc), var(--acc)) left bottom / 2.4em 3px no-repeat; }
+.d h2 { font-size: 21px; font-weight: 650; margin: 1.8em 0 .6em; padding-bottom: .3em; border-bottom: 1px solid var(--line); }
+.d h2 .no { display: none; }
+.d h3 { font-size: 17.5px; font-weight: 600; margin: 1.6em 0 .5em; }
+.d h3::before { content: ''; display: inline-block; width: .4em; height: .4em; border-radius: 50%; background: var(--acc); vertical-align: middle; margin-right: .5em; }
+.d code { background: color-mix(in srgb, var(--acc) 8%, transparent); color: color-mix(in srgb, var(--acc) 80%, var(--ink)); }
+.d pre { background: var(--fill); padding: 12px 16px; }
+.d pre .lang { display: none; }
+.d blockquote { border-left: 3px solid color-mix(in srgb, var(--acc) 45%, transparent); background: color-mix(in srgb, var(--acc) 4%, transparent); padding: .6em 1em; border-radius: 0 6px 6px 0; margin: 0 0 1em; color: var(--ink-2); }
+.d blockquote p { margin: 0; }
+.d .tw { border: 1px solid var(--line); border-radius: 8px; }
+.d th { background: var(--fill); font-weight: 600; }
+.d .callout { background: color-mix(in srgb, #3f9a6c 7%, transparent); }
+.d .callout svg, .d .callout b { color: #3f9a6c; }
+.d hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+.a h2 .no, .c h2 .no { display: none; }
+
+@media (max-width: 520px) { .a h1, .b h1, .c h1 { font-size: 26px; } .sheet { padding-block: 32px 48px; } }
+</style>
+
+<div class="bar">
+  <h1>预览排版方向</h1>
+  <button class="tab" role="tab" id="t-a" aria-selected="true" data-dir="a">A 清朗</button>
+  <button class="tab" role="tab" id="t-b" aria-selected="false" data-dir="b">B 书卷</button>
+  <button class="tab" role="tab" id="t-c" aria-selected="false" data-dir="c">C 文楷</button>
+  <button class="tab" role="tab" id="t-d" aria-selected="false" data-dir="d">当前效果</button>
+</div>
+<p class="note" id="desc"></p>
+
+<div class="sheet">
+<article class="md a" id="doc">
+  <h1>缓存失效策略：从定时刷新到事件驱动</h1>
+  <div class="meta"><span>2026-11-08</span><span>notes/architecture/cache.md</span><span>约 4 分钟</span></div>
+
+  <p>编辑器在打开大型知识库时，需要缓存文件树、全文索引和渲染结果。过去我们用 <code>setInterval</code> 每 30 秒刷新一次，简单可靠，但在多人同步的场景下，<strong>旧数据会在界面上停留最长半分钟</strong>。这篇笔记记录我们如何改成事件驱动的失效机制，以及踩过的坑。</p>
+
+  <h2><span class="no">01</span>问题出在哪里</h2>
+  <p>定时刷新有两个明显代价：一是空闲时也在做无用功，二是刷新粒度太粗。改一个文件，整棵树都要重新读一遍。真正需要的是<mark>只让受影响的那一小块缓存失效</mark>。</p>
+  <ul>
+    <li>文件树：只需要更新被改动的目录节点</li>
+    <li>全文索引：按文件增量重建，而不是全量重扫</li>
+    <li>渲染结果：以文件内容哈希为键，内容不变就直接复用</li>
+  </ul>
+
+  <blockquote><p>缓存失效是计算机科学中最难的两件事之一。真正难的不是“什么时候清”，而是“清哪一块”。</p></blockquote>
+
+  <h2><span class="no">02</span>事件驱动的实现</h2>
+  <p>文件系统监听器把变更合并成批次，每个批次只带路径和变更类型。订阅方各自决定要不要失效，互不干扰。详细的事件格式见 <a href="#">同步协议文档</a>。</p>
+
+  <pre><div class="lang"><span>TYPESCRIPT</span><span>watcher.ts</span></div><code><span class="k">export function</span> <span class="f">onBatch</span>(changes: <span class="k">FileChange</span>[]) {
+  <span class="c">// 同一路径在一个批次内只保留最后一次变更</span>
+  <span class="k">const</span> latest = <span class="k">new</span> Map(changes.map((c) =&gt; [c.path, c]));
+  <span class="k">for</span> (<span class="k">const</span> change <span class="k">of</span> latest.values()) {
+    treeCache.<span class="f">invalidate</span>(dirname(change.path));
+    renderCache.<span class="f">drop</span>(change.path);
+  }
+}</code></pre>
+
+  <h3>批次窗口取多大</h3>
+  <p>窗口太小，批量操作（比如 git checkout）会触发上百次失效；太大又会让界面反应迟钝。实测下来 <code>120ms</code> 是比较平衡的取值。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>批次窗口</th><th>失效次数</th><th>界面延迟</th></tr></thead>
+    <tbody>
+      <tr><td>30 ms</td><td>412</td><td>几乎无感</td></tr>
+      <tr><td>120 ms</td><td>37</td><td>约 0.1 秒</td></tr>
+      <tr><td>500 ms</td><td>9</td><td>明显卡顿</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12.25h4M6.5 14.25h3"/><path d="M8 1.75a4.25 4.25 0 0 0-2.5 7.69c.4.3.6.7.6 1.16v.15h3.8v-.15c0-.46.2-.87.6-1.16A4.25 4.25 0 0 0 8 1.75Z"/></svg>
+    <b>提示</b>
+    <p>渲染缓存用内容哈希做键之后，撤销再重做同一段修改也能直接命中缓存。</p>
+  </div>
+
+  <hr>
+  <p>下一步是把同样的思路用到图片缩略图上，届时再补充这篇笔记。</p>
+</article>
+</div>
+
+<script>
+const desc = {
+  a: '清朗 — 系统中文无衬线字体（苹方 / 思源黑体），16px、行高 1.8。二级标题带强调色竖条，代码块带语言标题栏，表格有外框和斑马纹，层次最分明。',
+  b: '书卷 — 标题用宋体（思源宋体），正文黑体，16px、行高 1.85。标题前有章节编号，引用是大号宋体带引号，表格用粗细线区分，像一本排好版的书。',
+  c: '文楷 — 正文用霞鹜文楷（应用已内置），17.5px、行高 1.9。二级标题和细节用青绿色，圆角浅底色的引用和表格，温和、有手写笔记感。',
+  d: '当前效果 — Sora 字体 15px、行高 1.75，是现在已经提交的样式，用来对比。'
+};
+const doc = document.getElementById('doc');
+const note = document.getElementById('desc');
+const tabs = document.querySelectorAll('.tab');
+function pick(d) {
+  doc.className = 'md ' + d;
+  note.textContent = desc[d];
+  tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.dir === d)));
+}
+tabs.forEach(t => t.addEventListener('click', () => pick(t.dataset.dir)));
+pick('a');
+</script>
