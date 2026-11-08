@@ -7,7 +7,7 @@ import {
 } from '@codemirror/autocomplete';
 import { Transaction, type EditorState } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
-import { buildPathCompletion } from './pathCompletion';
+import { buildPathCompletion, type PathSource } from './pathCompletion';
 
 const SRC_ATTR_RE = /:::file-preview\b[^{]*\{[^}]*?src="([^"]*)$/;
 
@@ -183,11 +183,11 @@ export function filePreviewSrcSearchBox() {
  * `:::file-preview{src="..."}` directives, closing over the current document's
  * `filePath` so `./` and `../` resolve relative to the document's directory.
  */
-export function createFilePreviewSrcCompletion(filePath: string) {
+export function createFilePreviewSrcCompletion(filePath: string, getSource?: () => PathSource | undefined) {
   return async function filePreviewSrcCompletion(ctx: CompletionContext): Promise<CompletionResult | null> {
     const found = srcPartialAt(ctx.state, ctx.pos);
     if (!found) return null;
-    const result = await buildPathCompletion(found.text, found.start, ctx.pos, filePath, false);
+    const result = await buildPathCompletion(found.text, found.start, ctx.pos, filePath, false, getSource?.());
     if (!result) return null;
     return { from: result.from, to: result.to, options: result.options, validFor: result.validFor };
   };

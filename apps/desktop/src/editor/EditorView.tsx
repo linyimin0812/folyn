@@ -89,6 +89,7 @@ import {
 } from './extensions/CodeBlockExtension';
 import { createFilePreviewSrcCompletion, filePreviewSrcSearchBox } from './extensions/FilePreviewSrcExtension';
 import { createMarkdownImageCompletion } from './extensions/MarkdownImageExtension';
+import type { PathSource } from './extensions/pathCompletion';
 import { orderedListExtension } from './extensions/OrderedListExtension';
 import { inlineDiffExtension } from './extensions/InlineDiffExtension';
 import { mathExtension } from './extensions/MarkdownMathExtension';
@@ -224,10 +225,13 @@ interface FolynEditorProps {
    *  transactions but keeps the cursor + selection + scroll, so the version-history
    *  snapshot view can show real CodeMirror highlighting with full text selection. */
   readOnly?: boolean;
+  /** Lists folders for a document that is not in the vault, so path
+   *  completion (`![](…)`, file-preview `src`) suggests where it really lives. */
+  pathSource?: PathSource;
 }
 
 export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
-  function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, initialScrollTop, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly, persistTabScroll = true }, ref) {
+  function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, initialScrollTop, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly, persistTabScroll = true, pathSource }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [view, setView] = useState<EditorView | null>(null);
@@ -258,6 +262,8 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     onImagePasteRef.current = onImagePaste;
     const persistTabScrollRef = useRef(persistTabScroll);
     persistTabScrollRef.current = persistTabScroll;
+    const pathSourceRef = useRef(pathSource);
+    pathSourceRef.current = pathSource;
     // ponytail: swapRef guards handleUpdate during an in-place doc swap
     //  (view.setState on tab switch). setState fires an update with
     //  docChanged=true → without the guard, onChangeRef would fire and mark
@@ -594,7 +600,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '[', '{', "'", '"', '$'] } }]),
         closeBrackets(),
         autocompletion({
-          override: [createFilePreviewSrcCompletion(path), createMarkdownImageCompletion(path)],
+          override: [createFilePreviewSrcCompletion(path, () => pathSourceRef.current), createMarkdownImageCompletion(path, () => pathSourceRef.current)],
           closeOnBlur: false,
           interactionDelay: 0,
         }),

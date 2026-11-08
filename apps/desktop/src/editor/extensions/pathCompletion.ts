@@ -125,6 +125,21 @@ function buildOptionsFromDirEntries(
     );
 }
 
+/** One entry a {@link PathSource} lists. */
+export interface PathEntry {
+  name: string;
+  isDirectory: boolean;
+}
+
+/**
+ * Lists directories for a document that is not in the vault (an extension's
+ * remote file). `dir` is the directory part as typed — `''` for the
+ * document's own folder, `diagrams/`, `../img/`, `/abs/` — resolved by the
+ * source against where the document really lives. `null` when it does not
+ * exist.
+ */
+export type PathSource = (dir: string) => Promise<PathEntry[] | null>;
+
 export interface PathCompletionResult {
   from: number;
   to: number;
@@ -150,8 +165,10 @@ export async function buildPathCompletion(
   pos: number,
   filePath: string,
   imagesOnly: boolean,
+  source?: PathSource,
 ): Promise<PathCompletionResult | null> {
   const slashIdx = Math.max(partial.lastIndexOf('/'), partial.lastIndexOf('\\'));
+  if (source) return buildSourceCompletion(partial, partialStart, pos, slashIdx, imagesOnly, source);
   if (slashIdx === -1) {
     const fileTree = useVaultStore.getState().fileTree;
     const all = flattenFileTree(fileTree);
@@ -201,6 +218,31 @@ export async function buildPathCompletion(
     from: filterStart,
     to: pos,
     options: buildOptionsFromEntries(children, imagesOnly),
+    validFor: (_text, _from, to, state) => {
+      const currentPartial = state.sliceDoc(partialStart, to);
+      const newSlash = Math.max(currentPartial.lastIndexOf('/'), currentPartial.lastIndexOf('\\'));
+      return currentPartial.slice(0, newSlash + 1) === dirPart;
+    },
+  };
+}
+
+/** Completion from a {@link PathSource}: the typed directory's children,
+ *  the document's own folder when nothing is typed before a `/`. */
+async function buildSourceCompletion(
+  partial: string,
+  partialStart: number,
+  pos: number,
+  slashIdx: number,
+  imagesOnly: boolean,
+  source: PathSource,
+): Promise<PathCompletionResult | null> {
+  const dirPart = partial.slice(0, slashIdx + 1);
+  const entries = await source(dirPart);
+  if (entries === null) return null;
+  return {
+    from: partialStart + slashIdx + 1,
+    to: pos,
+    options: buildOptionsFromDirEntries(entries, imagesOnly),
     validFor: (_text, _from, to, state) => {
       const currentPartial = state.sliceDoc(partialStart, to);
       const newSlash = Math.max(currentPartial.lastIndexOf('/'), currentPartial.lastIndexOf('\\'));

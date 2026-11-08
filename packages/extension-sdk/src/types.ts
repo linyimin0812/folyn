@@ -148,7 +148,17 @@ export interface ExtensionFileViewProps {
   /** For a document that is not on disk: loads the images it references.
    *  Without it, relative references resolve against `path` on disk. */
   resolveAsset?: ExtensionAssetResolver;
+  /** For a document that is not on disk: lists a folder, so path completion
+   *  (`![](…)`) suggests files from where the document really lives. */
+  listDir?: ExtensionDirLister;
 }
+
+/**
+ * Lists a folder relative to the document: `dir` is the directory part as
+ * typed — `''` (the document's own folder), `diagrams/`, `../img/`, or
+ * `/abs/`. Resolve `null` when it does not exist.
+ */
+export type ExtensionDirLister = (dir: string) => Promise<{ name: string; isDirectory: boolean }[] | null>;
 
 /**
  * The host's file icons, so an extension can list remote files with the same

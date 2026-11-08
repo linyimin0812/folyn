@@ -35,7 +35,7 @@ function Notice({ text }: { text: string }) {
   return <div className="prev-body flex-1 overflow-auto pt-2 px-8" style={{ color: 'var(--t3)', fontSize: 13 }}>{text}</div>;
 }
 
-function ExtensionFileView({ path, content = '', onChange, onSave, resolveAsset }: ExtensionFileViewProps) {
+function ExtensionFileView({ path, content = '', onChange, onSave, resolveAsset, listDir }: ExtensionFileViewProps) {
   const ext = path.split('.').pop()?.toLowerCase() ?? '';
   const fileType = useMemo(() => detectFileType(path), [path]);
   const handler = getHandlerById(fileType);
@@ -110,6 +110,7 @@ function ExtensionFileView({ path, content = '', onChange, onSave, resolveAsset 
               // This editor lives outside the files panel tab system, so it must
               // not persist its scroll onto that panel's active tab.
               persistTabScroll={false}
+              pathSource={listDir}
             />
           </div>
         )}

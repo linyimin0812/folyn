@@ -45,6 +45,7 @@ export type {
   ExtensionHttpResponse,
   ExtensionHttpBytesResponse,
   ExtensionAssetResolver,
+  ExtensionDirLister,
   ExtensionDownloadResult,
   ExtensionDownloadOptions,
   ExtensionDownloadsCapability,

@@ -1,6 +1,6 @@
 import { type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { type EditorState } from '@codemirror/state';
-import { buildPathCompletion } from './pathCompletion';
+import { buildPathCompletion, type PathSource } from './pathCompletion';
 
 /**
  * Detect whether the cursor is inside the `(...)` path part of a markdown
@@ -26,11 +26,11 @@ export function imagePartialAt(state: EditorState, pos: number): { start: number
  * `./` `../` resolution relative to the current document — mirroring the
  * file-preview src completion UX.
  */
-export function createMarkdownImageCompletion(filePath: string) {
+export function createMarkdownImageCompletion(filePath: string, getSource?: () => PathSource | undefined) {
   return async function markdownImageCompletion(ctx: CompletionContext): Promise<CompletionResult | null> {
     const found = imagePartialAt(ctx.state, ctx.pos);
     if (!found) return null;
-    const result = await buildPathCompletion(found.text, found.start, ctx.pos, filePath, true);
+    const result = await buildPathCompletion(found.text, found.start, ctx.pos, filePath, true, getSource?.());
     if (!result) return null;
     return { from: result.from, to: result.to, options: result.options, validFor: result.validFor };
   };

@@ -172,4 +172,29 @@ describe('pathCompletion', () => {
       expect(result!.options.some((o) => o.label === 'sub/')).toBe(true);
     });
   });
+
+  describe('buildPathCompletion with a path source', () => {
+    const remote = {
+      '': [{ name: 'diagrams', isDirectory: true }, { name: 'a.md', isDirectory: false }],
+      'diagrams/': [{ name: '整体架构.excalidraw.png', isDirectory: false }],
+    } as Record<string, { name: string; isDirectory: boolean }[]>;
+    const source = vi.fn(async (dir: string) => remote[dir] ?? null);
+
+    it('lists the document folder from the source, not the vault', async () => {
+      const result = await buildPathCompletion('', 0, 0, 'doc.md', true, source);
+      expect(source).toHaveBeenCalledWith('');
+      expect(result!.options.map((o) => o.label)).toEqual(['diagrams/']);
+    });
+
+    it('drills into a typed folder', async () => {
+      const result = await buildPathCompletion('diagrams/整', 0, 10, 'doc.md', true, source);
+      expect(source).toHaveBeenCalledWith('diagrams/');
+      expect(result!.from).toBe(9);
+      expect(result!.options.map((o) => o.label)).toEqual(['整体架构.excalidraw.png']);
+    });
+
+    it('offers nothing for a folder the source does not know', async () => {
+      expect(await buildPathCompletion('nope/', 0, 5, 'doc.md', true, source)).toBeNull();
+    });
+  });
 });
