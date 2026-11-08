@@ -33,12 +33,6 @@ import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 // AbortController through EditorStore if a future editor needs cancellation.
 const neverAborts: AbortSignal = new AbortController().signal;
 
-/** Tab-switch fade: a frame closer than this to the previous one means the
- *  main thread is no longer busy swapping documents. */
-const SETTLED_FRAME_MS = 34;
-/** Tab-switch fade: start anyway after this long, so content never stays hidden. */
-const MAX_SETTLE_MS = 500;
-
 export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const { t } = useTranslation();
   const viewMode = useEditorStore((state) => state.viewMode);
@@ -135,42 +129,23 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const splitDragging = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fade the content in when another file becomes active, like extension file
-  // views. Animated in place (no remount) so CodeMirror and webviews keep their
-  // state. A tab switch swaps the editor and preview documents in effects and
-  // follow-up renders (markdown parse, then a re-parse once the asset base
-  // resolves), each blocking the main thread. A fade started at a fixed frame
-  // ran its 200ms during that work and was over before anything painted. So
-  // the content stays hidden until frames arrive on time again, then fades in.
+  // Bring the content in when another file becomes active, with the extension
+  // file views' motion (fzs-view-in: fade up from 4px below). Animated in place
+  // (no remount) so CodeMirror keeps its state. A click's re-render, including
+  // the editor's document swap and the preview's re-parse in effects, finishes
+  // before the next paint, so the animation starts in a layout effect. Web
+  // tabs are native webviews drawn over the page, which can't be animated.
+  const activeIsWeb = activeTab?.fileType === 'web';
   useLayoutEffect(() => {
     const container = splitContainerRef.current;
-    if (!activeTabId || !container) return;
+    if (!activeTabId || !container || activeIsWeb) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    container.style.opacity = '0';
-    let animation: Animation | undefined;
-    const startedAt = performance.now();
-    let last = startedAt;
-    let smoothFrames = 0;
-    const tick = (now: number) => {
-      smoothFrames = now - last < SETTLED_FRAME_MS ? smoothFrames + 1 : 0;
-      last = now;
-      if (smoothFrames < 2 && now - startedAt < MAX_SETTLE_MS) {
-        frame = requestAnimationFrame(tick);
-        return;
-      }
-      container.style.opacity = '';
-      animation = container.animate(
-        [{ opacity: 0 }, { opacity: 1 }],
-        { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' },
-      );
-    };
-    let frame = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(frame);
-      container.style.opacity = '';
-      animation?.cancel();
-    };
-  }, [activeTabId]);
+    const animation = container.animate(
+      [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' },
+    );
+    return () => animation.cancel();
+  }, [activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
