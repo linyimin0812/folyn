@@ -128,6 +128,19 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const splitDragging = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
+  // Fade the content in when another file opens, like extension file views.
+  // Animated in place (no remount) so CodeMirror and webviews keep their state.
+  useEffect(() => {
+    const container = splitContainerRef.current;
+    if (!activeTabId || !container) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const animation = container.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' },
+    );
+    return () => animation.cancel();
+  }, [activeTabId]);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!splitDragging.current || !splitContainerRef.current) return;

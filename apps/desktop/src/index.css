@@ -985,6 +985,28 @@ mjx-container svg {
   background-color: transparent !important;
   color: inherit !important;
 }
+/* File tree motion: folders slide open/closed (TreeCollapse), the folder icon
+   tips when expanded, icons dip on press, and the active file's accent bar
+   grows in. Same timing as the extension trees. */
+.ft-collapse {
+  display: grid; grid-template-rows: 0fr; opacity: .4;
+  transition: grid-template-rows .2s cubic-bezier(.2,.8,.2,1), opacity .2s cubic-bezier(.2,.8,.2,1);
+}
+.ft-collapse.open { grid-template-rows: 1fr; opacity: 1; }
+.ft-collapse-inner { min-height: 0; overflow: hidden; }
+.ft-item > .ft-ico { transition: transform .2s cubic-bezier(.2,.8,.2,1); }
+.ft-item:active > .ft-ico { transform: scale(.88); }
+.ft-item.open > .ft-ico { transform: rotate(-8deg) translateY(-1px); }
+@keyframes ft-bar-in { from { transform: scaleY(0); } }
+.ft-item.active::before {
+  content: ''; position: absolute; left: 0; top: 3px; bottom: 3px; width: 2px;
+  border-radius: 0 2px 2px 0; background: var(--acc);
+  animation: ft-bar-in .2s cubic-bezier(.2,.8,.2,1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ft-collapse, .ft-item > .ft-ico { transition: none; }
+  .ft-item.active::before { animation: none; }
+}
 @supports (padding: env(safe-area-inset-top)) {
   .sidebar-wrapper.mobile { padding-left: env(safe-area-inset-left); }
 }

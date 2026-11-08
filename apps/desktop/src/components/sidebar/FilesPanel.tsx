@@ -26,6 +26,7 @@ import { setRevealPathStarter } from '@/services/revealPathBridge';
 import { flattenTree } from '@/utils/treeUtils';
 import { useDragDrop } from './useDragDrop';
 import { FileTreeItem } from './FileTreeItem';
+import { TreeCollapse } from './TreeCollapse';
 import { useSidebarActions, DeleteConfirmDialog, MoveDialog, NewItemInput } from './SidebarActions';
 import { ContextMenu } from './ContextMenu';
 import type { ContextMenuData } from './ContextMenu';
@@ -141,8 +142,9 @@ export function FilesPanel(): React.JSX.Element {
 
     setSelectedPaths(new Set([filePath]));
 
-    // Scroll to the item's row after DOM update
-    requestAnimationFrame(() => {
+    // Scroll to the item's row once the parent folders have finished expanding
+    // (TreeCollapse animates their height), or the row's offset is still short.
+    setTimeout(() => {
       const container = fileTreeRef.current;
       if (!container) return;
       const fileElement = container.querySelector(
@@ -151,7 +153,7 @@ export function FilesPanel(): React.JSX.Element {
       if (fileElement) {
         fileElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
-    });
+    }, 220);
   }, []);
 
   const {
@@ -335,19 +337,25 @@ export function FilesPanel(): React.JSX.Element {
                 onRenameConfirm={confirmRename}
                 onRenameCancel={cancelRename}
               />
-              {isExpanded && newItemType && newItemParent === item.path && (
-                <NewItemInput
-                  type={newItemType}
-                  name={newItemName}
-                  placeholder={newItemType === 'dir' ? t('sidebar:filesPanel.newItem.folderName') : newItemExtension ? t('sidebar:filesPanel.newItem.fileNameDefault', { ext: newItemExtension }) : t('sidebar:filesPanel.newItem.fileNameWithExt')}
-                  depth={depth + 1}
-                  inputRef={newItemInputRef}
-                  onNameChange={setNewItemName}
-                  onConfirm={confirmNewItem}
-                  onCancel={cancelNewItem}
-                />
-              )}
-              {isExpanded && renderFileTree(children, depth + 1)}
+              <TreeCollapse open={isExpanded}>
+                {() => (
+                  <>
+                    {newItemType && newItemParent === item.path && (
+                      <NewItemInput
+                        type={newItemType}
+                        name={newItemName}
+                        placeholder={newItemType === 'dir' ? t('sidebar:filesPanel.newItem.folderName') : newItemExtension ? t('sidebar:filesPanel.newItem.fileNameDefault', { ext: newItemExtension }) : t('sidebar:filesPanel.newItem.fileNameWithExt')}
+                        depth={depth + 1}
+                        inputRef={newItemInputRef}
+                        onNameChange={setNewItemName}
+                        onConfirm={confirmNewItem}
+                        onCancel={cancelNewItem}
+                      />
+                    )}
+                    {renderFileTree(children, depth + 1)}
+                  </>
+                )}
+              </TreeCollapse>
             </div>
           );
         }

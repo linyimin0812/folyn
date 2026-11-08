@@ -27,6 +27,7 @@ export function FileTreeItem({
   isActive,
   isSelected,
   isPinned,
+  isExpanded,
   isDragOver,
   isRenaming,
   renameValue,
@@ -50,9 +51,9 @@ export function FileTreeItem({
     : (isDir && isDragOver)
       ? 'bg-accdim shadow-[inset_0_0_0_1px_var(--acc)] rounded-[3px]'
       : (!isDir && isActive)
-        ? 'bg-accdim text-acc'
+        ? 'active bg-accdim text-acc'
         : 'text-t2 hover:bg-hov hover:text-t1';
-  const classNames = `${baseClasses} ${stateClasses}${isDir ? ' font-medium' : ''}`;
+  const classNames = `${baseClasses} ${stateClasses}${isDir ? ' font-medium' : ''}${isDir && isExpanded ? ' open' : ''}`;
 
   const dataAttrs: Record<string, string> = {};
   if (isDir) {
@@ -87,7 +88,7 @@ export function FileTreeItem({
           style={{ left: `${basePad + i * indentUnit + 7}px` }}
         />
       ))}
-      <span className="shrink-0 w-4 h-4 flex items-center justify-center [&>svg]:block [&>svg]:shrink-0">
+      <span className="ft-ico shrink-0 w-4 h-4 flex items-center justify-center [&>svg]:block [&>svg]:shrink-0">
         <FileIcon filename={item.name} isDir={isDir} />
       </span>
       {isRenaming ? (
