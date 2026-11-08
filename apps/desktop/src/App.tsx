@@ -32,6 +32,8 @@ import { registerBuiltinExtensionHost } from './services/extension-host/register
 import { useNavStore } from './store/navStore';
 import { useAppearanceStore } from './store/appearanceStore';
 import { useEditorViewStateStore } from './store/editorViewState';
+import { useExtensionFileViewStore } from '@/store/extensionFileViewStore';
+import { PresentationOverlay } from '@/components/work-area/PresentationOverlay';
 import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
 import { initExternalFileWatcher } from './utils/fileWatcher';
 import { startProvidersBroadcast } from './store/aiConfigStore';
@@ -117,6 +119,11 @@ export default function App() {
   const showStatusBar = useAppearanceStore((state) => state.showStatusBar);
   const fontSize = useAppearanceStore((state) => state.fontSize);
   const focusMode = useEditorViewStateStore((state) => state.focusMode);
+  // Pages where focus mode hides the shell chrome: the editor, and extension
+  // pages (which read `env.focusMode` to hide their own panels).
+  const focusablePage = currentPage === 'editor' || currentPage.startsWith('ext:');
+  // Markdown an extension page asked to present (api.fileView.present).
+  const extensionPresenting = useExtensionFileViewStore((state) => state.presenting);
   // enable*Panel flags are no longer read here post-PR2 — the visibility +
   // active-panel fallback logic moved into registerBuiltinPanels (one general
   // rule: if the active panel becomes invisible, re-route to 'files').
@@ -244,9 +251,12 @@ export default function App() {
   // ── Hide all native webviews when leaving the editor page ──
   useEffect(() => {
     if (currentPage !== 'editor') {
-      // Focus mode only makes sense on the editor page; leaving the page
-      // exits it so the destination page's chrome is visible.
-      if (useEditorViewStateStore.getState().focusMode) {
+      // Focus mode belongs to the editor page and to extension pages that show
+      // files; leaving for any other page exits it so its chrome is visible.
+      if (!currentPage.startsWith('ext:') && useExtensionFileViewStore.getState().presenting) {
+        useExtensionFileViewStore.getState().setPresenting(null);
+      }
+      if (!currentPage.startsWith('ext:') && useEditorViewStateStore.getState().focusMode) {
         useEditorViewStateStore.getState().setFocusMode(false);
       }
       if (isTauri()) {
@@ -268,7 +278,7 @@ export default function App() {
   const petVisibleBeforeFocusRef = useRef<boolean | null>(null);
   useEffect(() => {
     if (!isTauri()) return;
-    if (currentPage !== 'editor') return;
+    if (currentPage !== 'editor' && !currentPage.startsWith('ext:')) return;
     (async () => {
       const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
       const pet = await WebviewWindow.getByLabel('pet');
@@ -333,7 +343,7 @@ export default function App() {
 
   return (
     <div className="shell flex flex-col h-dvh" style={{ '--ui-font-size': `${fontSize}px` } as any}>
-      {!(focusMode && currentPage === 'editor') && (
+      {!(focusMode && focusablePage) && (
         <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />
       )}
 
@@ -400,12 +410,20 @@ export default function App() {
 
       {currentPage.startsWith('ext:') && (
         <div className="body-row flex-1 flex overflow-hidden">
-          {!isMobile && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
+          {!isMobile && !focusMode && <ActivityBar activePanel={activePanel} onPanelChange={handlePanelChange} />}
           <ExtensionPageView />
         </div>
       )}
+      {currentPage.startsWith('ext:') && extensionPresenting && (
+        <PresentationOverlay
+          content={extensionPresenting.content}
+          filePath={extensionPresenting.path}
+          vaultRoot=""
+          onExit={() => useExtensionFileViewStore.getState().setPresenting(null)}
+        />
+      )}
 
-      {showStatusBar && !(focusMode && currentPage === 'editor') && <StatusBar />}
+      {showStatusBar && !(focusMode && focusablePage) && <StatusBar />}
       <ToastHost />
       {pickerVisible && (
         <MoveDialog

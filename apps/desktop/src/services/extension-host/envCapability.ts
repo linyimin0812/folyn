@@ -16,6 +16,7 @@ import type { ExtensionEnv, ExtensionTheme } from '@folyn/extension-host';
 import { disposable } from '@folyn/extension-host';
 import { useAppearanceStore, type Theme } from '@/store/appearanceStore';
 import { useLocaleStore } from '@/store/localeStore';
+import { useEditorViewStateStore } from '@/store/editorViewState';
 
 /** Resolve 'system' → 'light'|'dark' via the OS media query. MatchMedia is
  * available in the main webview and in trusted-extension blob-URL contexts
@@ -35,6 +36,7 @@ const extensionEnvTeardowns = new WeakMap<ExtensionEnv, () => void>();
 export function buildExtensionEnv(): ExtensionEnv {
   const themeCbs = new Set<(t: ExtensionTheme) => void>();
   const localeCbs = new Set<(l: string) => void>();
+  const focusCbs = new Set<(on: boolean) => void>();
 
   const unsubscribeTheme = useAppearanceStore.subscribe((state, prev) => {
     if (state.theme === prev.theme) return;
@@ -44,6 +46,10 @@ export function buildExtensionEnv(): ExtensionEnv {
   const unsubscribeLocale = useLocaleStore.subscribe((state, prev) => {
     if (state.locale === prev.locale) return;
     for (const cb of localeCbs) cb(state.locale);
+  });
+  const unsubscribeFocus = useEditorViewStateStore.subscribe((state, prev) => {
+    if (state.focusMode === prev.focusMode) return;
+    for (const cb of focusCbs) cb(state.focusMode);
   });
 
   const env: ExtensionEnv = {
@@ -65,13 +71,27 @@ export function buildExtensionEnv(): ExtensionEnv {
         localeCbs.delete(cb);
       });
     },
+    get focusMode(): boolean {
+      return useEditorViewStateStore.getState().focusMode;
+    },
+    setFocusMode(on: boolean) {
+      useEditorViewStateStore.getState().setFocusMode(on);
+    },
+    onFocusModeChange(cb: (on: boolean) => void) {
+      focusCbs.add(cb);
+      return disposable(() => {
+        focusCbs.delete(cb);
+      });
+    },
   };
 
   extensionEnvTeardowns.set(env, () => {
     unsubscribeTheme();
     unsubscribeLocale();
+    unsubscribeFocus();
     themeCbs.clear();
     localeCbs.clear();
+    focusCbs.clear();
   });
   return env;
 }

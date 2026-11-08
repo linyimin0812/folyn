@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { useEditorStore } from './editorStore';
+import { detectFileType, useEditorStore } from './editorStore';
+import { useNavStore } from './navStore';
+import { useExtensionFileViewStore } from './extensionFileViewStore';
 import { debounce } from '@/utils/debounce';
 
 /**
@@ -306,6 +308,13 @@ export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
   // palette / shortcut entry points call this blindly; the guard keeps a
   // non-markdown tab from opening an empty overlay.
   togglePresentationMode: () => {
+    // On an extension page the shortcut presents the file that page shows.
+    if (useNavStore.getState().currentPage.startsWith('ext:')) {
+      const view = useExtensionFileViewStore.getState();
+      if (view.presenting) return view.setPresenting(null);
+      if (view.current && detectFileType(view.current.path) === 'markdown') view.setPresenting(view.current);
+      return;
+    }
     const activeTab = useEditorStore.getState().tabs.find((t) => t.id === useEditorStore.getState().activeTabId);
     if (!get().presentationMode && activeTab?.fileType !== 'markdown') return;
     set((state) => ({ presentationMode: !state.presentationMode }));

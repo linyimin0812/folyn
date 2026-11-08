@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ponytail: mock the two host stores with a tiny zustand-like surface so
@@ -27,7 +28,7 @@ function createStore<T extends object>(initial: T) {
   };
 }
 
-const { appearanceMock, localeMock } = vi.hoisted(() => {
+const { appearanceMock, localeMock, viewStateMock } = vi.hoisted(() => {
   type ThemeState = { theme: 'light' | 'dark' | 'system' };
   type LocaleState = { locale: string };
   function createStore<T extends object>(initial: T) {
@@ -48,9 +49,14 @@ const { appearanceMock, localeMock } = vi.hoisted(() => {
       },
     };
   }
+  type ViewState = { focusMode: boolean; setFocusMode: (on: boolean) => void };
+  const viewStateMock = createStore<ViewState>({ focusMode: false, setFocusMode: () => {} });
+  viewStateMock.getState().setFocusMode = (on: boolean) =>
+    viewStateMock.__emit({ ...viewStateMock.getState(), focusMode: on });
   return {
     appearanceMock: createStore<ThemeState>({ theme: 'light' }),
     localeMock: createStore<LocaleState>({ locale: 'en' }),
+    viewStateMock,
   };
 });
 
@@ -60,6 +66,9 @@ vi.mock('@/store/appearanceStore', () => ({
 }));
 vi.mock('@/store/localeStore', () => ({
   useLocaleStore: localeMock,
+}));
+vi.mock('@/store/editorViewState', () => ({
+  useEditorViewStateStore: viewStateMock,
 }));
 
 // matchMedia stub: default to light. Tests can flip `matchMediaDark`.
@@ -141,5 +150,21 @@ describe('buildExtensionEnv', () => {
     localeMock.__emit({ locale: 'zh' });
     expect(themeCb).not.toHaveBeenCalled();
     expect(localeCb).not.toHaveBeenCalled();
+  });
+
+  it('exposes the shared focus mode and notifies on change', () => {
+    viewStateMock.getState().setFocusMode(false);
+    const env = buildExtensionEnv();
+    const seen: boolean[] = [];
+    env.onFocusModeChange((on) => seen.push(on));
+
+    env.setFocusMode(true);
+    expect(env.focusMode).toBe(true);
+    viewStateMock.getState().setFocusMode(false);
+
+    expect(seen).toEqual([true, false]);
+    disposeExtensionEnv(env);
+    viewStateMock.getState().setFocusMode(true);
+    expect(seen).toEqual([true, false]);
   });
 });

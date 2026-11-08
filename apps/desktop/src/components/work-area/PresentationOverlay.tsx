@@ -9,15 +9,21 @@ interface PresentationOverlayProps {
   content: string;
   filePath: string;
   vaultRoot: string;
+  /** How Esc leaves the overlay. Defaults to the editor's presentation state;
+   *  an extension page passes its own. */
+  onExit?: () => void;
 }
 
 /** Fullscreen presentation of the active markdown doc: a full-viewport
  * title page (first heading) that scrolls directly into the document. */
-export function PresentationOverlay({ content, filePath, vaultRoot }: PresentationOverlayProps) {
+export function PresentationOverlay({ content, filePath, vaultRoot, onExit }: PresentationOverlayProps) {
   const { t } = useTranslation('editor');
   const title = extractHeadings(content)[0]?.text;
   const scrollRef = useRef<HTMLDivElement>(null);
   const setPresentationMode = useEditorViewStateStore((s) => s.setPresentationMode);
+  const exit = onExit ?? (() => setPresentationMode(false));
+  const exitRef = useRef(exit);
+  exitRef.current = exit;
   const [hintVisible, setHintVisible] = useState(true);
 
   useEffect(() => {
@@ -64,7 +70,7 @@ export function PresentationOverlay({ content, filePath, vaultRoot }: Presentati
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        setPresentationMode(false);
+        exitRef.current();
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         // ←/→ page through the deck one viewport at a time (PRD keyboard nav).
         const el = scrollRef.current;
@@ -76,7 +82,7 @@ export function PresentationOverlay({ content, filePath, vaultRoot }: Presentati
     // Capture phase: beats the editor's keymaps on the pane below the overlay.
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [setPresentationMode]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[200] bg-bg presentation-mode flex flex-col">

@@ -108,6 +108,12 @@ export interface ExtensionFileViewCapability {
   /** The view component. Mount it directly:
    *  `<FileView path={name} content={text} onSave={save}/>` */
   component(): ComponentType<ExtensionFileViewProps>;
+  /**
+   * Open the Vault's 演示模式 — the fullscreen title page + document overlay —
+   * for markdown text. Esc or ←/→ behave as in the Vault. Does nothing for
+   * other formats, as in the Vault.
+   */
+  present(input: { path: string; content: string }): void;
 }
 
 export interface ExtensionFileViewProps {
@@ -241,6 +247,14 @@ export interface ExtensionEnv {
   onThemeChange(cb: (theme: ExtensionTheme) => void): Disposable;
   /** Subscribe to subsequent locale changes. Returns a Disposable. */
   onLocaleChange(cb: (locale: ExtensionLocale) => void): Disposable;
+  /**
+   * The app's 专注模式, shared with the Vault editor (Cmd/Ctrl+Shift+Enter,
+   * Esc to leave). On an extension page the host hides its own chrome (top
+   * bar, activity bar, status bar); the page hides its own side panels.
+   */
+  readonly focusMode: boolean;
+  setFocusMode(on: boolean): void;
+  onFocusModeChange(cb: (on: boolean) => void): Disposable;
 }
 
 // ── AI capability (host-mediated) ─────────────────────────────────────────────

@@ -64,6 +64,12 @@ function ExtensionFileView({ path, content = '', onChange, onSave }: ExtensionFi
     onChange?.(next);
   }, [onChange]);
 
+  // Publish what is on screen, live, for the 演示模式 shortcut.
+  useEffect(() => {
+    useExtensionFileViewStore.setState({ current: { path, content: text } });
+  }, [path, text]);
+  useEffect(() => () => { useExtensionFileViewStore.setState({ current: null }); }, []);
+
   if (fileType === 'unsupported' || (!Preview && !text)) {
     return <Notice text={`Folyn 没有可显示 .${ext || '?'} 文件的视图。`}/>;
   }
@@ -102,5 +108,12 @@ function ExtensionFileView({ path, content = '', onChange, onSave }: ExtensionFi
 }
 
 export function buildExtensionFileView(_manifest: ExtensionManifest): ExtensionFileViewCapability {
-  return { component: () => ExtensionFileView };
+  return {
+    component: () => ExtensionFileView,
+    // Same guard as the Vault's togglePresentationMode: markdown only.
+    present({ path, content }) {
+      if (detectFileType(path) !== 'markdown') return;
+      useExtensionFileViewStore.getState().setPresenting({ path, content });
+    },
+  };
 }

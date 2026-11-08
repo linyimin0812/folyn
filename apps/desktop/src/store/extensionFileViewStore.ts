@@ -15,10 +15,19 @@ export interface ExtensionFileViewState {
   modes: ViewMode[];
   mode: ViewMode;
   setMode: (mode: ViewMode) => void;
+  /** The document the mounted file view shows, so the 演示模式 shortcut can
+   *  present it the way it presents the editor's active tab. */
+  current: { path: string; content: string } | null;
+  /** Markdown an extension page is showing in the Vault's 演示模式, or null. */
+  presenting: { path: string; content: string } | null;
+  setPresenting: (doc: { path: string; content: string } | null) => void;
 }
 
 export const useExtensionFileViewStore = create<ExtensionFileViewState>((set) => ({
   modes: [],
   mode: 'preview',
   setMode: (mode) => set({ mode }),
+  current: null,
+  presenting: null,
+  setPresenting: (presenting) => set({ presenting }),
 }));
