@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, type ComponentType } from 'react';
+import { useRef, useState, useCallback, useEffect, useLayoutEffect, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
@@ -32,6 +32,12 @@ import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 // host-owned editors simply ignore it. Upgrade: thread a real per-tab
 // AbortController through EditorStore if a future editor needs cancellation.
 const neverAborts: AbortSignal = new AbortController().signal;
+
+/** Tab-switch fade: a frame closer than this to the previous one means the
+ *  main thread is no longer busy swapping documents. */
+const SETTLED_FRAME_MS = 34;
+/** Tab-switch fade: start anyway after this long, so content never stays hidden. */
+const MAX_SETTLE_MS = 500;
 
 export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const { t } = useTranslation();
@@ -131,23 +137,37 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
 
   // Fade the content in when another file becomes active, like extension file
   // views. Animated in place (no remount) so CodeMirror and webviews keep their
-  // state. On a tab switch the editor and preview swap documents in effects and
-  // a follow-up render, which can take a while for a large markdown file. The
-  // fade starts on the next frame, after that work, so it plays over the new
-  // document; the old one stays on screen meanwhile rather than a blank area.
-  useEffect(() => {
+  // state. A tab switch swaps the editor and preview documents in effects and
+  // follow-up renders (markdown parse, then a re-parse once the asset base
+  // resolves), each blocking the main thread. A fade started at a fixed frame
+  // ran its 200ms during that work and was over before anything painted. So
+  // the content stays hidden until frames arrive on time again, then fades in.
+  useLayoutEffect(() => {
     const container = splitContainerRef.current;
     if (!activeTabId || !container) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    container.style.opacity = '0';
     let animation: Animation | undefined;
-    const frame = requestAnimationFrame(() => {
+    const startedAt = performance.now();
+    let last = startedAt;
+    let smoothFrames = 0;
+    const tick = (now: number) => {
+      smoothFrames = now - last < SETTLED_FRAME_MS ? smoothFrames + 1 : 0;
+      last = now;
+      if (smoothFrames < 2 && now - startedAt < MAX_SETTLE_MS) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+      container.style.opacity = '';
       animation = container.animate(
         [{ opacity: 0 }, { opacity: 1 }],
         { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' },
       );
-    });
+    };
+    let frame = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(frame);
+      container.style.opacity = '';
       animation?.cancel();
     };
   }, [activeTabId]);
