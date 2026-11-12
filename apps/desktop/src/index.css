@@ -102,6 +102,30 @@ button { font-family: var(--font-ui); cursor: pointer; border: 0 solid; backgrou
 html.is-resizing, html.is-resizing * { user-select: none !important; -webkit-user-select: none !important; }
 html.is-resizing::after { content: ''; position: fixed; inset: 0; z-index: 99999; }
 
+/* ── Sidebar fold + boundary ── */
+.sidebar { position: relative; flex-shrink: 0; height: 100%; display: flex; overflow: hidden;
+  background: var(--panel); border-right: 1px solid var(--brd); transition: width .22s cubic-bezier(.2,.8,.2,1); }
+.sidebar.collapsed { border-right-width: 0; }
+.sidebar.resizing { transition: none; }
+.sidebar-inner { flex-shrink: 0; min-height: 0; display: flex; flex-direction: column;
+  transition: opacity .18s cubic-bezier(.2,.8,.2,1), transform .22s cubic-bezier(.2,.8,.2,1); }
+.sidebar.collapsed .sidebar-inner { opacity: 0; transform: translateX(-12px); }
+/* Zero-width edge: takes no layout space, so the border is the only line. */
+.sidebar-edge { position: relative; flex-shrink: 0; width: 0; z-index: 6; align-self: stretch; }
+.sidebar-edge-handle { position: absolute; top: 0; bottom: 0; left: -4px; width: 7px; z-index: 5; cursor: col-resize; touch-action: none; }
+.sidebar-edge-handle::after { content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background .12s; }
+.sidebar-edge-handle:hover::after, .sidebar-edge-handle.on::after { background: var(--acc); }
+/* Round toggle centred on the boundary; fades in on hover, stays when folded. */
+.sidebar-edge-btn { position: absolute; z-index: 6; top: 50%; left: 0; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+  display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--brd2);
+  background: var(--panel); color: var(--t3); box-shadow: 0 1px 4px rgba(0,0,0,.12); opacity: 0;
+  transition: opacity .14s cubic-bezier(.2,.8,.2,1), color .14s cubic-bezier(.2,.8,.2,1), transform .14s cubic-bezier(.2,.8,.2,1); }
+.sidebar:hover + .sidebar-edge .sidebar-edge-btn, .sidebar-edge:hover .sidebar-edge-btn,
+.sidebar-edge:has(.sidebar-edge-handle.on) .sidebar-edge-btn, .sidebar-edge-btn:focus-visible,
+.sidebar-edge.collapsed .sidebar-edge-btn { opacity: 1; }
+.sidebar-edge.collapsed .sidebar-edge-btn { margin-left: 2px; }
+.sidebar-edge-btn:hover { color: var(--acc); transform: scale(1.08); }
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -1002,6 +1026,8 @@ mjx-container svg {
 
 @media (max-width: 1024px) {
   .sidebar { width: 200px !important; min-width: 160px; }
+  .sidebar.collapsed { width: 0 !important; min-width: 0; }
+  .sidebar-inner { width: 100% !important; }
 }
 @media (max-width: 768px) {
   .mobile-menu-btn { display: flex !important; }

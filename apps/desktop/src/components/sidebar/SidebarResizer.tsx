@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRef, useState } from 'react';
 
 const DEFAULT_WIDTH = 224;
 
@@ -10,6 +10,15 @@ export interface SidebarResizerProps {
   onResizingChange?: (isResizing: boolean) => void;
 }
 
+/**
+ * The sidebar boundary: a zero-width edge carrying the drag handle and the
+ * round fold toggle. The aside's own `border-r` is the only visible line, so
+ * there is no gap column between sidebar and content.
+ *
+ * The drag uses pointer capture: every pointer event goes to the handle until
+ * release, even over iframes or outside the window, so a missed release can't
+ * leave the sidebar following the mouse.
+ */
 export function SidebarResizer({
   collapsed,
   onCollapsedChange,
@@ -17,83 +26,64 @@ export function SidebarResizer({
   onWidthChange,
   onResizingChange,
 }: SidebarResizerProps): React.JSX.Element {
-  const [resizerHovered, setResizerHovered] = useState(false);
-  const isDragging = useRef(false);
-  const widthRef = useRef(width);
-  widthRef.current = width;
+  const drag = useRef<{ x: number; width: number; last: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
-  // Use a ref to avoid stale closures in the global mousemove/mouseup handlers
-  const callbacksRef = useRef({ onWidthChange, onCollapsedChange, onResizingChange });
-  callbacksRef.current = { onWidthChange, onCollapsedChange, onResizingChange };
-
-  const handleMouseDown = useCallback(() => {
-    isDragging.current = true;
-    callbacksRef.current.onResizingChange?.(true);
-    document.body.style.cursor = 'col-resize';
-    document.documentElement.classList.add('is-resizing');
-  }, []);
-
-  useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
-      if (!isDragging.current) return;
-      const newWidth = Math.max(0, event.clientX);
-      callbacksRef.current.onWidthChange(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      if (!isDragging.current) return;
-      isDragging.current = false;
-      callbacksRef.current.onResizingChange?.(false);
-      document.body.style.cursor = '';
-      document.documentElement.classList.remove('is-resizing');
-      if (widthRef.current < 60) {
-        callbacksRef.current.onCollapsedChange(true);
-        callbacksRef.current.onWidthChange(DEFAULT_WIDTH);
-      }
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
+  const end = (el: HTMLElement, pointerId: number) => {
+    const state = drag.current;
+    if (!state) return;
+    drag.current = null;
+    setDragging(false);
+    if (el.hasPointerCapture?.(pointerId)) el.releasePointerCapture(pointerId);
+    onResizingChange?.(false);
+    document.body.style.cursor = '';
+    document.documentElement.classList.remove('is-resizing');
+    // Dragged nearly shut: fold it, and reopen at the default width later.
+    if (state.last < 60) {
+      onCollapsedChange(true);
+      onWidthChange(DEFAULT_WIDTH);
+    }
+  };
 
   return (
-    <div
-      // ponytail: outer stays 1px wide (no visual gap); invisible hit area overlaps neighbors via negative margins.
-      className={`relative shrink-0 group${collapsed ? ' w-0 cursor-pointer' : ' w-px cursor-col-resize'}`}
-      onMouseEnter={() => setResizerHovered(true)}
-      onMouseLeave={() => setResizerHovered(false)}
-    >
+    <div className={`resizer sidebar-edge${collapsed ? ' collapsed' : ''}`}>
       {!collapsed && (
         <div
-          className="absolute inset-y-0 -left-[4px] -right-[4px] z-0"
-          onMouseDown={handleMouseDown}
+          className={`sidebar-edge-handle${dragging ? ' on' : ''}`}
+          role="separator"
+          aria-orientation="vertical"
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            drag.current = { x: e.clientX, width, last: width };
+            setDragging(true);
+            onResizingChange?.(true);
+            document.body.style.cursor = 'col-resize';
+            document.documentElement.classList.add('is-resizing');
+          }}
+          onPointerMove={(e) => {
+            const state = drag.current;
+            if (!state) return;
+            if (e.buttons === 0) return end(e.currentTarget, e.pointerId);
+            state.last = Math.max(0, state.width + e.clientX - state.x);
+            onWidthChange(state.last);
+          }}
+          onPointerUp={(e) => end(e.currentTarget, e.pointerId)}
+          onPointerCancel={(e) => end(e.currentTarget, e.pointerId)}
         />
       )}
-      {/* ponytail: no static background — the aside's `border-r` draws the
-          divider (subpixel-snapped, crisp at fractional DPR). This div only
-          shows the accent tint on hover via absolute positioning so it never
-          doubles the static line. */}
-      <div className={`resizer shrink-0 transition-colors duration-[140ms] h-full${collapsed ? ' w-0 cursor-default' : ' w-px cursor-col-resize'}`} onMouseDown={collapsed ? undefined : handleMouseDown}>
-        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-transparent transition-[background] duration-[140ms] group-hover:bg-acc group-hover:opacity-30" />
-      </div>
-      {(resizerHovered || collapsed) && (
-        <button
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-5 h-5 flex items-center justify-center rounded-full border border-brd2 bg-panel text-t3 cursor-pointer transition-all duration-[140ms] shadow-[0_1px_4px_rgba(0,0,0,.12)]"
-          onClick={() => onCollapsedChange(!collapsed)}
-        >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-            {collapsed ? (
-              <polyline points="6,3 11,8 6,13" />
-            ) : (
-              <polyline points="10,3 5,8 10,13" />
-            )}
-          </svg>
-        </button>
-      )}
+      <button
+        type="button"
+        className="sidebar-edge-btn"
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-expanded={!collapsed}
+        onClick={() => onCollapsedChange(!collapsed)}
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points={collapsed ? '6,3 11,8 6,13' : '10,3 5,8 10,13'} />
+        </svg>
+      </button>
     </div>
   );
 }

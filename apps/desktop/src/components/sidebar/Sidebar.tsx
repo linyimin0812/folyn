@@ -53,9 +53,15 @@ export function Sidebar({ collapsed, onCollapsedChange, onFileSelect }: SidebarP
         // fractional DPR (e.g. Windows 150%). A `w-px bg-brd` div does NOT get
         // snapped and renders as 2 device pixels, looking thick. The resizer
         // overlays an accent line on hover via an absolute-positioned element.
-        className={`sidebar shrink-0 h-full overflow-hidden bg-panel border-r border-brd flex flex-col${isResizing ? '' : ' transition-[width,opacity] duration-200 ease-in-out'}`}
-        style={{ width: collapsed ? '0px' : `${width}px`, display: collapsed ? 'none' : undefined }}
+        // The aside animates its width; the inner column keeps its own width
+        // so the panel slides out rather than reflowing while it folds.
+        className={`sidebar${collapsed ? ' collapsed' : ''}${isResizing ? ' resizing' : ''}`}
+        style={{ width: collapsed ? 0 : width }}
+        aria-hidden={collapsed}
+        // Folded content must not take focus; React 18 has no `inert` prop.
+        ref={(el) => { if (el) el.inert = collapsed; }}
       >
+        <div className="sidebar-inner" style={{ width }}>
         <SidebarContext.Provider value={ctx}>
           {ActiveComponent ? (
             // ponytail: `key` on the boundary remounts it on panel switch,
@@ -75,9 +81,10 @@ export function Sidebar({ collapsed, onCollapsedChange, onFileSelect }: SidebarP
             <div className="flex-1" />
           )}
         </SidebarContext.Provider>
+        </div>
       </aside>
 
-      {/* Resize handle with collapse/expand toggle */}
+      {/* Sidebar boundary: drag handle + fold toggle */}
       <SidebarResizer
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
