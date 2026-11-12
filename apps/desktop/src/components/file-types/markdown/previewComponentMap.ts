@@ -11,6 +11,7 @@ import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
 import { extractTextContent, CodeBlockWrapper } from './CodeBlockWrapper';
 import { VaultImageInner } from './VaultImage';
 import { ResizableMedia } from './ResizableMedia';
+import { classifyLinkHref } from './linkTarget';
 
 // Ensure built-in extensions are registered once
 registerBuiltinExtensions();
@@ -107,40 +108,46 @@ export function buildPreviewComponentMap({ filePath, assetBase, contentRef, onCh
     };
   }
 
-  // Custom anchor component: handle external links based on linkOpenMode setting
-  map['a'] = function ExternalLink(props: any) {
+  // Custom anchor component: only http(s)/www. hrefs are web pages (opened per
+  // linkOpenMode); any other scheme-less href is a document link resolved
+  // against this file and opened in the editor.
+  map['a'] = function MarkdownLink(props: any) {
     const { href, children, node, ...rest } = props;
-    // ponytail: markdown `[baidu](www.baidu.com)` (no scheme) parses as a
-    // relative path → href="www.baidu.com". Without normalization it bypasses
-    // the external-link branch and the Tauri webview tries to navigate to the
-    // path → looks like an app restart. Treat www.-prefixed hrefs as https
-    // URLs and route through the existing two-mode open logic. Bare-domain
-    // (baidu.com) and protocol-relative (//host) cases left for later.
-    const normalizedHref = href && typeof href === 'string' && href.startsWith('www.')
-      ? `https://${href}`
-      : href;
-    const isExternal = normalizedHref && (normalizedHref.startsWith('http://') || normalizedHref.startsWith('https://'));
-    if (isExternal) {
+    if (typeof href !== 'string' || !href) return createElement('a', { href, ...rest }, children);
+    const target = classifyLinkHref(href, filePath);
+    if (target.kind === 'anchor' || target.kind === 'system') {
+      return createElement('a', { href, ...rest }, children);
+    }
+    if (target.kind === 'file') {
       return createElement('a', {
         ...rest,
-        href: normalizedHref,
+        href,
         onClick: (e: React.MouseEvent) => {
           e.preventDefault();
-          const linkOpenMode = useAppearanceStore.getState().linkOpenMode;
-          if (linkOpenMode === 'internal') {
-            const linkText = typeof children === 'string' ? children : normalizedHref;
-            useEditorStore.getState().openWebTab(normalizedHref, linkText);
-          } else if (isTauri()) {
-            import('@tauri-apps/plugin-shell').then(({ open }) => {
-              open(normalizedHref);
-            });
-          } else {
-            window.open(normalizedHref, '_blank', 'noopener,noreferrer');
-          }
+          const name = target.path.substring(target.path.lastIndexOf('/') + 1) || target.path;
+          void import('@/services/editorIoService').then(({ openFile }) => openFile(target.path, name));
         },
       }, children);
     }
-    return createElement('a', { href, ...rest }, children);
+    const url = target.url;
+    return createElement('a', {
+      ...rest,
+      href: url,
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        const linkOpenMode = useAppearanceStore.getState().linkOpenMode;
+        if (linkOpenMode === 'internal') {
+          const linkText = typeof children === 'string' ? children : url;
+          useEditorStore.getState().openWebTab(url, linkText);
+        } else if (isTauri()) {
+          import('@tauri-apps/plugin-shell').then(({ open }) => {
+            open(url);
+          });
+        } else {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      },
+    }, children);
   };
 
   // Custom img component: resolve paths relative to the current document's directory.

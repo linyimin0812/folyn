@@ -54,17 +54,15 @@ export function installExternalLinkInterceptor(): () => void {
     }
     // Only intercept external protocols — let anything else fall through.
     if (!/^(https?:|mailto:|tel:|ftp:)/i.test(href)) {
-      // ponytail: catch-all for unresolvable hrefs (e.g. [baidu](fadsfsdfsf),
-      // bare domains). Without this, returning early lets the webview try to
-      // navigate to the path → app refresh. Route to WebViewer; it shows its
-      // existing invalid_url error UI (new URL('fadsfsdfsf') throws) with an
-      // "open in external browser" escape hatch.
+      // A scheme-less href (`references/a.md`) is a document link, not a web
+      // page: block the webview navigation (it would reload the app) but let
+      // the click reach the rendering component — the markdown preview's
+      // anchor opens it as a file. `www.` hrefs are web links (normalized).
       e.preventDefault();
-      e.stopPropagation();
-      const linkText = anchor.textContent || href;
-      useEditorStore.getState().openWebTab(href, linkText);
-      useEditorStore.setState({ activePanel: 'files' });
-      useNavStore.getState().setCurrentPage('editor');
+      if (/^www\./i.test(href)) {
+        e.stopPropagation();
+        openLinkByMode(`https://${href}`, anchor.textContent || href);
+      }
       return;
     }
 
