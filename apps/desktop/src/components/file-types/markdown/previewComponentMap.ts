@@ -7,6 +7,7 @@ import { getActiveContainers } from '@/services/containerRegistryService';
 import { isTauri } from '@/utils/platform';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useDocLinkHistory } from '@/store/docLinkHistory';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
 import { extractTextContent, CodeBlockWrapper } from './CodeBlockWrapper';
 import { VaultImageInner } from './VaultImage';
@@ -125,7 +126,7 @@ export function buildPreviewComponentMap({ filePath, assetBase, contentRef, onCh
         onClick: (e: React.MouseEvent) => {
           e.preventDefault();
           const name = target.path.substring(target.path.lastIndexOf('/') + 1) || target.path;
-          void import('@/services/editorIoService').then(({ openFile }) => openFile(target.path, name));
+          useDocLinkHistory.getState().follow({ path: target.path, name });
         },
       }, children);
     }

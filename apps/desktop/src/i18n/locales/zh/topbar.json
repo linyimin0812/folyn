@@ -38,5 +38,9 @@
   },
   "focusMode": {
     "toggle": "切换专注模式 (Cmd+Shift+Enter)"
+  },
+  "docLink": {
+    "back": "后退 (Cmd/Ctrl+[)",
+    "forward": "前进 (Cmd/Ctrl+])"
   }
 }

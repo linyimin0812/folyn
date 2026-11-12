@@ -11,6 +11,7 @@ import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import { useCommandPaletteStore } from '@/store/commandPaletteStore';
+import { useDocLinkHistory } from '@/store/docLinkHistory';
 import { eventMatchesShortcut } from '@/utils/shortcutAccelerator';
 import { listenForForwardedKeys } from '@/utils/iframeShortcuts';
 
@@ -99,13 +100,34 @@ export function useGlobalShortcuts() {
         e.preventDefault();
         useCommandPaletteStore.getState().toggle();
       }
+      // Back/forward along followed document links — Cmd/Ctrl+[ and ]. Skipped
+      // in editable targets, where CodeMirror binds them to indent less/more.
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === '[' || e.key === ']')) {
+        const el = e.target as HTMLElement | null;
+        if (!el?.isContentEditable && !(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          const history = useDocLinkHistory.getState();
+          if (e.key === '[') history.goBack();
+          else history.goForward();
+        }
+      }
+    };
+    // Mouse side buttons (3 = back, 4 = forward) walk the same trail.
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      e.preventDefault();
+      const history = useDocLinkHistory.getState();
+      if (e.button === 3) history.goBack();
+      else history.goForward();
     };
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mouseup', handleMouseUp);
     // Sandboxed preview iframes (HTML files) post their shortcut keys here;
     // they are replayed on this document and reach handleKeyDown above.
     const stopForwarding = listenForForwardedKeys();
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mouseup', handleMouseUp);
       stopForwarding();
     };
   }, []);
