@@ -12,6 +12,8 @@ export interface DocLinkEntry {
 interface DocLinkHistoryState {
   back: DocLinkEntry[];
   forward: DocLinkEntry[];
+  /** Vault the trail belongs to; vault-relative paths mean nothing elsewhere. */
+  vaultId: string | null;
   /** Follow a document link: remember where we came from, drop the forward trail. */
   follow: (target: DocLinkEntry) => void;
   goBack: () => void;
@@ -36,35 +38,41 @@ const LIMIT = 50;
  * like a browser's history. Only link jumps are recorded; opening files from
  * the tree or tabs doesn't touch it. Revisiting a closed tab reopens it.
  */
-export const useDocLinkHistory = create<DocLinkHistoryState>((set, get) => ({
-  back: [],
-  forward: [],
-  follow: (target) => {
-    const from = currentEntry();
-    if (from && from.path !== target.path) {
-      set((s) => ({ back: [...s.back, from].slice(-LIMIT), forward: [] }));
-    }
-    open(target);
-  },
-  goBack: () => {
-    const { back } = get();
-    const prev = back[back.length - 1];
-    if (!prev) return;
-    const from = currentEntry();
-    set((s) => ({ back: s.back.slice(0, -1), forward: from ? [...s.forward, from] : s.forward }));
-    open(prev);
-  },
-  goForward: () => {
-    const { forward } = get();
-    const next = forward[forward.length - 1];
-    if (!next) return;
-    const from = currentEntry();
-    set((s) => ({ forward: s.forward.slice(0, -1), back: from ? [...s.back, from] : s.back }));
-    open(next);
-  },
-}));
+export const useDocLinkHistory = create<DocLinkHistoryState>((set, get) => {
+  // The vault is read at call time, never at module load: this module sits in
+  // the startup import graph, where touching useVaultStore early is a TDZ crash.
+  const syncVault = () => {
+    const vaultId = useVaultStore.getState().activeVaultId;
+    if (get().vaultId !== vaultId) set({ back: [], forward: [], vaultId });
+  };
 
-// Vault-relative paths mean nothing in another vault: start a fresh trail.
-useVaultStore.subscribe((state, prev) => {
-  if (state.activeVaultId !== prev.activeVaultId) useDocLinkHistory.setState({ back: [], forward: [] });
+  return {
+    back: [],
+    forward: [],
+    vaultId: null,
+    follow: (target) => {
+      syncVault();
+      const from = currentEntry();
+      if (from && from.path !== target.path) {
+        set((s) => ({ back: [...s.back, from].slice(-LIMIT), forward: [] }));
+      }
+      open(target);
+    },
+    goBack: () => {
+      syncVault();
+      const prev = get().back.at(-1);
+      if (!prev) return;
+      const from = currentEntry();
+      set((s) => ({ back: s.back.slice(0, -1), forward: from ? [...s.forward, from] : s.forward }));
+      open(prev);
+    },
+    goForward: () => {
+      syncVault();
+      const next = get().forward.at(-1);
+      if (!next) return;
+      const from = currentEntry();
+      set((s) => ({ forward: s.forward.slice(0, -1), back: from ? [...s.back, from] : s.back }));
+      open(next);
+    },
+  };
 });

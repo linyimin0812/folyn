@@ -63,8 +63,10 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
   const terminalOpen = terminalPanelVisible || terminalInRightDock;
-  const linkBack = useDocLinkHistory((s) => s.back.length > 0);
-  const linkForward = useDocLinkHistory((s) => s.forward.length > 0);
+  // A trail left in another vault doesn't count (the store clears it on next use).
+  const activeVaultId = useVaultStore((state) => state.activeVaultId);
+  const linkBack = useDocLinkHistory((s) => s.vaultId === activeVaultId && s.back.length > 0);
+  const linkForward = useDocLinkHistory((s) => s.vaultId === activeVaultId && s.forward.length > 0);
 
   // ── Context-driven toolbar (doc §16–§17) ────────────────────────────────
   // Resolve the whole toolbar state from a ToolbarContext — no per-file-type

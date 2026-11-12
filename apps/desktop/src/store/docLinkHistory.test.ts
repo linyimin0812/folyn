@@ -5,7 +5,7 @@ vi.mock('@/services/editorIoService', () => ({ openFile: (...args: unknown[]) =>
 
 const editor = { tabs: [] as { id: string; path: string; name: string; fileType: string }[], activeTabId: null as string | null };
 vi.mock('@/store/editorStore', () => ({ useEditorStore: { getState: () => editor } }));
-vi.mock('@/store/vaultStore', () => ({ useVaultStore: { subscribe: () => () => {} } }));
+vi.mock('@/store/vaultStore', () => ({ useVaultStore: { getState: () => ({ activeVaultId: 'v1' }) } }));
 
 const { useDocLinkHistory } = await import('./docLinkHistory');
 
@@ -18,7 +18,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('useDocLinkHistory', () => {
   beforeEach(() => {
-    useDocLinkHistory.setState({ back: [], forward: [] });
+    useDocLinkHistory.setState({ back: [], forward: [], vaultId: 'v1' });
     openFile.mockClear();
   });
 
@@ -46,6 +46,13 @@ describe('useDocLinkHistory', () => {
     activate('a.md');
     useDocLinkHistory.getState().follow({ path: 'b.md', name: 'b.md' });
     expect(useDocLinkHistory.getState().forward).toEqual([]);
+  });
+
+  it('a trail from another vault is dropped', () => {
+    useDocLinkHistory.setState({ back: [{ path: 'x.md', name: 'x.md' }], vaultId: 'v0' });
+    useDocLinkHistory.getState().goBack();
+    expect(openFile).not.toHaveBeenCalled();
+    expect(useDocLinkHistory.getState().back).toEqual([]);
   });
 
   it('does not record self-links or web tabs', () => {
