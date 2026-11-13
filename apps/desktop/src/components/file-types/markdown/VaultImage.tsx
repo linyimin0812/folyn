@@ -1,9 +1,10 @@
-import { useContext, useEffect, useState, createElement } from 'react';
+import { useCallback, useContext, useEffect, useState, createElement, Fragment } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { resolveAbsolutePath } from '@/services/externalFileProvider';
 import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview';
 import { ResizableMedia } from './ResizableMedia';
 import { AssetResolverContext } from './assetResolver';
+import { ImageLightbox } from './ImageLightbox';
 
 /**
  * Async img renderer: resolves `~/` and `$HOME/`-prefixed paths via Tauri
@@ -14,6 +15,8 @@ import { AssetResolverContext } from './assetResolver';
  * ExcalidrawPreview. Wrapped in ResizableMedia when a source line is
  * attached (for drag-resize writeback). Under an {@link AssetResolverContext}
  * (a document that is not on disk) every local reference goes to the resolver.
+ * Clicking a rendered image (not Excalidraw) opens it full-size in
+ * {@link ImageLightbox} — the 720px column downscales detailed SVGs to blur.
  */
 export function VaultImageInner(props: {
   src?: string;
@@ -29,6 +32,8 @@ export function VaultImageInner(props: {
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
   const resolveAsset = useContext(AssetResolverContext);
   const remote = !!resolveAsset && !!src && !src.startsWith('http') && !src.startsWith('data:');
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const closeLightbox = useCallback(() => setLightboxSrc(null), []);
 
   // ponytail: resolve ~ / $HOME / absolute / vault-relative paths. Synchronous
   // for http/data/absolute; async for ~/ and $HOME/ (homeDir() IPC) AND for
@@ -81,10 +86,28 @@ export function VaultImageInner(props: {
     return () => { cancelled = true; };
   }, [src, assetBase, remote, resolveAsset]);
 
+  // Compose with whatever react-markdown passed in rest (className/onClick).
+  const zoomable = {
+    className: `${rest.className ?? ''} cursor-zoom-in`.trim(),
+    onClick: (e: React.MouseEvent<HTMLImageElement>) => {
+      rest.onClick?.(e);
+      if (e.defaultPrevented) return;
+      // A linked image follows its link; a drag-selection ending here keeps its selection.
+      if (e.currentTarget.closest('a')) return;
+      if (window.getSelection()?.isCollapsed === false) return;
+      const url = e.currentTarget.currentSrc || e.currentTarget.src;
+      if (url) setLightboxSrc(url);
+    },
+  };
+  const withLightbox = (el: React.ReactElement): React.ReactElement => {
+    const wrapped = sourceLine == null ? el : createElement(ResizableMedia, { kind: 'img', sourceLine, contentRef, onChangeRef }, el);
+    // Always a Fragment so opening the lightbox doesn't change the root type and remount the img.
+    return createElement(Fragment, null, wrapped,
+      lightboxSrc ? createElement(ImageLightbox, { src: lightboxSrc, alt: alt ?? '', onClose: closeLightbox }) : null);
+  };
+
   if (!src || src.startsWith('http') || src.startsWith('data:')) {
-    const imgEl = createElement('img', { src, alt, ...rest });
-    if (sourceLine == null) return imgEl;
-    return createElement(ResizableMedia, { kind: 'img', sourceLine, contentRef, onChangeRef }, imgEl);
+    return withLightbox(createElement('img', { src, alt, ...rest, ...zoomable }));
   }
 
   const rawPath = src.replace(/^\.\//, '');
@@ -101,13 +124,12 @@ export function VaultImageInner(props: {
     return createElement(ResizableMedia, { kind: 'img', sourceLine, contentRef, onChangeRef }, imgEl);
   }
 
-  const imgEl = createElement('img', {
+  return withLightbox(createElement('img', {
     // A remote reference is not a loadable URL; show nothing until resolved.
     src: resolvedSrc ?? (remote ? undefined : src),
     alt,
     loading: 'lazy',
     ...rest,
-  });
-  if (sourceLine == null) return imgEl;
-  return createElement(ResizableMedia, { kind: 'img', sourceLine, contentRef, onChangeRef }, imgEl);
+    ...zoomable,
+  }));
 }

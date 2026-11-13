@@ -8,7 +8,8 @@ import type { PreviewProps } from '../types';
 // inline markdown code-fence renderer (useMermaidSvg), but wraps the SVG in
 // ZoomPanCanvas (matching graphviz/plantuml previews) so the user can
 // wheel-zoom, drag-pan, and pinch. SVG string → blob URL is the same trick
-// PlantUmlPreview uses; ZoomPanCanvas treats it as an img src.
+// PlantUmlPreview uses; ZoomPanCanvas treats it as an img src. initialFit:
+// mermaid's SVG is width="100%" with no intrinsic size, so 1:1 is meaningless.
 export function MermaidPreview({ content, filePath }: PreviewProps) {
   const { t } = useTranslation();
   const { svg, error } = useMermaidSvg(content);
@@ -48,5 +49,5 @@ export function MermaidPreview({ content, filePath }: PreviewProps) {
     );
   }
 
-  return <ZoomPanCanvas src={url} alt={filePath} />;
+  return <ZoomPanCanvas src={url} alt={filePath} initialFit />;
 }
