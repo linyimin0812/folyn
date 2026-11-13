@@ -15,9 +15,11 @@
  *
  * Reuses the single-doc pipeline (@/services/exportService +
  * @/services/export/shared) so markdown rendering, image inlining, theme
- * vars, and code themes stay identical. Rich-text rendering goes through
- * the extension's registered exporter via exportService.runExporter.
+ * vars, and code themes stay identical. A file type the host cannot render
+ * itself goes through the exporter that type registered
+ * (exportWithOwnExporter).
  */
+import type { ExportContext } from 'folyn-extension-sdk';
 import type { VaultEntry } from '@folyn/vault-provider';
 import { useVaultStore } from '@/store/vaultStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
@@ -47,9 +49,8 @@ import {
   inlineImages,
   downloadBlob,
   escapeHtml,
-  renderFilePreviewToSvg,
   uploadImagesToProvider,
-  findExporterByFormat,
+  exportWithOwnExporter,
   scopeCssSelectors,
 } from '@/services/export/shared';
 import React from 'react';
@@ -137,19 +138,16 @@ async function readVaultText(path: string): Promise<string> {
 /**
  * Render one exportable file to an HTML *body fragment* (inner HTML for the
  * content pane). Markdown goes through the full DOM render pipeline +
- * image inlining (base64); rich-text reuses its serializer; dbml resolves
- * its SVG via the extension's manifest-declared exporter (cross-origin
- * iframe preview can't be reached by renderFilePreviewToSvg); other canvas
- * types (plantuml/graphviz/mermaid/drawio/excalidraw/markmap) render to SVG
- * via the preview pipeline; svg/html embed their rendered markup (html in
- * an isolated iframe); the remaining text types (code/csv/json/txt…) are
- * wrapped in a <pre><code> source block.
+ * image inlining (base64). A type that registered its own `html` exporter
+ * (rich-text) is embedded as that document; one that registered its own
+ * `svg` exporter (the builtin canvas types, dbml) as a canvas page. svg/html
+ * files embed their rendered markup (html in an isolated iframe); the
+ * remaining text types (code/csv/json/txt…) are wrapped in a <pre><code>
+ * source block.
  *
  * Returns { html, css } — css is the markdown-renderer's scoped CSS
  * (container extensions, code highlights); non-markdown types emit ''.
  */
-const CANVAS_EXPORT_TYPES = new Set(['excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
-
 // Max docs rendered in parallel during whole-vault export. Each render mounts
 // a DOM root + poll loop on document.body, so this is bounded to avoid
 // mounting hundreds of trees at once. ponytail: a fixed pool, not a config.
@@ -197,27 +195,32 @@ async function fileToBodyFragment(
     return { html: inlined, css };
   }
 
-  if (file.fileType === 'rich-text') {
-    // ponytail: discover the rich-text HTML exporter dynamically (extensions
-    // can be unloaded). If the rich-text extension isn't installed, return
-    // empty — same graceful-skip path canvas types use when their preview
-    // isn't available. The vault HTML will simply omit the .richtext entry's
-    // body rather than abort the whole export.
-    const content = await readVaultText(file.path);
-    const ctx = { filePath: file.path, vaultRoot, content };
-    const descriptor = await findExporterByFormat('rich-text', 'html', ctx);
-    if (!descriptor) return { html: '', css: '' };
-    const { exportService } = await import('./exporterRegistry');
-    const result = await exportService.runExporter(descriptor.id, ctx);
-    const full = typeof result.data === 'string'
-      ? result.data
-      : new TextDecoder().decode(result.data);
+  // A type with its own exporter renders through it — the host does not know
+  // these types by name (extensions can be unloaded). A failed render leaves
+  // the entry's body empty rather than aborting the whole vault export.
+  let ctx: Promise<ExportContext> | undefined;
+  // Read at most once, and only when the type has an exporter to run.
+  const loadCtx = () =>
+    (ctx ??= readVaultText(file.path).then((content) => ({ filePath: file.path, vaultRoot, content })));
+  const ownExport = async (formatId: string): Promise<string | null> => {
+    try {
+      return await exportWithOwnExporter(file.fileType, formatId, loadCtx);
+    } catch (err) {
+      console.warn(`[export] ${file.path}: ${formatId} exporter failed:`, err);
+      return '';
+    }
+  };
+
+  // Own `html` exporter (rich-text) → embed the document it builds.
+  const full = await ownExport('html');
+  if (full !== null) {
+    if (!full) return { html: '', css: '' };
     // Extract <body> inner and <style> blocks from the standalone doc the
     // exporter built, then scope the CSS to `.rt-doc` so it doesn't bleed
     // into vault chrome (sidebar links, other docs). The standalone body
     // rule (max-width/padding/margin) collapses onto `.rt-doc` so the
-    // rich-text block renders with the same container styling as standalone
-    // export. Wrap body inner in `<div class="rt-doc">` to anchor the scope.
+    // block renders with the same container styling as standalone export.
+    // Wrap body inner in `<div class="rt-doc">` to anchor the scope.
     const bodyMatch = full.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     const bodyInner = bodyMatch ? bodyMatch[1].trim() : full;
     const styleBlocks = [...full.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)];
@@ -226,36 +229,12 @@ async function fileToBodyFragment(
     return { html: `<div class="rt-doc">${bodyInner}</div>`, css: scopedCss };
   }
 
-  // dbml → SVG via the extension's manifest-declared exporter (same dynamic
-  // discovery pattern as rich-text). The dbml preview is a cross-origin
-  // iframe, so renderFilePreviewToSvg returns '' — must go through the
-  // exporter registry instead. If the dbml extension is installed it
-  // registers a 'dbml-svg' exporter; if not, detectFileType returned
-  // 'unsupported' and we never reach this branch. Empty result on miss
-  // mirrors the rich-text graceful-skip path.
-  if (file.fileType === 'dbml') {
-    const content = await readVaultText(file.path);
-    const ctx = { filePath: file.path, vaultRoot, content };
-    const descriptor = await findExporterByFormat('dbml', 'svg', ctx);
-    if (!descriptor) return { html: '', css: '' };
-    const { exportService } = await import('./exporterRegistry');
-    const result = await exportService.runExporter(descriptor.id, ctx);
-    const svg = typeof result.data === 'string' ? result.data : new TextDecoder().decode(result.data);
+  // Own `svg` exporter (builtin canvas types via the preview pipeline, dbml
+  // via its extension) → centered, no-scroll canvas page (fills viewport,
+  // SVG scaled to fit).
+  const svg = await ownExport('svg');
+  if (svg !== null) {
     if (!svg) return { html: '', css: '' };
-    const page = `<div class="vt-canvas-page">${svg}</div>`;
-    return {
-      html: page,
-      css: '',
-      canvas: true,
-      standalone: `<!DOCTYPE html>\n<html lang="zh-CN" data-theme="${theme}">\n<head><meta charset="UTF-8"><title>${escapeHtml(file.name)}</title><style>html,body{margin:0;padding:0;height:100%;overflow:hidden;background:${theme === 'dark' ? '#16171b' : '#fff'}}${VT_CANVAS_PAGE_CSS}</style></head>\n<body>${page}\n<script>${VT_CANVAS_GESTURE_SCRIPT}</script>\n</body>\n</html>`,
-    };
-  }
-
-  // canvas types → render to SVG via the preview pipeline (not source)
-  if (CANVAS_EXPORT_TYPES.has(file.fileType)) {
-    const svg = await renderFilePreviewToSvg(file.path, vaultRoot);
-    if (!svg) return { html: '', css: '' };
-    // Centered, no-scroll canvas page (fills viewport, SVG scaled to fit).
     const page = `<div class="vt-canvas-page">${svg}</div>`;
     return {
       html: page,

@@ -4,8 +4,8 @@
  * pulled via dynamic import by renderFilePreviewToSvg to avoid an ESM cycle).
  */
 
+import type { ExportContext } from 'folyn-extension-sdk';
 import type { StorageProviderEntry } from '../storage/registry';
-import type { ExporterDescriptor } from 'folyn-extension-sdk';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { resolveBasePath } from '@/utils/pathResolver';
 
@@ -496,42 +496,32 @@ export function scopeCssSelectors(css: string, scope: string): string {
 }
 
 /**
- * Find an exporter descriptor by file-type id + format id (e.g. 'html' for
- * 'rich-text'). Returns `null` when no matching exporter is registered —
- * callers decide whether to skip, warn, or throw. Used so the host does NOT
- * hardcode `extension.<id>.<format>` (extensions can be unloaded / swapped).
+ * Render a file with the exporter its own type registered for `formatId`
+ * (rich-text → `html`, dbml and the builtin canvas types → `svg`), as text.
+ * `null` when the type registered none. This is how the host embeds a file
+ * type it cannot render itself: it asks the registry, it never names the type
+ * (extensions can be unloaded / swapped).
+ *
+ * Exporters that apply to every file type (`fileTypes: []`) are extra output
+ * formats, not a type's own rendering, and are not considered.
+ *
+ * `loadCtx` is called only once a candidate exists, so a caller walking many
+ * files does not read the ones no exporter wants.
  */
-export async function findExporterByFormat(
+export async function exportWithOwnExporter(
   fileTypeId: string,
   formatId: string,
-  ctx: { filePath: string; vaultRoot: string; content: string },
-): Promise<ExporterDescriptor | null> {
-  const { exportService } = await import('./exporterRegistry');
-  return (
-    exportService
-      .getAvailableExporters(ctx, fileTypeId)
-      .find((d) => d.format.id === formatId) ?? null
-  );
-}
-
-/**
- * Run an exporter for a given file type + format id, discovering the exporter
- * id dynamically via the registry. Throws if no matching exporter is
- * registered — for paths that should surface a clear error. Use
- * {@link findExporterByFormat} when graceful skip is preferred.
- */
-export async function runExporterByFormat(
-  fileTypeId: string,
-  formatId: string,
-  ctx: { filePath: string; vaultRoot: string; content: string },
-): Promise<string> {
-  const descriptor = await findExporterByFormat(fileTypeId, formatId, ctx);
-  if (!descriptor) {
-    throw new Error(`No exporter registered for file-type "${fileTypeId}" format "${formatId}"`);
-  }
-  const { exportService } = await import('./exporterRegistry');
-  const result = await exportService.runExporter(descriptor.id, ctx);
-  return typeof result.data === 'string'
-    ? result.data
-    : new TextDecoder().decode(result.data);
+  loadCtx: () => Promise<ExportContext>,
+): Promise<string | null> {
+  const { exporterRegistry } = await import('./exporterRegistry');
+  const candidates = exporterRegistry
+    .list()
+    .filter((e) => e.fileTypes.includes(fileTypeId) && e.formats.some((f) => f.id === formatId))
+    .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  if (candidates.length === 0) return null;
+  const ctx = await loadCtx();
+  const own = candidates.find((e) => !e.supports || e.supports(ctx));
+  if (!own) return null;
+  const result = await own.export(ctx);
+  return typeof result.data === 'string' ? result.data : new TextDecoder().decode(result.data);
 }

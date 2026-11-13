@@ -12,10 +12,6 @@ import { FileIcon } from '@/components/icons/FileIcon';
 import { useTranslation } from 'react-i18next';
 import { hideWebviewsForOverlay } from '@/components/file-types/web/WebViewer';
 
-// File types that ship a canvas → SVG/PNG export. Markdown goes HTML instead.
-const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
-// File types with a per-type source label. Others fall back to "default".
-const KNOWN_SOURCE_TYPES = new Set(['markdown', ...CANVAS_TYPES]);
 
 interface Item {
   key: string;
@@ -26,7 +22,7 @@ interface Item {
 }
 
 export function ExportMenu() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [containerWarning, setContainerWarning] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -109,7 +105,8 @@ export function ExportMenu() {
     vaultRoot: useVaultStore.getState().currentVault?.basePath ?? '',
     content: getActiveContent().content,
   };
-  const sourceKey = KNOWN_SOURCE_TYPES.has(fileType) ? fileType : 'default';
+  // A per-type source label when the locale has one; others fall back to "default".
+  const sourceKey = i18n.exists(`editor:export.source.${fileType}.label`) ? fileType : 'default';
   const items: Item[] = [
     {
       key: 'source',

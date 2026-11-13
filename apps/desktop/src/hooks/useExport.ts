@@ -21,7 +21,7 @@ import {
   downloadBlob,
   escapeHtml,
   renderFilePreviewToSvg,
-  runExporterByFormat,
+  exportWithOwnExporter,
   svgToPngBlob,
   uploadImagesToProvider,
   type HtmlImageMode,
@@ -227,12 +227,13 @@ export async function shareActiveToCloud(opts?: { imageMode?: HtmlImageMode; fil
 
 /**
  * Build the shareable HTML payload for the active document, dispatching on
- * fileType:
- *  - markdown: render → inline/upload images → wrap in styled shell
- *  - rich-text: richTextToHtmlBlob already returns a full HTML doc
- *  - canvas types (dbml/excalidraw/drawio/markmap/plantuml/graphviz/mermaid):
- *    render preview SVG, wrap in a minimal centered-HTML shell so the
- *    shared URL serves a viewable web page.
+ * what the file type can render:
+ *  - a type with its own `html` exporter (rich-text): that full HTML doc
+ *  - a type with its own `svg` exporter (the builtin canvas types, dbml):
+ *    the SVG, wrapped in a minimal centered-HTML shell so the shared URL
+ *    serves a viewable web page
+ *  - markdown, and anything else: render → inline/upload images → wrap in
+ *    styled shell
  */
 async function buildShareableHtml(
   name: string,
@@ -244,19 +245,19 @@ async function buildShareableHtml(
   imgCfg: unknown | null,
   imageMode: HtmlImageMode,
 ): Promise<string> {
-  const CANVAS_TYPES = new Set(['dbml', 'excalidraw', 'drawio', 'markmap', 'plantuml', 'graphviz', 'mermaid']);
+  // The type's own exporter, discovered via the registry (extensions can be
+  // unloaded / swapped — no hardcoded type or exporter id). Markdown has an
+  // svg exporter too (its mind map), but shares as the document.
+  if (fileType !== 'markdown') {
+    const loadCtx = async () => ({ filePath: path, vaultRoot, content });
+    const ownHtml = await exportWithOwnExporter(fileType, 'html', loadCtx);
+    if (ownHtml !== null) return ownHtml;
 
-  if (fileType === 'rich-text') {
-    // ponytail: discover the rich-text HTML exporter dynamically via the
-    // registry (extensions can be unloaded / swapped — no hardcoded id).
-    return runExporterByFormat('rich-text', 'html', { filePath: path, vaultRoot, content });
-  }
-
-  if (CANVAS_TYPES.has(fileType)) {
-    const svg = await renderFilePreviewToSvg(path, vaultRoot);
-    if (!svg) throw new Error('SHARE_NO_SVG');
-    const baseName = escapeHtml(name.replace(/\.[^.]+$/, ''));
-    return `<!DOCTYPE html>
+    const svg = await exportWithOwnExporter(fileType, 'svg', loadCtx);
+    if (svg !== null) {
+      if (!svg) throw new Error('SHARE_NO_SVG');
+      const baseName = escapeHtml(name.replace(/\.[^.]+$/, ''));
+      return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -268,6 +269,7 @@ async function buildShareableHtml(
 ${svg}
 </body>
 </html>`;
+    }
   }
 
   // markdown (default)
