@@ -19,7 +19,6 @@ import { getWebviewLabels } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
-import { DocLinkNav } from './DocLinkNav';
 import { OutlineSidebar } from './OutlineSidebar';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
@@ -350,10 +349,6 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           horizontal extent, but pinning the ref here is the correct invariant
           if TabBar ever gets horizontal padding. */}
       <div className="flex-1 flex overflow-hidden relative" ref={splitContainerRef}>
-
-      {/* Back/forward along followed document links, floated at the page's
-          top-left corner (nothing there: tabs end and preview padding starts). */}
-      <DocLinkNav />
 
       {showSkeleton && <FileLoadingView label={t('shell:workArea.loading')} />}
 
