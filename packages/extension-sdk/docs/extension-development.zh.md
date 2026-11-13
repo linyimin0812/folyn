@@ -716,15 +716,24 @@ diff 游标、`authSchema` 含 `excludeDirs` + `allowAiSummary`）。
 - 用户的 redact 正则会应用到 `title` 和 `summary` 上。**别把敏感信息放进
   title/summary**——它们是时间线里展示的字段。
 
-#### host 注入的 `ctx` 能力（各自强制什么）
+#### 采集器能用到什么
 
-`exec`/`http`/`frontWindow`/`scanVault`/`readVaultFile` 在测试与嵌入 host 中
-不存在——务必先做特性检测。
+`ctx.api` 就是扩展自己的 `ExtensionApi`，与 `activate(api, ctx)` 收到的是同一个
+对象。采集器像扩展里其他代码一样使用它，受用户安装时确认的 manifest
+`permissions` 约束：
+
+| 需求 | 用法 | manifest 中的声明 |
+| --- | --- | --- |
+| 远程 API | `ctx.api.network.fetch(url, init)`：在 Rust 侧发出（无 CORS），自带超时 | `permissions.http.origins`（origin 精确匹配） |
+| 本机程序（`git`、`osascript`、自带的辅助程序） | `ctx.api.process.exec(program, args, { cwd })`，见[运行本机程序](#运行本机程序trusted-tier) | `permissions.exec.programs`（程序名精确匹配） |
+
+采集器需要新的 origin 或新的程序时，在 manifest 里声明即可，不用改 host。
+
+还有几个数据源仍是 `ctx` 上的固定 host 命令。它们在测试与嵌入 host 中不存在，
+务必先做特性检测。
 
 | 能力 | host 强制什么 |
 | --- | --- |
-| `ctx.exec(program, args, cwd)` | Rust `activity_exec`：**程序白名单**（目前仅 `git`）。参数分离、无 shell → 无注入。需要别的二进制必须 host 侧扩列表。 |
-| `ctx.http(url, init)` | URL 的 **origin 必须与** manifest `hostAllowlist` 条目**精确匹配**——否则请求发出前就抛错。这是安装时权限确认的运行时对应物。 |
 | `ctx.frontWindow()` | Rust `activity_front_window`：**固定平台脚本**，无采集器可控参数。不可用返回 `null`。 |
 | `ctx.scanVault({ excludeDirs })` | Rust `activity_scan_vault`：对当前 vault 的固定递归遍历；**`.git` 恒跳过**；路径为 vault 相对路径；采集器永远不知道 vault 绝对根路径。 |
 | `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`：**遍历安全**（`..`/绝对路径拒绝）、二进制与 >1MB 文件返回 `null`、输出截断（上限钳制 1 B–64 KB，默认 8 KB）。 |
@@ -747,7 +756,7 @@ id 重复 push 会被静默去重，这也是你的崩溃/重启安全网。
 
 ```jsonc
 "contributes": {
-  "collectors": [{ "id": "my-source", "activityTypes": ["my_event"], "mode": "poll", "pollIntervalMs": 300000, "hostAllowlist": [] }],
+  "collectors": [{ "id": "my-source", "activityTypes": ["my_event"], "mode": "poll", "pollIntervalMs": 300000 }],
   "activityDisplay": [{ "type": "my_event", "icon": "star", "color": "blue" }],
   "entityTypes": [{ "id": "my_thing", "label": "Thing", "color": "green" }]
 }
@@ -762,7 +771,7 @@ const module: ExtensionModule = {
       id: 'my-source',
       async collect(ctx) {
         const cursor = ctx.cursor ?? '';
-        // 经 ctx.exec / ctx.http / ctx.scanVault 自游标拉数据 …
+        // 经 ctx.api.network / ctx.api.process / ctx.scanVault 自游标拉数据 …
         return { events: [], nextCursor: cursor };
       },
     },
@@ -881,6 +890,40 @@ Folyn 源码或主窗口 CSP。Host 在两处强制校验 allowlist（JS 侧快�
 
 **渲染格式**：优先 `data:image/svg+xml;base64,...` URL，不要用 `blob:` URL
 （需要 revoke 生命周期）或 inline `<svg>`（带 script 注入面）。
+
+### 运行本机程序（trusted tier）
+
+host 没有对应 API 的事情（一次 `git log`、一段 AppleScript 查询、一个辅助
+二进制），直接运行程序即可，不需要让 host 加能力。
+
+**第 1 步 —— 在 `manifest.json` 里声明程序：**
+
+```jsonc
+"permissions": {
+  "exec": { "programs": ["git", "osascript"] }
+}
+```
+
+每一项是一个在 `PATH` 上解析的程序名，或一个绝对路径。安装确认弹窗会列出
+它们，host 不会运行列表之外的任何程序。
+
+**第 2 步 —— 调用 `api.process.exec`：**
+
+```ts
+const { stdout, stderr, exitCode } = await api.process.exec(
+  'git',
+  ['log', '--since=1.day', '--format=%H %s'],
+  { cwd: repoPath },
+);
+if (exitCode !== 0) throw new Error(stderr);
+```
+
+- `program` 必须与声明的写法完全一致：声明了 `git` 并不允许 `/usr/bin/git`。
+- 参数原样传递，中间没有 shell，不会展开也不会被注入；要跑 shell，就声明
+  `sh` 并传 `['-c', script]`。
+- 非零退出码照常 resolve，含义由你判断。只有程序未声明或无法启动时才 reject。
+- 桌面应用的 `PATH` 很短（macOS 上是 `/usr/bin:/bin:/usr/sbin:/sbin`）。
+  装在别处的程序请声明绝对路径。
 
 ---
 

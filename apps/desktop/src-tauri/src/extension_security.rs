@@ -549,6 +549,22 @@ pub fn check_http_origin(manifest: &serde_json::Value, url: &str) -> Result<(), 
     Ok(())
 }
 
+/// Check a `process:exec` program against a manifest's
+/// `permissions.exec.programs`: trusted tier only, and the program must be
+/// declared exactly as it is run. Pure, like {@link check_http_origin}.
+pub fn check_exec_program(manifest: &serde_json::Value, program: &str) -> Result<(), String> {
+    if manifest["tier"].as_str() != Some("trusted") {
+        return Err("process:exec denied: trusted tier only".to_string());
+    }
+    let programs = manifest["permissions"]["exec"]["programs"]
+        .as_array()
+        .ok_or_else(|| "process:exec denied: no exec.programs declared".to_string())?;
+    if !programs.iter().any(|v| v.as_str() == Some(program)) {
+        return Err(format!("process:exec denied: program not declared: {program}"));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -829,6 +845,48 @@ mod tests {
     fn check_http_origin_denies_when_no_permissions_key() {
         let m = serde_json::json!({ "id": "x" });
         assert!(check_http_origin(&m, "https://api.example.com/x").is_err());
+    }
+
+
+    // ── check_exec_program ──
+
+    #[test]
+    fn check_exec_program_allows_declared_program() {
+        let m = serde_json::json!({
+            "tier": "trusted",
+            "permissions": { "exec": { "programs": ["git", "/usr/bin/osascript"] } }
+        });
+        assert!(check_exec_program(&m, "git").is_ok());
+        assert!(check_exec_program(&m, "/usr/bin/osascript").is_ok());
+    }
+
+    #[test]
+    fn check_exec_program_denies_undeclared_program() {
+        let m = serde_json::json!({
+            "tier": "trusted",
+            "permissions": { "exec": { "programs": ["git"] } }
+        });
+        // Exact match only: a path to the declared name is a different program.
+        assert!(check_exec_program(&m, "sh").is_err());
+        assert!(check_exec_program(&m, "/usr/bin/git").is_err());
+        assert!(check_exec_program(&m, "").is_err());
+    }
+
+    #[test]
+    fn check_exec_program_denies_when_nothing_declared() {
+        let m = serde_json::json!({ "tier": "trusted", "permissions": { "http": { "origins": [] } } });
+        assert!(check_exec_program(&m, "git").is_err());
+        let m = serde_json::json!({ "tier": "trusted", "permissions": { "exec": { "programs": "git" } } });
+        assert!(check_exec_program(&m, "git").is_err());
+    }
+
+    #[test]
+    fn check_exec_program_denies_sandbox_tier() {
+        let m = serde_json::json!({
+            "tier": "sandbox",
+            "permissions": { "exec": { "programs": ["git"] } }
+        });
+        assert!(check_exec_program(&m, "git").is_err());
     }
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@folyn/extension-github-collector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "GitHub activity collector — polls the user's GitHub event stream into the activity timeline",

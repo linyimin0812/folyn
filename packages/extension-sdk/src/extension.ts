@@ -267,6 +267,28 @@ export interface TerminalApi {
   createSession(): string;
 }
 
+/** Result of {@link ProcessApi.exec}. A non-zero `exitCode` is not an error:
+ * the caller decides what it means. */
+export interface ExtensionExecResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+/**
+ * Run local programs (trusted tier only). This is how an extension reaches
+ * anything the host has no API for — `git`, `osascript`, a helper binary —
+ * without a host change.
+ */
+export interface ProcessApi {
+  /**
+   * Run `program` and wait for it to exit. `program` must be listed in the
+   * manifest's `permissions.exec.programs`, spelled the same way; anything
+   * else rejects. Arguments are passed as given, with no shell in between.
+   */
+  exec(program: string, args?: string[], opts?: { cwd?: string }): Promise<ExtensionExecResult>;
+}
+
 export interface FileTypeRegistryApi {
   register(provider: unknown, ownerExtensionId: string): Disposable;
   resolve(path: string): unknown;
@@ -367,6 +389,7 @@ export interface ExtensionApi {
   readonly fileView: ExtensionFileViewCapability;
   readonly env: EnvApi;
   readonly terminal: TerminalApi;
+  readonly process: ProcessApi;
   readonly export: ExportService;
 
   readonly fileTypes: FileTypeRegistryApi;

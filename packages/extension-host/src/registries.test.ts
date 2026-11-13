@@ -82,7 +82,7 @@ describe('contributionAdapterRegistry', () => {
   it('supports async register returning a Promise<Disposable>', async () => {
     const disp: Disposable = { dispose() {} };
     registerContributionAdapter({ moduleKey: 'containers', register: async () => disp });
-    const result = getContributionAdapters()[0].register(manifest(), {} as never);
+    const result = getContributionAdapters()[0].register(manifest(), {} as never, {} as never);
     expect(result).toBeInstanceOf(Promise);
     expect(await result).toBe(disp);
   });

@@ -17,7 +17,7 @@
  * The sandbox tier is excluded — its RPC-dispatched model (no `module`, commands
  * forward over postMessage) is structurally different and has only 2 adapters.
  */
-import type { Disposable, ExtensionManifest, ExtensionModule } from 'folyn-extension-sdk';
+import type { Disposable, ExtensionApi, ExtensionManifest, ExtensionModule } from 'folyn-extension-sdk';
 
 /**
  * Wires one contribution point. `moduleKey` (when present) is the
@@ -31,11 +31,14 @@ export interface ContributionAdapter {
    * Wire the manifest's contribution array into the app registry. May be async
    * (e.g. containers resolve `.svg` icons via `readExtensionFile` before
    * registering). The returned {@link Disposable} is pushed to the activation
-   * context so `ExtensionHost` reaps it on deactivate/reload.
+   * context so `ExtensionHost` reaps it on deactivate/reload. `api` is the
+   * extension's own {@link ExtensionApi}, for contributions the host calls
+   * back into later (collectors).
    */
   register(
     manifest: ExtensionManifest,
     module: ExtensionModule,
+    api: ExtensionApi,
   ): Disposable | Promise<Disposable>;
 }
 

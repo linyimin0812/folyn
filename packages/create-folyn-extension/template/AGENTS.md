@@ -232,8 +232,7 @@ A collector converts one data source into standard activity events (activity tim
     "authSchema": {                       // optional: renders the collector's config form (string/boolean)
       "type": "object",
       "properties": { "token": { "type": "string", "title": "Token", "default": "" } }
-    },
-    "hostAllowlist": ["https://api.example.com"]  // ctx.http exact-origin gate (install-time confirm)
+    }
   }],
   "activityDisplay": [{ "type": "my_event", "icon": "star", "color": "blue", "detailFields": [{ "key": "path", "label": "Path", "format": "text" }] }],
   "entityTypes": [{ "id": "my_thing", "label": "Thing", "color": "green" }]
@@ -249,11 +248,12 @@ collectors: {
     // push (failed cycle re-reads the same window). No events → return old cursor.
     collect: async (ctx) => {
       const cursor = ctx.cursor ?? '';
-      // ctx.exec (program-allowlisted: git only) / ctx.http (hostAllowlist exact origin)
-      // / ctx.scanVault (.git skipped, vault-relative paths) / ctx.readVaultFile
-      // (traversal-safe, binary/>1MB → null) — all absent in tests/embedded hosts,
-      // feature-detect. Privacy: host strips `raw` unless keepRaw; redact regexes hit
-      // title/summary — never put secrets there.
+      // ctx.api is the extension's ExtensionApi: ctx.api.network.fetch (origin in
+      // permissions.http.origins) / ctx.api.process.exec (program in
+      // permissions.exec.programs). Also ctx.scanVault (.git skipped, vault-relative
+      // paths) / ctx.readVaultFile (traversal-safe, binary/>1MB → null) — those two
+      // are absent in tests/embedded hosts, feature-detect. Privacy: host strips `raw`
+      // unless keepRaw; redact regexes hit title/summary — never put secrets there.
       return { events: [], nextCursor: cursor };
     },
     // webhook mode instead: onWebhook(payload, config) → events (no cursor)

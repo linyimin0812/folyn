@@ -224,6 +224,9 @@ export interface ExtensionManifest {
 //     TOFU gate (user-pin + SHA-256 integrity match on `main`). Declare
 //     permissions anyway as documentation + forward-compat if a trusted tier
 //     ever gains enforcement, but do not rely on them to confine trusted code.
+//     The host's own APIs (`api.network`, `api.process`, `api.ai`) do check
+//     their declaration, so what the consent dialog lists is what those calls
+//     can do.
 
 export interface ExtensionPermissions {
   /** Trusted subscriptions: pinned local vault access and public HTTP(S)
@@ -231,6 +234,10 @@ export interface ExtensionPermissions {
   subscriptions?: { vault: boolean; network: boolean; render?: boolean };
   fs?: { scope: string[] };
   http?: { origins: string[] };
+  /** Programs the extension may run through `api.process.exec` (trusted
+   * only): a name resolved on `PATH` (`git`, `osascript`) or an absolute
+   * path. Listed in the consent dialog; the host runs nothing else. */
+  exec?: { programs: string[] };
   clipboard?: boolean;
   dialog?: boolean;
   window?: boolean;
@@ -679,9 +686,6 @@ export interface CollectorContribution {
   pollIntervalMs?: number;
   /** Config form schema — host renders + persists the values (design §2.1). */
   authSchema?: CollectorAuthSchema;
-  /** Hosts the collector's outbound requests target. Confirmed once at
-   *  install/enable; enforced at runtime on outbound calls. */
-  hostAllowlist: string[];
 }
 
 /** Built-in detail-field formatters (design §3.1). No templates, no HTML. */

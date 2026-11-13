@@ -2,7 +2,7 @@
 flowchart TD
     SCH("scheduler / manual run<br/>60s floor · no re-entry")
     CUR("read cursor<br/>activity_get_cursor")
-    CTX("ctx capability injection<br/>exec · http · fixed commands")
+    CTX("ctx capability injection<br/>extension api · fixed commands")
     COL("impl.collect(ctx)<br/>returns events + nextCursor")
     PRIV("applyPrivacy redaction<br/>redact regex · drop raw")
     ING("activity_push_events<br/>Rust ingest · dedup · store")

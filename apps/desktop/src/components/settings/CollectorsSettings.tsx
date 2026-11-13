@@ -3,9 +3,8 @@
  * authSchema-rendered config form (values persisted via
  * activityCollectorStore), manual「立即采集」, last-sync info, and the
  * entity-type registration conflict badge (design §3.4). Install/permission
- * confirmation flows through the existing extension consent modal
- * (hostAllowlist already renders there) — this tab manages collectors of
- * ACTIVE extensions only. A second「商店」tab lists catalog entries with
+ * confirmation flows through the existing extension consent modal — this
+ * tab manages collectors of ACTIVE extensions only. A second「商店」tab lists catalog entries with
  * `type: 'collector'` (reuses StoreEntryCard + the shared extension catalog).
  */
 

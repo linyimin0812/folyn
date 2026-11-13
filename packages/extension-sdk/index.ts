@@ -82,6 +82,8 @@ export type {
   NetworkApi,
   EnvApi,
   TerminalApi,
+  ProcessApi,
+  ExtensionExecResult,
   FileTypeRegistryApi,
   ExporterRegistryApi,
   ExtensionApi,

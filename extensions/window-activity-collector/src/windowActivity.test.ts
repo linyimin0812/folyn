@@ -3,14 +3,17 @@
  * same contract shape as the host's runtime injection.
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { CollectorContext } from 'folyn-extension-sdk';
+import type { CollectorContext, ExtensionApi } from 'folyn-extension-sdk';
 import { collectWindowActivity } from './windowActivity';
+
+/** The window collector does not reach through `ctx.api` yet. */
+const api = {} as ExtensionApi;
 
 function makeCtx(
   frontWindow: CollectorContext['frontWindow'],
   cursor: string | null = null,
 ): CollectorContext {
-  return { cursor, config: {}, frontWindow };
+  return { cursor, config: {}, api, frontWindow };
 }
 
 describe('collectWindowActivity', () => {
@@ -56,7 +59,7 @@ describe('collectWindowActivity', () => {
   });
 
   it('absent ctx.frontWindow is tolerated (embedded host)', async () => {
-    const out = await collectWindowActivity({ cursor: null, config: {} });
+    const out = await collectWindowActivity({ cursor: null, config: {}, api });
     expect(out).toEqual({ events: [], nextCursor: '' });
   });
 });

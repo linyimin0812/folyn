@@ -1,13 +1,13 @@
 /**
- * Fixture-based collect() tests: ctx.http stubbed per-URL with canned GitHub
- * event JSON — no network, same contract shape as the host's collectorHttp.
+ * Fixture-based collect() tests: `api.network.fetch` stubbed per-URL with
+ * canned GitHub event JSON — no network, same response shape as the host's.
  *
  * PushEvent fixtures use the REAL slimmed payload shape (repository_id/push_id/
  * ref/head/before — no commits array); per-commit detail comes from the mocked
  * compare endpoint.
  */
-import { describe, it, expect, vi } from 'vitest';
-import type { CollectorContext, CollectorEvent } from 'folyn-extension-sdk';
+import { describe, it, expect, vi, type Mock } from 'vitest';
+import type { CollectorContext, CollectorEvent, ExtensionApi, ExtensionHttpInit } from 'folyn-extension-sdk';
 import { collectGithubEvents } from './githubEvents';
 
 interface GhEvent {
@@ -99,18 +99,31 @@ const ISSUE: GhEvent = {
 /** Page-1 fixture: newest first, mixing types + cursor-relevant noise. */
 const PAGE_1: GhEvent[] = [ISSUE, PR_MERGED, PUSH_2];
 
-function makeCtx(
-  pages: Record<string, unknown>,
-  opts: { cursor?: string | null; username?: string; token?: string } = {},
+type Fetch = (url: string, init?: ExtensionHttpInit) => Promise<{ status: number; body: string }>;
+
+/** A collector context whose only live capability is `api.network.fetch`. */
+function ctxWith(
+  fetch: Fetch,
+  opts: { cursor?: string | null; config?: Record<string, unknown> } = {},
 ): CollectorContext {
   return {
     cursor: opts.cursor ?? null,
-    config: { username: opts.username ?? 'octocat', token: opts.token ?? '' },
-    http: vi.fn(async (url: string) => {
-      // Unmapped URLs = an empty page (GitHub runs out of events).
-      return { status: 200, body: JSON.stringify(pages[url] ?? []) };
-    }),
+    config: opts.config ?? { username: 'octocat' },
+    api: { network: { fetch } } as unknown as ExtensionApi,
   };
+}
+
+function makeCtx(
+  pages: Record<string, unknown>,
+  opts: { cursor?: string | null; username?: string; token?: string } = {},
+): { ctx: CollectorContext; fetch: Mock<Fetch> } {
+  // Unmapped URLs = an empty page (GitHub runs out of events).
+  const fetch = vi.fn<Fetch>(async (url) => ({ status: 200, body: JSON.stringify(pages[url] ?? []) }));
+  const ctx = ctxWith(fetch, {
+    cursor: opts.cursor,
+    config: { username: opts.username ?? 'octocat', token: opts.token ?? '' },
+  });
+  return { ctx, fetch };
 }
 
 function pageUrl(username: string, token: string, page: number): string {
@@ -120,19 +133,13 @@ function pageUrl(username: string, token: string, page: number): string {
 
 describe('collectGithubEvents', () => {
   it('is a no-op without a username (cursor untouched)', async () => {
-    const ctx = makeCtx({}, { username: '', cursor: 'x' });
+    const { ctx, fetch } = makeCtx({}, { username: '', cursor: 'x' });
     expect(await collectGithubEvents(ctx)).toEqual({ events: [], nextCursor: 'x' });
-    expect(ctx.http).not.toHaveBeenCalled();
-  });
-
-  it('throws without ctx.http', async () => {
-    await expect(
-      collectGithubEvents({ cursor: null, config: { username: 'octocat' } }),
-    ).rejects.toThrow(/requires ctx\.http/);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('maps a PushEvent to one commit event per compare commit (stable ids)', async () => {
-    const ctx = makeCtx({
+    const { ctx } = makeCtx({
       [pageUrl('octocat', '', 1)]: [PUSH_2],
       [compareUrl('octocat/hello-world', 'base000', HEAD_2)]: COMPARE_2,
     });
@@ -161,15 +168,11 @@ describe('collectGithubEvents', () => {
   });
 
   it('compare failures (e.g. force-pushed range 404) fall back to one push event', async () => {
-    const ctx: CollectorContext = {
-      cursor: null,
-      config: { username: 'octocat' },
-      http: vi.fn(async (url: string) => {
-        if (url.includes('/compare/')) return { status: 404, body: 'Not Found' };
-        // endsWith, not includes: 'per_page=100' contains 'page=1'.
-        return { status: 200, body: JSON.stringify(url.endsWith('&page=1') ? [PUSH_2] : []) };
-      }),
-    };
+    const ctx = ctxWith(async (url) => {
+      if (url.includes('/compare/')) return { status: 404, body: 'Not Found' };
+      // endsWith, not includes: 'per_page=100' contains 'page=1'.
+      return { status: 200, body: JSON.stringify(url.endsWith('&page=1') ? [PUSH_2] : []) };
+    });
     const { events } = await collectGithubEvents(ctx);
     expect(events).toHaveLength(1);
     const [e] = events as CollectorEvent[];
@@ -186,7 +189,7 @@ describe('collectGithubEvents', () => {
   });
 
   it('PR without a title never renders "undefined"', async () => {
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [PR_NO_TITLE] });
+    const { ctx } = makeCtx({ [pageUrl('octocat', '', 1)]: [PR_NO_TITLE] });
     const { events } = await collectGithubEvents(ctx);
     const [e] = events as CollectorEvent[];
     expect(e.id).toBe('github:pr:octocat/hello-world:14:opened');
@@ -195,7 +198,7 @@ describe('collectGithubEvents', () => {
   });
 
   it('maps a merged PullRequestEvent with action "merged"', async () => {
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [PR_MERGED] });
+    const { ctx } = makeCtx({ [pageUrl('octocat', '', 1)]: [PR_MERGED] });
     const { events } = await collectGithubEvents(ctx);
     const [e] = events as CollectorEvent[];
     expect(e).toMatchObject({
@@ -209,7 +212,7 @@ describe('collectGithubEvents', () => {
   });
 
   it('maps an IssuesEvent', async () => {
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [ISSUE] });
+    const { ctx } = makeCtx({ [pageUrl('octocat', '', 1)]: [ISSUE] });
     const { events } = await collectGithubEvents(ctx);
     const [e] = events as CollectorEvent[];
     expect(e).toMatchObject({
@@ -225,7 +228,7 @@ describe('collectGithubEvents', () => {
   it('an actor other than the configured username keeps their login identity', async () => {
     // e.g. someone else's PR activity in the polled stream.
     const other: GhEvent = { ...PR_MERGED, actor: { login: 'octonaut' } };
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: [other] });
+    const { ctx } = makeCtx({ [pageUrl('octocat', '', 1)]: [other] });
     const { events } = await collectGithubEvents(ctx);
     const [e] = events as CollectorEvent[];
     expect(e.actor).toEqual({ type: 'person', identityKey: 'octonaut', displayName: 'octonaut' });
@@ -233,41 +236,40 @@ describe('collectGithubEvents', () => {
 
   it('skips events at/before the cursor; nextCursor = newest seen', async () => {
     // PR (11:00) and Issue (12:00) are after the cursor; the push (10:00) is not.
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: PAGE_1 }, { cursor: '2026-01-02T10:30:00Z' });
+    const { ctx } = makeCtx({ [pageUrl('octocat', '', 1)]: PAGE_1 }, { cursor: '2026-01-02T10:30:00Z' });
     const { events, nextCursor } = await collectGithubEvents(ctx);
     expect(events.map((e) => e.type).sort()).toEqual(['github_issue', 'github_pr']);
     expect(nextCursor).toBe('2026-01-02T12:00:00Z');
   });
 
   it('keeps the old cursor when nothing is new', async () => {
-    const ctx = makeCtx({ [pageUrl('octocat', '', 1)]: PAGE_1 }, { cursor: '2026-01-02T23:00:00Z' });
+    const { ctx } = makeCtx({ [pageUrl('octocat', '', 1)]: PAGE_1 }, { cursor: '2026-01-02T23:00:00Z' });
     const { events, nextCursor } = await collectGithubEvents(ctx);
     expect(events).toEqual([]);
     expect(nextCursor).toBe('2026-01-02T23:00:00Z');
   });
 
   it('stops paginating when a page is fully covered by the cursor', async () => {
-    const ctx = makeCtx({
+    const { ctx, fetch } = makeCtx({
       [pageUrl('octocat', '', 1)]: PAGE_1,
       [pageUrl('octocat', '', 2)]: [PUSH_2],
     });
     await collectGithubEvents({ ...ctx, cursor: '2026-01-02T12:00:01Z' });
-    expect(ctx.http).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('authenticates with a token: authed endpoint, Bearer header (events + compare), token absent from events', async () => {
     const seen: { url: string; headers?: Record<string, string> }[] = [];
-    const ctx: CollectorContext = {
-      cursor: null,
-      config: { username: 'octocat', token: 'ghp_secret' },
-      http: vi.fn(async (url: string, init?: { headers?: Record<string, string> }) => {
-        seen.push({ url, headers: init?.headers });
+    const ctx = ctxWith(
+      async (url, init) => {
+        seen.push({ url, headers: init?.headers as Record<string, string> | undefined });
         if (url.includes('/compare/')) return { status: 200, body: JSON.stringify(COMPARE_2) };
         // endsWith, not includes: 'per_page=100' contains 'page=1'.
         const body = url.endsWith('&page=1') ? [PUSH_2] : [];
         return { status: 200, body: JSON.stringify(body) };
-      }),
-    };
+      },
+      { config: { username: 'octocat', token: 'ghp_secret' } },
+    );
     const { events } = await collectGithubEvents(ctx);
     expect(seen[0]!.url).toContain('/users/octocat/events?');
     expect(seen[0]!.headers).toMatchObject({
@@ -284,50 +286,20 @@ describe('collectGithubEvents', () => {
   });
 
   it('uses the public endpoint and no Authorization header without a token', async () => {
-    const ctx = makeCtx({
+    const { ctx, fetch } = makeCtx({
       [pageUrl('octocat', '', 1)]: [PUSH_2],
       [compareUrl('octocat/hello-world', 'base000', HEAD_2)]: COMPARE_2,
     });
     await collectGithubEvents(ctx);
     // vi.fn calls are argument tuples: [url, init].
-    const [url, init] = (ctx.http as ReturnType<typeof vi.fn>).mock.calls[0] as unknown as [
-      string,
-      { headers?: Record<string, string> },
-    ];
+    const [url, init] = fetch.mock.calls[0]!;
     expect(url).toBe(pageUrl('octocat', '', 1));
-    expect(init?.headers?.Authorization).toBeUndefined();
+    expect((init?.headers as Record<string, string>).Authorization).toBeUndefined();
     expect(JSON.stringify(init)).not.toContain('ghp');
   });
 
   it('throws a descriptive error on non-200 (events page)', async () => {
-    const ctx: CollectorContext = {
-      cursor: null,
-      config: { username: 'octocat' },
-      http: vi.fn(async () => ({ status: 403, body: 'rate limited' })),
-    };
+    const ctx = ctxWith(async () => ({ status: 403, body: 'rate limited' }));
     await expect(collectGithubEvents(ctx)).rejects.toThrow(/status 403/);
-  });
-
-  it('aborts a stalled request after the timeout instead of hanging', async () => {
-    vi.useFakeTimers();
-    try {
-      const ctx: CollectorContext = {
-        cursor: null,
-        config: { username: 'octocat' },
-        // Never resolves on its own — only rejection is the passed abort signal.
-        http: (_url: string, init?: { signal?: AbortSignal }) =>
-          new Promise((_resolve, reject) => {
-            init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
-          }),
-      };
-      const p = collectGithubEvents(ctx);
-      // Attach the handler BEFORE advancing the clock so the abort rejection
-      // is never momentarily unhandled.
-      const expectation = expect(p).rejects.toThrow(/aborted/);
-      await vi.advanceTimersByTimeAsync(15_000);
-      await expectation;
-    } finally {
-      vi.useRealTimers();
-    }
   });
 });

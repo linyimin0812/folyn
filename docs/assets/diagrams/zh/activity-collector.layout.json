@@ -4,7 +4,7 @@
   "nodes": [
     {"id": "SCH", "x": 430, "y": 80, "width": 340, "lines": ["调度器/手动触发", "60s 下限·防重入"], "decision": false},
     {"id": "CUR", "x": 430, "y": 200, "width": 340, "lines": ["读游标", "activity_get_cursor"], "decision": false},
-    {"id": "CTX", "x": 430, "y": 320, "width": 340, "lines": ["ctx 能力注入", "exec·http·frontWindow 等固定命令"], "decision": false},
+    {"id": "CTX", "x": 430, "y": 320, "width": 340, "lines": ["ctx 能力注入", "扩展 api·frontWindow 等固定命令"], "decision": false},
     {"id": "COL", "x": 430, "y": 440, "width": 340, "lines": ["impl.collect(ctx)", "返回 events + nextCursor"], "decision": false},
     {"id": "PRIV", "x": 430, "y": 560, "width": 340, "lines": ["applyPrivacy 脱敏", "redact 正则·默认丢 raw"], "decision": false},
     {"id": "ING", "x": 430, "y": 680, "width": 340, "lines": ["activity_push_events", "Rust ingest·去重·入库"], "decision": false},

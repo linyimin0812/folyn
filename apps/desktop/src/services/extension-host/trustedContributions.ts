@@ -99,5 +99,5 @@ registerContributionAdapter({
 });
 registerContributionAdapter({
   moduleKey: 'collectors',
-  register: (m, mod) => registerExtensionCollectors(m, mod),
+  register: (m, mod, api) => registerExtensionCollectors(m, mod, api),
 });

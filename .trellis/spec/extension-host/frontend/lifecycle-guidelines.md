@@ -37,7 +37,7 @@ Each activation's context carries its own `signal`. Long-running extension work 
 Mechanism in the kernel, policy injected at boot (single-process Tauri app — not a speculative extraction):
 
 - **`CapabilityProvider` registry** (`capabilityRegistry.ts`) — each provider fills one slot of `ExtensionApi` (`{ slot, build(manifest), dispose?(value) }`). `buildExtensionApi` folds providers into the Api handed to `module.activate(api, ctx)`. Providers are host-boot singletons: a plain `Map`, later registration wins a slot, no `OwnedRegistry`.
-- **`ContributionAdapter` registry** (`contributionAdapterRegistry.ts`) — trusted-tier contribution wiring. Each adapter (`{ moduleKey?, register(manifest, module): Disposable }`) wires one contribution point; the trusted loader folds over registered adapters and `normalizeModule` pulls only their declared `moduleKey`s. Adding a contribution point = one adapter + one `registerContributionAdapter(...)` line — `trustedLoader` and `normalizeModule` stay stable folds.
+- **`ContributionAdapter` registry** (`contributionAdapterRegistry.ts`) — trusted-tier contribution wiring. Each adapter (`{ moduleKey?, register(manifest, module, api): Disposable }`) wires one contribution point; the trusted loader folds over registered adapters and `normalizeModule` pulls only their declared `moduleKey`s. Adding a contribution point = one adapter + one `registerContributionAdapter(...)` line — `trustedLoader` and `normalizeModule` stay stable folds.
 - The **sandbox tier is excluded** from the adapter seam (RPC-dispatched, no module) — do not route sandbox contributions through it.
 
 Adapters must be idempotent-safe on repeat registration where the app relies on first-registered-wins registries.

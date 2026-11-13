@@ -183,11 +183,6 @@ export interface ConsentPrompt {
   name: string;
   /** Human-readable summary of declared permissions (parsed from manifest). */
   permissions: string[];
-  /** Domains the extension's collectors want to reach (`hostAllowlist`,
-   *  design §2.1/§7.3). Non-empty → the consent modal shows a dedicated
-   *  "将访问的域名" section; approving merges them into the effective http
-   *  origins (Rust `approve_extension`). */
-  hostAllowlist: string[];
 }
 
 /**
@@ -376,21 +371,16 @@ async function fetchRows(): Promise<ExtensionRow[]> {
   return [...builtinRows, ...rows.reverse()];
 }
 
-/** Parse a extension's manifest into consent-prompt data: human-readable
- *  permission summary lines + the collector `hostAllowlist` domains (one read
- *  of manifest.json — the consent modal needs both at once). */
-async function readManifestConsent(id: string): Promise<{
-  permissions: string[];
-  hostAllowlist: string[];
-}> {
-  if (!isTauri()) return { permissions: [], hostAllowlist: [] };
+/** Parse a extension's manifest into the consent prompt's human-readable
+ *  permission summary lines. */
+async function readManifestConsent(id: string): Promise<string[]> {
+  if (!isTauri()) return [];
   const { invoke } = await import('@tauri-apps/api/core');
   const manifestText = await invoke<string>('read_extension_file', { id, path: 'manifest.json' });
   const manifest = JSON.parse(manifestText) as {
     permissions?: Record<string, unknown>;
     tier?: string;
     contributes?: {
-      collectors?: Array<{ hostAllowlist?: string[] }>;
       commands?: unknown[];
       fileTypes?: unknown[];
       containers?: unknown[];
@@ -398,13 +388,13 @@ async function readManifestConsent(id: string): Promise<{
       tools?: unknown[];
     };
   };
-  const permissions = parsePermissionLines(manifest);
-  const hostAllowlist = [
-    ...new Set(
-      (manifest.contributes?.collectors ?? []).flatMap((c) => c.hostAllowlist ?? []),
-    ),
-  ];
-  return { permissions, hostAllowlist };
+  return parsePermissionLines(manifest);
+}
+
+/** The string entries of a manifest list field (`http.origins`, `exec.programs`). */
+function declaredList(block: unknown, key: string): string[] {
+  const list = (block as Record<string, unknown> | null | undefined)?.[key];
+  return Array.isArray(list) ? list.filter((v): v is string => typeof v === 'string') : [];
 }
 
 /** Human-readable summary lines from a manifest's `permissions` +
@@ -424,7 +414,10 @@ function parsePermissionLines(manifest: {
   const perms = manifest.permissions;
   if (perms) {
     if (perms.fs) out.push('文件读写（受限于插件数据目录）');
-    if (perms.http) out.push('网络请求（受限于声明的 origin 白名单）');
+    const origins = declaredList(perms.http, 'origins');
+    if (origins.length > 0) out.push(`网络请求：${origins.join('、')}`);
+    const programs = declaredList(perms.exec, 'programs');
+    if (programs.length > 0) out.push(`运行本机程序：${programs.join('、')}`);
     if (perms.subscriptions) {
       out.push('订阅：读写选定知识库、访问任意公开 HTTP(S) 网站并下载图片（二进制）');
       if (typeof perms.subscriptions === 'object' && perms.subscriptions !== null && 'render' in perms.subscriptions && perms.subscriptions.render === true) out.push('订阅网页渲染：在独立隐私浏览器中执行公开网站脚本以提取内容');
@@ -606,8 +599,8 @@ export const useExtensionStore = create<ExtensionState>((set, get) => ({
     const row = get().rows.find((r) => r.entry.id === id);
     const name = row?.entry.name ?? id;
     try {
-      const { permissions, hostAllowlist } = await readManifestConsent(id);
-      set({ consent: { id, name, permissions, hostAllowlist } });
+      const permissions = await readManifestConsent(id);
+      set({ consent: { id, name, permissions } });
     } catch (err) {
       set({ error: fmtErr(err) });
     }

@@ -4,7 +4,7 @@
   "nodes": [
     {"id": "SCH", "x": 430, "y": 80, "width": 340, "lines": ["scheduler / manual run", "60s floor · no re-entry"], "decision": false},
     {"id": "CUR", "x": 430, "y": 200, "width": 340, "lines": ["read cursor", "activity_get_cursor"], "decision": false},
-    {"id": "CTX", "x": 430, "y": 320, "width": 340, "lines": ["ctx capability injection", "exec · http · fixed commands"], "decision": false},
+    {"id": "CTX", "x": 430, "y": 320, "width": 340, "lines": ["ctx capability injection", "extension api · fixed commands"], "decision": false},
     {"id": "COL", "x": 430, "y": 440, "width": 340, "lines": ["impl.collect(ctx)", "returns events + nextCursor"], "decision": false},
     {"id": "PRIV", "x": 430, "y": 560, "width": 340, "lines": ["applyPrivacy redaction", "redact regex · drop raw"], "decision": false},
     {"id": "ING", "x": 430, "y": 680, "width": 340, "lines": ["activity_push_events", "Rust ingest · dedup · store"], "decision": false},

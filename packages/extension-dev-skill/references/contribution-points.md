@@ -52,9 +52,11 @@ isolated-iframe boundary (and accept its limits: `commands` + `tools` only).
 - **Privacy** (host-side, before every push): `raw` stripped unless the user's
   keepRaw switch; redact regexes hit `title`/`summary` — never put secrets
   there.
-- **hostAllowlist**: `ctx.http` throws unless the URL's origin **exactly
-  matches** an entry in the collector's manifest `hostAllowlist` (confirmed
-  once at install/enable).
+- **Capabilities**: `ctx.api` is the extension's own `ExtensionApi`. Remote
+  sources go through `ctx.api.network.fetch` (origin declared in
+  `permissions.http.origins`); local programs through `ctx.api.process.exec`
+  (program declared in `permissions.exec.programs`). Both are listed in the
+  consent dialog at install.
 - **Event types are validated**: each event's `type` must be in the declared
   `activityTypes`; the Rust ingest rejects the rest and stamps `source` from
   the collector id.

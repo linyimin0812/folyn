@@ -78,7 +78,7 @@ Loop:
 - **`manifest.main` rewrite.** Root `manifest.json` says `"main": "dist/index.js"`; `build.mjs` strips the `dist/` prefix when copying into `dist/manifest.json` (→ `"index.js"`). Don't "fix" one without the other — install breaks silently.
 - **Remote fetch (trusted).** The main webview CSP does not include third-party origins. To call a remote URL, declare `permissions.http.origins` and use `ctx.http.fetch` (routes through Rust, outside CSP) — never a direct `fetch()` in the bundle.
 - **Entry-ref keys must match exactly.** The manifest is JSON, not typed — typos surface as runtime resolution errors, not type errors.
-- **Activity collectors**: `contributes.collectors[]` + `module.collectors` (keyed by collector id, not an entry-ref) + optional declarative `activityDisplay[]` / `entityTypes[]`. The cursor only persists after a successful push; `ctx.http` is gated by the collector's `hostAllowlist` (exact origin). Deep dive: `extension-development.md` → "Collectors (activity collection)".
+- **Activity collectors**: `contributes.collectors[]` + `module.collectors` (keyed by collector id, not an entry-ref) + optional declarative `activityDisplay[]` / `entityTypes[]`. The cursor only persists after a successful push; `ctx.api` is the extension's `ExtensionApi` — `ctx.api.network.fetch` for remote sources (`permissions.http.origins`), `ctx.api.process.exec` for local programs (`permissions.exec.programs`). Deep dive: `extension-development.md` → "Collectors (activity collection)".
 
 ### Where the depth lives
 

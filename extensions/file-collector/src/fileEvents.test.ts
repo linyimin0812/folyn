@@ -3,12 +3,14 @@
  * scan result is a fixed array (same shape `ctx.scanVault` returns).
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { CollectorEvent } from 'folyn-extension-sdk';
+import type { CollectorEvent, ExtensionApi } from 'folyn-extension-sdk';
 import { diffSnapshots, parseSnapshot, snapshotHasContent, textDiff } from './fileEvents';
 import type { VaultFile, VaultSnapshot } from './fileEvents';
 import { collectFileActivity } from './index';
 
 const NOW = 1_000_000;
+/** The file collector does not reach through `ctx.api` yet. */
+const api = {} as ExtensionApi;
 
 function files(...entries: VaultFile[]): VaultFile[] {
   return entries;
@@ -243,7 +245,7 @@ describe('parseSnapshot', () => {
 describe('collectFileActivity', () => {
   it('first run (null cursor) baselines: no events, cursor = snapshot JSON', async () => {
     const scanVault = async () => [{ path: 'a.md', mtimeMs: 1, size: 2 }];
-    const out = await collectFileActivity({ cursor: null, config: {}, scanVault });
+    const out = await collectFileActivity({ cursor: null, config: {}, api, scanVault });
     expect(out.events).toEqual([]);
     expect(out.nextCursor).toBe('{"a.md":{"mtimeMs":1,"size":2}}');
   });
@@ -258,6 +260,7 @@ describe('collectFileActivity', () => {
     const out = await collectFileActivity({
       cursor,
       config: { excludeDirs: ' .obsidian, node_modules ,,' },
+      api,
       scanVault,
       onProgress,
     });
@@ -267,12 +270,12 @@ describe('collectFileActivity', () => {
   });
 
   it('scanVault absent or null → no events, cursor untouched', async () => {
-    expect(await collectFileActivity({ cursor: null, config: {} })).toEqual({
+    expect(await collectFileActivity({ cursor: null, config: {}, api })).toEqual({
       events: [],
       nextCursor: '',
     });
     const scanVault = async () => null;
-    expect(await collectFileActivity({ cursor: 'x', config: {}, scanVault })).toEqual({
+    expect(await collectFileActivity({ cursor: 'x', config: {}, api, scanVault })).toEqual({
       events: [],
       nextCursor: 'x',
     });
@@ -284,7 +287,7 @@ describe('collectFileActivity', () => {
       { path: 'bin.png', mtimeMs: 1, size: 3 },
     ];
     const readVaultFile = vi.fn(async (path: string) => (path === 'bin.png' ? null : 'seed text'));
-    const out = await collectFileActivity({ cursor: null, config: {}, scanVault, readVaultFile });
+    const out = await collectFileActivity({ cursor: null, config: {}, api, scanVault, readVaultFile });
     expect(out.events).toEqual([]);
     expect(readVaultFile).toHaveBeenCalledTimes(2);
     expect(parseSnapshot(out.nextCursor)).toEqual({
@@ -303,7 +306,7 @@ describe('collectFileActivity', () => {
       { path: 'same.md', mtimeMs: 1, size: 1 },
     ];
     const readVaultFile = vi.fn(async () => 'one\nTWO');
-    const out = await collectFileActivity({ cursor, config: {}, scanVault, readVaultFile });
+    const out = await collectFileActivity({ cursor, config: {}, api, scanVault, readVaultFile });
     expect(readVaultFile).toHaveBeenCalledTimes(1);
     expect(readVaultFile).toHaveBeenCalledWith('a.md');
     expect(out.events).toHaveLength(1);
@@ -327,7 +330,7 @@ describe('collectFileActivity', () => {
       { path: 'same.md', mtimeMs: 1, size: 1 },
     ];
     const readVaultFile = vi.fn(async (path: string) => `text of ${path}`);
-    const out = await collectFileActivity({ cursor, config: {}, scanVault, readVaultFile });
+    const out = await collectFileActivity({ cursor, config: {}, api, scanVault, readVaultFile });
     expect(readVaultFile).toHaveBeenCalledTimes(2);
     expect(out.events).toEqual([]);
     expect(parseSnapshot(out.nextCursor)).toEqual({
@@ -340,7 +343,7 @@ describe('collectFileActivity', () => {
     const cursor = JSON.stringify({ 'a.md': { mtimeMs: 1, size: 2 } });
     const scanVault = async () => [{ path: 'a.md', mtimeMs: 5, size: 2 }];
     const readVaultFile = vi.fn(async () => 'new text');
-    const out = await collectFileActivity({ cursor, config: {}, scanVault, readVaultFile });
+    const out = await collectFileActivity({ cursor, config: {}, api, scanVault, readVaultFile });
     expect(out.events).toHaveLength(1);
     // No stored old content → fallback to full content, not a "+ everything" diff.
     expect(out.events[0]!.payload).toMatchObject({ content: 'new text' });
@@ -350,7 +353,7 @@ describe('collectFileActivity', () => {
   it('no readVaultFile (non-Tauri) → metadata only, exactly as before', async () => {
     const cursor = JSON.stringify({ 'a.md': { mtimeMs: 1, size: 2 } });
     const scanVault = async () => [{ path: 'a.md', mtimeMs: 5, size: 2 }];
-    const out = await collectFileActivity({ cursor, config: {}, scanVault });
+    const out = await collectFileActivity({ cursor, config: {}, api, scanVault });
     expect(out.events).toHaveLength(1);
     expect(out.events[0]!.payload).not.toHaveProperty('diff');
     expect(out.events[0]!.payload).not.toHaveProperty('content');

@@ -804,15 +804,25 @@ when you produced no events.
 - The user's redact regexes are applied to `title` and `summary`. **Don't put
   secrets in title/summary** — they are the fields shown in the timeline.
 
-#### Host-injected `ctx` capabilities (and what each enforces)
+#### What a collector can reach
 
-`exec`/`http`/`frontWindow`/`scanVault`/`readVaultFile` are absent in tests
-and embedded hosts — always feature-detect.
+`ctx.api` is the extension's own `ExtensionApi` — the object
+`activate(api, ctx)` receives. A collector uses it like any other extension
+code, under the manifest `permissions` the user approved at install:
+
+| Need | Use | Declared in the manifest as |
+| --- | --- | --- |
+| A remote API | `ctx.api.network.fetch(url, init)` — runs in Rust (no CORS) and times out on its own | `permissions.http.origins` (exact origin) |
+| A local program (`git`, `osascript`, a helper of your own) | `ctx.api.process.exec(program, args, { cwd })` — see [Running local programs](#running-local-programs-trusted-tier) | `permissions.exec.programs` (exact program string) |
+
+A collector that needs another origin or another program declares it. Nothing
+changes in the host.
+
+A few sources are still fixed host commands on `ctx` itself. They are absent
+in tests and embedded hosts — always feature-detect.
 
 | Capability | What the host enforces |
 | --- | --- |
-| `ctx.exec(program, args, cwd)` | Rust `activity_exec`: **program allowlist** (currently `git` only). Separated args, no shell → no injection. A collector needing another binary must get it added host-side. |
-| `ctx.http(url, init)` | The URL's **origin must exactly match** an entry in the collector's manifest `hostAllowlist` — anything else throws before the request leaves. This is the runtime counterpart of the install-time permission confirm. |
 | `ctx.frontWindow()` | Rust `activity_front_window`: **fixed platform scripts**, no collector-controlled arguments. Returns `null` when unavailable. |
 | `ctx.scanVault({ excludeDirs })` | Rust `activity_scan_vault`: fixed recursive walk of the active vault; **`.git` always skipped**; paths are vault-relative; the collector never learns the absolute vault root. |
 | `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`: **traversal-safe** (`..`/absolute rejected), binary and >1 MB files return `null`, output truncated (cap clamped 1 B–64 KB, default 8 KB). |
@@ -838,7 +848,7 @@ silently deduped, which is also your crash/restart safety net.
 
 ```jsonc
 "contributes": {
-  "collectors": [{ "id": "my-source", "activityTypes": ["my_event"], "mode": "poll", "pollIntervalMs": 300000, "hostAllowlist": [] }],
+  "collectors": [{ "id": "my-source", "activityTypes": ["my_event"], "mode": "poll", "pollIntervalMs": 300000 }],
   "activityDisplay": [{ "type": "my_event", "icon": "star", "color": "blue" }],
   "entityTypes": [{ "id": "my_thing", "label": "Thing", "color": "green" }]
 }
@@ -853,7 +863,7 @@ const module: ExtensionModule = {
       id: 'my-source',
       async collect(ctx) {
         const cursor = ctx.cursor ?? '';
-        // pull since cursor via ctx.exec / ctx.http / ctx.scanVault ...
+        // pull since cursor via ctx.api.network / ctx.api.process / ctx.scanVault ...
         return { events: [], nextCursor: cursor };
       },
     },
@@ -1033,6 +1043,42 @@ Rust-side re-check from the on-disk manifest).
 `blob:` URLs (no lifecycle, CSP already allows `img-src data:`) or
 inline `<svg>` (carries script-injection surface).
 
+### Running local programs (trusted tier)
+
+When the host has no API for something — a `git log`, an AppleScript query, a
+helper binary — run a program instead of asking for a host change.
+
+**Step 1 — declare the programs in `manifest.json`:**
+
+```jsonc
+"permissions": {
+  "exec": { "programs": ["git", "osascript"] }
+}
+```
+
+Each entry is a name resolved on `PATH` or an absolute path. The consent
+dialog lists them, and the host runs nothing else.
+
+**Step 2 — call `api.process.exec`:**
+
+```ts
+const { stdout, stderr, exitCode } = await api.process.exec(
+  'git',
+  ['log', '--since=1.day', '--format=%H %s'],
+  { cwd: repoPath },
+);
+if (exitCode !== 0) throw new Error(stderr);
+```
+
+- `program` must be spelled exactly as declared: declaring `git` does not
+  allow `/usr/bin/git`.
+- Arguments are passed as given. There is no shell, so nothing is expanded or
+  injected; to run a shell, declare `sh` and pass `['-c', script]`.
+- A non-zero exit resolves normally — you decide what it means. The call
+  rejects only when the program is not declared or cannot be started.
+- A desktop app's `PATH` is short (on macOS, `/usr/bin:/bin:/usr/sbin:/sbin`).
+  Declare an absolute path for a program installed elsewhere.
+
 ---
 
 ## The sandbox RPC protocol (sandbox tier)
@@ -1121,6 +1167,12 @@ connected. The manifest's `permissions` block is **informational for the
 trusted tier**: it is not enforced at runtime, because a trusted extension
 can reach the host realm's full surface directly (e.g.
 `import('@tauri-apps/api/core')` with the main window's caps).
+
+The host's own APIs still check what they are asked for against the manifest:
+`api.network` against `http.origins`, `api.process.exec` against
+`exec.programs`, `api.ai` against `ai`. So the consent dialog states what
+those calls can do. That is a declaration the user reads and approves, not a
+sandbox.
 
 **The sole boundary on trusted code is the TOFU gate** (user-pin +
 SHA-256 integrity match on `main`, verified by the trusted loader before

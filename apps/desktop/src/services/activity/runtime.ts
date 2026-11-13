@@ -188,8 +188,7 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
     const { events, nextCursor } = await reg.impl.collect({
       cursor,
       config,
-      exec: collectorExec,
-      http: collectorHttp(reg.hostAllowlist),
+      api: reg.api,
       // Frontmost-window sampler (Rust `activity_front_window` — fixed
       // scripts, no collector-controlled args; see activity/mod.rs).
       frontWindow: async () => {
@@ -309,40 +308,6 @@ export function collectNow(collectorId: string): Promise<ActivityPushOutcome | n
 }
 
 // ── Webhook hook point (part B wires the local server here) ─────────────────
-
-/**
- * Host-provided exec injected into `CollectorContext` (design §2.2). Backed by
- * the Rust `activity_exec` command, which allowlists the program — see the
- * `EXEC_ALLOWED_PROGRAMS` note in `activity/mod.rs`.
- */
-async function collectorExec(
-  program: string,
-  args: string[],
-  cwd: string,
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  return invoke('activity_exec', { program, args, cwd });
-}
-
-/**
- * Host-provided HTTP fetch injected into `CollectorContext`. Enforces the
- * collector's manifest `hostAllowlist` (exact origin match) before the request
- * leaves — the runtime counterpart of the install-time permission confirm.
- * Exported for tests (origin denial / parse failure).
- */
-export function collectorHttp(hostAllowlist: string[]) {
-  return async (
-    url: string,
-    init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
-  ): Promise<{ status: number; body: string }> => {
-    const origin = new URL(url).origin;
-    if (!hostAllowlist.includes(origin)) {
-      throw new Error(`collector http denied: ${origin} not in hostAllowlist`);
-    }
-    const res = await fetch(url, init);
-    return { status: res.status, body: await res.text() };
-  };
-}
 
 /**
  * Register the `activity://webhook` listener (emitted by the Rust tiny_http

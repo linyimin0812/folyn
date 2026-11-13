@@ -203,29 +203,12 @@ export interface CollectorContext {
   /** Values captured from the authSchema-rendered settings form. */
   config: Record<string, unknown>;
   /**
-   * Host-provided exec for reading local sources (e.g. `git log` in the
-   * configured repo path). Trusted blob modules cannot import the Tauri APIs
-   * themselves, so the host injects this one capability. Program-allowlisted
-   * host-side (`activity_exec`); absent in tests/embedded hosts.
+   * The extension's own {@link ExtensionApi} — the object `activate(api, ctx)`
+   * receives. A collector reaches the network (`api.network`), local programs
+   * (`api.process`) and the vault (`api.vault`) through it, under the same
+   * manifest `permissions` as the rest of the extension.
    */
-  exec?: (program: string, args: string[], cwd: string) => Promise<{
-    stdout: string;
-    stderr: string;
-    exitCode: number;
-  }>;
-  /**
-   * Host-provided HTTP fetch for remote sources (e.g. api.github.com). Origin
-   * must be listed in the collector's manifest `hostAllowlist` — the host
-   * rejects anything else before the request leaves. Absent in tests/embedded
-   * hosts. Returns status + text body.
-   */
-  http?: (url: string, init?: {
-    method?: string;
-    headers?: Record<string, string>;
-    body?: string;
-    /** Abort the request (timeouts). Honored by the host's fetch. */
-    signal?: AbortSignal;
-  }) => Promise<{ status: number; body: string }>;
+  api: ExtensionApi;
   /**
    * Host-injected progress reporter. Collectors call it with a short
    * human-readable, locale-neutral progress string (e.g. `commits 42/256`)

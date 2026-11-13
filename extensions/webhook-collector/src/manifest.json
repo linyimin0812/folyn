@@ -38,8 +38,7 @@
               "default": false
             }
           }
-        },
-        "hostAllowlist": []
+        }
       }
     ],
     "activityDisplay": [

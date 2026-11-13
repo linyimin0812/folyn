@@ -20,6 +20,7 @@ import type {
   CollectorContribution,
   CollectorExtension,
   EntityTypeContribution,
+  ExtensionApi,
 } from '@folyn/extension-host';
 
 /** The builtin entity types the core natively knows (design §7.2 fixed five). */
@@ -61,7 +62,8 @@ export interface CollectorRegistration {
   activityTypes: string[];
   pollIntervalMs?: number;
   authSchema?: CollectorContribution['authSchema'];
-  hostAllowlist: string[];
+  /** The owning extension's api, handed to `collect()` as `ctx.api`. */
+  api: ExtensionApi;
   /** The extension module's impl (`collect`/`onWebhook`), resolved by the
    *  trusted adapter from `module.collectors[collectorId]`. */
   impl?: CollectorExtension;
@@ -77,6 +79,7 @@ export interface CollectorBundle {
   /** collectorId → impl. Missing entries leave `impl` undefined (a declared
    *  collector without runtime code — polling skips it with a warn). */
   impls?: Record<string, CollectorExtension>;
+  api: ExtensionApi;
 }
 
 /** Pure merge of all active bundles → registry tables (exported for tests). */
@@ -132,7 +135,7 @@ export function buildActivityRegistry(bundles: CollectorBundle[]): {
         activityTypes: c.activityTypes,
         pollIntervalMs: c.pollIntervalMs,
         authSchema: c.authSchema,
-        hostAllowlist: c.hostAllowlist,
+        api: bundle.api,
         impl: bundle.impls?.[c.id],
       });
     }

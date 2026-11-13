@@ -20,8 +20,6 @@ const API_ROOT = 'https://api.github.com';
 /** Events endpoint pages we are willing to walk per poll (300 events max). */
 const MAX_PAGES = 3;
 const PER_PAGE = 100;
-/** Per-request abort timeout. */
-const REQUEST_TIMEOUT_MS = 15_000;
 /** Concurrent compare-endpoint fetches. A full first-run backfill can be ~260
  *  pushes; GitHub's guidance explicitly allows far more concurrent requests,
  *  and the token-authed 5000/hr budget covers it — 12 halves the wall-clock
@@ -71,22 +69,17 @@ function configString(ctx: CollectorContext, key: string): string {
 }
 
 /** GET a GitHub API url with the standard headers (Bearer when tokened); throws on non-200.
- *  15s abort timeout — a stalled connection fails the request instead of hanging the run. */
+ *  The host times every request out, so a stalled connection fails the run
+ *  instead of hanging it. */
 async function fetchJson(ctx: CollectorContext, url: string): Promise<unknown> {
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
   const token = configString(ctx, 'token');
   if (token) headers.Authorization = `Bearer ${token}`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const res = await ctx.http!(url, { headers, signal: ctrl.signal });
-    if (res.status !== 200) {
-      throw new Error(`github request failed (status ${res.status}): ${url}`);
-    }
-    return JSON.parse(res.body) as unknown;
-  } finally {
-    clearTimeout(timer);
+  const res = await ctx.api.network.fetch(url, { headers });
+  if (res.status !== 200) {
+    throw new Error(`github request failed (status ${res.status}): ${url}`);
   }
+  return JSON.parse(res.body) as unknown;
 }
 
 async function fetchPage(
@@ -108,9 +101,6 @@ export async function collectGithubEvents(
   if (!username) {
     // Unconfigured — no events, cursor untouched.
     return { events: [], nextCursor: cursor };
-  }
-  if (!ctx.http) {
-    throw new Error('github collector requires ctx.http');
   }
 
   const events: CollectorEvent[] = [];

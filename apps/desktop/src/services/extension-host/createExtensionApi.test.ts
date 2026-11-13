@@ -36,7 +36,7 @@ vi.mock('@/store/terminalStore', () => ({
 }));
 
 vi.mock('@/store/editorViewState', () => ({
-  useEditorViewStateStore: { getState: () => ({ openTerminalDock() {}, closeTerminalPanel() {} }) },
+  useEditorViewStateStore: { getState: () => ({ openTerminalDock() {}, closeTerminalPanel() {} }), subscribe: () => () => {} },
 }));
 
 vi.mock('@/utils/storageClient', () => ({

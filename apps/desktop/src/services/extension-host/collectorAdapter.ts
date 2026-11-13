@@ -12,13 +12,14 @@
  * adapter only folds declarations, like the other declarative adapters.
  */
 
-import type { Disposable, ExtensionManifest, ExtensionModule } from '@folyn/extension-host';
+import type { Disposable, ExtensionApi, ExtensionManifest, ExtensionModule } from '@folyn/extension-host';
 import { useCollectorRegistryStore } from '@/services/activity/registry';
 import { ensureCollectorRuntimeStarted } from '@/services/activity/runtime';
 
 export function registerExtensionCollectors(
   manifest: ExtensionManifest,
   module: ExtensionModule,
+  api: ExtensionApi,
 ): Disposable {
   const contributes = manifest.contributes;
   const collectors = contributes?.collectors ?? [];
@@ -39,6 +40,7 @@ export function registerExtensionCollectors(
     activityDisplay,
     entityTypes,
     impls: module.collectors,
+    api,
   });
 
   return {

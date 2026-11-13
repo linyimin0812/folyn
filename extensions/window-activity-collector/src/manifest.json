@@ -34,8 +34,7 @@
               "default": false
             }
           }
-        },
-        "hostAllowlist": []
+        }
       }
     ],
     "activityDisplay": [

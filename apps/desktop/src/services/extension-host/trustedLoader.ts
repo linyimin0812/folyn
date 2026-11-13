@@ -120,7 +120,7 @@ export const trustedLoader: ExtensionLoader = {
         // ExtensionHost reaps them on deactivate. Adapters are independent, so
         // order is not load-bearing (mirrors the prior list for parity).
         for (const adapter of getContributionAdapters()) {
-          ctx.addDisposable(await adapter.register(manifest, module));
+          ctx.addDisposable(await adapter.register(manifest, module, api));
         }
 
         // The blob-URL disposable: revoke after deactivate so the module can

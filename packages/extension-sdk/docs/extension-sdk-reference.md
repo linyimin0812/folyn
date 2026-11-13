@@ -40,6 +40,7 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | ----------- | ------------------------------------------------------- | --------------------------------- |
 | `fs`        | `{ scope: string[] }`                                   | 文件读写 glob（相对插件数据目录） |
 | `http`      | `{ origins: string[] }`                                 | 允许的 origin allowlist           |
+| `exec`      | `{ programs: string[] }`                                | `api.process.exec` 可运行的程序（仅 trusted；`PATH` 上的程序名或绝对路径，精确匹配） |
 | `clipboard` | `boolean`                                               | 剪贴板读写                        |
 | `dialog`    | `boolean`                                               | 文件打开/保存对话框               |
 | `window`    | `boolean`                                               | 打开 tool window                  |
@@ -276,7 +277,6 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `mode`           | `string`      | 是   | `'poll'`（按间隔调度 `collect()`）或 `'webhook'`（本地 webhook 路由到 `onWebhook()`）                  |
 | `pollIntervalMs` | `number`      | 否   | 声明的轮询间隔默认值；用户可覆盖或整体关闭。host 强制 60s 下限                                         |
 | `authSchema`     | `object`      | 否   | 配置表单 schema（JSON-schema 风格 `{ type: 'object', properties }`）；设置页自动渲染 string/boolean |
-| `hostAllowlist`  | `string[]`    | 否   | `ctx.http` 允许的 origin（精确 origin 匹配，如 `https://api.github.com`）。安装/启用时弹窗一次性确认  |
 
 ```jsonc
 "collectors": [{
@@ -290,8 +290,7 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
       "excludeDirs": { "type": "string", "title": "排除目录", "default": "" },
       "allowAiSummary": { "type": "boolean", "title": "允许 AI 读取活动数据生成摘要", "default": false }
     }
-  },
-  "hostAllowlist": []
+  }
 }]
 ```
 
@@ -349,8 +348,7 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | -------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
 | `cursor`       | `string \| null`                                                                                       | 上次持久化游标（采集器自有，host 不透明存储）；首次为 `null`                |
 | `config`       | `Record<string, unknown>`                                                                               | authSchema 表单捕获的配置值                                                  |
-| `exec`         | `(program, args, cwd) => Promise<{stdout, stderr, exitCode}>`                                           | 读本地源（如 `git log`）；程序白名单（现仅 `git`）；测试/嵌入 host 缺失     |
-| `http`         | `(url, init?) => Promise<{status, body}>`                                                               | 远程源；origin 必须在 manifest `hostAllowlist`（精确 origin），否则抛错     |
+| `api`          | `ExtensionApi`                                                                                          | 扩展自己的 api（与 `activate(api, ctx)` 收到的相同）：远程源用 `api.network.fetch`（`permissions.http.origins`），本机程序用 `api.process.exec`（`permissions.exec.programs`） |
 | `onProgress`   | `(message: string) => void`                                                                             | 进度上报（如 `commits 42/256`），显示在采集按钮旁的 spinner 处              |
 | `frontWindow`  | `() => Promise<{ app: string; title: string \| null } \| null>`                                        | 前台窗口采样；固定 host 脚本，无采集器可控参数；不可用时返回 `null`         |
 | `scanVault`    | `(opts: { excludeDirs?: string[] }) => Promise<{path, mtimeMs, size}[] \| null>`                        | vault 文件扫描（`.git` 恒跳过，vault 相对路径，按路径排序）；不可用返回 `null` |
@@ -361,7 +359,7 @@ import type { CollectorContext, CollectorEvent, ExtensionModule } from 'folyn-ex
 
 async function collect(ctx: CollectorContext): Promise<{ events: CollectorEvent[]; nextCursor: string }> {
   const cursor = ctx.cursor ?? '';
-  // ...用 ctx.scanVault / ctx.exec / ctx.http 拉数据、diff 出事件...
+  // ...用 ctx.scanVault / ctx.api.network / ctx.api.process 拉数据、diff 出事件...
   return { events, nextCursor: JSON.stringify(snapshot) };
 }
 

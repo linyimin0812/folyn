@@ -159,7 +159,7 @@ extraction; no second consumer exists yet).
   Adding a capability = add a factory + one `registerCapability` line.
 - **`ContributionAdapter` registry** (`contributionAdapterRegistry.ts`) — the
   trusted-tier contribution wiring seam. Each adapter
-  (`{ moduleKey?, register(manifest, module): Disposable | Promise<Disposable> }`)
+  (`{ moduleKey?, register(manifest, module, api): Disposable | Promise<Disposable> }`)
   wires one contribution point. `trustedLoader.activate` folds over registered
   adapters; `normalizeModule` pulls only the `moduleKey`s they declare. A single
   declarative manifest (`trustedContributions.ts`) registers all 13. Adding a
@@ -169,6 +169,26 @@ extraction; no second consumer exists yet).
 The sandbox tier is structurally different (RPC-dispatched, no module) and does
 not use these seams. `OwnedRegistry` is not used here — providers/adapters are
 host-owned singletons, not extension-owned.
+
+## Capabilities are primitives
+
+An extension should be able to do something new without a host change. So
+`ExtensionApi` grows by general primitives (`network`, `process`, `vault`,
+`storage`), not by one host command per extension need. What a primitive may
+touch is the extension's own declaration in `manifest.permissions`
+(`http.origins`, `exec.programs`): shown in the consent dialog, checked in JS
+before the IPC hop and again in Rust against the on-disk manifest. There is no
+allowlist in host code. This follows from the trusted trade-off above — an
+approved trusted extension already has full host capability, so a narrower
+host API buys no safety and costs a host release per extension.
+
+Contributions the host calls back into later (collectors) get the same
+`ExtensionApi` that `activate` gets — `ContributionAdapter.register(manifest,
+module, api)` hands it over — not a capability set of their own.
+
+Not on this model yet: `CollectorContext.frontWindow` / `scanVault` /
+`readVaultFile` / `imapFetch` (one fixed Rust command per collector) and
+`api.subscriptions` (its own fetch, vault IO and storage).
 
 ## Open seams (to record, not to fix now)
 

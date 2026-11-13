@@ -2,7 +2,7 @@
 flowchart TD
     SCH("调度器/手动触发<br/>60s 下限·防重入")
     CUR("读游标<br/>activity_get_cursor")
-    CTX("ctx 能力注入<br/>exec·http·frontWindow 等固定命令")
+    CTX("ctx 能力注入<br/>扩展 api·frontWindow 等固定命令")
     COL("impl.collect(ctx)<br/>返回 events + nextCursor")
     PRIV("applyPrivacy 脱敏<br/>redact 正则·默认丢 raw")
     ING("activity_push_events<br/>Rust ingest·去重·入库")
