@@ -39,7 +39,7 @@
     "aiSummary": "要約 · AI 生成",
     "aiSummaryLoading": "要約を生成中…",
     "aiSummaryFailed": "要約の生成に失敗しました。再展開で再試行できます",
-    "sessionTitle": "ウィンドウ活動 · {{count}} 件",
+    "sessionTitle": "{{label}} · {{count}} 件",
     "sessionDuration": "継続時間: {{duration}}"
   },
   "report": {

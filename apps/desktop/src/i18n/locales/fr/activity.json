@@ -39,7 +39,7 @@
     "aiSummary": "Résumé · généré par IA",
     "aiSummaryLoading": "Génération du résumé…",
     "aiSummaryFailed": "Échec de la génération du résumé — rouvrez pour réessayer",
-    "sessionTitle": "Activité fenêtre · {{count}}",
+    "sessionTitle": "{{label}} · {{count}}",
     "sessionDuration": "Durée : {{duration}}"
   },
   "report": {

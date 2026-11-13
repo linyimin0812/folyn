@@ -39,7 +39,7 @@
     "aiSummary": "Zusammenfassung · KI-generiert",
     "aiSummaryLoading": "Zusammenfassung wird erstellt…",
     "aiSummaryFailed": "Zusammenfassung fehlgeschlagen – zum Wiederholen erneut aufklappen",
-    "sessionTitle": "Fensteraktivität · {{count}}",
+    "sessionTitle": "{{label}} · {{count}}",
     "sessionDuration": "Dauer: {{duration}}"
   },
   "report": {

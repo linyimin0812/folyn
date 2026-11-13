@@ -24,6 +24,7 @@ export type {
   CollectorAuthSchema,
   ActivityCollectorMode,
   ActivityDisplayContribution,
+  ActivityChipBadge,
   ActivityDetailFormat,
   ActivityMetricAggregate,
   ActivityPaletteColor,

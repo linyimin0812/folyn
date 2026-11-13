@@ -39,7 +39,7 @@
     "aiSummary": "摘要 · AI 生成",
     "aiSummaryLoading": "生成摘要中…",
     "aiSummaryFailed": "摘要生成失败，重新展开可重试",
-    "sessionTitle": "窗口活动 · {{count}} 条",
+    "sessionTitle": "{{label}} · {{count}} 条",
     "sessionDuration": "持续 {{duration}}"
   },
   "report": {

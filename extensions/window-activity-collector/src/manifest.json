@@ -1,7 +1,7 @@
 {
   "id": "folyn-window-activity-collector",
   "name": "Window Activity Collector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Folyn",
   "folyn": ">=0.1.0",
   "tier": "trusted",
@@ -47,7 +47,8 @@
           { "key": "title", "label": "窗口标题", "format": "text" }
         ],
         "metric": { "id": "window_switch_count", "label": "窗口切换", "aggregate": "count" },
-        "entity": { "role": "application", "relationLabel": "窗口" }
+        "entity": { "role": "application", "relationLabel": "窗口" },
+        "session": { "label": {"zh": "窗口活动", "en": "Window activity", "ja": "ウィンドウ活動", "fr": "Activité fenêtre", "de": "Fensteraktivität", "es": "Actividad de ventana"} }
       }
     ],
     "entityTypes": [

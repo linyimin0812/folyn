@@ -52,7 +52,7 @@
         ],
         "metric": { "id": "email_count", "label": "邮件", "aggregate": "count" },
         "entity": { "role": "mailbox", "relationLabel": "邮箱" },
-        "chips": [{ "key": "mailbox", "badge": "provider" }]
+        "chips": [{ "key": "mailbox", "badge": "mailboxBadge" }]
       }
     ],
     "entityTypes": [

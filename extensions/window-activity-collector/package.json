@@ -1,6 +1,6 @@
 {
   "name": "@folyn/extension-window-activity-collector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Folyn window-activity collector — samples the frontmost app + window title and emits an event on change (trusted tier, poll mode)",

@@ -313,6 +313,8 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `detailFields` | `{ key: string; label: string; format: string }[]`          | 否   | 详情面板字段；key 索引事件 `payload`，format 如 `text`/`number` |
 | `metric`       | `{ id: string; label: string; aggregate: string }`          | 否   | 指标卡（如 `aggregate: "count"`）       |
 | `entity`       | `{ role: string; relationLabel: string }`                    | 否   | 事件实体在图谱中的角色与边标签          |
+| `chips`        | `{ key: string; badge?: string }[]`                         | 否   | 时间线行内标记：显示 `payload[key]` 的字符串；`badge` 是另一个 payload key，其值为 `{ label, color }`（1–3 个字符 + `#rrggbb`），画成文字前的小徽标。两者都由采集器随事件给出 |
+| `session`      | `{ label: string \| Record<locale, string> }`               | 否   | 把连续的同类型事件（相邻间隔 ≤ 5 分钟）折叠成一行可展开的会话，`label` 为该行标题。适合每分钟都产生一条的类型 |
 
 #### `contributes.entityTypes[]`（declarative）
 

@@ -39,7 +39,7 @@
     "aiSummary": "Summary · AI generated",
     "aiSummaryLoading": "Generating summary…",
     "aiSummaryFailed": "Summary generation failed — re-expand to retry",
-    "sessionTitle": "Window activity · {{count}}",
+    "sessionTitle": "{{label}} · {{count}}",
     "sessionDuration": "Duration: {{duration}}"
   },
   "report": {

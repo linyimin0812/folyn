@@ -717,10 +717,25 @@ export interface ActivityDisplayContribution {
   metric?: { id: string; label: string; aggregate: ActivityMetricAggregate };
   /** When present, this event type's entities join the relation graph. */
   entity?: { role: string; relationLabel: string };
-  /** Inline chips on the timeline row, rendered from payload keys.
-   *  `badge: 'provider'` gets the host's email-provider monogram; the host
-   *  owns the badge styles (extensions never ship UI). */
-  chips?: { key: string; badge?: 'provider' }[];
+  /** Inline chips on the timeline row: the string at payload `key`. `badge`
+   *  names a second payload key holding a {@link ActivityChipBadge}, drawn as
+   *  a small monogram before the text. The collector supplies both with each
+   *  event; the host owns the look. */
+  chips?: { key: string; badge?: string }[];
+  /** Fold a run of consecutive events of this type (each within 5 minutes of
+   *  the next) into one expandable timeline row — for a type that fires every
+   *  minute or so and would otherwise flood the list. `label` titles the row:
+   *  a string, or `{ locale: text }` (resolved current locale → zh → en). */
+  session?: { label: string | Record<string, string> };
+}
+
+/** A chip's monogram, carried in the event payload (see
+ *  {@link ActivityDisplayContribution.chips}). */
+export interface ActivityChipBadge {
+  /** One to three characters, e.g. `G`. */
+  label: string;
+  /** Background, `#rrggbb`. The label is drawn in white. */
+  color: string;
 }
 
 /** `contributes.entityTypes[]` — registers a custom entity type (design §3.4).

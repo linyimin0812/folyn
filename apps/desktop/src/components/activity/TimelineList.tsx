@@ -9,19 +9,22 @@
  * retried on the next expand, and a「查看原文」link that
  * only renders when the event carries a url.
  *
- * Window-activity events arrive roughly every minute and would flood the
- * list, so consecutive runs (adjacent gap ≤ 5min, other types interrupt)
- * collapse into one「使用会话」row whose expansion holds the member rows —
- * view-only aggregation, raw data untouched.
+ * A type that fires roughly every minute (window activity) would flood the
+ * list, so its collector declares `activityDisplay[].session`: consecutive
+ * runs of that type (adjacent gap ≤ 5min, other types interrupt) collapse
+ * into one session row whose expansion holds the member rows — view-only
+ * aggregation, raw data untouched.
  */
 
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppWindow, ChevronDown, ChevronRight, ExternalLink, Eye } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Eye } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
+import type { ActivityChipBadge } from '@folyn/extension-host';
 import type { ActivityEventRow } from '@/services/activity/api';
 import type { DisplayIndexEntry } from '@/services/activity/registry';
 import { useActivityCollectorStore } from '@/store/activityCollectorStore';
+import { pickCatalogText } from '@/store/extensionStore';
 import { generateEventSummary } from '@/services/activity/eventSummary';
 import { LucideNameIcon } from '@/components/icons/LucideNameIcon';
 import { EmailHtmlPreview } from './EmailHtmlPreview';
@@ -44,12 +47,15 @@ export type TimelineItem =
   | { kind: 'session'; events: ActivityEventRow[]; newest: ActivityEventRow; oldest: ActivityEventRow };
 
 /**
- * Merge runs of adjacent `window_activity` events (gap between consecutive
- * members ≤ SESSION_GAP_MS, in time order) into single session items; a lone
- * window event stays a plain event row. Input is reverse-chronological and
- * so is the output.
+ * Merge runs of adjacent events of one type that declares `session` (gap
+ * between consecutive members ≤ SESSION_GAP_MS, in time order) into single
+ * session items; a lone such event stays a plain event row. Input is
+ * reverse-chronological and so is the output.
  */
-export function mergeTimelineSessions(events: ActivityEventRow[]): TimelineItem[] {
+export function mergeTimelineSessions(
+  events: ActivityEventRow[],
+  displayByType: Record<string, DisplayIndexEntry>,
+): TimelineItem[] {
   const items: TimelineItem[] = [];
   let run: ActivityEventRow[] = [];
   const flush = () => {
@@ -60,12 +66,13 @@ export function mergeTimelineSessions(events: ActivityEventRow[]): TimelineItem[
     run = [];
   };
   for (const e of events) {
+    const folds = !!displayByType[e.type]?.session;
     const prev = run[run.length - 1];
-    if (e.type === 'window_activity' && prev && prev.occurredAt - e.occurredAt <= SESSION_GAP_MS) {
+    if (folds && prev && prev.type === e.type && prev.occurredAt - e.occurredAt <= SESSION_GAP_MS) {
       run.push(e);
     } else {
       flush();
-      if (e.type === 'window_activity') run = [e];
+      if (folds) run = [e];
       else items.push({ kind: 'event', event: e });
     }
   }
@@ -100,44 +107,32 @@ function eventIcon(e: ActivityEventRow, displayByType: Record<string, DisplayInd
 
 // ── Manifest-declared timeline chips ────────────────────────────────────────
 // A collector's `activityDisplay[].chips` declares payload keys to show as
-// inline row markers (e.g. email's mailbox). `badge: 'provider'` gets the
-// provider monogram below; anything else is a plain text chip. The host owns
-// all badge styles — extensions never ship UI.
-// ponytail: colored monograms, not real brand logos — only Gmail exists on
-// simple-icons (CC0); bundle real logo SVGs if fidelity ever matters.
-const PROVIDER_BADGES: Record<string, { label: string; color: string }> = {
-  'gmail.com': { label: 'G', color: '#EA4335' },
-  'googlemail.com': { label: 'G', color: '#EA4335' },
-  'qq.com': { label: 'QQ', color: '#12B7F5' },
-  'foxmail.com': { label: 'QQ', color: '#12B7F5' },
-  '163.com': { label: '163', color: '#3399EA' },
-  '126.com': { label: '126', color: '#3399EA' },
-  'yeah.net': { label: '163', color: '#3399EA' },
-  'sina.com': { label: 'S', color: '#E6162D' },
-  'outlook.com': { label: 'O', color: '#0078D4' },
-  'hotmail.com': { label: 'O', color: '#0078D4' },
-  'live.com': { label: 'O', color: '#0078D4' },
-  'yahoo.com': { label: 'Y', color: '#6001D2' },
-  'icloud.com': { label: 'i', color: '#3AA9E9' },
-};
+// inline row markers (e.g. email's mailbox). A chip may name a second payload
+// key carrying its monogram; the collector supplies it, the host draws it.
 
-/** `user@domain` → provider monogram badge; unknown domains get a neutral one. */
-export function providerBadge(mailbox: string): { label: string; color: string } {
-  const domain = mailbox.split('@')[1]?.toLowerCase() ?? '';
-  return PROVIDER_BADGES[domain] ?? { label: '@', color: '#8B93A1' };
+/** A monogram is collector-supplied data: only the documented shape (short
+ *  label, `#rrggbb`) is drawn, anything else leaves the chip without one. */
+function chipBadge(v: unknown): ActivityChipBadge | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const { label, color } = v as Record<string, unknown>;
+  if (typeof label !== 'string' || !label.trim() || label.length > 3) return undefined;
+  if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) return undefined;
+  return { label, color };
 }
 
 /** Resolve an event's declared chips to renderable {text, badge?} values —
  *  string payload values only; non-strings/missing keys drop out. */
 export function eventChips(
   payload: Record<string, unknown>,
-  chips: { key: string; badge?: 'provider' }[] | undefined,
-): { key: string; text: string; badge?: 'provider' }[] {
+  chips: { key: string; badge?: string }[] | undefined,
+): { key: string; text: string; badge?: ActivityChipBadge }[] {
   if (!chips) return [];
-  const out: { key: string; text: string; badge?: 'provider' }[] = [];
+  const out: { key: string; text: string; badge?: ActivityChipBadge }[] = [];
   for (const c of chips) {
     const v = payload[c.key];
-    if (typeof v === 'string' && v.trim()) out.push({ key: c.key, text: v, badge: c.badge });
+    if (typeof v !== 'string' || !v.trim()) continue;
+    const badge = c.badge ? chipBadge(payload[c.badge]) : undefined;
+    out.push({ key: c.key, text: v, ...(badge && { badge }) });
   }
   return out;
 }
@@ -233,7 +228,7 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
 
   // Sessions are aggregated before day grouping; a session belongs to the
   // day of its newest event (cross-midnight sessions land wholly there).
-  const items = mergeTimelineSessions(events);
+  const items = mergeTimelineSessions(events, displayByType);
   const groups: { key: string; dayLabel: string; items: TimelineItem[] }[] = [];
   for (const item of items) {
     const d = new Date(item.kind === 'session' ? item.newest.occurredAt : item.event.occurredAt);
@@ -284,22 +279,19 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
               {e.title || e.id}
             </span>
             <span className="flex items-center gap-1.5 text-[12px] text-t2 min-w-0">
-              {chips.map((c) => {
-                const b = c.badge === 'provider' ? providerBadge(c.text) : null;
-                return (
-                  <span key={c.key} className="inline-flex items-center gap-1 shrink-0 min-w-0">
-                    {b && (
-                      <span
-                        className="inline-flex items-center justify-center h-[14px] px-1 rounded-[3px] text-[9px] font-semibold text-white leading-none"
-                        style={{ background: b.color }}
-                      >
-                        {b.label}
-                      </span>
-                    )}
-                    <span className="text-[11px] text-t3 truncate max-w-[150px]">{c.text}</span>
-                  </span>
-                );
-              })}
+              {chips.map((c) => (
+                <span key={c.key} className="inline-flex items-center gap-1 shrink-0 min-w-0">
+                  {c.badge && (
+                    <span
+                      className="inline-flex items-center justify-center h-[14px] px-1 rounded-[3px] text-[9px] font-semibold text-white leading-none"
+                      style={{ background: c.badge.color }}
+                    >
+                      {c.badge.label}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-t3 truncate max-w-[150px]">{c.text}</span>
+                </span>
+              ))}
               <span className="truncate min-w-0">{sub}</span>
             </span>
           </span>
@@ -455,8 +447,11 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
             />
             {g.items.map((item) => {
               if (item.kind === 'event') return renderEventRow(item.event);
-              // Merged window-activity session row.
+              // Merged session row, titled by the type's declared label.
               const sessionKey = `session:${item.newest.id}`;
+              const sessionLabel =
+                pickCatalogText(displayByType[item.newest.type]?.session?.label, i18n.language) ??
+                item.newest.type;
               const isOpen = expanded.has(sessionKey);
               const pal = ACTIVITY_PALETTE[eventPalette(item.newest, displayByType)];
               const icon = eventIcon(item.newest, displayByType);
@@ -478,12 +473,12 @@ export function TimelineList({ events, displayByType, vaultRoot }: TimelineListP
                       {icon ? (
                         <LucideNameIcon name={icon} size={16} />
                       ) : (
-                        <AppWindow size={16} />
+                        <span className="w-2 h-2 rounded-full" style={{ background: pal.color }} />
                       )}
                     </span>
                     <span className="flex-1 min-w-0 mt-0.5">
                       <span className="block text-[13px] font-medium text-t1 truncate">
-                        {t('activity:timeline.sessionTitle', { count: item.events.length })}
+                        {t('activity:timeline.sessionTitle', { label: sessionLabel, count: item.events.length })}
                       </span>
                       <span className="block text-[12px] text-t2 truncate">
                         {t('activity:timeline.sessionDuration', { duration })}

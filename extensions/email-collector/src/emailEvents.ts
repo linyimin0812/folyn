@@ -123,6 +123,32 @@ export function inferImapHost(username: string): string {
   return IMAP_HOSTS[domain] ?? `imap.${domain}`;
 }
 
+// Timeline monogram per provider, stamped into each event's payload
+// (`mailboxBadge`) for the `mailbox` chip the manifest declares.
+// ponytail: colored monograms, not real brand logos — only Gmail exists on
+// simple-icons (CC0); bundle real logo SVGs if fidelity ever matters.
+const PROVIDER_BADGES: Record<string, { label: string; color: string }> = {
+  'gmail.com': { label: 'G', color: '#EA4335' },
+  'googlemail.com': { label: 'G', color: '#EA4335' },
+  'qq.com': { label: 'QQ', color: '#12B7F5' },
+  'foxmail.com': { label: 'QQ', color: '#12B7F5' },
+  '163.com': { label: '163', color: '#3399EA' },
+  '126.com': { label: '126', color: '#3399EA' },
+  'yeah.net': { label: '163', color: '#3399EA' },
+  'sina.com': { label: 'S', color: '#E6162D' },
+  'outlook.com': { label: 'O', color: '#0078D4' },
+  'hotmail.com': { label: 'O', color: '#0078D4' },
+  'live.com': { label: 'O', color: '#0078D4' },
+  'yahoo.com': { label: 'Y', color: '#6001D2' },
+  'icloud.com': { label: 'i', color: '#3AA9E9' },
+};
+
+/** `user@domain` → provider monogram; unknown domains get a neutral one. */
+export function providerBadge(mailbox: string): { label: string; color: string } {
+  const domain = mailbox.split('@')[1]?.toLowerCase() ?? '';
+  return PROVIDER_BADGES[domain] ?? { label: '@', color: '#8B93A1' };
+}
+
 function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
 }
@@ -217,8 +243,9 @@ export function emailId(msg: ImapFetchedMessage, host: string, folder: string): 
 type ImapFetch = NonNullable<CollectorContext['imapFetch']>;
 
 /** Fetch + map one account's new messages since `cursorMs` (0 = first run).
- *  The receiving mailbox is stamped into each event's payload (`mailbox`) —
- *  the host timeline renders the provider badge + address from it. */
+ *  The receiving mailbox and its provider monogram are stamped into each
+ *  event's payload (`mailbox`, `mailboxBadge`) — the timeline row shows them
+ *  as the chip the manifest declares. */
 async function collectAccount(
   imapFetch: ImapFetch,
   acc: EmailAccount,
@@ -282,6 +309,7 @@ async function collectAccount(
       ],
       payload: {
         mailbox: acc.username,
+        mailboxBadge: providerBadge(acc.username),
         from,
         to: msg.to ?? '',
         subject,

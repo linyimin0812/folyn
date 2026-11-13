@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { CollectorContext, CollectorEvent } from 'folyn-extension-sdk';
-import { collectEmailEvents, decodeMimeHeader, emailId, errorText, inferImapHost, parseAccounts, senderAddress, type ImapFetchedMessage } from './emailEvents';
+import { collectEmailEvents, decodeMimeHeader, emailId, errorText, hasKnownImapHost, inferImapHost, parseAccounts, providerBadge, senderAddress, type ImapFetchedMessage } from './emailEvents';
 
 function msg(partial: Partial<ImapFetchedMessage>): ImapFetchedMessage {
   return {
@@ -92,7 +92,13 @@ describe('collectEmailEvents', () => {
         relation: '发件人',
       },
     ]);
-    expect(ev.payload).toMatchObject({ mailbox: 'bob@example.com', from: 'Alice <alice@example.com>', folder: 'INBOX' });
+    expect(ev.payload).toMatchObject({
+      mailbox: 'bob@example.com',
+      // The timeline chip's monogram travels with the event.
+      mailboxBadge: { label: '@', color: '#8B93A1' },
+      from: 'Alice <alice@example.com>',
+      folder: 'INBOX',
+    });
     // Password never reaches the event.
     expect(JSON.stringify(ev)).not.toContain('secret');
     expect(JSON.parse(out.nextCursor)).toEqual({ 'bob@example.com|INBOX': 1000 });
@@ -272,6 +278,21 @@ describe('helpers', () => {
     expect(inferImapHost('a@fastmail.com')).toBe('imap.fastmail.com');
     expect(inferImapHost('a@example.cn')).toBe('imap.example.cn');
     expect(inferImapHost('no-at-sign')).toBe('');
+  });
+
+  it('hasKnownImapHost: only providers in the host table', () => {
+    expect(hasKnownImapHost('a@gmail.com')).toBe(true);
+    expect(hasKnownImapHost('a@QQ.com')).toBe(true);
+    expect(hasKnownImapHost('a@example.com')).toBe(false);
+    expect(hasKnownImapHost('no-at-sign')).toBe(false);
+  });
+
+  it('providerBadge: known domains (case-insensitive), neutral fallback', () => {
+    expect(providerBadge('a@gmail.com')).toEqual({ label: 'G', color: '#EA4335' });
+    expect(providerBadge('a@QQ.COM')).toEqual({ label: 'QQ', color: '#12B7F5' });
+    expect(providerBadge('15289842383@163.com')).toEqual({ label: '163', color: '#3399EA' });
+    expect(providerBadge('a@unknown.tld')).toEqual({ label: '@', color: '#8B93A1' });
+    expect(providerBadge('no-at-sign')).toEqual({ label: '@', color: '#8B93A1' });
   });
 
   it('senderAddress extracts angle-bracket and bare forms', () => {
