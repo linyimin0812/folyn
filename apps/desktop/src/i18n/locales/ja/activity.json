@@ -139,7 +139,6 @@
     "installZip": "zip からインストール…",
     "collectFailed": "収集に失敗しました（未インストール・無効、開いているボールトなし、または収集エラー）",
     "collectResult": "新規 {{accepted}} 件、重複 {{deduped}} 件",
-    "fileExcludeApplied": "ファイル/フォルダを除外：",
     "unsavedHint": "未保存の変更は「今すぐ収集」には反映されません"
   },
   "collectAll": {

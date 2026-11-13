@@ -1,21 +1,20 @@
 /**
  * Collectors settings tab (design §7.3): per-collector enable/poll toggles,
- * authSchema-rendered config form (values persisted via
- * activityCollectorStore), manual「立即采集」, last-sync info, and the
+ * the collector's settings (its own form and/or authSchema-rendered fields,
+ * values persisted via activityCollectorStore), manual「立即采集」, last-sync info, and the
  * entity-type registration conflict badge (design §3.4). Install/permission
  * confirmation flows through the existing extension consent modal — this
  * tab manages collectors of ACTIVE extensions only. A second「商店」tab lists catalog entries with
  * `type: 'collector'` (reuses StoreEntryCard + the shared extension catalog).
  */
 
-import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { Check, Loader2, Play, TriangleAlert } from 'lucide-react';
 import { isTauri } from '@/utils/platform';
 import { useShallow } from 'zustand/react/shallow';
 import { useExtensionStore } from '@/store/extensionStore';
-import { useAppearanceStore } from '@/store/appearanceStore';
 import { StoreEntryCard } from '@/components/settings/ExtensionsSettings';
 import { useCollectorRegistryStore, type CollectorRegistration } from '@/services/activity/registry';
 import { collectNow, effectiveIntervalMs } from '@/services/activity/runtime';
@@ -33,139 +32,37 @@ interface WebhookInfo {
   endpoint?: string | null;
 }
 
-/** authSchema-rendered config form. Draft + save (prototype interaction). */
+/**
+ * A collector's settings: its own form (when the collector brings one), then
+ * the authSchema-rendered fields. Schema fields are a draft the user saves;
+ * the collector's own form saves each change at once.
+ */
 function ConfigForm({
   reg,
   footerExtra,
   footerLeft,
 }: { reg: CollectorRegistration; footerExtra?: ReactNode; footerLeft?: ReactNode }) {
   const { t } = useTranslation();
-  const schema = reg.authSchema;
+  const OwnForm = reg.configForm;
+  const fields = Object.entries(reg.authSchema?.properties ?? {});
   const config = useActivityCollectorStore((s) => s.configs[reg.collectorId]);
   const setCollectorConfig = useActivityCollectorStore((s) => s.setCollectorConfig);
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...(config ?? {}) }));
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Inline「+ 添加」input state for the editable exclude-pattern chips.
-  const [excludeInput, setExcludeInput] = useState<{ value: string } | null>(null);
-  // The collector's OWN filter patterns snapshot (config key
-  // `excludePatterns`, newline-separated like appearance): seeded ONCE from
-  // the appearance「过滤文件/文件夹」store on first mount, then fully
-  // decoupled — later appearance edits don't affect it, and this display
-  // never writes back to the appearance store. Parsed with the same rules.
-  const appearancePatternsRaw = useAppearanceStore((s) => s.excludePatterns);
-  const appliedPatterns = reg.collectorId === 'file-activity'
-    ? String(config?.excludePatterns ?? '')
-        .split('\n')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0 && !s.startsWith('#'))
-    : [];
-  // One-time seed: snapshot appearance patterns into the collector config
-  // (even when empty, so it's defined and never re-read afterwards). Also
-  // seeded into the draft so a config save doesn't drop the key.
-  useEffect(() => {
-    if (reg.collectorId !== 'file-activity' || config?.excludePatterns !== undefined) return;
-    const seeded = appearancePatternsRaw ?? '';
-    setCollectorConfig(reg.collectorId, { ...(config ?? {}), excludePatterns: seeded });
-    setDraft((d) => ({ ...d, excludePatterns: seeded }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   useEffect(() => () => {
     if (savedTimer.current) clearTimeout(savedTimer.current);
   }, []);
-  // Editable chips write straight into the collector's OWN config (persisted
-  // immediately) AND keep `draft` in sync — a later 保存 must not clobber the
-  // change with a stale draft value. Raw newline-joined storage format, same
-  // rules as the appearance store (but never the appearance store itself, and
-  // no file-tree refresh — the runtime reads this key at collect time).
-  const writeExcludePatterns = (nextRaw: string) => {
-    setCollectorConfig(reg.collectorId, { ...(config ?? {}), excludePatterns: nextRaw });
-    setDraft((d) => ({ ...d, excludePatterns: nextRaw }));
-  };
-  const addExcludePattern = (v: string) => {
-    const raw = String(config?.excludePatterns ?? '');
-    writeExcludePatterns(raw.trim() ? `${raw.trimEnd()}\n${v}` : v);
-  };
-  const removeExcludePattern = (p: string) => {
-    const raw = String(config?.excludePatterns ?? '');
-    writeExcludePatterns(raw.split('\n').map((s) => s.trim()).filter((s) => s !== p).join('\n'));
-  };
-  // Email collector: multi-mailbox account list. Account edits persist
-  // immediately (same seam as the exclude chips above) and keep `draft` in
-  // sync so a later 保存 can't clobber them with a stale snapshot.
-  // ponytail: field labels hardcoded zh like the manifest's authSchema titles
-  // — move to i18n if another locale matters here.
-  // ponytail: known-domain mirror of the extension's IMAP_HOSTS (emailEvents.ts)
-  // — those domains auto-infer the IMAP host, so the server/port fields are
-  // noise for them. Mirror drifts silently; sync when IMAP_HOSTS grows.
-  const KNOWN_IMAP_DOMAINS = new Set([
-    'gmail.com', 'googlemail.com', 'qq.com', 'foxmail.com', '163.com', '126.com',
-    'yeah.net', 'sina.com', 'outlook.com', 'hotmail.com', 'live.com', 'yahoo.com',
-    'icloud.com',
-  ]);
-  const isEmail = reg.collectorId === 'email';
-  const accountsDraft = Array.isArray(draft.accounts)
-    ? (draft.accounts as Array<Record<string, unknown>>)
-    : [];
-  const writeAccounts = (next: Array<Record<string, unknown>>) => {
-    setCollectorConfig(reg.collectorId, { ...(config ?? {}), accounts: next });
-    setDraft((d) => ({ ...d, accounts: next }));
-  };
-  const updateAccount = (i: number, patch: Record<string, unknown>) => {
-    writeAccounts(accountsDraft.map((a, j) => (j === i ? { ...a, ...patch } : a)));
-  };
-  // Official「generate an auth code」help pages, keyed like KNOWN_IMAP_DOMAINS.
-  // ponytail: hardcoded mirror; domains without a confident official URL
-  // (sina) are simply absent.
-  const AUTH_HELP_URLS: Record<string, string> = {
-    'gmail.com': 'https://support.google.com/mail/answer/185833',
-    'googlemail.com': 'https://support.google.com/mail/answer/185833',
-    'qq.com': 'https://service.mail.qq.com/detail/0/75',
-    'foxmail.com': 'https://service.mail.qq.com/detail/0/75',
-    '163.com': 'https://help.mail.163.com/faqDetail.do?code=d1a5dc8471cd0c0128b6c9d0f5b52d16',
-    '126.com': 'https://help.mail.163.com/faqDetail.do?code=d1a5dc8471cd0c0128b6c9d0f5b52d16',
-    'yeah.net': 'https://help.mail.163.com/faqDetail.do?code=d1a5dc8471cd0c0128b6c9d0f5b52d16',
-    'outlook.com': 'https://account.live.com/password/AppPassword',
-    'hotmail.com': 'https://account.live.com/password/AppPassword',
-    'live.com': 'https://account.live.com/password/AppPassword',
-    'yahoo.com': 'https://help.yahoo.com/kb/SLN15241.html',
-    'icloud.com': 'https://support.apple.com/zh-cn/HT204397',
-  };
-  const authHelpUrl = (username: unknown): string | null =>
-    AUTH_HELP_URLS[String(username ?? '').split('@')[1]?.toLowerCase() ?? ''] ?? null;
-  /** External link via the app's shell-open path, never a raw href navigation. */
-  const openHelpUrl = (u: string) => {
-    if (isTauri()) {
-      void import('@tauri-apps/plugin-shell').then(({ open }) => open(u));
-    } else {
-      window.open(u, '_blank', 'noopener,noreferrer');
-    }
-  };
-  const accountField = (
-    i: number,
-    key: string,
-    label: string,
-    placeholder: string,
-    kind: 'text' | 'number' = 'text',
-    hint?: ReactNode,
-  ) => (
-    <label className="block">
-      <span className="flex items-center justify-between mb-1">
-        <span className="text-[11px] text-t2">{label}</span>
-        {hint}
-      </span>
-      <input
-        className="w-full text-[length:calc(var(--ui-font-size)-1px)] bg-panel border border-brd2 rounded-md px-2 py-1 text-t1 outline-none transition-[border-color] duration-100 focus:border-acc"
-        type={kind}
-        placeholder={placeholder}
-        value={String(accountsDraft[i]?.[key] ?? '')}
-        onChange={(e) =>
-          updateAccount(i, {
-            [key]: kind === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value,
-          })
-        }
-      />
-    </label>
+  // The collector's own form writes straight into the saved config AND keeps
+  // `draft` in sync — a later 保存 must not clobber the change with a stale
+  // draft value. Reads the store at call time, so two updates in a row merge.
+  const updateConfig = useCallback(
+    (patch: Record<string, unknown>) => {
+      const current = useActivityCollectorStore.getState().configs[reg.collectorId] ?? {};
+      setCollectorConfig(reg.collectorId, { ...current, ...patch });
+      setDraft((d) => ({ ...d, ...patch }));
+    },
+    [reg.collectorId, setCollectorConfig],
   );
   const onSave = () => {
     setCollectorConfig(reg.collectorId, draft);
@@ -174,92 +71,30 @@ function ConfigForm({
     savedTimer.current = setTimeout(() => setSaved(false), 900);
   };
   // Unsaved draft fields (allowAiSummary, tokens, …) are NOT what runCollect
-  // reads — it takes the persisted store config. Email accounts / exclude
-  // chips write through immediately and keep `draft` synced, so they never
-  // show the hint.
+  // reads — it takes the persisted store config. The collector's own form
+  // writes through immediately and keeps `draft` synced, so it never shows
+  // the hint.
   // ponytail: JSON compare (same-source key order); a false positive is
   // harmless, a diff library is not worth it here.
   const dirty = JSON.stringify(draft) !== JSON.stringify(config ?? {});
-  if (!schema || Object.keys(schema.properties).length === 0) return null;
+  if (!OwnForm && fields.length === 0) return null;
 
   return (
     <div className="mt-2">
       <p className="m-0 mb-2 text-[11px] font-semibold text-t2">
         {t('activity:collectors.configTitle')}
       </p>
-      {isEmail && (
-        <div className="mb-3">
-          {accountsDraft.map((acc, i) => (
-            <div key={i} className="border border-brd2 rounded-md p-2.5 mb-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-t2 truncate">
-                  {String(acc.username || `账户 ${i + 1}`)}
-                </span>
-                <button
-                  className="text-[11px] text-t3 hover:text-red-600 dark:hover:text-red-400 cursor-pointer"
-                  onClick={() => writeAccounts(accountsDraft.filter((_, j) => j !== i))}
-                >
-                  删除
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-x-2 gap-y-2.5">
-                {accountField(i, 'username', '邮箱账号', 'you@example.com')}
-                {accountField(
-                  i,
-                  'password',
-                  '密码 / 授权码',
-                  '',
-                  'text',
-                  authHelpUrl(acc.username) && (
-                    <button
-                      type="button"
-                      className="text-[10px] text-acc hover:underline cursor-pointer bg-transparent border-0 p-0"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openHelpUrl(authHelpUrl(acc.username)!);
-                      }}
-                    >
-                      如何获取授权码？
-                    </button>
-                  ),
-                )}
-                {(String(acc.host ?? '') !== '' ||
-                  !KNOWN_IMAP_DOMAINS.has(String(acc.username ?? '').split('@')[1]?.toLowerCase() ?? '')) && (
-                  <>
-                    {accountField(i, 'host', 'IMAP 服务器（留空自动推断）', 'imap.example.com')}
-                    {accountField(i, 'port', '端口', '993', 'number')}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-          <button
-            className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-dashed border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
-            onClick={() =>
-              writeAccounts([
-                ...accountsDraft,
-                { username: '', password: '', host: '', port: undefined },
-              ])
-            }
-          >
-            + 添加邮箱
-          </button>
-        </div>
-      )}
-      {Object.entries(schema.properties).map(([key, prop]) => {
+      {OwnForm && <OwnForm config={config ?? {}} update={updateConfig} api={reg.api} />}
+      {fields.map(([key, prop]) => {
         const value = draft[key] ?? prop.default ?? '';
         const label = prop.title ?? key;
-        // file-activity's excludeDirs renders as chips-only (no text input).
-        const chipsOnly = reg.collectorId === 'file-activity' && key === 'excludeDirs';
         return (
-          <Fragment key={key}>
-            {!chipsOnly && (
-            <label
-              className={prop.type === 'boolean' && !prop.enum
-                ? 'flex items-center gap-1.5 mb-2.5'
-                : 'block mb-2.5'}
-            >
+          <label
+            key={key}
+            className={prop.type === 'boolean' && !prop.enum
+              ? 'flex items-center gap-1.5 mb-2.5'
+              : 'block mb-2.5'}
+          >
             {prop.enum ? (
               <>
                 <span className="block text-[11px] text-t2 mb-1">{label}</span>
@@ -298,56 +133,6 @@ function ConfigForm({
               </>
             )}
           </label>
-            )}
-          {reg.collectorId === 'file-activity' && key === 'excludeDirs' && (
-            <div className="mb-2.5 flex flex-wrap items-center gap-2">
-              <span className="text-[10px] text-t3">{t('activity:collectors.fileExcludeApplied')}</span>
-              {excludeInput ? (
-                <input
-                  autoFocus
-                  className="py-[5px] px-2.5 rounded-md text-[11px] font-ui border border-acc bg-inp text-t1 outline-none w-[180px]"
-                  placeholder={t('settings:appearance.excludePatterns.prompt')}
-                  value={excludeInput.value}
-                  onChange={(e) => setExcludeInput({ value: e.target.value })}
-                  onKeyDown={(e) => {
-                    // IME composition: Enter here commits the composition, not the add.
-                    if (e.nativeEvent.isComposing) return;
-                    if (e.key === 'Enter') {
-                      const v = excludeInput.value.trim();
-                      if (v) addExcludePattern(v);
-                      setExcludeInput(null);
-                    } else if (e.key === 'Escape') {
-                      setExcludeInput(null);
-                    }
-                  }}
-                    onBlur={() => {
-                      const v = excludeInput.value.trim();
-                      if (v) addExcludePattern(v);
-                      setExcludeInput(null);
-                    }}
-                  />
-                ) : (
-                  <button
-                    className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-dashed border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
-                    onClick={() => setExcludeInput({ value: '' })}
-                  >+ {t('settings:appearance.excludePatterns.add')}</button>
-                )}
-                {appliedPatterns.length === 0 && !excludeInput && (
-                  <span className="text-[11px] text-t3 italic">{t('settings:appearance.excludePatterns.empty')}</span>
-                )}
-                {appliedPatterns.map((p) => (
-                  <span key={p} className="inline-flex items-center gap-1 h-[26px] pl-2.5 pr-1 rounded-md text-[11px] font-ui bg-accdim text-t1 border border-brd2">
-                    <span className="font-mono leading-none">{p}</span>
-                    <button
-                      className="w-[18px] h-[18px] flex items-center justify-center rounded text-t3 hover:text-[#f06a6a] hover:bg-hov transition-colors leading-none"
-                      onClick={() => removeExcludePattern(p)}
-                      aria-label={t('settings:appearance.excludePatterns.add')}
-                    >×</button>
-                  </span>
-                ))}
-            </div>
-          )}
-          </Fragment>
         );
       })}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -359,10 +144,12 @@ function ConfigForm({
             </span>
           )}
           {footerExtra}
-          <button className="btn btn-g btn-sm" onClick={onSave}>
-            {saved && <Check size={11} />}
-            {t('activity:collectors.save')}
-          </button>
+          {fields.length > 0 && (
+            <button className="btn btn-g btn-sm" onClick={onSave}>
+              {saved && <Check size={11} />}
+              {t('activity:collectors.save')}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -459,9 +246,10 @@ function CollectorCard({ reg, webhookEndpoint }: { reg: CollectorRegistration; w
       {t('activity:collectors.collectNow')}
     </button>
   ) : null;
-  // ConfigForm returns null when the schema has no properties — a schemaless
-  // poll collector still needs the footer row.
-  const hasConfigFields = !!(reg.authSchema && Object.keys(reg.authSchema.properties).length > 0);
+  // ConfigForm returns null when the collector has neither schema fields nor
+  // a form of its own — such a poll collector still needs the footer row.
+  const hasConfigFields =
+    !!reg.configForm || Object.keys(reg.authSchema?.properties ?? {}).length > 0;
 
   // Status text (last sync / progress / notice) merged into the footer action
   // row — left side, right of it the collect-now + save buttons.

@@ -62,6 +62,10 @@ isolated-iframe boundary (and accept its limits: `commands` + `tools` only).
   the collector id.
 - **authSchema** renders the collector's config form in the 采集器 settings
   (string/boolean); values arrive as `ctx.config`.
+- **configForm** (`module.collectors[id].configForm`, a React component with
+  props `{ config, update(patch), api }`) is the collector's own form, drawn
+  above the authSchema fields, for settings a flat schema cannot express
+  (account lists, chips). `update` merges into the saved config at once.
 - Full contract: `extension-sdk-reference.md` → "collectors / activityDisplay
   / entityTypes" section; guide: `extension-development.md` → "Collectors
   (activity collection)"; example: `extensions/file-collector`.

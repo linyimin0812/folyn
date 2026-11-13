@@ -15,8 +15,10 @@
  */
 
 import { create } from 'zustand';
+import type { ComponentType } from 'react';
 import type {
   ActivityDisplayContribution,
+  CollectorConfigFormProps,
   CollectorContribution,
   CollectorExtension,
   EntityTypeContribution,
@@ -67,6 +69,8 @@ export interface CollectorRegistration {
   /** The extension module's impl (`collect`/`onWebhook`), resolved by the
    *  trusted adapter from `module.collectors[collectorId]`. */
   impl?: CollectorExtension;
+  /** The collector's own settings form, already inside an error boundary. */
+  configForm?: ComponentType<CollectorConfigFormProps>;
 }
 
 /** What the trusted adapter hands the registry per extension activation. */
@@ -79,6 +83,8 @@ export interface CollectorBundle {
   /** collectorId → impl. Missing entries leave `impl` undefined (a declared
    *  collector without runtime code — polling skips it with a warn). */
   impls?: Record<string, CollectorExtension>;
+  /** collectorId → settings form, wrapped in an error boundary by the adapter. */
+  configForms?: Record<string, ComponentType<CollectorConfigFormProps>>;
   api: ExtensionApi;
 }
 
@@ -137,6 +143,7 @@ export function buildActivityRegistry(bundles: CollectorBundle[]): {
         authSchema: c.authSchema,
         api: bundle.api,
         impl: bundle.impls?.[c.id],
+        configForm: bundle.configForms?.[c.id],
       });
     }
   }

@@ -195,19 +195,16 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
         return invoke<{ app: string; title: string | null } | null>('activity_front_window');
       },
       // Vault scanner (Rust `activity_scan_vault` — fixed recursive walk, .git
-      // always skipped; excludes are dir names / vault-relative paths only,
-      // see activity/mod.rs). Exclusion patterns come from the collector's
-      // OWN config snapshot (`excludePatterns`, seeded once from appearance,
-      // then independent) — host-applied, invisible to the collector.
-      scanVault: async (opts: { excludeDirs?: string[] }) => {
-        const cfg = useActivityCollectorStore.getState().configs[collectorId] ?? {};
-        const excludePatterns = String(cfg.excludePatterns ?? '')
-          .split('\n')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0 && !s.startsWith('#'));
+      // always skipped; the collector picks what to exclude, by dir name /
+      // vault-relative path or by path-segment pattern, see activity/mod.rs).
+      scanVault: async (opts: { excludeDirs?: string[]; excludePatterns?: string[] }) => {
         return invoke<Array<{ path: string; mtimeMs: number; size: number }>>(
           'activity_scan_vault',
-          { vaultRoot, excludeDirs: opts?.excludeDirs ?? [], excludePatterns },
+          {
+            vaultRoot,
+            excludeDirs: opts?.excludeDirs ?? [],
+            excludePatterns: opts?.excludePatterns ?? [],
+          },
         );
       },
       // Vault text-file reader (Rust `activity_read_text_file` — traversal /

@@ -109,6 +109,13 @@ const IMAP_HOSTS: Record<string, string> = {
   'icloud.com': 'imap.mail.me.com',
 };
 
+/** True when the address's provider is in the table above, so its IMAP host
+ *  needs no input from the user. */
+export function hasKnownImapHost(username: string): boolean {
+  const domain = username.split('@')[1]?.toLowerCase().trim() ?? '';
+  return domain in IMAP_HOSTS;
+}
+
 /** Email address domain → IMAP host guess; '' when the address has no domain. */
 export function inferImapHost(username: string): string {
   const domain = username.split('@')[1]?.toLowerCase().trim() ?? '';

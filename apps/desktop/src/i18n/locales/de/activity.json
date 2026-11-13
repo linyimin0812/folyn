@@ -139,7 +139,6 @@
     "installZip": "Aus zip installieren…",
     "collectFailed": "Sammlung fehlgeschlagen (nicht installiert/aktiviert, kein offener Vault oder Sammelfehler)",
     "collectResult": "{{accepted}} neue Ereignisse, {{deduped}} dedupliziert",
-    "fileExcludeApplied": "Dateien/Ordner filtern:",
     "unsavedHint": "Ungespeicherte Änderungen werden von „Jetzt sammeln“ nicht verwendet"
   },
   "collectAll": {

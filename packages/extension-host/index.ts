@@ -52,6 +52,7 @@ export type {
   ActivityPaletteColor,
   EntityTypeContribution,
   CollectorExtension,
+  CollectorConfigFormProps,
   CollectorEvent,
   CollectorEventEntity,
   CollectorEntityRef,

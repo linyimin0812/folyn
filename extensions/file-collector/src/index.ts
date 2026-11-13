@@ -3,17 +3,13 @@
  *
  * Exports the collector impl under the manifest's `contributes.collectors[].id`
  * key (`file-activity`); the host's collector adapter + poll runtime resolve
- * `collect` through `module.collectors['file-activity']`.
+ * `collect` through `module.collectors['file-activity']`, and the collector's
+ * settings card mounts `configForm`.
  */
 import type { CollectorContext, CollectorEvent, ExtensionModule } from 'folyn-extension-sdk';
 import { diffSnapshots, parseSnapshot, snapshotHasContent } from './fileEvents';
-
-/** authSchema `excludeDirs` value → trimmed, non-empty list. */
-function parseExcludeDirs(raw: unknown): string[] {
-  return typeof raw === 'string'
-    ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
-    : [];
-}
+import { parsePatterns } from './excludePatterns';
+import { FileConfigForm } from './FileConfigForm';
 
 /**
  * Read file contents into `out` (path → text or null for binary/huge). Read
@@ -61,8 +57,8 @@ export async function collectFileActivity(
   ctx: CollectorContext,
 ): Promise<{ events: CollectorEvent[]; nextCursor: string }> {
   const cursor = ctx.cursor ?? '';
-  const excludeDirs = parseExcludeDirs(ctx.config.excludeDirs);
-  const current = ctx.scanVault ? await ctx.scanVault({ excludeDirs }) : null;
+  const excludePatterns = parsePatterns(ctx.config.excludePatterns);
+  const current = ctx.scanVault ? await ctx.scanVault({ excludePatterns }) : null;
   if (!current) {
     // Unavailable (no vault / non-Tauri host): no events, cursor untouched.
     return { events: [], nextCursor: cursor };
@@ -100,6 +96,7 @@ const module: ExtensionModule = {
     'file-activity': {
       id: 'file-activity',
       collect: collectFileActivity,
+      configForm: FileConfigForm,
     },
   },
 };

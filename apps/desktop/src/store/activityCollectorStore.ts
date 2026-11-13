@@ -342,13 +342,6 @@ export const useActivityCollectorStore = create<ActivityCollectorState>((set, ge
           configs[id] = v as Record<string, unknown>;
         }
       }
-      // Legacy single-mailbox email config → multi-account shape (the
-      // collector still accepts the flat form; this migrates the settings UI).
-      const email = configs['email'];
-      if (email && !Array.isArray(email.accounts) && typeof email.username === 'string' && email.username.trim()) {
-        const { host, port, username, password, folder, backfillDays, ...rest } = email;
-        configs['email'] = { ...rest, accounts: [{ host, port, username, password, folder, backfillDays }] };
-      }
       patch.configs = configs;
     }
     // collectHistory is intentionally NOT hydrated here — it lives in the

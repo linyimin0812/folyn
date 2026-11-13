@@ -772,8 +772,8 @@ ingest pipeline. Full field tables (`contributes.collectors[]`,
 `activityDisplay[]`, `entityTypes[]`, `CollectorEvent`, `CollectorContext`):
 see `extension-sdk-reference.md` "Collectors (activity collection)". Canonical
 example: [`extensions/file-collector`](../../extensions/file-collector)
-(poll mode, snapshot-diff cursor, `authSchema` with `excludeDirs` +
-`allowAiSummary`).
+(poll mode, snapshot-diff cursor, `authSchema` with `allowAiSummary`, its own
+`configForm` for the file filters).
 
 #### Modes
 
@@ -824,7 +824,7 @@ in tests and embedded hosts — always feature-detect.
 | Capability | What the host enforces |
 | --- | --- |
 | `ctx.frontWindow()` | Rust `activity_front_window`: **fixed platform scripts**, no collector-controlled arguments. Returns `null` when unavailable. |
-| `ctx.scanVault({ excludeDirs })` | Rust `activity_scan_vault`: fixed recursive walk of the active vault; **`.git` always skipped**; paths are vault-relative; the collector never learns the absolute vault root. |
+| `ctx.scanVault({ excludeDirs, excludePatterns })` | Rust `activity_scan_vault`: fixed recursive walk of the active vault; **`.git` always skipped**; the collector picks what else to leave out (directories by name or vault-relative path, files and directories by path-segment pattern with `*` / `?`); paths are vault-relative; the collector never learns the absolute vault root. |
 | `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`: **traversal-safe** (`..`/absolute rejected), binary and >1 MB files return `null`, output truncated (cap clamped 1 B–64 KB, default 8 KB). |
 
 #### `authSchema` → the settings config form
@@ -834,6 +834,44 @@ boolean types) is rendered **automatically as the collector's config form in
 the 采集器 settings view**. Saved values arrive in `ctx.config` on every
 collect/webhook call. Convention from the file collector: a `boolean`
 `allowAiSummary` gate for the AI event-summary block in the detail panel.
+
+#### `configForm` → settings a schema cannot express
+
+A list of accounts, editable chips, a field that depends on another: give the
+collector its own form. It is a React component on the collector's module
+entry, drawn above the `authSchema` fields in the same settings card.
+
+```tsx
+import type { CollectorConfigFormProps } from 'folyn-extension-sdk';
+
+function MyConfigForm({ config, update, api }: CollectorConfigFormProps) {
+  const accounts = Array.isArray(config.accounts) ? config.accounts : [];
+  return (
+    <button onClick={() => update({ accounts: [...accounts, { username: '' }] })}>
+      + account
+    </button>
+  );
+}
+
+const module: ExtensionModule = {
+  collectors: { 'my-source': { id: 'my-source', collect, configForm: MyConfigForm } },
+};
+```
+
+- `config` is the saved config — the object `collect()` receives as
+  `ctx.config`. The form and the schema fields share it, so pick keys that do
+  not collide.
+- `update(patch)` merges `patch` into it and saves at once. There is no draft
+  and no save button for the form's part.
+- `api` is the extension's `ExtensionApi` (`api.env.locale` for your own
+  strings, `api.vaultConfig` for the user's settings).
+- The component renders in the host's React tree: bundle with the React shim
+  (see [Trusted tier bundling](#trusted-tier-bundling)). A render error is
+  contained to the collector's card.
+
+Examples: [`extensions/email-collector`](../../extensions/email-collector)
+(a list of mailboxes), [`extensions/file-collector`](../../extensions/file-collector)
+(filter chips).
 
 #### Declared `activityTypes` are validated
 

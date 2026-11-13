@@ -1,13 +1,13 @@
 {
   "id": "folyn-file-collector",
   "name": "File Collector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Folyn",
   "folyn": ">=0.1.0",
   "tier": "trusted",
   "main": "dist/index.js",
   "icon": "F",
-  "description": "文件采集器 —— 轮询 vault 文件的新增/修改/删除，支持排除目录",
+  "description": "文件采集器 —— 轮询 vault 文件的新增/修改/删除，支持过滤文件/文件夹",
   "permissions": {
     "fs": { "scope": [] },
     "http": { "origins": [] },
@@ -27,12 +27,6 @@
         "authSchema": {
           "type": "object",
           "properties": {
-            "excludeDirs": {
-              "type": "string",
-              "title": "排除目录",
-              "description": "逗号分隔的目录名或相对路径，匹配的目录不进行采集（如 .obsidian, node_modules）",
-              "default": ""
-            },
             "allowAiSummary": {
               "type": "boolean",
               "title": "允许 AI 读取活动数据生成摘要",

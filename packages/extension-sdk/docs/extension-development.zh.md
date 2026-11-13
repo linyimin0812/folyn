@@ -690,7 +690,7 @@ ingest 管道负责。完整字段表（`contributes.collectors[]`、`activityDi
 `entityTypes[]`、`CollectorEvent`、`CollectorContext`）见
 `extension-sdk-reference.md` 的 "Collectors (activity collection)" 一节。规范示例：
 [`extensions/file-collector`](../../extensions/file-collector)（poll 模式、快照
-diff 游标、`authSchema` 含 `excludeDirs` + `allowAiSummary`）。
+diff 游标、`authSchema` 含 `allowAiSummary`、文件过滤规则用自带的 `configForm`）。
 
 #### 模式
 
@@ -735,7 +735,7 @@ diff 游标、`authSchema` 含 `excludeDirs` + `allowAiSummary`）。
 | 能力 | host 强制什么 |
 | --- | --- |
 | `ctx.frontWindow()` | Rust `activity_front_window`：**固定平台脚本**，无采集器可控参数。不可用返回 `null`。 |
-| `ctx.scanVault({ excludeDirs })` | Rust `activity_scan_vault`：对当前 vault 的固定递归遍历；**`.git` 恒跳过**；路径为 vault 相对路径；采集器永远不知道 vault 绝对根路径。 |
+| `ctx.scanVault({ excludeDirs, excludePatterns })` | Rust `activity_scan_vault`：对当前 vault 的固定递归遍历；**`.git` 恒跳过**；其余排除什么由采集器决定（目录按名称或 vault 相对路径，文件和目录按路径段规则，支持 `*` / `?`）；路径为 vault 相对路径；采集器永远不知道 vault 绝对根路径。 |
 | `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`：**遍历安全**（`..`/绝对路径拒绝）、二进制与 >1MB 文件返回 `null`、输出截断（上限钳制 1 B–64 KB，默认 8 KB）。 |
 
 #### `authSchema` → 设置页配置表单
@@ -744,6 +744,40 @@ diff 游标、`authSchema` 含 `excludeDirs` + `allowAiSummary`）。
 boolean 类型）会在**采集器设置页自动渲染为该采集器的配置表单**。保存的值在每次
 collect/webhook 调用时通过 `ctx.config` 送达。文件采集器的惯例：`boolean` 的
 `allowAiSummary` 控制详情面板 AI 事件摘要块是否出现。
+
+#### `configForm` → schema 表达不了的设置
+
+账户列表、可编辑的 chips、依赖另一个字段的字段：让采集器自带表单。它是采集器
+模块条目上的一个 React 组件，画在同一张设置卡片里、`authSchema` 字段的上方。
+
+```tsx
+import type { CollectorConfigFormProps } from 'folyn-extension-sdk';
+
+function MyConfigForm({ config, update, api }: CollectorConfigFormProps) {
+  const accounts = Array.isArray(config.accounts) ? config.accounts : [];
+  return (
+    <button onClick={() => update({ accounts: [...accounts, { username: '' }] })}>
+      + account
+    </button>
+  );
+}
+
+const module: ExtensionModule = {
+  collectors: { 'my-source': { id: 'my-source', collect, configForm: MyConfigForm } },
+};
+```
+
+- `config` 是已保存的配置，也就是 `collect()` 收到的 `ctx.config`。表单和 schema
+  字段共用它，key 不要撞。
+- `update(patch)` 把 `patch` 合并进去并立即保存。表单这部分没有草稿，也没有保存
+  按钮。
+- `api` 是扩展自己的 `ExtensionApi`（自带文案用 `api.env.locale`，读用户设置用
+  `api.vaultConfig`）。
+- 组件渲染在 host 的 React 树里：打包时要用 React shim（见
+  [Trusted tier 打包](#trusted-tier-打包)）。渲染出错只影响这张采集器卡片。
+
+示例：[`extensions/email-collector`](../../extensions/email-collector)（邮箱列表）、
+[`extensions/file-collector`](../../extensions/file-collector)（过滤规则 chips）。
 
 #### 声明的 `activityTypes` 会被校验
 

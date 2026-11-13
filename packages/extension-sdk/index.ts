@@ -144,6 +144,7 @@ export type {
   HighlightGrammarFn,
   StorageConfigFormProps,
   CollectorExtension,
+  CollectorConfigFormProps,
   CollectorEvent,
   CollectorEventEntity,
   CollectorEntityRef,

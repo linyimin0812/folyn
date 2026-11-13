@@ -165,6 +165,9 @@ function createVaultConfigApi(): VaultConfigApi {
     getImagePath() {
       return useVaultConfigStore.getState().imagePath?.replace(/\/+$/, '') || 'assets/images/';
     },
+    getExcludePatterns() {
+      return parseExcludePatterns(useAppearanceStore.getState().excludePatterns || '');
+    },
   };
 }
 

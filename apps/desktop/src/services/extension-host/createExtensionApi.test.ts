@@ -91,6 +91,11 @@ describe('ExtensionApi / vault + vaultConfig (Phase 1 additions)', () => {
     expect(api.vaultConfig.getImagePath()).toBe('assets/images');
   });
 
+  it('vaultConfig.getExcludePatterns lists the file-panel filters, comments dropped', () => {
+    const api = makeApi();
+    expect(api.vaultConfig.getExcludePatterns()).toEqual(['__reports__', '*.tmp']);
+  });
+
   it('vaultConfig.getImagePath falls back to default when unset', async () => {
     vi.doMock('@/store/vaultConfigStore', () => ({
       useVaultConfigStore: { getState: () => ({ imagePath: '' }) },

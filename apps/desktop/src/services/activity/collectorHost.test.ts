@@ -49,6 +49,20 @@ describe('buildActivityRegistry', () => {
     expect(entityTypes.find((t) => t.id === 'customer')?.owner).toBe('org.example.git');
   });
 
+  it('carries a collector\'s own settings form, keyed by collector id', () => {
+    const Form = () => null;
+    const { collectors } = buildActivityRegistry([
+      bundle('ext.a', {
+        collectors: [
+          { id: 'with-form', activityTypes: ['x'], mode: 'poll' },
+          { id: 'without-form', activityTypes: ['y'], mode: 'poll' },
+        ],
+        configForms: { 'with-form': Form },
+      }),
+    ]);
+    expect(collectors.map((c) => c.configForm)).toEqual([Form, undefined]);
+  });
+
   it('skips a later entityTypes registration on conflict and records the winner', () => {
     const { entityTypes, conflicts } = buildActivityRegistry([
       bundle('ext.a', { entityTypes: [{ id: 'customer', label: '客户A' }] }),

@@ -139,7 +139,6 @@
     "installZip": "Instalar desde zip…",
     "collectFailed": "La recopilación falló (no instalada/activada, sin bóveda abierta o error de recopilación)",
     "collectResult": "{{accepted}} eventos nuevos, {{deduped}} deduplicados",
-    "fileExcludeApplied": "Filtrar archivos/carpetas:",
     "unsavedHint": "Los cambios sin guardar no se usarán en «Recopilar ahora»"
   },
   "collectAll": {

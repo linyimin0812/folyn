@@ -230,11 +230,12 @@ export interface CollectorContext {
    * Backed by the Rust `activity_scan_vault` command — a fixed recursive walk
    * (`.git` always skipped, files only, paths vault-relative with forward
    * slashes, sorted by path). The caller may exclude directories by name or
-   * vault-relative path; no other collector-controlled arguments. Returns
-   * `null` when unavailable (no vault / non-Tauri / tests). Absent in
-   * tests/embedded hosts.
+   * vault-relative path (`excludeDirs`), and files or directories by path
+   * segment (`excludePatterns`: `*` and `?` wildcards, else an exact segment);
+   * no other collector-controlled arguments. Returns `null` when unavailable
+   * (no vault / non-Tauri / tests). Absent in tests/embedded hosts.
    */
-  scanVault?: (opts: { excludeDirs?: string[] }) => Promise<
+  scanVault?: (opts: { excludeDirs?: string[]; excludePatterns?: string[] }) => Promise<
     Array<{ path: string; mtimeMs: number; size: number }> | null
   >;
   /**
@@ -276,6 +277,16 @@ export interface CollectorContext {
   >;
 }
 
+/** Props of a collector's own settings form ({@link CollectorExtension.configForm}). */
+export interface CollectorConfigFormProps {
+  /** The collector's saved config: what `collect()` gets as `ctx.config`. */
+  config: Record<string, unknown>;
+  /** Merge `patch` into the saved config. It is saved at once. */
+  update(patch: Record<string, unknown>): void;
+  /** The extension's own {@link ExtensionApi}, as in {@link CollectorContext.api}. */
+  api: ExtensionApi;
+}
+
 /** The extension-side collector interface (design §2.2). Exported by a
  *  trusted extension bundle as `export const collectors = { '<id>': {...} }`,
  *  keyed by the `contributes.collectors[].id`. */
@@ -286,6 +297,10 @@ export interface CollectorExtension {
   /** Convert an inbound webhook payload. Wired host-side (local webhook
    *  server routes here); absent for poll-mode collectors. */
   onWebhook?(payload: unknown, config: Record<string, unknown>): Promise<CollectorEvent[]>;
+  /** The collector's own settings form, drawn above the `authSchema` fields
+   *  in its settings card. For settings a flat schema cannot express — a list
+   *  of accounts, say. */
+  configForm?: ComponentType<CollectorConfigFormProps>;
 }
 
 export interface ExtensionModule {

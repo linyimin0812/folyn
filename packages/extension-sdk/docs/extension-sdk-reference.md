@@ -287,7 +287,6 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
   "authSchema": {
     "type": "object",
     "properties": {
-      "excludeDirs": { "type": "string", "title": "排除目录", "default": "" },
       "allowAiSummary": { "type": "boolean", "title": "允许 AI 读取活动数据生成摘要", "default": false }
     }
   }
@@ -300,6 +299,7 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | ----------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | `collect`   | `(ctx: CollectorContext) => Promise<{ events: CollectorEvent[]; nextCursor: string }>`            | poll 模式 + 手动「立即采集」调用；拉取自上次游标以来的批次 |
 | `onWebhook` | `(payload: unknown, config: Record<string, unknown>) => Promise<CollectorEvent[]>`                | webhook 模式；本地 webhook server 路由到此处，无游标       |
+| `configForm` | `ComponentType<CollectorConfigFormProps>`（`{ config, update(patch), api }`）                    | 可选；采集器自带的设置表单，画在 authSchema 字段上方。`update` 合并并立即保存 |
 
 #### `contributes.activityDisplay[]`（declarative）
 
@@ -351,7 +351,7 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `api`          | `ExtensionApi`                                                                                          | 扩展自己的 api（与 `activate(api, ctx)` 收到的相同）：远程源用 `api.network.fetch`（`permissions.http.origins`），本机程序用 `api.process.exec`（`permissions.exec.programs`） |
 | `onProgress`   | `(message: string) => void`                                                                             | 进度上报（如 `commits 42/256`），显示在采集按钮旁的 spinner 处              |
 | `frontWindow`  | `() => Promise<{ app: string; title: string \| null } \| null>`                                        | 前台窗口采样；固定 host 脚本，无采集器可控参数；不可用时返回 `null`         |
-| `scanVault`    | `(opts: { excludeDirs?: string[] }) => Promise<{path, mtimeMs, size}[] \| null>`                        | vault 文件扫描（`.git` 恒跳过，vault 相对路径，按路径排序）；不可用返回 `null` |
+| `scanVault`    | `(opts: { excludeDirs?: string[]; excludePatterns?: string[] }) => Promise<{path, mtimeMs, size}[] \| null>` | vault 文件扫描（`.git` 恒跳过，排除项由采集器传入，vault 相对路径，按路径排序）；不可用返回 `null` |
 | `readVaultFile`| `(path: string, maxBytes?: number) => Promise<string \| null>`                                          | vault 文本读取（遍历/绝对路径拒绝，二进制与 >1MB 返回 `null`，截断到 maxBytes） |
 
 ```ts
@@ -590,7 +590,7 @@ trusted 加载器把 `main` 包成 blob URL 后 `import()`，blob URL 无路径�
 - `../examples/extensions/hello-tool` — sandbox；`tools` + 剪贴板 RPC。
 - `../examples/extensions/markdown-table` — sandbox；`tools` + `vault:insert-content` RPC。
 - `../extensions/extension-graphviz` — trusted；`fileTypes` + `containers`，Vite 打包。
-- `../../extensions/file-collector` — trusted；活动采集器标杆（`collectors` + `activityDisplay` + `entityTypes`，poll 模式快照 diff 游标 + authSchema 配置）。
+- `../../extensions/file-collector` — trusted；活动采集器标杆（`collectors` + `activityDisplay` + `entityTypes`，poll 模式快照 diff 游标 + authSchema 配置 + 自带 `configForm`）。
 
 ## Trusted subscriptions capability
 

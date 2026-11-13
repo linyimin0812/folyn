@@ -186,6 +186,11 @@ Contributions the host calls back into later (collectors) get the same
 `ExtensionApi` that `activate` gets — `ContributionAdapter.register(manifest,
 module, api)` hands it over — not a capability set of their own.
 
+The same goes for UI the host cannot describe in advance: where a declarative
+schema stops being enough, the extension brings a component and the host
+gives it a slot (`storageProviders[].configForm`, a collector's `configForm`).
+The host never branches on an extension or collector id.
+
 Not on this model yet: `CollectorContext.frontWindow` / `scanVault` /
 `readVaultFile` / `imapFetch` (one fixed Rust command per collector) and
 `api.subscriptions` (its own fetch, vault IO and storage).

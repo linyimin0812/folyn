@@ -211,6 +211,12 @@ export interface VaultConfigApi {
    * not exist yet — the caller is responsible for `mkdir({recursive})`.
    */
   getImagePath(): string;
+  /**
+   * The user's file filters (Settings → 过滤文件/文件夹): each entry hides
+   * the files and folders whose name matches it (`*` and `?` wildcards, else
+   * an exact name). The same list {@link VaultApi.listFiles} applies.
+   */
+  getExcludePatterns(): string[];
 }
 
 export interface FileApi {

@@ -257,6 +257,8 @@ collectors: {
       return { events: [], nextCursor: cursor };
     },
     // webhook mode instead: onWebhook(payload, config) → events (no cursor)
+    // settings a flat authSchema cannot express (account lists, chips):
+    // configForm: MyForm — a React component, props { config, update(patch), api }
   },
 },
 ```

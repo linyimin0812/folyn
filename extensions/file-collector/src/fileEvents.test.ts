@@ -252,14 +252,14 @@ describe('collectFileActivity', () => {
 
   it('diffs against the cursor snapshot and reports progress', async () => {
     const cursor = JSON.stringify({ 'a.md': { mtimeMs: 1, size: 2 } });
-    const scanVault = async (opts: { excludeDirs?: string[] }) => {
-      expect(opts.excludeDirs).toEqual(['.obsidian', 'node_modules']);
+    const scanVault = async (opts: { excludePatterns?: string[] }) => {
+      expect(opts.excludePatterns).toEqual(['.obsidian', 'node_modules']);
       return [{ path: 'b.md', mtimeMs: 3, size: 4 }];
     };
     const onProgress = vi.fn();
     const out = await collectFileActivity({
       cursor,
-      config: { excludeDirs: ' .obsidian, node_modules ,,' },
+      config: { excludePatterns: '# seeded\n .obsidian\nnode_modules \n\n' },
       api,
       scanVault,
       onProgress,
