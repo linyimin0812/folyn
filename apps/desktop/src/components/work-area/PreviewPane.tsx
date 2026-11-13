@@ -1,12 +1,9 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, forwardRef, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
-import { useDocLinkHistory } from '@/store/docLinkHistory';
-import { useVaultStore } from '@/store/vaultStore';
 import { debounce } from '@/utils/debounce';
 import { MarkmapCanvas } from '../file-types/markmap/MarkmapCanvas';
 import { resolveAssetBase } from '../file-types/previewPath';
@@ -61,11 +58,6 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // In preview-only mode the editor is unmounted, so cursorLine never
     // changes; passing it would scroll to a stale position on tab switch.
     const cursorSyncPreview = useEditorPrefsStore((s) => s.cursorSyncPreview);
-    // Back/forward along followed document links joins this pane's tool column.
-    const docLinkTrail = useDocLinkHistory();
-    const activeVaultId = useVaultStore((s) => s.activeVaultId);
-    const gotoBack = () => useDocLinkHistory.getState().goBack();
-    const gotoForward = () => useDocLinkHistory.getState().goForward();
     const setCursorSyncPreview = useEditorPrefsStore((s) => s.setCursorSyncPreview);
     const { t } = useTranslation();
     const setPreviewScrollTopForTab = useEditorViewStateStore((s) => s.setPreviewScrollTopForTab);
@@ -266,31 +258,9 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
         data-preview-hidden={active ? undefined : ''}
         aria-hidden={active ? undefined : true}
       >
-        {/* Preview-mode toggle (markmap) + outline toggle -- markdown only.
-            Back/forward along followed document links joins the same column
-            (top item), so the tools read as one quiet stack. */}
+        {/* Preview-mode toggle (markmap) + outline toggle -- markdown only */}
         {activeTab.fileType === 'markdown' && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-1.5">
-            {docLinkTrail.vaultId === activeVaultId && (docLinkTrail.back.length > 0 || docLinkTrail.forward.length > 0) && (
-              <>
-                <button
-                  className={`${previewToolClass()} disabled:opacity-20 disabled:cursor-default`}
-                  disabled={docLinkTrail.back.length === 0}
-                  onClick={gotoBack}
-                  title={t('shell:docLink.back')}
-                >
-                  <ArrowLeft size={14} />
-                </button>
-                <button
-                  className={`${previewToolClass()} disabled:opacity-20 disabled:cursor-default`}
-                  disabled={docLinkTrail.forward.length === 0}
-                  onClick={gotoForward}
-                  title={t('shell:docLink.forward')}
-                >
-                  <ArrowRight size={14} />
-                </button>
-              </>
-            )}
             <button
               className={previewToolClass(markmapMode)}
               onClick={() => setMarkmapMode((v) => !v)}

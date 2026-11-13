@@ -38,5 +38,9 @@
   },
   "focusMode": {
     "toggle": "Basculer le mode concentration (Cmd+Shift+Enter)"
+  },
+  "docLink": {
+    "back": "Retour (Cmd/Ctrl+[)",
+    "forward": "Suivant (Cmd/Ctrl+])"
   }
 }

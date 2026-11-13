@@ -38,5 +38,9 @@
   },
   "focusMode": {
     "toggle": "Toggle focus mode (Cmd+Shift+Enter)"
+  },
+  "docLink": {
+    "back": "Back (Cmd/Ctrl+[)",
+    "forward": "Forward (Cmd/Ctrl+])"
   }
 }

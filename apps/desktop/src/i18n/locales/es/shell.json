@@ -60,9 +60,5 @@
       "title": "Tipo de archivo no compatible",
       "desc": "\"{{name}}\" no tiene un visor disponible. Instala una extensión compatible."
     }
-  },
-  "docLink": {
-    "back": "Atrás (Cmd/Ctrl+[)",
-    "forward": "Adelante (Cmd/Ctrl+])"
   }
 }
