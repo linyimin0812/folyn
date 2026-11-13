@@ -38,9 +38,5 @@
   },
   "focusMode": {
     "toggle": "フォーカスモードを切り替え (Cmd+Shift+Enter)"
-  },
-  "docLink": {
-    "back": "戻る (Cmd/Ctrl+[)",
-    "forward": "進む (Cmd/Ctrl+])"
   }
 }

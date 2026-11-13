@@ -60,5 +60,9 @@
       "title": "Type de fichier non pris en charge",
       "desc": "\"{{name}}\" n'a pas de visionneuse. Installez une extension compatible."
     }
+  },
+  "docLink": {
+    "back": "Retour (Cmd/Ctrl+[)",
+    "forward": "Suivant (Cmd/Ctrl+])"
   }
 }

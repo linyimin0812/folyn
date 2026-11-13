@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback, forwardRef, type ComponentType } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, forwardRef, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
+import { useDocLinkHistory } from '@/store/docLinkHistory';
 import { debounce } from '@/utils/debounce';
 import { MarkmapCanvas } from '../file-types/markmap/MarkmapCanvas';
 import { resolveAssetBase } from '../file-types/previewPath';
@@ -15,6 +16,11 @@ import { usePreviewZoom } from '../file-types/markdown/usePreviewZoom';
 function previewToolClass(active = false): string {
   return `flex items-center justify-center w-7 h-7 rounded-[6px] cursor-pointer transition-[opacity,color,background-color] duration-[140ms] hover:opacity-100 hover:bg-hov ${active ? 'opacity-100 text-acc' : 'opacity-35 group-hover/prev:opacity-70 text-t2 hover:text-t1'}`;
 }
+
+/** How long a tab switch holds the restored preview position against late layout. */
+const RESTORE_HOLD_MS = 1500;
+/** Input that hands the preview position back to the reader during a restore. */
+const READER_INPUT_EVENTS = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const;
 
 interface PreviewPaneProps {
   activeTab: FileTab;
@@ -34,39 +40,64 @@ interface PreviewPaneProps {
    * editor to scroll to).
    */
   onHeadingClick?: (sourceLine: number) => void;
+  /**
+   * False while this pane is kept alive behind another tab (WorkArea keeps
+   * recent previews mounted so iframes — HTML, PDF and other extension
+   * viewers — keep their document and inner scroll). A hidden pane is parked
+   * outside the work area, ignores the editor cursor and saves no
+   * scroll. Defaults to true.
+   */
+  active?: boolean;
 }
 
 export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
   function PreviewPane(
-    { activeTab, Preview, vaultRoot, viewMode, previewFlex, onChange, onHeadingClick },
+    { activeTab, Preview, vaultRoot, viewMode, previewFlex, onChange, onHeadingClick, active = true },
     ref,
   ) {
     // ponytail: cursor line drives preview scroll-sync in split mode only.
     // In preview-only mode the editor is unmounted, so cursorLine never
     // changes; passing it would scroll to a stale position on tab switch.
     const cursorSyncPreview = useEditorPrefsStore((s) => s.cursorSyncPreview);
+    // A trail of followed document links floats its back/forward group over
+    // this pane's top-left corner (see DocLinkNav).
+    const hasDocLinkTrail = useDocLinkHistory((s) => s.back.length > 0 || s.forward.length > 0);
     const setCursorSyncPreview = useEditorPrefsStore((s) => s.setCursorSyncPreview);
     const { t } = useTranslation();
-    const setPreviewScrollTop = useEditorViewStateStore((s) => s.setPreviewScrollTop);
-    // ponytail: the .prev-body scroll container stays mounted across tab
-    // switches (no key change), so without intervention it keeps the previous
-    // file's scrollTop. Persist the scrollTop onto the active tab (throttled)
-    // and restore the incoming tab's saved value on switch, mirroring the
-    // editor's editorScrollTop. With cursorSyncPreview on, the restored value
-    // equals the cursor-sync position (it was the sync that produced it), so
-    // later cursor-sync effects keep it consistent instead of resetting.
+    const setPreviewScrollTopForTab = useEditorViewStateStore((s) => s.setPreviewScrollTopForTab);
+    // ponytail: the .prev-body scroll container keeps its scrollTop while the
+    // pane lives (WorkArea keeps one pane per tab; the version-history view
+    // reuses one pane across snapshots). Persist the scrollTop onto the tab
+    // this pane SHOWS (throttled) and restore it when the pane shows a tab,
+    // mirroring the editor's editorScrollTop — it survives restarts and the
+    // pane being dropped from the kept set. The tab id is taken when the
+    // scroll happens, not from the store's activeTabId: that already names
+    // the next tab while the work area still shows this one (it trails the
+    // switch by a frame) and while the trailing debounce is pending.
     const bodyRef = useRef<HTMLDivElement | null>(null);
     const setBodyRef = useCallback((el: HTMLDivElement | null) => {
+      const prev = bodyRef.current;
       bodyRef.current = el;
       if (typeof ref === 'function') ref(el);
-      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      // Detaching clears the shared ref only if it still points here: when
+      // another kept pane takes the ref over, it may have attached first.
+      else if (ref && (el || ref.current === prev)) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
     }, [ref]);
-    const persistPreviewScrollRef = useRef<((top: number) => void) | null>(null);
+    const shownTabIdRef = useRef(activeTab.id);
+    shownTabIdRef.current = activeTab.id;
+    const persistPreviewScrollRef = useRef<((tabId: string, top: number) => void) | null>(null);
     if (persistPreviewScrollRef.current === null) {
-      persistPreviewScrollRef.current = debounce((top: number) => setPreviewScrollTop(top), 200);
+      persistPreviewScrollRef.current = debounce((tabId: string, top: number) => setPreviewScrollTopForTab(tabId, top), 200);
     }
+    // True while a tab switch restores the saved position: scrolls then come
+    // from the restore itself, the content swap clamping scrollTop, or late
+    // layout — none of them is the reader moving, so none is persisted.
+    const restoringRef = useRef(false);
+    const activeRef = useRef(active);
+    activeRef.current = active;
     const handleBodyScroll = useCallback(() => {
-      persistPreviewScrollRef.current?.(bodyRef.current?.scrollTop ?? 0);
+      if (restoringRef.current || !activeRef.current) return;
+      persistPreviewScrollRef.current?.(shownTabIdRef.current, bodyRef.current?.scrollTop ?? 0);
     }, []);
 
     // ponytail: split-mode preview→editor jump. Click a rendered heading in
@@ -92,10 +123,16 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       if (!Number.isFinite(line) || line <= 0) return;
       onHeadingClick(line);
     }, [onHeadingClick]);
-    const cursorLine = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorLine : 0);
-    const cursorViewportY = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.cursorViewportY : 0);
-    const editorViewportTop = useEditorViewStateStore((s) => viewMode === 'split' && cursorSyncPreview ? s.editorViewportTop : 0);
-    const hasSelection = useEditorViewStateStore((s) => viewMode === 'split' ? s.hasSelection : false);
+    // A hidden pane keeps the cursor values it last had: dropping them to 0
+    // would flip MarkdownPreview's sync gaps and re-parse it in the background.
+    const syncLive = viewMode === 'split' && cursorSyncPreview;
+    const frozenCursorRef = useRef({ cursorLine: 0, cursorViewportY: 0, editorViewportTop: 0, hasSelection: false });
+    const frozen = frozenCursorRef.current;
+    const cursorLine = useEditorViewStateStore((s) => !active ? frozen.cursorLine : syncLive ? s.cursorLine : 0);
+    const cursorViewportY = useEditorViewStateStore((s) => !active ? frozen.cursorViewportY : syncLive ? s.cursorViewportY : 0);
+    const editorViewportTop = useEditorViewStateStore((s) => !active ? frozen.editorViewportTop : syncLive ? s.editorViewportTop : 0);
+    const hasSelection = useEditorViewStateStore((s) => !active ? frozen.hasSelection : viewMode === 'split' ? s.hasSelection : false);
+    if (active) frozenCursorRef.current = { cursorLine, cursorViewportY, editorViewportTop, hasSelection };
     const outlineVisible = useEditorViewStateStore((s) => s.outlineVisible);
     const toggleOutline = useEditorViewStateStore((s) => s.toggleOutline);
     const togglePresentationMode = useEditorViewStateStore((s) => s.togglePresentationMode);
@@ -105,7 +142,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // ponytail: preview visual zoom (pinch/ctrl+wheel + Cmd±/0) —
     // preview-only mode: split mode must stay 1:1 with the editor so the
     // cursor-sync / gap-compensation line grid stays exact.
-    const zoomEnabled = viewMode === 'preview' && activeTab.fileType === 'markdown' && !markmapMode;
+    const zoomEnabled = active && viewMode === 'preview' && activeTab.fileType === 'markdown' && !markmapMode;
     usePreviewZoom(zoomEnabled, bodyRef);
 
     // Resolve the markdown file's asset base so markmap nodes can inline
@@ -121,30 +158,64 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       return () => { cancelled = true; };
     }, [activeTab.fileType, activeTab.path, vaultRoot]);
 
-    // ponytail: restore the saved preview scrollTop when switching tabs.
-    // Layout (rendered markdown height, images) isn't settled until after a
-    // frame, so apply on rAF — and re-apply on a second rAF to win against
-    // late layout / cursor-sync scrolls that may reset it. On MOUNT the DOM
-    // is fresh (scrollTop 0), so nothing needs resetting — only a saved
-    // value is restored. On TAB SWITCH, reset to 0 when the incoming tab has
-    // no saved position (a newly opened file): the .prev-body DOM is shared
-    // across tabs (no key change), so without the reset it keeps the
-    // previous file's scrollTop and the browser clamps it into the markdown
-    // 100vh bottom pad → a blank preview page on newly opened files (the
-    // reported "新打开一个Markdown文件，预览页留有一大片空白").
-    const isMountRef = useRef(true);
-    useEffect(() => {
-      const saved = activeTab.previewScrollTop;
-      const isMount = isMountRef.current;
-      isMountRef.current = false;
+    // ponytail: restore the saved preview scrollTop when this pane shows a
+    // tab — a tab switch, or a kept-alive pane coming back to the front.
+    // The position is held every frame for RESTORE_HOLD_MS, until the reader
+    // first scrolls, clicks or types: the layout keeps growing after the
+    // switch (images load, the asset base resolves and re-renders the tree,
+    // split-mode gap compensation), so a one-shot apply got clamped short,
+    // and split-mode cursor-sync re-aligned the preview to the editor cursor
+    // as soon as the editor republished its metrics — the preview a reader
+    // had scrolled on its own jumped back to the cursor (often line 1). The
+    // preview now stays where it was left until the cursor actually moves.
+    // On MOUNT the DOM is fresh (scrollTop 0), so
+    // nothing needs resetting — only a saved value is restored. When the
+    // pane is handed another tab (the version-history view reuses one pane
+    // across snapshots), reset to 0 if that tab has no saved position:
+    // otherwise the shared DOM keeps the previous file's scrollTop and the
+    // browser clamps it into the markdown 100vh bottom pad → a blank preview
+    // page (the reported "新打开一个Markdown文件，预览页留有一大片空白"). A
+    // layout effect, so restoringRef is set before the browser fires the
+    // scroll event of the content swap clamping scrollTop.
+    const lastShownIdRef = useRef<string | null>(null);
+    useLayoutEffect(() => {
+      if (!active) return;
+      // Coming back to the front with the same tab: the DOM kept its scroll,
+      // which is fresher than the debounced saved value — hold that.
+      const reshow = lastShownIdRef.current === activeTab.id;
+      const isMount = lastShownIdRef.current === null;
+      lastShownIdRef.current = activeTab.id;
+      const saved = reshow ? bodyRef.current?.scrollTop : activeTab.previewScrollTop;
       if (saved === undefined && isMount) return;
       const target = saved ?? 0;
-      const apply = () => { if (bodyRef.current) bodyRef.current.scrollTop = target; };
-      requestAnimationFrame(() => {
+      // bodyRef, not a captured element: switching markdown ↔ other previews
+      // or toggling markmap swaps the body element.
+      const apply = () => {
+        const el = bodyRef.current;
+        if (el && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
+      };
+      let frame = 0;
+      const hold = () => {
         apply();
-        requestAnimationFrame(apply);
-      });
-    }, [activeTab.id]);
+        frame = requestAnimationFrame(hold);
+      };
+      // Marks the scroll container for usePreviewCursorSync, which leaves the
+      // scroll alone while it is set.
+      const body = bodyRef.current;
+      const stop = () => {
+        restoringRef.current = false;
+        delete body?.dataset.restoringScroll;
+        cancelAnimationFrame(frame);
+        clearTimeout(timer);
+        for (const type of READER_INPUT_EVENTS) window.removeEventListener(type, stop, true);
+      };
+      restoringRef.current = true;
+      if (body) body.dataset.restoringScroll = '';
+      hold();
+      const timer = setTimeout(stop, RESTORE_HOLD_MS);
+      for (const type of READER_INPUT_EVENTS) window.addEventListener(type, stop, true);
+      return stop;
+    }, [activeTab.id, active]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ponytail: full-bleed is the DEFAULT (zero host padding — the preview
     // component manages its own padding). Only markdown needs the host's
@@ -165,10 +236,31 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     // (broken) or edit host source to be added to the list.
     const fullBleed = activeTab.fileType !== 'markdown';
 
+    // A hidden pane keeps the width it was shown at, so its content does not
+    // re-wrap behind the other tab and the kept scroll still points at the
+    // same text when it comes back. It is parked outside the (overflow-
+    // clipped) work area rather than hidden in place: WebKit stops painting
+    // an iframe under visibility:hidden and shows it blank on return (HTML
+    // previews came back white), and a transparent pane left in place still
+    // took the wheel — macOS WebKit routes scrolls to an iframe under the
+    // pointer regardless of pointer-events, so the shown PDF stopped
+    // scrolling. `inert` keeps the parked pane out of focus and Tab.
+    const rootRef = useRef<HTMLDivElement>(null);
+    const shownWidthRef = useRef<number | undefined>(undefined);
+    useLayoutEffect(() => {
+      const el = rootRef.current;
+      if (!el) return;
+      if (active) shownWidthRef.current = el.offsetWidth || undefined;
+      el.toggleAttribute('inert', !active);
+    });
+
     return (
       <div
-        className="group/prev flex-1 flex flex-col overflow-hidden min-w-[200px]"
-        style={{ ...(viewMode === 'split' ? { flexGrow: previewFlex, flexBasis: 0 } : {}), position: 'relative' }}
+        ref={rootRef}
+        className={`group/prev flex-1 flex flex-col overflow-hidden min-w-[200px] ${active ? '' : 'absolute inset-y-0 pointer-events-none'}`}
+        style={active ? { ...(viewMode === 'split' ? { flexGrow: previewFlex, flexBasis: 0 } : {}), position: 'relative' } : { width: shownWidthRef.current ?? '100%', left: '-200vw' }}
+        data-preview-hidden={active ? undefined : ''}
+        aria-hidden={active ? undefined : true}
       >
         {/* Preview-mode toggle (markmap) + outline toggle -- markdown only */}
         {activeTab.fileType === 'markdown' && (
@@ -241,6 +333,9 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                   in the background for every markdown file. */}
               <div
                 className={`prev-body doc-surface flex-1 overflow-auto pt-2 px-8 ${viewMode === 'split' ? 'pb-[100vh] is-jumpable is-split' : 'pb-[20vh]'} ${markmapMode ? 'hidden' : 'block'}`}
+                // The floating back/forward group sits at the page's top-left;
+                // keep the first line of prose clear of it.
+                data-doc-nav={hasDocLinkTrail ? '' : undefined}
                 ref={setBodyRef}
                 onScroll={handleBodyScroll}
                 onClick={handlePreviewClick}

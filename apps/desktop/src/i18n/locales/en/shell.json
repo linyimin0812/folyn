@@ -61,5 +61,9 @@
       "title": "Unsupported file type",
       "desc": "\"{{name}}\" has no available viewer. Install an extension that supports this format."
     }
+  },
+  "docLink": {
+    "back": "Back (Cmd/Ctrl+[)",
+    "forward": "Forward (Cmd/Ctrl+])"
   }
 }

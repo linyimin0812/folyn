@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useLayoutEffect, type ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorStore, type ViewMode } from '@/store/editorStore';
 import { useDiffReviewStore } from '@/store/diffReviewStore';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
@@ -19,6 +19,7 @@ import { getWebviewLabels } from '../file-types/web/WebViewer';
 import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
+import { DocLinkNav } from './DocLinkNav';
 import { OutlineSidebar } from './OutlineSidebar';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
@@ -35,6 +36,25 @@ const neverAborts: AbortSignal = new AbortController().signal;
 
 /** The loading skeleton stays at least this long on every file open or tab switch. */
 const MIN_SKELETON_MS = 100;
+/** How many tabs' previews stay mounted (the shown one included). */
+const KEPT_PREVIEWS = 8;
+
+type ModeRegistration = ReturnType<typeof getMode>;
+type Handler = ReturnType<typeof getHandlerById>;
+
+/** For a 'component' mode: preview-pane (cursor-sync wrapper) vs inline. */
+function componentVia(m: ModeRegistration): 'preview-pane' | 'inline' | null {
+  if (!m || m.kind !== 'component') return null;
+  return m.via ?? (m.id === 'preview' ? 'preview-pane' : 'inline');
+}
+
+/** The mode a file shows in the PreviewPane under `mode`: the right side of a
+ *  split, or a preview-pane component mode. */
+function previewModeOf(handler: Handler, mode: ViewMode): ModeRegistration | null {
+  const m = handler ? getMode(handler, mode) : undefined;
+  if (m?.kind === 'split') return getMode(handler, m.split!.right) ?? null;
+  return componentVia(m) === 'preview-pane' ? m ?? null : null;
+}
 /** Length of the slide-in once the skeleton goes away. */
 const REVEAL_MS = 300;
 
@@ -279,18 +299,22 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const splitParts = showSplit && activeMode?.kind === 'split'
     ? { left: getMode(handler, activeMode.split!.left), right: getMode(handler, activeMode.split!.right) }
     : null;
-  // For a 'component' mode: preview-pane (cursor-sync wrapper) vs inline.
-  const componentVia = (m: typeof activeMode): 'preview-pane' | 'inline' | null => {
-    if (!m || m.kind !== 'component') return null;
-    return m.via ?? (m.id === 'preview' ? 'preview-pane' : 'inline');
-  };
   const inlineMode = componentVia(activeMode) === 'inline' && activeTab?.fileType !== 'web' ? activeMode : null;
-  const previewMode = (showSplit ? splitParts?.right : (componentVia(activeMode) === 'preview-pane' ? activeMode : null));
+  const previewMode = previewModeOf(handler, viewMode);
   const showPreview = !!previewMode && !!previewMode?.component;
-  // Narrow the loosely-typed mode component to PreviewProps for PreviewPane
-  // (preview components implement PreviewProps at runtime; the SDK keeps the
-  // mode component loosely-typed to avoid a React dep).
-  const PreviewComp = previewMode?.component as unknown as ComponentType<PreviewProps> | undefined;
+  // Most recently shown first. Hidden panes of these tabs stay mounted (up to
+  // KEPT_PREVIEWS, the shown one included); closed tabs drop out.
+  const [recentPreviewIds, setRecentPreviewIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (!showPreview || !shownTabId) return;
+    setRecentPreviewIds((ids) => (ids[0] === shownTabId ? ids : [shownTabId, ...ids.filter((id) => id !== shownTabId)].slice(0, KEPT_PREVIEWS)));
+  }, [shownTabId, showPreview]);
+  const keptPreviewIds = new Set(
+    [...(showPreview && activeTab ? [activeTab.id] : []), ...recentPreviewIds]
+      .filter((id) => tabs.some((t) => t.id === id))
+      .slice(0, KEPT_PREVIEWS),
+  );
+  const previewTabs = tabs.filter((t) => keptPreviewIds.has(t.id));
   const showSplitResizer = showSplit;
   // Split editor side: shell-editor (left) for codemirror types.
   const showCodeMirrorInSplit = showSplit && splitParts?.left?.kind === 'shell-editor';
@@ -326,6 +350,10 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
           horizontal extent, but pinning the ref here is the correct invariant
           if TabBar ever gets horizontal padding. */}
       <div className="flex-1 flex overflow-hidden relative" ref={splitContainerRef}>
+
+      {/* Back/forward along followed document links, floated at the page's
+          top-left corner (nothing there: tabs end and preview padding starts). */}
+      <DocLinkNav />
 
       {showSkeleton && <FileLoadingView label={t('shell:workArea.loading')} />}
 
@@ -437,19 +465,35 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
         ) : null;
       })()}
 
-      {/* Preview pane — the preview-mode component (cursor-sync wrapper). */}
-      {showPreview && activeTab && previewMode?.component && (
-        <PreviewPane
-          ref={previewBodyRef}
-          activeTab={activeTab}
-          Preview={PreviewComp!}
-          vaultRoot={vaultRoot}
-          viewMode={viewMode}
-          previewFlex={previewFlex}
-          onChange={(content) => setContentExternal(activeTab.id, content)}
-          onHeadingClick={viewMode === 'split' ? scrollEditorToLine : undefined}
-        />
-      )}
+      {/* Preview panes — the preview-mode component (cursor-sync wrapper).
+          The shown tab's pane plus the panes of recently shown tabs, kept
+          mounted and hidden so iframes (HTML, PDF and other extension
+          viewers) keep their document and inner scroll across tab switches.
+          Keyed by tab and rendered in tab order: React never moves a kept
+          node, and moving an iframe in the DOM would reload it. */}
+      {previewTabs.map((tab) => {
+        const shown = tab.id === activeTab?.id && showPreview;
+        const mode = shown ? viewMode : (tab.viewMode ?? getDefaultMode(getHandlerById(tab.fileType)) ?? viewMode);
+        // Narrow the loosely-typed mode component to PreviewProps (preview
+        // components implement it at runtime; the SDK keeps the mode
+        // component loosely-typed to avoid a React dep).
+        const Comp = (shown ? previewMode : previewModeOf(getHandlerById(tab.fileType), mode))?.component as unknown as ComponentType<PreviewProps> | undefined;
+        if (!Comp) return null;
+        return (
+          <PreviewPane
+            key={tab.id}
+            ref={shown ? previewBodyRef : undefined}
+            active={shown}
+            activeTab={tab}
+            Preview={Comp}
+            vaultRoot={vaultRoot}
+            viewMode={mode}
+            previewFlex={previewFlex}
+            onChange={(content) => setContentExternal(tab.id, content)}
+            onHeadingClick={shown && viewMode === 'split' ? scrollEditorToLine : undefined}
+          />
+        );
+      })}
 
       {/* Outline (大纲 / TOC) sidebar — markdown only. Sibling of editor +
           preview at the split level so opening it shrinks BOTH panes

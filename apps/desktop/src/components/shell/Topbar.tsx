@@ -15,13 +15,12 @@ import { ExportMenu } from '@/components/editor/ExportMenu';
 import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { LanguageSwitcher } from '@/components/shell/LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, FolderInput, History, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Sun, Moon, FolderInput, History } from 'lucide-react';
 import { TerminalIcon } from '@/components/icons/TerminalIcon';
 import { WindowControls } from '@/components/shell/WindowControls';
 import { isVersionableTab } from '@/components/work-area/VersionHistoryPanel';
 import { VIEW_MODE_ICONS } from '@/components/shell/viewModeIcons';
 import { useExtensionFileViewStore } from '@/store/extensionFileViewStore';
-import { useDocLinkHistory } from '@/store/docLinkHistory';
 
 interface TopbarProps {
   isMobile?: boolean;
@@ -63,10 +62,6 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
   const terminalOpen = terminalPanelVisible || terminalInRightDock;
-  // A trail left in another vault doesn't count (the store clears it on next use).
-  const activeVaultId = useVaultStore((state) => state.activeVaultId);
-  const linkBack = useDocLinkHistory((s) => s.vaultId === activeVaultId && s.back.length > 0);
-  const linkForward = useDocLinkHistory((s) => s.vaultId === activeVaultId && s.forward.length > 0);
 
   // ── Context-driven toolbar (doc §16–§17) ────────────────────────────────
   // Resolve the whole toolbar state from a ToolbarContext — no per-file-type
@@ -126,29 +121,6 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
       <div className="tb-right flex items-center gap-0.5 shrink-0">
         {currentPage !== 'settings' && (
         <>
-        {/* Back/forward along followed document links (Cmd/Ctrl+[ / ]) —
-            shown once a link has been followed. */}
-        {currentPage === 'editor' && (linkBack || linkForward) && (
-          <>
-            <button
-              className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 enabled:hover:bg-hov enabled:hover:text-t1 disabled:opacity-40 disabled:cursor-default"
-              disabled={!linkBack}
-              onClick={() => useDocLinkHistory.getState().goBack()}
-              title={t('topbar:docLink.back')}
-            >
-              <ArrowLeft size={14} />
-            </button>
-            <button
-              className="tb-btn w-[30px] h-[30px] flex items-center justify-center rounded-[5px] text-sm text-t3 transition-all duration-150 enabled:hover:bg-hov enabled:hover:text-t1 disabled:opacity-40 disabled:cursor-default"
-              disabled={!linkForward}
-              onClick={() => useDocLinkHistory.getState().goForward()}
-              title={t('topbar:docLink.forward')}
-            >
-              <ArrowRight size={14} />
-            </button>
-            <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
-          </>
-        )}
         {/* View mode segment -- shown only for multi-mode file types */}
         {showViewMode && (
         <div className="view-seg flex items-center gap-px shrink-0">

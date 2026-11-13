@@ -676,6 +676,9 @@ mjx-container svg {
    highlight so reading stays calm. Scoped to .is-jumpable so
    preview-only mode stays inert. */
 .prev-body.is-jumpable .md-preview :is(h1,h2,h3,h4,h5,h6) { cursor: pointer; }
+/* Floating back/forward group over the preview's top-left corner: give the
+   first line room instead of letting the group sit on top of it. */
+.prev-body[data-doc-nav] { padding-top: 30px !important; }
 .md-preview p { margin: 0 0 1em; color: color-mix(in srgb, var(--t1) 88%, var(--doc-bg)); }
 /* ponytail: blank-line gaps inserted by rehypeBlankGap so preview blocks
    descend at the editor's rate past blank lines (cursor-sync alignment).
