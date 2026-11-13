@@ -122,6 +122,7 @@ export type {
 } from './src/export-service';
 export type {
   ViewMode,
+  EditorAccessoryProps,
   EditorProps,
   PreviewProps,
   FileTypeHandler,

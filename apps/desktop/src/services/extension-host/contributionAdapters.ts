@@ -153,6 +153,13 @@ export function registerExtensionFileTypes(
         return mode;
       });
     }
+    if (merged.editorAccessory) {
+      merged.editorAccessory = withExtensionBoundary(
+        merged.editorAccessory,
+        manifest.id,
+        `file-type:${ft.id}:editor-accessory`,
+      );
+    }
     // Merge manifest-declared default mode if the handler doesn't declare one.
     if (ft.defaultViewMode && !merged.defaultMode) {
       merged.defaultMode = ft.defaultViewMode as FileTypeHandler['defaultMode'];

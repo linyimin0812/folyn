@@ -85,6 +85,7 @@ export type {
   ExtensionIconsCapability,
   ExtensionIcon,
   ViewMode,
+  EditorAccessoryProps,
   EditorProps,
   PreviewProps,
   FileTypeHandler,

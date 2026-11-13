@@ -119,10 +119,25 @@ export interface FileTypeProvider {
   modes: PresentationModeRegistration[];
   /** Optional default mode id (otherwise the first mode). */
   defaultMode?: PresentationModeId;
+  /** For a text format with no grammar of its own: the CodeMirror language
+   *  the shell editor highlights it as — a name from
+   *  `@codemirror/language-data`, e.g. `SQL`. */
+  editorLanguage?: string;
+  /** A component the shell lays over its own editor (`shell-editor` modes)
+   *  for this file type — a status button, a hint. It is mounted inside the
+   *  editor pane, a positioned box, and places itself there. */
+  editorAccessory?: ComponentType<EditorAccessoryProps>;
   /** Normalize content on load (e.g. CRLF → LF). */
   serialize?: (content: string) => string;
   /** Normalize content before display. */
   deserialize?: (raw: string) => string;
+}
+
+/** Props of a provider's {@link FileTypeProvider.editorAccessory}. */
+export interface EditorAccessoryProps {
+  /** The file's current text, unsaved edits included. */
+  content: string;
+  filePath: string;
 }
 
 /** Type alias kept so existing `import type { FileTypeHandler }` migrates

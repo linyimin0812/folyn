@@ -9,6 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createElement } from 'react';
+import { cleanup, render, screen } from '@testing-library/react';
 import type { ExtensionManifest } from '@folyn/extension-host';
 import {
   registerTrustedExtensionCommands,
@@ -19,6 +21,7 @@ import type { ExtensionModule } from './contributionAdapters';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
 import { getHandlerByExtension, getAllHandlers } from '@/components/file-types/registry';
 import { ContainerRegistry } from '@folyn/container-extensions';
+import { useExtensionStore } from '@/store/extensionStore';
 
 // `registerExtensionContainers` resolves `.svg` file-path icons via the
 // `readExtensionFile` Tauri wrapper (which dynamic-imports `@tauri-apps/api/core`
@@ -142,6 +145,35 @@ describe('registerExtensionFileTypes', () => {
     registerExtensionFileTypes(manifest(), mod);
     expect(getHandlerByExtension('.adt')).toBeUndefined();
     warn.mockRestore();
+  });
+
+  it('passes the handler\'s editor language and accessory through', () => {
+    const mod = fakeModule();
+    const Accessory = ({ content }: { content: string }) => createElement('span', null, `accessory:${content}`);
+    Object.assign(mod.handlers!.default!, { editorLanguage: 'SQL', editorAccessory: Accessory });
+    registerExtensionFileTypes(manifest(), mod);
+
+    const h = getHandlerByExtension('.adt')!;
+    expect(h.editorLanguage).toBe('SQL');
+    render(createElement(h.editorAccessory!, { content: 'x', filePath: 'a.adt' }));
+    expect(screen.queryByText('accessory:x')).not.toBeNull();
+    cleanup();
+  });
+
+  it('contains a render throw in the editor accessory and attributes it to the extension', () => {
+    const mod = fakeModule();
+    const Broken = () => { throw new Error('accessory blew up'); };
+    Object.assign(mod.handlers!.default!, { editorAccessory: Broken });
+    registerExtensionFileTypes(manifest(), mod);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const h = getHandlerByExtension('.adt')!;
+    expect(() => render(createElement(h.editorAccessory!, { content: '', filePath: 'a.adt' }))).not.toThrow();
+    const recorded = useExtensionStore.getState().renderErrors['adapter-test'] ?? [];
+    expect(recorded.map((e) => e.label)).toContain('file-type:adt:editor-accessory');
+
+    cleanup();
+    error.mockRestore();
   });
 
   it('late-dispose does not remove a re-registered handler', () => {

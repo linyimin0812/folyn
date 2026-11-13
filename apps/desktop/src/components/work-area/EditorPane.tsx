@@ -9,7 +9,7 @@ import { type CodeBlockMenuState } from '@/editor/extensions/CodeBlockExtension'
 import { getStrategy, fileToBase64, convertImageFormat } from '@/utils/imageUploader';
 import type { FileTab } from '@/store/editorStore';
 import { DiffReviewBar } from './DiffReviewBar';
-import { DbmlStyleStatusButton } from '../file-types/dbml/DbmlStyleStatusButton';
+import { getHandlerById } from '../file-types/registry';
 
 interface EditorPaneProps {
   activeTab: FileTab | undefined;
@@ -204,6 +204,8 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
       setImagePastePreviewUrl('');
     }, [imagePastePreviewUrl]);
 
+    const EditorAccessory = activeTab ? getHandlerById(activeTab.fileType)?.editorAccessory : undefined;
+
     return (
       <div className="flex-1 flex flex-col overflow-hidden border-r border-brd min-w-[200px]" style={style}>
         <DiffReviewBar editorRef={editorRef} activeTab={activeTab} />
@@ -252,13 +254,10 @@ export const EditorPane = forwardRef<FolynEditorHandle, EditorPaneProps>(
             onConfirm={handleImageConfirm}
             onCancel={handleImageCancel}
           />
-          {/* ponytail: bottom-of-editor status button for dbml persisted
-              style state. Reads the trailing `<!-- dbml:meta -->` block
-              straight from activeTab.content — no shared runtime state with
-              ErDiagramX6, read-only display only. Shown only for .dbml
-              tabs. Positioned at the bottom-right of the editor pane. */}
-          {activeTab?.fileType === 'dbml' && (
-            <DbmlStyleStatusButton content={activeTab.content ?? ''} />
+          {/* The file type's own overlay on the editor (e.g. dbml's persisted-
+              style status button). It places itself inside this pane. */}
+          {activeTab && EditorAccessory && (
+            <EditorAccessory content={activeTab.content ?? ''} filePath={activeTab.path} />
           )}
         </div>
       </div>

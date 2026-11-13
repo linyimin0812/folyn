@@ -342,6 +342,8 @@ interface FileTypeHandler {
   useCodeMirror?: boolean;
   Editor?: ComponentType<EditorProps>;  // EditorProps { content, tabId, filePath, onChange, onSave }
   Preview?: ComponentType<PreviewProps>; // PreviewProps { content, filePath, vaultRoot, onChange? }
+  editorLanguage?: string;              // highlight the host editor as this language-data name, e.g. 'SQL'
+  editorAccessory?: ComponentType<EditorAccessoryProps>; // overlay on the host editor; props { content, filePath }
   serialize?: (content: string) => string;
   deserialize?: (raw: string) => string;
 }

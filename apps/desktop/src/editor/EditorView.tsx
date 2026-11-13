@@ -77,6 +77,7 @@ import { EditorSearchBar } from '@/components/editor/EditorSearchBar';
 import { useSearchPanelState, buildSearchExtensions } from '@/components/editor/searchPanelState';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorStore } from '@/store/editorStore';
+import { getHandlerByExtension } from '@/components/file-types/registry';
 import { usePrefsStore, type ShortcutItem } from '@/store/prefsStore';
 import {
   computeSlashMenuState,
@@ -763,7 +764,9 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       const isMarkdown = !path || /\.(md|markdown|mdx|markmap)$/i.test(path);
       if (isMarkdown || !path) return;
       const isJson = /\.json$/i.test(path);
-      const isDbml = /\.dbml$/i.test(path);
+      // A file type with no grammar of its own names the language to borrow
+      // (e.g. dbml → SQL).
+      const borrowed = getHandlerByExtension(path.split('.').pop()?.toLowerCase() ?? '')?.editorLanguage;
       if (isJson) {
         view.dispatch({
           effects: langCompartment.current.reconfigure([
@@ -772,10 +775,10 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
             linter(jsonLintSource, { delay: 300 }),
           ]),
         });
-      } else if (isDbml) {
-        const sqlDesc = languages.find((l) => l.name === 'SQL');
-        if (sqlDesc) {
-          sqlDesc.load().then((langSupport) => {
+      } else if (borrowed) {
+        const borrowedDesc = languages.find((l) => l.name === borrowed);
+        if (borrowedDesc) {
+          borrowedDesc.load().then((langSupport) => {
             view.dispatch({ effects: langCompartment.current.reconfigure(langSupport) });
           });
         }

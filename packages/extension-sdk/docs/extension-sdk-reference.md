@@ -463,6 +463,10 @@ export interface FileTypeHandler {
   useCodeMirror?: boolean;
   Editor?: ComponentType<EditorProps>;
   Preview?: ComponentType<PreviewProps>;
+  /** 没有自己语法的文本格式：宿主编辑器按哪种语言高亮（`@codemirror/language-data` 里的名字，如 `SQL`）。 */
+  editorLanguage?: string;
+  /** 叠在宿主编辑器上的组件（状态按钮、提示），props 为 `{ content, filePath }`，自行定位。 */
+  editorAccessory?: ComponentType<EditorAccessoryProps>;
   serialize?: (content: string) => string;
   deserialize?: (raw: string) => string;
 }

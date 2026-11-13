@@ -27,6 +27,7 @@ export type {
   
   FilePresentationContext,
   IconRef,
+  EditorAccessoryProps,
   EditorProps,
   PreviewProps,
   ViewMode,

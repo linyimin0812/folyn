@@ -2,7 +2,8 @@
  * Host-realm entry for the dbml extension (trusted tier).
  *
  * Registers the `dbml` file-type provider. dbml is a TEXT type with three
- * modes — `edit` (host CodeMirror shell-editor), `split` (CodeMirror | ER
+ * modes — `edit` (host CodeMirror shell-editor, highlighted as SQL, with the
+ * persisted-style status button laid over it), `split` (CodeMirror | ER
  * preview), `preview` (ER diagram only). The ER preview component is
  * {@link DbmlFrame}, which delegates the actual @dbml/core parse + @antv/x6
  * render to the extension's iframe so those heavy deps never enter the host.
@@ -30,6 +31,7 @@ import type {
   ExporterHandler,
 } from 'folyn-extension-sdk';
 import { DbmlFrame } from './DbmlFrame';
+import { DbmlStyleStatusButton } from './DbmlStyleStatusButton';
 import { setApi, setExtensionId, getExtensionId, setResolveAssetUrl, resolveExtensionAssetUrl } from './api';
 import { DbmlIcon } from './icons';
 
@@ -39,6 +41,8 @@ const provider: FileTypeProvider = {
   extensions: ['dbml'],
   icon: <DbmlIcon />,
   needsFileContent: true,
+  editorLanguage: 'SQL',
+  editorAccessory: DbmlStyleStatusButton,
   defaultMode: 'split',
   modes: [
     { id: 'edit', kind: 'shell-editor' },

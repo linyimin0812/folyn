@@ -6,7 +6,7 @@ import {
   extractDbmlMeta,
   withDbmlMeta,
   type DbmlMeta,
-} from './parseDbml';
+} from './dbmlMeta';
 import {
   layoutEr,
   boxesTooClose,

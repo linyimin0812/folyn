@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { extractDbmlMeta, type DbmlMeta } from '../dbmlMeta';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import type { EditorAccessoryProps } from 'folyn-extension-sdk';
+import { extractDbmlMeta, type DbmlMeta } from './view/dbmlMeta';
 
-// ponytail: read-only status button at the bottom-right of the CodeMirror
-// editor pane for .dbml tabs. Reads the trailing `<!-- dbml:meta -->` block
-// straight from the tab content — no shared runtime state with ErDiagramX6,
-// purely derived from what's persisted in the file. Click opens a popover
-// summarizing positions count / zoom / grid; click-vs-drag is guarded so
-// a CodeMirror selection-drag that ends on the button doesn't toggle.
-export function DbmlStyleStatusButton({ content }: { content: string }) {
+// ponytail: read-only status button at the bottom-right of the host's
+// CodeMirror editor pane for .dbml tabs (the provider's `editorAccessory`).
+// Reads the trailing `<!-- dbml:meta -->` block straight from the tab content
+// — no shared runtime state with ErDiagramX6, purely derived from what's
+// persisted in the file. Click opens a popover summarizing positions count /
+// zoom / grid; click-vs-drag is guarded so a CodeMirror selection-drag that
+// ends on the button doesn't toggle.
+export function DbmlStyleStatusButton({ content }: EditorAccessoryProps) {
   const [open, setOpen] = useState(false);
   const [meta, setMeta] = useState<DbmlMeta | undefined>(undefined);
 
@@ -17,10 +19,10 @@ export function DbmlStyleStatusButton({ content }: { content: string }) {
   }, [content]);
 
   const downPosRef = useRef<{ x: number; y: number } | null>(null);
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (e: MouseEvent) => {
     downPosRef.current = { x: e.clientX, y: e.clientY };
   };
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = (e: MouseEvent) => {
     const down = downPosRef.current;
     downPosRef.current = null;
     if (!down) return;

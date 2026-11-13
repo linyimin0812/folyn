@@ -1,21 +1,37 @@
 /**
- * Pure (no @dbml/core) helpers for the DBML style-meta block
- * (`<!-- dbml:meta ... -->`) — kept in the app for the editor status button
- * + export enhancer, which only READ the meta block (drag positions / zoom /
- * grid) without running the antlr4 parser. The heavy @dbml/core parser +
- * @antv/x6 ER render live in the standalone `dbml` extension.
+ * The DBML style-meta block (`<!-- dbml:meta ... -->`): drag positions, zoom
+ * and grid, persisted at the end of the file. Pure — no @dbml/core — so the
+ * host bundle (the editor's status button) can read the block without loading
+ * the antlr4 parser, which stays in the preview iframe.
  */
 
+// ponytail: persisted ER preview style (drag positions, zoom, grid) round-trips
+// via a trailing `<!-- dbml:meta ... -->` block at end of file, mimicking the
+// mmap mind-map pattern. Stripped before @dbml/core parses so the antlr4
+// parser never sees HTML comments (not standard DBML syntax). The block is
+// optional and only emitted when at least one style differs from defaults,
+// so existing .dbml files round-trip identically.
+//
+// Ceilings (upgrade path):
+//   - Positions keyed by table NAME; renaming a table in the source orphans
+//     its entry, silently dropped on next serialize. Matches mmap's topic-
+//     text ceiling. Upgrade: inline `#id:xxx` suffix on table defs.
+//   - JSON directives are single-line; a `-->` inside a JSON value would
+//     prematurely end the block — not a concern for the {x,y}/bool/number
+//     values we serialize here.
 export interface DbmlNodePosition { x: number; y: number; }
 export interface DbmlViewStyle {
+  // ponytail: defaults (zoomPct=100, showGrid=false, pan={0,0}) are omitted
+  // from the emitted JSON so a freshly-opened diagram with no adjustments
+  // writes no meta block. Round-trip stable for the common case.
   zoomPct?: number;
   showGrid?: boolean;
+  pan?: { x: number; y: number };
 }
 export interface DbmlMeta {
   positions: Record<string, DbmlNodePosition>;
   view?: DbmlViewStyle;
 }
-
 const META_START = '<!-- dbml:meta';
 const META_END = '-->';
 
@@ -54,6 +70,7 @@ function parseMetaBlock(block: string): DbmlMeta {
       } catch { /* malformed — skip */ }
       continue;
     }
+    // unrecognized directive — skip silently (forward-compat).
   }
   return meta;
 }
