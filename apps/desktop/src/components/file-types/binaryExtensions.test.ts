@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isImageExtension, isBinaryExtension, isExtensionRequired } from './binaryExtensions';
+import { isImageExtension, isBinaryExtension } from './binaryExtensions';
 
 describe('binaryExtensions helpers', () => {
   it('isImageExtension covers web + binary image formats', () => {
@@ -23,10 +23,8 @@ describe('binaryExtensions helpers', () => {
     expect(isImageExtension('')).toBe(false);
   });
 
-  it('isBinaryExtension + isExtensionRequired unchanged (regression guard)', () => {
+  it('isBinaryExtension unchanged (regression guard)', () => {
     expect(isBinaryExtension('xlsx')).toBe(true);
     expect(isBinaryExtension('txt')).toBe(false);
-    expect(isExtensionRequired('dbml')).toBe(true);
-    expect(isExtensionRequired('txt')).toBe(false);
   });
 });

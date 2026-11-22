@@ -37,6 +37,7 @@ import { DbmlIcon } from './icons';
 
 const provider: FileTypeProvider = {
   id: 'dbml',
+  label: 'DBML',
   priority: 5000,
   extensions: ['dbml'],
   icon: <DbmlIcon />,

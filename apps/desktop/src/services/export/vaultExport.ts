@@ -257,12 +257,12 @@ async function fileToBodyFragment(
     };
   }
 
-  // Unsupported types (binary office docs, .dbml without extension, …) →
+  // Unsupported types (binary office docs, a type whose extension is off, …) →
   // render a static "unsupported file type" notice instead of garbling raw
   // bytes through the code pipeline. Images never reach here (excluded
   // upstream by filterTextTree via isImageExtension). The notice is also
-  // rendered for `unsupported-text` (text-but-extension-required files:
-  // .dbml/.richtext without the dedicated extension installed) and for any
+  // rendered for `unsupported-text` (a text format an installed extension
+  // declares while it is not active) and for any
   // handler with needsFileContent=false that isn't an image — covers
   // extension-registered preview-only handlers that have no export pipeline.
   const handler = getHandlerById(file.fileType);

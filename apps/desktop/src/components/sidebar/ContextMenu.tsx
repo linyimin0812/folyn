@@ -11,6 +11,7 @@ import { FileIcon } from '@/components/icons/FileIcon';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { useFileTypePreferenceStore } from '@/store/fileTypePreferenceStore';
 import { openFile } from '@/services/editorIoService';
+import { pickCatalogText } from '@/store/extensionStore';
 
 export interface ContextMenuData {
   x: number;
@@ -33,22 +34,21 @@ export interface ContextMenuProps {
   onTogglePin: (path: string) => void;
 }
 
+// Labels of builtin file types; an extension's type labels itself
+// (`FileTypeProvider.label`).
 const fileTypeLabelKeys: Record<string, string> = {
   markdown: 'Markdown',
   excalidraw: 'Excalidraw',
   html: 'HTML',
-  'rich-text': 'sidebar:contextMenu.fileType.richText',
   code: 'sidebar:contextMenu.fileType.code',
 };
 
-// ponytail: 'rich-text' removed from NEW_FILE_GROUPS so the builtin handler
-// surfaces in the dynamic "extras" group (where extension file types live)
-// instead of the curated first row. The label key stays — line 177 resolves
-// the label regardless of which group the handler renders in.
+// Curated order of builtin file types. Extension file types follow in their
+// own group (see newFileGroups below).
 const NEW_FILE_GROUPS: string[][] = [
   ['markdown', 'csv', 'json'],
   ['svg'],
-  ['markmap', 'dbml', 'drawio', 'excalidraw'],
+  ['markmap', 'drawio', 'excalidraw'],
 ];
 
 /** Resolve a vault-relative path to an absolute, platform-native path string
@@ -97,7 +97,7 @@ export function ContextMenu({
   pinnedPaths,
   onTogglePin,
 }: ContextMenuProps): React.JSX.Element | null {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const creatableTypes = useMemo(() => {
     const handlers = getAllHandlers();
     return handlers.filter((h) => getSupportedModes(h).includes("edit") && h.extensions.length > 0);
@@ -177,7 +177,7 @@ export function ContextMenu({
                         }}
                       >
                         <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}>{handler.icon ?? <FileIcon filename={`file.${handler.extensions[0]}`} />}</span>
-                        {(fileTypeLabelKeys[handler.id] ? t(fileTypeLabelKeys[handler.id]) : handler.id)} (.{handler.extensions[0]})
+                        {fileTypeLabelKeys[handler.id] ? t(fileTypeLabelKeys[handler.id]) : (pickCatalogText(handler.label, i18n.language) ?? handler.id)} (.{handler.extensions[0]})
                       </button>
                     );
                   })}

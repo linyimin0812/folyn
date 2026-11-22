@@ -26,8 +26,7 @@
   },
   "contextMenu": {
     "fileType": {
-      "code": "Codedatei",
-      "richText": "Rich-Text"
+      "code": "Codedatei"
     },
     "newFile": "Neue Datei",
     "newFileOther": "Andere (eigene Erweiterung)",

@@ -28,6 +28,14 @@
         "extensions": ["dbml"]
       }
     ],
+    "fileTemplates": [
+      {
+        "id": "dbml-new",
+        "label": "DBML",
+        "fileName": "untitled.dbml",
+        "template": "// {{title}}\nTable users {\n  id integer [pk, increment]\n  name varchar(255)\n  created_at timestamp\n}"
+      }
+    ],
     "exporters": [
       {
         "id": "dbml-svg",

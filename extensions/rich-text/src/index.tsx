@@ -23,6 +23,7 @@ import { RichTextIcon } from './icons';
 const provider: FileTypeProvider = {
   id: 'rich-text',
   extensions: ['richtext'],
+  label: { zh: '富文本', en: 'Rich Text', ja: 'リッチテキスト', fr: 'Texte enrichi', de: 'Rich-Text', es: 'Texto enriquecido' },
   icon: <RichTextIcon />,
   needsFileContent: true,
   defaultMode: 'edit',

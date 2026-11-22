@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { useVaultStore } from './vaultStore';
 import { getHandlerByExtension, listProviders } from '@/components/file-types/registry';
-import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
+import { isBinaryExtension } from '@/components/file-types/binaryExtensions';
+import { isDeclaredByInstalledExtension } from '@/components/file-types/declaredByExtension';
 import { useFileTypePreferenceStore } from './fileTypePreferenceStore';
 import { persistOpenTabs, flushPersistOpenTabs, flushPersistExternalOpenTabs } from './editorPersistence';
 import { scheduleAutoSave } from './editorAutoSave';
@@ -23,13 +24,13 @@ export function detectFileType(filePath: string): FileType {
   }
   const handler = getHandlerByExtension(ext);
   if (handler) return handler.id;
-  // No app builtin or installed extension claims this extension. A known
-  // non-text format (binary) → unsupported preview-only (don't dump binary
-  // bytes as text); a text format that needs a dedicated viewer (e.g. .dbml
-  // without its extension) → unsupported-text (plain-text edit + notice);
+  // No builtin or active extension claims this extension. A known non-text
+  // format (binary) → unsupported preview-only (don't dump binary bytes as
+  // text); a format an installed-but-inactive extension declares (disabled,
+  // or awaiting approval) → unsupported-text (plain-text edit + notice);
   // anything else → the generic code/text editor.
   if (isBinaryExtension(ext)) return 'unsupported';
-  if (isExtensionRequired(ext)) return 'unsupported-text';
+  if (isDeclaredByInstalledExtension(ext)) return 'unsupported-text';
   return 'code';
 }
 

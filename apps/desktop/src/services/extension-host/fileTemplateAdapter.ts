@@ -9,16 +9,9 @@
  * `extension.<extensionId>.new.<templateId>` titled `New <label>` that prompts for
  * a save path (default under the vault root) and writes the template content.
  *
- * ponytail: the right-click "新建" submenu (ContextMenu.tsx) is NOT wired
- * here — its inline-rename flow keys file content off the extension via
- * prefsStore.fileTemplates, which can't carry an arbitrary body. Surfacing
- * templates as palette commands is the MVP consumption path. The registry is
- * the single source of truth so a future submenu group can read
- * `getExtensionFileTemplates()` without re-plumbing the adapter. Ceiling:
- * templates don't appear in the right-click submenu. Upgrade path: thread a
- * `onStartNewFromTemplate(parentDir, template)` callback through
- * SidebarActions → FilesPanel → ContextMenu and render a extension-templates
- * group in `NEW_FILE_GROUPS`.
+ * The file tree's 新建 flow also reads this registry: a new file whose
+ * extension matches a template's `fileName` starts with that template, unless
+ * the user set their own template for the extension (Settings → 文件模板).
  */
 
 import type { Disposable, ExtensionManifest } from '@folyn/extension-host';
@@ -59,6 +52,16 @@ export function registerFileTemplate(
 /** Look up a registered template by `<extensionId>.<templateId>`. */
 export function getFileTemplate(id: string): RegisteredFileTemplate | undefined {
   return templates.get(id);
+}
+
+/** The template an extension contributes for new files ending in `.ext`
+ *  (first registered wins), or undefined. */
+export function getFileTemplateForExtension(ext: string): RegisteredFileTemplate | undefined {
+  const wanted = ext.toLowerCase();
+  for (const t of templates.values()) {
+    if (t.fileName.split('.').pop()?.toLowerCase() === wanted) return t;
+  }
+  return undefined;
 }
 
 /** All registered extension file templates (insertion order). */

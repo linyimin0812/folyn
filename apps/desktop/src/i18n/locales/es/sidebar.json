@@ -26,8 +26,7 @@
   },
   "contextMenu": {
     "fileType": {
-      "code": "Archivo de código",
-      "richText": "Texto enriquecido"
+      "code": "Archivo de código"
     },
     "newFile": "Nuevo archivo",
     "newFileOther": "Otro (extensión personalizada)",

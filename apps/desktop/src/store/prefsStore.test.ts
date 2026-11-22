@@ -97,7 +97,6 @@ describe('usePrefsStore.hydrate', () => {
     expect(t.md).toBe('# mine');
     expect(t.puml).toContain('@startuml');
     expect(t.gv).toContain('digraph');
-    expect(t.dbml).toContain('Table users');
   });
 });
 
@@ -172,7 +171,6 @@ describe('backfillDefaultFileTemplates', () => {
     expect(result.md).toBe('# custom');
     expect(result.puml).toContain('@startuml');
     expect(result.gv).toContain('digraph');
-    expect(result.dbml).toContain('Table users');
     expect(Object.keys(result).sort()).toEqual(Object.keys(DEFAULT_FILE_TEMPLATES).sort());
   });
 
@@ -187,10 +185,13 @@ describe('backfillDefaultFileTemplates', () => {
     expect(result.puml).toBeDefined();
   });
 
-  it('includes diagram starters for puml, gv and dbml', () => {
-    const { puml, gv, dbml } = DEFAULT_FILE_TEMPLATES;
+  it('includes diagram starters for puml and gv', () => {
+    const { puml, gv } = DEFAULT_FILE_TEMPLATES;
     expect(puml).toMatch(/^@startuml/);
     expect(gv).toContain('digraph');
-    expect(dbml).toContain('Table users');
+  });
+
+  it('has no starter for a type an extension handles (the extension brings its own)', () => {
+    expect(DEFAULT_FILE_TEMPLATES.dbml).toBeUndefined();
   });
 });

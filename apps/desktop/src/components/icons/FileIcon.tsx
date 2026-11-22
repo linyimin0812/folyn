@@ -2,7 +2,8 @@ import React from 'react';
 import { ThemeIcon, hasIcon } from './ThemeIcon';
 import chromeIcon from '@/assets/chrome.svg';
 import { getHandlerByExtension, getHandlerById } from '@/components/file-types/registry';
-import { isBinaryExtension, isExtensionRequired } from '@/components/file-types/binaryExtensions';
+import { isBinaryExtension } from '@/components/file-types/binaryExtensions';
+import { isDeclaredByInstalledExtension } from '@/components/file-types/declaredByExtension';
 
 interface FileIconProps {
   filename: string;
@@ -69,7 +70,6 @@ const HANDLER_TO_THEME_ICON: Record<string, string> = {
   image: 'image',
   csv: 'spreadsheet',
   json: 'json',
-  dbml: 'sql',
   markmap: 'mindMap',
   drawio: 'drawio',
   plantuml: 'plantuml',
@@ -131,11 +131,11 @@ export function FileIcon({ filename, isDir, fileType }: FileIconProps) {
   // recognized as a fallback — use the neutral documentation icon instead.
   if (handler && handler.id !== 'code' && handler?.icon) return <>{handler.icon}</>;
 
-  // No provider claims this extension. A known binary format OR a text format
-  // that needs a dedicated viewer → the `unknown` icon (it opens as an
+  // No provider claims this extension. A known binary format OR a format an
+  // inactive extension declares → the `unknown` icon (it opens as an
   // unsupported view); an unmapped text-ish ext → the neutral documentation
   // icon (it opens in the text editor).
-  return <ThemeIcon name={(isBinaryExtension(ext) || isExtensionRequired(ext)) ? 'unknown' : 'documentation'} />;
+  return <ThemeIcon name={(isBinaryExtension(ext) || isDeclaredByInstalledExtension(ext)) ? 'unknown' : 'documentation'} />;
 }
 
 export function getFileTypeIcon(handlerId: string): React.ReactElement {

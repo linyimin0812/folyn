@@ -26,8 +26,7 @@
   },
   "contextMenu": {
     "fileType": {
-      "code": "Code file",
-      "richText": "Rich Text"
+      "code": "Code file"
     },
     "newFile": "New file",
     "newFileOther": "Other (custom extension)",

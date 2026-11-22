@@ -15,6 +15,7 @@ import {
   registerExtensionFileTemplates,
   getFileTemplate,
   getExtensionFileTemplates,
+  getFileTemplateForExtension,
   clearFileTemplates,
 } from './fileTemplateAdapter';
 import { getCommands, getCommand, clearCommands } from '@/services/commandRegistry';
@@ -69,6 +70,32 @@ describe('fileTemplateRegistry', () => {
     );
     const all = getExtensionFileTemplates();
     expect(all.map((t) => t.id).sort()).toEqual(['other-extension.x', 'tpl-test.meeting-notes']);
+  });
+});
+
+describe('getFileTemplateForExtension', () => {
+  it('finds the template whose file name ends in the extension, case-insensitively', () => {
+    registerExtensionFileTemplates(
+      manifest({ id: 'erd', contributes: { fileTemplates: [{ id: 'new', label: 'ERD', fileName: 'untitled.ERD', template: 'Table t {}' }] } }),
+    );
+    expect(getFileTemplateForExtension('erd')?.template).toBe('Table t {}');
+    expect(getFileTemplateForExtension('ERD')?.template).toBe('Table t {}');
+  });
+
+  it('is undefined for an extension no template uses, and after the extension is gone', () => {
+    const d = registerExtensionFileTemplates(manifest());
+    expect(getFileTemplateForExtension('txt')).toBeUndefined();
+    expect(getFileTemplateForExtension('md')?.id).toBe('tpl-test.meeting-notes');
+    d.dispose();
+    expect(getFileTemplateForExtension('md')).toBeUndefined();
+  });
+
+  it('keeps the first template registered for an extension', () => {
+    registerExtensionFileTemplates(manifest());
+    registerExtensionFileTemplates(
+      manifest({ id: 'later', contributes: { fileTemplates: [{ id: 'x', label: 'X', fileName: 'x.md', template: 'later' }] } }),
+    );
+    expect(getFileTemplateForExtension('md')?.template).toBe('# Meeting Notes\n\n');
   });
 });
 

@@ -135,12 +135,12 @@ export const DEFAULT_FILE_TEMPLATES: Record<string, string> = {
   html: '<!DOCTYPE html>\n<html lang="zh">\n<head>\n  <meta charset="UTF-8">\n  <title>{{title}}</title>\n</head>\n<body>\n  \n</body>\n</html>',
   excalidraw: '{"type":"excalidraw","version":2,"elements":[],"appState":{"viewBackgroundColor":"#ffffff"}}',
   // Diagram formats — keys match the primary extension of the file-type
-  // handlers (plantuml → puml, graphviz → gv, dbml → dbml) so the "new file"
-  // flow seeds starter content for these types.
+  // handlers (plantuml → puml, graphviz → gv) so the "new file" flow seeds
+  // starter content for these types. A type an extension handles brings its
+  // own (`contributes.fileTemplates`).
   puml: '@startuml\nAlice->Bob : Hello\nreturn ok\n@enduml',
   gv: 'digraph G {Hello->World}',
   mermaid: 'graph TD\n  A[开始] --> B{判断}\n  B -->|是| C[结果1]\n  B -->|否| D[结果2]',
-  dbml: '// {{title}}\nTable users {\n  id integer [pk, increment]\n  name varchar(255)\n  created_at timestamp\n}',
   markmap: '# {{title}}\n## Child\n### Grandchild\n',
 };
 
@@ -150,7 +150,7 @@ export const DEFAULT_FILE_TEMPLATES: Record<string, string> = {
  * user-customized content or intentionally cleared templates — are preserved;
  * only keys absent from the persisted map are added from the defaults. Runs
  * at settings-load time so a user who persisted `fileTemplates` before a new
- * default (e.g. `puml`/`gv`/`dbml`) was added sees the new entry appear
+ * default (e.g. `puml`/`gv`) was added sees the new entry appear
  * automatically without resetting their other templates. Mirrors the
  * `backfillDefaultShortcuts` pattern.
  */

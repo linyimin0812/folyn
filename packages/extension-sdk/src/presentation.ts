@@ -106,6 +106,9 @@ export interface PresentationModeRegistration {
 export interface FileTypeProvider {
   id: string;
   extensions: string[];
+  /** Display name, e.g. in the file tree's 新建 menu: a string, or
+   *  `{ locale: text }` (resolved current locale → zh → en). Defaults to `id`. */
+  label?: string | Record<string, string>;
   mimeTypes?: string[];
   icon?: IconRef;
   /** Whether opening this type requires the file content loaded (vs binary). */

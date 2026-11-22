@@ -5,8 +5,8 @@ import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { UnsupportedFileView } from '../unsupported/UnsupportedFileView';
 
 /**
- * Catch-all provider for text-but-extension-required files (e.g. .dbml /
- * .richtext when the dedicated extension isn't installed). Unlike the binary
+ * Catch-all provider for a text format an installed extension declares while
+ * that extension is not active (disabled, or awaiting approval). Unlike the binary
  * `unsupported` handler, these ARE text, so we keep a plain-text edit mode
  * (CodeMirror) declared for split's left pane, but hide it from the switcher
  * — opening defaults to `preview`, with `split` available alongside. Icon =

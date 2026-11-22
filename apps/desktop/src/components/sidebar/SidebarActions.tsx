@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
+import { getFileTemplateForExtension } from '@/services/extension-host/fileTemplateAdapter';
 import { FileIcon } from '@/components/icons/FileIcon';
 import { closeTab as closeTabWithSnapshot } from '@/services/editorIoService';
 import type { VaultEntry } from '@folyn/vault-provider';
@@ -77,8 +78,9 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs, revealItem
     } else {
       const ext = finalName.includes('.') ? finalName.split('.').pop()! : '';
       const title = finalName.substring(0, finalName.lastIndexOf('.')) || finalName;
-      const templates = usePrefsStore.getState().fileTemplates;
-      const template = templates[ext];
+      // The user's own template for the extension wins; else the one the
+      // extension that handles the type contributes.
+      const template = usePrefsStore.getState().fileTemplates[ext] ?? getFileTemplateForExtension(ext)?.template;
 
       let content: string;
       if (template !== undefined) {
