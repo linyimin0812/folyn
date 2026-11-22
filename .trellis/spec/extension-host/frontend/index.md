@@ -17,7 +17,7 @@ The host owns the **lifecycle state machine and transactional activation — not
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Lifecycle Guidelines](./lifecycle-guidelines.md) | State machine, transactional activation, AbortSignal, error isolation | Filled |
-| [Subscriptions Contract](./subscriptions-contract.md) | Trusted pinned vault and public download capability | Filled |
+| [Vault Session and Web Contract](./vault-session-web-contract.md) | Pinned vault sessions, extension data store, public web fetch/render | Filled |
 | [Network Download Contract](./network-download-contract.md) | `network.fetch` vs `network.download`, origin gate, download directory | Filled |
 | [Quality Guidelines](./quality-guidelines.md) | Forbidden imports, capability injection, testing with fakes | Filled |
 

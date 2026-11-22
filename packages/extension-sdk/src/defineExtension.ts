@@ -31,10 +31,13 @@ export function validateManifest(manifest: ExtensionManifest): void {
   if (manifest.tier === 'sandbox' && !manifest.html) {
     throw new Error('sandbox extensions require manifest.html');
   }
-  if (manifest.permissions?.subscriptions !== undefined) {
-    const permission = manifest.permissions.subscriptions;
-    if (manifest.tier !== 'trusted' || !permission || typeof permission !== 'object' || typeof permission.vault !== 'boolean' || typeof permission.network !== 'boolean' || (permission.render !== undefined && typeof permission.render !== 'boolean')) {
-      throw new Error('permissions.subscriptions requires a trusted extension and boolean vault/network grants');
+  if (manifest.permissions?.web !== undefined) {
+    // Same rule as the Rust install-time check: the public web is a trusted-only
+    // grant, and its flags are plain booleans the consent dialog can show.
+    const permission = manifest.permissions.web;
+    const flags = [permission?.fetch, permission?.render];
+    if (manifest.tier !== 'trusted' || !permission || typeof permission !== 'object' || flags.some((f) => f !== undefined && typeof f !== 'boolean')) {
+      throw new Error('permissions.web requires a trusted extension and boolean fetch/render grants');
     }
   }
   if (manifest.permissions?.ai) {

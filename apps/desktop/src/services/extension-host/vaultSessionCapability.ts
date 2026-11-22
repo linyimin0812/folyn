@@ -1,19 +1,30 @@
-import type { ExtensionManifest, ExtensionSubscriptions, ExtensionVaultSession, ExtensionSubscriptionData, ExtensionVaultFileChange, ExtensionHttpResponse } from 'folyn-extension-sdk';
+/**
+ * Vault sessions: the active vault, pinned (`api.vault.session()`), plus its
+ * change and file-change events. A session keeps acting on the vault it was
+ * taken from, and its note-level calls reject once the user switches vaults,
+ * so slow work started in one vault never lands in the next. File IO goes
+ * through Rust `extension_vault_io` / `extension_data_io`, which reject
+ * symlinks and write atomically.
+ */
+import type { Disposable, ExtensionDataStore, ExtensionManifest, ExtensionVaultFileChange, ExtensionVaultSession } from 'folyn-extension-sdk';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useVaultStore } from '@/store/vaultStore';
-import { useNavStore } from '@/store/navStore';
-import { useExtensionPageStore } from '@/store/extensionPageStore';
-import { useFeaturePanelStore } from '@/store/featurePanelStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { openFile } from '@/services/editorIoService';
 import { readEditedNoteText, appendNoteInEditor } from '@/services/editorNoteService';
-import { onVaultFileChange } from './subscriptionsFileEvents';
+import { onVaultFileChange } from './vaultFileEvents';
 
-const teardowns = new WeakMap<ExtensionSubscriptions, () => void>();
+/** The session part of `api.vault`, plus its teardown. */
+export interface VaultSessions {
+  session(): ExtensionVaultSession | null;
+  onSessionChange(handler: (session: ExtensionVaultSession | null) => void): Disposable;
+  onFileChange(handler: (event: ExtensionVaultFileChange) => void): Disposable;
+  dispose(): void;
+}
 function relativePath(path: string): string {
   if (!path || path.startsWith('/') || path.includes('\\') || path.includes(':') || path.split('/').some(p => p === '..' || p === '.')) {
-    throw new Error('Subscription paths must be relative to the selected vault');
+    throw new Error('Paths must be relative to the selected vault');
   }
   return path;
 }
@@ -22,14 +33,11 @@ function notePath(path: string): string {
   if (!relative.toLowerCase().endsWith('.md')) throw new Error('Choose a Markdown note inside the selected vault');
   return relative;
 }
-export function buildSubscriptions(manifest: ExtensionManifest): ExtensionSubscriptions | undefined {
-  if (manifest.tier !== 'trusted' || manifest.permissions?.subscriptions?.vault !== true || manifest.permissions.subscriptions.network !== true) return undefined;
+export function buildVaultSessions(manifest: ExtensionManifest): VaultSessions {
   const disposers = new Set<() => void>();
   let closed = false;
   let session: ExtensionVaultSession | null = null;
   let identity = '';
-  let badge = 0;
-  const renderRequests = new Set<string>();
   const changeHandlers = new Set<(s: ExtensionVaultSession | null) => void>();
   const fileHandlers = new Set<(e: ExtensionVaultFileChange) => void>();
   let rootPromise: Promise<string> | null = null;
@@ -48,16 +56,16 @@ export function buildSubscriptions(manifest: ExtensionManifest): ExtensionSubscr
         if (closed || session !== snapshot || useVaultStore.getState().isLoading || useVaultStore.getState().activeVaultId !== capturedId || useVaultStore.getState().currentVault?.id !== capturedId || identity !== next) throw new Error('The selected vault has changed');
       };
       const io = async <T>(operation: string, path: string, content?: string): Promise<T> => {
-        if (closed) throw new Error('Subscriptions extension is inactive');
+        if (closed) throw new Error('Extension is inactive');
         relativePath(path);
-        return invoke<T>('subscription_vault_io', { extensionId: manifest.id, root: await capturedRoot, path, operation, content: content ?? null });
+        return invoke<T>('extension_vault_io', { extensionId: manifest.id, root: await capturedRoot, path, operation, content: content ?? null });
       };
       const dataIo = async <T>(operation: string, path: string, content?: string): Promise<T> => {
-        if (closed) throw new Error('Subscriptions extension is inactive');
+        if (closed) throw new Error('Extension is inactive');
         relativePath(path);
-        return invoke<T>('subscription_data_io', { extensionId: manifest.id, vaultId: capturedId, path, operation, content: content ?? null });
+        return invoke<T>('extension_data_io', { extensionId: manifest.id, vaultId: capturedId, path, operation, content: content ?? null });
       };
-      const data: ExtensionSubscriptionData = {
+      const data: ExtensionDataStore = {
         readText: path => dataIo<string>('readText', path),
         async readBinary(path) { return Uint8Array.from(atob(await dataIo<string>('readBinary', path)), c => c.charCodeAt(0)); },
         async writeText(path, content) { await dataIo('writeText', path, content); },
@@ -148,13 +156,13 @@ export function buildSubscriptions(manifest: ExtensionManifest): ExtensionSubscr
       };
       session = snapshot;
     }
-    for (const cb of changeHandlers) { try { cb(session); } catch (e) { console.error('[subscriptions] vault listener failed',e); } }
+    for (const cb of changeHandlers) { try { cb(session); } catch (e) { console.error('[vault-session] listener failed',e); } }
   };
   sync();
   disposers.add(useVaultStore.subscribe(sync));
   const publish = (event: ExtensionVaultFileChange) => {
     if (closed) return;
-    for (const cb of fileHandlers) { try { cb(event); } catch (e) { console.error('[subscriptions] file listener failed',e); } }
+    for (const cb of fileHandlers) { try { cb(event); } catch (e) { console.error('[vault-session] file listener failed',e); } }
   };
   disposers.add(onVaultFileChange(publish));
   void listen<{ type: string; root: string; paths: string[] }>('app://vault-watcher-event', async ({ payload }) => {
@@ -166,59 +174,15 @@ export function buildSubscriptions(manifest: ExtensionManifest): ExtensionSubscr
     const paths = payload.paths.map(p => p.replace(/\\/g, '/')).filter(p => p.startsWith(`${root}/`)).map(p => p.slice(root.length + 1));
     if (payload.type.includes('Name(Both)') && paths.length >= 2) publish({ vaultId: captured.id, path: paths[0], newPath: paths[1] });
     else if (payload.type.includes('Remove')) for (const path of paths) publish({ vaultId: captured.id, path, deleted: true });
-  }).then(stop => { if (closed) stop(); else disposers.add(stop); }).catch(e => console.error('[subscriptions] watcher unavailable',e));
-  const applyBadge = () => {
-    for (const page of manifest.contributes?.pages ?? []) useExtensionPageStore.getState().setBadge(`ext:${manifest.id}.${page.id}`, badge);
-    for (const feature of manifest.contributes?.features ?? []) useFeaturePanelStore.getState().setBadge(feature.id, badge);
-  };
-  // Activation can set the badge before contribution adapters register pages.
-  disposers.add(useExtensionPageStore.subscribe((state, prev) => { if (state.pages.length !== prev.pages.length) applyBadge(); }));
-  const api: ExtensionSubscriptions = {
-    ...(manifest.permissions.subscriptions.render === true ? {
-      async render(url: string): Promise<ExtensionHttpResponse & { url: string }> {
-        if (closed) throw new Error('Subscriptions extension is inactive');
-        const requestId = crypto.randomUUID();
-        renderRequests.add(requestId);
-        try {
-          const result = await invoke<ExtensionHttpResponse & { url: string }>('subscription_render', { extensionId: manifest.id, requestId, url });
-          if (closed) throw new Error('Subscriptions extension is inactive');
-          return result;
-        } finally { renderRequests.delete(requestId); }
-      },
-    } : {}),
-    current: () => session,
-    onChange(handler) { changeHandlers.add(handler); return { dispose: () => { changeHandlers.delete(handler); } }; },
+  }).then(stop => { if (closed) stop(); else disposers.add(stop); }).catch(e => console.error('[vault-session] watcher unavailable',e));
+  return {
+    session: () => session,
+    onSessionChange(handler) { changeHandlers.add(handler); return { dispose: () => { changeHandlers.delete(handler); } }; },
     onFileChange(handler) { fileHandlers.add(handler); return { dispose: () => { fileHandlers.delete(handler); } }; },
-    async openExternal(url) {
-      const parsed = new URL(url);
-      if (!['https:', 'http:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('Only HTTP(S) URLs are supported');
-      const { openUrl } = await import('@tauri-apps/plugin-opener');
-      await openUrl(parsed.href);
-    },
-    openSettings() { const nav = useNavStore.getState(); nav.setSettingsTab('models'); nav.setCurrentPage('settings'); },
-    openVaults() { useNavStore.getState().setCurrentPage('vault'); },
-    setBadge(value) { badge = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0; applyBadge(); },
-    async fetch(url,binary = false) {
-      if (closed) throw new Error('Subscriptions extension is inactive');
-      const requestId = binary && manifest.permissions?.subscriptions?.render === true ? crypto.randomUUID() : null;
-      if (requestId) renderRequests.add(requestId);
-      try {
-        const result = await invoke<ExtensionHttpResponse & { url: string }>('subscription_fetch', { extensionId: manifest.id, url, binary, requestId });
-        if (closed) throw new Error('Subscriptions extension is inactive');
-        return result;
-      } finally { if (requestId) renderRequests.delete(requestId); }
+    dispose() {
+      closed = true;
+      for (const dispose of disposers) dispose();
+      changeHandlers.clear(); fileHandlers.clear();
     },
   };
-  teardowns.set(api, () => {
-    closed = true;
-    const pending = [...renderRequests];
-    for (let offset = 0; offset < pending.length; offset += 32) {
-      void invoke('subscription_cancel_renders', { extensionId: manifest.id, requestIds: pending.slice(offset, offset + 32) }).catch(() => {});
-    }
-    renderRequests.clear();
-    for (const dispose of disposers) dispose();
-    changeHandlers.clear(); fileHandlers.clear(); badge = 0; applyBadge();
-  });
-  return api;
 }
-export function disposeSubscriptions(api: ExtensionSubscriptions | undefined): void { if (api) teardowns.get(api)?.(); }

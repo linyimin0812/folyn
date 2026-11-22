@@ -1396,29 +1396,49 @@ MVP：**未打包的文件夹**。安装命令把包含 `manifest.json` + 资源
 
 任一都通过 Settings → Extensions → 从文件夹安装… 装，手动 QA 全流程。
 
-## Trusted subscriptions capability
+## Vault sessions, the public web and host UI
 
-`permissions.subscriptions: { vault: true, network: true }` enables optional `api.subscriptions` for approved trusted extensions. This grant explicitly includes read/write access to the selected local or GitHub vault and arbitrary public HTTP(S) text and binary downloads. Sandbox extensions cannot use it.
+These are general trusted-tier APIs; each needs its manifest declaration, which the consent dialog lists. Sandbox extensions cannot use them.
 
-`current()` returns an `ExtensionVaultSession` pinned to a physical root. Relative paths reject traversal and symlinks. `createText` atomically publishes complete, synced content without replacing an existing path, including concurrent creates. `writeText`/`writeBinary` atomically replace. Vault switching immediately emits `null` during transition, then the new snapshot; old in-flight IO continues against its captured root. `open` refuses stale sessions. `chooseDirectory` only accepts a directory inside the snapshot root.
+```json
+"permissions": {
+  "vault": { "write": true },
+  "web": { "fetch": true, "render": true }
+}
+```
 
-`fetch(url, binary?)` returns `{ status, headers, body, url }`; `url` is the final redirect destination and binary bodies are base64. Requests have a 30-second overall timeout, at most 8 redirects, and 8 MiB text / 20 MiB binary limits. Each redirect is resolved and pinned to public IPs, with proxy use disabled; credentials, private/local addresses and non-HTTP(S) URLs are rejected.
+### `api.vault.session()` — a pinned vault
 
-`onFileChange` receives host move/delete operations and native watcher paired-rename/remove events with `{ vaultId, path, newPath?, deleted? }`. Some filesystem watchers emit unpaired rename events; these cannot reliably infer the new path. `setBadge` updates the extension page/panel count. Dispose unsubscribes host listeners and clears the badge.
+`session()` returns an `ExtensionVaultSession` for the active vault, pinned to its physical root, or `null` while none is open or one is loading. `onSessionChange(handler)` fires on a vault switch: first `null` during the transition, then the new session. Work already in flight keeps acting on the vault it started in, so a slow save never lands in the next vault. `open`, `chooseDirectory`, `chooseNotes`, `readNote` and `appendNote` reject once the session is stale.
 
-`ExtensionAiChatParams.persistHistory?: boolean` controls host chat-session history. Pass `false` for independent article translations or summaries to forward `historyMode: 'none'` (neither load nor save global host chat files). Omitted/true retains the existing history behavior. Provider/model selection and `useSharedSession` UI behavior are unchanged; leave shared sessions disabled for background fragment jobs. Supported by trusted capability and sandbox RPC.
+Paths are vault-relative; traversal and symlinks are rejected. Reads (`readText`, `readBinary`, `exists`, `assetUrl`) need no grant. Writes (`writeText`, `writeBinary`, `createText`, `remove`) need `permissions.vault.write`. `createText` atomically publishes complete, synced content and never replaces an existing path, even under concurrent creates. `writeText` / `writeBinary` atomically replace.
 
+`session.data` is the extension's private store for that vault, at `~/.folyn/extension-data/<extension>/vaults/<vault>/`: caches, indexes, downloaded images — anything that belongs to the extension rather than the user's notes. It needs no grant, and writes are atomic.
+
+`api.vault.onFileChange(handler)` receives host move/delete operations and native watcher paired-rename/remove events as `{ vaultId, path, newPath?, deleted? }`. Some filesystem watchers emit unpaired rename events; these cannot reliably infer the new path.
 
 ### Learning-note handoff
 
-`ExtensionNoteSnapshot` is `{ path: string, title: string, text: string }`. Pinned sessions expose `chooseNotes(): Promise<ExtensionNoteSnapshot[]>`, `readNote(path): Promise<ExtensionNoteSnapshot>`, and `appendNote(path, text, expectedText): Promise<void>` under the existing subscriptions grant. The native picker accepts multiple `.md` files within the current vault; cancellation returns `[]`. Reads validate native grant/path/symlink rules and prefer unsaved native-editor buffers, including intentionally empty notes. These operations reject stale/disposed sessions rather than delivering old-vault learning context.
+`ExtensionNoteSnapshot` is `{ path, title, text }`. `chooseNotes()` opens a native picker for `.md` files within the session's vault (cancellation returns `[]`); `readNote(path)` prefers unsaved editor buffers, including intentionally empty notes.
 
-`appendNote` opens the selected note in a native source editor and compares the current text with the reviewed `expectedText` before and after editor mounting. It inserts one isolated, undoable transaction at the end, retaining existing unsaved text. A changed note, switched vault/tab, unavailable source mode or read-only editor rejects without an append. Success means the content reached the native editor and follows the user's normal auto-save preference; it does **not** promise a disk save when auto-save is off. Tell the user to confirm saving in the editor. New-note creation can still use atomic `createText` followed by `open`.
+`appendNote(path, text, expectedText)` opens the note in a native source editor and compares its current text with the reviewed `expectedText` before and after the editor mounts. It inserts one isolated, undoable transaction at the end, keeping existing unsaved text. A changed note, switched vault/tab, unavailable source mode or read-only editor rejects without an append. Success means the content reached the editor and follows the user's auto-save preference; it does **not** promise a disk save when auto-save is off.
 
-### Public rendered-page acquisition
+### `api.web.fetch(url, { binary? })`
 
-Declare `permissions.subscriptions.render: true` to expose optional `api.subscriptions.render(url)`. It returns `{ status, headers, body, url }` with a serialized DOM, final URL, synthetic status 200 and `x-folyn-rendered` / `x-folyn-status-unavailable` headers. Main HTTP status is not exposed by Tauri's browser API. Incognito acquisition uses a separate temporary profile, no existing user cookies, no app IPC, no downloads or new windows. Executable scripts/event handlers are removed from the snapshot; inert JSON/LD+JSON scripts and XML document roots remain available for extraction. It never clicks, logs in or solves verification.
+Requires `permissions.web.fetch`. A GET to any public HTTP(S) URL — unlike `api.network.fetch`, which is limited to declared origins. Returns `{ status, headers, body, url }`; `url` is the final redirect destination and binary bodies are base64. 30-second overall timeout, at most 8 redirects, 8 MiB text / 20 MiB binary. Each redirect is resolved and pinned to public IPs, with proxies disabled; credentials, private/local addresses and non-HTTP(S) URLs are rejected. Requests use browser-compatible headers, bounded gzip/brotli/deflate decoding (unknown encodings reject), BOM/header/XML/meta charset decoding, and gzip sniffing for `.xml.gz` sitemaps missing Content-Encoding.
 
-The renderer permits one concurrent page, at most 28 seconds overall, 12 navigation retries and an 8 MiB UTF-8 snapshot. It checks stable DOM/text/link dimensions for at least 1.5 seconds after initial hydration, triggers at most four viewport scroll steps, and accepts useful short pages after 12 seconds. Visible verification/password gates, timeout, excessive size/navigation, cancellation and unsupported webviews return explicit errors. Extension disposal cancels outstanding jobs and closes isolated windows; profile cleanup retries after native handle release.
+### `api.web.render(url)`
 
-Direct HTTP keeps resolved public IP pinning, redirects and no-proxy behavior. It now uses browser-compatible request headers and bounded gzip/brotli/deflate decoding, BOM/header/XML/meta charset decoding, and gzip magic sniffing for text `.xml.gz` sitemaps missing Content-Encoding. Unknown content encodings reject. The isolated browser follows operating-system proxy settings. Its engine owns socket DNS and subresource loading: the host validates public HTTP(S) main-navigation DNS but cannot pin browser DNS or intercept every subresource through Tauri. Proxies which replace public DNS answers with private/fake IPs are rejected by that validation. Neither direct HTTP guards nor private-address restrictions are bypassed.
+Present only with `permissions.web.render`. Loads the page in an isolated, private browser and returns `{ status, headers, body, url }` with the serialized DOM, the final URL, a synthetic status 200 and `x-folyn-rendered` / `x-folyn-status-unavailable` headers (Tauri does not expose the main HTTP status). A separate temporary profile, no user cookies, no app IPC, no downloads or new windows. Executable scripts and event handlers are stripped; inert JSON/LD+JSON scripts and XML roots remain. It never clicks, logs in or solves verification.
+
+One page renders at a time, within 28 seconds, 12 navigation retries and an 8 MiB snapshot. It waits for stable DOM/text/link dimensions for at least 1.5 seconds after hydration, scrolls at most four viewports, and accepts short pages after 12 seconds. Verification/password gates, timeouts, oversize, cancellation and unsupported webviews reject with explicit errors. Disposing the extension cancels outstanding renders and closes their windows.
+
+The isolated browser follows the OS proxy settings and its engine owns DNS and subresource loading: the host validates public main-navigation destinations but cannot pin browser DNS. Proxies that answer with private/fake IPs are rejected by that validation.
+
+### `api.ui`
+
+`openExternal(url)` opens an http(s) URL in the system browser; `openSettings()` shows the model settings; `openVaults()` shows the vault list; `setBadge(n)` sets the count on the extension's page / panel button (0 clears; cleared on dispose).
+
+### Independent AI jobs
+
+`ExtensionAiChatParams.persistHistory?: boolean`: pass `false` for independent jobs (article translations, summaries) so the host neither loads nor saves global chat history. Omitted/true keeps the default. Supported by the trusted capability and sandbox RPC.

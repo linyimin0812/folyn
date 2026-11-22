@@ -19,8 +19,8 @@ mod extension_fetch;
 mod extension_exec;
 mod extension_system;
 mod extension_net;
-mod subscriptions;
-mod subscription_render;
+mod extension_web;
+mod extension_web_render;
 mod extension_rpc;
 mod chat;
 mod list_models;
@@ -868,11 +868,11 @@ pub fn run() {
             extension_net::extension_net_connect,
             extension_net::extension_net_write,
             extension_net::extension_net_close,
-            subscriptions::subscription_fetch,
-            subscription_render::subscription_render,
-            subscription_render::subscription_cancel_renders,
-            subscriptions::subscription_vault_io,
-            subscriptions::subscription_data_io,
+            extension_web::extension_web_fetch,
+            extension_web_render::extension_web_render,
+            extension_web_render::extension_web_cancel_renders,
+            extension_web::extension_vault_io,
+            extension_web::extension_data_io,
             extension_fetch::fetch_url,
             extension_rpc::extension_rpc_respond,
             voice::voice_start,
@@ -889,8 +889,8 @@ pub fn run() {
             move |invoke: tauri::ipc::Invoke| {
                 // Acquisition webviews run untrusted pages. Custom app commands
                 // bypass plugin ACL, so deny them before generated dispatch.
-                if subscription_render::is_acquisition_webview(invoke.message.webview_ref().label()) {
-                    invoke.resolver.reject("app IPC is disabled in subscription acquisition webviews");
+                if extension_web_render::is_acquisition_webview(invoke.message.webview_ref().label()) {
+                    invoke.resolver.reject("app IPC is disabled in extension render webviews");
                     true
                 } else { handler(invoke) }
             }

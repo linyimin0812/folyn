@@ -33,8 +33,9 @@ const fsOpen = vi.hoisted(() => vi.fn(async () => {
 const readTextFile = vi.hoisted(() => vi.fn(async () => 'whole file'));
 
 vi.mock('@/store/vaultStore', () => ({
-  useVaultStore: { getState: () => vaultState },
+  useVaultStore: { getState: () => vaultState, subscribe: () => () => {} },
 }));
+vi.mock('@tauri-apps/api/event', () => ({ listen: async () => () => {} }));
 
 vi.mock('@/store/appearanceStore', () => ({
   useAppearanceStore: { getState: () => ({ excludePatterns: '# comment\n__reports__\n*.tmp' }), subscribe: () => () => {} },

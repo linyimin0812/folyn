@@ -194,10 +194,14 @@ pub fn validate_manifest(manifest: &serde_json::Value) -> Result<(), String> {
         }
     }
 
-    if let Some(permission) = manifest.get("permissions").and_then(|p| p.get("subscriptions")) {
-        if tier != "trusted" || !permission.is_object() || !permission["vault"].is_boolean() || !permission["network"].is_boolean()
-            || permission.get("render").is_some_and(|value| !value.is_boolean()) {
-            return Err("permissions.subscriptions requires a trusted extension and boolean vault/network grants".into());
+    // `web` grants reach any public site; only an approved trusted extension
+    // may hold them, and only as plain booleans the consent dialog can show.
+    if let Some(permission) = manifest.get("permissions").and_then(|p| p.get("web")) {
+        if tier != "trusted"
+            || !permission.is_object()
+            || ["fetch", "render"].iter().any(|k| permission.get(k).is_some_and(|v| !v.is_boolean()))
+        {
+            return Err("permissions.web requires a trusted extension and boolean fetch/render grants".into());
         }
     }
     Ok(())
@@ -847,6 +851,22 @@ mod tests {
         assert!(check_http_origin(&m, "https://api.example.com/x").is_err());
     }
 
+
+    // ── permissions.web shape ──
+
+    #[test]
+    fn web_grants_must_be_trusted_booleans() {
+        let base = |tier: &str, web: serde_json::Value| {
+            let mut m = serde_json::json!({ "id": "reader", "name": "R", "version": "1.0.0", "tier": tier, "main": "index.js", "html": "index.html" });
+            m["permissions"] = serde_json::json!({ "web": web });
+            m
+        };
+        assert!(validate_manifest(&base("trusted", serde_json::json!({ "fetch": true, "render": false }))).is_ok());
+        assert!(validate_manifest(&base("trusted", serde_json::json!({}))).is_ok());
+        assert!(validate_manifest(&base("sandbox", serde_json::json!({ "fetch": true }))).is_err());
+        assert!(validate_manifest(&base("trusted", serde_json::json!({ "fetch": "yes" }))).is_err());
+        assert!(validate_manifest(&base("trusted", serde_json::json!(true))).is_err());
+    }
 
     // ── check_exec_program ──
 

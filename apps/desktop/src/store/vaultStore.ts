@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { emitVaultFileChange } from '@/services/extension-host/subscriptionsFileEvents';
+import { emitVaultFileChange } from '@/services/extension-host/vaultFileEvents';
 import {
   VaultManager,
   VaultProviderRegistry,

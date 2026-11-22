@@ -1,3 +1,5 @@
+/** File changes the host made in a vault (delete, rename, move), for
+ *  `api.vault.onFileChange`. */
 import type { ExtensionVaultFileChange } from 'folyn-extension-sdk';
 const handlers = new Set<(event: ExtensionVaultFileChange) => void>();
 /** Emits only after the host filesystem operation succeeded. */

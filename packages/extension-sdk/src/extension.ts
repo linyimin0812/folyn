@@ -212,6 +212,13 @@ export interface VaultApi {
    * non-Tauri runtimes.
    */
   resolvePath(path: string): Promise<string>;
+  /** The active vault, pinned (see {@link ExtensionVaultSession}); null while
+   *  none is open or one is loading. */
+  session(): ExtensionVaultSession | null;
+  /** Fires when the active vault changes — with its new session, or null. */
+  onSessionChange(handler: (session: ExtensionVaultSession | null) => void): Disposable;
+  /** Fires when a file in the active vault is deleted or renamed. */
+  onFileChange(handler: (event: ExtensionVaultFileChange) => void): Disposable;
 }
 
 /**
@@ -345,24 +352,39 @@ export interface ExtensionNoteSnapshot {
   text: string;
 }
 
-/** Internal application storage partitioned by the active Vault ID. */
-export interface ExtensionSubscriptionData {
+/**
+ * The extension's private storage for one vault, under
+ * `~/.folyn/extension-data/<extension>/vaults/<vault>/` — caches, state, images
+ * that belong to the extension, not to the user's notes. Paths are relative.
+ * Writes are atomic (temp file + rename).
+ */
+export interface ExtensionDataStore {
   readText(path: string): Promise<string>;
   readBinary(path: string): Promise<Uint8Array>;
   writeText(path: string, content: string): Promise<void>;
   writeBinary(path: string, content: Uint8Array): Promise<void>;
   exists(path: string): Promise<boolean>;
+  /** Removes a file or a directory tree; succeeds when absent. */
   remove(path: string): Promise<void>;
+  /** A URL an `<img>` (etc.) in the extension's UI can load the file from. */
   assetUrl(path: string): Promise<string>;
 }
+
+/**
+ * One vault, pinned: every call acts on the vault that was active when the
+ * session was taken, and the note-level calls (`open`, `readNote`,
+ * `appendNote`, the pickers) reject once the user has switched to another
+ * vault — so slow work started in one vault never lands in the next.
+ * Paths are vault-relative; symlinks in them are rejected.
+ */
 export interface ExtensionVaultSession {
-  /** A snapshot pinned to one local vault root; paths are always relative. */
-  /** Private Folyn storage for this Vault. User-authored files remain in the Vault. */
-  data: ExtensionSubscriptionData;
   id: string;
   name: string;
+  /** The extension's private storage for this vault (see {@link ExtensionDataStore}). */
+  data: ExtensionDataStore;
   readText(path: string): Promise<string>;
   readBinary(path: string): Promise<Uint8Array>;
+  /** Writing the user's files requires `permissions.vault.write`. */
   writeText(path: string, content: string): Promise<void>;
   writeBinary(path: string, content: Uint8Array): Promise<void>;
   /** Publishes complete content atomically and never replaces an existing file. */
@@ -372,8 +394,9 @@ export interface ExtensionVaultSession {
    * in the requested path. Links inside a removed tree are never followed. */
   remove(path: string): Promise<void>;
   assetUrl(path: string): Promise<string>;
-  /** Rejects if this session is no longer the active vault. */
+  /** Open the file in the editor. Rejects if this session is no longer the active vault. */
   open(path: string): Promise<void>;
+  /** Let the user pick a folder inside the vault; `'.'` for the root, null when cancelled. */
   chooseDirectory(): Promise<string | null>;
   /** Choose Markdown files inside the current vault. Cancellation returns []. */
   chooseNotes(): Promise<ExtensionNoteSnapshot[]>;
@@ -385,30 +408,55 @@ export interface ExtensionVaultSession {
    * Rejects stale vaults, changed text and unavailable/read-only editors. */
   appendNote(path: string, text: string, expectedText: string): Promise<void>;
 }
+
+/** A file in the active vault was deleted, or renamed / moved (`newPath`). */
 export interface ExtensionVaultFileChange {
   vaultId: string;
   path: string;
   newPath?: string;
   deleted?: boolean;
 }
-export interface ExtensionSubscriptions {
-  /** Isolated public-page DOM acquisition. Available only with the explicit
-   * subscriptions.render grant. Synthetic status 200 denotes a DOM snapshot. */
-  render?(url: string): Promise<ExtensionHttpResponse & { url: string }>;
-  current(): ExtensionVaultSession | null;
-  onChange(handler: (session: ExtensionVaultSession | null) => void): Disposable;
-  onFileChange(handler: (event: ExtensionVaultFileChange) => void): Disposable;
+
+/** A page fetched or rendered by {@link WebApi}. `url` is the final URL after
+ *  redirects. */
+export type ExtensionWebResponse = ExtensionHttpResponse & { url: string };
+
+/**
+ * Reading the public web (trusted tier only) — any public HTTP(S) site, unlike
+ * {@link NetworkApi.fetch} which is limited to declared origins. Private and
+ * local network destinations are refused; DNS is resolved once and pinned;
+ * redirects are re-checked; bodies are size-capped (8 MB text, 20 MB binary),
+ * decompressed and decoded from their declared charset.
+ */
+export interface WebApi {
+  /** GET `url`. Requires `permissions.web.fetch`. With `binary`, the body is
+   *  base64. */
+  fetch(url: string, opts?: { binary?: boolean }): Promise<ExtensionWebResponse>;
+  /**
+   * Load `url` in an isolated, private browser and return its DOM once the
+   * page settles — for sites whose content only appears after their scripts
+   * run. No cookies, no app IPC, no downloads or popups. Status is a synthetic
+   * 200. Requires `permissions.web.render`; present only then.
+   */
+  render?(url: string): Promise<ExtensionWebResponse>;
+}
+
+/** The host's own UI, for an extension page to send the user somewhere. */
+export interface UiApi {
+  /** Open an http(s) URL in the system browser. */
   openExternal(url: string): Promise<void>;
+  /** Show Folyn's settings (the model settings, where AI is configured). */
   openSettings(): void;
+  /** Show the vault list. */
   openVaults(): void;
+  /** The count shown on this extension's page / panel button; 0 clears it. */
   setBadge(value: number): void;
-  /** Binary bodies are base64 encoded; url is the final redirected URL. */
-  fetch(url: string, binary?: boolean): Promise<ExtensionHttpResponse & { url: string }>;
 }
 
 export interface ExtensionApi {
-  readonly subscriptions?: ExtensionSubscriptions;
   readonly vault: VaultApi;
+  readonly web: WebApi;
+  readonly ui: UiApi;
   readonly vaultConfig: VaultConfigApi;
   readonly files: FileApi;
   readonly editor: EditorApi;

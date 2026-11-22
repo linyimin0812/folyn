@@ -1,5 +1,7 @@
-//! Isolated, bounded browser fallback for public subscription pages.
-use crate::subscriptions::{authorize, public_addresses, validate_url, SubscriptionResponse};
+//! Isolated, bounded browser rendering of public pages (`api.web.render`):
+//! for sites whose content only appears after their scripts run. Requires
+//! `permissions.web.render`.
+use crate::extension_web::{authorize, public_addresses, validate_url, WebResponse};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::Deserialize;
 use std::{
@@ -15,7 +17,7 @@ use std::{
 use tauri::{webview::NewWindowResponse, Manager, WebviewUrl, WebviewWindowBuilder};
 use tokio::sync::{mpsc, oneshot, Semaphore};
 
-pub(crate) const RENDER_PREFIX: &str = "subscription-render-";
+pub(crate) const RENDER_PREFIX: &str = "extension-render-";
 pub(crate) fn is_acquisition_webview(label: &str) -> bool {
     label.starts_with(RENDER_PREFIX)
 }
@@ -82,7 +84,7 @@ impl Drop for RenderLease {
 /// Cancellation is accepted after disable/uninstall so activation teardown can
 /// always destroy its own outstanding isolated windows. No file/network access.
 #[tauri::command]
-pub async fn subscription_cancel_renders(
+pub async fn extension_web_cancel_renders(
     app: tauri::AppHandle,
     extension_id: String,
     request_ids: Vec<String>,
@@ -250,7 +252,7 @@ fn snapshot_ready(value: &Snapshot, elapsed: Duration, stable: Duration) -> bool
         && stable >= Duration::from_millis(1500)
         && (useful || (elapsed >= Duration::from_secs(12) && value.text_length > 0))
 }
-fn image_response(value: Snapshot) -> Result<SubscriptionResponse, String> {
+fn image_response(value: Snapshot) -> Result<WebResponse, String> {
     if !(200..300).contains(&value.status)
         || !value
             .content_type
@@ -271,7 +273,7 @@ fn image_response(value: Snapshot) -> Result<SubscriptionResponse, String> {
     if bytes.len() != value.byte_length || bytes.len() > MAX_IMAGE {
         return Err("browser image response byte count mismatch".into());
     }
-    Ok(SubscriptionResponse {
+    Ok(WebResponse {
         status: value.status,
         headers: HashMap::from([
             ("content-type".into(), value.content_type),
@@ -287,7 +289,7 @@ async fn render_page(
     request_id: String,
     url: String,
     kind: AcquisitionKind,
-) -> Result<SubscriptionResponse, String> {
+) -> Result<WebResponse, String> {
     let cancelled = Arc::new(AtomicBool::new(false));
     {
         let mut state = jobs().lock().map_err(|_| "render registry unavailable")?;
@@ -295,10 +297,10 @@ async fn render_page(
             .cancelled
             .remove(&(extension_id.clone(), request_id.clone()))
         {
-            return Err("subscription render cancelled".into());
+            return Err("render cancelled".into());
         }
         if state.active.len() >= 8 {
-            return Err("subscription renderer queue is full; retry later".into());
+            return Err("renderer queue is full; retry later".into());
         }
         if state.active.contains_key(&request_id) {
             return Err("duplicate render request".into());
@@ -323,17 +325,17 @@ async fn render_page(
     tokio::pin!(permit);
     let _permit = loop {
         tokio::select! {
-            permit = &mut permit => break permit.map_err(|_| "subscription renderer unavailable")?,
+            permit = &mut permit => break permit.map_err(|_| "renderer unavailable")?,
             _ = tokio::time::sleep(Duration::from_millis(100)) => {
-                if cancelled.load(Ordering::Acquire) { return Err("subscription render cancelled".into()); }
+                if cancelled.load(Ordering::Acquire) { return Err("render cancelled".into()); }
             }
         }
     };
     let gate_app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        authorize(&gate_app, &extension_id, "render")?;
+        authorize(&gate_app, &extension_id, Some(("web", "render")))?;
         if kind == AcquisitionKind::Image {
-            authorize(&gate_app, &extension_id, "network")?;
+            authorize(&gate_app, &extension_id, Some(("web", "fetch")))?;
         }
         Ok::<(), String>(())
     })
@@ -342,7 +344,7 @@ async fn render_page(
     let initial = validate_url(&url)?;
     public_addresses(&initial).await?;
     if cancelled.load(Ordering::Acquire) {
-        return Err("subscription render cancelled".into());
+        return Err("render cancelled".into());
     }
     let expected_url = Arc::new(Mutex::new(initial.to_string()));
     let navigation_loading = Arc::new(AtomicBool::new(true));
@@ -359,12 +361,12 @@ async fn render_page(
     let (built_tx, built_rx) = oneshot::channel();
     app.run_on_main_thread(move || {
         if cancelled_build.load(Ordering::Acquire) {
-            let _ = built_tx.send(Err("subscription render cancelled".to_string()));
+            let _ = built_tx.send(Err("render cancelled".to_string()));
             return;
         }
         let result =
             WebviewWindowBuilder::new(&build_app, &build_label, WebviewUrl::External(initial))
-                .title("Subscription page acquisition")
+                .title("Page rendering")
                 .visible(false)
                 .focused(false)
                 .skip_taskbar(true)
@@ -430,7 +432,7 @@ async fn render_page(
     let mut last = Snapshot::default();
     loop {
         if cancelled.load(Ordering::Acquire) {
-            return Err("subscription render cancelled".into());
+            return Err("render cancelled".into());
         }
         if let Some(error) = blocked
             .lock()
@@ -453,7 +455,7 @@ async fn render_page(
                 .map_err(|_| "render navigation state unavailable")?
                 .insert(candidate.to_string());
             if cancelled.load(Ordering::Acquire) {
-                return Err("subscription render cancelled".into());
+                return Err("render cancelled".into());
             }
             *expected_url
                 .lock()
@@ -477,7 +479,7 @@ async fn render_page(
                 }
                 if !value.blocked.is_empty() {
                     return Err(format!(
-                        "subscription render blocked: {} ({})",
+                        "render blocked: {} ({})",
                         value.blocked, value.title
                     ));
                 }
@@ -512,7 +514,7 @@ async fn render_page(
                 {
                     let final_url = validate_url(&value.url)?;
                     public_addresses(&final_url).await?;
-                    return Ok(SubscriptionResponse {
+                    return Ok(WebResponse {
                         status: 200,
                         headers: HashMap::from([
                             (
@@ -540,7 +542,7 @@ async fn render_page(
         }
         if started.elapsed() >= Duration::from_secs(24) {
             return Err(format!(
-                "subscription render timed out: {}",
+                "render timed out: {}",
                 if last.body.is_empty() {
                     "page did not load"
                 } else if last.text_length == 0 && last.links == 0 {
@@ -554,12 +556,12 @@ async fn render_page(
     }
 }
 #[tauri::command]
-pub async fn subscription_render(
+pub async fn extension_web_render(
     app: tauri::AppHandle,
     extension_id: String,
     request_id: String,
     url: String,
-) -> Result<SubscriptionResponse, String> {
+) -> Result<WebResponse, String> {
     if !valid_job_id(&request_id) {
         return Err("invalid render request id".into());
     }
@@ -568,7 +570,7 @@ pub async fn subscription_render(
         render_page(app, extension_id, request_id, url, AcquisitionKind::Page),
     )
     .await
-    .map_err(|_| format!("subscription render timed out after {RENDER_SECONDS} seconds"))?
+    .map_err(|_| format!("render timed out after {RENDER_SECONDS} seconds"))?
 }
 /// Internal image-only fallback. Not a general browser fetch API: it shares
 /// isolation, main-navigation checks, lifecycle registry and deadline with pages.
@@ -577,7 +579,7 @@ pub(crate) async fn render_image(
     extension_id: String,
     request_id: String,
     url: String,
-) -> Result<SubscriptionResponse, String> {
+) -> Result<WebResponse, String> {
     if !valid_job_id(&request_id) {
         return Err("invalid image request id".into());
     }
@@ -587,7 +589,7 @@ pub(crate) async fn render_image(
     )
     .await
     .map_err(|_| {
-        format!("subscription image acquisition timed out after {RENDER_SECONDS} seconds")
+        format!("image acquisition timed out after {RENDER_SECONDS} seconds")
     })?
 }
 #[cfg(test)]
@@ -670,7 +672,7 @@ mod tests {
         );
         assert!(parse_snapshot(r#""{\"ready\":true}""#).unwrap().ready);
         assert!(!valid_job_id("../main"));
-        assert!(is_acquisition_webview("subscription-render-aabbccdd"));
+        assert!(is_acquisition_webview("extension-render-aabbccdd"));
         assert!(!is_acquisition_webview("main"));
         assert!(valid_job_id("aabbccdd-0011-2233-4455-667788990011"));
     }

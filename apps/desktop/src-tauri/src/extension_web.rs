@@ -1,4 +1,14 @@
-//! Trusted subscriptions: bounded public downloads and pinned vault IO.
+//! Web acquisition and scoped file IO for trusted extensions.
+//!
+//! - `extension_web_fetch` (`api.web.fetch`): a GET of any public HTTP(S) URL
+//!   — private/local destinations blocked, DNS resolved once and pinned,
+//!   redirects re-validated, size-capped, decompressed and charset-decoded.
+//!   Requires `permissions.web.fetch`.
+//! - `extension_vault_io` (`api.vault` writes that must be safe against
+//!   symlinks and races) and `extension_data_io` (`api.data`, the extension's
+//!   private per-vault storage under `~/.folyn/extension-data/<id>/vaults/`).
+//!   Require `permissions.vault.write` and nothing, respectively: an
+//!   extension's own data directory is always its own.
 use crate::extension_commands::{extensions_dir, is_valid_extension_id, read_extensions_json};
 use crate::extension_security::compute_hash;
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -13,7 +23,10 @@ use std::{
 };
 use tauri::Manager;
 
-pub(crate) fn authorize(app: &tauri::AppHandle, id: &str, capability: &str) -> Result<(), String> {
+/// The extension is an approved, enabled trusted extension whose manifest is
+/// unchanged since approval and grants `permissions.<group>.<key> == true`.
+/// `None` skips the grant check (the extension's own data directory).
+pub(crate) fn authorize(app: &tauri::AppHandle, id: &str, grant: Option<(&str, &str)>) -> Result<(), String> {
     if !is_valid_extension_id(id) {
         return Err("invalid extension id".into());
     }
@@ -22,20 +35,22 @@ pub(crate) fn authorize(app: &tauri::AppHandle, id: &str, capability: &str) -> R
     let record = records
         .iter()
         .find(|r| r.id == id && r.tier == "trusted" && r.trusted && r.enabled)
-        .ok_or("subscriptions requires an approved, enabled trusted extension")?;
+        .ok_or("requires an approved, enabled trusted extension")?;
     let manifest_bytes = fs::read(dir.join(id).join("manifest.json")).map_err(|e| e.to_string())?;
     if record.integrity.get("manifest.json") != Some(&compute_hash(&manifest_bytes)) {
         return Err(
-            "subscription manifest integrity changed; reinstall and approve the extension".into(),
+            "manifest changed since approval; reinstall and approve the extension".into(),
         );
     }
     let manifest: serde_json::Value =
         serde_json::from_slice(&manifest_bytes).map_err(|e| e.to_string())?;
-    if manifest["tier"] != "trusted" || manifest["permissions"]["subscriptions"][capability] != true
-    {
-        return Err(format!(
-            "permissions.subscriptions.{capability} is required"
-        ));
+    if manifest["tier"] != "trusted" {
+        return Err("requires a trusted extension".into());
+    }
+    if let Some((group, key)) = grant {
+        if manifest["permissions"][group][key] != true {
+            return Err(format!("permissions.{group}.{key} is required"));
+        }
     }
     Ok(())
 }
@@ -84,7 +99,7 @@ pub(crate) fn validate_url(raw: &str) -> Result<reqwest::Url, String> {
     Ok(url)
 }
 #[derive(Serialize)]
-pub struct SubscriptionResponse {
+pub struct WebResponse {
     pub(crate) status: u16,
     pub(crate) headers: HashMap<String, String>,
     pub(crate) body: String,
@@ -194,7 +209,7 @@ fn request_error(error: reqwest::Error) -> String {
     }
     message
 }
-async fn download(raw: String, binary: bool) -> Result<SubscriptionResponse, String> {
+async fn download(raw: String, binary: bool) -> Result<WebResponse, String> {
     let mut url = validate_url(&raw)?;
     for _ in 0..=8 {
         let host = url
@@ -276,7 +291,7 @@ async fn download(raw: String, binary: bool) -> Result<SubscriptionResponse, Str
         .map_err(|e| e.to_string())??;
         headers.remove("content-encoding");
         headers.remove("content-length");
-        return Ok(SubscriptionResponse {
+        return Ok(WebResponse {
             status,
             headers,
             body,
@@ -286,16 +301,16 @@ async fn download(raw: String, binary: bool) -> Result<SubscriptionResponse, Str
     Err("too many redirects".into())
 }
 #[tauri::command]
-pub async fn subscription_fetch(
+pub async fn extension_web_fetch(
     app: tauri::AppHandle,
     extension_id: String,
     url: String,
     binary: bool,
     request_id: Option<String>,
-) -> Result<SubscriptionResponse, String> {
+) -> Result<WebResponse, String> {
     let gate_app = app.clone();
     let gate_id = extension_id.clone();
-    tauri::async_runtime::spawn_blocking(move || authorize(&gate_app, &gate_id, "network"))
+    tauri::async_runtime::spawn_blocking(move || authorize(&gate_app, &gate_id, Some(("web", "fetch"))))
         .await
         .map_err(|e| e.to_string())??;
     let direct = tokio::time::timeout(Duration::from_secs(30), download(url.clone(), binary))
@@ -308,12 +323,12 @@ pub async fn subscription_fetch(
         Err(error) if !binary => return Err(error),
         Err(error) => error,
     };
-    // The optional ID is provided/tracked only for activations with render grant.
-    // Native render_image independently rechecks both grants and all navigation.
+    // The optional ID is provided/tracked only for activations with the render
+    // grant. render_image independently rechecks both grants and all navigation.
     let Some(request_id) = request_id else {
         return Err(direct_error);
     };
-    crate::subscription_render::render_image(app, extension_id, request_id, url)
+    crate::extension_web_render::render_image(app, extension_id, request_id, url)
         .await
         .map_err(|error| format!("{direct_error}; browser image fallback: {error}"))
 }
@@ -337,7 +352,7 @@ fn scoped_path(root: &str, relative: &str, create_parent: bool) -> Result<PathBu
         match fs::symlink_metadata(&cursor) {
             Ok(meta) => {
                 if meta.file_type().is_symlink() {
-                    return Err("symlinks are not allowed in subscription vault paths".into());
+                    return Err("symlinks are not allowed in these paths".into());
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -351,7 +366,7 @@ fn scoped_path(root: &str, relative: &str, create_parent: bool) -> Result<PathBu
                                 fs::symlink_metadata(&cursor).map_err(|e| e.to_string())?;
                             if metadata.file_type().is_symlink() || !metadata.is_dir() {
                                 return Err(
-                                    "subscription parent path must be a directory without symlinks"
+                                    "parent path must be a directory without symlinks"
                                         .into(),
                                 );
                             }
@@ -371,7 +386,7 @@ fn atomic_write(path: &Path, bytes: &[u8], exclusive: bool) -> Result<(), String
     let mut temp = PathBuf::new();
     for n in 0..100 {
         temp = parent.join(format!(
-            ".folyn-subscription-{}-{}-{n}.tmp",
+            ".folyn-write-{}-{}-{n}.tmp",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -419,7 +434,7 @@ fn remove_path(path: &Path) -> Result<(), String> {
         Err(error) => return Err(error.to_string()),
     };
     if metadata.file_type().is_symlink() {
-        return Err("symlinks are not allowed in subscription vault paths".into());
+        return Err("symlinks are not allowed in these paths".into());
     }
     // remove_dir_all unlinks symlinks inside the tree without following them.
     let result = if metadata.is_dir() {
@@ -450,28 +465,33 @@ fn ensure_real_directory(path: &Path) -> Result<(), String> {
     }
     let metadata = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
     if metadata.file_type().is_symlink() || !metadata.is_dir() {
-        return Err("subscription data directory must not contain symlinks".into());
+        return Err("extension data directory must not contain symlinks".into());
     }
     Ok(())
 }
-fn app_data_root(home: &Path, vault_id: &str) -> Result<PathBuf, String> {
+/// `~/.folyn/extension-data/<extension>/vaults/<vault>`, created on demand,
+/// every component a real directory (never a symlink out of `~/.folyn`).
+fn app_data_root(home: &Path, extension_id: &str, vault_id: &str) -> Result<PathBuf, String> {
+    if !is_valid_extension_id(extension_id) {
+        return Err("invalid extension id for extension data".into());
+    }
     if !safe_vault_id(vault_id) {
-        return Err("invalid vault id for subscription data".into());
+        return Err("invalid vault id for extension data".into());
     }
     let home = fs::canonicalize(home).map_err(|e| e.to_string())?;
     let mut root = home.clone();
-    for part in [".folyn", "subscriptions", vault_id] {
+    for part in [".folyn", "extension-data", extension_id, "vaults", vault_id] {
         root.push(part);
         ensure_real_directory(&root)?;
         let canonical = fs::canonicalize(&root).map_err(|e| e.to_string())?;
         if !canonical.starts_with(&home) {
-            return Err("subscription data escaped the Folyn data directory".into());
+            return Err("extension data escaped the Folyn data directory".into());
         }
         root = canonical;
     }
     Ok(root)
 }
-fn subscription_io(
+fn scoped_io(
     root: &str,
     path: &str,
     operation: &str,
@@ -489,7 +509,7 @@ fn subscription_io(
         "exists" => Ok(serde_json::Value::Bool(path.exists())),
         "assetPath" => {
             if !path.is_file() {
-                return Err("subscription asset is not a file".into());
+                return Err("asset is not a file".into());
             }
             Ok(serde_json::Value::String(
                 path.to_string_lossy().into_owned(),
@@ -506,11 +526,11 @@ fn subscription_io(
             atomic_write(&path, &bytes, operation == "createText")?;
             Ok(serde_json::Value::Null)
         }
-        _ => Err("unknown subscription data operation".into()),
+        _ => Err("unknown file operation".into()),
     }
 }
 #[tauri::command]
-pub async fn subscription_data_io(
+pub async fn extension_data_io(
     app: tauri::AppHandle,
     extension_id: String,
     vault_id: String,
@@ -519,10 +539,10 @@ pub async fn subscription_data_io(
     content: Option<String>,
 ) -> Result<serde_json::Value, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        authorize(&app, &extension_id, "vault")?;
+        authorize(&app, &extension_id, None)?;
         let home = app.path().home_dir().map_err(|e| e.to_string())?;
-        let root = app_data_root(&home, &vault_id)?;
-        subscription_io(
+        let root = app_data_root(&home, &extension_id, &vault_id)?;
+        scoped_io(
             root.to_str().ok_or("invalid application data path")?,
             &path,
             &operation,
@@ -533,7 +553,7 @@ pub async fn subscription_data_io(
     .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-pub async fn subscription_vault_io(
+pub async fn extension_vault_io(
     app: tauri::AppHandle,
     extension_id: String,
     root: String,
@@ -542,8 +562,10 @@ pub async fn subscription_vault_io(
     content: Option<String>,
 ) -> Result<serde_json::Value, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        authorize(&app, &extension_id, "vault")?;
-        subscription_io(&root, &path, &operation, content)
+        // Reading needs no grant beyond trust; writing the user's files does.
+        let writing = !matches!(operation.as_str(), "readText" | "readBinary" | "exists" | "assetPath");
+        authorize(&app, &extension_id, writing.then_some(("vault", "write")))?;
+        scoped_io(&root, &path, &operation, content)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -558,12 +580,17 @@ mod tests {
         fs::create_dir_all(&home).unwrap();
         // temp_dir may sit behind a symlink (/var -> /private/var on macOS); app_data_root canonicalizes.
         let home = fs::canonicalize(&home).unwrap();
-        let a = app_data_root(&home, "vault-a").unwrap();
-        let b = app_data_root(&home, "vault-b").unwrap();
+        let a = app_data_root(&home, "reader", "vault-a").unwrap();
+        let b = app_data_root(&home, "reader", "vault-b").unwrap();
+        let other = app_data_root(&home, "other-ext", "vault-a").unwrap();
         assert_ne!(a, b);
-        assert!(a.starts_with(home.join(".folyn/subscriptions")));
+        assert_ne!(a, other);
+        assert!(a.starts_with(home.join(".folyn/extension-data/reader/vaults")));
         for unsafe_id in ["../escape", "/tmp", "", ".", "vault/a"] {
-            assert!(app_data_root(&home, unsafe_id).is_err());
+            assert!(app_data_root(&home, "reader", unsafe_id).is_err());
+        }
+        for unsafe_ext in ["../escape", "a/b", "", ".."] {
+            assert!(app_data_root(&home, unsafe_ext, "vault-a").is_err());
         }
         #[cfg(unix)]
         {
@@ -572,7 +599,7 @@ mod tests {
             fs::create_dir_all(&other).unwrap();
             let _ = fs::remove_dir_all(home.join(".folyn"));
             symlink(&other, home.join(".folyn")).unwrap();
-            assert!(app_data_root(&home, "vault-c").is_err());
+            assert!(app_data_root(&home, "reader", "vault-c").is_err());
         }
         let _ = fs::remove_dir_all(home);
     }
@@ -692,7 +719,7 @@ mod tests {
     #[test]
     fn exclusive_create_never_overwrites() {
         let dir =
-            std::env::temp_dir().join(format!("folyn-subscription-test-{}", std::process::id()));
+            std::env::temp_dir().join(format!("folyn-web-io-test-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("entry.md");
         let _ = fs::remove_file(&path);

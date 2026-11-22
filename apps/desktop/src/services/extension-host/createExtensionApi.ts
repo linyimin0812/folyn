@@ -37,7 +37,9 @@ import { registerFileTypeHandler, resolveDefault } from '@/components/file-types
 import { buildExtensionAi } from './aiCapability';
 import { buildExtensionEnv, disposeExtensionEnv } from './envCapability';
 import { buildExtensionHttp } from './httpCapability';
-import { buildSubscriptions, disposeSubscriptions } from './subscriptionsCapability';
+import { buildVaultSessions, type VaultSessions } from './vaultSessionCapability';
+import { buildExtensionWeb, type WebCapability } from './webCapability';
+import { buildExtensionUi, type UiCapability } from './uiCapability';
 import { buildExtensionDownloads } from './downloadsCapability';
 import { buildExtensionIcons } from './iconsCapability';
 import { buildExtensionFileView } from './fileViewCapability';
@@ -129,9 +131,16 @@ async function readTextPrefix(abs: string, maxBytes: number): Promise<string | n
   }
 }
 
+/** The vault capability's session part, kept for teardown. */
+const vaultSessions = new WeakMap<VaultApi, VaultSessions>();
+
 /** Build a real VaultApi for a manifest (Tauri-backed, vault-scoped). */
-function createVaultApi(): VaultApi {
-  return {
+function createVaultApi(manifest: ExtensionManifest): VaultApi {
+  const sessions = buildVaultSessions(manifest);
+  const api: VaultApi = {
+    session: () => sessions.session(),
+    onSessionChange: (handler) => sessions.onSessionChange(handler),
+    onFileChange: (handler) => sessions.onFileChange(handler),
     current() {
       const { currentVault, isLoading } = useVaultStore.getState();
       return currentVault && !isLoading ? { id: currentVault.id, name: currentVault.name } : null;
@@ -198,6 +207,8 @@ function createVaultApi(): VaultApi {
       return resolveBasePath(path);
     },
   };
+  vaultSessions.set(api, sessions);
+  return api;
 }
 
 /** Build a real VaultConfigApi over the host's vault-config store. */
@@ -324,8 +335,9 @@ const noopCommands = {
 // capability = add a factory + one registerCapability line. The createApi hook
 // (App.tsx) calls createExtensionApi → buildExtensionApi; the hook remains the
 // whole-Api override escape hatch for tests / alternate shells.
-registerCapability({ slot: 'subscriptions', build: buildSubscriptions, dispose: disposeSubscriptions });
-registerCapability({ slot: 'vault', build: () => createVaultApi() });
+registerCapability({ slot: 'vault', build: (m) => createVaultApi(m), dispose: (vault) => vaultSessions.get(vault)?.dispose() });
+registerCapability({ slot: 'web', build: (m) => buildExtensionWeb(m), dispose: (web) => (web as WebCapability).dispose() });
+registerCapability({ slot: 'ui', build: (m) => buildExtensionUi(m), dispose: (ui) => (ui as UiCapability).dispose() });
 registerCapability({ slot: 'vaultConfig', build: () => createVaultConfigApi() });
 registerCapability({ slot: 'storage', build: (m) => createStorageApi(m) });
 registerCapability({ slot: 'files', build: () => createFilesApi() });

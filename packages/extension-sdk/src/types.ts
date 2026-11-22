@@ -252,9 +252,9 @@ export interface ExtensionManifest {
 //     can do.
 
 export interface ExtensionPermissions {
-  /** Trusted subscriptions: pinned local vault access and public HTTP(S)
-   * text/binary downloads. Explicitly consented with the trusted extension. */
-  subscriptions?: { vault: boolean; network: boolean; render?: boolean };
+  /** The public web through `api.web` (trusted only): `fetch` any public
+   *  HTTP(S) URL, `render` a page in an isolated browser. */
+  web?: { fetch?: boolean; render?: boolean };
   fs?: { scope: string[] };
   http?: { origins: string[] };
   /** Hosts `api.network.connect` may open a TLS connection to (trusted only):
@@ -270,7 +270,9 @@ export interface ExtensionPermissions {
   clipboard?: boolean;
   dialog?: boolean;
   window?: boolean;
-  vault?: { readActive?: boolean; insertContent?: boolean; readBinary?: boolean };
+  vault?: { readActive?: boolean; insertContent?: boolean; readBinary?: boolean;
+    /** Write, create and remove the user's files through a vault session. */
+    write?: boolean };
   /**
    * AI capability grant. Host mediates all AI access (chat_stream + feature
    * agents) through this declaration; undeclared `ai.*` calls throw.

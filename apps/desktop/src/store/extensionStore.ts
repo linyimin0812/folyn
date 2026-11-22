@@ -420,14 +420,14 @@ function parsePermissionLines(manifest: {
     if (programs.length > 0) out.push(`运行本机程序：${programs.join('、')}`);
     const system = perms.system as { frontWindow?: unknown } | undefined;
     if (system?.frontWindow === true) out.push('读取当前前台应用与窗口标题');
-    if (perms.subscriptions) {
-      out.push('订阅：读写选定知识库、访问任意公开 HTTP(S) 网站并下载图片（二进制）');
-      if (typeof perms.subscriptions === 'object' && perms.subscriptions !== null && 'render' in perms.subscriptions && perms.subscriptions.render === true) out.push('订阅网页渲染：在独立隐私浏览器中执行公开网站脚本以提取内容');
-    }
+    const web = perms.web as { fetch?: unknown; render?: unknown } | undefined;
+    if (web?.fetch === true) out.push('访问任意公开网站（不含内网和本机地址）');
+    if (web?.render === true) out.push('在独立的隐私浏览器中打开公开网页并读取其内容');
     if (perms.clipboard) out.push('剪贴板读写');
     if (perms.dialog) out.push('文件对话框');
     if (perms.window) out.push('打开工具窗口');
     if (perms.vault) out.push('读取/插入当前文档');
+    if ((perms.vault as { write?: unknown } | undefined)?.write === true) out.push('写入、新建和删除 Vault 中的文件');
   }
   const contributes = manifest.contributes;
   if (contributes) {
