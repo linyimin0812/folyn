@@ -14,6 +14,8 @@ import { useCommandPaletteStore } from '@/store/commandPaletteStore';
 import { useDocLinkHistory } from '@/store/docLinkHistory';
 import { eventMatchesShortcut } from '@/utils/shortcutAccelerator';
 import { listenForForwardedKeys } from '@/utils/iframeShortcuts';
+import { useNavStore } from '@/store/navStore';
+import { getHandlerById, getSupportedModes } from '@/components/file-types/registry';
 
 export function useGlobalShortcuts() {
   // ── Global Ctrl+S / Cmd+S and Cmd+Shift+F ──
@@ -65,6 +67,22 @@ export function useGlobalShortcuts() {
       if (presentationModeShortcut && eventMatchesShortcut(e, presentationModeShortcut.keys)) {
         e.preventDefault();
         useEditorViewStateStore.getState().togglePresentationMode();
+      }
+      // View mode cycle — default Cmd/Ctrl+Shift+Space, rebindable via
+      // Settings → Shortcuts (prefsStore `cycleViewMode` entry). Steps the
+      // active file through the modes its provider offers, in the topbar's
+      // order (edit → split → preview), wrapping at the end.
+      const cycleViewModeShortcut = usePrefsStore
+        .getState()
+        .shortcuts.find((s: ShortcutItem) => s.id === 'cycleViewMode');
+      if (cycleViewModeShortcut && eventMatchesShortcut(e, cycleViewModeShortcut.keys)) {
+        const { tabs, activeTabId, viewMode, setViewMode } = useEditorStore.getState();
+        const activeTab = tabs.find((t) => t.id === activeTabId);
+        const modes = getSupportedModes(activeTab ? getHandlerById(activeTab.fileType) : undefined);
+        if (useNavStore.getState().currentPage === 'editor' && modes.length > 1) {
+          e.preventDefault();
+          setViewMode(modes[(modes.indexOf(viewMode) + 1) % modes.length]);
+        }
       }
       // Cmd/Ctrl+A selects all in native <input>/<textarea>. CodeMirror has
       // its own Mod-a keymap that preventDefaults, so it never reaches here.

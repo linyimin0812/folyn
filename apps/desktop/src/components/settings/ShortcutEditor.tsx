@@ -30,6 +30,7 @@ function keyToSymbol(key: string): string {
     Control: 'Ctrl',
     Alt: isMac ? '⌥' : 'Alt',
     Shift: 'Shift',
+    ' ': 'Space',
   };
   if (map[key]) return map[key];
   if (key.length === 1) return key.toUpperCase();

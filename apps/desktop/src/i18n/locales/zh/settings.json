@@ -178,6 +178,7 @@
       "togglePetPanel": "唤起桌宠面板",
       "cursorSync": "光标同步",
       "presentationMode": "演示模式",
+      "cycleViewMode": "切换视图模式（编辑 / 分屏 / 预览）",
       "previewZoomIn": "预览放大",
       "previewZoomOut": "预览缩小",
       "previewZoomReset": "重置预览缩放"

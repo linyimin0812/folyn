@@ -177,7 +177,8 @@
       "link": "Link einfügen",
       "togglePetPanel": "Pet-Panel öffnen",
       "cursorSync": "Cursor-Synchronisierung",
-      "presentationMode": "Präsentationsmodus"
+      "presentationMode": "Präsentationsmodus",
+      "cycleViewMode": "Ansichtsmodus wechseln (Bearbeiten / Geteilt / Vorschau)"
     },
     "appItems": {
       "focusMode": "Fokusmodus umschalten",

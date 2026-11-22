@@ -178,6 +178,7 @@
       "togglePetPanel": "桌宠パネルを開く",
       "cursorSync": "カーソル同期",
       "presentationMode": "プレゼンテーションモード",
+      "cycleViewMode": "表示モード切替（編集 / 分割 / プレビュー）",
       "previewZoomIn": "プレビュー拡大",
       "previewZoomOut": "プレビュー縮小",
       "previewZoomReset": "プレビュー縮尺リセット"

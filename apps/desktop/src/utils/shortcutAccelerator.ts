@@ -71,7 +71,8 @@ export function eventMatchesShortcut(e: KeyboardEvent, keys: string[]): boolean 
     }
   }
   if (mainCount !== 1) return false;
-  if (mainKey !== e.key.toLowerCase()) return false;
+  // The space bar reports `e.key === ' '`; it is stored as the `Space` token.
+  if (mainKey !== (e.key === ' ' ? 'space' : e.key.toLowerCase())) return false;
   // Exact modifier set: every required mod pressed AND no extra mod pressed.
   for (const ok of required) if (!ok(e)) return false;
   const requiredLen = required.length;
