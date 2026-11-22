@@ -1,4 +1,4 @@
-import type { FileTypeHandler } from './types';
+import type { FileTypeProvider } from './types';
 import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/extension-host';
 
 /**
@@ -23,7 +23,7 @@ import { OwnedRegistry, FOLYN_CORE_OWNER } from '@folyn/extension-host';
  * overrides the generic File Viewer (priority -1000).
  */
 export class HandlerRegistry {
-  private readonly owned = new OwnedRegistry<FileTypeHandler>((h) => h.id);
+  private readonly owned = new OwnedRegistry<FileTypeProvider>((h) => h.id);
   /** ext → set of handler ids claiming it (priority resolves which wins). */
   private readonly extMap = new Map<string, Set<string>>();
   private readonly aliases: Record<string, string>;
@@ -32,7 +32,7 @@ export class HandlerRegistry {
     this.aliases = aliases;
   }
 
-  register(handler: FileTypeHandler, ownerExtensionId: string = FOLYN_CORE_OWNER): { dispose: () => void } {
+  register(handler: FileTypeProvider, ownerExtensionId: string = FOLYN_CORE_OWNER): { dispose: () => void } {
     // Index every extension the handler claims BEFORE delegating ownership,
     // so re-registration cleanly updates the candidate set.
     for (const ext of handler.extensions) {
@@ -70,34 +70,34 @@ export class HandlerRegistry {
   }
 
   /** Resolve the highest-priority handler for an extension (doc §25). */
-  getByExtension(ext: string): FileTypeHandler | undefined {
+  getByExtension(ext: string): FileTypeProvider | undefined {
     return this.resolveDefault(ext);
   }
 
   /** All handlers claiming this extension, highest priority first;
    * ties broken by registration order (last registered wins) (doc §25/§26). */
-  listProviders(ext: string): FileTypeHandler[] {
+  listProviders(ext: string): FileTypeProvider[] {
     const ids = this.extMap.get(ext);
     if (!ids || ids.size === 0) return [];
     // Array.from preserves insertion order (registration order).
     const ordered = Array.from(ids);
     return ordered
       .map((id, idx) => ({ h: this.owned.get(id), idx }))
-      .filter((e): e is { h: FileTypeHandler; idx: number } => !!e.h)
+      .filter((e): e is { h: FileTypeProvider; idx: number } => !!e.h)
       .sort((a, b) => (b.h.priority ?? 0) - (a.h.priority ?? 0) || b.idx - a.idx)
       .map((e) => e.h);
   }
 
   /** The default (highest-priority) provider for an extension. */
-  resolveDefault(ext: string): FileTypeHandler | undefined {
+  resolveDefault(ext: string): FileTypeProvider | undefined {
     return this.listProviders(ext)[0];
   }
 
-  getById(id: string): FileTypeHandler | undefined {
+  getById(id: string): FileTypeProvider | undefined {
     return this.owned.get(id) ?? this.owned.get(this.aliases[id] ?? id);
   }
 
-  getAll(): FileTypeHandler[] {
+  getAll(): FileTypeProvider[] {
     return this.owned.list();
   }
 

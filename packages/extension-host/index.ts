@@ -88,7 +88,7 @@ export type {
   EditorAccessoryProps,
   EditorProps,
   PreviewProps,
-  FileTypeHandler,
+  FileTypeProvider,
   ContainerProps,
   ContainerCategory,
   ContainerExtension,

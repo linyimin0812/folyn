@@ -14,7 +14,7 @@ export { loadAiSessionsForVault } from './aiSessionPersistence';
 // ── FileChangeApplier injection slot ───────────────────────────────────────
 // addFileChange delegates editor mutation to the registered applier
 // (EditorFileChangeApplier, registered at App init via
-// registerEditorFileChangeApplier). The applier owns the useCodeMirror routing
+// registerEditorFileChangeApplier). The applier owns the shell-editor routing
 // (diffReviewStore.enterDiffReview vs editorStore.updateTabContent) and the
 // tabId format — aiStore does not import editorStore/diffReviewStore at
 // runtime. If the applier is null (init not yet run), addFileChange still
@@ -350,7 +350,7 @@ export const useAiStore = create<AiState>((set, get) => ({
     suppressWatcherFor(change.path);
 
     // Delegate editor mutation to the injected FileChangeApplier
-    // (EditorFileChangeApplier). It routes by useCodeMirror (enterDiffReview vs
+    // (EditorFileChangeApplier). It routes by shell-editor mode (enterDiffReview vs
     // updateTabContent) and owns the tabId format.
     fileChangeApplier?.apply(change);
   },

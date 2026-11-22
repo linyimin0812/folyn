@@ -10,7 +10,7 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { ExtensionApi, ExtensionContext } from './extension';
-import type { FileTypeHandler } from './presentation';
+import type { FileTypeProvider } from './presentation';
 
 // ── File-type contracts ──────────────────────────────────────────────────────
 // The file presentation model (FileTypeProvider / PresentationMode /
@@ -19,12 +19,10 @@ import type { FileTypeHandler } from './presentation';
 // `import from 'folyn-extension-sdk'` consumers are unchanged.
 export type {
   FileTypeProvider,
-  FileTypeHandler,
   PresentationModeRegistration,
   PresentationModeId,
   PresentationModeKind,
   SplitComposition,
-  
   FilePresentationContext,
   IconRef,
   EditorAccessoryProps,
@@ -306,7 +304,7 @@ export interface CollectorExtension {
 
 export interface ExtensionModule {
   /** Entry-ref → file-type handler. Keys match `contributes.fileTypes[].handler`. */
-  handlers?: Record<string, FileTypeHandler>;
+  handlers?: Record<string, FileTypeProvider>;
   /** Entry-ref → React component. Keys match `contributes.containers[].component`. */
   containers?: Record<string, ComponentType<ContainerProps>>;
   /**

@@ -1,4 +1,4 @@
-import type { FileTypeHandler, PresentationModeId, PresentationModeRegistration } from './types';
+import type { FileTypeProvider, PresentationModeId, PresentationModeRegistration } from './types';
 import { HandlerRegistry } from './HandlerRegistry';
 import { FOLYN_CORE_OWNER } from '@folyn/extension-host';
 
@@ -25,7 +25,7 @@ const registry = new HandlerRegistry({
 /** Register a file-type handler owned by `ownerExtensionId` (default
  * Folyn core). Replaces any prior handler with the same id. */
 export function registerFileTypeHandler(
-  handler: FileTypeHandler,
+  handler: FileTypeProvider,
   ownerExtensionId: string = FOLYN_CORE_OWNER,
 ): { dispose: () => void } {
   return registry.register(handler, ownerExtensionId);
@@ -41,72 +41,70 @@ export function unregisterFileTypeHandler(id: string): boolean {
   return registry.unregister(id);
 }
 
-export function getHandlerByExtension(ext: string): FileTypeHandler | undefined {
+export function getHandlerByExtension(ext: string): FileTypeProvider | undefined {
   return registry.getByExtension(ext);
 }
 
 /** All providers claiming `ext`, highest priority first (Open With, §26). */
-export function listProviders(ext: string): FileTypeHandler[] {
+export function listProviders(ext: string): FileTypeProvider[] {
   return registry.listProviders(ext);
 }
 
 /** The default (highest-priority) provider for `ext` (§25). */
-export function resolveDefault(ext: string): FileTypeHandler | undefined {
+export function resolveDefault(ext: string): FileTypeProvider | undefined {
   return registry.resolveDefault(ext);
 }
 
-export function getHandlerById(id: string): FileTypeHandler | undefined {
+export function getHandlerById(id: string): FileTypeProvider | undefined {
   return registry.getById(id);
 }
 
-export function getAllHandlers(): FileTypeHandler[] {
+export function getAllHandlers(): FileTypeProvider[] {
   return registry.getAll();
 }
 
 // ── Presentation-mode helpers ─────────────────────────────────────────────
-// Derived accessors over a provider's `modes`, so consumers that read the
-// legacy flat fields (supportedViewModes / defaultViewMode / useCodeMirror /
-// Editor / Preview) migrate to the presentation model without each repeating
+// Derived accessors over a provider's `modes`, so consumers do not each repeat
 // the derivation.
 
 /** All mode ids a provider offers (order = declaration order), excluding
  * `hidden` modes (those stay resolvable via `getMode` but are filtered from
  * the mode switcher). */
-export function getSupportedModes(h: FileTypeHandler | undefined): PresentationModeId[] {
+export function getSupportedModes(h: FileTypeProvider | undefined): PresentationModeId[] {
   return h?.modes.filter((m) => !m.hidden).map((m) => m.id) ?? [];
 }
 
 /** Default mode id: declared `defaultMode` else the first mode. */
-export function getDefaultMode(h: FileTypeHandler | undefined): PresentationModeId | undefined {
+export function getDefaultMode(h: FileTypeProvider | undefined): PresentationModeId | undefined {
   if (!h) return undefined;
   return h.defaultMode ?? h.modes[0]?.id;
 }
 
 /** Look up a mode registration by id. */
 export function getMode(
-  h: FileTypeHandler | undefined,
+  h: FileTypeProvider | undefined,
   id: PresentationModeId,
 ): PresentationModeRegistration | undefined {
   return h?.modes.find((m) => m.id === id);
 }
 
 /** True if the provider offers a shell-editor (CodeMirror) mode. */
-export function usesShellEditor(h: FileTypeHandler | undefined): boolean {
+export function usesShellEditor(h: FileTypeProvider | undefined): boolean {
   return !!h?.modes.some((m) => m.kind === 'shell-editor');
 }
 
 /** The component of the `component`-kind mode with this id (undefined for
  * shell-editor / split modes). */
 export function getModeComponent(
-  h: FileTypeHandler | undefined,
+  h: FileTypeProvider | undefined,
   id: PresentationModeId,
-): FileTypeHandler['modes'][number]['component'] {
+): FileTypeProvider['modes'][number]['component'] {
   const m = getMode(h, id);
   return m?.kind === 'component' ? m.component : undefined;
 }
 
 // ── Built-in discovery ──────────────────────────────────────────────────────
-const modules = import.meta.glob<{ default: FileTypeHandler }>(
+const modules = import.meta.glob<{ default: FileTypeProvider }>(
   './*/index.{ts,tsx}',
   { eager: true },
 );

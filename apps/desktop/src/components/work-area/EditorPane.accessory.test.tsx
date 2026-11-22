@@ -4,13 +4,13 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import type { EditorAccessoryProps, FileTypeHandler } from '@folyn/extension-host';
+import type { EditorAccessoryProps, FileTypeProvider } from '@folyn/extension-host';
 import type { FileTab } from '@/store/editorStore';
 
 // The CodeMirror editor is not under test.
 vi.mock('@/editor/EditorView', () => ({ FolynEditor: () => null }));
 
-const handlers: Record<string, Partial<FileTypeHandler>> = {};
+const handlers: Record<string, Partial<FileTypeProvider>> = {};
 vi.mock('../file-types/registry', () => ({
   getHandlerById: (id: string) => handlers[id],
 }));

@@ -5,13 +5,11 @@ export type {
   ViewMode,
   EditorProps,
   PreviewProps,
-  FileTypeHandler,
   FileTypeProvider,
   PresentationModeRegistration,
   PresentationModeId,
   PresentationModeKind,
   SplitComposition,
-  
   FilePresentationContext,
   IconRef,
 } from 'folyn-extension-sdk';

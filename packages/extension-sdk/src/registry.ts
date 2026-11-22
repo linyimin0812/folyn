@@ -33,7 +33,7 @@ interface Entry<T> {
 
 /**
  * Generic owned-registry helper. Concrete registries pass an `idFor` accessor
- * (values don't share one key name — `Command.id`, `FileTypeHandler.id`,
+ * (values don't share one key name — `Command.id`, `FileTypeProvider.id`,
  * `ContainerExtension.name`) and may layer their own specialized methods on top.
  */
 export class OwnedRegistry<T> implements Registry<T> {

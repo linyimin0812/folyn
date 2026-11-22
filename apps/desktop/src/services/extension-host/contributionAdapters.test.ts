@@ -57,9 +57,8 @@ function fakeModule(): ExtensionModule {
       default: {
         id: 'adt',
         extensions: ['.adt'],
-        supportedViewModes: ['edit'],
         needsFileContent: true,
-        useCodeMirror: true,
+        modes: [{ id: 'edit', kind: 'shell-editor' }],
       },
     },
     containers: { block: (() => null) as never },

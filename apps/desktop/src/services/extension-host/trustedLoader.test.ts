@@ -56,7 +56,7 @@ if (typeof URL.revokeObjectURL !== 'function') {
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const PLUGIN_CODE = `
-export const handlers = { 'default': { id: 'x', extensions: ['.x'], supportedViewModes: ['edit'], needsFileContent: true, useCodeMirror: true } };
+export const handlers = { 'default': { id: 'x', extensions: ['.x'], needsFileContent: true, modes: [{ id: 'edit', kind: 'shell-editor' }] } };
 export const containers = { 'my-block': (props) => null };
 export const commands = { 'greet': () => {} };
 export function activate() {}
@@ -88,9 +88,8 @@ function fakeModule(overrides: Partial<ExtensionModule> = {}): ExtensionModule {
       default: {
         id: 'x',
         extensions: ['.x'],
-        supportedViewModes: ['edit'],
         needsFileContent: true,
-        useCodeMirror: true,
+        modes: [{ id: 'edit', kind: 'shell-editor' }],
       },
     },
     containers: { 'my-block': (() => null) as never },

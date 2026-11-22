@@ -6,25 +6,39 @@
 
 ## Custom Editor Registration
 
-File types that need non-CodeMirror editors register a custom `Editor` component:
+A file type is a `FileTypeProvider`: the presentation modes it offers, and
+which one a file opens in. Builtins live in `src/components/file-types/<type>/index.ts`
+(discovered by `registry.ts`); an extension registers the same shape from its
+module's `handlers` map.
 
 ```typescript
-// src/components/file-types/<type>/index.ts
-import type { FileTypeHandler } from '../types';
+// src/components/file-types/html/index.ts
+import type { FileTypeProvider } from '../types';
 
-const handler: FileTypeHandler = {
+const handler: FileTypeProvider = {
   id: 'html',
   extensions: ['html', 'htm'],
-  supportedViewModes: ['edit', 'preview'],
-  defaultViewMode: 'edit',
   needsFileContent: true,
-  useCodeMirror: false,        // ← Disables CodeMirror in WorkArea
-  Editor: HtmlVisualEditor,    // ← Custom component receives EditorProps
-  Preview: HtmlPreview,        // ← Optional read-only preview
+  defaultMode: 'preview',
+  modes: [
+    { id: 'visual', kind: 'component', component: HtmlVisualEditor }, // ← receives EditorProps
+    { id: 'source', kind: 'shell-editor' },                           // ← the host's CodeMirror
+    { id: 'preview', kind: 'component', component: HtmlPreview },     // ← receives PreviewProps
+  ],
 };
 ```
 
-**Contract**: The `Editor` component receives `EditorProps`:
+- `kind: 'shell-editor'` — the host's CodeMirror. Core owns it; a provider
+  never gets the view (`editorLanguage` names a grammar to borrow,
+  `editorAccessory` lays a component over it).
+- `kind: 'component'` — the provider's own component. Under the `preview` id
+  it renders inside PreviewPane (cursor sync); under any other id it fills
+  the editor area.
+- `kind: 'split'` — two sibling modes side by side; the shell owns the layout.
+- The mode switch shows every mode that is not `hidden`. A provider with one
+  mode shows no switch — there is no host-side list of types to hide it for.
+
+**Contract**: a `component` mode under an editing id receives `EditorProps`:
 ```typescript
 interface EditorProps {
   content: string;          // Current file content
@@ -35,40 +49,33 @@ interface EditorProps {
 }
 ```
 
-**Dispatch**: `WorkArea.tsx` renders `handler.Editor` when `useCodeMirror === false && Editor` is defined. It does NOT render CodeMirror in this case — the custom editor owns the edit experience entirely.
-
-**View mode hiding**: Add the file type ID to `HIDE_VIEW_MODE_FILE_TYPES` in `Topbar.tsx` so the split/edit/preview toggle is hidden. The custom editor manages its own mode switching internally.
-
-Reference: `src/components/file-types/html/HtmlVisualEditor.tsx`, `src/components/file-types/excalidraw/index.ts`
+Reference: `src/components/file-types/html/index.ts`, `src/components/file-types/excalidraw/index.ts`,
+`packages/extension-sdk/src/presentation.ts`
 
 ---
 
 ## AI File-Change Routing for Custom Editors
 
-When the AI panel modifies a file, the CLI writes the file to disk and emits a `file_change` event. `aiStore.addFileChange` consumes the event and must route it differently depending on whether the target tab's handler uses CodeMirror:
+When the AI panel modifies a file, the CLI writes the file to disk and emits a `file_change` event. `aiStore.addFileChange` hands it to the injected `EditorFileChangeApplier`, which routes by whether the target tab's provider has a `shell-editor` mode:
 
 ```ts
-// apps/desktop/src/store/aiStore.ts — addFileChange
-const tab = useEditorStore.getState().tabs.find((t) => t.id === tabId);
-if (tab && change.status === 'pending') {
-  const handler = getHandlerById(tab.fileType);
-  if (handler?.useCodeMirror) {
-    // CodeMirror tabs: enter diff review; DiffReviewBar handles accept/reject
-    useEditorStore.getState().enterDiffReview(change.path, change.oldContent, change.newContent);
-  } else {
-    // Custom editors (drawio, excalidraw, mmap, ...): apply directly via
-    // updateTabContent (NOT setContentExternal) so externalContentVersion
-    // doesn't bump and WorkArea doesn't remount the iframe.
-    useEditorStore.getState().updateTabContent(tabId, change.newContent);
-  }
+// apps/desktop/src/services/fileChangeApplier.ts
+const handler = getHandlerById(tab.fileType);
+if (usesShellEditor(handler)) {
+  // CodeMirror tabs: enter diff review; DiffReviewBar handles accept/reject
+  useDiffReviewStore.getState().enterDiffReview(change.path, change.oldContent, change.newContent);
+} else {
+  // Custom editors (drawio, excalidraw, rich text, ...): apply directly and
+  // bump externalContentVersion so WorkArea remounts the editor.
+  useDiffReviewStore.getState().setContentExternal(tabId, change.newContent);
 }
 ```
 
-**Why branch on `useCodeMirror`**: `DiffReviewBar` is mounted exclusively inside `EditorPane` (`WorkArea.tsx:239`), which only renders when `handler.useCodeMirror === true`. For non-CodeMirror custom editors, the `<handler.Editor>` branch at `WorkArea.tsx:295` does NOT mount `DiffReviewBar` — there is no Accept button and no way for `enterDiffReview` to ever update `tab.content`. The old behavior (always calling `enterDiffReview` for every handler) silently set unused diff state for custom editors; the AI's change was never actionable. The branch above makes custom editors see AI changes live.
+**Why branch on the shell editor**: `DiffReviewBar` is mounted inside `EditorPane`, which only renders for a `shell-editor` mode. A custom component editor has no Accept button, so `enterDiffReview` would set diff state nobody can act on; applying directly makes the AI's change show up live.
 
-**Why `updateTabContent` (not `setContentExternal`)**: `setContentExternal` bumps `externalContentVersion`, which changes `WorkArea`'s remount key `${activeTab.id}-${externalContentVersion}` and destroys+recreates the `<handler.Editor>`. For iframe-backed editors (drawio), this means a full-page flicker on every AI modification. `updateTabContent` mutates `tabs[].content` in place without bumping the version → no remount → the editor's own content-prop effect picks up the change and reloads the iframe in place (postMessage, no DOM destroy).
+**Why `setContentExternal`**: it bumps `externalContentVersion`, which changes WorkArea's remount key `${activeTab.id}-${externalContentVersion}` and recreates the editor component. That is required for editors whose content prop is mount-only (excalidraw's `initialData`); editors with their own reload path (drawio, markmap) remount harmlessly.
 
-**Trade-off (marked `ponytail:` in source)**: non-CodeMirror editors have no accept/reject UI; AI changes auto-apply. Users undo in-editor. A per-type diff UI for custom editors is the upgrade path.
+**Trade-off (marked `ponytail:` in source)**: custom editors have no accept/reject UI; AI changes auto-apply. Users undo in-editor. A per-type diff UI is the upgrade path.
 
 **Real-time granularity ceiling**: `file_change` events fire once per completed Write/Edit tool call in `packages/cli-adapter/src/claudeAdapter.ts:244,283`, carrying the full new file content (re-read from disk). Token-level streaming of file content is NOT supported by the architecture. The best achievable granularity is per-tool-call: each `file_change` triggers one live reload. If the AI uses one big Write call per modification, the editor sees only the final state; if the AI uses multiple Edit calls, the editor shows intermediate states.
 
@@ -118,7 +125,7 @@ Single cursor (no range), not `state.readOnly`, not inside a fenced/indented cod
 
 ### Position-aware parsing (`splitRowSpans`)
 
-`markdownTable.ts` exposes `splitRowSpans(line, {allowBare}) → { cells, fields }` — same cell semantics as `parseTableRow` (which now delegates), plus raw `[start, end)` field spans in **passed-line coordinates**. Cursor math never guesses: field spans come from the same escaped-pipe/code-span/emphasis state machine that splits cells. `markdownTableToMarkdown` **never truncates** over-long rows (widest row defines cols — data preservation for realign; GFM renders truncated, source stays a superset).
+`@folyn/markdown-table` exposes `splitRowSpans(line, {allowBare}) → { cells, fields }` — same cell semantics as `parseTableRow` (which now delegates), plus raw `[start, end)` field spans in **passed-line coordinates**. Cursor math never guesses: field spans come from the same escaped-pipe/code-span/emphasis state machine that splits cells. `markdownTableToMarkdown` **never truncates** over-long rows (widest row defines cols — data preservation for realign; GFM renders truncated, source stays a superset).
 
 ### Ceilings (ponytail notes)
 
@@ -127,7 +134,7 @@ Single cursor (no range), not `state.readOnly`, not inside a fenced/indented cod
 - Prose-with-pipes directly above a table is excluded via the first-pair rule, matching GFM.
 - Enter/Tab inside a table where the syntax tree is unavailable (no language) is not fence-guarded — only relevant outside the app.
 
-Reference: `apps/desktop/src/editor/extensions/MarkdownTableExtension.ts`, `extensions/rich-text/src/markdownTable.ts` (`splitRowSpans`/`displayWidth`/`markdownTableToMarkdown`), `apps/desktop/src/editor/EditorView.tsx` (`markdownExtensions` wiring)
+Reference: `apps/desktop/src/editor/extensions/MarkdownTableExtension.ts`, `packages/markdown-table/src/markdownTable.ts` (`splitRowSpans`/`displayWidth`/`markdownTableToMarkdown`), `apps/desktop/src/editor/EditorView.tsx` (`markdownExtensions` wiring)
 
 ---
 
@@ -411,39 +418,41 @@ Reference: `apps/desktop/src/components/file-types/csv/CsvFileViewerPreview.tsx`
 
 ## DBML ER Diagram (`.dbml`)
 
-DBML files use CodeMirror for editing (`useCodeMirror: true`) with SQL syntax highlighting as a fallback, and render an ER diagram preview via `@dbml/core` (parse) + `d3-force` (layout, `erLayout.ts`) + **`@antv/x6` v3** (rendering — `ErDiagramX6.tsx`, replaced the original hand-drawn SVG renderer `ErDiagramPreview.tsx` which no longer exists).
+DBML lives in the `extensions/dbml` extension, not the host. It edits in the
+host's CodeMirror (highlighted as SQL), and renders an ER diagram preview via
+`@dbml/core` (parse) + `d3-force` (layout, `erLayout.ts`) + **`@antv/x6` v3**
+(rendering — `ErDiagramX6.tsx`), inside the extension's own iframe so those
+dependencies never enter the host bundle.
 
 ### Handler registration
 
 ```typescript
-// src/components/file-types/dbml/index.ts
-const handler: FileTypeHandler = {
+// extensions/dbml/src/index.tsx
+const provider: FileTypeProvider = {
   id: 'dbml',
+  label: 'DBML',
+  priority: 5000,
   extensions: ['dbml'],
-  supportedViewModes: ['split', 'edit', 'preview'],
-  defaultViewMode: 'split',
   needsFileContent: true,
-  useCodeMirror: true,          // CodeMirror editor (SQL fallback highlighting)
-  Preview: ErDiagramX6,         // React.lazy-loaded @antv/x6 renderer
+  editorLanguage: 'SQL',                    // host CodeMirror borrows the SQL grammar
+  editorAccessory: DbmlStyleStatusButton,   // persisted-style button over the editor
+  defaultMode: 'split',
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },
+    { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+    { id: 'preview', kind: 'component', component: DbmlFrame },
+  ],
 };
 ```
 
-`dbml` is added to `PreviewPane.tsx`'s `fullBleed` set so the diagram fills the pane (no padding/scroll gutter), matching `csv`/`office`.
+### SQL highlighting for `.dbml`
 
-### CodeMirror SQL fallback for `.dbml`
-
-`@codemirror/language-data` has no DBML LanguageDescription, so `.dbml` would get no highlighting. `EditorView.tsx` special-cases `.dbml` (alongside the `.json` branch) and loads the SQL LanguageDescription from the shared `languages` array:
-
-```typescript
-const sqlDesc = languages.find((l) => l.name === 'SQL');
-if (sqlDesc) {
-  sqlDesc.load().then((langSupport) => {
-    view.dispatch({ effects: langCompartment.current.reconfigure(langSupport) });
-  });
-}
-```
-
-No new `@codemirror/lang-sql` direct dependency is needed — it is a transitive dep of `@codemirror/language-data` and loads on demand. DBML-specific keywords (`Table`/`Ref`/`Enum`/`Indexes`) are not in SQL's keyword set, so they render as plain identifiers; this is the accepted trade-off for the MVP (a precise Lezer grammar for DBML is explicitly out of scope).
+`@codemirror/language-data` has no DBML grammar. The provider's
+`editorLanguage: 'SQL'` makes `EditorView.tsx` load the SQL description from
+the shared `languages` array for files of this type — no host branch names
+`.dbml`. DBML-specific keywords (`Table`/`Ref`/`Enum`/`Indexes`) are not in
+SQL's keyword set, so they render as plain identifiers; a Lezer grammar for
+DBML is out of scope.
 
 ### Parser: `@dbml/core` (pin `8.3.1`)
 
@@ -485,24 +494,30 @@ For per-edge interaction feedback (e.g. click-to-highlight with a "flowing dashe
 
 ---
 
-## Tiptap Rich Text Editor (`.rt`)
+## Tiptap Rich Text Editor (`.richtext`)
 
-`.rt` files are tiptap/ProseMirror WYSIWYG documents stored as **tiptap native JSON** (`JSON.stringify(editor.getJSON())` on disk). They register a custom `Editor` handler (`useCodeMirror: false`) and are physically isolated from Markdown (CodeMirror) — a `.md` file never routes here. Persistence is owned by Folyn's editor store (`onChange` → `updateTabContent` → autosave → `vault.writeFile`); tiptap's own `storageManager` is not wired.
+Rich text lives in the `extensions/rich-text` extension. `.richtext` files are
+tiptap/ProseMirror WYSIWYG documents stored as **tiptap native JSON**
+(`JSON.stringify(editor.getJSON())` on disk). The provider has a single
+`component` mode, so no mode switch shows, and it is physically isolated from
+Markdown (CodeMirror) — a `.md` file never routes here. Persistence is owned
+by Folyn's editor store (`onChange` → `updateTabContent` → autosave →
+`vault.writeFile`); tiptap's own `storageManager` is not wired.
 
 ```typescript
-// apps/desktop/src/components/file-types/rich-text/index.ts
-const handler: FileTypeHandler = {
+// extensions/rich-text/src/index.tsx
+const provider: FileTypeProvider = {
   id: 'rich-text',
-  extensions: ['rt'],
-  supportedViewModes: ['edit'],
-  defaultViewMode: 'edit',
+  extensions: ['richtext'],
+  label: { zh: '富文本', en: 'Rich Text', /* … */ },
   needsFileContent: true,
-  useCodeMirror: false,
-  Editor: RichTextEditor,
+  defaultMode: 'edit',
+  modes: [{ id: 'edit', kind: 'component', component: RichTextEditor }],
 };
 ```
 
-`'rich-text'` is added to `HIDE_VIEW_MODE_FILE_TYPES` in `Topbar.tsx` so the split/edit/preview toggle is hidden (WYSIWYG-only). New files are created via two sidebar entry points (extension-trigger in the new-file dialog + a sidebar quick-action button).
+New files: the manifest's `contributes.fileTemplates` gives the starter
+document; the provider's `label` names the type in the file tree's 新建 menu.
 
 ### Disk format & serialize/deserialize (identity)
 
@@ -561,7 +576,7 @@ useEffect(() => {
 
 **Race guard**: an external content change arriving while the user's 500ms autosave debounce is pending must clear `saveTimerRef` BEFORE `setContent`, or the stale timer fires `onChange(staleJson)` after the iframe-less editor reloaded with the new content — overwriting the AI's change on disk (the drawio `ponytail:` ceiling, avoided here).
 
-**AI routing**: `useCodeMirror:false` makes `aiStore.addFileChange` take the `updateTabContent` branch automatically (see "AI File-Change Routing for Custom Editors"); no per-type code. Non-CodeMirror editors have no accept/reject diff UI; AI changes auto-apply (users undo in-editor). A per-type diff UI is the upgrade path.
+**AI routing**: having no `shell-editor` mode makes the file-change applier apply AI changes directly (see "AI File-Change Routing for Custom Editors"); no per-type code. Non-CodeMirror editors have no accept/reject diff UI; AI changes auto-apply (users undo in-editor). A per-type diff UI is the upgrade path.
 
 ### Image vault-asset persistence
 

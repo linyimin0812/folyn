@@ -256,10 +256,9 @@ default-src 'none';
     ],
     "fileTypes": [
       {
-        "id": "json",
-        "extensions": [".json"],
-        "handler": "default",
-        "defaultViewMode": "edit",
+        "id": "erd",
+        "extensions": ["erd"],
+        "handler": "erd",
       },
     ],
     "containers": [
@@ -356,16 +355,38 @@ manifest 在安装时校验（Rust `validate_manifest` + TS `ExtensionHost.valid
 ### fileTypes（仅 trusted）
 
 ```jsonc
-"fileTypes": [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }]
+"fileTypes": [{ "id": "erd", "extensions": ["erd"], "handler": "erd" }]
 ```
 
-- `handler` 是模块 `handlers` map 的 entry-ref。handler 必须是完整的
-  `FileTypeHandler`（见 `apps/desktop/src/components/file-types/types.ts`）。
-- `defaultViewMode` 可选（`split` / `edit` / `preview` / `visual` / `source`）。
-- `supportedViewModes`（可选）声明 handler 支持的 view mode；host 会把 manifest
-  声明的 id 合并进 handler 自有的集合，shell 的 view-mode 切换器会展示它们。
-  除了 5 个内置（`split`/`edit`/`preview`/`visual`/`source`），插件可以声明
-  **自定义** mode id（如 `canvas`），由 handler 自己的 `Editor`/`Preview` 渲染。
+- `handler` 是模块 `handlers` map 的 entry-ref，指向一个 `FileTypeProvider`。
+  manifest 条目只给类型的 `id` 和 `extensions`，怎么打开全由 provider 决定。
+- `modes` 列出文件可以怎样显示，编辑器的模式切换就展示这些。一个 mode 可以是宿主
+  自己的编辑器（`kind: 'shell-editor'`）、你的组件（`kind: 'component'`，收到
+  `EditorProps` 或 `PreviewProps`），或两个 mode 并排（`kind: 'split'`）。id 不限：
+  常用 `edit` / `split` / `preview`，自定义 id（如 `canvas`）也可以。`defaultMode`
+  决定打开时用哪个（缺省为第一个）。
+- 没有自己语法的文本格式：`editorLanguage` 指定宿主编辑器按哪种语言高亮（如
+  `'SQL'`），`editorAccessory` 是叠在该编辑器上的组件（例如状态按钮）。
+- `label` 是类型在文件树「新建」菜单里的名字；新文件的初始内容用
+  `contributes.fileTemplates` 提供。
+
+```ts
+import type { ExtensionModule, FileTypeProvider } from 'folyn-extension-sdk';
+
+const erd: FileTypeProvider = {
+  id: 'erd',
+  extensions: ['erd'],
+  needsFileContent: true,
+  defaultMode: 'split',
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },                                  // the host's CodeMirror
+    { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+    { id: 'preview', kind: 'component', component: ErdPreview },           // receives PreviewProps
+  ],
+};
+
+export default { handlers: { erd } } satisfies ExtensionModule;
+```
 
 ### containers（仅 trusted）
 
@@ -826,7 +847,7 @@ Trusted 插件的 `main` 是一个 ESM 模块。host `import()` 后读取其 **n
 
 ```ts
 // index.js —— 自包含的 ESM bundle
-export const handlers: Record<string, FileTypeHandler> = { 'default': { ... } };
+export const handlers: Record<string, FileTypeProvider> = { 'erd': { ... } };
 export const containers: Record<string, ComponentType<ContainerProps>> = { 'todo': TodoComp };
 export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };

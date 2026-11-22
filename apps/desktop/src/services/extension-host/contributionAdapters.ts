@@ -13,11 +13,11 @@
  *
  * ```ts
  * // index.js — a self-contained ESM bundle (no remote imports)
- * import type { FileTypeHandler, ContainerExtension, ... } from '@folyn/extension-host';
+ * import type { FileTypeProvider, ContainerExtension, ... } from '@folyn/extension-host';
  * import type { ComponentType } from 'react';
  *
  * // Named export maps keyed by the manifest's entry-ref strings.
- * export const handlers: Record<string, FileTypeHandler> = { 'default': { ... } };
+ * export const handlers: Record<string, FileTypeProvider> = { 'default': { ... } };
  * export const containers: Record<string, ComponentType> = { 'callout': MyComp };
  * export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
  *
@@ -37,7 +37,7 @@ import type {
   CommandContribution,
   ContainerContribution,
 } from '@folyn/extension-host';
-import type { FileTypeHandler } from '@/components/file-types/types';
+import type { FileTypeProvider } from '@/components/file-types/types';
 import type { ContainerCategory } from '@folyn/container-extensions';
 import { withExtensionBoundary } from './extensionBoundary';
 
@@ -117,8 +117,9 @@ import { registerFileTypeHandler } from '@/components/file-types/registry';
 /**
  * Register a trusted extension's file-type handlers. Each
  * `contributes.fileTypes[]` entry's `handler` entry-ref indexes into
- * `module.handlers`. The handler must be a complete `FileTypeHandler`
- * (including `extensions`, `supportedViewModes`, etc.).
+ * `module.handlers`. The handler must be a complete `FileTypeProvider`
+ * (`modes`, `defaultMode`, …); the manifest entry contributes its `id` and
+ * `extensions`.
  */
 export function registerExtensionFileTypes(
   manifest: ExtensionManifest,
@@ -138,7 +139,7 @@ export function registerExtensionFileTypes(
     }
     // Ensure the handler's id matches the contribution id (defensive: the
     // extension author may have set a different id in the handler object).
-    const merged: FileTypeHandler = { ...handler, id: ft.id, extensions: ft.extensions };
+    const merged: FileTypeProvider = { ...handler, id: ft.id, extensions: ft.extensions };
     // Wrap the extension's mode components in an error boundary at the
     // registration chokepoint so a render throw is isolated to this file-type
     // surface and never white-screens the host.
@@ -159,20 +160,6 @@ export function registerExtensionFileTypes(
         manifest.id,
         `file-type:${ft.id}:editor-accessory`,
       );
-    }
-    // Merge manifest-declared default mode if the handler doesn't declare one.
-    if (ft.defaultViewMode && !merged.defaultMode) {
-      merged.defaultMode = ft.defaultViewMode as FileTypeHandler['defaultMode'];
-    }
-    // Merge manifest-declared view modes into the handler's modes so the
-    // shell's mode switcher surfaces them. Only append modes the handler
-    // doesn't already declare.
-    if (ft.supportedViewModes?.length) {
-      const have = new Set((merged.modes ?? []).map((m) => m.id));
-      const extras = ft.supportedViewModes
-        .filter((m) => !have.has(m))
-        .map((m) => ({ id: m, kind: 'component' as const, component: undefined }));
-      if (extras.length) merged.modes = [...(merged.modes ?? []), ...extras];
     }
     const d = registerFileTypeHandler(merged, manifest.id);
     disposables.push({ dispose: () => d.dispose() });

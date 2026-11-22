@@ -413,16 +413,9 @@ export interface CommandContribution {
 export interface FileTypeContribution {
   id: string;
   extensions: string[];
-  /** Entry ref to a component or 'default' to reuse built-in rendering. */
+  /** Entry ref into `module.handlers` — the {@link FileTypeProvider}, whose
+   *  `modes` / `defaultMode` say how the type opens. */
   handler: string;
-  defaultViewMode?: string;
-  /**
-   * Optional view modes this handler supports (incl. custom mode ids). When
-   * present, merged into the registered handler's `supportedViewModes` so the
-   * shell's view-mode switcher surfaces them. Built-in ids: split/edit/preview/
-   * visual/source; extensions may declare custom ids (e.g. 'canvas').
-   */
-  supportedViewModes?: string[];
 }
 
 export interface ContainerContribution {

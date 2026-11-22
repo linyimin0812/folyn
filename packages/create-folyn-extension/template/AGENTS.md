@@ -97,9 +97,7 @@ Each contribution is a plain-data descriptor in `contributes.*[]`. The `handler`
 "fileTypes": [{
   "id": "puml",
   "extensions": [".puml", ".plantuml"],
-  "handler": "puml-handler",       // entry-ref → ExtensionModule.handlers["puml-handler"]
-  "defaultViewMode": "split",      // optional
-  "supportedViewModes": ["split","preview","source"]  // optional, incl. custom ids like "canvas"
+  "handler": "puml-handler"        // entry-ref → ExtensionModule.handlers["puml-handler"]; how it opens is on the provider
 }]
 ```
 
@@ -276,12 +274,13 @@ const module: ExtensionModule = {
     'puml-handler': {
       id: 'puml',
       extensions: ['.puml', '.plantuml'],
-      supportedViewModes: ['split', 'preview', 'source'],
-      defaultViewMode: 'split',
       needsFileContent: true,
-      useCodeMirror: true,
-      Editor: EditorComponent,   // React component, receives EditorProps
-      Preview: PreviewComponent, // optional, receives PreviewProps
+      defaultMode: 'split',
+      modes: [
+        { id: 'edit', kind: 'shell-editor' },                                   // the host's CodeMirror
+        { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+        { id: 'preview', kind: 'component', component: PreviewComponent },      // receives PreviewProps
+      ],
       serialize: (s) => s,       // optional
       deserialize: (s) => s,     // optional
     },
@@ -329,24 +328,33 @@ const module: ExtensionModule = {
 export default module;
 ```
 
-### FileTypeHandler (handlers[] values)
+### FileTypeProvider (handlers[] values)
 
 ```ts
-interface FileTypeHandler {
+interface FileTypeProvider {
   id: string;
   extensions: string[];
+  label?: string | Record<string, string>;   // name in the 新建 menu, optionally per locale
   icon?: ReactNode;
-  supportedViewModes: ViewMode[];      // 'split' | 'edit' | 'preview' | 'visual' | 'source' | custom string
-  defaultViewMode?: ViewMode;
-  needsFileContent: boolean;
-  useCodeMirror?: boolean;
-  Editor?: ComponentType<EditorProps>;  // EditorProps { content, tabId, filePath, onChange, onSave }
-  Preview?: ComponentType<PreviewProps>; // PreviewProps { content, filePath, vaultRoot, onChange? }
-  editorLanguage?: string;              // highlight the host editor as this language-data name, e.g. 'SQL'
+  needsFileContent?: boolean;
+  priority?: number;                          // highest wins per extension; installed specialized types use 5000
+  modes: PresentationModeRegistration[];
+  defaultMode?: string;                       // defaults to modes[0]
+  editorLanguage?: string;                    // highlight the host editor as this language-data name, e.g. 'SQL'
   editorAccessory?: ComponentType<EditorAccessoryProps>; // overlay on the host editor; props { content, filePath }
   serialize?: (content: string) => string;
   deserialize?: (raw: string) => string;
 }
+
+interface PresentationModeRegistration {
+  id: string;                                 // 'edit' | 'split' | 'preview' | custom
+  kind: 'shell-editor' | 'component' | 'split';
+  component?: ComponentType<EditorProps | PreviewProps>;  // kind 'component'
+  split?: { left: string; right: string };                // kind 'split'
+  hidden?: boolean;                           // resolvable by a split, not shown in the mode switch
+}
+// EditorProps  { content, tabId, filePath, onChange, onSave }
+// PreviewProps { content, filePath, vaultRoot, onChange? }
 ```
 
 ## ExtensionContext (trusted tier)
@@ -432,7 +440,7 @@ A extension that needs no explicit lifecycle can omit `activate`/`deactivate` �
 - Make the smallest change that works end to end before adding capability. Do not scaffold for hypothetical contributions.
 - Keep `manifest.json` and `src/index.ts` in lockstep — every `contributes.*` entry must have a matching handler/component, and vice versa.
 - After any manifest or source change: `pnpm build` → reinstall `dist/` → reload Folyn → exercise the contribution. Type errors that pass at build time do not prove the extension runs.
-- Prefer the SDK's typed contracts (`FileTypeHandler`, `ContainerProps`, `MarkdownCodeRendererProps`, `ExporterHandler`, etc.) over `any` — the host narrows at runtime and type drift surfaces as runtime resolution failures.
+- Prefer the SDK's typed contracts (`FileTypeProvider`, `ContainerProps`, `MarkdownCodeRendererProps`, `ExporterHandler`, etc.) over `any` — the host narrows at runtime and type drift surfaces as runtime resolution failures.
 
 ## Reference
 

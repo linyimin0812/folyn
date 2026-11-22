@@ -12,7 +12,7 @@ npm install folyn-extension-sdk
 import type {
   ExtensionManifest,
   ExtensionModule,
-  FileTypeHandler,
+  FileTypeProvider,
 } from "folyn-extension-sdk";
 import { defineExtension, validateManifest } from "folyn-extension-sdk";
 ```
@@ -90,12 +90,10 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | -------------------- | ---------- | ---- | ------------------------------------------------- |
 | `id`                 | `string`   | 是   | 文件类型 id                                       |
 | `extensions`         | `string[]` | 是   | 扩展名（含 `.`）                                  |
-| `handler`            | `string`   | 是   | entry-ref，索引 `module.handlers`，或 `'default'` |
-| `defaultViewMode`    | `string`   | 否   | 默认 view mode                                    |
-| `supportedViewModes` | `string[]` | 否   | 内置 split/edit/preview/visual/source + 自定义 id |
+| `handler`            | `string`   | 是   | entry-ref，索引 `module.handlers`（一个 `FileTypeProvider`，打开方式由它的 `modes` / `defaultMode` 决定） |
 
 ```jsonc
-"fileTypes": [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }]
+"fileTypes": [{ "id": "erd", "extensions": ["erd"], "handler": "erd" }]
 ```
 
 ### containers
@@ -375,7 +373,7 @@ export default module;
 
 ```ts
 export interface ExtensionModule {
-  handlers?: Record<string, FileTypeHandler>;
+  handlers?: Record<string, FileTypeProvider>;
   containers?: Record<string, ComponentType<ContainerProps>>;
   features?: Record<string, ComponentType>;
   commands?: Record<string, () => void | Promise<void>>;
@@ -453,22 +451,27 @@ export interface PreviewProps {
   hasSelection?: boolean;
 }
 
-export interface FileTypeHandler {
+export interface FileTypeProvider {
   id: string;
   extensions: string[];
+  label?: string | Record<string, string>;   // 新建菜单里的名字；可按 locale 给
   icon?: ReactNode;
-  supportedViewModes: ViewMode[];
-  defaultViewMode?: ViewMode;
-  needsFileContent: boolean;
-  useCodeMirror?: boolean;
-  Editor?: ComponentType<EditorProps>;
-  Preview?: ComponentType<PreviewProps>;
-  /** 没有自己语法的文本格式：宿主编辑器按哪种语言高亮（`@codemirror/language-data` 里的名字，如 `SQL`）。 */
-  editorLanguage?: string;
-  /** 叠在宿主编辑器上的组件（状态按钮、提示），props 为 `{ content, filePath }`，自行定位。 */
-  editorAccessory?: ComponentType<EditorAccessoryProps>;
+  needsFileContent?: boolean;
+  priority?: number;          // 同一扩展名多个 provider 时高者胜；装上的专用类型用 5000
+  modes: PresentationModeRegistration[];
+  defaultMode?: string;       // 默认为 modes[0]
+  editorLanguage?: string;    // 没有自己语法的文本格式：宿主编辑器按哪种语言高亮，如 'SQL'
+  editorAccessory?: ComponentType<EditorAccessoryProps>;  // 叠在宿主编辑器上的组件，props { content, filePath }
   serialize?: (content: string) => string;
   deserialize?: (raw: string) => string;
+}
+
+export interface PresentationModeRegistration {
+  id: string;                 // 'edit' | 'split' | 'preview' | 自定义
+  kind: 'shell-editor' | 'component' | 'split';
+  component?: ComponentType<EditorProps | PreviewProps>;  // kind: 'component'
+  split?: { left: string; right: string };                // kind: 'split'
+  hidden?: boolean;           // 可被 split 引用，但不出现在模式切换里
 }
 
 export interface ContainerProps {

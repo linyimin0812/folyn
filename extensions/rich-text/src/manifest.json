@@ -21,8 +21,6 @@
       {
         "id": "rich-text",
         "handler": "rich-text",
-        "defaultViewMode": "edit",
-        "supportedViewModes": ["edit"],
         "extensions": ["richtext"]
       }
     ],

@@ -23,8 +23,6 @@
       {
         "id": "dbml",
         "handler": "dbml",
-        "defaultViewMode": "split",
-        "supportedViewModes": ["edit", "split", "preview"],
         "extensions": ["dbml"]
       }
     ],

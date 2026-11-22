@@ -26,11 +26,8 @@ vi.mock('@/store/diffReviewStore', () => ({
 
 vi.mock('@/components/file-types/registry', () => ({
   getHandlerById: getHandlerByIdMock,
-  // ponytail: backward-compat — the test's mock handlers use the legacy
-  // useCodeMirror field; fall back to it so existing setups work without
-  // rewriting every mockReturnValue to the new modes[] shape.
-  usesShellEditor: (h: { modes?: Array<{ kind: string }>; useCodeMirror?: boolean } | undefined) =>
-    !!h?.modes?.some((m) => m.kind === 'shell-editor') || h?.useCodeMirror === true,
+  usesShellEditor: (h: { modes?: Array<{ kind: string }> } | undefined) =>
+    !!h?.modes?.some((m) => m.kind === 'shell-editor'),
 }));
 
 // ── aiStore injection slot — drive registration through the real setter ────
@@ -85,9 +82,9 @@ beforeEach(() => {
 });
 
 describe('EditorFileChangeApplier routing', () => {
-  it('routes useCodeMirror files to diffReviewStore.enterDiffReview', () => {
+  it('routes shell-editor files to diffReviewStore.enterDiffReview', () => {
     editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
-    getHandlerByIdMock.mockReturnValue({ id: 'markdown', useCodeMirror: true });
+    getHandlerByIdMock.mockReturnValue({ id: 'markdown', modes: [{ kind: 'shell-editor' }] });
     new EditorFileChangeApplier().apply(change());
 
     expect(diffReviewState.enterDiffReview).toHaveBeenCalledWith('notes/a.md', 'old', 'new');
@@ -95,9 +92,9 @@ describe('EditorFileChangeApplier routing', () => {
     expect(diffReviewState.setContentExternal).not.toHaveBeenCalled();
   });
 
-  it('routes non-useCodeMirror files to diffReviewStore.setContentExternal (version bump + updateTabContent)', () => {
+  it('routes component-editor files to diffReviewStore.setContentExternal (version bump + updateTabContent)', () => {
     editorState.tabs = [{ id: 'vault-1:diagrams/x.drawio', fileType: 'drawio' }];
-    getHandlerByIdMock.mockReturnValue({ id: 'drawio', useCodeMirror: false });
+    getHandlerByIdMock.mockReturnValue({ id: 'drawio', modes: [{ kind: 'component' }] });
     new EditorFileChangeApplier().apply(change({ path: 'diagrams/x.drawio' }));
 
     expect(diffReviewState.setContentExternal).toHaveBeenCalledWith('vault-1:diagrams/x.drawio', 'new');
@@ -107,9 +104,9 @@ describe('EditorFileChangeApplier routing', () => {
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
   });
 
-  it('treats a handler without useCodeMirror as the non-CodeMirror branch', () => {
+  it('treats a handler without modes as the non-CodeMirror branch', () => {
     editorState.tabs = [{ id: 'vault-1:p.webm', fileType: 'web' }];
-    getHandlerByIdMock.mockReturnValue({ id: 'web' }); // no useCodeMirror
+    getHandlerByIdMock.mockReturnValue({ id: 'web' }); // no modes
     new EditorFileChangeApplier().apply(change({ path: 'p.webm' }));
 
     expect(diffReviewState.setContentExternal).toHaveBeenCalledWith('vault-1:p.webm', 'new');
@@ -118,7 +115,7 @@ describe('EditorFileChangeApplier routing', () => {
 
   it('is a no-op when the tab is not open', () => {
     editorState.tabs = [{ id: 'vault-1:other.md', fileType: 'markdown' }];
-    getHandlerByIdMock.mockReturnValue({ useCodeMirror: true });
+    getHandlerByIdMock.mockReturnValue({ modes: [{ kind: 'shell-editor' }] });
     new EditorFileChangeApplier().apply(change({ path: 'notes/absent.md' }));
 
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
@@ -127,7 +124,7 @@ describe('EditorFileChangeApplier routing', () => {
 
   it('is a no-op for a non-pending change', () => {
     editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
-    getHandlerByIdMock.mockReturnValue({ useCodeMirror: true });
+    getHandlerByIdMock.mockReturnValue({ modes: [{ kind: 'shell-editor' }] });
     new EditorFileChangeApplier().apply(change({ status: 'accepted' }));
 
     expect(diffReviewState.enterDiffReview).not.toHaveBeenCalled();
@@ -136,7 +133,7 @@ describe('EditorFileChangeApplier routing', () => {
 
   it('parses the tabId as `${vaultId}:${path}` (vault id leak from aiStore removed)', () => {
     editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
-    getHandlerByIdMock.mockReturnValue({ useCodeMirror: true });
+    getHandlerByIdMock.mockReturnValue({ modes: [{ kind: 'shell-editor' }] });
     new EditorFileChangeApplier().apply(change());
     // The first call arg tuple is (path, oldContent, newContent); tabId format
     // lived in aiStore before — it now lives here. Asserting enterDiffReview
@@ -222,9 +219,9 @@ describe('aiStore.addFileChange end-to-end (via registered applier)', () => {
     registerEditorFileChangeApplier();
   });
 
-  it('routes a useCodeMirror file change to diffReviewStore.enterDiffReview (NOT updateTabContent)', () => {
+  it('routes a shell-editor file change to diffReviewStore.enterDiffReview (NOT updateTabContent)', () => {
     editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
-    getHandlerByIdMock.mockReturnValue({ id: 'markdown', useCodeMirror: true });
+    getHandlerByIdMock.mockReturnValue({ id: 'markdown', modes: [{ kind: 'shell-editor' }] });
 
     useAiStore.getState().addFileChange(change());
 
@@ -237,9 +234,9 @@ describe('aiStore.addFileChange end-to-end (via registered applier)', () => {
     expect(session?.fileChanges[0].path).toBe('notes/a.md');
   });
 
-  it('routes a non-useCodeMirror file change to diffReviewStore.setContentExternal (version bump + updateTabContent)', () => {
+  it('routes a component-editor file change to diffReviewStore.setContentExternal (version bump + updateTabContent)', () => {
     editorState.tabs = [{ id: 'vault-1:diagrams/x.drawio', fileType: 'drawio' }];
-    getHandlerByIdMock.mockReturnValue({ id: 'drawio', useCodeMirror: false });
+    getHandlerByIdMock.mockReturnValue({ id: 'drawio', modes: [{ kind: 'component' }] });
 
     useAiStore.getState().addFileChange(change({ path: 'diagrams/x.drawio' }));
 
@@ -253,7 +250,7 @@ describe('aiStore.addFileChange end-to-end (via registered applier)', () => {
   it('is a no-op on the editor/diff side when no applier is registered (change still recorded)', () => {
     setFileChangeApplier(null);
     editorState.tabs = [{ id: 'vault-1:notes/a.md', fileType: 'markdown' }];
-    getHandlerByIdMock.mockReturnValue({ id: 'markdown', useCodeMirror: true });
+    getHandlerByIdMock.mockReturnValue({ id: 'markdown', modes: [{ kind: 'shell-editor' }] });
 
     useAiStore.getState().addFileChange(change());
 

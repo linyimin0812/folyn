@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { HandlerRegistry } from './HandlerRegistry';
-import type { FileTypeHandler } from './types';
+import type { FileTypeProvider } from './types';
 
-function makeHandler(id: string, ext: string, overrides: Partial<FileTypeHandler> = {}): FileTypeHandler {
+function makeHandler(id: string, ext: string, overrides: Partial<FileTypeProvider> = {}): FileTypeProvider {
   return {
     id,
     extensions: [ext],
-    supportedViewModes: ['edit'],
     needsFileContent: true,
+    modes: [{ id: 'edit', kind: 'shell-editor' }],
     ...overrides,
   };
 }

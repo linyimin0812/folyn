@@ -125,13 +125,11 @@ export type {
   EditorAccessoryProps,
   EditorProps,
   PreviewProps,
-  FileTypeHandler,
   FileTypeProvider,
   PresentationModeRegistration,
   PresentationModeId,
   PresentationModeKind,
   SplitComposition,
-  
   FilePresentationContext,
   IconRef,
   ContainerProps,

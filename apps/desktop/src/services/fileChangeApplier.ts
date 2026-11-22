@@ -11,7 +11,7 @@ import { setFileChangeApplier } from '@/store/aiStore';
  * FileChangeApplier — owned by the editor layer (Scope B + 机制 1).
  *
  * Inverts the legacy reverse-dependency where aiStore reached into editorStore
- * to decide editor-mounting policy (useCodeMirror → enterDiffReview vs
+ * to decide editor-mounting policy (shell editor → enterDiffReview vs
  * updateTabContent). The interface is generic over FileChange so future
  * rename/delete change types can plug in without reshaping the contract
  * (ponytail: only the two existing branches are wired today).
@@ -38,7 +38,8 @@ export interface FileChangeApplier {
 
 /**
  * Editor-layer implementation. Routes a pending FileChange to the right
- * editor mutation based on the affected file's FileTypeHandler.useCodeMirror.
+ * editor mutation based on whether the affected file's FileTypeProvider has a
+ * shell-editor mode.
  *
  * Equivalence to the old aiStore/aiFileChangeActions inline branches is the
  * contract — this is what makes the swap a pure refactor.
@@ -85,7 +86,7 @@ export class EditorFileChangeApplier implements FileChangeApplier {
     const resolved = this.resolveTab(path);
     if (!resolved) return;
     // setContentExternal bumps externalContentVersion so EditorPane resyncs the
-    // CodeMirror doc — direct write, no useCodeMirror branch (accept applies to
+    // CodeMirror doc — direct write, no shell-editor branch (accept applies to
     // the already-open diff review, not a fresh mount).
     useDiffReviewStore.getState().setContentExternal(resolved.tabId, newContent);
   }

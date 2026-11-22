@@ -300,10 +300,9 @@ Every extension folder has a `manifest.json` at its root. Full schema:
     ],
     "fileTypes": [
       {
-        "id": "json",
-        "extensions": [".json"],
-        "handler": "default",
-        "defaultViewMode": "edit",
+        "id": "erd",
+        "extensions": ["erd"],
+        "handler": "erd",
       },
     ],
     "containers": [
@@ -376,20 +375,41 @@ adapts it into the matching app registry when the extension activates.
 ### fileTypes (trusted only)
 
 ```jsonc
-"fileTypes": [{ "id": "json", "extensions": [".json"], "handler": "default", "defaultViewMode": "edit" }]
+"fileTypes": [{ "id": "erd", "extensions": ["erd"], "handler": "erd" }]
 ```
 
-- `handler` is the entry-ref into the module's `handlers` map. The handler
-  must be a complete `FileTypeHandler` (see
-  `apps/desktop/src/components/file-types/types.ts`).
-- `defaultViewMode` is optional (`split` / `edit` / `preview` / `visual` /
-  `source`).
-- `supportedViewModes` (optional) declares the handler's view modes — the
-  host merges manifest-declared ids into the handler's own set so the
-  shell's view-mode switcher surfaces them. Beyond the 5 built-ins
-  (`split`/`edit`/`preview`/`visual`/`source`), a extension may declare
-  **custom** mode ids (e.g. `canvas`); the handler's own `Editor`/`Preview`
-  then renders that mode.
+- `handler` is the entry-ref into the module's `handlers` map: a
+  `FileTypeProvider`. The manifest entry gives the type's `id` and
+  `extensions`; everything about how it opens is on the provider.
+- `modes` lists how the file can be shown, and the editor's mode switch
+  offers them. A mode is the host's own editor (`kind: 'shell-editor'`), your
+  component (`kind: 'component'`, receiving `EditorProps` or `PreviewProps`),
+  or two other modes side by side (`kind: 'split'`). Ids are free: `edit` /
+  `split` / `preview` are the usual ones, a custom id (`canvas`) works too.
+  `defaultMode` picks the one a file opens in (else the first).
+- For a text format without a grammar of its own, `editorLanguage` names the
+  language the host editor highlights it as (`'SQL'`), and `editorAccessory`
+  is a component laid over that editor (a status button).
+- `label` names the type in the file tree's 新建 menu; `contributes.fileTemplates`
+  gives new files their starter content.
+
+```ts
+import type { ExtensionModule, FileTypeProvider } from 'folyn-extension-sdk';
+
+const erd: FileTypeProvider = {
+  id: 'erd',
+  extensions: ['erd'],
+  needsFileContent: true,
+  defaultMode: 'split',
+  modes: [
+    { id: 'edit', kind: 'shell-editor' },                                  // the host's CodeMirror
+    { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },
+    { id: 'preview', kind: 'component', component: ErdPreview },           // receives PreviewProps
+  ],
+};
+
+export default { handlers: { erd } } satisfies ExtensionModule;
+```
 
 ### containers (trusted only)
 
@@ -923,7 +943,7 @@ reads its **named exports** as a `ExtensionModule`:
 
 ```ts
 // index.js — a self-contained ESM bundle
-export const handlers: Record<string, FileTypeHandler> = { 'default': { ... } };
+export const handlers: Record<string, FileTypeProvider> = { 'erd': { ... } };
 export const containers: Record<string, ComponentType<ContainerProps>> = { 'todo': TodoComp };
 export const commands: Record<string, () => void | Promise<void>> = { 'greet': () => {} };
 export const features: Record<string, ComponentType<unknown>> = { 'my-panel': Panel };

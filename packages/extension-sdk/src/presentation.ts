@@ -100,8 +100,8 @@ export interface PresentationModeRegistration {
 }
 
 /**
- * A file-type presentation provider. Replaces the flat `FileTypeHandler`
- * (Editor/Preview/supportedViewModes) with declarative `modes`.
+ * A file-type presentation provider: the presentation modes it offers
+ * (`modes`) and how the shell resolves the active one.
  */
 export interface FileTypeProvider {
   id: string;
@@ -142,10 +142,6 @@ export interface EditorAccessoryProps {
   content: string;
   filePath: string;
 }
-
-/** Type alias kept so existing `import type { FileTypeHandler }` migrates
- * mechanically — it IS the provider now. */
-export type FileTypeHandler = FileTypeProvider;
 
 // ── Legacy component prop shapes ──────────────────────────────────────────────
 // Builtin modes reference their components against these; the shell builds a
