@@ -62,6 +62,14 @@ export default defineWorkspace([
   },
   {
     test: {
+      name: 'markdown-table',
+      environment: 'node',
+      root: path.resolve(root, 'packages/markdown-table'),
+      include: ['**/*.test.ts'],
+    },
+  },
+  {
+    test: {
       name: 'vault-provider',
       environment: 'jsdom',
       root: path.resolve(root, 'packages/vault-provider'),

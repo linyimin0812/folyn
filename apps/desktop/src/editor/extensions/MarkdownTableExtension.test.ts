@@ -9,7 +9,7 @@ import {
   markdownTableToMarkdown,
   displayWidth,
   isSeparatorRow,
-} from '@folyn/extension-rich-text/src/markdownTable';
+} from '@folyn/markdown-table';
 import {
   computeTableTabChange,
   computeTableEnterChange,

@@ -26,6 +26,7 @@
     "@tiptap/pm": "^3.29.2",
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
+    "@folyn/markdown-table": "workspace:*",
     "folyn-extension-sdk": "workspace:*",
     "katex": "^0.16.47",
     "lowlight": "^3",

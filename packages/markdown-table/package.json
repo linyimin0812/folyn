@@ -1,0 +1,21 @@
+{
+  "name": "@folyn/markdown-table",
+  "version": "0.1.0",
+  "description": "Markdown / TSV / CSV table detection, parsing and Markdown rendering — pure text functions",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

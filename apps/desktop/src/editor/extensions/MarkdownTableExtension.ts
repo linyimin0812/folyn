@@ -8,7 +8,7 @@ import {
   markdownTableToMarkdown,
   type ColumnAlignment,
   type ParsedMarkdownTable,
-} from '@folyn/extension-rich-text/src/markdownTable';
+} from '@folyn/markdown-table';
 
 /**
  * Markdown source-mode table editing assistance.

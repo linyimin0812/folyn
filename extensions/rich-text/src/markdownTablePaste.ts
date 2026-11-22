@@ -1,14 +1,8 @@
 import { Extension } from '@tiptap/react';
 import type { EditorView } from '@tiptap/pm/view';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import {
-  detectMarkdownTable,
-  markdownTableToTiptap,
-  detectTsvTable,
-  tsvTableToTiptap,
-  detectCsvTable,
-  csvTableToTiptap,
-} from './markdownTable';
+import { detectMarkdownTable, detectTsvTable, detectCsvTable } from '@folyn/markdown-table';
+import { markdownTableToTiptap, tsvTableToTiptap, csvTableToTiptap } from './markdownTable';
 import type { JSONContent } from '@tiptap/react';
 
 // ponytail: smart paste → Markdown table detection. Runs AFTER the image

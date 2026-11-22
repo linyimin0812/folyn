@@ -83,9 +83,9 @@ importers:
       '@folyn/extension-host':
         specifier: workspace:*
         version: link:../../packages/extension-host
-      '@folyn/extension-rich-text':
+      '@folyn/markdown-table':
         specifier: workspace:*
-        version: link:../../extensions/rich-text
+        version: link:../../packages/markdown-table
       '@folyn/vault-provider':
         specifier: workspace:*
         version: link:../../packages/vault-provider
@@ -554,6 +554,9 @@ importers:
 
   extensions/rich-text:
     dependencies:
+      '@folyn/markdown-table':
+        specifier: workspace:*
+        version: link:../../packages/markdown-table
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
@@ -760,6 +763,12 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/markdown-table:
+    devDependencies:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
