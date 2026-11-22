@@ -15,7 +15,7 @@ describe('authHelpUrl', () => {
 });
 
 describe('showsServerFields', () => {
-  it('hides server + port for a provider whose host is inferred', () => {
+  it('hides the server field for a provider whose host is inferred', () => {
     expect(showsServerFields({ username: 'me@gmail.com', host: '' })).toBe(false);
     expect(showsServerFields({ username: 'me@163.com' })).toBe(false);
   });

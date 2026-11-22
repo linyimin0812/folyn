@@ -27,9 +27,9 @@ export function authHelpUrl(username: unknown): string | null {
 }
 
 /**
- * Whether a mailbox needs its IMAP server + port fields. A provider whose
- * host the collector infers needs neither, so they are noise — unless the
- * user already filled a host in, which must stay visible and editable.
+ * Whether a mailbox needs its IMAP server field. A provider whose host the
+ * collector infers does not, so it is noise — unless the user already filled
+ * a host in, which must stay visible and editable.
  */
 export function showsServerFields(account: Record<string, unknown>): boolean {
   return String(account.host ?? '') !== '' || !hasKnownImapHost(String(account.username ?? ''));

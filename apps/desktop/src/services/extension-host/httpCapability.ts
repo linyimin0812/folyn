@@ -20,6 +20,7 @@ import type {
   ExtensionManifest,
 } from '@folyn/extension-host';
 import { isOriginAllowed, normalizeHeaders } from './rpcBridge';
+import { connect } from './netSocket';
 
 function assertHttpPermission(manifest: ExtensionManifest, url: string): void {
   const origins = manifest.permissions?.http?.origins;
@@ -82,5 +83,6 @@ export function buildExtensionHttp(manifest: ExtensionManifest): ExtensionHttpCa
       );
       return { status: resp.status, headers: resp.headers, body: Uint8Array.from(atob(resp.body), (c) => c.charCodeAt(0)) };
     },
+    connect: (host, port) => connect(manifest, host, port),
   };
 }

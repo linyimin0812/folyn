@@ -85,7 +85,6 @@ export function EmailConfigForm({ config, update }: CollectorConfigFormProps) {
               {showsServerFields(acc) && (
                 <>
                   {field(i, 'host', 'IMAP 服务器（留空自动推断）', 'imap.example.com')}
-                  {field(i, 'port', '端口', '993', 'number')}
                 </>
               )}
             </div>
@@ -94,7 +93,7 @@ export function EmailConfigForm({ config, update }: CollectorConfigFormProps) {
       })}
       <button
         className="inline-flex items-center gap-1 h-[26px] px-2.5 rounded-md text-[11px] font-ui cursor-pointer border border-dashed border-brd2 text-t3 hover:border-acc hover:text-acc transition-all duration-100 bg-transparent"
-        onClick={() => write([...accounts, { username: '', password: '', host: '', port: undefined }])}
+        onClick={() => write([...accounts, { username: '', password: '', host: '' }])}
       >
         + 添加邮箱
       </button>

@@ -1,32 +1,28 @@
 /**
  * Custom-IMAP mailbox collection (poll mode).
  *
- * The host's `ctx.imapFetch` (Rust `activity_imap_fetch`) does the wire work
- * over TLS; this module only picks config, filters by the cursor, and maps
- * messages to standard CollectorEvents. The cursor is the epoch-ms INTERNALDATE
+ * `./imap` speaks IMAP over a TLS socket from `api.network.connect` (the
+ * manifest declares `*:993`, IMAPS on any server, in `permissions.net.hosts`);
+ * this module picks config, filters by the cursor, and maps messages to
+ * standard CollectorEvents. The cursor is the epoch-ms INTERNALDATE
  * of the newest already-ingested message. IMAP SEARCH SINCE is day-granular,
  * so the host fetches with a day of slack and the exact `dateMs <= cursor`
  * filter here plus host-side insert-ignore dedup absorbs the overlap.
  *
- * The password is only ever passed to `imapFetch` — it never appears in event
- * payloads, ids, or cursors.
+ * The password is only ever sent in the IMAP LOGIN — it never appears in
+ * event payloads, ids, or cursors.
  */
 import type { CollectorContext, CollectorEvent } from 'folyn-extension-sdk';
+import { fetchMail, type ImapFetchOptions, type ImapFetchedMessage } from './imap';
 
-/** Message shape returned by ctx.imapFetch (see extension-sdk contracts). */
-export interface ImapFetchedMessage {
-  uid: number;
-  messageId: string | null;
-  subject: string | null;
-  from: string | null;
-  to: string | null;
-  dateMs: number;
-  snippet: string | null;
-  /** Decoded text/html body from the host — null for plain-text-only mail. */
-  bodyHtml: string | null;
-}
+export type { ImapFetchedMessage };
+
+/** Version sent in the IMAP ID command. */
+const CLIENT_VERSION = '0.3.0';
 
 const MAX_BATCH = 200;
+/** The one port the manifest declares (`permissions.net.hosts: ["*:993"]`). */
+const IMAPS_PORT = 993;
 
 // ── RFC 2047 encoded-word decoding (`=?UTF-8?Q?...?= / =?GBK?B?...?=`) ──────
 // IMAP ENVELOPE returns raw header bytes: subjects/addresses from Gmail etc.
@@ -240,7 +236,7 @@ export function emailId(msg: ImapFetchedMessage, host: string, folder: string): 
   return mid ? `email:${mid}` : `email:${host}:${folder}:${msg.uid}`;
 }
 
-type ImapFetch = NonNullable<CollectorContext['imapFetch']>;
+type ImapFetch = (opts: ImapFetchOptions) => Promise<ImapFetchedMessage[]>;
 
 /** Fetch + map one account's new messages since `cursorMs` (0 = first run).
  *  The receiving mailbox and its provider monogram are stamped into each
@@ -255,19 +251,23 @@ async function collectAccount(
   if (!host) {
     throw new Error(`cannot infer an IMAP server from ${acc.username} — fill in the IMAP 服务器 field`);
   }
+  if (acc.port !== IMAPS_PORT) {
+    // The manifest can only declare fixed ports; IMAPS is 993 everywhere the
+    // collector has been used. Another port needs a manifest change.
+    throw new Error(`port ${acc.port} is not supported — only IMAPS on ${IMAPS_PORT}`);
+  }
   const firstRun = cursorMs <= 0;
   const sinceMs = firstRun ? Date.now() - acc.backfillDays * 86_400_000 : cursorMs;
 
-  const messages =
-    (await imapFetch({
-      host,
-      port: acc.port,
-      username: acc.username,
-      password: acc.password,
-      folder: acc.folder,
-      sinceMs,
-      max: MAX_BATCH,
-    })) ?? [];
+  const messages = await imapFetch({
+    host,
+    port: acc.port,
+    username: acc.username,
+    password: acc.password,
+    folder: acc.folder,
+    sinceMs,
+    max: MAX_BATCH,
+  });
 
   const events: CollectorEvent[] = [];
   let newest = firstRun ? 0 : cursorMs;
@@ -355,8 +355,8 @@ export async function collectEmailEvents(
   const cursorIn = ctx.cursor ?? '';
   // Unconfigured — no events, cursor untouched.
   if (accounts.length === 0) return { events: [], nextCursor: cursorIn };
-  if (!ctx.imapFetch) throw new Error('email collector requires ctx.imapFetch');
-  const imapFetch = ctx.imapFetch;
+  const imapFetch: ImapFetch = (opts) =>
+    fetchMail((host, port) => ctx.api.network.connect(host, port), opts, CLIENT_VERSION);
 
   const { map, legacyMs } = parseCursorMap(cursorIn);
   const events: CollectorEvent[] = [];

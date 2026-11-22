@@ -70,6 +70,29 @@ export interface ExtensionHttpCapability {
    * {@link download} for anything large.
    */
   fetchBytes(url: string, init?: ExtensionHttpInit): Promise<ExtensionHttpBytesResponse>;
+  /**
+   * Open a TLS connection to `host:port`, for a protocol that is not HTTP
+   * (IMAP, SMTP, …). The extension speaks the protocol; the host moves bytes.
+   * `host:port` must be listed in `permissions.net.hosts` (or `*:port` for any
+   * host on that port). Certificates are verified for `host`. At most 8 open
+   * connections per extension.
+   */
+  connect(host: string, port: number): Promise<ExtensionSocket>;
+}
+
+/** An open connection from {@link ExtensionHttpCapability.connect}. */
+export interface ExtensionSocket {
+  /**
+   * The next bytes received, in order; `null` once the connection is closed
+   * (by the peer, by {@link close}, or a read error — {@link error} says which).
+   * One read at a time.
+   */
+  read(): Promise<Uint8Array | null>;
+  write(data: Uint8Array | string): Promise<void>;
+  /** Close the connection. Pending and later reads resolve `null`. */
+  close(): Promise<void>;
+  /** Why the connection closed, when a read failed; else `null`. */
+  readonly error: string | null;
 }
 
 export interface ExtensionHttpBytesResponse {
@@ -234,6 +257,9 @@ export interface ExtensionPermissions {
   subscriptions?: { vault: boolean; network: boolean; render?: boolean };
   fs?: { scope: string[] };
   http?: { origins: string[] };
+  /** Hosts `api.network.connect` may open a TLS connection to (trusted only):
+   *  `"host:port"`, or `"*:port"` for any host on that port. */
+  net?: { hosts: string[] };
   /** Programs the extension may run through `api.process.exec` (trusted
    * only): a name resolved on `PATH` (`git`, `osascript`) or an absolute
    * path. Listed in the consent dialog; the host runs nothing else. */

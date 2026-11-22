@@ -192,8 +192,8 @@ gives it a slot (`storageProviders[].configForm`, a collector's `configForm`,
 a file type's `editorAccessory`).
 The host never branches on an extension or collector id.
 
-Not on this model yet: `CollectorContext.imapFetch` (a fixed Rust IMAP
-client) and `api.subscriptions` (its own fetch, vault IO and storage).
+Not on this model yet: `api.subscriptions` (its own fetch, vault IO and
+storage).
 
 ## Open seams (to record, not to fix now)
 

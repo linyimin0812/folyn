@@ -189,41 +189,6 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       cursor,
       config,
       api: reg.api,
-      // IMAPS mail fetcher (Rust `activity_imap_fetch` — TLS-only IMAP via the
-      // imap crate; pure data params, no exec; see activity/mod.rs). Same
-      // trust model: fixed command, collector only picks data.
-      imapFetch: async (opts: {
-        host: string;
-        port?: number;
-        username: string;
-        password: string;
-        folder?: string;
-        sinceMs: number;
-        max?: number;
-      }) => {
-        return invoke<
-          Array<{
-            uid: number;
-            messageId: string | null;
-            subject: string | null;
-            from: string | null;
-            to: string | null;
-            dateMs: number;
-            snippet: string | null;
-            bodyHtml: string | null;
-          }> | null
-        >('activity_imap_fetch', {
-          args: {
-            host: opts.host,
-            port: opts.port ?? null,
-            username: opts.username,
-            password: opts.password,
-            folder: opts.folder ?? null,
-            sinceMs: opts.sinceMs,
-            max: opts.max ?? null,
-          },
-        });
-      },
       // Transient progress → store (runtime-only, never persisted). Cleared
       // in the finally below on both success and failure paths.
       onProgress: (message) => {

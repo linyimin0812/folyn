@@ -41,6 +41,7 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `fs`        | `{ scope: string[] }`                                   | 文件读写 glob（相对插件数据目录） |
 | `http`      | `{ origins: string[] }`                                 | 允许的 origin allowlist           |
 | `exec`      | `{ programs: string[] }`                                | `api.process.exec` 可运行的程序（仅 trusted；`PATH` 上的程序名或绝对路径，精确匹配） |
+| `net`       | `{ hosts: string[] }`                                   | `api.network.connect` 可连接的主机（仅 trusted）：`host:port`，或 `*:port` 表示该端口的任意主机 |
 | `system`    | `{ frontWindow?: boolean }`                             | `api.system.frontWindow()`：读取前台应用与窗口标题（仅 trusted） |
 | `clipboard` | `boolean`                                               | 剪贴板读写                        |
 | `dialog`    | `boolean`                                               | 文件打开/保存对话框               |

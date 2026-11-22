@@ -834,6 +834,7 @@ code, under the manifest `permissions` the user approved at install:
 | --- | --- | --- |
 | A remote API | `ctx.api.network.fetch(url, init)` — runs in Rust (no CORS) and times out on its own | `permissions.http.origins` (exact origin) |
 | A local program (`git`, `osascript`, a helper of your own) | `ctx.api.process.exec(program, args, { cwd })` — see [Running local programs](#running-local-programs-trusted-tier) | `permissions.exec.programs` (exact program string) |
+| A mail server or another non-HTTP service | `ctx.api.network.connect(host, port)` — a TLS socket; see [Talking a protocol other than HTTP](#talking-a-protocol-other-than-http-trusted-tier) | `permissions.net.hosts` (`host:port`, or `*:port`) |
 | The frontmost app and window title | `ctx.api.system.frontWindow()` — fixed host queries; `null` when unreadable. macOS asks the user for Automation permission on first use | `permissions.system.frontWindow: true` |
 | The vault's files | `ctx.api.vault.listFiles({ exclude, includeHidden })` (each with `size` / `mtimeMs`), `ctx.api.vault.readText(path, { maxBytes })` (at most that many bytes; `null` for binary) | — |
 
@@ -1113,6 +1114,36 @@ Rust-side re-check from the on-disk manifest).
 **Render format**: prefer `data:image/svg+xml;base64,...` URLs over
 `blob:` URLs (no lifecycle, CSP already allows `img-src data:`) or
 inline `<svg>` (carries script-injection surface).
+
+### Talking a protocol other than HTTP (trusted tier)
+
+For IMAP, SMTP or any other protocol over TLS, open a socket and speak it
+yourself — the host only moves bytes.
+
+**Step 1 — declare the hosts in `manifest.json`:**
+
+```jsonc
+"permissions": {
+  "net": { "hosts": ["imap.gmail.com:993"] }   // or "*:993": any host, that port only
+}
+```
+
+**Step 2 — `api.network.connect`:**
+
+```ts
+const socket = await api.network.connect('imap.gmail.com', 993);
+await socket.write('a1 NOOP\r\n');
+for (let chunk; (chunk = await socket.read()) !== null; ) {
+  // bytes in arrival order; a line or a message may span several chunks
+}
+await socket.close();
+```
+
+- TLS only; the certificate is verified for the host you pass.
+- `read()` resolves `null` once the connection is closed — by the peer, by
+  `close()`, or a read error (`socket.error` then says why). One read at a time.
+- At most 8 open connections per extension. Close what you open.
+- Example: `extensions/email-collector/src/imap.ts`, an IMAP client on top of it.
 
 ### Running local programs (trusted tier)
 

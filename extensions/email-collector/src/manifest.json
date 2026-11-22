@@ -1,7 +1,7 @@
 {
   "id": "folyn-email-collector",
   "name": "Email Collector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "Folyn",
   "folyn": ">=0.1.0",
   "tier": "trusted",
@@ -15,7 +15,8 @@
     "dialog": false,
     "window": false,
     "vault": { "readActive": false, "insertContent": false, "readBinary": false },
-    "ai": { "chat": false, "agents": [], "edit": false }
+    "ai": { "chat": false, "agents": [], "edit": false },
+    "net": { "hosts": ["*:993"] }
   },
   "contributes": {
     "collectors": [

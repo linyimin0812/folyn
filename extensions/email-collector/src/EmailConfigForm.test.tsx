@@ -33,11 +33,11 @@ describe('EmailConfigForm', () => {
 
     expect(saved).toEqual({
       allowAiSummary: true,
-      accounts: [{ username: 'me@example.com', password: '', host: '', port: undefined }],
+      accounts: [{ username: 'me@example.com', password: '', host: '' }],
     });
   });
 
-  it('asks for server + port only when the provider is not a known one', () => {
+  it('asks for the server only when the provider is not a known one', () => {
     render(<Host initial={{ accounts: [{ username: 'me@example.com', password: 'p' }] }} />);
     expect(screen.queryByPlaceholderText('imap.example.com')).not.toBeNull();
     expect(screen.queryByText('如何获取授权码？')).toBeNull();
@@ -48,17 +48,6 @@ describe('EmailConfigForm', () => {
     expect(help.href).toBe('https://support.google.com/mail/answer/185833');
     // The host opens only `target="_blank"` links in the system browser.
     expect(help.target).toBe('_blank');
-  });
-
-  it('stores the port as a number, and clears it when the field is emptied', () => {
-    render(<Host initial={{ accounts: [{ username: 'me@example.com', password: 'p' }] }} />);
-    const port = screen.getByPlaceholderText('993');
-
-    fireEvent.change(port, { target: { value: '1993' } });
-    expect((saved.accounts as Record<string, unknown>[])[0]!.port).toBe(1993);
-
-    fireEvent.change(port, { target: { value: '' } });
-    expect((saved.accounts as Record<string, unknown>[])[0]!.port).toBeUndefined();
   });
 
   it('removes one mailbox and keeps the others', () => {

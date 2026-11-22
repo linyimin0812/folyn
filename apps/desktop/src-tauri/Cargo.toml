@@ -79,7 +79,7 @@ futures = "0.3"
 # async URI scheme handler and the `plugin_rpc_respond` Tauri command; plus
 # `time` for the 30s response timeout). Regular dep — not just dev — because
 # the runtime path uses these APIs in the shipped binary.
-tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+tokio = { version = "1", features = ["macros", "rt", "sync", "time", "net", "io-util"] }
 # Diagnostics for unconditional code paths (voice module ready beacon, pet-api
 # enabled beacon, global-shortcut handler trace, plugin-rpc emit-failed warn).
 # Declared in main deps — NOT macOS-only — because the call sites compile on
@@ -115,13 +115,11 @@ time = "0.3"
 # plugins are distributed as compiled-only zips; this crate does the unzip +
 # the zip-slip / size-bomb / blacklist filtering in `plugin_commands.rs`.
 zip = "2"
-imap = { version = "2.4.1", default-features = false }
-rustls = "0.23"
+# Async TLS for `extension_net` (api.network.connect), verified against the
+# Mozilla roots. Already in the tree via reqwest/hyper-rustls, with the same
+# aws-lc-rs backend.
+tokio-rustls = "0.26"
 webpki-roots = "0.26"
-imap-proto = "0.10.2"
-# MIME body decoding (quoted-printable/base64/charsets) for email activity
-# previews — hand-rolling RFC 2045/2047 body decoding is the alternative.
-mailparse = "0.17"
 [dev-dependencies]
 tempfile = "3"
 # `#[tokio::test]` for the AppleSpeechAsr::transcribe() async tests ported

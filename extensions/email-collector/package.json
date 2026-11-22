@@ -1,6 +1,6 @@
 {
   "name": "@folyn/extension-email-collector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Email collector — polls a custom IMAP mailbox into the activity timeline",
@@ -21,5 +21,8 @@
     "react-dom": "^18.3.1",
     "typescript": "^5.7.0",
     "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "postal-mime": "2.7.5"
   }
 }

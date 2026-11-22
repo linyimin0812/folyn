@@ -18,6 +18,7 @@ mod extension_download;
 mod extension_fetch;
 mod extension_exec;
 mod extension_system;
+mod extension_net;
 mod subscriptions;
 mod subscription_render;
 mod extension_rpc;
@@ -593,6 +594,7 @@ pub fn run() {
             startup_log("[builder] manage ExtensionToolWindowState");
             commands::ExtensionToolWindowState::new()
         })
+        .manage(extension_net::NetConnections::default())
         .manage({
             startup_log("[builder] manage PreviousFrontmostApp");
             commands::PreviousFrontmostApp(std::sync::Mutex::new(
@@ -831,7 +833,6 @@ pub fn run() {
             activity::activity_push_events,
             activity::activity_get_cursor,
             activity::activity_set_cursor,
-            activity::activity_imap_fetch,
             activity::activity_list_events,
             activity::activity_aggregate_metrics,
             activity::activity_list_entities,
@@ -864,6 +865,9 @@ pub fn run() {
             extension_fetch::extension_downloads_list,
             extension_exec::extension_exec,
             extension_system::extension_front_window,
+            extension_net::extension_net_connect,
+            extension_net::extension_net_write,
+            extension_net::extension_net_close,
             subscriptions::subscription_fetch,
             subscription_render::subscription_render,
             subscription_render::subscription_cancel_renders,

@@ -372,6 +372,10 @@ importers:
         version: 6.4.2(@types/node@22.19.17)(jiti@1.21.7)(sass@1.51.0)(terser@5.46.1)(yaml@2.9.0)
 
   extensions/email-collector:
+    dependencies:
+      postal-mime:
+        specifier: 2.7.5
+        version: 2.7.5
     devDependencies:
       '@testing-library/react':
         specifier: ^16.3.2

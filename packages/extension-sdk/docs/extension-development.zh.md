@@ -747,6 +747,7 @@ diff 游标、`authSchema` 含 `allowAiSummary`、文件过滤规则用自带的
 | --- | --- | --- |
 | 远程 API | `ctx.api.network.fetch(url, init)`：在 Rust 侧发出（无 CORS），自带超时 | `permissions.http.origins`（origin 精确匹配） |
 | 本机程序（`git`、`osascript`、自带的辅助程序） | `ctx.api.process.exec(program, args, { cwd })`，见[运行本机程序](#运行本机程序trusted-tier) | `permissions.exec.programs`（程序名精确匹配） |
+| 邮件服务器等非 HTTP 服务 | `ctx.api.network.connect(host, port)`：TLS socket，见[使用 HTTP 以外的协议](#使用-http-以外的协议trusted-tier) | `permissions.net.hosts`（`host:port` 或 `*:port`） |
 | 前台应用与窗口标题 | `ctx.api.system.frontWindow()`：host 的固定查询，读不到时返回 `null`。macOS 首次调用会请用户授予「自动化」权限 | `permissions.system.frontWindow: true` |
 | vault 里的文件 | `ctx.api.vault.listFiles({ exclude, includeHidden })`（每项带 `size` / `mtimeMs`）、`ctx.api.vault.readText(path, { maxBytes })`（最多读这么多字节，二进制返回 `null`） | — |
 
@@ -959,6 +960,35 @@ Folyn 源码或主窗口 CSP。Host 在两处强制校验 allowlist（JS 侧快�
 
 **渲染格式**：优先 `data:image/svg+xml;base64,...` URL，不要用 `blob:` URL
 （需要 revoke 生命周期）或 inline `<svg>`（带 script 注入面）。
+
+### 使用 HTTP 以外的协议（trusted tier）
+
+IMAP、SMTP 等基于 TLS 的协议：打开一个 socket 自己说协议，host 只负责搬运字节。
+
+**第 1 步 —— 在 `manifest.json` 里声明主机：**
+
+```jsonc
+"permissions": {
+  "net": { "hosts": ["imap.gmail.com:993"] }   // 或 "*:993"：任意主机，仅限该端口
+}
+```
+
+**第 2 步 —— `api.network.connect`：**
+
+```ts
+const socket = await api.network.connect('imap.gmail.com', 993);
+await socket.write('a1 NOOP\r\n');
+for (let chunk; (chunk = await socket.read()) !== null; ) {
+  // 按到达顺序的字节；一行或一封邮件可能跨多个 chunk
+}
+await socket.close();
+```
+
+- 只支持 TLS；证书按你传入的主机名校验。
+- 连接关闭后（对端关闭、调用 `close()`、或读出错，原因见 `socket.error`），
+  `read()` 返回 `null`。同一时刻只能有一个 read。
+- 每个扩展最多同时 8 个连接，用完要关。
+- 示例：`extensions/email-collector/src/imap.ts`，基于它实现的 IMAP 客户端。
 
 ### 运行本机程序（trusted tier）
 

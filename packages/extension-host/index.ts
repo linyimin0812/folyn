@@ -71,6 +71,7 @@ export type {
   ExtensionTheme,
   ExtensionLocale,
   ExtensionHttpCapability,
+  ExtensionSocket,
   ExtensionHttpInit,
   ExtensionHttpResponse,
   ExtensionHttpBytesResponse,

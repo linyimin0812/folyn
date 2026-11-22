@@ -1,9 +1,13 @@
 /**
- * Fixture-based collect() tests: ctx.imapFetch stubbed with canned messages —
- * no network, same message shape as the Rust `activity_imap_fetch` output.
+ * Fixture-based collect() tests: the IMAP client (`./imap` fetchMail) is
+ * stubbed with canned messages — no network. `imap.test.ts` covers the wire.
  */
-import { describe, it, expect, vi } from 'vitest';
-import type { CollectorContext, CollectorEvent } from 'folyn-extension-sdk';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { CollectorContext, CollectorEvent, ExtensionApi } from 'folyn-extension-sdk';
+
+const fetchMail = vi.hoisted(() => vi.fn());
+vi.mock('./imap', async (importOriginal) => ({ ...(await importOriginal<object>()), fetchMail }));
+
 import { collectEmailEvents, decodeMimeHeader, emailId, errorText, hasKnownImapHost, inferImapHost, parseAccounts, providerBadge, senderAddress, type ImapFetchedMessage } from './emailEvents';
 
 function msg(partial: Partial<ImapFetchedMessage>): ImapFetchedMessage {
@@ -20,12 +24,20 @@ function msg(partial: Partial<ImapFetchedMessage>): ImapFetchedMessage {
   };
 }
 
+const connect = vi.fn();
+const api = { network: { connect } } as unknown as ExtensionApi;
+
+/** What each account was fetched with (fetchMail's options). */
+const fetchedWith = () => fetchMail.mock.calls.map((c) => c[1] as { host: string; username: string; sinceMs: number });
+
+beforeEach(() => {
+  fetchMail.mockReset();
+  connect.mockReset();
+});
+
 function ctx(config: Record<string, unknown>, cursor: string | null, messages: ImapFetchedMessage[]): CollectorContext {
-  return {
-    cursor,
-    config,
-    imapFetch: vi.fn().mockResolvedValue(messages),
-  } as unknown as CollectorContext;
+  fetchMail.mockResolvedValue(messages);
+  return { cursor, config, api } as unknown as CollectorContext;
 }
 
 const CFG = {
@@ -45,21 +57,16 @@ const MULTI = {
 describe('collectEmailEvents', () => {
   it('unconfigured → no fetch, cursor untouched', async () => {
     const c = { ...CFG, username: '' } as Record<string, unknown>;
-    const fetch = vi.fn();
-    const out = await collectEmailEvents({
-      cursor: '123',
-      config: c,
-      imapFetch: fetch as never,
-    } as unknown as CollectorContext);
+    const out = await collectEmailEvents({ cursor: '123', config: c, api } as unknown as CollectorContext);
     expect(out.events).toEqual([]);
     expect(out.nextCursor).toBe('123');
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetchMail).not.toHaveBeenCalled();
   });
 
   it('infers the IMAP host from the username when host is blank', async () => {
     const c = ctx({ ...CFG, host: '' }, null, [msg({})]);
     await collectEmailEvents(c);
-    const called = (c.imapFetch as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { host: string };
+    const called = fetchedWith()[0]!;
     expect(called.host).toBe('imap.example.com');
   });
 
@@ -130,7 +137,7 @@ describe('collectEmailEvents', () => {
     const out = await collectEmailEvents(c);
     expect(out.events).toEqual([]);
     expect(JSON.parse(out.nextCursor)['bob@example.com|INBOX']).toBeGreaterThanOrEqual(before);
-    const called = (c.imapFetch as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { sinceMs: number };
+    const called = fetchedWith()[0]!;
     const days = (Date.now() - called.sinceMs) / 86_400_000;
     expect(days).toBeGreaterThan(29);
     expect(days).toBeLessThan(31);
@@ -149,15 +156,11 @@ describe('collectEmailEvents', () => {
   });
 
   const multiCtx = (cursor: string | null, failUsernames: string[] = []) => {
-    const imapFetch = vi.fn(async (args: { username: string; sinceMs: number }) => {
+    fetchMail.mockImplementation(async (_connect: unknown, args: { username: string }) => {
       if (failUsernames.includes(args.username)) throw new Error('auth failed');
       return [msg({ messageId: `<${args.username}@x>`, dateMs: 5_000 })];
     });
-    return {
-      cursor,
-      config: MULTI,
-      imapFetch,
-    } as unknown as CollectorContext & { imapFetch: ReturnType<typeof vi.fn> };
+    return { cursor, config: MULTI, api } as unknown as CollectorContext;
   }
 
   it('collects every account with an independent cursor', async () => {
@@ -172,18 +175,15 @@ describe('collectEmailEvents', () => {
       'a@example.com|INBOX': 5_000,
       'b@example.com|Archive': 6_000,
     });
-    // A second call: imapFetch got one call per account.
-    expect(c.imapFetch).toHaveBeenCalledTimes(2);
+    // One fetch per account.
+    expect(fetchMail).toHaveBeenCalledTimes(2);
   });
 
   it('an account without a cursor entry backfills (first-run sinceMs)', async () => {
     const cursor = JSON.stringify({ 'a@example.com|INBOX': 4_000 });
     const c = multiCtx(cursor);
     await collectEmailEvents(c);
-    const calls = (c.imapFetch as ReturnType<typeof vi.fn>).mock.calls as Array<
-      [{ username: string; sinceMs: number }]
-    >;
-    const byUser = Object.fromEntries(calls.map(([a]) => [a.username, a]));
+    const byUser = Object.fromEntries(fetchedWith().map((a) => [a.username, a]));
     expect(byUser['a@example.com']!.sinceMs).toBe(4_000);
     expect(Date.now() - byUser['b@example.com']!.sinceMs).toBeLessThan(86_400_000 * 31);
   });
@@ -207,17 +207,36 @@ describe('collectEmailEvents', () => {
   });
 
   it('all accounts failing → throws with the AppError-shaped message (no [object Object])', async () => {
-    const imapFetch = vi.fn(async () => {
+    fetchMail.mockImplementation(async () => {
       throw { category: 'internal', detail: 'imap: login failed' };
     });
-    const c = {
-      cursor: null,
-      config: MULTI,
-      imapFetch,
-    } as unknown as CollectorContext;
+    const c = { cursor: null, config: MULTI, api } as unknown as CollectorContext;
     await expect(collectEmailEvents(c)).rejects.toThrow(
       'a@example.com: internal: imap: login failed; b@example.com: internal: imap: login failed',
     );
+  });
+});
+
+describe('collectEmailEvents / wiring', () => {
+  it('refuses a port other than IMAPS 993 with a clear message, without connecting', async () => {
+    const out = collectEmailEvents(ctx({ ...CFG, host: 'mail.corp', port: 143 }, null, []));
+    await expect(out).rejects.toThrow('port 143 is not supported — only IMAPS on 993');
+    expect(fetchMail).not.toHaveBeenCalled();
+  });
+
+  it('fetches through the extension\'s own network.connect', async () => {
+    const socket = { marker: 'socket' };
+    connect.mockResolvedValue(socket);
+    const c = ctx(CFG, null, []);
+    let opened: unknown;
+    fetchMail.mockImplementation(async (open: (h: string, p: number) => Promise<unknown>) => {
+      opened = await open('imap.example.com', 993);
+      return [];
+    });
+    await collectEmailEvents(c);
+    expect(opened).toBe(socket);
+    expect(fetchMail).toHaveBeenCalled();
+    expect(connect).toHaveBeenCalledWith('imap.example.com', 993);
   });
 });
 
