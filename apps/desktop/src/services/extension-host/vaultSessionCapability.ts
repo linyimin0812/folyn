@@ -10,6 +10,7 @@ import type { Disposable, ExtensionDataStore, ExtensionManifest, ExtensionVaultF
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useVaultStore } from '@/store/vaultStore';
+import { useNavStore } from '@/store/navStore';
 import { resolveBasePath } from '@/utils/pathResolver';
 import { openFile } from '@/services/editorIoService';
 import { readEditedNoteText, appendNoteInEditor } from '@/services/editorNoteService';
