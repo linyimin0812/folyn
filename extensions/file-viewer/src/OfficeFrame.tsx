@@ -42,8 +42,11 @@ export function OfficeFrame({ filePath }: PreviewProps): React.JSX.Element {
   }, [filePath]);
 
   // The iframe posts `ready` once its script runs; we then push the bytes.
+  // Only our own iframe's: the host keeps several file views mounted, and a
+  // `ready` from another one must not push bytes before this frame listens.
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
+      if (ev.source !== iframeRef.current?.contentWindow) return;
       const d = ev.data as { type?: string } | null;
       if (d?.type === 'folyn-file-viewer:ready') setReady(true);
     };
