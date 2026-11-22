@@ -100,6 +100,34 @@ void import('@tauri-apps/api/core')
   .then(({ convertFileSrc }) => { _convertFileSrc = convertFileSrc; })
   .catch(() => {});
 
+/** At most `maxBytes` of a file as text, without reading the rest; `null` for
+ *  binary content (a NUL byte, or bytes that are not UTF-8). A multi-byte
+ *  character cut off at the limit is dropped. */
+async function readTextPrefix(abs: string, maxBytes: number): Promise<string | null> {
+  const { open } = await import('@tauri-apps/plugin-fs');
+  const buffer = new Uint8Array(Math.max(1, Math.floor(maxBytes)));
+  const file = await open(abs, { read: true });
+  let filled = 0;
+  try {
+    while (filled < buffer.length) {
+      const n = await file.read(buffer.subarray(filled));
+      if (n === null) break;
+      filled += n;
+    }
+  } finally {
+    await file.close();
+  }
+  const bytes = buffer.subarray(0, filled);
+  if (bytes.includes(0)) return null;
+  try {
+    // `stream: true` holds back a trailing incomplete sequence instead of
+    // failing on it; `fatal` rejects bytes that are not UTF-8 at all.
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes, { stream: true });
+  } catch {
+    return null;
+  }
+}
+
 /** Build a real VaultApi for a manifest (Tauri-backed, vault-scoped). */
 function createVaultApi(): VaultApi {
   return {
@@ -107,26 +135,38 @@ function createVaultApi(): VaultApi {
       const { currentVault, isLoading } = useVaultStore.getState();
       return currentVault && !isLoading ? { id: currentVault.id, name: currentVault.name } : null;
     },
-    async listFiles() {
-      const patterns = parseExcludePatterns(useAppearanceStore.getState().excludePatterns || '');
-      // The scan prunes exact names during the walk; wildcards are matched below.
-      const entries = await useVaultStore.getState().manager.listFiles('', true, false, patterns);
+    async listFiles(opts) {
+      const patterns = [
+        ...(opts?.exclude ?? parseExcludePatterns(useAppearanceStore.getState().excludePatterns || '')),
+        '.git',
+      ];
+      // The scan prunes exact names during the walk; wildcards are matched
+      // below. A pattern matching a directory drops everything under it.
+      const entries = await useVaultStore.getState().manager.listFiles('', true, !!opts?.includeHidden, patterns);
       const files: ExtensionVaultFile[] = [];
       const collect = (items: VaultEntry[]) => {
         for (const entry of items) {
           if (matchesAnyPattern(entry.name, patterns)) continue;
           if (entry.type === 'dir') collect(entry.children ?? []);
-          else files.push({ path: entry.path, name: entry.name });
+          else files.push({
+            path: entry.path,
+            name: entry.name,
+            size: entry.size ?? 0,
+            mtimeMs: entry.lastModified?.getTime() ?? 0,
+          });
         }
       };
       collect(entries);
       return files;
     },
-    async readText(path) {
+    readText: (async (path: string, opts?: { maxBytes: number }) => {
       const abs = await resolveVaultPath(path);
-      const { readTextFile } = await import('@tauri-apps/plugin-fs');
-      return readTextFile(abs);
-    },
+      if (!opts) {
+        const { readTextFile } = await import('@tauri-apps/plugin-fs');
+        return readTextFile(abs);
+      }
+      return readTextPrefix(abs, opts.maxBytes);
+    }) as VaultApi['readText'],
     async readBinary(path) {
       const abs = await resolveVaultPath(path);
       const { readFile } = await import('@tauri-apps/plugin-fs');

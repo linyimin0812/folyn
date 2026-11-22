@@ -351,15 +351,13 @@ import { defineExtension, validateManifest } from "folyn-extension-sdk";
 | `api`          | `ExtensionApi`                                                                                          | 扩展自己的 api（与 `activate(api, ctx)` 收到的相同）：远程源用 `api.network.fetch`（`permissions.http.origins`），本机程序用 `api.process.exec`（`permissions.exec.programs`） |
 | `onProgress`   | `(message: string) => void`                                                                             | 进度上报（如 `commits 42/256`），显示在采集按钮旁的 spinner 处              |
 | `frontWindow`  | `() => Promise<{ app: string; title: string \| null } \| null>`                                        | 前台窗口采样；固定 host 脚本，无采集器可控参数；不可用时返回 `null`         |
-| `scanVault`    | `(opts: { excludeDirs?: string[]; excludePatterns?: string[] }) => Promise<{path, mtimeMs, size}[] \| null>` | vault 文件扫描（`.git` 恒跳过，排除项由采集器传入，vault 相对路径，按路径排序）；不可用返回 `null` |
-| `readVaultFile`| `(path: string, maxBytes?: number) => Promise<string \| null>`                                          | vault 文本读取（遍历/绝对路径拒绝，二进制与 >1MB 返回 `null`，截断到 maxBytes） |
 
 ```ts
 import type { CollectorContext, CollectorEvent, ExtensionModule } from 'folyn-extension-sdk';
 
 async function collect(ctx: CollectorContext): Promise<{ events: CollectorEvent[]; nextCursor: string }> {
   const cursor = ctx.cursor ?? '';
-  // ...用 ctx.scanVault / ctx.api.network / ctx.api.process 拉数据、diff 出事件...
+  // ...用 ctx.api.vault / ctx.api.network / ctx.api.process 拉数据、diff 出事件...
   return { events, nextCursor: JSON.stringify(snapshot) };
 }
 

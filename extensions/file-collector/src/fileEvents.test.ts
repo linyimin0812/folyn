@@ -1,6 +1,6 @@
 /**
- * diffSnapshots / textDiff tests: pure snapshot diffing — no fs access, the
- * scan result is a fixed array (same shape `ctx.scanVault` returns).
+ * diffSnapshots / textDiff tests: pure snapshot diffing — no fs access. The
+ * collect tests run against a fake `api.vault`.
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { CollectorEvent, ExtensionApi } from 'folyn-extension-sdk';
@@ -9,8 +9,25 @@ import type { VaultFile, VaultSnapshot } from './fileEvents';
 import { collectFileActivity } from './index';
 
 const NOW = 1_000_000;
-/** The file collector does not reach through `ctx.api` yet. */
-const api = {} as ExtensionApi;
+
+type Listed = Array<{ path: string; mtimeMs: number; size: number }>;
+
+/** A fake `api.vault`: `files` is the listing, `read(path)` the capped text
+ *  (`undefined` = the read throws). Records the options each call got. */
+function fakeVault(files: Listed, read: (path: string) => string | null | undefined = () => null, open = true) {
+  const listFiles = vi.fn(async (_opts?: { exclude?: string[]; includeHidden?: boolean }) =>
+    files.map((f) => ({ ...f, name: f.path.split('/').pop()! })));
+  const readText = vi.fn(async (path: string, _opts?: { maxBytes: number }) => {
+    const r = read(path);
+    if (r === undefined) throw new Error(`unreadable: ${path}`);
+    return r;
+  });
+  const vault = { current: () => (open ? { id: 'v', name: 'V' } : null), listFiles, readText };
+  return { api: { vault } as unknown as ExtensionApi, listFiles, readText };
+}
+
+/** The vault holds nothing; for tests about the cursor alone. */
+const api = fakeVault([]).api;
 
 function files(...entries: VaultFile[]): VaultFile[] {
   return entries;
@@ -244,56 +261,69 @@ describe('parseSnapshot', () => {
 
 describe('collectFileActivity', () => {
   it('first run (null cursor) baselines: no events, cursor = snapshot JSON', async () => {
-    const scanVault = async () => [{ path: 'a.md', mtimeMs: 1, size: 2 }];
-    const out = await collectFileActivity({ cursor: null, config: {}, api, scanVault });
+    const v = fakeVault([{ path: 'a.md', mtimeMs: 1, size: 2 }]);
+    const out = await collectFileActivity({ cursor: null, config: {}, api: v.api });
     expect(out.events).toEqual([]);
     expect(out.nextCursor).toBe('{"a.md":{"mtimeMs":1,"size":2}}');
   });
 
-  it('diffs against the cursor snapshot and reports progress', async () => {
+  it('lists with its own filters, dotfiles included, and reports progress', async () => {
     const cursor = JSON.stringify({ 'a.md': { mtimeMs: 1, size: 2 } });
-    const scanVault = async (opts: { excludePatterns?: string[] }) => {
-      expect(opts.excludePatterns).toEqual(['.obsidian', 'node_modules']);
-      return [{ path: 'b.md', mtimeMs: 3, size: 4 }];
-    };
+    const v = fakeVault([{ path: 'b.md', mtimeMs: 3, size: 4 }]);
     const onProgress = vi.fn();
     const out = await collectFileActivity({
       cursor,
       config: { excludePatterns: '# seeded\n .obsidian\nnode_modules \n\n' },
-      api,
-      scanVault,
+      api: v.api,
       onProgress,
     });
+    expect(v.listFiles).toHaveBeenCalledWith({ exclude: ['.obsidian', 'node_modules'], includeHidden: true });
     expect(out.events.map((e) => e.type)).toEqual(['file_created', 'file_deleted']);
     expect(onProgress).toHaveBeenCalledWith('files +1 ~0 -1');
     expect(parseSnapshot(out.nextCursor)).toEqual({ 'b.md': { mtimeMs: 3, size: 4 } });
   });
 
-  it('scanVault absent or null → no events, cursor untouched', async () => {
-    expect(await collectFileActivity({ cursor: null, config: {}, api })).toEqual({
-      events: [],
-      nextCursor: '',
-    });
-    const scanVault = async () => null;
-    expect(await collectFileActivity({ cursor: 'x', config: {}, api, scanVault })).toEqual({
+  it('snapshots in path order whatever order the listing comes in', async () => {
+    const v = fakeVault([
+      { path: 'z.md', mtimeMs: 1, size: 1 },
+      { path: 'a/b.md', mtimeMs: 1, size: 1 },
+    ]);
+    const out = await collectFileActivity({ cursor: null, config: {}, api: v.api });
+    expect(Object.keys(parseSnapshot(out.nextCursor)!)).toEqual(['a/b.md', 'z.md']);
+  });
+
+  it('no vault open → no events, cursor untouched', async () => {
+    const v = fakeVault([{ path: 'a.md', mtimeMs: 1, size: 2 }], () => 'x', false);
+    expect(await collectFileActivity({ cursor: 'x', config: {}, api: v.api })).toEqual({
       events: [],
       nextCursor: 'x',
     });
+    expect(v.listFiles).not.toHaveBeenCalled();
   });
 
-  it('baseline reads every file once and seeds content into the cursor', async () => {
-    const scanVault = async () => [
-      { path: 'a.md', mtimeMs: 1, size: 2 },
-      { path: 'bin.png', mtimeMs: 1, size: 3 },
-    ];
-    const readVaultFile = vi.fn(async (path: string) => (path === 'bin.png' ? null : 'seed text'));
-    const out = await collectFileActivity({ cursor: null, config: {}, api, scanVault, readVaultFile });
+  it('baseline reads every file once, with the byte cap, and seeds content into the cursor', async () => {
+    const v = fakeVault(
+      [
+        { path: 'a.md', mtimeMs: 1, size: 2 },
+        { path: 'bin.png', mtimeMs: 1, size: 3 },
+      ],
+      (path) => (path === 'bin.png' ? null : 'seed text'),
+    );
+    const out = await collectFileActivity({ cursor: null, config: {}, api: v.api });
     expect(out.events).toEqual([]);
-    expect(readVaultFile).toHaveBeenCalledTimes(2);
+    expect(v.readText).toHaveBeenCalledTimes(2);
+    expect(v.readText).toHaveBeenCalledWith('a.md', { maxBytes: 8192 });
     expect(parseSnapshot(out.nextCursor)).toEqual({
       'a.md': { mtimeMs: 1, size: 2, content: 'seed text' },
       'bin.png': { mtimeMs: 1, size: 3 },
     });
+  });
+
+  it('does not read a file over 1 MB', async () => {
+    const v = fakeVault([{ path: 'huge.log', mtimeMs: 1, size: 2_000_000 }], () => 'never');
+    const out = await collectFileActivity({ cursor: null, config: {}, api: v.api });
+    expect(v.readText).not.toHaveBeenCalled();
+    expect(parseSnapshot(out.nextCursor)).toEqual({ 'huge.log': { mtimeMs: 1, size: 2_000_000 } });
   });
 
   it('non-baseline reads only changed paths and emits a diff', async () => {
@@ -301,14 +331,16 @@ describe('collectFileActivity', () => {
       'a.md': { mtimeMs: 1, size: 2, content: 'one\ntwo' },
       'same.md': { mtimeMs: 1, size: 1 },
     });
-    const scanVault = async () => [
-      { path: 'a.md', mtimeMs: 5, size: 2 },
-      { path: 'same.md', mtimeMs: 1, size: 1 },
-    ];
-    const readVaultFile = vi.fn(async () => 'one\nTWO');
-    const out = await collectFileActivity({ cursor, config: {}, api, scanVault, readVaultFile });
-    expect(readVaultFile).toHaveBeenCalledTimes(1);
-    expect(readVaultFile).toHaveBeenCalledWith('a.md');
+    const v = fakeVault(
+      [
+        { path: 'a.md', mtimeMs: 5, size: 2 },
+        { path: 'same.md', mtimeMs: 1, size: 1 },
+      ],
+      () => 'one\nTWO',
+    );
+    const out = await collectFileActivity({ cursor, config: {}, api: v.api });
+    expect(v.readText).toHaveBeenCalledTimes(1);
+    expect(v.readText).toHaveBeenCalledWith('a.md', { maxBytes: 8192 });
     expect(out.events).toHaveLength(1);
     expect(out.events[0]!.payload).toMatchObject({ diff: '- two\n+ TWO' });
     // Unchanged file keeps its snapshot entry; changed file gets new content.
@@ -325,13 +357,15 @@ describe('collectFileActivity', () => {
       'a.md': { mtimeMs: 1, size: 2 },
       'same.md': { mtimeMs: 1, size: 1 },
     });
-    const scanVault = async () => [
-      { path: 'a.md', mtimeMs: 1, size: 2 },
-      { path: 'same.md', mtimeMs: 1, size: 1 },
-    ];
-    const readVaultFile = vi.fn(async (path: string) => `text of ${path}`);
-    const out = await collectFileActivity({ cursor, config: {}, api, scanVault, readVaultFile });
-    expect(readVaultFile).toHaveBeenCalledTimes(2);
+    const v = fakeVault(
+      [
+        { path: 'a.md', mtimeMs: 1, size: 2 },
+        { path: 'same.md', mtimeMs: 1, size: 1 },
+      ],
+      (path) => `text of ${path}`,
+    );
+    const out = await collectFileActivity({ cursor, config: {}, api: v.api });
+    expect(v.readText).toHaveBeenCalledTimes(2);
     expect(out.events).toEqual([]);
     expect(parseSnapshot(out.nextCursor)).toEqual({
       'a.md': { mtimeMs: 1, size: 2, content: 'text of a.md' },
@@ -341,19 +375,18 @@ describe('collectFileActivity', () => {
 
   it('legacy cursor + changed file: event this run uses content fallback, snapshot still seeded', async () => {
     const cursor = JSON.stringify({ 'a.md': { mtimeMs: 1, size: 2 } });
-    const scanVault = async () => [{ path: 'a.md', mtimeMs: 5, size: 2 }];
-    const readVaultFile = vi.fn(async () => 'new text');
-    const out = await collectFileActivity({ cursor, config: {}, api, scanVault, readVaultFile });
+    const v = fakeVault([{ path: 'a.md', mtimeMs: 5, size: 2 }], () => 'new text');
+    const out = await collectFileActivity({ cursor, config: {}, api: v.api });
     expect(out.events).toHaveLength(1);
     // No stored old content → fallback to full content, not a "+ everything" diff.
     expect(out.events[0]!.payload).toMatchObject({ content: 'new text' });
     expect(parseSnapshot(out.nextCursor)).toEqual({ 'a.md': { mtimeMs: 5, size: 2, content: 'new text' } });
   });
 
-  it('no readVaultFile (non-Tauri) → metadata only, exactly as before', async () => {
+  it('a file that fails to read → metadata only for it, the run goes on', async () => {
     const cursor = JSON.stringify({ 'a.md': { mtimeMs: 1, size: 2 } });
-    const scanVault = async () => [{ path: 'a.md', mtimeMs: 5, size: 2 }];
-    const out = await collectFileActivity({ cursor, config: {}, api, scanVault });
+    const v = fakeVault([{ path: 'a.md', mtimeMs: 5, size: 2 }], () => undefined);
+    const out = await collectFileActivity({ cursor, config: {}, api: v.api });
     expect(out.events).toHaveLength(1);
     expect(out.events[0]!.payload).not.toHaveProperty('diff');
     expect(out.events[0]!.payload).not.toHaveProperty('content');

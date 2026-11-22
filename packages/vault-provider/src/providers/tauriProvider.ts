@@ -142,7 +142,7 @@ export class TauriVaultProvider implements VaultProvider {
       // `exclude` is pruned during the Rust walk so heavy dirs (.git/node_modules)
       // are never recursed into or shipped over IPC.
       const raw = await invoke<
-        { path: string; name: string; is_dir: boolean; children?: unknown[] | null }[]
+        { path: string; name: string; is_dir: boolean; children?: unknown[] | null; size?: number | null; mtime_ms?: number | null }[]
       >('scan_file_tree', {
         root: fullPath,
         showHidden: !!showHidden,
@@ -153,13 +153,20 @@ export class TauriVaultProvider implements VaultProvider {
       // so use them directly — don't rebuild from name (that drops dir prefixes).
       const prefix = path ? `${path}/` : '';
       const convert = (
-        items: { path: string; name: string; is_dir: boolean; children?: unknown[] | null }[],
+        items: { path: string; name: string; is_dir: boolean; children?: unknown[] | null; size?: number | null; mtime_ms?: number | null }[],
       ): VaultEntry[] =>
         items
           .map((e) => {
             const type: VaultEntry['type'] = e.is_dir ? 'dir' : 'file';
             const children = e.is_dir && Array.isArray(e.children) ? convert(e.children as typeof items) : undefined;
-            return { path: `${prefix}${e.path}`, name: e.name, type, children };
+            return {
+              path: `${prefix}${e.path}`,
+              name: e.name,
+              type,
+              children,
+              ...(e.size != null && { size: e.size }),
+              ...(e.mtime_ms != null && { lastModified: new Date(e.mtime_ms) }),
+            };
           })
           .sort((a, b) => (a.type !== b.type ? (a.type === 'dir' ? -1 : 1) : a.name.localeCompare(b.name)));
 

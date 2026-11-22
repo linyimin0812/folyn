@@ -14,6 +14,23 @@ const vaultState = vi.hoisted(() => ({
 }));
 const openFile = vi.hoisted(() => vi.fn(async () => {}));
 const fileExists = vi.hoisted(() => vi.fn(async () => true));
+/** Bytes `open()` serves, handed out at most `chunk` per `read()` like a real file handle. */
+const openFile_ = vi.hoisted(() => ({ bytes: new Uint8Array(), chunk: 3, closed: 0, reads: 0 }));
+const fsOpen = vi.hoisted(() => vi.fn(async () => {
+  let pos = 0;
+  return {
+    async read(buf: Uint8Array) {
+      openFile_.reads++;
+      if (pos >= openFile_.bytes.length) return null;
+      const n = Math.min(buf.length, openFile_.chunk, openFile_.bytes.length - pos);
+      buf.set(openFile_.bytes.subarray(pos, pos + n));
+      pos += n;
+      return n;
+    },
+    async close() { openFile_.closed++; },
+  };
+}));
+const readTextFile = vi.hoisted(() => vi.fn(async () => 'whole file'));
 
 vi.mock('@/store/vaultStore', () => ({
   useVaultStore: { getState: () => vaultState },
@@ -23,7 +40,7 @@ vi.mock('@/store/appearanceStore', () => ({
   useAppearanceStore: { getState: () => ({ excludePatterns: '# comment\n__reports__\n*.tmp' }), subscribe: () => () => {} },
 }));
 
-vi.mock('@tauri-apps/plugin-fs', () => ({ exists: fileExists }));
+vi.mock('@tauri-apps/plugin-fs', () => ({ exists: fileExists, open: fsOpen, readTextFile }));
 
 vi.mock('@/store/vaultConfigStore', () => ({
   useVaultConfigStore: {
@@ -121,19 +138,74 @@ describe('ExtensionApi / vault identity and file listing', () => {
     expect(makeApi().vault.current()).toBeNull();
   });
 
-  it('vault.listFiles flattens the tree and applies exclude patterns', async () => {
+  it('vault.listFiles flattens the tree, applies the file-panel filters, and reports size + mtime', async () => {
     vaultState.manager.listFiles.mockResolvedValue([
       { path: 'docs', name: 'docs', type: 'dir', children: [
-        { path: 'docs/a.md', name: 'a.md', type: 'file' },
-        { path: 'docs/b.tmp', name: 'b.tmp', type: 'file' },
+        { path: 'docs/a.md', name: 'a.md', type: 'file', size: 12, lastModified: new Date(1000) },
+        { path: 'docs/b.tmp', name: 'b.tmp', type: 'file', size: 1, lastModified: new Date(1) },
       ] },
       { path: 'c.md', name: 'c.md', type: 'file' },
     ]);
     expect(await makeApi().vault.listFiles()).toEqual([
-      { path: 'docs/a.md', name: 'a.md' },
-      { path: 'c.md', name: 'c.md' },
+      { path: 'docs/a.md', name: 'a.md', size: 12, mtimeMs: 1000 },
+      { path: 'c.md', name: 'c.md', size: 0, mtimeMs: 0 },
     ]);
-    expect(vaultState.manager.listFiles).toHaveBeenCalledWith('', true, false, ['__reports__', '*.tmp']);
+    expect(vaultState.manager.listFiles).toHaveBeenCalledWith('', true, false, ['__reports__', '*.tmp', '.git']);
+  });
+
+  it('vault.listFiles with exclude replaces the file-panel filters; includeHidden lists dotfiles; .git never', async () => {
+    vaultState.manager.listFiles.mockResolvedValue([
+      { path: '.obsidian', name: '.obsidian', type: 'dir', children: [{ path: '.obsidian/app.json', name: 'app.json', type: 'file', size: 2 }] },
+      { path: 'b.tmp', name: 'b.tmp', type: 'file', size: 3 },
+      { path: 'a.log', name: 'a.log', type: 'file', size: 4 },
+    ]);
+    const files = await makeApi().vault.listFiles({ exclude: ['*.log'], includeHidden: true });
+    // `*.tmp` is a file-panel filter, which `exclude` replaces.
+    expect(files.map((f) => f.path)).toEqual(['.obsidian/app.json', 'b.tmp']);
+    expect(vaultState.manager.listFiles).toHaveBeenLastCalledWith('', true, true, ['*.log', '.git']);
+  });
+});
+
+describe('ExtensionApi / vault.readText', () => {
+  beforeEach(() => {
+    Object.assign(openFile_, { closed: 0, reads: 0, chunk: 3 });
+    fsOpen.mockClear();
+    readTextFile.mockClear();
+  });
+
+  it('reads the whole file without maxBytes', async () => {
+    await expect(makeApi().vault.readText('a.md')).resolves.toBe('whole file');
+    expect(fsOpen).not.toHaveBeenCalled();
+  });
+
+  it('with maxBytes reads at most that many bytes, across short reads, and closes the file', async () => {
+    openFile_.bytes = new TextEncoder().encode('hello world');
+    await expect(makeApi().vault.readText('a.md', { maxBytes: 8 })).resolves.toBe('hello wo');
+    expect(readTextFile).not.toHaveBeenCalled();
+    expect(openFile_.closed).toBe(1);
+  });
+
+  it('with maxBytes returns the whole text of a shorter file', async () => {
+    openFile_.bytes = new TextEncoder().encode('hi');
+    await expect(makeApi().vault.readText('a.md', { maxBytes: 100 })).resolves.toBe('hi');
+  });
+
+  it('drops a multi-byte character cut off at the limit', async () => {
+    openFile_.bytes = new TextEncoder().encode('ab日'); // 日 is 3 bytes
+    await expect(makeApi().vault.readText('a.md', { maxBytes: 4 })).resolves.toBe('ab');
+  });
+
+  it('is null for binary content: a NUL byte, or bytes that are not UTF-8', async () => {
+    openFile_.bytes = Uint8Array.from([0x50, 0x4e, 0x47, 0x00, 0x01]);
+    await expect(makeApi().vault.readText('a.png', { maxBytes: 8 })).resolves.toBeNull();
+    openFile_.bytes = Uint8Array.from([0xff, 0xfe, 0x41]);
+    await expect(makeApi().vault.readText('a.bin', { maxBytes: 8 })).resolves.toBeNull();
+    expect(openFile_.closed).toBe(2);
+  });
+
+  it('still rejects a path that leaves the vault', async () => {
+    await expect(makeApi().vault.readText('../etc/hosts', { maxBytes: 8 })).rejects.toThrow(/escapes the vault/);
+    expect(fsOpen).not.toHaveBeenCalled();
   });
 });
 

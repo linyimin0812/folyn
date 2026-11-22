@@ -1,8 +1,7 @@
 /**
  * Vault file-snapshot diffing (pure, tested).
  *
- * Each poll asks the host for a full vault file listing (`ctx.scanVault`, Rust
- * `activity_scan_vault`) and diffs it against the snapshot stored in the
+ * Each poll lists the vault's files (`api.vault.listFiles`) and diffs it against the snapshot stored in the
  * cursor: new path → created, mtime/size changed → modified, gone → deleted.
  * A `null` prev snapshot is the baseline run — the initial listing produces
  * no events (everything already existed before the collector was installed).
@@ -18,7 +17,7 @@ export interface SnapshotEntry {
   mtimeMs: number;
   size: number;
   /**
-   * Truncated text (host `ctx.readVaultFile`, ~8KB/file ceiling) — absent for
+   * Truncated text (`api.vault.readText` with a byte cap, ~8KB/file) — absent for
    * binary / oversized / unreadable files.
    *
    * ponytail: the cursor now carries capped per-file text (the baseline run
@@ -33,7 +32,7 @@ export interface SnapshotEntry {
 /** path → { mtimeMs, size }. */
 export type VaultSnapshot = Record<string, SnapshotEntry>;
 
-/** One file as returned by `ctx.scanVault`. */
+/** One file of the vault listing (`api.vault.listFiles`), as the snapshot keeps it. */
 export interface VaultFile {
   path: string;
   mtimeMs: number;
@@ -74,7 +73,7 @@ function fileEvent(
  * middle) or both null → null.
  *
  * Caps: ≤100 removed + ≤100 added lines, each line ≤200 chars, total ~8000
- * chars — the same order of magnitude as the readVaultFile byte cap, so a
+ * chars — the same order of magnitude as the content byte cap, so a
  * diff never dwarfs the content it came from.
  */
 export function textDiff(oldContent: string | null, newContent: string | null): string | null {
@@ -108,7 +107,7 @@ export function textDiff(oldContent: string | null, newContent: string | null): 
  * created/modified id of the same path + mtime (the delete-then-recreate-at-
  * the-same-mtime case).
  *
- * `contents`: path → text just read this run (`ctx.readVaultFile`); a path
+ * `contents`: path → text just read this run; a path
  * absent from the map was not read (its snapshot entry keeps the previous
  * run's content so a later modification still diffs against it).
  */

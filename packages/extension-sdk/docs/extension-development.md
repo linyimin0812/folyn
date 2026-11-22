@@ -834,6 +834,7 @@ code, under the manifest `permissions` the user approved at install:
 | --- | --- | --- |
 | A remote API | `ctx.api.network.fetch(url, init)` — runs in Rust (no CORS) and times out on its own | `permissions.http.origins` (exact origin) |
 | A local program (`git`, `osascript`, a helper of your own) | `ctx.api.process.exec(program, args, { cwd })` — see [Running local programs](#running-local-programs-trusted-tier) | `permissions.exec.programs` (exact program string) |
+| The vault's files | `ctx.api.vault.listFiles({ exclude, includeHidden })` (each with `size` / `mtimeMs`), `ctx.api.vault.readText(path, { maxBytes })` (at most that many bytes; `null` for binary) | — |
 
 A collector that needs another origin or another program declares it. Nothing
 changes in the host.
@@ -844,8 +845,6 @@ in tests and embedded hosts — always feature-detect.
 | Capability | What the host enforces |
 | --- | --- |
 | `ctx.frontWindow()` | Rust `activity_front_window`: **fixed platform scripts**, no collector-controlled arguments. Returns `null` when unavailable. |
-| `ctx.scanVault({ excludeDirs, excludePatterns })` | Rust `activity_scan_vault`: fixed recursive walk of the active vault; **`.git` always skipped**; the collector picks what else to leave out (directories by name or vault-relative path, files and directories by path-segment pattern with `*` / `?`); paths are vault-relative; the collector never learns the absolute vault root. |
-| `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`: **traversal-safe** (`..`/absolute rejected), binary and >1 MB files return `null`, output truncated (cap clamped 1 B–64 KB, default 8 KB). |
 
 #### `authSchema` → the settings config form
 
@@ -921,7 +920,7 @@ const module: ExtensionModule = {
       id: 'my-source',
       async collect(ctx) {
         const cursor = ctx.cursor ?? '';
-        // pull since cursor via ctx.api.network / ctx.api.process / ctx.scanVault ...
+        // pull since cursor via ctx.api.network / ctx.api.process / ctx.api.vault ...
         return { events: [], nextCursor: cursor };
       },
     },

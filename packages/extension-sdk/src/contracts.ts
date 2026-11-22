@@ -224,32 +224,11 @@ export interface CollectorContext {
    */
   frontWindow?: () => Promise<{ app: string; title: string | null } | null>;
   /**
-   * Host-injected vault scanner: lists every file under the ACTIVE vault root
-   * (host resolves the root — collectors never learn the absolute path).
-   * Backed by the Rust `activity_scan_vault` command — a fixed recursive walk
-   * (`.git` always skipped, files only, paths vault-relative with forward
-   * slashes, sorted by path). The caller may exclude directories by name or
-   * vault-relative path (`excludeDirs`), and files or directories by path
-   * segment (`excludePatterns`: `*` and `?` wildcards, else an exact segment);
-   * no other collector-controlled arguments. Returns `null` when unavailable
-   * (no vault / non-Tauri / tests). Absent in tests/embedded hosts.
-   */
-  scanVault?: (opts: { excludeDirs?: string[]; excludePatterns?: string[] }) => Promise<
-    Array<{ path: string; mtimeMs: number; size: number }> | null
-  >;
-  /**
-   * Host-injected vault text-file reader (Rust `activity_read_text_file`):
-   * vault-relative path, returns truncated text or null for binary /
-   * oversized / unreadable. Like scanVault, invisible to manifest permissions.
-   */
-  readVaultFile?: (path: string, maxBytes?: number) => Promise<string | null>;
-  /**
    * Host-injected IMAPS mail fetcher (Rust `activity_imap_fetch`): connects to
    * the given IMAP server over TLS, logs in, and returns messages with
    * INTERNALDATE >= sinceMs (one day of SINCE slack is applied host-side —
    * still filter exactly). Pure data parameters, no exec; TLS only. Returns
-   * null when unavailable (non-Tauri / tests). Like scanVault, invisible to
-   * manifest permissions.
+   * null when unavailable (non-Tauri / tests).
    */
   imapFetch?: (opts: {
     host: string;

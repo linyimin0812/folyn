@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 
-// Node environment — collect tests stub ctx.scanVault with fixed snapshots, no
+// Node environment — collect tests run against a fake api.vault, no
 // DOM. The settings form's test opts into jsdom with a file pragma;
 // react/react-dom are devDeps so it loads the real modules (hostModules() is
 // only for the esbuild bundle).

@@ -104,6 +104,10 @@ pub struct FileTreeEntry {
     pub name: String,
     pub is_dir: bool,
     pub children: Option<Vec<FileTreeEntry>>,
+    /// Files only: bytes on disk and last modification (epoch ms). From the
+    /// same `read_dir` entry, so no extra stat call per file.
+    pub size: Option<u64>,
+    pub mtime_ms: Option<i64>,
 }
 
 #[tauri::command]
@@ -142,16 +146,24 @@ pub async fn scan_file_tree(
                 .file_type()
                 .map(|ft| ft.is_dir())
                 .unwrap_or(false);
-            let children = if is_dir {
-                Some(build(&entry.path(), &path, show_hidden, exclude))
+            let (children, size, mtime_ms) = if is_dir {
+                (Some(build(&entry.path(), &path, show_hidden, exclude)), None, None)
             } else {
-                None
+                let md = entry.metadata().ok();
+                let mtime_ms = md
+                    .as_ref()
+                    .and_then(|m| m.modified().ok())
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|d| d.as_millis() as i64);
+                (None, md.map(|m| m.len()), mtime_ms)
             };
             out.push(FileTreeEntry {
                 path,
                 name: name_str,
                 is_dir,
                 children,
+                size,
+                mtime_ms,
             });
         }
         out

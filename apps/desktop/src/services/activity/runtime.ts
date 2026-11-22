@@ -194,33 +194,9 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       frontWindow: async () => {
         return invoke<{ app: string; title: string | null } | null>('activity_front_window');
       },
-      // Vault scanner (Rust `activity_scan_vault` — fixed recursive walk, .git
-      // always skipped; the collector picks what to exclude, by dir name /
-      // vault-relative path or by path-segment pattern, see activity/mod.rs).
-      scanVault: async (opts: { excludeDirs?: string[]; excludePatterns?: string[] }) => {
-        return invoke<Array<{ path: string; mtimeMs: number; size: number }>>(
-          'activity_scan_vault',
-          {
-            vaultRoot,
-            excludeDirs: opts?.excludeDirs ?? [],
-            excludePatterns: opts?.excludePatterns ?? [],
-          },
-        );
-      },
-      // Vault text-file reader (Rust `activity_read_text_file` — traversal /
-      // absolute rejected, binary + >1MB skipped, truncated to maxBytes;
-      // see activity/mod.rs). Same trust model as scanVault: fixed command,
-      // vault-relative paths only, invisible to manifest permissions.
-      readVaultFile: async (path: string, maxBytes?: number) => {
-        return invoke<string | null>('activity_read_text_file', {
-          vaultRoot,
-          path,
-          maxBytes: maxBytes ?? null,
-        });
-      },
       // IMAPS mail fetcher (Rust `activity_imap_fetch` — TLS-only IMAP via the
       // imap crate; pure data params, no exec; see activity/mod.rs). Same
-      // trust model as scanVault: fixed command, collector only picks data.
+      // trust model: fixed command, collector only picks data.
       imapFetch: async (opts: {
         host: string;
         port?: number;

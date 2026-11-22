@@ -747,6 +747,7 @@ diff 游标、`authSchema` 含 `allowAiSummary`、文件过滤规则用自带的
 | --- | --- | --- |
 | 远程 API | `ctx.api.network.fetch(url, init)`：在 Rust 侧发出（无 CORS），自带超时 | `permissions.http.origins`（origin 精确匹配） |
 | 本机程序（`git`、`osascript`、自带的辅助程序） | `ctx.api.process.exec(program, args, { cwd })`，见[运行本机程序](#运行本机程序trusted-tier) | `permissions.exec.programs`（程序名精确匹配） |
+| vault 里的文件 | `ctx.api.vault.listFiles({ exclude, includeHidden })`（每项带 `size` / `mtimeMs`）、`ctx.api.vault.readText(path, { maxBytes })`（最多读这么多字节，二进制返回 `null`） | — |
 
 采集器需要新的 origin 或新的程序时，在 manifest 里声明即可，不用改 host。
 
@@ -756,8 +757,6 @@ diff 游标、`authSchema` 含 `allowAiSummary`、文件过滤规则用自带的
 | 能力 | host 强制什么 |
 | --- | --- |
 | `ctx.frontWindow()` | Rust `activity_front_window`：**固定平台脚本**，无采集器可控参数。不可用返回 `null`。 |
-| `ctx.scanVault({ excludeDirs, excludePatterns })` | Rust `activity_scan_vault`：对当前 vault 的固定递归遍历；**`.git` 恒跳过**；其余排除什么由采集器决定（目录按名称或 vault 相对路径，文件和目录按路径段规则，支持 `*` / `?`）；路径为 vault 相对路径；采集器永远不知道 vault 绝对根路径。 |
-| `ctx.readVaultFile(path, maxBytes?)` | Rust `activity_read_text_file`：**遍历安全**（`..`/绝对路径拒绝）、二进制与 >1MB 文件返回 `null`、输出截断（上限钳制 1 B–64 KB，默认 8 KB）。 |
 
 #### `authSchema` → 设置页配置表单
 
@@ -826,7 +825,7 @@ const module: ExtensionModule = {
       id: 'my-source',
       async collect(ctx) {
         const cursor = ctx.cursor ?? '';
-        // 经 ctx.api.network / ctx.api.process / ctx.scanVault 自游标拉数据 …
+        // 经 ctx.api.network / ctx.api.process / ctx.api.vault 自游标拉数据 …
         return { events: [], nextCursor: cursor };
       },
     },

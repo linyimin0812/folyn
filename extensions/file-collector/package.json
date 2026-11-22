@@ -1,6 +1,6 @@
 {
   "name": "@folyn/extension-file-collector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Folyn file collector — diffs vault file snapshots into created/modified/deleted events (trusted tier, poll mode)",

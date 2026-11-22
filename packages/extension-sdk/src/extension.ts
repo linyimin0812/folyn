@@ -164,6 +164,10 @@ export interface ExtensionVaultInfo {
 export interface ExtensionVaultFile {
   path: string;
   name: string;
+  /** Bytes on disk. */
+  size: number;
+  /** Last modification, epoch ms. */
+  mtimeMs: number;
 }
 
 /**
@@ -175,10 +179,21 @@ export interface VaultApi {
   /** The active vault, or null while none is open or one is still loading.
    *  Trusted tier only, like {@link VaultApi.listFiles}. */
   current(): ExtensionVaultInfo | null;
-  /** Every file in the active vault, re-read from disk on each call. Hidden
-   *  files and the user's exclude patterns are left out, as in the file panel. */
-  listFiles(): Promise<ExtensionVaultFile[]>;
+  /**
+   * Every file in the active vault, re-read from disk on each call. By default
+   * what the file panel shows: hidden files and the user's file filters are
+   * left out. `exclude` replaces those filters with your own (same rules: a
+   * name, or a `*` / `?` pattern, matched against each path segment);
+   * `includeHidden` lists dotfiles too. `.git` is never listed.
+   */
+  listFiles(opts?: { exclude?: string[]; includeHidden?: boolean }): Promise<ExtensionVaultFile[]>;
+  /**
+   * The file's text. With `maxBytes`, at most that many bytes are read, and
+   * the call resolves `null` instead of text for a binary file (a NUL byte in
+   * what was read) — for sampling many files without loading each whole.
+   */
   readText(path: string): Promise<string>;
+  readText(path: string, opts: { maxBytes: number }): Promise<string | null>;
   readBinary(path: string): Promise<Uint8Array>;
   writeText(path: string, content: string): Promise<void>;
   writeBinary(path: string, data: Uint8Array): Promise<void>;

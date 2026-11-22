@@ -248,10 +248,9 @@ collectors: {
       const cursor = ctx.cursor ?? '';
       // ctx.api is the extension's ExtensionApi: ctx.api.network.fetch (origin in
       // permissions.http.origins) / ctx.api.process.exec (program in
-      // permissions.exec.programs). Also ctx.scanVault (.git skipped, vault-relative
-      // paths) / ctx.readVaultFile (traversal-safe, binary/>1MB → null) — those two
-      // are absent in tests/embedded hosts, feature-detect. Privacy: host strips `raw`
-      // unless keepRaw; redact regexes hit title/summary — never put secrets there.
+      // permissions.exec.programs) / ctx.api.vault.listFiles + readText(path, { maxBytes }).
+      // Privacy: host strips `raw` unless keepRaw; redact regexes hit title/summary —
+      // never put secrets there.
       return { events: [], nextCursor: cursor };
     },
     // webhook mode instead: onWebhook(payload, config) → events (no cursor)
