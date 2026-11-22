@@ -106,6 +106,13 @@ export function usePreviewCursorSync({
     if (hasSelection) return;
     const root = containerRef.current;
     if (!root) return;
+    const scrollContainer = root.parentElement;
+    if (!scrollContainer) return;
+    // The host is restoring this tab's saved reading position after a tab
+    // switch (PreviewPane); the editor republishing its cursor metrics for
+    // the switch is not a cursor move, so the preview stays where it was left.
+    // A pane kept alive behind another tab never follows the cursor.
+    if (scrollContainer.dataset.restoringScroll !== undefined || scrollContainer.closest('[data-preview-hidden]')) return;
     const blocks = root.querySelectorAll('[data-source-line]');
     if (blocks.length === 0) return;
     let target: Element | null = null;
@@ -141,8 +148,6 @@ export function usePreviewCursorSync({
         target = el;
       }
     }
-    const scrollContainer = root.parentElement;
-    if (!scrollContainer) return;
     if (!target) {
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       return;

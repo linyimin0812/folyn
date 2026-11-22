@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, cleanup, act } from '@testing-library/react';
+import { render, cleanup, act, fireEvent } from '@testing-library/react';
 import { createElement } from 'react';
 import { PreviewPane } from './PreviewPane';
+import { useEditorStore } from '@/store/editorStore';
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
 
@@ -89,6 +90,95 @@ describe('PreviewPane scroll on tab switch', () => {
     act(() => { prevBody().scrollTop = 777; });
     await flushFrames();
     expect(prevBody().scrollTop).toBe(777);
+  });
+
+  it('saves a scroll onto the tab it shows, even after the store moved to another tab', async () => {
+    useEditorStore.setState({ tabs: [tab('a', 'a.md'), tab('b', 'b.md')], activeTabId: 'a' });
+    render(
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" />,
+    );
+    act(() => {
+      prevBody().scrollTop = 640;
+      fireEvent.scroll(prevBody());
+    });
+    // The switch lands in the store before the work area renders the new tab.
+    useEditorStore.setState({ activeTabId: 'b' });
+    await act(() => new Promise((r) => setTimeout(r, 250)));
+
+    const [a, b] = useEditorStore.getState().tabs;
+    expect(a.previewScrollTop).toBe(640);
+    expect(b.previewScrollTop).toBeUndefined();
+  });
+
+  it('holds the restored position while the document is still growing, without saving the clamped value', async () => {
+    useEditorStore.setState({ tabs: [tab('a', 'a.md'), tab('b', 'b.md', { previewScrollTop: 1500 })], activeTabId: 'a' });
+    const { rerender } = render(
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" />,
+    );
+    rerender(
+      <PreviewPane activeTab={tab('b', 'b.md', { previewScrollTop: 1500 })} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" />,
+    );
+    // Images not loaded yet: the browser clamps the position short.
+    act(() => {
+      prevBody().scrollTop = 300;
+      fireEvent.scroll(prevBody());
+    });
+    await flushFrames();
+    expect(prevBody().scrollTop).toBe(1500);
+    await act(() => new Promise((r) => setTimeout(r, 250)));
+    expect(useEditorStore.getState().tabs[1].previewScrollTop).toBe(1500);
+  });
+
+  it('hands the position back to the reader on their first scroll', async () => {
+    const { rerender } = render(
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" />,
+    );
+    rerender(
+      <PreviewPane activeTab={tab('b', 'b.md', { previewScrollTop: 1500 })} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" />,
+    );
+    await flushFrames();
+    expect(prevBody().dataset.restoringScroll).toBe('');
+
+    act(() => {
+      fireEvent.wheel(prevBody());
+      prevBody().scrollTop = 900;
+    });
+    await flushFrames();
+    expect(prevBody().scrollTop).toBe(900);
+    expect(prevBody().dataset.restoringScroll).toBeUndefined();
+  });
+
+  it('a kept-alive pane keeps its own DOM and scroll while hidden and comes back where it was', async () => {
+    useEditorStore.setState({ tabs: [tab('a', 'a.md')], activeTabId: 'a' });
+    const { rerender } = render(
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" />,
+    );
+    const body = prevBody();
+    act(() => {
+      body.scrollTop = 820;
+      fireEvent.scroll(body);
+    });
+
+    rerender(
+      <PreviewPane activeTab={tab('a', 'a.md')} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" active={false} />,
+    );
+    expect(body.closest('[data-preview-hidden]')).not.toBeNull();
+    // Scrolls of a hidden pane (layout settling behind another tab) are not the reader's.
+    act(() => {
+      body.scrollTop = 100;
+      fireEvent.scroll(body);
+    });
+    await act(() => new Promise((r) => setTimeout(r, 250)));
+    expect(useEditorStore.getState().tabs[0].previewScrollTop).toBe(820);
+
+    act(() => { body.scrollTop = 820; });
+    rerender(
+      <PreviewPane activeTab={tab('a', 'a.md', { previewScrollTop: 820 })} Preview={DummyPreview} vaultRoot="/vault" viewMode="preview" active />,
+    );
+    await flushFrames();
+    expect(prevBody()).toBe(body);
+    expect(body.closest('[data-preview-hidden]')).toBeNull();
+    expect(body.scrollTop).toBe(820);
   });
 });
 

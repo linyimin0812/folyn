@@ -134,9 +134,9 @@ interface EditorViewState {
    *  to the tab the user was actually scrolling, not the new active one
    *  (the trailing-edge race that lost scroll position on tab return). */
   setEditorScrollTopForTab: (tabId: string, top: number) => void;
-  /** Persist the preview scroll top onto the active tab (survives tab
+  /** Persist the preview scroll top onto a specific tab (survives tab
    *  switches + disk persistence). Throttled at the call site. */
-  setPreviewScrollTop: (top: number) => void;
+  setPreviewScrollTopForTab: (tabId: string, top: number) => void;
   setWordCount: (count: number) => void;
   setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number, blockOffsetY: number, blockAnchorLine: number, blockHeight?: number, blockEndLine?: number) => void;
   setEditorContentPadTop: (px: number) => void;
@@ -254,18 +254,16 @@ export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
     }));
   },
 
-  setPreviewScrollTop: (top) => {
-    // ponytail: persist the preview pane scrollTop onto the active tab so
-    // switching files resumes each file's exact preview position, not the
-    // previous file's. Throttled by the PreviewPane caller.
-    const activeTabId = useEditorStore.getState().activeTabId;
-    if (activeTabId) {
-      useEditorStore.setState((state) => ({
-        tabs: state.tabs.map((t) =>
-          t.id === activeTabId ? { ...t, previewScrollTop: top } : t,
-        ),
-      }));
-    }
+  setPreviewScrollTopForTab: (tabId, top) => {
+    // ponytail: persist the preview pane scrollTop onto the tab that was
+    // scrolled so switching files resumes each file's exact preview position.
+    // Named tab, not activeTabId — same trailing-debounce race as
+    // setEditorScrollTopForTab. Throttled by the PreviewPane caller.
+    useEditorStore.setState((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.id === tabId ? { ...t, previewScrollTop: top } : t,
+      ),
+    }));
   },
 
   setWordCount: (count) => set({ wordCount: count }),

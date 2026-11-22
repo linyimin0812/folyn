@@ -165,7 +165,7 @@ describe('useEditorViewStateStore', () => {
     expect(tabs[1].editorScrollTop).toBeUndefined();
   });
 
-  it('setPreviewScrollTop writes the previewScrollTop onto the active tab', () => {
+  it('setPreviewScrollTopForTab writes onto the NAMED tab, not the active one', () => {
     useEditorStore.setState({
       tabs: [
         { id: 't1', name: 'a.md', path: 'a.md', content: '', isDirty: false, fileType: 'markdown', activity: 'files' },
@@ -174,11 +174,11 @@ describe('useEditorViewStateStore', () => {
       activeTabId: 't2',
     });
 
-    useEditorViewStateStore.getState().setPreviewScrollTop(320);
+    useEditorViewStateStore.getState().setPreviewScrollTopForTab('t1', 320);
 
     const tabs = useEditorStore.getState().tabs;
-    expect(tabs[1].previewScrollTop).toBe(320);
-    expect(tabs[0].previewScrollTop).toBeUndefined();
+    expect(tabs[0].previewScrollTop).toBe(320);
+    expect(tabs[1].previewScrollTop).toBeUndefined();
   });
 
   it('toggleVersionHistory flips versionHistoryVisible', () => {
