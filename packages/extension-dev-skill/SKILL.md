@@ -73,7 +73,7 @@ Loop:
 
 ### Key constraints (the ones that bite)
 
-- **Trusted React is external.** `build.mjs` aliases `react` + `react/jsx-runtime` to shims that read `window.React` (the host exposes it before any trusted extension loads). **Do not bundle React** — a second copy breaks hooks ("Invalid hook call"). Use the global.
+- **Trusted React is external.** `build.mjs` passes `hostModules()` from `folyn-extension-sdk/build` as esbuild's `alias`, mapping `react`, `react/jsx-runtime`, `react-dom` and `react-i18next` to the host's instances. **Do not bundle React** — a second copy breaks hooks ("Invalid hook call"). For lucide-react, list the icons: `hostModules({ lucideIcons: [...] })`.
 - **Sandbox has no host React.** Bundle your own UI deps or use plain DOM. All host capability goes through `postMessage` RPC (`src/index.ts` already wires the bridge).
 - **`manifest.main` rewrite.** Root `manifest.json` says `"main": "dist/index.js"`; `build.mjs` strips the `dist/` prefix when copying into `dist/manifest.json` (→ `"index.js"`). Don't "fix" one without the other — install breaks silently.
 - **Remote fetch (trusted).** The main webview CSP does not include third-party origins. To call a remote URL, declare `permissions.http.origins` and use `ctx.http.fetch` (routes through Rust, outside CSP) — never a direct `fetch()` in the bundle.

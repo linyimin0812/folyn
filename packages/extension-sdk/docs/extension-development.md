@@ -885,7 +885,7 @@ const module: ExtensionModule = {
   and no save button for the form's part.
 - `api` is the extension's `ExtensionApi` (`api.env.locale` for your own
   strings, `api.vaultConfig` for the user's settings).
-- The component renders in the host's React tree: bundle with the React shim
+- The component renders in the host's React tree: bundle with `hostModules()`
   (see [Trusted tier bundling](#trusted-tier-bundling)). A render error is
   contained to the collector's card.
 
@@ -983,15 +983,34 @@ Blob URLs have no path, so:
 
 - **relative imports do not resolve** (`./utils.js` fails)
 - **remote imports are blocked** by the `folyn-extension://` CSP
-- **bare specifiers** (`react`, `@/store/...`) resolve against the host
-  realm's already-loaded modules ONLY if Vite leaves them as runtime
-  `import()`. To be safe, **bundle your deps** (Vite/Rollup/esbuild) so the
-  blob-URL `import()` is fully self-contained.
+- **bare specifiers** (`react`, `lodash`) do not resolve either
 
-The `markdown-todo` sample sidesteps this by keeping all bare-specifier
-imports **inside functions** (lazy, not at module-eval time) and using a
-variable specifier so Vite doesn't statically resolve them. That works for a
-demo; a real extension should bundle.
+So bundle everything into one ESM file — except the modules the host shares.
+Your components render in the host's React tree, and a second React copy
+breaks hooks ("Invalid hook call"). `hostModules()` from
+`folyn-extension-sdk/build` is the esbuild `alias` map that sends `react`,
+`react/jsx-runtime`, `react-dom`, `react-dom/client` and `react-i18next` to the
+host's instances:
+
+```js
+// build.mjs
+import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
+
+await esbuild.build({
+  entryPoints: ['src/index.tsx'],
+  bundle: true,
+  format: 'esm',
+  jsx: 'automatic',
+  alias: hostModules(),
+  outfile: 'dist/index.js',
+});
+```
+
+Using lucide-react icons? List the ones you import, and they come from the
+host's copy too (lucide's own ESM does not tree-shake correctly under
+esbuild): `hostModules({ lucideIcons: ['Bold', 'Italic'] })`. A name you
+forget fails the build with "No matching export".
 
 ### Fetching remote resources (trusted tier)
 

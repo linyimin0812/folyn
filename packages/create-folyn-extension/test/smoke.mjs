@@ -1,10 +1,11 @@
 // ponytail: end-to-end smoke check for the non-interactive path.
 // Runs the built CLI in a temp dir with --yes + flags for BOTH tiers, asserts
 // manifest/package.json placeholders substituted correctly and the per-tier
-// files (trusted: React shims + alias; sandbox: index.html + RPC entry) are
+// files (trusted: host-module alias build; sandbox: index.html + RPC entry) are
 // present. Run via `pnpm test`.
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -38,16 +39,13 @@ try {
   assert.equal(pkg.name, 'folyn-extension-demo-extension');
   assert.equal(pkg.version, '1.2.3');
 
-  // Trusted gets the React shims + alias build.
+  // Trusted maps React to the host's instance through the SDK build helper.
   const buildMjs = await readFile(join(dir, 'demo-extension', 'build.mjs'), 'utf8');
-  assert.match(buildMjs, /react-shim\.js/, 'trusted build.mjs aliases react to the shim');
-  assert.match(buildMjs, /react-jsx-runtime-shim\.js/, 'trusted build.mjs aliases react/jsx-runtime');
+  assert.match(buildMjs, /from 'folyn-extension-sdk\/build'/, 'trusted build.mjs imports the SDK build helper');
+  assert.match(buildMjs, /alias: hostModules\(\)/, 'trusted build.mjs aliases the host modules');
   assert.match(buildMjs, /jsx: 'automatic'/, 'trusted build.mjs sets jsx: automatic');
-
-  const shim = await readFile(join(dir, 'demo-extension', 'src', 'react-shim.js'), 'utf8');
-  assert.match(shim, /window\.React/, 'react-shim reads window.React');
-  const jsxShim = await readFile(join(dir, 'demo-extension', 'src', 'react-jsx-runtime-shim.js'), 'utf8');
-  assert.match(jsxShim, /function jsx/, 'jsx-runtime shim provides jsx');
+  assert.ok(!existsSync(join(dir, 'demo-extension', 'src', 'react-shim.js')), 'no per-extension React shim is generated');
+  assert.equal(pkg.devDependencies['folyn-extension-sdk'], '^0.2.0', 'trusted package depends on an SDK that has the build helper');
 
   // Shared files ship with the template (static, no placeholder substitution).
   const agents = await readFile(join(dir, 'demo-extension', 'AGENTS.md'), 'utf8');
@@ -79,7 +77,7 @@ try {
   assert.equal(pkg.name, 'folyn-extension-sandbox-tool');
   assert.ok(!('react' in (pkg.devDependencies ?? {})), 'sandbox package has no react devDep');
 
-  // Sandbox gets index.html + postMessage RPC entry; NO React shims.
+  // Sandbox gets index.html + postMessage RPC entry; no host React.
   const html = await readFile(join(dir2, 'sandbox-tool', 'src', 'index.html'), 'utf8');
   assert.match(html, /<script src="\.\/index\.js"/, 'sandbox index.html references ./index.js');
   const entry = await readFile(join(dir2, 'sandbox-tool', 'src', 'index.ts'), 'utf8');
@@ -87,7 +85,7 @@ try {
 
   const buildMjs = await readFile(join(dir2, 'sandbox-tool', 'build.mjs'), 'utf8');
   assert.match(buildMjs, /format: 'iife'/, 'sandbox build.mjs emits IIFE');
-  assert.doesNotMatch(buildMjs, /react-shim/, 'sandbox build.mjs has no react shim alias');
+  assert.doesNotMatch(buildMjs, /hostModules/, 'sandbox build.mjs does not alias the host modules');
 
   // Shared files identical across tiers.
   const agents = await readFile(join(dir2, 'sandbox-tool', 'AGENTS.md'), 'utf8');

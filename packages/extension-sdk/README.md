@@ -15,10 +15,14 @@ Publishable to npm; no runtime.
 - **Lifecycle context** — `ExtensionContext` with `addDisposable`, optional `ai`
   capability, optional `env` capability (host theme + locale).
 - **Dev helpers** — `defineExtension`, `validateManifest`, `disposable`.
+- **Build helper** — `hostModules()` from `folyn-extension-sdk/build`: the
+  esbuild `alias` map that makes a trusted bundle use the host's React,
+  react-dom, react-i18next (and listed lucide-react icons) instead of its own
+  copies. Node-side, for `build.mjs`.
 
-The SDK is **type-only at runtime** — React appears as a peer type, erased at
-build. So this package has no production runtime dependency; the published
-tarball is just `.d.ts` + a tiny ESM barrel.
+The extension-facing SDK is **type-only at runtime** — React appears as a peer
+type, erased at build. So this package has no production runtime dependency;
+the published tarball is `.d.ts` + a tiny ESM barrel + the build helper.
 
 ## Install
 

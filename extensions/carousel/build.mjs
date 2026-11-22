@@ -1,4 +1,5 @@
 import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,13 +8,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 // Host bundle only — the Carousel renders inline in the host React tree
 // (slides are plain React nodes), so there's no separate origin like
-// file-viewer's iframe. React is aliased to a shim reading window.React
-// (one instance shared with the host — the established trusted-tier pattern).
-const shim = path.join(root, 'src/react-shim.js');
-const hostAlias = {
-  react: shim,
-  'react/jsx-runtime': path.join(root, 'src/react-jsx-runtime-shim.js'),
-};
+// file-viewer's iframe. React resolves to the host's instance (hostModules).
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
 
@@ -25,7 +20,7 @@ await esbuild.build({
   outfile: path.join(root, 'dist/index.js'),
   target: 'es2022',
   jsx: 'automatic',
-  alias: hostAlias,
+  alias: hostModules(),
   minify: true,
   logLevel: 'warning',
 });

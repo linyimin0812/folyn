@@ -35,7 +35,6 @@ src/icons.tsx      各文件族的内联 SVG 图标（doc/ppt/xls/pdf/zip/…）
 src/OfficeFrame.tsx  宿主 iframe 包装（读字节 → postMessage → iframe）
 src/preview.html   iframe 的 HTML 入口（vite 构建进 dist/）
 src/preview.tsx    iframe 入口（收到字节 → FileViewer）
-src/react-shim.js  宿主 bundle 的 React 走 window.React（单实例）
 src/shims/         少量 Node 内置模块浏览器 shim
 build.mjs          宿主 bundle（esbuild）+ iframe bundle（vite）
 vite.config.ts     iframe bundle 配置（root=src/，worker/WASM/代码分割，base './'）

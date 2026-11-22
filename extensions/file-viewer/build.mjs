@@ -1,4 +1,5 @@
 import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
 import { build as viteBuild } from 'vite';
 import { readFile, writeFile, mkdir, copyFile, glob, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -10,9 +11,9 @@ const root = path.dirname(fileURLToPath(import.meta.url));
  * Two bundles:
  *
  * 1. HOST bundle (`dist/index.js`) — the trusted ExtensionModule. Loaded from a
- *    blob URL, so it MUST be self-contained: `react` / `react/jsx-runtime`
- *    alias to shims reading the host's `window.React` (one React instance),
- *    Node built-ins pulled by a couple of deps alias to a browser shim. This
+ *    blob URL, so it MUST be self-contained: React resolves to the host's
+ *    instance (hostModules), and Node built-ins pulled by a couple of deps
+ *    alias to a browser stub. This
  *    bundle is tiny — the renderers are NOT here.
  * 2. IFRAME bundle (`dist/preview.html` + assets, via vite) — the actual
  *    @file-viewer renderers, served from the extension's `folyn-extension://` origin
@@ -20,8 +21,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
  */
 const shim = path.join(root, 'src/shims/node-empty.js');
 const hostAlias = {
-  react: path.join(root, 'src/react-shim.js'),
-  'react/jsx-runtime': path.join(root, 'src/react-jsx-runtime-shim.js'),
+  ...hostModules(),
   'fs/promises': shim, fs: shim, util: shim, zlib: shim, events: shim,
   stream: shim, path: shim, os: shim, crypto: shim, assert: shim,
   buffer: shim, url: shim, child_process: shim,

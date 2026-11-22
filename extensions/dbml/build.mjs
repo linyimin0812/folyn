@@ -1,4 +1,5 @@
 import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
 import { build as viteBuild } from 'vite';
 import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -10,18 +11,13 @@ const root = path.dirname(fileURLToPath(import.meta.url));
  * Two bundles:
  * 1. HOST bundle (`dist/index.js`) — the trusted ExtensionModule (registers the
  *    `dbml` FileTypeProvider with DbmlFrame + the editor status button).
- *    Loaded from a blob URL, so react/jsx-runtime alias to shims reading
- *    window.React (one instance). The status button is styled with the host's
+ *    Loaded from a blob URL, so React resolves to the host's instance
+ *    (hostModules). The status button is styled with the host's
  *    Tailwind classes; the host's tailwind.config.js scans every extension's
  *    `src`.
  * 2. IFRAME bundle (`dist/dbml-preview.html` + assets, via vite) — @dbml/core
  *    + @antv/x6 render at the extension origin.
  */
-const shim = path.join(root, 'src/react-shim.js');
-const hostAlias = {
-  react: shim,
-  'react/jsx-runtime': path.join(root, 'src/react-jsx-runtime-shim.js'),
-};
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
 
@@ -39,7 +35,7 @@ await esbuild.build({
   outfile: path.join(root, 'dist/index.js'),
   target: 'es2022',
   jsx: 'automatic',
-  alias: hostAlias,
+  alias: hostModules(),
   loader: { '.svg': 'dataurl' },
   minify: true,
   logLevel: 'warning',

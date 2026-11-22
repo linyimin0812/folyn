@@ -9,7 +9,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "folyn-extension-sdk": "^0.1.0",
+    "folyn-extension-sdk": "^0.2.0",
     "esbuild": "^0.23.0",
     "typescript": "^5.7.0"
   }

@@ -1,4 +1,5 @@
 import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,9 +7,8 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 // ponytail: single-file ESM bundle. React is NOT bundled — the config form
-// resolves window.React at runtime (host exposes it in main.tsx before any
-// trusted extension is import()-ed), so there's one React instance (no
-// "Invalid hook call"). Same shim pattern as the dbml extension.
+// uses the host's instance (hostModules), so there is one React (no
+// "Invalid hook call").
 await esbuild.build({
   entryPoints: ['src/index.ts'],
   bundle: true,
@@ -16,10 +16,8 @@ await esbuild.build({
   platform: 'browser',
   outfile: 'dist/index.js',
   target: 'es2022',
-  alias: {
-    react: path.join(root, 'src/react-shim.js'),
-    'react/jsx-runtime': path.join(root, 'src/react-jsx-runtime-shim.js'),
-  },
+  jsx: 'automatic',
+  alias: hostModules(),
   minify: true,
   logLevel: 'info',
 });

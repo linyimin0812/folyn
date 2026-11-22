@@ -6,7 +6,7 @@ You are working on a **Folyn extension**. This file is the self-contained refere
 
 A Folyn extension is loaded by the Folyn desktop app at runtime. It declares contributions (commands, file types, containers, exporters, feature panels, tool windows, markdown code renderers, editor languages, highlight grammars, …) in `manifest.json`.
 
-- **Trusted tier** — host-realm `import()` (TOFU-pinned). Wires contributions in `src/index.ts` via the `ExtensionModule` default export. React is provided by the host (`window.React`) via the shims in `src/` — do not bundle it.
+- **Trusted tier** — host-realm `import()` (TOFU-pinned). Wires contributions in `src/index.ts` via the `ExtensionModule` default export. React is the host's instance — `build.mjs` maps it with `hostModules()` from `folyn-extension-sdk/build`; do not bundle it.
 - **Sandbox tier** — sandboxed iframe (`folyn-extension://` origin, opaque). `src/index.html` is the iframe entry; `src/index.ts` is the script. No `window.React` access — bundle your own UI deps or use plain DOM. Host capabilities reach the iframe only via `postMessage` RPC (see `src/index.ts`).
 
 ## Tiers
@@ -33,7 +33,7 @@ To ship a zip: `cd dist && zip -r ../<name>-<version>.zip .`
 
 - `manifest.json` — declares `id`, `name`, `version`, `folyn` compat, `tier`, `permissions`, `contributes.*`, `activation`. The contract between extension and host. Start here when adding a feature.
 - `src/index.ts` — extension entry. Default export is a `ExtensionModule` whose maps mirror the entry-refs in `manifest.json`'s `contributes.*`.
-- `build.mjs` — esbuild config. **Trusted**: bundles `src/index.ts` → `dist/index.js` (single-file ESM, all deps inlined, `react`/`react/jsx-runtime` aliased to the `src/*-shim.js` files that read `window.React`), then writes `dist/manifest.json` with `main` rewritten to `index.js`. **Sandbox**: bundles `src/index.ts` → `dist/index.js` (IIFE), copies `src/index.html` → `dist/index.html`, writes `dist/manifest.json` as-is.
+- `build.mjs` — esbuild config. **Trusted**: bundles `src/index.ts` → `dist/index.js` (single-file ESM, all deps inlined except the modules the host shares — `react`, `react/jsx-runtime`, `react-dom`, `react-i18next` — which `hostModules()` maps to the host's instances), then writes `dist/manifest.json` with `main` rewritten to `index.js`. **Sandbox**: bundles `src/index.ts` → `dist/index.js` (IIFE), copies `src/index.html` → `dist/index.html`, writes `dist/manifest.json` as-is.
 - `README.md` — install + structure overview (human-facing).
 
 ## manifest.json schema
@@ -429,7 +429,7 @@ A extension that needs no explicit lifecycle can omit `activate`/`deactivate` �
 
 - **Main-thread-only APIs.** Tray, window, and any Electron/Tauri-decorated API that touches the UI must run on the main thread. Calling them from a extension render / worker context can crash the host on reload (see fix `e43aed4` for `tray_set_enabled`). If an API is documented as main-thread-only, route the call through the SDK's main-thread bridge — do not call it directly from a component effect.
 - **`manifest.main` rewrite.** Root `manifest.json` says `"main": "dist/index.js"` so the host finds it during dev. `build.mjs` strips the `dist/` prefix when copying into `dist/manifest.json` (→ `"main": "index.js"`). Do not "fix" the prefix in one place without the other — install breaks silently.
-- **React is external (trusted only).** The shims in `src/` alias `react`/`react/jsx-runtime` to `window.React` (the host exposes it in `main.tsx` before any trusted extension is `import()`-ed). Importing React as a normal dep would create a second copy and break hooks. Use the global. **Sandbox has no host React** — bundle your own or use plain DOM.
+- **React is external (trusted only).** `hostModules()` (from `folyn-extension-sdk/build`) maps `react`, `react/jsx-runtime`, `react-dom` and `react-i18next` to the host's instances, which the host exposes before any trusted extension is `import()`-ed. Bundling React as a normal dep would create a second copy and break hooks. For lucide-react, list your icons: `hostModules({ lucideIcons: [...] })`. **Sandbox has no host React** — bundle your own or use plain DOM.
 - **Permissions are enforced at runtime, not build time.** A missing `permissions.fs.scope` / `permissions.http.origins` entry will cause the call to reject at runtime. Declare what you use, in the manifest, before writing the code that calls the capability.
 - **`tier: "trusted"`** in the manifest means the host loads the extension with elevated access (same realm, scoped Tauri grants, `ai.agent`/`ai.edit` available). Do not accept untrusted input into extension code paths without validation. Untrusted or third-party extensions should use `tier: "sandbox"`.
 - **Entry-ref keys must match exactly.** `manifest.json`'s `contributes.fileTypes[].handler` = `"puml-handler"` must equal `src/index.ts`'s `module.handlers["puml-handler"]`. Typos surface as runtime resolution errors, not type errors (the manifest is JSON, not typed).

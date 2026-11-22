@@ -158,7 +158,7 @@ async function main() {
     ['__folyn__', folyn],
   ];
   // Files that may carry placeholders across either tier. Existence-checked —
-  // a tier's dir won't have all of them (e.g. sandbox has src/index.html, trusted has shims).
+  // a tier's dir won't have all of them (e.g. only sandbox has src/index.html).
   const filesToRewrite = [
     'package.json',
     'manifest.json',
@@ -167,8 +167,6 @@ async function main() {
     'README.md',
     'src/index.ts',
     'src/index.html',
-    'src/react-shim.js',
-    'src/react-jsx-runtime-shim.js',
   ];
 
   // Two-step copy: shared common files first, then the chosen tier's files
@@ -197,7 +195,7 @@ async function main() {
   console.log('  pnpm build');
   console.log('');
   console.log(tier === 'trusted'
-    ? 'Then edit src/index.ts and manifest.json to add contributions (React via the shims in src/).'
+    ? 'Then edit src/index.ts and manifest.json to add contributions (React comes from the host — see build.mjs).'
     : 'Then edit src/index.ts (RPC bridge) and manifest.json to add contributions.');
   console.log('See folyn-extension-sdk/folyn-extension-plantuml (external repo) for a working example.');
 }

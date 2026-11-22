@@ -62,6 +62,15 @@ export default defineWorkspace([
   },
   {
     test: {
+      // Build helpers: run in Node (esbuild does not load under jsdom).
+      name: 'extension-sdk',
+      environment: 'node',
+      root: path.resolve(root, 'packages/extension-sdk'),
+      include: ['build/**/*.test.ts'],
+    },
+  },
+  {
+    test: {
       name: 'markdown-table',
       environment: 'node',
       root: path.resolve(root, 'packages/markdown-table'),

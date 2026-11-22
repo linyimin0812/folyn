@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 // Node environment — collect tests stub ctx.scanVault with fixed snapshots, no
 // DOM. The settings form's test opts into jsdom with a file pragma;
-// react/react-dom are devDeps so it loads the real modules (the react shim is
+// react/react-dom are devDeps so it loads the real modules (hostModules() is
 // only for the esbuild bundle).
 export default defineConfig({
   test: {

@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 // Minimal vitest config so the Carousel component test runs standalone.
 // jsdom for the DOM-touching collect/show effects. react/react-dom are
-// devDeps so the test runner loads the real modules (the react shim is only
+// devDeps so the test runner loads the real modules (hostModules() is only
 // for the esbuild bundle, not tests).
 export default defineConfig({
   test: {

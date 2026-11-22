@@ -1,4 +1,5 @@
 import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,15 +8,9 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 // Trusted tier: the extension renders inline in the host React tree, so it
 // MUST share the host's single React instance. Bundling React would create a
-// second copy and break hooks ("Invalid hook call"). These shims alias
-// `react` and `react/jsx-runtime` to read `window.React` (set by the host in
-// main.tsx before any trusted extension is import()-ed). The shims are
-// inlined into the bundle — they do not ship as separate files in dist/.
-const shimDir = path.join(root, 'src');
-const hostAlias = {
-  react: path.join(shimDir, 'react-shim.js'),
-  'react/jsx-runtime': path.join(shimDir, 'react-jsx-runtime-shim.js'),
-};
+// second copy and break hooks ("Invalid hook call"). hostModules() maps
+// react, react/jsx-runtime, react-dom and react-i18next to the host's
+// instances; pass `{ lucideIcons: [...] }` if you use lucide-react.
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
 
@@ -27,7 +22,7 @@ await esbuild.build({
   outfile: path.join(root, 'dist/index.js'),
   target: 'es2022',
   jsx: 'automatic',
-  alias: hostAlias,
+  alias: hostModules(),
   minify: true,
   logLevel: 'warning',
 });

@@ -794,7 +794,7 @@ const module: ExtensionModule = {
   按钮。
 - `api` 是扩展自己的 `ExtensionApi`（自带文案用 `api.env.locale`，读用户设置用
   `api.vaultConfig`）。
-- 组件渲染在 host 的 React 树里：打包时要用 React shim（见
+- 组件渲染在 host 的 React 树里：打包时要用 `hostModules()`（见
   [Trusted tier 打包](#trusted-tier-打包)）。渲染出错只影响这张采集器卡片。
 
 示例：[`extensions/email-collector`](../../extensions/email-collector)（邮箱列表）、
@@ -886,13 +886,33 @@ Trusted loader 把你的 `main` 包成 **blob URL** 再 `import()`。Blob URL �
 
 - **相对 import 解析不了**（`./utils.js` 会失败）
 - **远程 import 被 `folyn-extension://` CSP 拦截**
-- **bare specifier**（`react`、`@/store/...`）只有在 Vite 让其作为运行时 `import()`
-  时，才能解析到 host realm 已加载的模块。保险起见，**打包你的依赖**（Vite/Rollup/
-  esbuild），让 blob-URL `import()` 完全自包含。
+- **bare specifier**（`react`、`lodash`）同样解析不了
 
-`markdown-todo` 样本绕开这点的方法是把所有 bare-specifier import 放 **函数内部**
-（懒加载，不在 module-eval 时执行），且用变量 specifier 让 Vite 不静态解析。
-demo 能跑；真实插件应该 bundle。
+所以要把一切打成一个 ESM 文件——宿主共享的模块除外。你的组件渲染在宿主的 React
+树里，第二份 React 会让 hooks 失效（"Invalid hook call"）。
+`folyn-extension-sdk/build` 里的 `hostModules()` 就是 esbuild 的 `alias` 表，把
+`react`、`react/jsx-runtime`、`react-dom`、`react-dom/client`、`react-i18next`
+指向宿主的实例：
+
+```js
+// build.mjs
+import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
+
+await esbuild.build({
+  entryPoints: ['src/index.tsx'],
+  bundle: true,
+  format: 'esm',
+  jsx: 'automatic',
+  alias: hostModules(),
+  outfile: 'dist/index.js',
+});
+```
+
+用到 lucide-react 图标？把 import 的图标列出来，它们也会取宿主的那份（lucide
+自己的 ESM 在 esbuild 下 tree-shake 会出错）：
+`hostModules({ lucideIcons: ['Bold', 'Italic'] })`。漏写的名字会让构建报
+"No matching export"。
 
 ### 访问远程资源（trusted tier）
 

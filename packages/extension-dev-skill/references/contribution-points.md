@@ -114,8 +114,8 @@ export default {
 - **No relative imports at eval time** — the trusted loader wraps `main` in a blob
   URL and `import()`-s it; blob URLs have no path. Bundle everything with the
   scaffolded `build.mjs` (esbuild).
-- **No bundling React** — use `window.React` via the shims (`build.mjs` aliases
-  `react` + `react/jsx-runtime` to them). A second React copy breaks hooks.
+- **No bundling React** — `build.mjs` aliases the host's modules with
+  `hostModules()` from `folyn-extension-sdk/build`. A second React copy breaks hooks.
 - **CodeMirror**: trusted blob `import('@codemirror/language')` gives a second
   module instance the host won't apply — resolve the host's copy lazily via
   `window.codemirrorLanguage` (host sets it before any trusted extension loads).

@@ -1,42 +1,68 @@
 import esbuild from 'esbuild';
+import { hostModules } from 'folyn-extension-sdk/build';
 import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
-// ponytail: Phase 3 — host bundle only (rich-text renders inline in the host
-// React tree via NodeView; no separate origin like dbml's iframe). React +
-// react-i18next are aliased to shims reading window.React / window.reactI18next
-// (one instance shared with the host — the established pattern for trusted-
-// tier blob extensions). Tailwind/PostCSS are NOT built here: the host's
-// tailwind.config.js content array includes `extensions/rich-text/src/**`
-// so the host's single CSS bundle covers the editor's classes. KaTeX CSS
-// is imported in the host's main.tsx. esbuild `.css: 'text'` loader inlines
-// the katex CSS string for the standalone HTML exporter (richtextHtml.ts).
-const shim = path.join(root, 'src/react-shim.js');
-const hostAlias = {
-  react: shim,
-  'react/jsx-runtime': path.join(root, 'src/react-jsx-runtime-shim.js'),
-  'react-i18next': path.join(root, 'src/react-i18next-shim.js'),
-  // ponytail: alias react-dom + react-dom/client to host shims too. @tiptap/react
-  // transitively imports react-dom (createPortal/flushSync); without these
-  // aliases esbuild bundles react-dom into the extension, and that bundled
-  // copy's internal imports of react's ReactCurrentBatchConfig hit the
-  // react-shim's public-only API → `undefined is not an object` crash.
-  'react-dom': path.join(root, 'src/react-dom-shim.js'),
-  'react-dom/client': path.join(root, 'src/react-dom-client-shim.js'),
-  // ponytail: alias lucide-react to a shim reading window.lucideReact (one
-  // instance shared with the host — mirrors the React/react-dom/react-i18next
-  // pattern). esbuild's tree-shaking mangles lucide-react's namespace
-  // re-export pattern (`export { index as icons }; export { default as Bold }
-  // from './icons/bold.mjs'; ...`) — named imports resolve to undefined or
-  // to the per-icon __iconNode SVG-data array, making <b.icon /> render the
-  // array's indices as text ("0,1,2,3"). The shim enumerates every named
-  // icon the extension imports; add to src/react-lucide-shim.js when a new
-  // icon is imported (build throws "X is not exported" if you miss one).
-  'lucide-react': path.join(root, 'src/react-lucide-shim.js'),
-};
+// ponytail: host bundle only (rich-text renders inline in the host React tree
+// via NodeView; no separate origin like dbml's iframe). React, react-dom (which
+// @tiptap/react imports), react-i18next and lucide-react resolve to the host's
+// instances (hostModules). Tailwind/PostCSS are NOT built here: the host's
+// tailwind.config.js scans every extension's `src` so the host's single CSS
+// bundle covers the editor's classes. KaTeX CSS is imported in the host's
+// main.tsx. esbuild `.css: 'text'` loader inlines the katex CSS string for the
+// standalone HTML exporter (richtextHtml.ts).
+
+// Every lucide-react icon the editor imports. A missing one fails the build
+// with "No matching export in … for import" — add it here.
+const LUCIDE_ICONS = [
+  'AlignCenter',
+  'AlignJustify',
+  'AlignLeft',
+  'AlignRight',
+  'ArrowDownToLine',
+  'ArrowLeftFromLine',
+  'ArrowRightToLine',
+  'ArrowUpFromLine',
+  'Bold',
+  'ChevronDown',
+  'Code',
+  'Code2',
+  'Columns3',
+  'Download',
+  'Eraser',
+  'FolderOpen',
+  'Heading',
+  'Heading1',
+  'Heading2',
+  'Heading3',
+  'Image',
+  'Italic',
+  'Link',
+  'List',
+  'ListChecks',
+  'ListOrdered',
+  'MessageSquareText',
+  'Minus',
+  'Paintbrush',
+  'Quote',
+  'Redo',
+  'Rows3',
+  'Sigma',
+  'Strikethrough',
+  'Table',
+  'TableCellsMerge',
+  'TableCellsSplit',
+  'Trash2',
+  'Type',
+  'Underline',
+  'Undo',
+  'ZoomIn',
+  'ZoomOut',
+];
+const hostAlias = hostModules({ lucideIcons: LUCIDE_ICONS });
 
 await mkdir(path.join(root, 'dist'), { recursive: true });
 

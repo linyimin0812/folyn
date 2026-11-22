@@ -13,7 +13,7 @@
  * no host-side code changes needed.
  *
  * No iframe bundle — slides are plain React nodes rendered inline in the host
- * tree. React is shared with the host via `window.React` (react-shim).
+ * tree. React is the host's instance (build.mjs: hostModules()).
  */
 import type { ExtensionModule, ExportEnhancerHandler } from 'folyn-extension-sdk';
 import { Carousel, Slide } from './Carousel';

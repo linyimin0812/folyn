@@ -10,11 +10,17 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./build": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.js"
     }
   },
   "sideEffects": false,
   "files": [
     "dist",
+    "build",
     "docs",
     "README.md"
   ],
@@ -22,7 +28,8 @@
     "build": "tsc",
     "prepublishOnly": "tsc",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run"
   },
   "license": "MIT",
   "author": "linyimin",
@@ -47,8 +54,14 @@
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.23.0",
+    "jsdom": "^25.0.1",
     "react": "^18.3.1",
-    "typescript": "^5.7.0"
+    "react-dom": "^18.3.1",
+    "react-i18next": "^17.0.10",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
   },
   "publishConfig": {
     "access": "public"

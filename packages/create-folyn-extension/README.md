@@ -36,9 +36,9 @@ Piped stdin (non-TTY) auto-enables --yes to avoid hanging on prompts.
 A `--tier` is required — the two tiers scaffold very different projects:
 
 - **`trusted`** — host-realm `import()` extension (TOFU-pinned). Renders inline in
-  the host React tree; `build.mjs` aliases `react` + `react/jsx-runtime` to the
-  bundled shims that read `window.React`, so JSX + hooks work out of the box
-  against the host's single React instance. Use for file types, containers,
+  the host React tree; `build.mjs` maps `react` (and react-dom, react-i18next)
+  to the host's instances with `hostModules()` from `folyn-extension-sdk/build`,
+  so JSX + hooks work out of the box against the host's single React instance. Use for file types, containers,
   exporters, markdown code renderers, editor languages.
 
 - **`sandbox`** — sandboxed iframe (`folyn-extension://` origin, opaque). No
