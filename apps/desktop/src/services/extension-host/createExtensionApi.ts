@@ -42,6 +42,7 @@ import { buildExtensionDownloads } from './downloadsCapability';
 import { buildExtensionIcons } from './iconsCapability';
 import { buildExtensionFileView } from './fileViewCapability';
 import { buildExtensionProcess } from './processCapability';
+import { buildExtensionSystem } from './systemCapability';
 import type { Disposable as Disp, ExtensionVaultFile } from 'folyn-extension-sdk';
 import type { VaultEntry } from '@folyn/vault-provider';
 import { useAppearanceStore } from '@/store/appearanceStore';
@@ -337,6 +338,7 @@ registerCapability({ slot: 'downloads', build: (m) => buildExtensionDownloads(m)
 registerCapability({ slot: 'icons', build: () => buildExtensionIcons() });
 registerCapability({ slot: 'fileView', build: (m) => buildExtensionFileView(m) });
 registerCapability({ slot: 'process', build: (m) => buildExtensionProcess(m) });
+registerCapability({ slot: 'system', build: (m) => buildExtensionSystem(m) });
 registerCapability({
   slot: 'env',
   build: () => buildExtensionEnv(),

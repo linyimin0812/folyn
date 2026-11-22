@@ -17,6 +17,7 @@ mod extension_lifecycle;
 mod extension_download;
 mod extension_fetch;
 mod extension_exec;
+mod extension_system;
 mod subscriptions;
 mod subscription_render;
 mod extension_rpc;
@@ -830,7 +831,6 @@ pub fn run() {
             activity::activity_push_events,
             activity::activity_get_cursor,
             activity::activity_set_cursor,
-            activity::activity_front_window,
             activity::activity_imap_fetch,
             activity::activity_list_events,
             activity::activity_aggregate_metrics,
@@ -863,6 +863,7 @@ pub fn run() {
             extension_fetch::extension_download_path,
             extension_fetch::extension_downloads_list,
             extension_exec::extension_exec,
+            extension_system::extension_front_window,
             subscriptions::subscription_fetch,
             subscription_render::subscription_render,
             subscription_render::subscription_cancel_renders,

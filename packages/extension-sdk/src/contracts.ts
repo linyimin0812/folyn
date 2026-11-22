@@ -216,14 +216,6 @@ export interface CollectorContext {
    */
   onProgress?: (message: string) => void;
   /**
-   * Sample the current frontmost window (fixed host command;
-   * platform-dependent). Backed by the Rust `activity_front_window` command —
-   * fixed scripts, no collector-controlled args. Returns `null` when
-   * unavailable (unsupported platform / permission denied). Absent in
-   * tests/embedded hosts.
-   */
-  frontWindow?: () => Promise<{ app: string; title: string | null } | null>;
-  /**
    * Host-injected IMAPS mail fetcher (Rust `activity_imap_fetch`): connects to
    * the given IMAP server over TLS, logs in, and returns messages with
    * INTERNALDATE >= sinceMs (one day of SINCE slack is applied host-side —

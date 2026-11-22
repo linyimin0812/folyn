@@ -189,11 +189,6 @@ export async function runCollect(collectorId: string): Promise<ActivityPushOutco
       cursor,
       config,
       api: reg.api,
-      // Frontmost-window sampler (Rust `activity_front_window` — fixed
-      // scripts, no collector-controlled args; see activity/mod.rs).
-      frontWindow: async () => {
-        return invoke<{ app: string; title: string | null } | null>('activity_front_window');
-      },
       // IMAPS mail fetcher (Rust `activity_imap_fetch` — TLS-only IMAP via the
       // imap crate; pure data params, no exec; see activity/mod.rs). Same
       // trust model: fixed command, collector only picks data.

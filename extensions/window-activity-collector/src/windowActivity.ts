@@ -1,10 +1,10 @@
 /**
  * Window activity collection (frontmost app + window title sampler).
  *
- * Each poll samples the frontmost window via the host-provided
- * `ctx.frontWindow` (Rust `activity_front_window` — fixed scripts, so this
- * collector never gains arbitrary osascript/powershell). An event is emitted
- * only when the sample CHANGED since the last one.
+ * Each poll samples the frontmost window via `api.system.frontWindow` (fixed
+ * host queries, so this collector never gains arbitrary osascript or
+ * PowerShell; declared as `permissions.system.frontWindow`). An event is
+ * emitted only when the sample CHANGED since the last one.
  *
  * ponytail: the cursor here is a repurposed opaque string — the last sample
  * as `app|title` — not a timestamp. Sampling granularity is the host's 60s
@@ -16,7 +16,7 @@ export async function collectWindowActivity(
   ctx: CollectorContext,
 ): Promise<{ events: CollectorEvent[]; nextCursor: string }> {
   const cursor = ctx.cursor ?? '';
-  const sample = ctx.frontWindow ? await ctx.frontWindow() : null;
+  const sample = await ctx.api.system.frontWindow();
   if (!sample || !sample.app) {
     // Unavailable (unsupported platform / permission denied): no events,
     // cursor untouched — the next poll retries.

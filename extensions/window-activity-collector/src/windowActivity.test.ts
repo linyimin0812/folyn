@@ -1,19 +1,16 @@
 /**
- * collect() tests: ctx.frontWindow stubbed with fixed samples — no OS access,
- * same contract shape as the host's runtime injection.
+ * collect() tests: `api.system.frontWindow` stubbed with fixed samples — no
+ * OS access, same contract shape as the host's.
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { CollectorContext, ExtensionApi } from 'folyn-extension-sdk';
+import type { CollectorContext, ExtensionApi, SystemApi } from 'folyn-extension-sdk';
 import { collectWindowActivity } from './windowActivity';
 
-/** The window collector does not reach through `ctx.api` yet. */
-const api = {} as ExtensionApi;
-
 function makeCtx(
-  frontWindow: CollectorContext['frontWindow'],
+  frontWindow: SystemApi['frontWindow'],
   cursor: string | null = null,
 ): CollectorContext {
-  return { cursor, config: {}, api, frontWindow };
+  return { cursor, config: {}, api: { system: { frontWindow } } as unknown as ExtensionApi };
 }
 
 describe('collectWindowActivity', () => {
@@ -58,8 +55,8 @@ describe('collectWindowActivity', () => {
     expect(out).toEqual({ events: [], nextCursor: 'Folyn|report.md' });
   });
 
-  it('absent ctx.frontWindow is tolerated (embedded host)', async () => {
-    const out = await collectWindowActivity({ cursor: null, config: {}, api });
-    expect(out).toEqual({ events: [], nextCursor: '' });
+  it('lets a refused permission reach the caller (the run is recorded as failed)', async () => {
+    const fw = vi.fn(async () => { throw new Error('lacks permissions.system.frontWindow'); });
+    await expect(collectWindowActivity(makeCtx(fw))).rejects.toThrow(/permissions\.system\.frontWindow/);
   });
 });

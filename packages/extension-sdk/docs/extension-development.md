@@ -834,17 +834,12 @@ code, under the manifest `permissions` the user approved at install:
 | --- | --- | --- |
 | A remote API | `ctx.api.network.fetch(url, init)` — runs in Rust (no CORS) and times out on its own | `permissions.http.origins` (exact origin) |
 | A local program (`git`, `osascript`, a helper of your own) | `ctx.api.process.exec(program, args, { cwd })` — see [Running local programs](#running-local-programs-trusted-tier) | `permissions.exec.programs` (exact program string) |
+| The frontmost app and window title | `ctx.api.system.frontWindow()` — fixed host queries; `null` when unreadable. macOS asks the user for Automation permission on first use | `permissions.system.frontWindow: true` |
 | The vault's files | `ctx.api.vault.listFiles({ exclude, includeHidden })` (each with `size` / `mtimeMs`), `ctx.api.vault.readText(path, { maxBytes })` (at most that many bytes; `null` for binary) | — |
 
 A collector that needs another origin or another program declares it. Nothing
 changes in the host.
 
-A few sources are still fixed host commands on `ctx` itself. They are absent
-in tests and embedded hosts — always feature-detect.
-
-| Capability | What the host enforces |
-| --- | --- |
-| `ctx.frontWindow()` | Rust `activity_front_window`: **fixed platform scripts**, no collector-controlled arguments. Returns `null` when unavailable. |
 
 #### `authSchema` → the settings config form
 

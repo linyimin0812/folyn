@@ -85,6 +85,8 @@ export type {
   TerminalApi,
   ProcessApi,
   ExtensionExecResult,
+  SystemApi,
+  ExtensionFrontWindow,
   FileTypeRegistryApi,
   ExporterRegistryApi,
   ExtensionApi,

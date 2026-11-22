@@ -418,6 +418,8 @@ function parsePermissionLines(manifest: {
     if (origins.length > 0) out.push(`网络请求：${origins.join('、')}`);
     const programs = declaredList(perms.exec, 'programs');
     if (programs.length > 0) out.push(`运行本机程序：${programs.join('、')}`);
+    const system = perms.system as { frontWindow?: unknown } | undefined;
+    if (system?.frontWindow === true) out.push('读取当前前台应用与窗口标题');
     if (perms.subscriptions) {
       out.push('订阅：读写选定知识库、访问任意公开 HTTP(S) 网站并下载图片（二进制）');
       if (typeof perms.subscriptions === 'object' && perms.subscriptions !== null && 'render' in perms.subscriptions && perms.subscriptions.render === true) out.push('订阅网页渲染：在独立隐私浏览器中执行公开网站脚本以提取内容');

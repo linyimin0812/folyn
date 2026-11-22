@@ -238,6 +238,9 @@ export interface ExtensionPermissions {
    * only): a name resolved on `PATH` (`git`, `osascript`) or an absolute
    * path. Listed in the consent dialog; the host runs nothing else. */
   exec?: { programs: string[] };
+  /** Native desktop facts through `api.system` (trusted only).
+   *  `frontWindow`: the frontmost app and its window title. */
+  system?: { frontWindow?: boolean };
   clipboard?: boolean;
   dialog?: boolean;
   window?: boolean;

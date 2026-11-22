@@ -310,6 +310,24 @@ export interface ProcessApi {
   exec(program: string, args?: string[], opts?: { cwd?: string }): Promise<ExtensionExecResult>;
 }
 
+/** The frontmost app and its window title (`null` when the window has none). */
+export interface ExtensionFrontWindow {
+  app: string;
+  title: string | null;
+}
+
+/** Facts about the user's desktop that need native code to read (trusted
+ *  tier only), each gated by `permissions.system`. */
+export interface SystemApi {
+  /**
+   * The frontmost window, or `null` when it cannot be read (unsupported
+   * platform, permission denied, no foreground window). Rejects unless the
+   * manifest declares `permissions.system.frontWindow`. On macOS the first
+   * call shows the system's Automation-permission prompt.
+   */
+  frontWindow(): Promise<ExtensionFrontWindow | null>;
+}
+
 export interface FileTypeRegistryApi {
   register(provider: unknown, ownerExtensionId: string): Disposable;
   resolve(path: string): unknown;
@@ -411,6 +429,7 @@ export interface ExtensionApi {
   readonly env: EnvApi;
   readonly terminal: TerminalApi;
   readonly process: ProcessApi;
+  readonly system: SystemApi;
   readonly export: ExportService;
 
   readonly fileTypes: FileTypeRegistryApi;

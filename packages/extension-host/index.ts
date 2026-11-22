@@ -7,7 +7,7 @@ export type { Disposable } from 'folyn-extension-sdk';
 export { disposable, validateManifest, defineExtension } from 'folyn-extension-sdk';
 export { DisposableStore, combineSignals, OwnedRegistry, FOLYN_CORE_OWNER } from 'folyn-extension-sdk';
 export type { Registry } from 'folyn-extension-sdk';
-export type { Extension, ExtensionApi, ExtensionContext, ExtensionUIContext, ExtensionLoader, ToolExtensionUIContext, FileTypeExtensionUIContext, VaultContext, VaultApi, FileApi, EditorApi, WorkspaceContextApi, CommandRegistryApi, EventApi, ExtensionStorageApi, AiApi, TerminalApi, ProcessApi, ExtensionExecResult, ExportService, FileTypeRegistryApi, ExporterRegistryApi, ExtensionLogger, DialogApi, NotificationApi, WorkspaceApi, WorkspaceContribution, PresentationApi } from 'folyn-extension-sdk';
+export type { Extension, ExtensionApi, ExtensionContext, ExtensionUIContext, ExtensionLoader, ToolExtensionUIContext, FileTypeExtensionUIContext, VaultContext, VaultApi, FileApi, EditorApi, WorkspaceContextApi, CommandRegistryApi, EventApi, ExtensionStorageApi, AiApi, TerminalApi, ProcessApi, ExtensionExecResult, SystemApi, ExtensionFrontWindow, ExportService, FileTypeRegistryApi, ExporterRegistryApi, ExtensionLogger, DialogApi, NotificationApi, WorkspaceApi, WorkspaceContribution, PresentationApi } from 'folyn-extension-sdk';
 export { ExtensionHost, extensionHost } from './src/ExtensionHost';
 export type { ExtensionState, ExtensionRecord, ExtensionHostHooks, ExtensionApiHandle } from './src/ExtensionHost';
 export { ExtensionRuntime, consoleLogger } from './src/ExtensionRuntime';

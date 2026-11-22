@@ -747,16 +747,11 @@ diff 游标、`authSchema` 含 `allowAiSummary`、文件过滤规则用自带的
 | --- | --- | --- |
 | 远程 API | `ctx.api.network.fetch(url, init)`：在 Rust 侧发出（无 CORS），自带超时 | `permissions.http.origins`（origin 精确匹配） |
 | 本机程序（`git`、`osascript`、自带的辅助程序） | `ctx.api.process.exec(program, args, { cwd })`，见[运行本机程序](#运行本机程序trusted-tier) | `permissions.exec.programs`（程序名精确匹配） |
+| 前台应用与窗口标题 | `ctx.api.system.frontWindow()`：host 的固定查询，读不到时返回 `null`。macOS 首次调用会请用户授予「自动化」权限 | `permissions.system.frontWindow: true` |
 | vault 里的文件 | `ctx.api.vault.listFiles({ exclude, includeHidden })`（每项带 `size` / `mtimeMs`）、`ctx.api.vault.readText(path, { maxBytes })`（最多读这么多字节，二进制返回 `null`） | — |
 
 采集器需要新的 origin 或新的程序时，在 manifest 里声明即可，不用改 host。
 
-还有几个数据源仍是 `ctx` 上的固定 host 命令。它们在测试与嵌入 host 中不存在，
-务必先做特性检测。
-
-| 能力 | host 强制什么 |
-| --- | --- |
-| `ctx.frontWindow()` | Rust `activity_front_window`：**固定平台脚本**，无采集器可控参数。不可用返回 `null`。 |
 
 #### `authSchema` → 设置页配置表单
 
