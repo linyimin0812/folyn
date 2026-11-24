@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
 import { blockAlignPoint, blockLastSrcLine, blockRelativeOffsetY, containerAlignPoint, directiveCloseLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
 import { useEditorViewStateStore } from '@/store/editorViewState';
@@ -38,6 +38,147 @@ export interface PreviewCursorSyncParams {
   cursorViewportY: number | undefined;
   editorViewportTop: number | undefined;
   hasSelection: boolean | undefined;
+  /**
+   * ponytail: chunked rendering — mount the chunk that owns this line
+   * (doc-absolute) before target selection; target picking reads the live
+   * DOM, so the chunk must exist. Returns TRUE when the mounted set changed
+   * (a mount commit is pending → the DOM below is still stale).
+   */
+  ensureChunkMountedForLine?: (line: number) => boolean;
+  /** Bumps when the chunk mount set changes → re-run sync after mounting. */
+  chunkMountVersion?: number;
+}
+
+/**
+ * ponytail: the alignment-relevant inputs of one cursor-sync run, EXCLUDING
+ * `chunkMountVersion` and the stable refs. `chunkMountVersion` is the RETRY
+ * channel — `ensureChunkMountedForLine` mounts the cursor's chunk as a
+ * state update, the mount commits later and bumps the version, and the
+ * effect re-runs against the then-complete DOM. But the version ALSO bumps
+ * whenever the READER scrolls the preview (the windowed chunk set follows
+ * the viewport). A re-run whose SyncInputs are ALL unchanged since the last
+ * COMPLETED alignment carries no new alignment information: it is a
+ * mountVersion-only re-run and must NOT re-assert scrollTop, or the sync
+ * fights the reader's own scroll (snap-back-to-cursor, or
+ * jump-to-top-and-back when the reader scrolled past the cursor's chunk so
+ * no block ≤ cursorLine is mounted). Editor-side changes (cursor move, the
+ * cursor's viewport Y on editor scroll, the syncTarget feedback channel,
+ * …) DO change the inputs and re-align as before.
+ */
+interface SyncInputs {
+  cursorLine: number | undefined;
+  parsedContent: string;
+  cursorViewportY: number | undefined;
+  editorViewportTop: number | undefined;
+  hasSelection: boolean | undefined;
+  editorLineHeight: number;
+  cursorLineFrac: number;
+  cursorBlockOffsetY: number;
+  cursorBlockLine: number;
+  cursorBlockHeight: number;
+  cursorBlockEndLine: number;
+  syncTargetLine: number;
+  syncTargetScreenY: number;
+  syncTargetMeasuredLine: number;
+}
+
+function sameSyncInputs(a: SyncInputs, b: SyncInputs): boolean {
+  return a.cursorLine === b.cursorLine
+    && a.parsedContent === b.parsedContent
+    && a.cursorViewportY === b.cursorViewportY
+    && a.editorViewportTop === b.editorViewportTop
+    && a.hasSelection === b.hasSelection
+    && a.editorLineHeight === b.editorLineHeight
+    && a.cursorLineFrac === b.cursorLineFrac
+    && a.cursorBlockOffsetY === b.cursorBlockOffsetY
+    && a.cursorBlockLine === b.cursorBlockLine
+    && a.cursorBlockHeight === b.cursorBlockHeight
+    && a.cursorBlockEndLine === b.cursorBlockEndLine
+    && a.syncTargetLine === b.syncTargetLine
+    && a.syncTargetScreenY === b.syncTargetScreenY
+    && a.syncTargetMeasuredLine === b.syncTargetMeasuredLine;
+}
+
+/** One in-flight sync request: the inputs it ran with, whether the
+ *  alignment completed, and — once completed — the aligned block plus its
+ *  CONTENT-SPACE top offset, the anchor the mount-drift correction below
+ *  re-measures on later mountVersion-only re-runs. */
+interface SyncRequest {
+  inputs: SyncInputs;
+  completed: boolean;
+  /** The aligned block (content-space drift anchor), or null when the
+   *  alignment had no target block (top-of-doc path). */
+  targetEl: HTMLElement | null;
+  /** The target's content-space top offset (rect.top − container.top +
+   *  scrollTop) when the alignment completed — scroll-INVARIANT: it
+   * changes only when geometry above the block moves, never when the
+   * reader scrolls. */
+  targetContentOffset: number;
+  /** The target's SCREEN top when the alignment completed (rect.top) —
+   *  the drift correction's second gate: content-space drift with a
+   *  steady screen position means the browser's native scroll anchoring
+   *  already compensated the shift (see correctAlignmentDrift). */
+  targetScreenY: number;
+}
+
+/**
+ * ponytail: mount-drift correction for a COMPLETED alignment. The
+ * windowed chunk set follows the viewport; a spacer→chunk swap ABOVE the
+ * aligned block replaces a never-measured line-arithmetic estimate with
+ * the real measured height, shifting every block below — the completed
+ * alignment silently breaks (the user-reported 滚动后对齐了,预览渲染出
+ * 其他内容后又不对齐). The input gate correctly refuses to re-run the
+ * full alignment on these mountVersion-only re-runs — the same re-run is
+ * how READER scroll expresses itself, and re-aligning would fight the
+ * reader. Correct by the block's CONTENT-SPACE drift instead: the
+ * content-space offset is scroll-invariant (reader scroll shifts rect.top
+ * and scrollTop equally → measured drift 0 → no correction, no snap-back;
+ * a reader far past the target also has it unmounted → not connected →
+ * skip), and it changes ONLY when geometry above moved. scrollTop += drift
+ * restores the block's screen position — and doubles as scroll anchoring
+ * for a reader viewing elsewhere (their content stops jumping when
+ * off-screen chunks mount). Each chunk's estimate→real swap happens once
+ * (measured heights are identity-cached), so corrections converge.
+ *
+ * The SCREEN gate: browsers with native CSS scroll anchoring
+ * (overflow-anchor; Chromium always, WebKit when available) compensate
+ * content shifts above the scroll anchor in the same layout pass — the
+ * target's screen position stays steady while its content-space offset
+ * still shows the drift. A JS scrollTop += drift on top of that would
+ * DOUBLE-correct: one visible jump per mounted chunk (the reported
+ * 闪动). So only correct when the screen position is ALSO off (nobody
+ * compensated); when the browser already held it, just re-base the
+ * content anchor to the new reality. The pre-mount band in
+ * useWindowedChunks makes the whole question rare (the alignment lands
+ * on mounted, measured geometry); this correction is the safety net for
+ * coverage gaps (tall viewports over the cap, wrap under-estimates).
+ */
+function correctAlignmentDrift(req: SyncRequest, scrollContainer: HTMLElement): void {
+  const el = req.targetEl;
+  if (!el || !el.isConnected) return;
+  // Hidden pane / display:none (a hidden sibling tab): no boxes → the
+  // measured drift would be garbage. The restore-hold guard already skips
+  // the sync entirely; this is the same visibility model as target picking.
+  if (el.getClientRects().length === 0) return;
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const rectTop = el.getBoundingClientRect().top;
+  const now = rectTop - containerRect.top + scrollContainer.scrollTop;
+  const drift = now - req.targetContentOffset;
+  if (Math.abs(drift) <= 2) return; // same tolerance as the alignment write
+  const screenErr = req.targetScreenY - rectTop;
+  if (Math.abs(screenErr) <= 2) {
+    // Native scroll anchoring already compensated the same shift — the
+    // screen position never moved. Re-base the content anchor only.
+    req.targetContentOffset = now;
+    return;
+  }
+  scrollContainer.scrollTop += drift;
+  // Re-anchor to the POST-correction content offset: the drift moved the
+  // block's content-space position permanently (scroll-invariant), so the
+  // old anchor would re-measure the same drift on every later re-run and
+  // over-correct cumulatively. The correction restored the block's screen
+  // position exactly, so the new anchor is equivalent to the old one.
+  req.targetContentOffset = now;
 }
 
 /**
@@ -49,6 +190,14 @@ export interface PreviewCursorSyncParams {
  * implemented; only cursor -> preview. The effect never parses anything
  * itself — it re-runs on parsedContent, i.e. once per actual re-parse,
  * not per keystroke (see the deferred-parse effect in MarkdownPreview).
+ *
+ * The effect is CURSOR/CONTENT-driven, never mount-driven: a re-run whose
+ * inputs are unchanged since the last completed alignment (i.e. one
+ * triggered only by the windowed chunk set changing under the READER's
+ * own preview scroll) early-returns, so reading the preview never fights
+ * the sync. Chunk mounts the sync itself requested are retried once via
+ * chunkMountVersion — see SyncInputs/SyncRequest and the request gate in
+ * the effect.
  */
 export function usePreviewCursorSync({
   containerRef,
@@ -58,6 +207,8 @@ export function usePreviewCursorSync({
   cursorViewportY,
   editorViewportTop,
   hasSelection,
+  ensureChunkMountedForLine,
+  chunkMountVersion,
 }: PreviewCursorSyncParams) {
   // ponytail: editor line height lets headings center on the cursor LINE
   // center, not just its top (coordsAtPos gives the line top). Read from
@@ -92,8 +243,22 @@ export function usePreviewCursorSync({
   const syncTargetMeasuredLine = useEditorViewStateStore((s) => s.syncTargetMeasuredLine);
 
   const activeBlockRef = useRef<HTMLElement | null>(null);
+  // ponytail: the current sync request (see SyncRequest) — gates
+  // mountVersion-only re-runs and carries the pending-retry state.
+  const requestRef = useRef<SyncRequest | null>(null);
 
-  useEffect(() => {
+  // LAYOUT effect, on purpose: every path below either swaps layout
+  // (the code-block uncap on highlight change), mounts chunks (the
+  // ensureChunkMountedForLine bridge re-renders synchronously from a
+  // layout effect), or corrects geometry drift — and WKWebView (Tauri's
+  // macOS webview) has NO native CSS scroll anchoring to mask the
+  // intermediate. As a passive (post-paint) effect the drifted frame
+  // painted first and the correction landed a frame later — one visible
+  // jump per first-visit chunk swap while scrolling large docs (the
+  // reported 闪动). Pre-paint, the swap and the correction are in the
+  // same paint, a jump lands its band + alignment in one paint, and the
+  // follow-along scroll writes never lag a frame behind the editor.
+  useLayoutEffect(() => {
     if (cursorLine == null || cursorLine <= 0) {
       // sync disabled (cursorSyncPreview off or left split mode) → drop the
       // highlight that the last active run stamped, so toggling off clears it.
@@ -101,6 +266,10 @@ export function usePreviewCursorSync({
         activeBlockRef.current.classList.remove('cursor-sync-active');
         activeBlockRef.current = null;
       }
+      // Drop the request state too: turning sync back on — even onto the
+      // SAME line with the same content — must re-align, not early-return
+      // on the stale completed request.
+      requestRef.current = null;
       return;
     }
     if (hasSelection) return;
@@ -111,8 +280,59 @@ export function usePreviewCursorSync({
     // The host is restoring this tab's saved reading position after a tab
     // switch (PreviewPane); the editor republishing its cursor metrics for
     // the switch is not a cursor move, so the preview stays where it was left.
-    // A pane kept alive behind another tab never follows the cursor.
+    // A pane kept alive behind another tab never follows the cursor. This
+    // runs BEFORE `ensureChunkMountedForLine` on purpose: during the
+    // restore-hold the sync must not mount the cursor's chunk either — the
+    // windowed recompute would unmount it again on every frame's rAF (a
+    // mount/unmount loop at frame rate through the whole hold window).
     if (scrollContainer.dataset.restoringScroll !== undefined || scrollContainer.closest('[data-preview-hidden]')) return;
+    // ponytail: request gate (the reader-scroll fight fix). Snapshot the
+    // alignment-relevant inputs; if they are ALL unchanged since the last
+    // COMPLETED alignment, this re-run was triggered by chunkMountVersion
+    // alone — the reader's own preview scroll moved the windowed set — and
+    // the completed alignment stands (the reader's scrollTop survives).
+    const inputs: SyncInputs = {
+      cursorLine,
+      parsedContent,
+      cursorViewportY,
+      editorViewportTop,
+      hasSelection,
+      editorLineHeight,
+      cursorLineFrac,
+      cursorBlockOffsetY,
+      cursorBlockLine,
+      cursorBlockHeight,
+      cursorBlockEndLine,
+      syncTargetLine,
+      syncTargetScreenY,
+      syncTargetMeasuredLine,
+    };
+    const prevRequest = requestRef.current;
+    if (prevRequest?.completed === true && sameSyncInputs(prevRequest.inputs, inputs)) {
+      // mountVersion-only re-run (the windowed chunk set changed): correct
+      // any geometry drift the mounts caused above the aligned block — see
+      // correctAlignmentDrift. Scroll-invariant, so the reader's own scroll
+      // (same trigger) measures 0 drift and their position survives.
+      correctAlignmentDrift(prevRequest, scrollContainer);
+      return;
+    }
+    // Chunked rendering: make sure the chunk owning the cursor line is
+    // mounted BEFORE picking the target block. Mounting is a state update —
+    // this render still reads stale DOM, so chunkMountVersion (a dep below)
+    // re-runs the effect once the chunk commits and the target exists (the
+    // commit re-renders synchronously from this layout effect, still before
+    // paint, so a jump lands its band and the alignment in ONE paint).
+    // Returns whether the mounted set changed: while a mount commit is
+    // pending, the DOM below is stale and target selection would pick a
+    // far-away already-mounted block (the always-mounted last chunk) and
+    // write a WRONG interim scrollTop. Record the request as incomplete,
+    // write NOTHING (no scroll, no highlight), and let the mountVersion
+    // re-run retry against the committed DOM.
+    const mountPending = ensureChunkMountedForLine?.(cursorLine) ?? false;
+    if (mountPending) {
+      requestRef.current = { inputs, completed: false, targetEl: null, targetContentOffset: 0, targetScreenY: 0 };
+      return;
+    }
     const blocks = root.querySelectorAll('[data-source-line]');
     if (blocks.length === 0) return;
     let target: Element | null = null;
@@ -149,7 +369,11 @@ export function usePreviewCursorSync({
       }
     }
     if (!target) {
+      // No block at/before the cursor line (cursor above the first block —
+      // frontmatter / leading blanks). The mount set is final (ensure had
+      // nothing more to mount), so this IS the completed alignment: top.
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      requestRef.current = { inputs, completed: true, targetEl: null, targetContentOffset: 0, targetScreenY: 0 };
       return;
     }
     // A show-one-at-a-time container (tabs / carousel). Two cursor kinds:
@@ -449,7 +673,18 @@ export function usePreviewCursorSync({
     if (Math.abs(scrollContainer.scrollTop - desired) > 2) {
       scrollContainer.scrollTop = desired;
     }
-  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, cursorBlockLine, cursorBlockHeight, cursorBlockEndLine, syncTargetLine, syncTargetScreenY, syncTargetMeasuredLine, parsedContent, containerRef, parseRef]);
+    // ponytail: the alignment completed for these inputs — later
+    // mountVersion-only re-runs (the reader's scroll) early-return above,
+    // and mount-drift re-runs correct by the recorded content-space anchor.
+    // targetScreenY (post-write rect.top) is the correction's screen gate.
+    requestRef.current = {
+      inputs,
+      completed: true,
+      targetEl: el,
+      targetContentOffset: blockOffset,
+      targetScreenY: el.getBoundingClientRect().top,
+    };
+  }, [cursorLine, cursorViewportY, editorViewportTop, hasSelection, editorLineHeight, cursorLineFrac, cursorBlockOffsetY, cursorBlockLine, cursorBlockHeight, cursorBlockEndLine, syncTargetLine, syncTargetScreenY, syncTargetMeasuredLine, parsedContent, containerRef, parseRef, ensureChunkMountedForLine, chunkMountVersion]);
 
   // Clean up the active-block marker on unmount.
   useEffect(() => {

@@ -685,6 +685,14 @@ mjx-container svg {
 .md-preview > .md-blank-gap { margin: -1em 0 0; padding: 0; line-height: 0; }
 /* The leading gap (leading blanks / frontmatter) has no block above to cancel. */
 .md-preview > .md-blank-gap:first-child { margin-top: 0; }
+/* ponytail: unmounted chunk placeholders (windowed chunked rendering for
+   large docs). Height set inline (measured or estimated). Same margin
+   treatment as .md-blank-gap so a mount/unmount swap between a chunk's
+   elements and its spacer keeps the surrounding spacing identical: the
+   spacer replaces [leading gap + blocks] whose top margin was the leading
+   gap's -1em, and the next block's 0 top margin is unchanged. */
+.md-preview > .md-chunk-spacer { margin: -1em 0 0; padding: 0; line-height: 0; }
+.md-preview > .md-chunk-spacer:first-child { margin-top: 0; }
 /* ponytail: raw-tag blocks (rehypeShowRawTags) render ONE source line per
    text line / br; pinning line-height to the editor's measured line height
    (--md-gap-line, same rate as .md-blank-gap) makes the block's rendered

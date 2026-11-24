@@ -15,6 +15,8 @@ Applies to every site that renders Markdown in the desktop app:
 
 All four call sites MUST go through the dual API in `services/markdown/renderMarkdown.ts`. No site hand-rolls its own `unified()` chain.
 
+EXCEPTION (as old as the pipeline itself): `MarkdownPreview.tsx` runs a RICHER chain — it needs the preview-only concerns (`rehypeBlankGap` cursor-sync gaps, `rehypeHighlight` code coloring, the directive/raw-HTML component map, `rehypeSourceLine` stamps, frontmatter). That chain now lives in `components/file-types/markdown/markdownPipeline.ts` (`buildMarkdownPipeline(opts)` / `renderMarkdownBody(md, opts)`) and is the single source for BOTH the full-document render and the per-chunk windowed render (see the chunked/full parity contract). Do not add a third chain; do not inline the chain back into the component.
+
 ---
 
 ## Signatures
@@ -33,6 +35,27 @@ function unwrapInlineMath(md: string): string;          // collapse \n adjacent 
 function findMathSegments(md: string): MathSegment[];    // shared code-segment scanner
 const MATHJAX_CONTAINER_CSS: string;                    // pinned font for SVG ex-unit
 ```
+
+```typescript
+// components/file-types/markdown/markdownPipeline.ts — MarkdownPreview's richer chain
+
+interface MarkdownPipelineOptions {
+  componentMap: Record<string, React.ComponentType<any>>;
+  sourceLineOffset: number;                             // frontmatter line count → doc-absolute data-source-line
+  blankGap?: { offset: number; totalLines?: number };    // per-chunk gap config; omitted → no gaps
+}
+
+function buildMarkdownPipeline(opts: MarkdownPipelineOptions): Processor; // the shared chain
+function renderMarkdownBody(md: string, opts: MarkdownPipelineOptions): React.ReactElement;
+```
+
+```typescript
+// components/file-types/markdown/chunkMarkdown.ts
+
+interface MarkdownChunk { startLine: number; lineCount: number; blankLinesAfter: number }
+interface ChunkedMarkdown { chunks: MarkdownChunk[]; hasReferenceDefinitions: boolean }
+
+function chunkMarkdown(body: string): ChunkedMarkdown;  // O(lines); boundaries only on real blank runs
 
 `renderMarkdownToHtml` is `renderToStaticMarkup(renderMarkdownToReact(md, opts))` — they share one pipeline, not two.
 
@@ -97,6 +120,18 @@ The same rule also fixes the 1x-DPI (non-Retina) blur (option B, landed 2026-08-
 
 Chat does NOT call `useEffect` to re-typeset math on content append. rehype-mathjax renders SVG at parse time, so the existing per-segment `useMemo([value])` cache in `MessageContent` re-parses the trailing (growing) text segment naturally. Do not add `typesetPromise`-based re-render — it's the wrong mental model for SVG output.
 
+### Chunked/full render parity (large docs)
+
+`MarkdownPreview` splits large bodies into blank-line chunks (`chunkMarkdown.ts`) and renders each chunk through the SAME pipeline (`markdownPipeline.ts`), padding each chunk with `\n` × (startLine − 1) so parser positions are body-absolute, then passing `sourceLineOffset: frontmatterLineCount` so `data-source-line` stamps are doc-absolute. The contract:
+
+- The top-level child sequence of a chunked render and a full render must carry the SAME tagged blocks with the SAME doc-absolute `data-source-line` values, in order, with no content dropped or duplicated. This is what cursor-sync block queries, gap compensation, word selection and writeback walk — they must not be able to tell the modes apart.
+- Chunk children are hoisted as DIRECT children of `.md-preview` (no wrapper DOM). Unmounted chunks render as inert `div.md-chunk-spacer[data-md-chunk]` (no `data-source-line`, `aria-hidden`, height = last measured or line-arithmetic estimate). Spacers are invisible to every consumer that queries blocks or gaps.
+- Static `.md-blank-gap` heights may DIVERGE between modes exactly where the full render's arithmetic cannot see unpositioned nodes (mjx-containers, invisible link reference definitions, raw-tag fallback splices with an empty component map): the full render overcounts those lines as blanks; the per-chunk arithmetic counts the real blanks (the chunker knows the spanning regions). No consumer reads static gap heights — runtime gap compensation (`planGapHeights`) pins every following block to the editor's line grid in both modes. A doc whose last chunk renders only unpositioned content (trailing display math) has no trailing EOF gap in chunked mode; the cursor-past-EOF extension then works on the last present gap after the last stamped block.
+- Link reference definitions resolve document-wide in CommonMark — per-chunk parses cannot see them — so any doc with a reference definition NEVER chunks (`chunkDoc.hasReferenceDefinitions` opt-out; conservative Phase A call).
+- Chunking activates only above BOTH thresholds (> 200 chunks AND body > 100 KB) — below them the render path is byte-identical to the historical single pass.
+
+`fullRender?: boolean` (default false) forces the full single-pass render above the thresholds. `exportService.renderMarkdownToHtmlViaDom` and `PresentationOverlay` MUST pass `fullRender: true` — export extracts innerHTML after settle (spacers would export as empty divs) and presentation mounts the whole doc for its own scrolling. Live preview panes stay windowed.
+
 ---
 
 ## Patterns
@@ -145,7 +180,35 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 
 **Solution**: `renderMarkdownToHtmlViaDom` mounts `MarkdownPreview` in a hidden DOM container, lets React render, then captures `container.innerHTML` + `collectAppCss()`. The export path inherits all preview behavior (math, scoped CSS, image resolution) for free.
 
-**Why**: Two HTML renderers (one for preview, one for export) would drift. The hidden-DOM approach makes them structurally identical.
+**Why**: Two HTML renderers (one for preview, one for export) would drift. The hidden-DOM approach makes them structurally identical. It renders with `fullRender: true` (see the chunked/full parity contract — windowed spacers must never reach exported HTML).
+
+### Pattern: Chunked windowed rendering for large markdown docs
+
+**Problem**: Opening a 500 KB markdown doc parsed + reconciled the whole document at once — a multi-hundred-ms parse and a full DOM mount of ~15k elements dominated first-open latency (the markdown-large-file-open-lag report).
+
+**Solution**: Four pieces, all under `components/file-types/markdown/`:
+
+- `chunkMarkdown.ts` — O(lines) line scanner producing chunks that tile the body exactly (`startLine`, `lineCount`, `blankLinesAfter`, `hasReferenceDefinitions`). Chunk boundaries only ever sit on a real blank-line run, never inside a construct that spans blanks (fenced code, display math, HTML block runs, lists with loose items, tables, link reference definitions). An HTML block run is opened by a bare tag line (`^<tag` alone, attributes on the following lines) exactly like a complete `<tag …>` line — a multi-line raw-HTML tag is never split across chunks.
+- `markdownPipeline.ts` — the exact plugin chain MarkdownPreview used to inline, extracted into `buildMarkdownPipeline(opts)` / `renderMarkdownBody(md, opts)` so full and chunked renders share ONE chain and can never diverge. This is NOT `services/markdown/renderMarkdown.ts` (the simpler shared chat/export chain without rehypeBlankGap/highlight/componentMap) — two chains remain, as they always were, but each is single-sourced.
+- `useWindowedChunks.ts` — mounts chunks near the viewport (binary-search chunk-for-line, OVERSCAN 2 chunks/600px, one rAF recompute per mount change for convergence, scroll events coalesced to one recompute per frame). ALWAYS mounts the last chunk (EOF gap + scroll height). Zero-measured containers (jsdom, hidden) degrade to mounting all. `ensureChunkMountedForLine(docLine)` is the cursor-sync bridge and returns `true` when it staged a mount: a cursor line in an inter-chunk blank gap (a line that belongs to no chunk — `findChunkForLine` misses) mounts BOTH neighbor chunks via `chunksToMountForLine` (exported pure function) so the sync's target scan always finds a block at or around the cursor. `mountVersion` re-triggers the sync effect after the mount commits. Measured chunk heights live in a map keyed by chunk IDENTITY (`startLine` + text — the same key the per-chunk element cache uses) and are pruned during render when the chunk array changes: an in-place edit drops only the edited chunk's measurement (its spacer falls back to the line-arithmetic estimate on that render) and keeps every unchanged chunk's measured height. The old design — index-keyed map cleared in a `useEffect([chunks])` AFTER the render — kept the edited chunk's stale height through the render (wrong spacer) and reset ALL unmounted spacer geometry on every debounced parse flush while typing.
+- Per-chunk output cache in `MarkdownPreview` keyed by render-affecting inputs (component-map key, frontmatter, sync mode, gap offset/totalLines, startLine) with the chunk text stored for verification — typing re-parses only the chunks whose text or position changed.
+- `usePreviewCursorSync.ts` request gate — the sync effect re-runs on EVERY `mountVersion` bump (the window changes constantly while the READER scrolls). A completed request whose inputs (cursor line + viewport metrics, editor lineHeight, selection, parsed content, sync-target) are unchanged is a NO-OP: the reader's scroll position survives window churn. (Before the gate, every mount-only re-run re-asserted the alignment — with the cursor's chunks unmounted the target scan found nothing and jumped the preview to the top.) A request whose mount is still pending (staged by `ensureChunkMountedForLine`) writes NO scroll/highlight and retries on the next `mountVersion` against committed DOM — no alignment against stale DOM. The `restoringScroll`/hidden guards run BEFORE the mount bridge: during PreviewPane's scroll-restore hold a cursor move mounts nothing (otherwise mount → rAF unmount → mount… ran as a frame-rate loop).
+- `usePreviewCursorSync.ts` drift correction — a mountVersion-only re-run of a COMPLETED request corrects by the aligned block's CONTENT-SPACE drift (`rect.top − container.top + scrollTop`, a scroll-invariant: reader scrolling never changes it, spacer→chunk swaps above do). `scrollTop += drift` restores the aligned screen position without re-running the alignment — the reader who scrolled away is NOT snapped back (their drift measures 0; a reader far past the target has it unmounted → skipped), and off-screen mounts no longer make their content jump (the correction doubles as scroll anchoring). The anchor re-bases to the post-correction offset (the drift moved the block's content position permanently; keeping the old anchor over-corrects cumulatively). `requestRef` records the aligned element + its content offset + its post-write screen top; the correction skips when the element is disconnected/hidden, and — the SCREEN gate — when the screen position is already steady (content-space drift with a steady screen top means the browser's NATIVE CSS scroll anchoring compensated the same shift in the same layout pass; correcting on top of it double-compensates, one visible jump per mounted chunk). The pre-mount band makes this correction a rarely-firing SAFETY NET (coverage gaps: tall viewports over the cap, wrap under-estimates) rather than the primary mechanism — the user-visible flicker (闪动) of a correction chain was the report that motivated the pre-mount.
+- `useWindowedChunks.ts` pre-mount band, JUMP-gated — `ensureChunkMountedForLine(docLine)` stages the cursor's chunks, and — only when the anchor chunk (the one at/after the cursor line, where the sync's alignment target lives) is NOT yet mounted, i.e. a real jump — the whole post-alignment band around them: ±(min(viewport,1200) + 600)×1.5 ESTIMATE-space px. The alignment writes scrollTop and lands the viewport on a region whose chunks are still never-measured estimate spacers; the window walk mounts them a frame later and every estimate→real swap shifts everything below — the just-written alignment breaks and corrections hard-jump scrollTop to restore it, visibly (闪动). Pre-mounting the band first means the swaps happen BEFORE the alignment reads geometry: it lands on final geometry, nothing moves after, and the scroll arrives at real content instead of spacer blankness popping in. The walk trims the band's excess on its next run (measured heights are identity-cached — the trim's swaps are height-neutral). The jump gate exists because the sync effect re-runs on every input change (every keystroke, every editor-scroll frame) while the walk's trim keeps removing the band's excess between runs — unconditional staging re-mounts ~70 chunks at keystroke rate (the reported 变卡). With a mounted anchor (typing, small scrolls) the targets alone suffice: geometry above is measured or height-cached, and residual swaps fall to the drift correction / native scroll anchoring. Estimate-space coverage under-covers when real heights run SHORTER than estimates (extreme soft-wrap compression) — those residuals fall to the drift correction.
+- `useWindowedChunks.ts` pinning — the chunks `ensureChunkMountedForLine` last resolved (the cursor's chunk + its gap successor, ≤2) are PINNED and survive every window rotation, like the last chunk. A window walk that read pre-correction rects (or pre-scroll rects) must not unmount the sync's drift-anchor block: once unmounted, the anchor element is dead — the remounted block is a different node and the correction goes permanently blind (observed in the windowed suite as alignment drifting to +200 px and sticking). Costs ≤2 chunks of memory; the pin re-resolves by LINE on every recompute so re-chunking can't strand stale indices.
+
+**Why**: no wrapper DOM (direct children keep every DOM walker's contract), no post-hoc stamping pass (padding + offset make stamps come out doc-absolute), shared pipeline (parity by construction). Measured on a 500 KB synthetic doc: chunking 2.1 ms; first-window (40 chunks) render 146 ms vs 517 ms for the full single pass — plus the DOM-mount savings jsdom cannot measure.
+
+### Pattern: Pre-paint cursor sync (layout-effect timing + hook order)
+
+**Problem**: the sync effect ran as a passive `useEffect` — post-paint. Tauri's macOS webview (WKWebView) has NO native CSS scroll anchoring, so every chunk swap rendered one VISIBLE drifted frame (estimate→real height swap shifts everything below it), and the correction landed a paint later: one visible jump per first-visit chunk swap while scrolling a large doc (the reported 闪动, alignment visibly “效果不好"). Jumps were worse: the pending-mount write-nothing path painted the spacer/old position first, then the band + alignment landed across several paints.
+
+**Solution**: two placements, both load-bearing:
+
+- The sync effect in `usePreviewCursorSync.ts` is a `useLayoutEffect`. Every path it takes — the code-block uncap on highlight change, `ensureChunkMountedForLine` (a setState from a layout effect re-renders synchronously, still pre-paint), the mountVersion-only drift correction, the alignment `scrollTop` write — now lands in the SAME paint as the geometry change it answers. The drifted intermediate frame never paints. This also removes the one-frame lag the follow-along scroll had behind the editor during continuous scrolling.
+- `MarkdownPreview.tsx` calls `usePreviewCursorSync` AFTER the gap-compensation `useLayoutEffect`. Layout effects within one component run in HOOK ORDER: called before it (the old position), the sync measured the PRE-compensation static gap heights (the frontmatter leading gap is re-pinned to the grid by compensation) and wrote a wrong `scrollTop` (observed: 40 = the SkillMetaCard height the leading gap must absorb — `MarkdownPreview.cursorsync.shortdoc.test.tsx` "frontmatter" is the ordering's regression test). After it, the sync measures post-compensation geometry; both effects still run before paint, so compensated gaps + aligned `scrollTop` ship in one paint.
+
+The unmount-cleanup effect stays a passive `useEffect` (no timing need). jsdom cannot observe paint order — both effect types flush inside `act()` — so the timing contract is verified on the real WKWebView device; the hook ORDER is what the jsdom suites pin (the frontmatter test).
 
 ---
 
@@ -162,6 +225,11 @@ block's bottom margin without changing the gap's negative margin (or vice
 versa) shifts every synced block. `:first-child` gap keeps `margin-top: 0`
 (nothing above to cancel). Headings keep their own top margin — runtime gap
 compensation (`gapCompensation.ts`) measures and absorbs it.
+
+Chunked spacers join this contract: `.md-preview > .md-chunk-spacer` uses the
+same `margin: -1em 0 0` (and `:first-child { margin-top: 0 }`) so a
+spacer↔chunk mount/unmount swap at the same position does not shift the
+content below it by 1em.
 
 Code blocks with a fence language render a `.code-block-header` (label +
 actions) above `.code-block-inner`. Cursor sync is unaffected: both the
@@ -205,7 +273,13 @@ and double clicks). jsdom cannot verify browser layout or physical input.
 
 > **Warning**: Editor and renderer can disagree on `\\$x$` — editor's `(?<!\\)` lookbehind in `findMathSegments` treats `\\$` as escaped (no highlight on following `$x$`), while remark-parse treats `\\` as literal `\` and renders `$x$` as math. Rare. Documented ceiling.
 
+> **Warning**: The editor's math highlight and fold service scan a bounded WINDOW, not the whole doc (per-keystroke whole-doc materialization was the large-file keystroke-lag root cause). The highlighter scans the view's visible ranges (viewport-scoped decorations — off-viewport math is unhighlighted until scrolled in); the fold service scans the run (maximal block of non-blank lines) around the queried line and gates on the cursor's line before any string materialization. The SAME `findMathSegments` scanner runs on the window slice — the code-segment agreement contract holds per window. Ceilings: display math containing a blank line is not matched across the gap (the renderer splits it into two blocks anyway — micromark math flow ends at a blank line, so the editor agrees with the preview MORE than the old whole-doc scan did); a window starting inside a long fenced code block with internal blank lines can't see the fence's opening marker — math-looking text there may highlight (cosmetic) and folds are refused via a fence-marker-in-run guard; runs >1000 lines never fold. Regression coverage in `MarkdownMathExtension.test.ts` (fold ranges, viewport-restricted decorations, no-whole-doc-materialization spies).
+
 > **Warning**: MarkdownPreview's `<style>` filter uses `text.includes('mjx-')` heuristic to let MathJax's scoped CSS through. A user-authored raw `<style>` containing the substring `mjx-` would leak past. Threat model is local-first user markdown, not untrusted remote content; Tauri CSP already allows `unsafe-inline`. Accept.
+
+> **Warning**: A call site that extracts preview DOM (`innerHTML`, PDF print, presentation) or drives its own scrolling over the whole document MUST pass `fullRender: true` to MarkdownPreview — windowed spacers are empty divs by design. Live preview panes must NOT pass it (that is the entire point of windowing).
+
+> **Warning**: Scroll-restore / deep-link into a chunked doc lands on spacer estimates until the scroll event's rAF recompute mounts the real chunks (PreviewPane restore runs per-frame rAF for its own settle window). Under-estimated spacer heights can flash once when restoring deep into an unvisited region — accepted Phase A risk; measured heights persist per chunk thereafter (identity-keyed — an in-place edit resets only the edited chunk's measurement, so typing mid-doc while scrolled elsewhere does not shift the reading position).
 
 ---
 
@@ -246,7 +320,12 @@ useEffect(() => {
 ## Tests Required
 
 - `services/markdown/renderMarkdown.test.ts` — pipeline behavior: inline/display math, `\[..\]`/`\(..\)`, AMS env, code-skip, `\$` escape, export self-containment (asserts no `cdn.jsdelivr` / font URL / `<link stylesheet>`)
-- `editor/extensions/MarkdownMathExtension.test.ts` — token classes for `$..$` / `$$..$$` / `\[..\]` / `\(..\)`, code-skip (fenced + inline), `\$` not treated as math open, decoration updates on doc change
+- `editor/extensions/MarkdownMathExtension.test.ts` — token classes for `$..$` / `$$..$$` / `\[..\]` / `\(..\)`, code-skip (fenced + inline), `\$` not treated as math open, decoration updates on doc change, fold ranges (single/multi-line `$$..$$` / `\[..\]`, inline-only and cursor-outside → null), viewport-restricted decorations, no-whole-doc-materialization (toString/sliceString spies)
+- `components/file-types/markdown/chunkMarkdown.test.ts` — chunk tiling (exact source text, no overlap, blank gaps really blank), boundary placement for every construct that spans blank lines (fences, math, HTML runs, loose lists, tables), reference-definition detection
+- `components/file-types/markdown/markdownPipeline.test.tsx` — chunk/full render parity: strict child-sequence equality for docs without unpositioned nodes; stamped-entry (tag + doc-absolute line + text) equality for docs with them (math, directive fallback, reference defs — see the parity contract for why static gaps legitimately diverge there)
+- `components/file-types/markdown/MarkdownPreview.chunked.test.tsx` — component level: jsdom zero-measured degrade-to-all, chunked-vs-full stamp equality, `fullRender` bypass, below-threshold identical render, per-chunk cache (one pipeline invocation for an in-place edit). The doc must exceed BOTH thresholds — a ~37k doc silently runs the full path (add a length assertion so the suite fails if the fixture shrinks below the chunked gate).
+- `components/file-types/markdown/useWindowedChunks.test.ts` — unit level: `chunksToMountForLine` bridges inter-chunk blank gaps (both neighbors), pre-frontmatter and past-EOF lines.
+- `components/file-types/markdown/MarkdownPreview.windowed.test.tsx` — component level with a stubbed mini layout engine (per-block rects + a measured scroller): real windows, reader-scroll survival (request gate), restore-hold mounts nothing (guard order), gap cursor line mounts both neighbors and aligns into the neighborhood, in-place edit preserves measured spacers of unchanged chunks and drops the edited one's, the jump-gated pre-mount band (boosted never-measured heights above the target; the alignment converges AND scrollTop is stable after the alignment write — no correction chain, the 闪动 regression; and a NEARBY cursor move does not re-stage the band — the 变卡 regression; mutation-checked: disabling the band's loops OR its jump gate goes red), and the residual drift correction (SHRUNK heights — real ≪ estimate, so the estimate-space band under-covers and chunks still mount after the alignment; converges via the correction; mutation-checked: disabling correctAlignmentDrift goes red). Assertions wait for convergence, not a fixed time, because the rAF walks are load-dependent. Slow (jsdom layout walk is O(children²) per recompute) — per-test timeouts are tens of seconds by design.
 
 Assertion points:
 - `transformMathBrackets` skips fenced code blocks (line starts with `` ``` ``)
