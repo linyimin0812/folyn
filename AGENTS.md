@@ -36,4 +36,6 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 
 - Make architectural decisions for the long term. Do not accept a stopgap that only works for now and is meant to be replaced later.
 
+- Write commit messages (subject and body) in English. When quoting a user report that arrived in another language, translate the symptom into English prose instead of pasting the original wording.
+
 - **Do NOT run whole-project compiles/builds** (`cargo check`, `pnpm build`, `pnpm tauri build`, etc.) unless the user explicitly asks. These load many files into the toolchain and cause computer lag on this machine. The user will edit files themselves; your job is to ensure the changes are syntactically correct (visually verify types/imports/signatures). Run targeted single-file checks (`tsc --noEmit` on one file, `cargo check -p <crate>` on one crate) only when syntax correctness genuinely cannot be verified by reading.
