@@ -195,6 +195,19 @@ function buildMarkdownKeymap(
     .map((s) => ({ key: shortcutToCmKey(s.keys), run: actionMap[s.id] }));
 }
 
+/** Word count for the status bar. Pure helper shared by the mount/tab-switch
+ *  effects (immediate) and the debounced doc-change flush (see
+ *  WORD_COUNT_DEBOUNCE_MS) — the same computed value in every path. */
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Trailing debounce for the status-bar word count: full-doc toString +
+ *  regex split is ~57ms/5MB, far too slow to run on every keystroke. The
+ *  count is a display stat — recomputing it 500ms after the last doc change
+ *  is imperceptible. */
+const WORD_COUNT_DEBOUNCE_MS = 500;
+
 export interface FolynEditorHandle {
   getView: () => EditorView | null;
   getScrollDOM: () => HTMLElement | null;
@@ -286,6 +299,18 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
     const persistScrollTopRef = useRef<((top: number, tabId: string) => void) | null>(null);
     if (persistScrollTopRef.current === null) {
       persistScrollTopRef.current = debounce((top: number, tabId: string) => setEditorScrollTopForTab(tabId, top), 200);
+    }
+    // ponytail: word count debouncer (see handleUpdate) — created once, reads
+    //  setWordCount via a ref so the closure never goes stale across renders.
+    const setWordCountRef = useRef(setWordCount);
+    setWordCountRef.current = setWordCount;
+    const scheduleWordCountRef = useRef<(() => void) & { cancel: () => void } | null>(null);
+    if (scheduleWordCountRef.current === null) {
+      scheduleWordCountRef.current = debounce(() => {
+        const v = viewRef.current;
+        if (!v) return;
+        setWordCountRef.current(countWords(v.state.doc.toString()));
+      }, WORD_COUNT_DEBOUNCE_MS);
     }
     // ponytail: smart paste → table convert dialog. When a table is detected
     // on paste and the user hasn't suppressed the prompt, show a confirmation
@@ -543,8 +568,12 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           if (update.docChanged) {
             const content = update.state.doc.toString();
             onChangeRef.current?.(content);
-            const words = content.trim().split(/\s+/).filter(Boolean).length;
-            setWordCount(words);
+            // ponytail: word count is a status-bar stat, not per-keystroke
+            //  data — the full-doc regex split costs ~57ms/5MB on every doc
+            //  change. Trailing-debounced (WORD_COUNT_DEBOUNCE_MS); reads
+            //  the CURRENT doc at flush time so a tab switch between schedule
+            //  and flush publishes the live tab's count, never a stale one.
+            scheduleWordCountRef.current?.();
           }
           if (update.selectionSet) {
             // ponytail: all cursor metrics are measured in the coalesced
@@ -569,7 +598,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
         }
       },
-      [setCursorPosition, setCursorViewportY, setHasSelection, setWordCount, sp.setViewTick, scheduleCursorMeasure],
+      [setCursorPosition, setCursorViewportY, setHasSelection, sp.setViewTick, scheduleCursorMeasure],
     );
 
     // Build a fresh EditorState for the given doc + file path. Shared by
@@ -836,14 +865,17 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       // paint, not only after the first cursor move.
       scheduleCursorMeasure();
 
-      // Initial word count
-      const words = initialContent.trim().split(/\s+/).filter(Boolean).length;
-      setWordCount(words);
+      // Initial word count (immediate — the count must be right on open,
+      // before any debounced flush)
+      setWordCount(countWords(initialContent));
 
       return () => {
         view.destroy();
         viewRef.current = null;
         setView(null);
+        // ponytail: drop any pending debounced count — the view is gone and
+        //  the flush would publish a count for a destroyed editor.
+        scheduleWordCountRef.current?.cancel();
       };
     }, []);
 
@@ -867,8 +899,9 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       // dispatch published nothing — measure the restored tab's cursor now
       // (the rAF runs after swapRef clears, on the new doc's layout).
       scheduleCursorMeasure();
-      const words = initialContent.trim().split(/\s+/).filter(Boolean).length;
-      setWordCount(words);
+      // Immediate count for the freshly swapped-in tab (the swap silences
+      // the updateListener, so nothing schedules the debounced flush).
+      setWordCount(countWords(initialContent));
       // Clear swap on the next tick so the setState + restore dispatches
       // (which fire updateListener synchronously) are all silenced.
       queueMicrotask(() => { swapRef.current = false; });
