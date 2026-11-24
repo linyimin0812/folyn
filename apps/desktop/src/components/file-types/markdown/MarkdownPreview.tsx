@@ -1,35 +1,18 @@
 import { useMemo, useRef, useEffect, useLayoutEffect, useCallback, useState, createElement, Fragment } from 'react';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
-import remarkDirective from 'remark-directive';
-import remarkDirectiveRehype from 'remark-directive-rehype';
-import remarkRehype from 'remark-rehype';
-import rehypeRaw from 'rehype-raw';
-import rehypeHighlight from 'rehype-highlight';
-import { all as allLowlightGrammars } from 'lowlight';
-import rehypeMathjax from 'rehype-mathjax';
-import rehypeReact from 'rehype-react';
-import { jsx, jsxs } from 'react/jsx-runtime';
-import { transformMathBrackets, unwrapInlineMath } from '@/services/markdown/renderMarkdown';
-import { rehypeSourceLine } from './rehypeSourceLine';
-import { rehypeBlankGap } from './rehypeBlankGap';
-import { rehypeShowRawTags, remarkCollapseUnknownTagRuns } from './rehypeShowRawTags';
-import { remarkSourceListNumbers } from './remarkSourceListNumbers';
-import { planGapHeights } from './gapCompensation';
 import { VaultContext } from '@folyn/container-extensions';
 import { getHandlerByExtension, getHandlerById, getModeComponent } from "@/components/file-types/registry";
 import { readFileByRoute } from '@/services/editorIoService';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { FileIcon } from '@/components/icons/FileIcon';
-import { rehypeRemoveCodeBreaks } from './rehypeRemoveCodeBreaks';
-import { rehypeMarkResultBlock } from './rehypeMarkResultBlock';
+import { planGapHeights } from './gapCompensation';
 import { parseFrontmatter, SkillMetaCard } from './frontmatter';
 import { buildPreviewComponentMap } from './previewComponentMap';
 import { usePreviewCursorSync } from './usePreviewCursorSync';
 import { installPreviewWordSelection } from './previewWordSelection';
+import { chunkMarkdown } from './chunkMarkdown';
+import { renderMarkdownBody } from './markdownPipeline';
+import { useWindowedChunks, CHUNK_ESTIMATE_LINE_HEIGHT } from './useWindowedChunks';
+import type { PreviewProps } from '../types';
 
 // ponytail: P2 — large-doc parse debounce knobs. Docs above
 // PARSE_DEBOUNCE_CHARS re-parse at most every PARSE_DEBOUNCE_MS after the
@@ -40,7 +23,38 @@ const PARSE_DEBOUNCE_CHARS = 6_000;
 const PARSE_DEBOUNCE_MS = 150;
 const PARSE_MAX_WAIT_MS = 500;
 
-export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursorLine, cursorViewportY, editorViewportTop, hasSelection }: import('../types').PreviewProps) {
+// ponytail: chunked-rendering thresholds (the markdown-open-lag fix).
+// Documents at or below BOTH limits render exactly as before (single
+// pipeline pass, identical DOM). Above them the body is split into
+// blank-line chunks (chunkMarkdown) and only the chunks near the viewport
+// are mounted; the rest render as height-estimated spacers. Chunking kicks
+// in only for genuinely large docs — where the cost of a full parse +
+// reconcile of ~100KB+ of markdown dominates first-open latency.
+const CHUNKED_MAX_CHUNKS = 200;
+const CHUNKED_MIN_CHARS = 100_000;
+
+export interface MarkdownPreviewProps extends PreviewProps {
+  /**
+   * ponytail: render the whole document even above the chunked threshold.
+   * The export service (innerHTML extraction) and presentation mode need
+   * the complete DOM in one pass; live preview panes default to windowed
+   * chunked rendering for large docs. Untouched call sites keep the
+   * historical full render only while their docs stay under the thresholds.
+   */
+  fullRender?: boolean;
+}
+
+export function MarkdownPreview({
+  content,
+  filePath,
+  vaultRoot,
+  onChange,
+  cursorLine,
+  cursorViewportY,
+  editorViewportTop,
+  hasSelection,
+  fullRender = false,
+}: MarkdownPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [resolvedVaultRoot, setResolvedVaultRoot] = useState('');
   const [assetBase, setAssetBase] = useState('');
@@ -101,6 +115,37 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     return () => clearTimeout(t);
   }, [content, parsedContent]);
 
+  // Parse frontmatter early — the chunking + cursor-sync wiring below
+  // needs body/frontmatterLineCount, and the directive wrappers stamp
+  // frontmatter-offset-adjusted `data-source-line` with it (matches
+  // rehypeSourceLine's offset, so cursor sync lines up).
+  const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(parsedContent), [parsedContent]);
+
+  // ponytail: split the body into blank-line chunks and window-mount them.
+  // chunkMarkdown is a cheap O(lines) line scan — safe to run on every
+  // debounced parse (it is also what decides useChunked, so it always runs).
+  const chunkDoc = useMemo(() => chunkMarkdown(body), [body]);
+  const chunks = chunkDoc.chunks;
+  const docTotalLines = useMemo(() => parsedContent.split('\n').length, [parsedContent]);
+  // Link reference definitions ([label]: /url) resolve DOCUMENT-WIDE in
+  // CommonMark — a usage in one chunk could reference a definition living
+  // in a far-away chunk, and the per-chunk parse can't see it (the shortcut
+  // link would render as literal text instead of a link). Reference-def
+  // docs are rare; the conservative Phase A call is to keep them on the
+  // full render (the chunker reports the flag for exactly this).
+  const useChunked = !fullRender
+    && !chunkDoc.hasReferenceDefinitions
+    && chunks.length > CHUNKED_MAX_CHUNKS
+    && body.length > CHUNKED_MIN_CHARS;
+
+  const windowed = useWindowedChunks({
+    enabled: useChunked,
+    chunks,
+    containerRef,
+    frontmatterLineCount,
+    lineHeight: editorLineHeight,
+  });
+
   usePreviewCursorSync({
     containerRef,
     parseRef,
@@ -109,6 +154,11 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     cursorViewportY,
     editorViewportTop,
     hasSelection,
+    // ponytail: chunked rendering — mount the chunk owning the cursor line
+    // before target selection; mountVersion re-triggers this effect once
+    // the mount commits (the selection below reads the live DOM).
+    ensureChunkMountedForLine: windowed.ensureChunkMountedForLine,
+    chunkMountVersion: windowed.mountVersion,
   });
 
   // ponytail: content/onChange change every keystroke. componentMap below
@@ -165,11 +215,6 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     void import('@/services/editorIoService').then(({ openFile: open }) => open(path, name));
   }, []);
 
-  // Parse frontmatter before building the component map so the directive
-  // wrappers can stamp a frontmatter-offset-adjusted `data-source-line`
-  // (matches rehypeSourceLine's offset, so cursor sync lines up).
-  const { meta, body, frontmatterLineCount } = useMemo(() => parseFrontmatter(parsedContent), [parsedContent]);
-
   const componentMap = useMemo(() => {
     return buildPreviewComponentMap({ filePath, assetBase, contentRef, onChangeRef, frontmatterLineCount });
   }, [filePath, vaultRoot, resolvedVaultRoot, assetBase, frontmatterLineCount]);
@@ -185,45 +230,91 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
   // one re-parse when the user toggles sync.
   const syncActive = (cursorLine ?? 0) > 0;
 
+  // ponytail: full-document render — the exact pipeline that used to live
+  // inline here, now shared with the chunked path (markdownPipeline.ts) so
+  // the two can never diverge. Below the chunked thresholds this is the ONLY
+  // render path — DOM identical to the historical behavior.
   const reactContent = useMemo(() => {
-    try {
-      const pipeline = unified()
-        .use(remarkParse)
-        // Stage 1 of unknown-tag display: collapse blank-line-separated
-        // unknown-tag runs into literal text BEFORE any markdown plugin
-        // runs, so the region's inner markdown never parses.
-        .use(remarkCollapseUnknownTagRuns, { extraKnownTags: Object.keys(componentMap) })
-        .use(remarkMath)
-        .use(remarkGfm)
-        .use(remarkSourceListNumbers)
-        .use(remarkBreaks)
-        .use(remarkDirective)
-        .use(remarkDirectiveRehype)
-        .use(remarkRehype, { allowDangerousHtml: true })
-        .use(rehypeRaw)
-        .use(rehypeShowRawTags, { extraKnownTags: Object.keys(componentMap) })
-        .use(rehypeHighlight, { languages: allLowlightGrammars, ignoreMissing: true } as any)
-        .use(rehypeRemoveCodeBreaks)
-        .use(rehypeMarkResultBlock)
-        .use(rehypeMathjax)
-        .use(rehypeSourceLine, { offset: frontmatterLineCount });
-      if (syncActive) pipeline.use(rehypeBlankGap, { offset: frontmatterLineCount, totalLines: parsedContent.split('\n').length });
-      const result = pipeline
-        .use(rehypeReact, {
-          jsx,
-          jsxs,
-          Fragment,
-          passNode: true,
-          components: componentMap,
-        } as any)
-        .processSync(unwrapInlineMath(transformMathBrackets(body)));
+    if (useChunked) return null;
+    return renderMarkdownBody(body, {
+      componentMap,
+      sourceLineOffset: frontmatterLineCount,
+      blankGap: syncActive
+        ? { offset: frontmatterLineCount, totalLines: parsedContent.split('\n').length }
+        : undefined,
+    });
+  }, [useChunked, body, componentMap, frontmatterLineCount, syncActive, parsedContent]);
 
-      return result.result as React.ReactElement;
-    } catch (error) {
-      console.error('[MarkdownPreview] render error:', error);
-      return createElement('p', null, '渲染错误');
+  // ponytail: chunked rendering (A2/A5) — each chunk is padded with
+  // (startLine − 1) newlines so the parser's line positions are
+  // BODY-absolute, then run through the SAME pipeline with offset 0 → the
+  // stamped data-source-line values are doc-absolute and identical to a
+  // full render of the same doc (no post-hoc DOM stamping pass).
+  //
+  // Per-chunk blank-gap config: a chunk's LEADING gap = the blank lines
+  // since the previous chunk's last content line — expressed as
+  // offset = −prevEnd (chunk 0: frontmatterLineCount, so its leading gap
+  // also covers the frontmatter lines above the body). Inter-block gaps
+  // are offset-invariant. Only the LAST chunk gets totalLines (the EOF
+  // gap), computed against the doc total like the full render's.
+  //
+  // A5: the cache is keyed by render-affecting inputs (component-map
+  // inputs, frontmatter, sync mode, gap config, startLine) with the chunk
+  // text stored in the entry for verification. Each pass rebuilds the map
+  // with only the current chunks' entries (stale entries drop out — no
+  // unbounded growth), so typing re-renders only the chunks whose text or
+  // line position changed — the tail-below-the-edit case.
+  const chunkCacheRef = useRef<Map<string, { text: string; el: React.ReactElement }>>(new Map());
+  const mapCacheKey = `${filePath}|${resolvedVaultRoot}|${assetBase}|${vaultRoot}`;
+  const mountedChunkEls = useMemo(() => {
+    const els = new Map<number, React.ReactElement>();
+    if (!useChunked) return els;
+    const prevCache = chunkCacheRef.current;
+    const nextCache = new Map<string, { text: string; el: React.ReactElement }>();
+    for (const i of windowed.mounted) {
+      const c = chunks[i];
+      if (!c) continue;
+      const isLast = i === chunks.length - 1;
+      const prevEnd = i === 0 ? 0 : chunks[i - 1].startLine + chunks[i - 1].lineCount - 1;
+      const gapOffset = i === 0 ? frontmatterLineCount : -prevEnd;
+      const totalLines = isLast
+        ? Math.max(0, docTotalLines - frontmatterLineCount - (i === 0 ? 0 : prevEnd))
+        : undefined;
+      const key = `${mapCacheKey}|${frontmatterLineCount}|${syncActive}|${gapOffset}|${totalLines ?? ''}|${c.startLine}`;
+      let entry = prevCache.get(key);
+      if (!entry || entry.text !== c.text) {
+        entry = {
+          text: c.text,
+          el: renderMarkdownBody('\n'.repeat(c.startLine - 1) + c.text, {
+            componentMap,
+            sourceLineOffset: frontmatterLineCount,
+            blankGap: syncActive ? { offset: gapOffset, totalLines } : undefined,
+          }),
+        };
+      }
+      nextCache.set(key, entry);
+      els.set(i, entry.el);
     }
-  }, [body, componentMap, frontmatterLineCount, syncActive, parsedContent]);
+    chunkCacheRef.current = nextCache;
+    return els;
+  }, [useChunked, windowed.mounted, chunks, componentMap, frontmatterLineCount, syncActive, docTotalLines, mapCacheKey]);
+
+  // ponytail: unmounted chunks render as height-estimated spacers — sized
+  // from the measured height of the chunk's last mount (leading gap
+  // included) when available, else from editor-line arithmetic. The height
+  // cache is identity-keyed (startLine + text), so typing elsewhere leaves
+  // these measurements intact (no per-flush reset to estimates).
+  const spacerHeight = useCallback((i: number): number => {
+    const measured = windowed.measuredHeight(i);
+    if (measured != null && measured > 0) return measured;
+    const c = chunks[i];
+    const lh = editorLineHeight > 0 ? editorLineHeight : CHUNK_ESTIMATE_LINE_HEIGHT;
+    const prevEnd = i === 0 ? 0 : chunks[i - 1].startLine + chunks[i - 1].lineCount - 1;
+    const leadingGapLines = i === 0
+      ? c.startLine - 1 + frontmatterLineCount
+      : c.startLine - prevEnd - 1;
+    return Math.max(8, (leadingGapLines + c.lineCount) * lh + 16);
+  }, [chunks, windowed, editorLineHeight, frontmatterLineCount]);
 
   // ponytail: runtime blank-gap compensation — the last piece of the
   // "preview descends at the editor's rate" design. rehypeBlankGap sizes
@@ -285,7 +376,11 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
     const grid = editorContentPadTop > 0 ? { top: editorContentPadTop, leadingGap: leadingGap ?? undefined } : undefined;
     const { writes } = planGapHeights(blocks, gapAfter, editorLineHeight, undefined, grid);
     for (const [el, h] of writes) (el as HTMLElement).style.height = `${h}px`;
-  }, [reactContent, editorLineHeight, syncActive, editorContentPadTop]);
+    // ponytail: mountedChunkEls in the deps re-runs compensation whenever the
+    // windowed chunk set changes — newly mounted chunks bring new blocks and
+    // gaps that must be pinned to the grid (reactContent stays null in
+    // chunked mode, so it alone would never re-trigger).
+  }, [reactContent, mountedChunkEls, editorLineHeight, syncActive, editorContentPadTop]);
 
   // ponytail: memoize VaultContext value — without this, every keystroke
   // (content change → MarkdownPreview re-renders) creates a fresh value object,
@@ -314,7 +409,26 @@ export function MarkdownPreview({ content, filePath, vaultRoot, onChange, cursor
         style={{ '--md-gap-line': editorLineHeight > 0 ? `${editorLineHeight}px` : undefined } as React.CSSProperties}
       >
         {meta && <SkillMetaCard meta={meta} />}
-        {reactContent}
+        {useChunked ? (
+          // ponytail: chunked body — mounted chunks' elements and estimated
+          // spacers, all hoisted as DIRECT children of .md-preview (the
+          // gap-compensation walk, cursor-sync block queries, word selection
+          // and image-resize writeback see the same child sequence as a full
+          // render; spacers carry no data-source-line and are inert).
+          chunks.map((_c, i) => {
+            const el = mountedChunkEls.get(i);
+            if (el) return <Fragment key={i}>{el}</Fragment>;
+            return (
+              <div
+                key={i}
+                className="md-chunk-spacer"
+                data-md-chunk={i}
+                aria-hidden="true"
+                style={{ height: `${spacerHeight(i)}px` }}
+              />
+            );
+          })
+        ) : reactContent}
       </div>
     </VaultContext.Provider>
   );

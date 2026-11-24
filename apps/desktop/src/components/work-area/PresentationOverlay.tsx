@@ -103,6 +103,10 @@ export function PresentationOverlay({ content, filePath, vaultRoot, onExit }: Pr
             cursorViewportY={0}
             editorViewportTop={0}
             hasSelection={false}
+            // ponytail: presentation needs the complete document DOM (the
+            // presenter scrolls through everything; windowed chunks would
+            // mount lazily and flash spacers on first scroll-through).
+            fullRender
           />
         </div>
       </div>

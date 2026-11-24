@@ -222,7 +222,15 @@ export async function renderMarkdownToHtmlViaDom(
   // pending work, which races with React's commit phase and logs a warning.
   // Natural async render + the 150ms poll start gives React time to commit
   // the first frame.
-  root.render(createElement(MarkdownPreview, { content, filePath, vaultRoot }));
+  root.render(createElement(MarkdownPreview, {
+    content,
+    filePath,
+    vaultRoot,
+    // ponytail: export needs the COMPLETE document DOM in one pass —
+    // the innerHTML is extracted from this container after the render
+    // settles, so windowed chunk mounting (spacers) must stay off.
+    fullRender: true,
+  }));
 
   // Poll for stability: no loading markers visible AND any markmap file-preview
   // block has its markmap SVG mounted (a child <g> inside the container's
