@@ -146,21 +146,6 @@ export function MarkdownPreview({
     lineHeight: editorLineHeight,
   });
 
-  usePreviewCursorSync({
-    containerRef,
-    parseRef,
-    parsedContent,
-    cursorLine,
-    cursorViewportY,
-    editorViewportTop,
-    hasSelection,
-    // ponytail: chunked rendering — mount the chunk owning the cursor line
-    // before target selection; mountVersion re-triggers this effect once
-    // the mount commits (the selection below reads the live DOM).
-    ensureChunkMountedForLine: windowed.ensureChunkMountedForLine,
-    chunkMountVersion: windowed.mountVersion,
-  });
-
   // ponytail: content/onChange change every keystroke. componentMap below
   // used to close over them, which forced a full map rebuild + unified re-parse
   // + VaultContext value churn on each character — every :::file-preview block
@@ -381,6 +366,30 @@ export function MarkdownPreview({
     // gaps that must be pinned to the grid (reactContent stays null in
     // chunked mode, so it alone would never re-trigger).
   }, [reactContent, mountedChunkEls, editorLineHeight, syncActive, editorContentPadTop]);
+
+  // ponytail: cursor sync — called AFTER the gap-compensation layout effect
+  // on purpose. Its effect is itself a useLayoutEffect (pre-paint: mounts,
+  // drift corrections, and alignment writes land in the same paint — no
+  // intermediate drifted frame; WKWebView has no native scroll anchoring
+  // to mask one), and within one component layout effects run in hook
+  // order: this call's position makes the sync measure the POST-gap-
+  // compensation geometry (the leading gap pinned to the grid above), not
+  // the pre-compensation static gap heights. Both still run before paint,
+  // so the compensated gaps and the aligned scrollTop ship in ONE paint.
+  // ponytail: chunked rendering — mount the chunk owning the cursor line
+  // before target selection; mountVersion re-triggers this effect once
+  // the mount commits (the selection below reads the live DOM).
+  usePreviewCursorSync({
+    containerRef,
+    parseRef,
+    parsedContent,
+    cursorLine,
+    cursorViewportY,
+    editorViewportTop,
+    hasSelection,
+    ensureChunkMountedForLine: windowed.ensureChunkMountedForLine,
+    chunkMountVersion: windowed.mountVersion,
+  });
 
   // ponytail: memoize VaultContext value — without this, every keystroke
   // (content change → MarkdownPreview re-renders) creates a fresh value object,

@@ -199,6 +199,17 @@ Chat does NOT call `useEffect` to re-typeset math on content append. rehype-math
 
 **Why**: no wrapper DOM (direct children keep every DOM walker's contract), no post-hoc stamping pass (padding + offset make stamps come out doc-absolute), shared pipeline (parity by construction). Measured on a 500 KB synthetic doc: chunking 2.1 ms; first-window (40 chunks) render 146 ms vs 517 ms for the full single pass — plus the DOM-mount savings jsdom cannot measure.
 
+### Pattern: Pre-paint cursor sync (layout-effect timing + hook order)
+
+**Problem**: the sync effect ran as a passive `useEffect` — post-paint. Tauri's macOS webview (WKWebView) has NO native CSS scroll anchoring, so every chunk swap rendered one VISIBLE drifted frame (estimate→real height swap shifts everything below it), and the correction landed a paint later: one visible jump per first-visit chunk swap while scrolling a large doc (the reported 闪动, alignment visibly “效果不好"). Jumps were worse: the pending-mount write-nothing path painted the spacer/old position first, then the band + alignment landed across several paints.
+
+**Solution**: two placements, both load-bearing:
+
+- The sync effect in `usePreviewCursorSync.ts` is a `useLayoutEffect`. Every path it takes — the code-block uncap on highlight change, `ensureChunkMountedForLine` (a setState from a layout effect re-renders synchronously, still pre-paint), the mountVersion-only drift correction, the alignment `scrollTop` write — now lands in the SAME paint as the geometry change it answers. The drifted intermediate frame never paints. This also removes the one-frame lag the follow-along scroll had behind the editor during continuous scrolling.
+- `MarkdownPreview.tsx` calls `usePreviewCursorSync` AFTER the gap-compensation `useLayoutEffect`. Layout effects within one component run in HOOK ORDER: called before it (the old position), the sync measured the PRE-compensation static gap heights (the frontmatter leading gap is re-pinned to the grid by compensation) and wrote a wrong `scrollTop` (observed: 40 = the SkillMetaCard height the leading gap must absorb — `MarkdownPreview.cursorsync.shortdoc.test.tsx` "frontmatter" is the ordering's regression test). After it, the sync measures post-compensation geometry; both effects still run before paint, so compensated gaps + aligned `scrollTop` ship in one paint.
+
+The unmount-cleanup effect stays a passive `useEffect` (no timing need). jsdom cannot observe paint order — both effect types flush inside `act()` — so the timing contract is verified on the real WKWebView device; the hook ORDER is what the jsdom suites pin (the frontmatter test).
+
 ---
 
 ## Gotchas

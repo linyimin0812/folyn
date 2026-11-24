@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { codeBlockAlignPoint, codeBlockCloseLine } from './codeBlockAlign';
 import { blockAlignPoint, blockLastSrcLine, blockRelativeOffsetY, containerAlignPoint, directiveCloseLine, gapAlignPoint, tableRowAnchor } from './blockAlignPoint';
 import { useEditorViewStateStore } from '@/store/editorViewState';
@@ -247,7 +247,18 @@ export function usePreviewCursorSync({
   // mountVersion-only re-runs and carries the pending-retry state.
   const requestRef = useRef<SyncRequest | null>(null);
 
-  useEffect(() => {
+  // LAYOUT effect, on purpose: every path below either swaps layout
+  // (the code-block uncap on highlight change), mounts chunks (the
+  // ensureChunkMountedForLine bridge re-renders synchronously from a
+  // layout effect), or corrects geometry drift — and WKWebView (Tauri's
+  // macOS webview) has NO native CSS scroll anchoring to mask the
+  // intermediate. As a passive (post-paint) effect the drifted frame
+  // painted first and the correction landed a frame later — one visible
+  // jump per first-visit chunk swap while scrolling large docs (the
+  // reported 闪动). Pre-paint, the swap and the correction are in the
+  // same paint, a jump lands its band + alignment in one paint, and the
+  // follow-along scroll writes never lag a frame behind the editor.
+  useLayoutEffect(() => {
     if (cursorLine == null || cursorLine <= 0) {
       // sync disabled (cursorSyncPreview off or left split mode) → drop the
       // highlight that the last active run stamped, so toggling off clears it.
@@ -308,7 +319,9 @@ export function usePreviewCursorSync({
     // Chunked rendering: make sure the chunk owning the cursor line is
     // mounted BEFORE picking the target block. Mounting is a state update —
     // this render still reads stale DOM, so chunkMountVersion (a dep below)
-    // re-runs the effect once the chunk commits and the target exists.
+    // re-runs the effect once the chunk commits and the target exists (the
+    // commit re-renders synchronously from this layout effect, still before
+    // paint, so a jump lands its band and the alignment in ONE paint).
     // Returns whether the mounted set changed: while a mount commit is
     // pending, the DOM below is stale and target selection would pick a
     // far-away already-mounted block (the always-mounted last chunk) and
