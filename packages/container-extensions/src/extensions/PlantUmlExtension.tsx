@@ -62,37 +62,28 @@ export function PlantUmlBlock({ source, loadingLabel = '渲染图表中…' }: P
 
   if (error) {
     return (
-      <div className="border border-[#ef4444] rounded p-3 my-2">
-        <pre className="text-[#ef4444] text-xs m-0 mb-2">{error}</pre>
-        <pre className="bg-[var(--surf)] p-2 rounded text-xs overflow-x-auto"><code>{source}</code></pre>
+      <div className="docmd-diagram-error">
+        <pre className="docmd-diagram-error-message">{error}</pre>
+        <pre className="docmd-diagram-source"><code>{source}</code></pre>
       </div>
     );
   }
 
   if (svg) {
     return (
-      <div className="flex justify-center py-4 px-3 my-2 overflow-x-auto rounded-lg">
-        <div
-          className="[&_svg]:max-w-full [&_svg]:h-auto"
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+      <div className="docmd-diagram">
+        <div dangerouslySetInnerHTML={{ __html: svg }} />
       </div>
     );
   }
 
   // Loading marker — `data-loading` attribute is queried by exportService's
   // stability poll (sibling mechanism to the LOADING_MARKERS text markers
-  // mermaid/ER still use). Spinner matches ExportMenu's exporting overlay.
+  // mermaid/ER still use).
   return (
-    <div
-      className="py-6 flex flex-col gap-2 justify-center items-center text-[var(--txt-muted, #888)]"
-      data-loading="true"
-    >
-      <span
-        className="inline-block w-6 h-6 rounded-full border-2 border-brd border-t-acc animate-spin shrink-0"
-        aria-label="渲染图表中"
-      />
-      <span className="text-xs">{loadingLabel}</span>
+    <div className="docmd-diagram-loading" data-loading="true">
+      <span className="docmd-spinner" aria-label="渲染图表中" />
+      <span>{loadingLabel}</span>
     </div>
   );
 }

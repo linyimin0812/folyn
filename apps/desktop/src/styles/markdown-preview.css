@@ -1,0 +1,1135 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Markdown Reading System
+   ─────────────────────────
+   The complete reading experience for `.md-preview` (and the docmd-* container
+   components rendered inside it). Design language:
+
+     阅读优先 · 结构清晰 · 操作克制 · 阅读连续 · 用户控制
+
+   Concrete rules encoded here:
+   - Neutral text, lightly colored structure: one accent (--rd-acc);
+     body prose stays neutral grey.
+   - Body text is one continuous column (centered, ~44–46rem), NOT wrapped
+     in cards; paragraphs flow as plain blocks.
+   - Hierarchy comes from size/weight/space; h2 alone carries a short
+     accent bar. One accent (--rd-acc), used sparingly: links, h2 bar,
+     muted list markers, blockquote rule + faint wash, code language tag.
+     Still no per-block cards.
+   - Prose colors come from the `--rd-*` reading tokens (§0): neutral greys,
+     softened contrast, no pure white on dark.
+   - Code blocks render in full by default — no auto-truncation, no
+     inner vertical scroll. Long lines scroll horizontally; the user can
+     collapse / focus a block. Copy is always visible.
+   - Tables size columns by content, wrap long text in cells, and scroll
+     horizontally only within their own frame.
+   - Light/Dark: §0 defines both palettes; chrome still uses app tokens.
+
+   Layout invariants (DO NOT break — cursor sync + gap compensation read
+   them):
+   - Root-level flow blocks keep `margin-bottom: 1em` (the `.md-blank-gap`
+     `-1em` top margin cancels it so one blank source line == one editor
+     line).
+   - `.md-blank-gap` / `.md-chunk-spacer` keep `margin: -1em 0 0;
+     line-height: 0`.
+   - `.md-raw-tag-block` keeps `line-height: var(--md-gap-line)`.
+   - Root children that are blocks carry `data-source-line`
+     (code wrappers, table wrappers, media wrappers).
+   - `.code-block-inner` has NO height cap: code scrolls with the page.
+     `codeBlockAlignPoint` measures live geometry, so an uncapped block is
+     valid (and more accurate than the old capped+uncap-on-active dance).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 0. Reading tokens ─────────────────────────────────────────────────── */
+/* The app tokens (--t1…) are blue-tinted UI greys; long prose reads calmer
+   in neutral greys at a slightly lowered contrast. Dark mode avoids pure
+   white text (halation on dark surfaces) and keeps every tier ≥ 4.5:1 except
+   the decorative --rd-faint. The focus overlay and link popover are portals
+   outside .md-preview, so they take the same tokens. */
+[data-theme="light"] :is(.md-preview, .md-code-focus, .md-link-pop) {
+  --rd-head: #17191e;
+  --rd-text: #2e323a;
+  --rd-muted: #5c6370;
+  --rd-faint: #9097a3;
+  --rd-line: #e5e7eb;
+  --rd-fill: #f6f7f9;
+  --rd-link: #2b5fd9;
+  --rd-quote: #d3d8e0;
+  --rd-mark: #fdf0b4;
+  --rd-sel: rgba(43, 95, 217, .16);
+  --rd-acc: #3b63e0;
+  --rd-acc-soft: #f3f6fd;
+}
+[data-theme="dark"] :is(.md-preview, .md-code-focus, .md-link-pop) {
+  --rd-head: #eceef2;
+  --rd-text: #c8ccd4;
+  --rd-muted: #969dab;
+  --rd-faint: #646b78;
+  --rd-line: #2b2e35;
+  --rd-fill: #1d1f24;
+  --rd-link: #82a8f8;
+  --rd-quote: #3a3e47;
+  --rd-mark: rgba(234, 190, 60, .24);
+  --rd-sel: rgba(130, 168, 248, .26);
+  --rd-acc: #7fa3ff;
+  --rd-acc-soft: #1b1f2a;
+}
+
+/* ── 1. Reading column ─────────────────────────────────────────────────── */
+
+/* Reading face: the system CJK sans stack (PingFang / Noto / YaHei), not the
+   UI font — the wide geometric UI face reads poorly in long CJK prose. */
+.md-preview {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  letter-spacing: .01em;
+  color: var(--rd-text);
+  text-rendering: optimizeLegibility;
+  font-kerning: normal;
+  overflow-wrap: break-word;
+  text-align: left;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Preview-only-mode visual zoom (pinch / ctrl+wheel / Cmd±/0). The var lives
+   on the .prev-body scroll container (set by PreviewPane + usePreviewZoom);
+   `zoom` (not transform) keeps getBoundingClientRect() in zoomed pixels, so
+   cursor-sync / gap-compensation geometry stays exact. */
+.md-preview { zoom: var(--md-zoom, 1); }
+
+/* Scroll-anchoring off: WKWebView re-anchors on late-loading content and
+   yanks the preview; the app manages its own scroll continuity. */
+.md-preview, .md-preview * { overflow-anchor: none; }
+
+/* Presentation (full-window reading) widens the measure and the type. */
+.presentation-mode .md-preview { font-size: 20px; max-width: 1280px; }
+
+/* Split (editor + preview) shrinks the type to fit a half pane. */
+.prev-body.is-split .md-preview { font-size: 14px; line-height: 1.75; }
+
+/* Containers settings preview frame: fill the host, flush margins. */
+.md-preview.container-preview-frame { max-width: none; margin-left: 0; margin-right: 0; }
+.md-preview.container-preview-frame > :first-child { margin-top: 0 !important; }
+.md-preview.container-preview-frame > :last-child { margin-bottom: 0 !important; }
+.md-preview.container-preview-frame [data-container] > :first-child { margin-top: 0 !important; }
+.md-preview.container-preview-frame [data-container] > :last-child { margin-bottom: 0 !important; }
+
+/* Translation pane: compact UI-scale text, justified. */
+.translation-result .md-preview { font-family: var(--font-ui); font-size: var(--ui-font-size); line-height: 1.6; letter-spacing: normal; text-align: justify; }
+.translation-result .md-preview > :first-child { margin-top: 0; }
+.translation-result .md-preview > :last-child { margin-bottom: 0; }
+
+/* ── 2. Flow invariants (cursor sync / gap compensation) ───────────────── */
+
+/* Blank source lines render as a proportional gap so the preview descends
+   at the editor's rate (rehypeBlankGap). The `-1em` top margin cancels the
+   preceding block's 1em bottom margin — one blank line == one editor line. */
+.md-preview > .md-blank-gap { margin: -1em 0 0; padding: 0; line-height: 0; }
+.md-preview > .md-blank-gap:first-child { margin-top: 0; }
+
+/* Chunk mounts/unmounts swap a spacer for real content; the spacer must
+   take exactly the gap's layout treatment so no jump. */
+.md-preview > .md-chunk-spacer { margin: -1em 0 0; padding: 0; line-height: 0; }
+.md-preview > .md-chunk-spacer:first-child { margin-top: 0; }
+
+/* Raw-tag blocks (rehypeShowRawTags) render ONE source line per row; the
+   gap-line rate keeps the block's height equal to its editor line span. */
+.md-preview .md-raw-tag-block { line-height: var(--md-gap-line, 1.6em); }
+
+/* Split-mode: heading clicks jump the editor (jumpable preview). */
+.prev-body.is-jumpable .md-preview :is(h1,h2,h3,h4,h5,h6) { cursor: pointer; }
+
+/* ── 3. Typography ─────────────────────────────────────────────────────── */
+/* Hierarchy from size, weight and space alone; h1/h2 close with a hairline.
+   Headings sit closer to the text they introduce than to the text above. */
+
+.md-preview ::selection { background: var(--rd-sel); }
+
+.md-preview a code { color: inherit; }
+.md-preview :is(h1,h2,h3,h4,h5,h6) { color: var(--rd-head); line-height: 1.35; overflow-wrap: break-word; scroll-margin-top: 1.5em; }
+.md-preview h1 { font-size: 1.95em; line-height: 1.25; font-weight: 700; margin: 1.6em 0 .7em; padding-bottom: .4em; border-bottom: 1px solid var(--rd-line); letter-spacing: -.015em; }
+.md-preview h2 { font-size: 1.45em; line-height: 1.35; font-weight: 650; margin: 2em 0 .7em; padding-bottom: .3em; border-bottom: 1px solid var(--rd-line); letter-spacing: -.008em; }
+/* h2: one short accent bar — the only heading ornament. */
+.md-preview h2::before { content: ''; display: inline-block; width: 3px; height: .85em; border-radius: 2px; background: var(--rd-acc); margin-right: .5em; vertical-align: -.06em; }
+.md-preview h3 { font-size: 1.2em; font-weight: 650; margin: 1.7em 0 .55em; }
+.md-preview h4 { font-size: 1.05em; font-weight: 600; margin: 1.5em 0 .5em; }
+.md-preview h5 { font-size: 1em; font-weight: 600; margin: 1.3em 0 .4em; color: var(--rd-muted); }
+.md-preview h6 { font-size: .92em; font-weight: 600; margin: 1.3em 0 .4em; color: var(--rd-muted); letter-spacing: .03em; }
+.md-preview > :is(h1,h2,h3,h4,h5,h6):first-child { margin-top: 0; }
+
+.md-preview p { margin: 0 0 1em; }
+.md-preview strong { font-weight: 650; color: var(--rd-head); }
+.md-preview em { font-style: italic; }
+.md-preview del { text-decoration: line-through; color: var(--rd-faint); }
+.md-preview mark { background: var(--rd-mark); color: inherit; padding: .05em .2em; border-radius: 3px; }
+.md-preview :is(sub, sup) { font-size: .75em; line-height: 0; }
+.md-preview kbd {
+  font-family: var(--font-mono);
+  font-size: .8em;
+  padding: .1em .45em;
+  border: 1px solid var(--rd-line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--rd-fill);
+  color: var(--rd-head);
+}
+
+.md-preview a {
+  color: var(--rd-acc);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .25em;
+  text-decoration-color: color-mix(in srgb, var(--rd-acc) 35%, transparent);
+  transition: text-decoration-color .12s;
+}
+.md-preview a:hover { text-decoration-color: var(--rd-acc); }
+
+/* Inline code: neutral chip, text one step toward the accent so it reads
+   as code without shouting. */
+.md-preview code {
+  font-family: var(--font-mono);
+  font-size: .86em;
+  letter-spacing: normal;
+  background: var(--rd-fill);
+  color: color-mix(in srgb, var(--rd-acc) 35%, var(--rd-head));
+  padding: .12em .38em;
+  border-radius: 4px;
+  border: 1px solid var(--rd-line);
+  overflow-wrap: anywhere;
+}
+/* Code inside pre is block code — drop the inline chip chrome. */
+.md-preview pre code, .code-block-wrapper pre code {
+  font-size: .86em;
+  color: var(--rd-text);
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 0;
+  overflow-wrap: normal;
+}
+
+/* ── 4. Lists ──────────────────────────────────────────────────────────── */
+
+.md-preview ul { padding-left: 1.4em; margin: 0 0 1em; list-style-type: disc; }
+.md-preview ol { padding-left: 1.4em; margin: 0 0 1em; list-style-type: decimal; }
+.md-preview li { margin: .35em 0; }
+.md-preview li > p { margin-bottom: .5em; }
+.md-preview li > :is(ul,ol) { margin: .3em 0 0; }
+/* Markers carry a muted accent — visible structure, quieter than text. */
+.md-preview li::marker { color: color-mix(in srgb, var(--rd-acc) 60%, var(--rd-faint)); }
+.md-preview ol > li::marker { font-variant-numeric: tabular-nums; }
+.md-preview li.task-list-item::marker { color: transparent; }
+.md-preview ul.contains-task-list { list-style-type: none; padding-left: 4px; }
+
+/* Task checkboxes: quiet custom check, view-only (no toggle from preview). */
+.md-preview input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 15px; height: 15px;
+  margin-right: 7px;
+  vertical-align: -2px;
+  border: 1.5px solid var(--rd-faint);
+  border-radius: 4px;
+  background: var(--doc-bg);
+}
+.md-preview input[type="checkbox"]:checked { background: var(--rd-acc); border-color: var(--rd-acc); }
+.md-preview li.task-list-item:has(> input:checked) { color: var(--rd-muted); }
+.md-preview input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px; top: 1px;
+  width: 4px; height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
+}
+
+/* ── 5. Blockquote ─────────────────────────────────────────────────────── */
+
+/* Quotation: muted accent rule on a barely-there wash. */
+.md-preview blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--rd-acc) 45%, var(--rd-quote));
+  border-radius: 0 6px 6px 0;
+  padding: .4em 1.1em;
+  margin: 0 0 1em;
+  color: var(--rd-muted);
+  background: var(--rd-acc-soft);
+}
+.md-preview blockquote > :first-child { margin-top: 0; }
+.md-preview blockquote > :last-child { margin-bottom: 0; }
+.md-preview blockquote p { color: inherit; }
+
+/* Run output synced to the editor lands as a `> ` blockquote: monospace +
+   pre-wrap so dir columns and aligned output survive. */
+.md-preview blockquote.run-result {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: .8em;
+  white-space: pre-wrap;
+  color: var(--rd-muted);
+  font-style: normal;
+}
+
+/* ── 6. Rules, images, media ───────────────────────────────────────────── */
+
+.md-preview hr { border: none; border-top: 1px solid var(--rd-line); margin: 2.4em auto; width: 100%; }
+
+.md-preview img { max-width: 100%; border-radius: 6px; margin: 8px auto; display: block; }
+[data-theme="dark"] .md-preview img { filter: brightness(.92); }
+
+/* Resizable media (images / rendered diagram fences): drag-resize writes
+   back to source; keep the shrink-to-fit + width-100% functional rules. */
+.md-preview .resizable-media { position: relative; display: block; width: fit-content; max-width: 100%; margin: 8px auto; line-height: 0; }
+.md-preview .resizable-media > *:not(.resize-handle) { display: block; width: 100%; }
+.md-preview .resizable-media img,
+.md-preview .resizable-media svg { width: 100% !important; height: auto !important; display: block; margin: 0; max-width: none !important; }
+.md-preview .resize-handle {
+  position: absolute; right: 0; bottom: 0;
+  width: 14px; height: 14px; cursor: nwse-resize;
+  background: transparent; border-right: 2px solid var(--t4);
+  border-bottom: 2px solid var(--t4);
+  border-bottom-right-radius: 6px; opacity: 0;
+  transition: opacity .12s ease;
+}
+.md-preview .resizable-media:hover .resize-handle { opacity: 0.6; }
+/* Fence media (mermaid/graphviz/plantuml): click opens the fullscreen zoom
+   popup — mirror the image lightbox affordance. The handle keeps its own
+   resize cursor. */
+.md-preview .resizable-media[data-kind="fence"] { cursor: zoom-in; }
+.md-preview .resizable-media[data-kind="fence"] .resize-handle { cursor: nwse-resize; }
+.md-preview .resize-handle:hover { opacity: 1; color: var(--acc); border-color: var(--acc); }
+
+/* Diagram lightbox (点击图表弹出的全屏缩放)：card keeps the diagram's home
+   fill (SVG is transparent; a black canvas would break dark-theme diagrams);
+   the clone's max-width cap is lifted so 1:1 is the true size; the content
+   wrapper's line-height:0 prevents the flex centering inserting a strut gap
+   on the serialized svg block. */
+.diagram-lightbox-card { background: var(--doc-fill); }
+.diagram-lightbox-content { line-height: 0; }
+.diagram-lightbox-content svg { max-width: none !important; width: auto; height: auto; display: block; }
+
+/* ── 7. Code blocks ────────────────────────────────────────────────────── */
+/* Full-display code reading: no height cap, no inner vertical scroll — the
+   block scrolls with the page. Per-block user controls live in the header:
+   collapse, focus view, run, copy. Copy is ALWAYS visible. */
+
+.code-block-wrapper {
+  background: var(--rd-fill, var(--doc-fill));
+  border: 1px solid var(--rd-line, var(--doc-line));
+  border-radius: 8px;
+  margin: 0 0 1em;
+  position: relative;
+  overflow: hidden;
+}
+.code-block-wrapper--no-height-cap { overflow: visible; padding: 8px; box-sizing: border-box; }
+.code-block-wrapper--no-height-cap > .code-block-header { margin: -8px -8px 8px; }
+.code-block-wrapper--empty-html { min-height: 60px; }
+.code-block-empty-html { flex: 1; }
+
+/* Header: language tag + actions, lowercase mono label. */
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 .45em 0 1.1em;
+  border-bottom: 1px solid var(--rd-line, var(--doc-line));
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--t3);
+  user-select: none;
+}
+.code-block-lang { color: var(--rd-acc, var(--acc)); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.code-block-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+/* Header buttons: always visible (discoverable), quiet until hovered. */
+.code-block-header .code-act-btn { opacity: .8; }
+.code-block-header .code-act-btn:hover { opacity: 1; }
+
+/* Shared code-block action button. */
+.code-act-btn {
+  width: 24px; height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  line-height: 1;
+  color: var(--t3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color .12s, background .12s, opacity .12s;
+}
+.code-act-btn:hover { color: var(--t1); background: var(--hov); }
+.code-act-btn.is-on { color: var(--acc); }
+.code-act-btn.copied { color: var(--green); opacity: 1 !important; }
+.code-act-btn svg { display: block; }
+
+/* Copy feedback (check + green) — the button itself is a .code-act-btn. */
+.code-copy-btn.copied { color: var(--green) !important; opacity: 1 !important; }
+
+/* Run/Stop (spec'd colors: play #59A869, stop #C7222D) — inline style wins
+   over the .code-act-btn base; only the color-override lives here. */
+.code-run-btn:hover { background: var(--hov); }
+
+/* Body: gutter + scroll. NO max-height — code reads in page flow. */
+.code-block-inner { display: flex; overflow: hidden; background: transparent; }
+.code-block-scroll { overflow: auto; flex: 1; min-width: 0; }
+
+/* Thin, hover-revealed scrollbars; no overscroll chaining. */
+.code-block-inner, .md-preview > pre, .code-block-inner pre, .code-block-scroll { scrollbar-width: thin; scrollbar-color: transparent transparent; overscroll-behavior: none auto; }
+.code-block-wrapper:hover .code-block-inner, .md-preview > pre:hover, .code-block-wrapper:hover .code-block-inner pre, .code-block-wrapper:hover .code-block-scroll { scrollbar-color: var(--t4) transparent; }
+.code-block-inner::-webkit-scrollbar, .md-preview > pre::-webkit-scrollbar, .code-block-inner pre::-webkit-scrollbar, .code-block-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre::-webkit-scrollbar-thumb, .code-block-inner pre::-webkit-scrollbar-thumb, .code-block-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 2px; }
+.code-block-wrapper:hover .code-block-inner::-webkit-scrollbar-thumb, .md-preview > pre:hover::-webkit-scrollbar-thumb, .code-block-wrapper:hover .code-block-inner pre::-webkit-scrollbar-thumb, .code-block-wrapper:hover .code-block-scroll::-webkit-scrollbar-thumb { background: var(--t4); }
+.code-block-inner::-webkit-scrollbar-track, .md-preview > pre::-webkit-scrollbar-track, .code-block-inner pre::-webkit-scrollbar-track, .code-block-scroll::-webkit-scrollbar-track { background: transparent; border: none; box-shadow: none; margin: 0; }
+
+/* Line-number gutter: scrolls vertically in lockstep with the code (JS
+   mirrors scrollTop). Line-height MUST equal the code's (1.6). */
+.code-block-inner .code-line-numbers { overflow-y: auto; overflow-x: hidden; flex-shrink: 0; z-index: 1; padding: 12px 0; background: transparent; user-select: none; white-space: nowrap; scrollbar-width: none; }
+.code-block-inner .code-line-numbers::-webkit-scrollbar { display: none; }
+.code-block-inner .code-ln { display: block; padding: 0 0 0 14px; text-align: right; font-family: var(--font-mono); font-size: .86em; line-height: 1.6; color: var(--t4); min-width: 34px; }
+
+.code-block-inner pre { margin: 0; border: none; border-radius: 0; background: transparent; padding: 0; overflow: visible; }
+.code-block-inner .code-block-scroll > pre { display: inline-block; min-width: 100%; box-sizing: border-box; }
+.code-block-inner pre code { display: block; padding: 12px 16px; font-size: .86em; line-height: 1.6; color: var(--rd-text, var(--t1)); background: none; border: none; white-space: pre; }
+.code-block-inner pre code br { display: none; }
+
+/* Collapsed (user toggle): only the header remains. Drop the header's
+   border-bottom so it doesn't stack with the wrapper's bottom border —
+   stacked 1px+1px reads as one fat line (下方线条变粗，用户实测反馈). */
+.code-block-wrapper--collapsed .code-block-inner,
+.code-block-wrapper--collapsed .code-run-output { display: none; }
+.code-block-wrapper--collapsed .code-block-header { border-bottom: none; }
+
+/* Bare fenced block with no wrapper (safety for any pre that escapes the
+   component map): same material, full display. */
+.md-preview > pre { background: var(--rd-fill); border: 1px solid var(--rd-line); border-radius: 8px; padding: 12px 16px; margin: 0 0 1em; overflow: auto; }
+.md-preview > pre code { display: block; white-space: pre; }
+
+/* Run output panel: only the body scrolls; status + sync pinned. */
+.code-run-output { position: relative; border-top: 1px solid var(--doc-line); background: color-mix(in srgb, var(--doc-bg) 45%, var(--doc-fill)); padding: 8px 12px; font-family: var(--font-mono, ui-monospace, monospace); font-size: .8em; color: var(--t2); max-height: 240px; display: flex; flex-direction: column; }
+.code-run-output-body { overflow: auto; min-height: 0; }
+.code-run-output pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: none; border: none; padding: 0; }
+.code-run-stderr { color: var(--red, #f06a6a); }
+.code-run-status { display: flex; align-items: center; gap: 6px; color: var(--t3); font-size: .92em; margin-top: 4px; }
+.code-sync-btn { position: absolute; top: 6px; right: 6px; padding: 2px; line-height: 1; background: var(--doc-fill); border: none; border-radius: 3px; cursor: pointer; color: var(--t3); opacity: .7; transition: opacity .12s, color .12s; z-index: 2; }
+.code-sync-btn:hover { opacity: 1; color: var(--t1); }
+
+/* ── 7b. Code focus view (专注查看) ────────────────────────────────────── */
+/* Portal overlay: big type, own scroll, Esc/backdrop closes. The header
+   mirrors the block's controls (wrap, copy, close). */
+
+.md-code-focus-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 3vw;
+  background: color-mix(in srgb, var(--bg) 55%, rgba(10, 13, 25, .45));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: md-focus-fade .14s ease;
+}
+.md-code-focus {
+  width: min(1100px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--doc-bg);
+  border: 1px solid var(--doc-line);
+  border-radius: 12px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .38);
+  overflow: hidden;
+  animation: md-focus-in .16s ease;
+}
+@keyframes md-focus-fade { from { opacity: 0; } }
+@keyframes md-focus-in { from { opacity: 0; transform: translateY(8px) scale(.985); } }
+
+.md-code-focus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 .6rem 0 1.2rem;
+  border-bottom: 1px solid var(--doc-line);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--t2);
+  user-select: none;
+  flex-shrink: 0;
+}
+.md-code-focus-body { flex: 1; min-height: 0; overflow: auto; background: var(--rd-fill); overscroll-behavior: contain; }
+.md-code-focus-body pre { margin: 0; display: block; }
+.md-code-focus-body pre code {
+  display: block;
+  padding: 18px 22px;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.75;
+  white-space: pre;
+  background: none;
+  border: none;
+  color: var(--rd-text);
+}
+
+/* 7b-2. Focus entry pill (专注查看 hover entry). v5: compact chip pinned
+   to the table's top-right corner (inside the outer, above the scroll frame
+   so wide tables never scroll it away). No gutter strip — the chip sits on
+   the table itself like the code block's action bar. */
+.md-preview .md-table-outer { position: relative; margin: 0 0 1em; }
+.md-preview .md-table-outer .md-table-wrap { margin: 0; }
+.md-preview .md-focus-entry {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .18s ease .25s;
+  pointer-events: none;
+}
+.md-preview .md-table-outer:hover .md-focus-entry,
+.md-preview .md-focus-entry:hover {
+  opacity: .92;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.md-preview .md-focus-entry .code-act-btn {
+  background: var(--doc-bg);
+  border: 1px solid var(--brd);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.md-preview .md-focus-entry .code-act-btn:hover { background: var(--hov); }
+
+/* 7b-3. Table focus body: padded sheet, slightly larger type than the flow
+   (reading a wide table in a full-card view warrants it), same .md-table-wrap
+   frame so th/td rules apply unchanged. */
+.md-code-focus-body.md-focus-table-body {
+  padding: 18px 22px;
+  background: var(--doc-bg);
+  font-size: 15px;
+}
+.md-code-focus-body.md-focus-table-body .md-table-wrap { margin: 0; }
+
+/* 7b-4. Image lightbox caption (object name, 5.4). */
+.image-lightbox-caption { font-size: 12px; color: rgba(255,255,255,.7); }
+
+/* ── 8. Tables ─────────────────────────────────────────────────────────── */
+/* Column widths follow content (auto layout): field names stay whole, long
+   text wraps inside its cell, and a genuinely wide table scrolls
+   horizontally INSIDE its own frame — the page never scrolls sideways. */
+
+:is(.md-preview, .md-code-focus-body) .md-table-wrap {
+  margin: 0 0 1em;
+  overflow-x: auto;
+  border: 1px solid var(--rd-line);
+  border-radius: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+:is(.md-preview, .md-code-focus-body) .md-table-wrap:hover { scrollbar-color: var(--t4) transparent; }
+:is(.md-preview, .md-code-focus-body) .md-table-wrap::-webkit-scrollbar { height: 6px; }
+:is(.md-preview, .md-code-focus-body) .md-table-wrap::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+:is(.md-preview, .md-code-focus-body) .md-table-wrap:hover::-webkit-scrollbar-thumb { background: var(--t4); }
+:is(.md-preview, .md-code-focus-body) .md-table-wrap::-webkit-scrollbar-track { background: transparent; }
+
+:is(.md-preview, .md-code-focus-body) .md-table-wrap table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  max-width: 100%;
+  table-layout: auto;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+:is(.md-preview, .md-code-focus-body) .md-table-wrap th,
+:is(.md-preview, .md-code-focus-body) .md-table-wrap td {
+  padding: .55em .9em;
+  font-size: .94em;
+  line-height: 1.6;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rd-line);
+}
+/* keep-all: CJK header labels don't split mid-phrase (字段名不拆行);
+   break-word stays as the long-token escape hatch. */
+:is(.md-preview, .md-code-focus-body) .md-table-wrap th {
+  font-weight: 600;
+  color: var(--rd-head);
+  background: var(--rd-fill);
+  border-bottom: 1px solid var(--rd-line);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+:is(.md-preview, .md-code-focus-body) .md-table-wrap td { overflow-wrap: break-word; word-break: normal; }
+:is(.md-preview, .md-code-focus-body) .md-table-wrap tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--rd-fill) 50%, transparent); }
+:is(.md-preview, .md-code-focus-body) .md-table-wrap tbody tr:hover td { background: color-mix(in srgb, var(--rd-link) 5%, transparent); }
+:is(.md-preview, .md-code-focus-body) .md-table-wrap tbody tr:last-child td,
+:is(.md-preview, .md-code-focus-body) .md-table-wrap thead:last-child tr:last-child th { border-bottom: none; }
+
+/* ── 9. Container components (docmd-*) ────────────────────────────────── */
+/* Unified component language: hairlines + flat tints, no shadows, no hover
+   lifts. Outer structure establishes the grouping; inner content stays
+   plain markdown flow (de-carded). Calm by default; danger keeps weight. */
+
+/* Callout: semantic left rule + 6% tint; danger/error add a full border. */
+.docmd-callout {
+  position: relative;
+  margin: 0 0 1em;
+  padding: .85em 1.1em .9em 1.25em;
+  border-left: 3px solid var(--callout-c);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--callout-c) 6%, transparent);
+}
+.docmd-callout--info    { --callout-c: #4a86c8; }
+.docmd-callout--warning { --callout-c: #c58a2a; }
+.docmd-callout--tip     { --callout-c: #3f9a6c; }
+.docmd-callout--danger  { --callout-c: #cf5c55; }
+.docmd-callout--error   { --callout-c: #c0504a; }
+.docmd-callout--note    { --callout-c: #8a6cc0; }
+.docmd-callout--danger, .docmd-callout--error {
+  border: 1px solid color-mix(in srgb, var(--callout-c) 38%, transparent);
+  border-left: 3px solid var(--callout-c);
+  background: color-mix(in srgb, var(--callout-c) 8%, transparent);
+}
+.docmd-callout-title {
+  display: flex;
+  align-items: center;
+  gap: .45em;
+  font-weight: 600;
+  font-size: .95em;
+  margin-bottom: .3em;
+  color: var(--callout-c);
+}
+.docmd-callout-title svg { flex-shrink: 0; }
+.docmd-callout-body { color: var(--rd-text, var(--t1)); }
+.docmd-callout-body > :first-child { margin-top: 0; }
+.docmd-callout-body > :last-child { margin-bottom: 0; }
+
+/* Tabs: underline strip (no outer card); content flows below as normal
+   markdown — no inner padding box. */
+.docmd-tabs { margin: 0 0 1em; }
+.docmd-tabs-strip {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--brd);
+  margin-bottom: 1em;
+}
+.docmd-tab-btn {
+  padding: .45em .95em;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: .92em;
+  font-weight: 500;
+  color: var(--t3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 6px 6px 0 0;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.docmd-tab-btn:hover { color: var(--t1); background: color-mix(in srgb, var(--t1) 3%, transparent); }
+.docmd-tab-btn.is-active { color: var(--t1); font-weight: 600; border-bottom-color: var(--acc); }
+.docmd-tabs-body { min-width: 0; }
+.docmd-tabs-body > :first-child { margin-top: 0; }
+.docmd-tabs-body > :last-child { margin-bottom: 0; }
+
+/* Steps: numbered progression on a hairline rail. */
+.docmd-steps { position: relative; padding-left: 2.6rem; margin: 1.25rem 0 1rem; counter-reset: docmd-step; }
+.docmd-steps-line { position: absolute; left: .95rem; top: 1.1rem; bottom: 1rem; width: 2px; border-radius: 1px; background: var(--doc-line); }
+.docmd-step { position: relative; margin-bottom: 1.1rem; counter-increment: docmd-step; }
+.docmd-step:last-child { margin-bottom: 0; }
+.docmd-step-number {
+  position: absolute;
+  left: -2.35rem;
+  top: .1rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: .72rem;
+  line-height: 1;
+  color: var(--acc);
+  z-index: 1;
+  background: var(--doc-bg);
+  border: 1px solid color-mix(in srgb, var(--acc) 45%, transparent);
+  border-radius: 50%;
+}
+.docmd-step-number::before { content: counter(docmd-step); }
+.docmd-step-title { font-weight: 600; color: var(--t1); margin-bottom: .25rem; }
+.docmd-step-body { color: var(--t2); }
+
+/* Collapsible: one quiet frame; the header is the whole collapsed surface. */
+.docmd-collapse { margin: 0 0 1em; border: 1px solid var(--doc-line); border-radius: 8px; overflow: hidden; }
+.docmd-collapse-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6em;
+  width: 100%;
+  padding: .6em .95em;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: .95em;
+  font-weight: 600;
+  color: var(--t1);
+  text-align: left;
+  transition: background .12s;
+}
+.docmd-collapse-head:hover { background: color-mix(in srgb, var(--t1) 3%, transparent); }
+.docmd-collapse-chev { color: var(--t3); flex-shrink: 0; transition: transform .18s ease; }
+.docmd-collapse.is-open .docmd-collapse-chev { transform: rotate(180deg); }
+.docmd-collapse-body { padding: .25em 1.05em .85em; border-top: 1px solid var(--doc-line); color: var(--t2); }
+.docmd-collapse-body > :first-child { margin-top: 0; }
+.docmd-collapse-body > :last-child { margin-bottom: 0; }
+
+/* Card: an outline frame, flat — no lift, no shadow. */
+.docmd-card { margin: 0 0 1em; padding: 1em 1.25em; border: 1px solid var(--doc-line); border-radius: 10px; background: var(--doc-bg); }
+.docmd-card-title {
+  display: flex;
+  align-items: center;
+  gap: .5em;
+  font-weight: 600;
+  font-size: 1.02em;
+  color: var(--t1);
+  margin-bottom: .6em;
+  padding-bottom: .55em;
+  border-bottom: 1px solid var(--doc-line);
+}
+.docmd-card-body { color: var(--t2); }
+.docmd-card-body > :first-child { margin-top: 0; }
+.docmd-card-body > :last-child { margin-bottom: 0; }
+
+/* Timeline: hairline rail + dots; the first item carries the accent. */
+.docmd-timeline { position: relative; padding-left: 1.75rem; margin: 1.25rem 0 1rem; }
+.docmd-timeline-line { position: absolute; left: .4rem; top: .55rem; bottom: .55rem; width: 2px; border-radius: 1px; background: var(--doc-line); }
+.docmd-timeline-item { position: relative; padding-bottom: 1.05rem; padding-left: .65rem; }
+.docmd-timeline-item:last-child { padding-bottom: 0; }
+.docmd-timeline-dot {
+  position: absolute;
+  left: -1.62rem;
+  top: .5rem;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--doc-bg);
+  border: 2px solid var(--t4);
+  z-index: 1;
+}
+.docmd-timeline-item:first-child .docmd-timeline-dot { border-color: var(--acc); }
+.docmd-timeline-body { color: var(--t2); }
+
+/* Status tag: soft token-tinted pill (theme-aware via tokens). */
+.docmd-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 99px;
+  font-size: .78em;
+  font-weight: 600;
+  line-height: 1.7;
+  color: var(--status-c);
+  background: color-mix(in srgb, var(--status-c) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-c) 28%, transparent);
+}
+.docmd-status--green { --status-c: var(--green); }
+.docmd-status--amber { --status-c: var(--amber); }
+.docmd-status--red   { --status-c: var(--red); }
+.docmd-status--blue  { --status-c: var(--acc); }
+
+/* Grid: auto-fit columns (template inline in the component). */
+.docmd-grid { display: grid; gap: 1rem; margin: 0 0 1em; width: 100%; }
+.docmd-grid-item { min-width: 0; }
+
+/* Button: flat accent fill, no lift; outline variant for secondary. */
+.docmd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4em;
+  padding: .48em 1.05em;
+  margin: .15em .3em .15em 0;
+  border-radius: 7px;
+  background: var(--acc);
+  color: #fff;
+  font-family: inherit;
+  font-size: .92em;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: filter .12s, background .12s;
+}
+.docmd-btn:hover { filter: brightness(1.08); }
+.docmd-btn--outline { background: transparent; color: var(--acc); border-color: color-mix(in srgb, var(--acc) 45%, transparent); }
+.docmd-btn--outline:hover { background: color-mix(in srgb, var(--acc) 9%, transparent); filter: none; }
+
+/* File preview: code-block material; header row + body frame. */
+.docmd-fileview { margin: 0 0 1em; border: 1px solid var(--doc-line); border-radius: 10px; overflow: hidden; }
+.docmd-fileview-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 .5em 0 1em;
+  border-bottom: 1px solid var(--doc-line);
+  background: color-mix(in srgb, var(--t1) 3%, transparent);
+  font-size: 12px;
+  color: var(--t3);
+}
+.docmd-fileview-path { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docmd-fileview-actions { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.docmd-fileview-error { font-size: 12px; color: var(--red); padding: 10px 14px; }
+.docmd-fileview-source { margin: 0; padding: 12px 14px; background: var(--doc-fill); white-space: pre-wrap; word-break: break-word; font-size: 12.5px; font-family: var(--font-mono); color: var(--t1); }
+.docmd-fileview-body { height: 420px; overflow: auto; }
+.docmd-fileview-empty { font-size: 12px; color: var(--t3); padding: 10px 14px; }
+.docmd-fileview-loading { font-size: 12px; color: var(--t3); padding: 10px 14px; }
+
+/* Small ghost icon button inside container component headers (file preview
+   source/jump toggles). Mirrors .code-act-btn's quiet interaction language. */
+.docmd-icon-btn {
+  width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 5px; line-height: 1;
+  color: var(--t3); background: none; border: none; cursor: pointer;
+  transition: color .12s, background .12s;
+}
+.docmd-icon-btn:hover { color: var(--t1); background: var(--hov); }
+.docmd-icon-btn.is-on { color: var(--acc); background: var(--hov); }
+
+/* Diagram blocks (mermaid / graphviz / plantuml directive shells). */
+.docmd-diagram {
+  margin: 0 0 1em;
+  display: flex;
+  justify-content: center;
+  padding: 1.1em .5em;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: var(--doc-fill);
+  border: 1px solid var(--doc-line);
+}
+.docmd-diagram svg { max-width: 100%; height: auto; }
+.docmd-diagram-loading {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 1.6em 0; text-align: center; color: var(--t3); font-size: 13px; margin: 0 0 1em;
+}
+.docmd-spinner {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--doc-line);
+  border-top-color: var(--acc);
+  animation: docmd-spin .8s linear infinite;
+  display: inline-block; flex-shrink: 0;
+}
+@keyframes docmd-spin { to { transform: rotate(360deg); } }
+.docmd-diagram-error {
+  margin: 0 0 1em;
+  border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
+  border-radius: 8px;
+  padding: .8em 1em;
+}
+.docmd-diagram-error-message { color: var(--red); font-size: 12px; font-family: var(--font-mono); margin: 0 0 .6em; white-space: pre-wrap; overflow-x: auto; }
+.docmd-diagram-source { margin: 0; background: var(--doc-fill); border-radius: 6px; padding: .6em .8em; font-size: 12px; font-family: var(--font-mono); overflow-x: auto; color: var(--t2); }
+
+/* ── 10. Syntax highlighting ───────────────────────────────────────────── */
+/* Scoped to .md-preview AND the focus overlay (a portal to document.body,
+   outside .md-preview). One rule set, two palettes via --hl-* tokens.
+   Reading-first: comments recede (italic, below body contrast), keywords
+   and strings carry the structure, nothing glows. Light ≈ GitHub, dark ≈
+   One Dark softened to the reading surface. */
+
+[data-theme="light"] :is(.md-preview, .md-code-focus-body) {
+  --hl-comment: #6e7781; --hl-keyword: #c0365a; --hl-string: #0a6b3d;
+  --hl-number: #0550ae; --hl-title: #6639ba; --hl-type: #953800;
+  --hl-attr: #0550ae; --hl-tag: #116329; --hl-meta: #57606a;
+  --hl-regexp: #0a6b3d; --hl-del: #b42318; --hl-add: #0a6b3d;
+}
+[data-theme="dark"] :is(.md-preview, .md-code-focus-body) {
+  --hl-comment: #7a828f; --hl-keyword: #d68ad6; --hl-string: #98c379;
+  --hl-number: #d19a66; --hl-title: #7fb0f0; --hl-type: #e0c07a;
+  --hl-attr: #d19a66; --hl-tag: #e07a82; --hl-meta: #8b93a1;
+  --hl-regexp: #56b6c2; --hl-del: #e07a82; --hl-add: #98c379;
+}
+
+:is(.md-preview, .md-code-focus-body) :is(.hljs-comment, .hljs-quote) { color: var(--hl-comment); font-style: italic; }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-keyword, .hljs-selector-tag, .hljs-symbol, .hljs-bullet, .hljs-doctag) { color: var(--hl-keyword); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-string, .hljs-char, .hljs-template-tag) { color: var(--hl-string); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-number, .hljs-literal) { color: var(--hl-number); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-title, .hljs-section, .hljs-function .hljs-title, .hljs-title.function_) { color: var(--hl-title); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-type, .hljs-built_in, .hljs-builtin-name, .hljs-class .hljs-title, .hljs-title.class_) { color: var(--hl-type); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-property, .hljs-selector-class, .hljs-selector-id) { color: var(--hl-attr); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-tag, .hljs-name) { color: var(--hl-tag); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-meta, .hljs-meta .hljs-keyword) { color: var(--hl-meta); }
+:is(.md-preview, .md-code-focus-body) :is(.hljs-regexp, .hljs-link) { color: var(--hl-regexp); }
+:is(.md-preview, .md-code-focus-body) .hljs-deletion { color: var(--hl-del); background: color-mix(in srgb, var(--hl-del) 10%, transparent); }
+:is(.md-preview, .md-code-focus-body) .hljs-addition { color: var(--hl-add); background: color-mix(in srgb, var(--hl-add) 10%, transparent); }
+:is(.md-preview, .md-code-focus-body) .hljs-emphasis { font-style: italic; }
+:is(.md-preview, .md-code-focus-body) .hljs-strong { font-weight: bold; }
+
+/* ── 11. Cursor-sync highlight (split mode) ────────────────────────────── */
+/* Persistent calm highlight on the preview block the editor cursor syncs
+   to in split mode. No flash/animation — a soft background that moves
+   smoothly between blocks. */
+.md-preview .cursor-sync-active {
+  background-color: color-mix(in srgb, var(--acc) 6%, transparent);
+  border-radius: 4px;
+}
+/* 6% accent tint is near-invisible on dark surfaces; raised until
+   visible, one dark-theme override. */
+[data-theme='dark'] .md-preview .cursor-sync-active {
+  background-color: color-mix(in srgb, var(--acc) 26%, transparent);
+}
+
+/* ── 12. In-document find (spec 5.3) ───────────────────────────────────── */
+/* Browser-style find bar floating over the preview (top-right, clear of the
+   right tool rail), plus the landing flash on the jumped-to block. The bar
+   is pane chrome — rendered inside PreviewPane, not inside .md-preview, but
+   it shares the same token system. */
+.md-find-bar {
+  position: absolute;
+  top: 10px;
+  right: 48px;
+  z-index: 30;
+  width: 340px;
+  max-width: calc(100% - 100px);
+  border: 1px solid var(--brd);
+  border-radius: 10px;
+  background: var(--doc-bg);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, .16);
+  overflow: hidden;
+}
+.md-find-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+}
+.md-find-icon { color: var(--t3); flex: none; }
+.md-find-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--brd);
+  border-radius: 6px;
+  background: var(--doc-fill);
+  color: var(--t1);
+  padding: 4px 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color .12s;
+}
+.md-find-input:focus { border-color: var(--acc); }
+.md-find-input::placeholder { color: var(--t3); }
+.md-find-count {
+  font-size: 11px;
+  color: var(--t3);
+  white-space: nowrap;
+  min-width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.md-find-btn {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--t3);
+  cursor: pointer;
+  transition: color .12s, background-color .12s;
+}
+.md-find-btn:hover:not(:disabled) { color: var(--t1); background: var(--hov); }
+.md-find-btn:disabled { opacity: .35; cursor: default; }
+.md-find-empty {
+  padding: 10px 12px 12px;
+  font-size: 12px;
+  color: var(--t3);
+}
+.md-find-results {
+  max-height: 308px;
+  overflow-y: auto;
+  border-top: 1px solid var(--doc-line);
+}
+.md-find-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 11px 7px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background-color .1s;
+}
+.md-find-item + .md-find-item { border-top: 1px solid color-mix(in srgb, var(--doc-line) 55%, transparent); }
+.md-find-item:hover, .md-find-item.is-current { background: var(--hov); }
+.md-find-ctx {
+  display: block;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--t3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 1px;
+}
+.md-find-line {
+  display: block;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: inherit;
+}
+.md-find-line mark {
+  background: color-mix(in srgb, var(--acc) 26%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+/* Landing flash on the block a find jump scrolls to. */
+.md-find-flash { animation: md-find-flash 1.6s ease-out; }
+@keyframes md-find-flash {
+  0%, 30% { background-color: color-mix(in srgb, var(--acc) 22%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* ── 13. Internal-link hover preview (spec 5.2) ─────────────────────────── */
+/* Portaled to <body> (fixed) — .prev-body clips children at its scroll
+   edge, so the popover must live outside it. It is a GLIMPSE, not a second
+   reader: capped size, calm surface, reading-density typography. */
+.md-link-pop {
+  position: fixed;
+  z-index: 1200;                 /* above focus overlays? no — under them */
+  width: 440px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--brd);
+  border-radius: 10px;
+  background: var(--doc-bg);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .18);
+  overflow: hidden;
+  animation: md-link-pop-in .16s ease-out;
+}
+@keyframes md-link-pop-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
+}
+.md-link-pop-head {
+  flex: none;
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid var(--doc-line);
+  background: color-mix(in srgb, var(--doc-fill) 60%, var(--doc-bg));
+}
+.md-link-pop-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-link-pop-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--t2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-link-pop-section svg { flex: none; color: var(--t3); }
+.md-link-pop-lineno { color: var(--t3); margin-left: 4px; flex: none; }
+.md-link-pop-path {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--t3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.md-link-pop-error { color: var(--danger, #c0392b); }
+.md-link-pop-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--t1);
+}
+.md-link-pop-loading, .md-link-pop-empty {
+  color: var(--t3);
+  font-size: 12px;
+  padding: 4px 0;
+}
+/* Excerpt content (mini render of the target doc). Same family as the
+   reader but one step smaller and denser. */
+.md-link-pop-body > :first-child { margin-top: 0; }
+.md-link-pop-body > :last-child { margin-bottom: 0; }
+.md-link-pop-body p { margin: 0 0 .6em; }
+.md-link-pop-body h1, .md-link-pop-body h2, .md-link-pop-body h3,
+.md-link-pop-body h4, .md-link-pop-body h5, .md-link-pop-body h6 {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin: .8em 0 .4em;
+  color: var(--t1);
+}
+.md-link-pop-body ul, .md-link-pop-body ol { margin: 0 0 .6em; padding-left: 1.5em; }
+.md-link-pop-body li { margin: .1em 0; }
+.md-link-pop-body blockquote {
+  margin: 0 0 .6em;
+  padding: 0 .8em;
+  border-left: 2px solid var(--brd);
+  color: var(--t2);
+}
+.md-link-pop-body pre {
+  margin: 0 0 .6em;
+  padding: 8px 10px;
+  border: 1px solid var(--doc-line);
+  border-radius: 6px;
+  background: var(--doc-fill);
+  overflow-x: auto;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.md-link-pop-body pre code { font-family: var(--mono, ui-monospace, monospace); background: none; padding: 0; }
+.md-link-pop-body code {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  background: color-mix(in srgb, var(--doc-fill) 80%, transparent);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+.md-link-pop-body table { max-width: 100%; border-collapse: collapse; margin: 0 0 .6em; }
+.md-link-pop-body th, .md-link-pop-body td {
+  border: 1px solid var(--doc-line);
+  padding: 2px 7px;
+  font-size: 11.5px;
+}
+.md-link-pop-body hr { border: none; border-top: 1px solid var(--doc-line); margin: .6em 0; }
+.md-pop-dead-link { color: var(--acc); border-bottom: 1px dashed color-mix(in srgb, var(--acc) 55%, transparent); }

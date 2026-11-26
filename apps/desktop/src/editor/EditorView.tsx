@@ -70,11 +70,8 @@ import {
   closeBracketsKeymap,
   completionKeymap,
 } from '@codemirror/autocomplete';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { lintKeymap, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
-import { EditorSearchBar } from '@/components/editor/EditorSearchBar';
-import { useSearchPanelState, buildSearchExtensions } from '@/components/editor/searchPanelState';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import { useEditorStore } from '@/store/editorStore';
 import { getHandlerByExtension } from '@/components/file-types/registry';
@@ -248,8 +245,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
   function FolynEditor({ initialContent = '', filePath = '', initialCursorLine, initialCursorCol, initialScrollTop, onChange, onSlashMenuChange, onCodeBlockMenuChange, onSave, onImagePaste, readOnly, persistTabScroll = true, pathSource }, ref) {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
-    const [view, setView] = useState<EditorView | null>(null);
-    const sp = useSearchPanelState();
     const tabSizeCompartment = useRef(new Compartment());
     const markdownKeymapCompartment = useRef(new Compartment());
     const langCompartment = useRef(new Compartment());
@@ -544,9 +539,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           //  clobber the values we're about to restore. swapRef is cleared on
           //  the tick after setState + restore.
           if (swapRef.current) return;
-          if (update.docChanged || update.selectionSet) {
-            sp.setViewTick((t) => (t + 1) % 1_000_000);
-          }
           if (update.viewportChanged) {
             // ponytail: persist the editor scroll top so switching files +
             //  restart restore the exact viewport (cursorLine alone only
@@ -598,7 +590,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
           // Ignore errors during rapid edits (e.g. coordsAtPos with invalid position)
         }
       },
-      [setCursorPosition, setCursorViewportY, setHasSelection, sp.setViewTick, scheduleCursorMeasure],
+      [setCursorPosition, setCursorViewportY, setHasSelection, scheduleCursorMeasure],
     );
 
     // Build a fresh EditorState for the given doc + file path. Shared by
@@ -639,15 +631,12 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),
-        highlightSelectionMatches(),
         indentationMarkers(),
-        ...buildSearchExtensions(sp.toggleRef, sp.toggleReplaceRef),
         ...inlineDiffExtension,
         keymap.of([
           { key: 'Mod-a', run: selectAll },
           ...closeBracketsKeymap,
           ...defaultKeymap,
-          ...searchKeymap,
           ...historyKeymap,
           ...completionKeymap,
           ...lintKeymap,
@@ -784,7 +773,7 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       });
     }, [
       editorFontSize, editorFont, showLineNumbers, readOnly, settingsTabSize,
-      sp.toggleRef, sp.toggleReplaceRef, handleUpdate, shortcuts, onSaveRef,
+      handleUpdate, shortcuts, onSaveRef,
     ]);
 
     // Reconfigure the language compartment for a (non-markdown) file path.
@@ -856,7 +845,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       });
 
       viewRef.current = view;
-      setView(view);
 
       restoreCursorScroll(view);
       loadLanguage(view, filePath);
@@ -872,7 +860,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
       return () => {
         view.destroy();
         viewRef.current = null;
-        setView(null);
         // ponytail: drop any pending debounced count — the view is gone and
         //  the flush would publish a count for a destroyed editor.
         scheduleWordCountRef.current?.cancel();
@@ -936,14 +923,6 @@ export const FolynEditor = forwardRef<FolynEditorHandle, FolynEditorProps>(
         className="cm-wrapper"
         style={{ fontFamily: editorFont, fontSize: `${editorFontSize}px` }}
       >
-        <EditorSearchBar
-          view={view}
-          visible={sp.visible}
-          replaceOpen={sp.replaceOpen}
-          viewTick={sp.viewTick}
-          onClose={() => sp.setVisible(false)}
-          onToggleReplace={() => sp.setReplaceOpen((v) => !v)}
-        />
         <TableConvertDialog
           visible={tableConvert.visible}
           summary={tableConvert.summary}

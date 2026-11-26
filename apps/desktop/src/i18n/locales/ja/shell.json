@@ -60,5 +60,24 @@
       "title": "未対応のファイル形式",
       "desc": "「{{name}}」を表示できるビューアがありません。対応する拡張機能をインストールしてください。"
     }
+  },
+  "recent": {
+    "title": "最近のウィンドウ",
+    "closePanel": "パネルを閉じる",
+    "searchPlaceholder": "ウィンドウを検索（名前 / 最近のドキュメント）…",
+    "noMatches": "一致するウィンドウがありません",
+    "empty": "最近閉じたリサーチウィンドウはありません",
+    "tabCount_one": "{{count}} 個のタブ",
+    "tabCount_other": "{{count}} 個のタブ",
+    "noDocs": "（開いているドキュメントなし）",
+    "clearOne": "リストから削除",
+    "clearAll": "すべて削除",
+    "footerNote": "削除は復元エントリのみを消します。Vault のファイルは削除されません",
+    "minutesAgo_one": "1 分前",
+    "minutesAgo_other": "{{count}} 分前",
+    "hoursAgo_one": "1 時間前",
+    "hoursAgo_other": "{{count}} 時間前",
+    "daysAgo_one": "1 日前",
+    "daysAgo_other": "{{count}} 日前"
   }
 }

@@ -61,5 +61,24 @@
       "title": "Unsupported file type",
       "desc": "\"{{name}}\" has no available viewer. Install an extension that supports this format."
     }
+  },
+  "recent": {
+    "title": "Recent Windows",
+    "closePanel": "Close panel",
+    "searchPlaceholder": "Search windows (name / recent doc)…",
+    "noMatches": "No matching windows",
+    "empty": "No recently closed research windows",
+    "tabCount_one": "{{count}} tab",
+    "tabCount_other": "{{count}} tabs",
+    "noDocs": "(no open documents)",
+    "clearOne": "Remove from list",
+    "clearAll": "Clear all",
+    "footerNote": "Clearing removes restore entries only — no vault files are deleted",
+    "minutesAgo_one": "1 minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo_one": "1 hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "daysAgo_one": "1 day ago",
+    "daysAgo_other": "{{count}} days ago"
   }
 }

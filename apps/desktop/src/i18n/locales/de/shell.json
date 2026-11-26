@@ -60,5 +60,24 @@
       "title": "Nicht unterstützter Dateityp",
       "desc": "\"{{name}}\" hat keinen verfügbaren Viewer. Installiere eine Erweiterung für dieses Format."
     }
+  },
+  "recent": {
+    "title": "Letzte Fenster",
+    "closePanel": "Panel schließen",
+    "searchPlaceholder": "Fenster suchen (Name / letztes Dokument)…",
+    "noMatches": "Keine passenden Fenster",
+    "empty": "Keine kürzlich geschlossenen Forschungsfenster",
+    "tabCount_one": "{{count}} Tab",
+    "tabCount_other": "{{count}} Tabs",
+    "noDocs": "(keine geöffneten Dokumente)",
+    "clearOne": "Aus Liste entfernen",
+    "clearAll": "Alle entfernen",
+    "footerNote": "Entfernen löscht nur Wiederherstellungseinträge – keine Vault-Dateien werden gelöscht",
+    "minutesAgo_one": "vor 1 Minute",
+    "minutesAgo_other": "vor {{count}} Minuten",
+    "hoursAgo_one": "vor 1 Stunde",
+    "hoursAgo_other": "vor {{count}} Stunden",
+    "daysAgo_one": "vor 1 Tag",
+    "daysAgo_other": "vor {{count}} Tagen"
   }
 }

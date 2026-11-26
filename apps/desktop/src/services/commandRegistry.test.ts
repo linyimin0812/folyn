@@ -172,9 +172,12 @@ describe('commandRegistry — registerBuiltinCommands', () => {
     const ids = getCommands().filter((c) => c.category === 'action').map((c) => c.id);
     expect(ids).toEqual([
       'action.toggle-theme',
+      'action.new-research-window',
+      'action.recent-windows',
       'action.new-file',
       'action.new-folder',
       'action.open-external-file',
+      'action.import-external',
       'action.export-markdown',
       'action.export-html',
       'action.open-global-search',

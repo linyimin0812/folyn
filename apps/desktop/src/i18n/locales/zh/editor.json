@@ -2,15 +2,42 @@
   "export": {
     "title": "导出",
     "source": {
-      "markdown": { "label": "Markdown", "description": "导出 .md 源文件" },
-      "dbml": { "label": "DBML", "description": "导出 .dbml 源文件" },
-      "excalidraw": { "label": "Excalidraw", "description": "导出 .excalidraw 源文件" },
-      "drawio": { "label": "Drawio", "description": "导出 .drawio 源文件" },
-      "markmap": { "label": "思维导图", "description": "导出 .markmap 源文件" },
-      "plantuml": { "label": "PlantUML", "description": "导出 .puml 源文件" },
-      "graphviz": { "label": "Graphviz", "description": "导出 .gv 源文件" },
-      "mermaid": { "label": "Mermaid", "description": "导出 .mermaid 源文件" },
-      "default": { "label": "源文件", "description": "导出原始文件" }
+      "markdown": {
+        "label": "Markdown",
+        "description": "导出 .md 源文件"
+      },
+      "dbml": {
+        "label": "DBML",
+        "description": "导出 .dbml 源文件"
+      },
+      "excalidraw": {
+        "label": "Excalidraw",
+        "description": "导出 .excalidraw 源文件"
+      },
+      "drawio": {
+        "label": "Drawio",
+        "description": "导出 .drawio 源文件"
+      },
+      "markmap": {
+        "label": "思维导图",
+        "description": "导出 .markmap 源文件"
+      },
+      "plantuml": {
+        "label": "PlantUML",
+        "description": "导出 .puml 源文件"
+      },
+      "graphviz": {
+        "label": "Graphviz",
+        "description": "导出 .gv 源文件"
+      },
+      "mermaid": {
+        "label": "Mermaid",
+        "description": "导出 .mermaid 源文件"
+      },
+      "default": {
+        "label": "源文件",
+        "description": "导出原始文件"
+      }
     },
     "provider": {
       "fileLabel": "文件上传服务商",
@@ -58,8 +85,14 @@
       "menuDesc": "整个 Vault → HTML",
       "title": "导出整个 Vault",
       "hint": "导出所有文本类文件（Markdown、代码、数据等），不支持的文件类型在页面中显示提示。图片会被过滤，左侧文件树保留为导航。",
-      "single": { "label": "单个 HTML 文件", "desc": "一个自包含 .html——文件树+全部文档，点击切换" },
-      "folder": { "label": "HTML 文件夹", "desc": "index.html + 每篇文档一个 HTML" },
+      "single": {
+        "label": "单个 HTML 文件",
+        "desc": "一个自包含 .html——文件树+全部文档，点击切换"
+      },
+      "folder": {
+        "label": "HTML 文件夹",
+        "desc": "index.html + 每篇文档一个 HTML"
+      },
       "shape": "产物形态",
       "target": "输出目标",
       "output": {
@@ -197,7 +230,9 @@
     "openVaultFirst": "请先打开一个 vault 再粘贴文件。",
     "vaultRoot": "vault 根目录",
     "imported": "已导入 {{count}} 个文件到 {{where}}。",
-    "allSkipped": "跳过 {{count}} 个文件 — 未导入任何文件。"
+    "allSkipped": "跳过 {{count}} 个文件 — 未导入任何文件。",
+    "folderOutsideHome": "无法打开该文件夹：仅支持主目录内的文件夹",
+    "folderAlreadyAdded": "该文件夹已在文件列表中"
   },
   "diffToolbar": {
     "pendingCount": "{{count}} 处变更待审阅",
@@ -225,13 +260,18 @@
     "custom": "自定义"
   },
   "table": {
-    "insertButton": { "title": "插入表格" },
+    "insertButton": {
+      "title": "插入表格"
+    },
     "convertTitle": "检测到表格",
     "convertMessage": "剪贴板内容看起来是表格，是否转换为表格？",
     "rememberChoice": "不再询问",
     "pasteAsText": "作为文本粘贴",
     "convert": "转换为表格",
-    "handle": { "rowActions": "行操作", "colActions": "列操作" },
+    "handle": {
+      "rowActions": "行操作",
+      "colActions": "列操作"
+    },
     "rowMenu": {
       "insertAbove": "上方插入行",
       "insertBelow": "下方插入行",

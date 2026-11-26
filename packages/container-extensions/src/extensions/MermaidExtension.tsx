@@ -78,21 +78,17 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
 
   if (error) {
     return (
-      <div className="border border-[#ef4444] rounded p-3 my-2">
-        <pre className="text-[#ef4444] text-xs m-0 mb-2">{error}</pre>
-        <pre className="bg-[var(--surf)] p-2 rounded text-xs overflow-x-auto"><code>{source}</code></pre>
+      <div className="docmd-diagram-error">
+        <pre className="docmd-diagram-error-message">{error}</pre>
+        <pre className="docmd-diagram-source"><code>{source}</code></pre>
       </div>
     );
   }
 
   if (svg) {
     return (
-      <div
-        className="flex justify-center py-4 px-3 my-2 overflow-x-auto rounded-lg"
-        style={{ background: isDark ? 'var(--surf)' : 'transparent' }}
-      >
+      <div className="docmd-diagram">
         <div
-          className="[&_svg]:max-w-full [&_svg]:h-auto"
           // ponytail: invert the light-themed SVG in dark mode. Filter is on
           // an inner wrapper so it doesn't flip the outer surface background.
           style={isDark ? { filter: 'invert(0.92) hue-rotate(180deg)' } : undefined}
@@ -102,7 +98,7 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
     );
   }
 
-  return <div className="py-4 text-center text-[var(--t3)] text-[13px]">渲染图表中...</div>;
+  return <div className="docmd-diagram-loading">渲染图表中...</div>;
 }
 
 function extractText(children: React.ReactNode): string {

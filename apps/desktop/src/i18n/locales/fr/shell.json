@@ -60,5 +60,24 @@
       "title": "Type de fichier non pris en charge",
       "desc": "\"{{name}}\" n'a pas de visionneuse. Installez une extension compatible."
     }
+  },
+  "recent": {
+    "title": "Fenêtres récentes",
+    "closePanel": "Fermer le panneau",
+    "searchPlaceholder": "Rechercher des fenêtres (nom / document récent)…",
+    "noMatches": "Aucune fenêtre correspondante",
+    "empty": "Aucune fenêtre de recherche fermée récemment",
+    "tabCount_one": "{{count}} onglet",
+    "tabCount_other": "{{count}} onglets",
+    "noDocs": "(aucun document ouvert)",
+    "clearOne": "Retirer de la liste",
+    "clearAll": "Tout effacer",
+    "footerNote": "Effacer ne supprime que les entrées de restauration — aucun fichier du vault n’est supprimé",
+    "minutesAgo_one": "il y a 1 minute",
+    "minutesAgo_other": "il y a {{count}} minutes",
+    "hoursAgo_one": "il y a 1 heure",
+    "hoursAgo_other": "il y a {{count}} heures",
+    "daysAgo_one": "il y a 1 jour",
+    "daysAgo_other": "il y a {{count}} jours"
   }
 }

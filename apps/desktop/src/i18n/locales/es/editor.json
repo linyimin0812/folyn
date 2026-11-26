@@ -2,15 +2,42 @@
   "export": {
     "title": "Exportar",
     "source": {
-      "markdown": { "label": "Markdown", "description": "Exportar archivo .md" },
-      "dbml": { "label": "DBML", "description": "Exportar archivo .dbml" },
-      "excalidraw": { "label": "Excalidraw", "description": "Exportar archivo .excalidraw" },
-      "drawio": { "label": "Drawio", "description": "Exportar archivo .drawio" },
-      "markmap": { "label": "Mapa mental", "description": "Exportar archivo .markmap" },
-      "plantuml": { "label": "PlantUML", "description": "Exportar archivo .puml" },
-      "graphviz": { "label": "Graphviz", "description": "Exportar archivo .gv" },
-      "mermaid": { "label": "Mermaid", "description": "Exportar archivo .mermaid" },
-      "default": { "label": "Archivo fuente", "description": "Exportar archivo en bruto" }
+      "markdown": {
+        "label": "Markdown",
+        "description": "Exportar archivo .md"
+      },
+      "dbml": {
+        "label": "DBML",
+        "description": "Exportar archivo .dbml"
+      },
+      "excalidraw": {
+        "label": "Excalidraw",
+        "description": "Exportar archivo .excalidraw"
+      },
+      "drawio": {
+        "label": "Drawio",
+        "description": "Exportar archivo .drawio"
+      },
+      "markmap": {
+        "label": "Mapa mental",
+        "description": "Exportar archivo .markmap"
+      },
+      "plantuml": {
+        "label": "PlantUML",
+        "description": "Exportar archivo .puml"
+      },
+      "graphviz": {
+        "label": "Graphviz",
+        "description": "Exportar archivo .gv"
+      },
+      "mermaid": {
+        "label": "Mermaid",
+        "description": "Exportar archivo .mermaid"
+      },
+      "default": {
+        "label": "Archivo fuente",
+        "description": "Exportar archivo en bruto"
+      }
     },
     "provider": {
       "fileLabel": "Proveedor de subida de archivos",
@@ -54,8 +81,14 @@
       "menuDesc": "Vault completo → HTML",
       "title": "Exportar todo el vault",
       "hint": "Exporta todos los archivos de texto (Markdown, código, datos…); los tipos no soportados muestran un aviso en la página. Las imágenes se filtran, el árbol de archivos de la izquierda se conserva como navegación.",
-      "single": { "label": "Archivo HTML único", "desc": "Un .html autónomo — árbol + todos los documentos, clic para cambiar" },
-      "folder": { "label": "Carpeta HTML", "desc": "index.html + un HTML por documento" },
+      "single": {
+        "label": "Archivo HTML único",
+        "desc": "Un .html autónomo — árbol + todos los documentos, clic para cambiar"
+      },
+      "folder": {
+        "label": "Carpeta HTML",
+        "desc": "index.html + un HTML por documento"
+      },
       "shape": "Forma",
       "target": "Destino",
       "output": {
@@ -190,7 +223,9 @@
     "openVaultFirst": "Abre un vault primero para pegar archivos en él.",
     "vaultRoot": "raíz del vault",
     "imported": "{{count}} archivo(s) importado(s) en {{where}}.",
-    "allSkipped": "{{count}} archivo(s) omitido(s) — nada importado."
+    "allSkipped": "{{count}} archivo(s) omitido(s) — nada importado.",
+    "folderOutsideHome": "No se puede abrir esa carpeta: solo se admiten carpetas dentro de su carpeta de inicio",
+    "folderAlreadyAdded": "Esa carpeta ya está en su lista de archivos"
   },
   "diffToolbar": {
     "pendingCount": "{{count}} cambio(s) pendiente(s) de revisión",
@@ -218,13 +253,18 @@
     "custom": "Personalizado"
   },
   "table": {
-    "insertButton": { "title": "Insertar tabla" },
+    "insertButton": {
+      "title": "Insertar tabla"
+    },
     "convertTitle": "Tabla detectada",
     "convertMessage": "El contenido del portapapeles parece una tabla. ¿Convertir?",
     "rememberChoice": "No volver a preguntar",
     "pasteAsText": "Pegar como texto",
     "convert": "Convertir en tabla",
-    "handle": { "rowActions": "Acciones de fila", "colActions": "Acciones de columna" },
+    "handle": {
+      "rowActions": "Acciones de fila",
+      "colActions": "Acciones de columna"
+    },
     "rowMenu": {
       "insertAbove": "Insertar fila arriba",
       "insertBelow": "Insertar fila abajo",

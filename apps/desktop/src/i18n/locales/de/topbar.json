@@ -13,7 +13,13 @@
     "noOpenFiles": "Keine offenen Dateien",
     "closePanel": "Liste schließen",
     "closeTab": "Datei schließen",
-    "openExternalFolder": "Übergeordneten Ordner öffnen"
+    "openExternalFolder": "Übergeordneten Ordner öffnen",
+    "pin": "Tab anheften",
+    "unpin": "Tab lösen",
+    "closeOthers": "Andere Tabs schließen",
+    "searchPlaceholder": "Tabs suchen (Name / Pfad / Abschnitt)…",
+    "noMatches": "Keine passenden Tabs",
+    "pinnedNote": "Angeheftete Tabs bleiben bei „Andere schließen“ offen"
   },
   "terminal": {
     "collapse": "Terminal einklappen",

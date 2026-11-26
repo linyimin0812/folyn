@@ -6,53 +6,24 @@ function CollapsibleComponent({ children, attributes }: ContainerProps) {
   const title = attributes?.title || '点击展开';
 
   return (
-    <div className="docmd-collapsible" style={{
-      border: `1px solid ${open ? 'var(--acc, #068ad5)' : 'var(--brd, #e4e4e7)'}`,
-      borderRadius: '8px',
-      overflow: 'hidden',
-      marginBottom: '1.5rem',
-      transition: 'border-color .2s',
-    }}>
+    <div className={`docmd-collapse${open ? ' is-open' : ''}`}>
       <button
+        className="docmd-collapse-head"
         onClick={() => setOpen(!open)}
-        style={{
-          listStyle: 'none',
-          padding: '.75rem 1.25rem',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          fontWeight: 600,
-          fontSize: '14px',
-          backgroundColor: 'var(--surf, #fafafa)',
-          border: 'none',
-          color: 'var(--t1, #09090b)',
-          textAlign: 'left',
-          transition: 'background-color .15s',
-        }}
       >
         <span>{title}</span>
         <svg
-          width="1.2em" height="1.2em" viewBox="0 0 24 24"
+          className="docmd-collapse-chev"
+          width="1.1em" height="1.1em" viewBox="0 0 24 24"
           fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round"
-          style={{
-            transition: 'transform .2s',
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            opacity: 0.7,
-          }}
+          aria-hidden="true"
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
       {open && (
-        <div style={{
-          padding: '1rem 1.25rem',
-          borderTop: '1px solid var(--brd, #e4e4e7)',
-          lineHeight: 1.7,
-          color: 'var(--t2, #3f3f46)',
-        }}>
+        <div className="docmd-collapse-body">
           {children}
         </div>
       )}

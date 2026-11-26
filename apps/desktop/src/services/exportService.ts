@@ -457,10 +457,11 @@ export async function applyContainerEnhancers(
 
 /**
  * Document shell for exported HTML / PDF. Every markdown export embeds the
- * `.md-preview` root plus the app stylesheet (collectAppCss), so element
- * styling (headings, code, tables, hljs, steps …) comes from index.css —
- * do not duplicate it here or stale element rules leak wherever
- * `.md-preview` leaves a property unset.
+ * `.md-preview` root plus the app stylesheet (collectAppCss — index.css and
+ * its styles/markdown-preview.css import), so element styling (headings,
+ * code, tables, hljs, container extensions …) comes from there — do not
+ * duplicate it here or stale element rules leak wherever `.md-preview`
+ * leaves a property unset.
  */
 export const HTML_STYLES = `
     body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif; font-size: 16px; line-height: 1.8; color: var(--t1); word-break: break-word; }
@@ -496,6 +497,8 @@ export const HTML_STYLES = `
  * than per-block script injection and avoids duplicate handlers on re-render.
  * Initial display (tab 0 visible, others hidden) is set by TabsComponent's
  * useEffect during the in-DOM render mount, so the script only handles clicks.
+ * Visual state toggles the same .is-active class the React component uses,
+ * so exported tabs render identically to the in-app preview.
  */
 export const CONTAINER_INTERACT_SCRIPT = `
     document.addEventListener('click', function (e) {
@@ -508,9 +511,7 @@ export const CONTAINER_INTERACT_SCRIPT = `
       var idx = Array.prototype.indexOf.call(btns, btn);
       for (var i = 0; i < btns.length; i++) {
         var active = i === idx;
-        btns[i].style.borderBottom = active ? '3px solid var(--acc, #068ad5)' : '3px solid transparent';
-        btns[i].style.color = active ? 'var(--acc, #068ad5)' : 'var(--t3, #71717a)';
-        btns[i].style.backgroundColor = active ? 'var(--panel, #fff)' : 'transparent';
+        btns[i].classList.toggle('is-active', active);
         if (panels[i]) panels[i].style.display = active ? 'block' : 'none';
       }
     });
@@ -518,8 +519,9 @@ export const CONTAINER_INTERACT_SCRIPT = `
 
 /**
 * CSS override injected AFTER collectAppCss() in the export <style> block.
-* The app CSS from index.css sets `.md-preview .resizable-media { width:
-* fit-content }` (higher specificity than the bare rules in HTML_STYLES).
+* The app stylesheet (markdown-preview.css via the index.css import) sets
+* `.md-preview .resizable-media { width: fit-content }` (higher specificity
+* than the bare rules in HTML_STYLES).
  *
  * fit-content + img `width:100% !important` creates a sizing cycle that
  * resolves to the replaced element's default 300px for images WITHOUT

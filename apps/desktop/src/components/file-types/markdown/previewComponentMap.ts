@@ -1,4 +1,5 @@
 import { createElement } from 'react';
+import { snapshotComponentState } from './headingNav';
 import { registerBuiltinExtensions } from '@folyn/container-extensions';
 import type { ContainerProps } from '@folyn/container-extensions';
 import { registerBuiltinCodeContributions } from '@/services/registerBuiltinCodeContributions';
@@ -7,12 +8,17 @@ import { getActiveContainers } from '@/services/containerRegistryService';
 import { isTauri } from '@/utils/platform';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
+import { openFile } from '@/services/editorIoService';
 import { useDocLinkHistory } from '@/store/docLinkHistory';
 import { PanelErrorBoundary } from '@/components/sidebar/PanelErrorBoundary';
 import { extractTextContent, CodeBlockWrapper } from './CodeBlockWrapper';
 import { VaultImageInner } from './VaultImage';
 import { ResizableMedia } from './ResizableMedia';
+import { TableFocusWrap } from './TableFocusWrap';
 import { classifyLinkHref } from './linkTarget';
+import { navigateToHeadingId } from './headingNav';
+import { useLinkPreviewStore, type AnchorRect } from './linkPreviewStore';
+import { isPreviewableTarget } from './linkPreviewModel';
 
 // Ensure built-in extensions are registered once
 registerBuiltinExtensions();
@@ -116,18 +122,92 @@ export function buildPreviewComponentMap({ filePath, assetBase, contentRef, onCh
     const { href, children, node, ...rest } = props;
     if (typeof href !== 'string' || !href) return createElement('a', { href, ...rest }, children);
     const target = classifyLinkHref(href, filePath);
-    if (target.kind === 'anchor' || target.kind === 'system') {
+    if (target.kind === 'system') {
       return createElement('a', { href, ...rest }, children);
     }
-    if (target.kind === 'file') {
+    if (target.kind === 'anchor') {
+      // In-document anchor (`#id`): the app shell doesn't scroll — .prev-body
+      // does, so the browser's default hash navigation is a no-op. Drive the
+      // jump ourselves: record the current reading position on the tab's
+      // navigation trail (Back returns to it), then reveal hidden containers
+      // (tabs/collapsibles) around the target heading and scroll to it.
+      const fragment = href.slice(1);
       return createElement('a', {
         ...rest,
         href,
         onClick: (e: React.MouseEvent) => {
           e.preventDefault();
-          const name = target.path.substring(target.path.lastIndexOf('/') + 1) || target.path;
-          useDocLinkHistory.getState().follow({ path: target.path, name });
+          const body = (e.currentTarget as Element).closest('.prev-body');
+          if (!body) return;
+          useDocLinkHistory.getState().pushPosition(
+            body.scrollTop,
+            snapshotComponentState(body),
+          );
+          navigateToHeadingId(body, fragment);
         },
+      }, children);
+    }
+    if (target.kind === 'file') {
+      // Doc link — keep the `#fragment` (resolveLinkPath strips it for the
+      // path) so the navigation restore can scroll onto the target heading
+      // once the document renders; capture the leaving preview's live
+      // scrollTop so Back returns to the exact reading spot.
+      const fragment = href.match(/#([^?#]*)$/)?.[1];
+      // Hover preview (spec 5.2): rest on the link 500ms → glimpse the
+      // target doc (name/path/section/excerpt) without navigating. Only
+      // markdown text targets; images etc. would show an empty popover.
+      const hoverPreview = isPreviewableTarget(target.path);
+      const onEnter = hoverPreview
+        ? (e: React.MouseEvent) => {
+            const r = (e.currentTarget as Element).getBoundingClientRect();
+            useLinkPreviewStore.getState().beginHover(
+              { path: target.path, fragment: fragment || undefined },
+              { left: r.left, right: r.right, top: r.top, bottom: r.bottom } satisfies AnchorRect,
+            );
+          }
+        : undefined;
+      const onLeave = hoverPreview
+        ? () => useLinkPreviewStore.getState().endHover()
+        : undefined;
+      const onClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        // Spec 6.2 — background open (⌘/Ctrl+click): open the target as a
+        // NEW tab to the right of the current one, without navigating away
+        // and without stealing focus. Same-doc duplicates get their own
+        // reading context (forceNew).
+        if (e.metaKey || e.ctrlKey) {
+          const name = target.path.substring(target.path.lastIndexOf('/') + 1) || target.path;
+          const activeTabId = useEditorStore.getState().activeTabId;
+          void openFile(target.path, name, { forceNew: true, background: true, insertAfterTabId: activeTabId ?? undefined });
+          useLinkPreviewStore.getState().close();
+          return;
+        }
+        // A click is a committed navigation: drop any preview state.
+        useLinkPreviewStore.getState().close();
+        const name = target.path.substring(target.path.lastIndexOf('/') + 1) || target.path;
+        const body = (e.currentTarget as Element).closest('.prev-body');
+        useDocLinkHistory.getState().follow(
+          { path: target.path, name, anchorId: fragment || undefined },
+          body?.scrollTop,
+          body ? snapshotComponentState(body) : undefined,
+        );
+      };
+      // Middle-click opens in background too (browser muscle memory).
+      const onAuxClick = (e: React.MouseEvent) => {
+        if (e.button !== 1) return;
+        e.preventDefault();
+        useLinkPreviewStore.getState().close();
+        const name = target.path.substring(target.path.lastIndexOf('/') + 1) || target.path;
+        const activeTabId = useEditorStore.getState().activeTabId;
+        void openFile(target.path, name, { forceNew: true, background: true, insertAfterTabId: activeTabId ?? undefined });
+      };
+      return createElement('a', {
+        ...rest,
+        href,
+        onMouseEnter: onEnter,
+        onMouseLeave: onLeave,
+        onClick,
+        onAuxClick,
       }, children);
     }
     const url = target.url;
@@ -193,6 +273,24 @@ export function buildPreviewComponentMap({ filePath, assetBase, contentRef, onCh
       { ...rest, lang, sourceLine, content: contentRef.current, onChange: onChangeRef.current },
       children,
     );
+  };
+
+  // ponytail: horizontal-scroll table wrapper. Tables auto-size columns by
+  // content (thead keep-all keeps field names whole; cells wrap long text);
+  // a genuinely wide table scrolls INSIDE this frame instead of stretching
+  // the reading column or scrolling the page sideways. The wrapper and the
+  // inner table BOTH carry data-source-line (same source line): cursor-sync
+  // target selection picks the later-in-DOM element on line ties → the TABLE
+  // itself wins, keeping the row-anchoring path (thead row 0 / tbody row K)
+  // intact, while the wrapper stays a gap-compensation block root (a direct
+  // rootEl child with data-source-line, like .code-block-wrapper).
+  // TableFocusWrap keeps that exact DOM contract (root div with
+  // data-source-line → .md-table-wrap → table) and adds the 专注查看 entry.
+  map['table'] = function TableWrap(props: any) {
+    const { children, node, ...rest } = props;
+    const sourceLineRaw = rest['data-source-line'] ?? node?.properties?.['data-source-line'];
+    const sourceLine = sourceLineRaw != null ? Number(sourceLineRaw) : undefined;
+    return createElement(TableFocusWrap, { sourceLine, tableProps: rest }, children);
   };
 
   // ponytail: drop <style>/<script> from raw HTML blocks — rehypeRaw embeds

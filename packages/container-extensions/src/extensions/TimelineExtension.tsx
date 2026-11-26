@@ -5,41 +5,13 @@ function TimelineComponent({ children }: ContainerProps) {
   const items = Children.toArray(children);
 
   return (
-    <div className="docmd-timeline" style={{
-      position: 'relative',
-      paddingLeft: '2rem',
-      margin: '1.5rem 0',
-    }}>
-      {/* Vertical line */}
-      <div style={{
-        position: 'absolute',
-        left: '0.45rem',
-        top: '0.5rem',
-        bottom: '0.5rem',
-        width: '2px',
-        backgroundColor: 'var(--brd, #e4e4e7)',
-      }} />
+    <div className="docmd-timeline">
+      {/* Vertical rail */}
+      <div className="docmd-timeline-line" />
       {items.map((child, index) => (
-        <div key={index} style={{
-          position: 'relative',
-          paddingBottom: '1.5rem',
-          paddingLeft: '0.75rem',
-        }}>
-          {/* Dot */}
-          <div style={{
-            position: 'absolute',
-            left: '-1.85rem',
-            top: '0.45rem',
-            width: '12px',
-            height: '12px',
-            borderRadius: '50%',
-            backgroundColor: index === 0 ? 'var(--acc, #068ad5)' : 'var(--brd, #e4e4e7)',
-            border: '2px solid var(--panel, #fff)',
-            zIndex: 1,
-          }} />
-          <div style={{ lineHeight: 1.7, color: 'var(--t2, #3f3f46)' }}>
-            {child}
-          </div>
+        <div key={index} className="docmd-timeline-item">
+          <span className="docmd-timeline-dot" />
+          <div className="docmd-timeline-body">{child}</div>
         </div>
       ))}
     </div>

@@ -10,13 +10,7 @@ function GridComponent({ children, attributes }: ContainerProps) {
   const items = Children.toArray(children);
 
   return (
-    <div className="docmd-grid" style={{
-      display: 'grid',
-      gridTemplateColumns: gridColumns,
-      gap: '1.5rem',
-      margin: '1rem 0',
-      width: '100%',
-    }}>
+    <div className="docmd-grid" style={{ gridTemplateColumns: gridColumns }}>
       {items.map((child, index) => (
         <div key={index} className="docmd-grid-item">
           {child}

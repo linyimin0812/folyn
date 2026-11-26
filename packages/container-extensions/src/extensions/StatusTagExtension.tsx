@@ -1,18 +1,13 @@
 import type { ContainerExtension, ContainerProps } from '../ContainerExtension';
 
-const TAG_COLORS: Record<string, { bg: string; color: string }> = {
-  green: { bg: '#dcf5e8', color: '#22a863' },
-  amber: { bg: '#fff3cd', color: '#d4820a' },
-  red: { bg: '#fde8e8', color: '#d94040' },
-  blue: { bg: '#dce8ff', color: '#3a6ef0' },
-};
+const STATUS_VARIANTS = new Set(['green', 'amber', 'red', 'blue']);
 
 function StatusTagComponent({ children, attributes }: ContainerProps) {
   const color = attributes?.color || 'blue';
-  const style = TAG_COLORS[color] || TAG_COLORS.blue;
+  const variant = STATUS_VARIANTS.has(color) ? color : 'blue';
 
   return (
-    <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, background: style.bg, color: style.color }}>
+    <span className={`docmd-status docmd-status--${variant}`}>
       {children}
     </span>
   );

@@ -146,6 +146,31 @@ objc2 = { version = "0.5", features = ["exception"] }
 # 07-06-pet-overlay-on-fullscreen-apps). Not on crates.io; the exact revision
 # is pinned via Cargo.lock for reproducible builds.
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
+# `pick_external_paths` (commands/dialog_commands.rs): an NSOpenPanel that
+# accepts files AND folders in one selection. tauri-plugin-dialog/rfd 0.16
+# hardwires the two modes as mutually exclusive, so the command drives AppKit
+# directly. These are already transitive deps via rfd 0.16 (objc2 0.6.4,
+# app-kit 0.3.2, foundation 0.3.2 in the lock); the versions here unify with
+# those instances, so the types (Retained<NSOpenPanel>, MainThreadMarker)
+# are the same ones the crates pass around. NOTE: objc2 must be aliased —
+# the voice deps above pin the semver-incompatible 0.5 as the crate named
+# `objc2`, and one package can only link one crate per name.
+objc2_06 = { package = "objc2", version = "0.6" }
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSApplication",
+    "NSOpenPanel",
+    "NSPanel",
+    "NSResponder",
+    "NSSavePanel",
+    "NSWindow",
+] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSArray",
+    "NSString",
+    "NSURL",
+] }
 
 # Cross-platform voice mic capture deps (cpal WASAPI on Windows, CoreAudio on
 # macOS). parked under a cfg(any) so Linux doesn't pull ALSA. R15 widens the

@@ -16,6 +16,7 @@ import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useEditorViewStateStore } from '@/store/editorViewState';
 import * as editorIoService from '@/services/editorIoService';
+import { useImportFlowStore } from '@/store/importFlowStore';
 import { useSearchStore } from '@/store/searchStore';
 import { usePetStore } from '@/store/petStore';
 import type { ActivityPanel } from '@/components/shell/ActivityBar';
@@ -133,6 +134,31 @@ export function registerBuiltinCommands(): void {
       keywords: ['dark', 'light', 'appearance'],
       run: () => appearance().toggleTheme(),
     },
+    // spec 6.3：新建独立研究窗口。动态 import 避免拉入
+    // windowSessionService 及其 Tauri 依赖（命令面板冷启动零成本）。
+    {
+      id: 'action.new-research-window',
+      title: 'New Research Window',
+      category: 'action',
+      keywords: ['window', 'research', 'new', 'multi'],
+      run: () => {
+        void import('@/services/windowSessionService').then(({ createResearchWindow }) =>
+          createResearchWindow(),
+        );
+      },
+    },
+    // spec 6.4：最近窗口列表（恢复入口）。
+    {
+      id: 'action.recent-windows',
+      title: 'Recent Windows…',
+      category: 'action',
+      keywords: ['window', 'recent', 'restore', 'history'],
+      run: () => {
+        void import('@/store/recentWindowsStore').then(({ useRecentWindowsStore }) =>
+          useRecentWindowsStore.getState().open(),
+        );
+      },
+    },
     {
       id: 'action.new-file',
       title: 'New File',
@@ -155,11 +181,20 @@ export function registerBuiltinCommands(): void {
     },
     {
       id: 'action.open-external-file',
-      title: 'Open External File…',
+      title: 'Open External File or Folder…',
       category: 'action',
-      keywords: ['open', 'external', 'outside', 'vault', 'disk', 'browse'],
+      keywords: ['open', 'external', 'outside', 'vault', 'disk', 'browse', 'file', 'folder', 'directory'],
       run: () => {
         void editorIoService.openExternalFile();
+      },
+    },
+    {
+      id: 'action.import-external',
+      title: 'Import File or Folder…',
+      category: 'action',
+      keywords: ['import', 'external', 'copy', 'into', 'vault', 'upload', 'folder', 'directory'],
+      run: () => {
+        void useImportFlowStore.getState().startImportFromDialog();
       },
     },
     {

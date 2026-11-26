@@ -118,6 +118,20 @@ export function useGlobalShortcuts() {
         e.preventDefault();
         useCommandPaletteStore.getState().toggle();
       }
+      // spec 6.3：Cmd/Ctrl+Shift+N 新建研究窗口。N 空闲（已占用 F/P/Enter
+      // / 0-9 tab 激活）；Shift 严格开启，避免未来裸 Cmd+N 冲突。所有窗口
+      // 都可新建（研究窗口里也能再开）。
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        !e.altKey &&
+        e.key.toLowerCase() === 'n'
+      ) {
+        e.preventDefault();
+        void import('@/services/windowSessionService').then(({ createResearchWindow }) =>
+          createResearchWindow(),
+        );
+      }
       // Back/forward along followed document links — Cmd/Ctrl+[ and ]. Skipped
       // in editable targets, where CodeMirror binds them to indent less/more.
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === '[' || e.key === ']')) {

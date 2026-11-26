@@ -2,7 +2,7 @@
   "filesPanel": {
     "actions": {
       "locateActive": "Locate active file",
-      "openExternal": "Open external file…",
+      "openExternal": "Open External File or Folder…",
       "refresh": "Refresh file tree",
       "more": "More actions",
       "newFile": "New file",
@@ -11,7 +11,12 @@
       "collapseAll": "Collapse all",
       "expandAllFolders": "Expand all folders",
       "collapseAllFolders": "Collapse all folders",
-      "hideSidebar": "Hide sidebar"
+      "hideSidebar": "Hide sidebar",
+      "importFiles": "Import…"
+    },
+    "externalFolders": {
+      "title": "External Folders",
+      "remove": "Remove external folder"
     },
     "search": {
       "placeholder": "Search files..."
@@ -43,7 +48,10 @@
     "delete": "Delete",
     "move": "Move to...",
     "copy": "Copy",
-    "hide": "Hide"
+    "hide": "Hide",
+    "open": "Open",
+    "refresh": "Refresh",
+    "importToVault": "Import to Vault"
   },
   "sidebarActions": {
     "deleteConfirm": {

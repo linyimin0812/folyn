@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect, useCallback, useState } from 'react';
-import { Code2, Eye } from 'lucide-react';
+import { Code2, Eye, Maximize2, ChevronsUp, ChevronsDown } from 'lucide-react';
+import { FocusViewShell } from './FocusViewShell';
 import { useAiConfigStore } from '@/store/aiConfigStore';
 import { isShortcutCandidate } from '@/utils/iframeShortcuts';
 import {
@@ -32,6 +33,9 @@ const SYNC_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const RUN_COLOR = '#59A869';
 const STOP_COLOR = '#C7222D';
 
+/** Blocks at/above this many lines get a collapse affordance in the header. */
+const COLLAPSE_MIN_LINES = 10;
+
 interface CodeBlockWrapperProps {
   children?: React.ReactNode;
   node?: any;
@@ -46,16 +50,24 @@ interface CodeBlockWrapperProps {
  *  Also renders a Run/Stop button when the fence language maps to a configured
  *  script runtime. Run output streams into a panel below the code block.
  *  For ```html fences, also renders a source/preview toggle: source shows the
- *  code (default); preview renders the HTML in a sandboxed iframe. */
+ *  code (default); preview renders the HTML in a sandboxed iframe.
+ *
+ *  Reading controls (user control over long code): collapse for long blocks,
+ *  focus view (portal overlay, big type). Code renders in full — no height
+ *  cap, no inner vertical scrolling; the block scrolls with the page.
+ *  （用户拍板：折叠按钮保留；无行数标注、无换行切换。） */
 export function CodeBlockWrapper({ children, node, lang, sourceLine, content, onChange, ...rest }: CodeBlockWrapperProps) {
   const preRef = useRef<HTMLPreElement>(null);
-  const copyBtnRef = useRef<HTMLButtonElement>(null);
   const lineRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [lineCount, setLineCount] = useState(0);
   const isHtml = lang === 'html';
   const [htmlView, setHtmlView] = useState<'source' | 'preview'>('source');
   const [htmlSrc, setHtmlSrc] = useState('');
+
+  // Reading controls.
+  const [collapsed, setCollapsed] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   const runtimes = useAiConfigStore((s) => s.scriptRuntimes);
   const runtime = useMemo(
@@ -94,17 +106,33 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
     setSynced(false);
   }, [lineCount]);
 
+  // Esc closes the focus overlay (window-level: focus may sit on the overlay
+  // shell, not an interactive child).
+  useEffect(() => {
+    if (!focused) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFocused(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [focused]);
+
   // Sync line-number column scroll with code scroll so they stay aligned.
   const handleScroll = useCallback(() => {
     if (lineRef.current && scrollRef.current) {
       lineRef.current.scrollTop = scrollRef.current.scrollTop;
     }
   }, []);
-  const handleCopy = useCallback(() => {
+
+  // ponytail: reads text from the in-page <pre> DOM, falling back to the
+  // React children — the pre is display:none while collapsed, and absent in
+  // html preview mode; textContent survives both. The button that triggered
+  // the copy (event currentTarget) gets the check feedback.
+  const handleCopy = useCallback((e?: React.MouseEvent<HTMLButtonElement>) => {
     const codeEl = preRef.current?.querySelector('code');
-    const text = codeEl?.textContent ?? preRef.current?.textContent ?? '';
-    const btn = copyBtnRef.current;
-    if (!btn) return;
+    const text = codeEl?.textContent ?? preRef.current?.textContent ?? extractTextContent(children);
+    const btn = e?.currentTarget;
+    if (!btn || !text) return;
     navigator.clipboard.writeText(text).then(() => {
       btn.innerHTML = CHECK_SVG;
       btn.classList.add('copied');
@@ -113,11 +141,11 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
         btn.classList.remove('copied');
       }, 1500);
     });
-  }, []);
+  }, [children]);
 
   const handleRun = useCallback(async () => {
-    if (!runtime || running || !preRef.current || !content || sourceLine == null) return;
-    const codeEl = preRef.current.querySelector('code');
+    if (!runtime || running || !content || sourceLine == null) return;
+    const codeEl = preRef.current?.querySelector('code');
     const code = codeEl?.textContent ?? preRef.current?.textContent ?? '';
     setRunning(true);
     setStopped(false);
@@ -179,12 +207,37 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
   // Fenced blocks with a language get a header row (label + actions). The
   // empty-html sliver keeps its centred toggles and no header.
   const hasHeader = !!lang && !isEmptyHtml;
+  // Focus reads the source <pre> (children); html preview mode has no pre.
+  const canFocus = !isEmptyHtml && (!isHtml || htmlView === 'source');
 
+  const collapseBtn = lineCount >= COLLAPSE_MIN_LINES && (
+    <button
+      className="code-act-btn"
+      type="button"
+      title={collapsed ? `展开（${lineCount} 行）` : '折叠'}
+      aria-label="toggle collapse"
+      onClick={() => setCollapsed((c) => !c)}
+    >
+      {collapsed ? <ChevronsDown size={13} /> : <ChevronsUp size={13} />}
+    </button>
+  );
+  const focusBtn = canFocus && (
+    <button
+      className="code-act-btn"
+      type="button"
+      title="专注查看"
+      aria-label="focus view"
+      onClick={() => setFocused(true)}
+    >
+      <Maximize2 size={13} />
+    </button>
+  );
   const copyBtn = !isEmptyHtml && (
     <button
-      ref={copyBtnRef}
-      className="code-copy-btn"
+      className="code-act-btn code-copy-btn"
       type="button"
+      title="复制"
+      aria-label="copy code"
       onClick={handleCopy}
       dangerouslySetInnerHTML={{ __html: COPY_SVG }}
     />
@@ -198,7 +251,7 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
         aria-label="source"
         title="Source"
         onClick={() => setHtmlView('source')}
-        className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'source' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
+        className={`code-act-btn${htmlView === 'source' ? ' is-on' : ''}`}
       >
         <Code2 size={13} />
       </button>
@@ -207,7 +260,7 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
         aria-label="preview"
         title="Preview"
         onClick={() => setHtmlView('preview')}
-        className={`w-[22px] h-[22px] flex items-center justify-center rounded-[3px] cursor-pointer border-none transition-colors ${htmlView === 'preview' ? 'text-t1 bg-hov' : 'text-t3 hover:text-t1 hover:bg-hov'}`}
+        className={`code-act-btn${htmlView === 'preview' ? ' is-on' : ''}`}
       >
         <Eye size={13} />
       </button>
@@ -215,7 +268,7 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
   );
   const runBtn = runtime && (
     <button
-      className="code-run-btn"
+      className="code-act-btn code-run-btn"
       type="button"
       title={running ? 'Stop' : 'Run'}
       onClick={running ? handleStop : handleRun}
@@ -226,13 +279,18 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
 
   // the grid must see capped code blocks: rootEl.children counts only data-source-line
   return (
-    <div className={`code-block-wrapper${isHtml && htmlView === 'preview' && !isEmptyHtml ? ' code-block-wrapper--no-height-cap' : ''}${isEmptyHtml ? ' code-block-wrapper--empty-html' : ''}`} data-source-line={sourceLine}>
+    <div
+      className={`code-block-wrapper${isHtml && htmlView === 'preview' && !isEmptyHtml ? ' code-block-wrapper--no-height-cap' : ''}${isEmptyHtml ? ' code-block-wrapper--empty-html' : ''}${collapsed ? ' code-block-wrapper--collapsed' : ''}`}
+      data-source-line={sourceLine}
+    >
       {hasHeader && (
         <div className="code-block-header">
           <span className="code-block-lang">{lang}</span>
           <div className="code-block-actions">
             {htmlToggle}
             {runBtn}
+            {collapseBtn}
+            {focusBtn}
             {copyBtn}
           </div>
         </div>
@@ -282,59 +340,23 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
               };
               resize();
               new ResizeObserver(resize).observe(doc.body);
-              // ponytail: the preview iframe is a separate document — file
-              // drag/drop events do NOT bubble to the parent window, so
-              // WKWebView's default drop navigates the iframe to the file
-              // (raw file content replaces the preview). preventDefault here
-              // and forward the WebKit `.path` to the parent, which routes
-              // through the same openFile path as a window-level drop (new
-              // tab, or activate-if-already-open — the user's "detect if
-              // already open" expectation is handled by openFile's existing
-              // dedup on `ext:<path>` tab id).
               // Keys pressed inside this iframe never reach the app's
               // shortcut handler. This code runs in the app (same-origin
               // iframe), so replay shortcut candidates on the app document.
+              // (No file drag forwarding needed: OS-originated drags are
+              // consumed by Tauri's native drag-drop handler at the AppKit
+              // level before WebKit sees them, so the window-level
+              // useOsFileDragDrop gets every drop regardless of which
+              // iframe is under the cursor.)
               doc.addEventListener('keydown', (ev) => {
                 if (!isShortcutCandidate(ev)) return;
                 const { key, code, metaKey, ctrlKey, altKey, shiftKey } = ev;
                 document.dispatchEvent(new KeyboardEvent('keydown', { key, code, metaKey, ctrlKey, altKey, shiftKey, bubbles: true, cancelable: true }));
               }, true);
-              const fwdDragOver = (ev: Event) => {
-                const de = ev as DragEvent;
-                if (!de.dataTransfer?.types?.includes('Files')) return;
-                de.preventDefault();
-                de.dataTransfer.dropEffect = 'copy';
-                window.parent?.postMessage({ type: 'folyn:file-drag-active' }, '*');
-              };
-              const fwdDrop = (ev: Event) => {
-                const de = ev as DragEvent;
-                if (!de.dataTransfer?.types?.includes('Files')) return;
-                de.preventDefault();
-                // Forward the File OBJECTS (not .path) — a sandboxed iframe
-                // without allow-same-origin is cross-origin, and WKWebView
-                // hides the private File.path from cross-origin documents, so
-                // reading .path here yields undefined and drops were silently
-                // lost. File objects survive postMessage's structured clone
-                // (name/size/type/content intact); the parent's
-                // openDroppedFiles handles path/staging per-platform.
-                const files = de.dataTransfer.files;
-                const arr: File[] = [];
-                if (files) for (let i = 0; i < files.length; i++) arr.push(files[i]);
-                if (arr.length > 0) {
-                  window.parent?.postMessage({ type: 'folyn:open-dropped-files', files: arr }, '*');
-                }
-              };
-              doc.addEventListener('dragover', fwdDragOver);
-              doc.addEventListener('drop', fwdDrop);
             } catch { /* cross-origin — leave default height */ }
           }}
         />
       )}
-      {/* No language → no header: actions float top-right over the code
-          (the empty-html sliver centres its toggle instead). */}
-      {!hasHeader && copyBtn}
-      {!hasHeader && runBtn}
-      {!hasHeader && htmlToggle}
       {runtime && hasOutput && (
         <div className="code-run-output">
           {/* ponytail: only the stdout/stderr body scrolls; the sync icon +
@@ -358,6 +380,20 @@ export function CodeBlockWrapper({ children, node, lang, sourceLine, content, on
             />
           )}
         </div>
+      )}
+      {/* Focus view (专注查看): shared FocusViewShell portal overlay, big type,
+          own scroll. Esc/backdrop click close (shell); the shell gates on
+          PreviewActiveContext so a hidden pane's overlay doesn't leak across
+          tab switches. */}
+      {focused && (
+        <FocusViewShell
+          title={lang ?? 'code'}
+          onClose={() => setFocused(false)}
+          ariaLabel="专注查看代码"
+          actions={<>{copyBtn}</>}
+        >
+          <pre>{children}</pre>
+        </FocusViewShell>
       )}
     </div>
   );

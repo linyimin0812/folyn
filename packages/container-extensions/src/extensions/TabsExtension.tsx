@@ -14,6 +14,8 @@ function TabComponent({ children, attributes }: ContainerProps) {
 /**
  * Tabs container – collects :::tab children via DOM after mount,
  * renders tab headers and shows the active tab content.
+ * Underline strip, no outer card: tab content flows below the strip as
+ * regular markdown (de-carded reading), styled by .docmd-tabs* CSS.
  */
 function TabsComponent({ children }: ContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,45 +47,22 @@ function TabsComponent({ children }: ContainerProps) {
   }, [activeTab, tabs]);
 
   return (
-    <div ref={containerRef} className="docmd-tabs" style={{
-      border: '1px solid var(--brd, #e4e4e7)',
-      borderRadius: '6px',
-      overflow: 'hidden',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-      margin: '1.5rem 0',
-    }}>
+    <div ref={containerRef} className="docmd-tabs">
       {tabs.length > 0 && (
-        <div style={{
-          display: 'flex',
-          backgroundColor: 'var(--surf, #fafafa)',
-          borderBottom: '1px solid var(--brd, #e4e4e7)',
-          flexWrap: 'wrap',
-        }}>
+        <div className="docmd-tabs-strip">
           {tabs.map((tab, i) => (
             <button
               key={i}
               data-tab-button={i}
+              className={`docmd-tab-btn${activeTab === i ? ' is-active' : ''}`}
               onClick={() => setActiveTab(i)}
-              style={{
-                padding: '.75rem 1.25rem',
-                cursor: 'pointer',
-                border: 'none',
-                borderBottom: `3px solid ${activeTab === i ? 'var(--acc, #068ad5)' : 'transparent'}`,
-                marginBottom: '-1px',
-                fontWeight: 500,
-                fontSize: '14px',
-                whiteSpace: 'nowrap',
-                color: activeTab === i ? 'var(--acc, #068ad5)' : 'var(--t3, #71717a)',
-                backgroundColor: activeTab === i ? 'var(--panel, #fff)' : 'transparent',
-                transition: 'color .2s, border-color .2s, background-color .2s',
-              }}
             >
               {tab.label}
             </button>
           ))}
         </div>
       )}
-      <div style={{ padding: '1.5rem' }}>
+      <div className="docmd-tabs-body">
         {children}
       </div>
     </div>

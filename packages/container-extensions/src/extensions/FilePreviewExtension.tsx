@@ -98,51 +98,30 @@ function FilePreviewComponent({ attributes }: ContainerProps) {
       data-file-preview=""
       data-file-preview-src={src}
       data-file-preview-name={basename}
-      style={{
-        padding: '12px 16px',
-        background: 'var(--surf, #f8f9fd)',
-        borderRadius: '8px',
-        border: '1px solid var(--brd, #dde2f0)',
-        margin: '12px 0',
-      }}
+      className="docmd-fileview"
     >
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '8px',
-        fontSize: '11px', color: 'var(--t3, #8892b0)', marginBottom: '8px',
-      }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      <div className="docmd-fileview-head">
+        <span className="docmd-fileview-path">
           {ctx?.getFileIcon ? ctx.getFileIcon(src) : '📄'} {src || '文件预览'}
         </span>
         {content && (
-          <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <div className="docmd-fileview-actions">
             <button
               type="button"
+              className={`docmd-icon-btn${viewMode === 'source' ? ' is-on' : ''}`}
               title={viewMode === 'source' ? '切换到预览' : '查看源码'}
               onClick={() => setViewMode((m) => (m === 'source' ? 'preview' : 'source'))}
-              style={{
-                padding: '3px', background: viewMode === 'source' ? 'var(--surf-active, #eef1fb)' : 'transparent',
-                color: viewMode === 'source' ? 'var(--acc, #597ef7)' : 'var(--t3, #8892b0)',
-                border: '1px solid', borderColor: viewMode === 'source' ? 'var(--acc, #597ef7)' : 'var(--brd, #dde2f0)',
-                borderRadius: '4px', cursor: 'pointer', display: 'inline-flex',
-                alignItems: 'center', lineHeight: 0,
-              }}
             >
               {CODE_ICON}
             </button>
             {ctx?.openFile && src && (
               <button
                 type="button"
+                className="docmd-icon-btn"
                 title="跳转到源文件"
                 onClick={() => {
                   const vaultRel = resolveVaultPath(src, ctx?.filePath ?? '');
                   ctx.openFile?.(vaultRel);
-                }}
-                style={{
-                  padding: '3px', background: 'transparent',
-                  color: 'var(--t3, #8892b0)',
-                  border: '1px solid var(--brd, #dde2f0)', borderRadius: '4px',
-                  cursor: 'pointer', display: 'inline-flex',
-                  alignItems: 'center', lineHeight: 0,
                 }}
               >
                 {EXTERNAL_LINK_ICON}
@@ -151,33 +130,26 @@ function FilePreviewComponent({ attributes }: ContainerProps) {
           </div>
         )}
       </div>
-      {error && (
-        <div style={{ fontSize: '12px', color: '#d94040' }}>{error}</div>
-      )}
+      {error && <div className="docmd-fileview-error">{error}</div>}
       {content && viewMode === 'source' && (
-        <pre style={{
-          margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          fontSize: '12px', color: 'var(--t1, #2a3146)', fontFamily: 'inherit',
-        }}>
-          {content}
-        </pre>
+        <pre className="docmd-fileview-source">{content}</pre>
       )}
       {content && viewMode === 'preview' && previewEl && (
         // ponytail: fixed height — embedded preview components like the dbml
         // ER diagram use h-full (height:100%), and percentage heights need a
         // real `height` on the parent (min-height is not enough). Markdown
         // flow content scrolls within this box; adjust if it bites.
-        <div data-file-preview-body="" style={{ height: 420, overflow: 'auto' }}>
+        <div data-file-preview-body="" className="docmd-fileview-body">
           {previewEl}
         </div>
       )}
       {content && viewMode === 'preview' && !previewEl && (
-        <div data-file-preview-body="" style={{ fontSize: '12px', color: 'var(--t3, #8892b0)', marginBottom: '8px' }}>
+        <div data-file-preview-body="" className="docmd-fileview-empty">
           此类型暂无预览，可点击右上 code 图标查看源码
         </div>
       )}
       {!error && !content && (
-        <div style={{ fontSize: '12px', color: 'var(--t3, #8892b0)' }}>加载中...</div>
+        <div className="docmd-fileview-loading">加载中...</div>
       )}
     </div>
   );

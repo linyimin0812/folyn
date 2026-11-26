@@ -60,5 +60,24 @@
       "title": "Tipo de archivo no compatible",
       "desc": "\"{{name}}\" no tiene un visor disponible. Instala una extensión compatible."
     }
+  },
+  "recent": {
+    "title": "Ventanas recientes",
+    "closePanel": "Cerrar panel",
+    "searchPlaceholder": "Buscar ventanas (nombre / documento reciente)…",
+    "noMatches": "Sin ventanas coincidentes",
+    "empty": "No hay ventanas de investigación cerradas recientemente",
+    "tabCount_one": "{{count}} pestaña",
+    "tabCount_other": "{{count}} pestañas",
+    "noDocs": "(sin documentos abiertos)",
+    "clearOne": "Quitar de la lista",
+    "clearAll": "Borrar todo",
+    "footerNote": "Borrar solo elimina entradas de restauración; no se borra ningún archivo del vault",
+    "minutesAgo_one": "hace 1 minuto",
+    "minutesAgo_other": "hace {{count}} minutos",
+    "hoursAgo_one": "hace 1 hora",
+    "hoursAgo_other": "hace {{count}} horas",
+    "daysAgo_one": "hace 1 día",
+    "daysAgo_other": "hace {{count}} días"
   }
 }

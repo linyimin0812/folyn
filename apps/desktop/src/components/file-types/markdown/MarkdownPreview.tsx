@@ -11,6 +11,7 @@ import { usePreviewCursorSync } from './usePreviewCursorSync';
 import { installPreviewWordSelection } from './previewWordSelection';
 import { chunkMarkdown } from './chunkMarkdown';
 import { renderMarkdownBody } from './markdownPipeline';
+import { LinkPreviewPopover } from './LinkPreviewPopover';
 import { useWindowedChunks, CHUNK_ESTIMATE_LINE_HEIGHT } from './useWindowedChunks';
 import type { PreviewProps } from '../types';
 
@@ -438,6 +439,10 @@ export function MarkdownPreview({
             );
           })
         ) : reactContent}
+        {/* Internal-link hover preview (spec 5.2) — one popover per preview
+            instance; PreviewActiveContext (inherited through the tree, also
+            across its body portal) keeps parked panes from floating it. */}
+        <LinkPreviewPopover />
       </div>
     </VaultContext.Provider>
   );

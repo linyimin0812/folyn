@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/tooling/cli/schema.json",
   "identifier": "default",
-  "description": "Default capabilities for the main window",
-  "windows": ["main"],
+  "description": "Default capabilities for the main window and research windows (spec 6.3). Research windows (labels research-*) run the same full App shell as main, so they need the same fs/window/event permissions; the glob keeps pet/tool windows (exact-label capability files) untouched.",
+  "windows": ["main", "research-*"],
   "permissions": [
     "core:default",
     "core:window:allow-create",

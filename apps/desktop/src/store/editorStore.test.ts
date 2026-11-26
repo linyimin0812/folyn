@@ -19,7 +19,7 @@ vi.mock('./editorPersistence', async (importOriginal) => {
 });
 
 beforeEach(() => {
-  useEditorStore.setState({ tabs: [], activeTabId: null });
+  useEditorStore.setState({ tabs: [], activeTabId: null, mruOrder: [] });
 });
 
 // ── closeTab persistence ──────────────────────────────────────────────────
@@ -138,3 +138,96 @@ describe('rewriteTabPrefixes', () => {
   });
 });
 
+
+// ── spec 6.2: multi-tab reading ──────────────────────────────────────────
+function mk(id: string, path = `${id}.md`, pinned = false) {
+  return { id, name: path, path, content: '', isDirty: false, fileType: 'markdown' as const, activity: 'files' as const, pinned };
+}
+
+describe('6.2 MRU tracking', () => {
+  it('setActiveTab moves the tab to the front of mruOrder', () => {
+    useEditorStore.setState({ tabs: [mk('a'), mk('b'), mk('c')], activeTabId: 'a', mruOrder: ['a', 'b', 'c'] });
+    useEditorStore.getState().setActiveTab('c');
+    expect(useEditorStore.getState().mruOrder[0]).toBe('c');
+    expect(useEditorStore.getState().activeTabId).toBe('c');
+  });
+
+  it('addTab(active) puts the new tab at the MRU front', () => {
+    useEditorStore.setState({ tabs: [mk('a')], activeTabId: 'a', mruOrder: ['a'] });
+    useEditorStore.getState().addTab(mk('b'));
+    expect(useEditorStore.getState().mruOrder).toEqual(['b', 'a']);
+    expect(useEditorStore.getState().activeTabId).toBe('b');
+  });
+});
+
+describe('6.2 closeTab returns to MRU neighbor', () => {
+  it('activates the most recently used remaining tab (across activities)', () => {
+    useEditorStore.setState({
+      tabs: [mk('a'), mk('b'), mk('c', 'c.md')],
+      activeTabId: 'c',
+      mruOrder: ['c', 'b', 'a'],
+    });
+    useEditorStore.getState().closeTab('c');
+    const s = useEditorStore.getState();
+    expect(s.activeTabId).toBe('b');
+    expect(s.mruOrder).toEqual(['b', 'a']);
+  });
+});
+
+describe('6.2 addTab background + insertion', () => {
+  it('background add does not steal activation and lands right of the source tab', () => {
+    useEditorStore.setState({ tabs: [mk('a'), mk('b')], activeTabId: 'b', mruOrder: ['b', 'a'] });
+    useEditorStore.getState().addTab(mk('c'), { activate: false, insertAfterTabId: 'b' });
+    const s = useEditorStore.getState();
+    expect(s.tabs.map((t) => t.id)).toEqual(['a', 'b', 'c']);
+    expect(s.activeTabId).toBe('b');
+    expect(s.mruOrder).not.toContain('c');
+  });
+});
+
+describe('6.2 pinned tabs', () => {
+  it('togglePin moves a tab into the leading pinned group; unpinned follow', () => {
+    useEditorStore.setState({ tabs: [mk('a'), mk('b'), mk('c')], activeTabId: 'a', mruOrder: ['a', 'b', 'c'] });
+    useEditorStore.getState().togglePin('c');
+    expect(useEditorStore.getState().tabs.map((t) => t.id)).toEqual(['c', 'a', 'b']);
+    useEditorStore.getState().togglePin('c');
+    // Unpin: tab returns to the end of the unpinned group (position within its group is stable).
+    expect(useEditorStore.getState().tabs.map((t) => t.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('closeOthers keeps the given tab and every pinned tab, and fixes MRU', () => {
+    useEditorStore.setState({
+      tabs: [mk('a'), mk('b'), mk('p', 'p.md', true), mk('c')],
+      activeTabId: 'a',
+      mruOrder: ['a', 'b', 'p', 'c'],
+    });
+    useEditorStore.getState().closeOthers('a');
+    const s = useEditorStore.getState();
+    expect(s.tabs.map((t) => t.id).sort()).toEqual(['a', 'p']);
+    expect(s.mruOrder).not.toContain('b');
+    expect(s.activeTabId).toBe('a');
+  });
+});
+
+describe('6.2 stepMru (Ctrl+Tab)', () => {
+  it('Ctrl+Tab lands on the previous tab; repeated presses alternate the pair', () => {
+    useEditorStore.setState({ tabs: [mk('a'), mk('b'), mk('c')], activeTabId: 'a', mruOrder: ['a', 'b', 'c'] });
+    useEditorStore.getState().stepMru(1);
+    expect(useEditorStore.getState().activeTabId).toBe('b');
+    // mruOrder re-sorted by activation: [b, a, c] → previous is a again.
+    useEditorStore.getState().stepMru(1);
+    expect(useEditorStore.getState().activeTabId).toBe('a');
+  });
+
+  it('Ctrl+Shift+Tab lands on the least-recently-used tab', () => {
+    useEditorStore.setState({ tabs: [mk('a'), mk('b'), mk('c')], activeTabId: 'a', mruOrder: ['a', 'b', 'c'] });
+    useEditorStore.getState().stepMru(-1);
+    expect(useEditorStore.getState().activeTabId).toBe('c');
+  });
+
+  it('no-ops with fewer than two tabs', () => {
+    useEditorStore.setState({ tabs: [mk('a')], activeTabId: 'a', mruOrder: ['a'] });
+    useEditorStore.getState().stepMru(1);
+    expect(useEditorStore.getState().activeTabId).toBe('a');
+  });
+});

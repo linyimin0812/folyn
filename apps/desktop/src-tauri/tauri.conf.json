@@ -23,6 +23,12 @@
     "resources": [],
     "fileAssociations": [
       {
+        "ext": [],
+        "contentTypes": ["public.folder", "public.directory"],
+        "name": "Folyn Folder",
+        "role": "Viewer"
+      },
+      {
         "ext": ["md", "markdown", "mdx", "mdown", "mkd"],
         "name": "Folyn Markdown",
         "role": "Editor",
@@ -142,7 +148,7 @@
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
-        "dragDropEnabled": false,
+        "dragDropEnabled": true,
         "visible": false
       },
       {

@@ -2,7 +2,7 @@
   "filesPanel": {
     "actions": {
       "locateActive": "Aktive Datei lokalisieren",
-      "openExternal": "Externe Datei öffnen…",
+      "openExternal": "Externe Datei oder Ordner öffnen…",
       "refresh": "Dateibaum aktualisieren",
       "more": "Weitere Aktionen",
       "newFile": "Neue Datei",
@@ -11,7 +11,12 @@
       "collapseAll": "Alle einklappen",
       "expandAllFolders": "Alle Ordner ausklappen",
       "collapseAllFolders": "Alle Ordner einklappen",
-      "hideSidebar": "Seitenleiste ausblenden"
+      "hideSidebar": "Seitenleiste ausblenden",
+      "importFiles": "Importieren…"
+    },
+    "externalFolders": {
+      "title": "Externe Ordner",
+      "remove": "Externen Ordner entfernen"
     },
     "search": {
       "placeholder": "Dateien suchen..."
@@ -43,7 +48,10 @@
     "delete": "Löschen",
     "move": "Verschieben nach...",
     "copy": "Kopieren",
-    "hide": "Ausblenden"
+    "hide": "Ausblenden",
+    "open": "Öffnen",
+    "refresh": "Aktualisieren",
+    "importToVault": "In Vault importieren"
   },
   "sidebarActions": {
     "deleteConfirm": {

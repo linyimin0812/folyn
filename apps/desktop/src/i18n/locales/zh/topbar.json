@@ -13,7 +13,13 @@
     "noOpenFiles": "没有打开的文件",
     "closePanel": "关闭列表",
     "closeTab": "关闭文件",
-    "openExternalFolder": "打开所在文件夹"
+    "openExternalFolder": "打开所在文件夹",
+    "pin": "固定标签页",
+    "unpin": "取消固定",
+    "closeOthers": "关闭其他标签页",
+    "searchPlaceholder": "搜索标签页（名称 / 路径 / 章节）…",
+    "noMatches": "没有匹配的标签页",
+    "pinnedNote": "固定标签页不会随“关闭其他”关闭"
   },
   "terminal": {
     "collapse": "收起终端",

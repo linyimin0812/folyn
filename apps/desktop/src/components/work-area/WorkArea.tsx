@@ -20,6 +20,12 @@ import { TabBar } from './TabBar';
 import { EditorPane } from './EditorPane';
 import { PreviewPane } from './PreviewPane';
 import { OutlineSidebar } from './OutlineSidebar';
+import { navigateToHeadingLine, navigateToDocLine, snapshotComponentState } from '@/components/file-types/markdown/headingNav';
+import { FindBar } from '@/components/file-types/markdown/FindBar';
+import { useFindUiStore } from '@/store/findUiStore';
+import { useSearchStore } from '@/store/searchStore';
+import { useCommandPaletteStore } from '@/store/commandPaletteStore';
+import { useDocLinkHistory } from '@/store/docLinkHistory';
 import { VersionHistoryPanel, isVersionableTab } from './VersionHistoryPanel';
 import { VersionHistoryContentView } from './VersionHistoryContentView';
 import { PresentationOverlay } from './PresentationOverlay';
@@ -65,6 +71,9 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   const activeTabId = useEditorStore((state) => state.activeTabId);
   const allTabs = useEditorStore((state) => state.tabs);
   const setActiveTab = useEditorStore((state) => state.setActiveTab);
+  const mruOrder = useEditorStore((state) => state.mruOrder);
+  const stepMru = useEditorStore((state) => state.stepMru);
+  const togglePinAction = useEditorStore((state) => state.togglePin);
   const updateTabContent = useEditorStore((state) => state.updateTabContent);
   const markTabDirty = useEditorStore((state) => state.markTabDirty);
   const isFileLoading = useEditorStore((state) => state.isFileLoading);
@@ -235,23 +244,6 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
     };
   }, []);
 
-  // Scroll editor to a heading (called from the outline sidebar)
-  const scrollEditorToHeading = useCallback((headingText: string) => {
-    const view = editorRef.current?.getView();
-    if (!view) return;
-    const doc = view.state.doc;
-    for (let lineNum = 1; lineNum <= doc.lines; lineNum++) {
-      const line = doc.line(lineNum);
-      const headingMatch = line.text.match(/^(#{1,6})\s+(.*)/);
-      if (headingMatch && headingMatch[2].trim() === headingText.trim()) {
-        view.dispatch({
-          effects: EditorView.scrollIntoView(line.from, { y: 'start' }),
-        });
-        break;
-      }
-    }
-  }, []);
-
   // ponytail: preview-heading click → move the editor cursor to that
   // heading's source line + scroll it into view. Setting the selection
   // (not just scrolling) is what makes cursor-sync联动: the editor's
@@ -259,34 +251,39 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
   // store, so PreviewPane's cursor-sync effect re-aligns the preview to
   // the same heading — both panes land on it together. When sync is off,
   // the cursor still lands on the heading (a cleaner "jump to content").
-  const scrollEditorToLine = useCallback((line: number) => {
+  // `focus: false` is for the find bar: jumping must NOT steal focus from
+  // the find input, or keystrokes typed after a find-as-you-type jump land
+  // in the editor instead of the query field.
+  const scrollEditorToLine = useCallback((line: number, opts?: { focus?: boolean }) => {
     const view = editorRef.current?.getView();
     if (!view) return;
     const doc = view.state.doc;
     if (line < 1 || line > doc.lines) return;
     const from = doc.line(line).from;
-    view.focus();
+    if (opts?.focus !== false) view.focus();
     view.dispatch({
       selection: { anchor: from },
       effects: EditorView.scrollIntoView(from, { y: 'start' }),
     });
   }, []);
 
-  // Outline heading click: scroll the editor (above) + scroll the preview
-  // body to the heading element. The outline is a split-level sibling now,
-  // so the preview body is reached via the ref PreviewPane forwards.
-  const handleOutlineHeadingClick = useCallback((headingText: string) => {
-    scrollEditorToHeading(headingText);
+  // Outline heading click (spec 4.4): record the current reading position
+  // on the tab's navigation trail (Back returns to it), then jump the
+  // preview precisely to the heading's source line — headingNav reveals
+  // hidden containers (inactive tabs / closed collapsibles) and mounts far
+  // windowed chunks on the way — and land the editor cursor on the same
+  // line (in split mode that selection re-aligns cursor-sync to it).
+  const handleOutlineHeadingClick = useCallback((line: number) => {
     const container = previewBodyRef.current;
     if (container) {
-      const headingId = headingText
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^\w一-鿿-]/g, '');
-      const target = container.querySelector(`#${CSS.escape(headingId)}`);
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      useDocLinkHistory.getState().pushPosition(
+        container.scrollTop,
+        snapshotComponentState(container),
+      );
+      navigateToHeadingLine(container, line);
     }
-  }, [scrollEditorToHeading]);
+    scrollEditorToLine(line);
+  }, [scrollEditorToLine]);
 
   // ── Presentation resolution ─────────────────────────────────────────────
   // Resolve the active mode (provider.modes) for the current viewMode, then
@@ -330,15 +327,91 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
     && versionHistorySelectedKey !== null
     && isVersionableTab(activeTab);
 
+  // ── In-document find (spec 5.3), shared by editor + preview ──────────────
+  // One FindBar over the whole content area — ⌘F is the ONLY entry point
+  // (the editor's old CodeMirror search bar is deleted). Visibility is
+  // per-tab (findUiStore). Jump routing by what is on screen: a visible
+  // markdown preview → navigateToDocLine (reveals hidden containers, mounts
+  // far windowed chunks); editor-only → land the editor cursor + scroll.
+  const activeTabIdForFind = activeTab?.id;
+  const findOpen = useFindUiStore((s) => (activeTabIdForFind ? !!s.openByTab[activeTabIdForFind] : false));
+  const findEligible = !!activeTab
+    && activeTab.fileType === 'markdown'
+    && !showVersionHistoryDiff;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'f') return;
+      if (!findEligible) return;
+      // Vault search is Cmd+Shift+F; modal layers / focus views own their keys.
+      if (useSearchStore.getState().isOpen || useCommandPaletteStore.getState().isOpen) return;
+      if (document.querySelector('.md-code-focus-overlay, .image-lightbox, .presentation-overlay')) return;
+      // Markmap preview hides the markdown body — find jumps would dead-end,
+      // so ⌘F falls through. Checked at event time: the pane's markmap
+      // toggle doesn't re-render WorkArea, so a render-time read goes stale.
+      if (document.querySelector('[data-markmap="on"]:not([data-preview-hidden])')) return;
+      e.preventDefault();
+      if (activeTabIdForFind) useFindUiStore.getState().open(activeTabIdForFind);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [activeTabIdForFind, findEligible]);
+  // Drop the tab's entry when it goes away (tab closed / pane evicted).
+  useEffect(() => () => {
+    if (activeTabIdForFind) useFindUiStore.getState().close(activeTabIdForFind);
+  }, [activeTabIdForFind]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleFindNavigate = useCallback((line: number) => {
+    const container = previewBodyRef.current;
+    if (container && showPreview) {
+      navigateToDocLine(container, line);
+    } else {
+      // focus:false — the find input must keep focus so typing continues
+      // in the query field (the selection still moves + scrolls).
+      scrollEditorToLine(line, { focus: false });
+    }
+  }, [showPreview, scrollEditorToLine]);
+
+  // Spec 6.2 — close-others with the same dirty/auto-save protection as a
+  // single close (each closed tab goes through closeTabWithSnapshot).
+  const closeOthersWithSnapshot = useCallback((tabId: string) => {
+    const state = useEditorStore.getState();
+    for (const tab of state.tabs) {
+      if (tab.id === tabId || tab.pinned) continue;
+      closeTabWithSnapshot(tab.id);
+    }
+  }, []);
+
+  const togglePin = useCallback((tabId: string) => {
+    togglePinAction(tabId);
+  }, [togglePinAction]);
+
+  // Spec 6.2 — 最近使用标签页快速切换: Ctrl+Tab steps the MRU ring forward
+  // (Ctrl+Shift+Tab backward). Cmd+Tab on macOS is OS-reserved and never
+  // reaches the page, so the modifier is strictly ctrlKey. Skip when a
+  // text field owns the keystroke (find input) or an overlay is up.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      e.preventDefault();
+      stepMru(e.shiftKey ? -1 : 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [stepMru]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
       {/* File tabs — hidden in focus mode so only the editor/preview shows */}
       {tabs.length > 0 && !focusMode && (
         <TabBar
           tabs={tabs}
+          mruOrder={mruOrder}
           activeTabId={activeTabId}
           onSelectTab={setActiveTab}
           onCloseTab={closeTabWithSnapshot}
+          onCloseOthers={closeOthersWithSnapshot}
+          onTogglePin={togglePin}
         />
       )}
 
@@ -490,6 +563,24 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
         );
       })}
 
+      {/* In-document find (spec 5.3) — the ONE shared find bar, editor and
+          preview alike. Floats over the content area (above whatever mode is
+          on screen); ⌘F is its only entry point. */}
+      {findOpen && findEligible && activeTab && (
+        <FindBar
+          content={activeTab.content}
+          tabId={activeTab.id}
+          initialQuery={useFindUiStore.getState().queryByTab[activeTab.id]}
+          onNavigate={handleFindNavigate}
+          onClose={() => {
+            useFindUiStore.getState().close(activeTab.id);
+            // Editor mode: the bar took focus from the editor on open —
+            // hand it back so Esc drops the user straight into editing.
+            if (!showPreview) editorRef.current?.getView()?.focus();
+          }}
+        />
+      )}
+
       {/* Outline (大纲 / TOC) sidebar — markdown only. Sibling of editor +
           preview at the split level so opening it shrinks BOTH panes
           proportionally (was: nested inside PreviewPane, which ate only the
@@ -499,6 +590,8 @@ export function WorkArea({ focusMode }: { focusMode?: boolean }) {
       {showPreview && activeTab?.fileType === 'markdown' && (
         <OutlineSidebar
           content={activeTab.content}
+          previewBodyRef={previewBodyRef}
+          minAreaWidth={viewMode === 'split' ? 1280 : 1040}
           onHeadingClick={handleOutlineHeadingClick}
         />
       )}

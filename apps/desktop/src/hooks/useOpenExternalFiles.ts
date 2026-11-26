@@ -6,7 +6,6 @@
 
 import { useEffect } from 'react';
 import * as editorIoService from '@/services/editorIoService';
-import { useNavStore } from '@/store/navStore';
 import { isTauri } from '@/utils/platform';
 
 export function useOpenExternalFiles() {
@@ -17,21 +16,18 @@ export function useOpenExternalFiles() {
   // `RunEvent::Opened` on macOS and the single-instance callback on both
   // platforms). We listen FIRST so warm-launch emits are never missed, then
   // drain the buffer so cold-launch paths (arrived before React mounted)
-  // are recovered. Each path opens as a vault-independent external tab.
-  // Safe to fire before `restoreOpenTabs` completes — `openFile` is
-  // idempotent on the tab id.
+  // are recovered. Files open as vault-independent external tabs; folders
+  // (Folyn registers as a folder handler too) register as external folders
+  // in the Files panel instead. Routing/stat/toasts live in the shared
+  // `editorIoService.openExternalPaths` — same path every external entry
+  // point takes. Safe to fire before `restoreOpenTabs` completes —
+  // `openFile` is idempotent on the tab id.
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     const openPaths = (paths: string[]) => {
-      for (const p of paths) {
-        const name = p.split(/[\\/]/).pop()!;
-        void editorIoService.openFile(p, name);
-      }
-      if (paths.length > 0) {
-        useNavStore.getState().setCurrentPage('editor');
-      }
+      void editorIoService.openExternalPaths(paths);
     };
     // Register the listener FIRST so warm-launch emits are never missed,
     // then drain the backend buffer (cold-launch paths that arrived before

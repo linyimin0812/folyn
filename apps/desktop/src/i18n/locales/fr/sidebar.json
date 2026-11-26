@@ -2,7 +2,7 @@
   "filesPanel": {
     "actions": {
       "locateActive": "Localiser le fichier actif",
-      "openExternal": "Ouvrir un fichier externe…",
+      "openExternal": "Ouvrir un fichier ou dossier externe…",
       "refresh": "Actualiser l'arborescence",
       "more": "Plus d'actions",
       "newFile": "Nouveau fichier",
@@ -11,7 +11,12 @@
       "collapseAll": "Tout replier",
       "expandAllFolders": "Déplier tous les dossiers",
       "collapseAllFolders": "Replier tous les dossiers",
-      "hideSidebar": "Masquer la barre latérale"
+      "hideSidebar": "Masquer la barre latérale",
+      "importFiles": "Importer…"
+    },
+    "externalFolders": {
+      "title": "Dossiers externes",
+      "remove": "Retirer le dossier externe"
     },
     "search": {
       "placeholder": "Rechercher des fichiers..."
@@ -43,7 +48,10 @@
     "delete": "Supprimer",
     "move": "Déplacer vers...",
     "copy": "Copier",
-    "hide": "Masquer"
+    "hide": "Masquer",
+    "open": "Ouvrir",
+    "refresh": "Actualiser",
+    "importToVault": "Importer dans le coffre"
   },
   "sidebarActions": {
     "deleteConfirm": {

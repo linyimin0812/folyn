@@ -2,15 +2,42 @@
   "export": {
     "title": "Exportieren",
     "source": {
-      "markdown": { "label": "Markdown", "description": ".md-Quelldatei exportieren" },
-      "dbml": { "label": "DBML", "description": ".dbml-Quelldatei exportieren" },
-      "excalidraw": { "label": "Excalidraw", "description": ".excalidraw-Quelldatei exportieren" },
-      "drawio": { "label": "Drawio", "description": ".drawio-Quelldatei exportieren" },
-      "markmap": { "label": "Mindmap", "description": ".markmap-Quelldatei exportieren" },
-      "plantuml": { "label": "PlantUML", "description": ".puml-Quelldatei exportieren" },
-      "graphviz": { "label": "Graphviz", "description": ".gv-Quelldatei exportieren" },
-      "mermaid": { "label": "Mermaid", "description": ".mermaid-Quelldatei exportieren" },
-      "default": { "label": "Quelldatei", "description": "Rohdatei exportieren" }
+      "markdown": {
+        "label": "Markdown",
+        "description": ".md-Quelldatei exportieren"
+      },
+      "dbml": {
+        "label": "DBML",
+        "description": ".dbml-Quelldatei exportieren"
+      },
+      "excalidraw": {
+        "label": "Excalidraw",
+        "description": ".excalidraw-Quelldatei exportieren"
+      },
+      "drawio": {
+        "label": "Drawio",
+        "description": ".drawio-Quelldatei exportieren"
+      },
+      "markmap": {
+        "label": "Mindmap",
+        "description": ".markmap-Quelldatei exportieren"
+      },
+      "plantuml": {
+        "label": "PlantUML",
+        "description": ".puml-Quelldatei exportieren"
+      },
+      "graphviz": {
+        "label": "Graphviz",
+        "description": ".gv-Quelldatei exportieren"
+      },
+      "mermaid": {
+        "label": "Mermaid",
+        "description": ".mermaid-Quelldatei exportieren"
+      },
+      "default": {
+        "label": "Quelldatei",
+        "description": "Rohdatei exportieren"
+      }
     },
     "provider": {
       "fileLabel": "Datei-Upload-Anbieter",
@@ -54,8 +81,14 @@
       "menuDesc": "Ganzes Vault → HTML",
       "title": "Gesamtes Vault exportieren",
       "hint": "Exportiert alle Textdateien (Markdown, Code, Daten …); nicht unterstützte Dateitypen zeigen einen Hinweis auf der Seite. Bilder werden ausgefiltert, der linke Dateibaum bleibt als Navigation erhalten.",
-      "single": { "label": "Einzelne HTML-Datei", "desc": "Eine eigenständige .html — Baum + alle Dokumente, Klick zum Wechseln" },
-      "folder": { "label": "HTML-Ordner", "desc": "index.html + pro Dokument eine HTML-Datei" },
+      "single": {
+        "label": "Einzelne HTML-Datei",
+        "desc": "Eine eigenständige .html — Baum + alle Dokumente, Klick zum Wechseln"
+      },
+      "folder": {
+        "label": "HTML-Ordner",
+        "desc": "index.html + pro Dokument eine HTML-Datei"
+      },
       "shape": "Form",
       "target": "Ziel",
       "output": {
@@ -190,7 +223,9 @@
     "openVaultFirst": "Öffne zuerst einen Vault, um Dateien einzufügen.",
     "vaultRoot": "Vault-Wurzel",
     "imported": "{{count}} Datei(en) in {{where}} importiert.",
-    "allSkipped": "{{count}} Datei(en) übersprungen — nichts importiert."
+    "allSkipped": "{{count}} Datei(en) übersprungen — nichts importiert.",
+    "folderOutsideHome": "Ordner konnte nicht geöffnet werden: nur Ordner in Ihrem Home-Verzeichnis werden unterstützt",
+    "folderAlreadyAdded": "Dieser Ordner ist bereits in Ihrer Dateiliste"
   },
   "diffToolbar": {
     "pendingCount": "{{count}} Änderung(en) offen zur Prüfung",
@@ -218,13 +253,18 @@
     "custom": "Benutzerdefiniert"
   },
   "table": {
-    "insertButton": { "title": "Tabelle einfügen" },
+    "insertButton": {
+      "title": "Tabelle einfügen"
+    },
     "convertTitle": "Tabelle erkannt",
     "convertMessage": "Der Inhalt der Zwischenablage sieht wie eine Tabelle aus. Konvertieren?",
     "rememberChoice": "Nicht mehr fragen",
     "pasteAsText": "Als Text einfügen",
     "convert": "In Tabelle umwandeln",
-    "handle": { "rowActions": "Zeilenaktionen", "colActions": "Spaltenaktionen" },
+    "handle": {
+      "rowActions": "Zeilenaktionen",
+      "colActions": "Spaltenaktionen"
+    },
     "rowMenu": {
       "insertAbove": "Zeile oben einfügen",
       "insertBelow": "Zeile unten einfügen",

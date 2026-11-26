@@ -13,7 +13,13 @@
     "noOpenFiles": "開いているファイルはありません",
     "closePanel": "リストを閉じる",
     "closeTab": "ファイルを閉じる",
-    "openExternalFolder": "含むフォルダを開く"
+    "openExternalFolder": "含むフォルダを開く",
+    "pin": "タブを固定",
+    "unpin": "固定を解除",
+    "closeOthers": "他のタブを閉じる",
+    "searchPlaceholder": "タブを検索（名前 / パス / 節）…",
+    "noMatches": "一致するタブがありません",
+    "pinnedNote": "固定タブは「他を閉じる」で保持されます"
   },
   "terminal": {
     "collapse": "ターミナルを折りたたむ",

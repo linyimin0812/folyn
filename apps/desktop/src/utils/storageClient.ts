@@ -54,6 +54,17 @@ const scheduleFlush = debounce(flushImpl, FLUSH_DELAY);
 export const storageClient = {
   async get<T>(key: string): Promise<T | null> {
     if (cache.has(key)) return cache.get(key) as T | null;
+    return this.getFresh<T>(key);
+  },
+
+  /** Cross-window read: skip the in-memory cache and re-read the file.
+   *
+   *  Multiple Folyn windows (windowSessionService research windows, spec
+   *  6.3) each run their own storageClient instance; a plain `get` would
+   *  return a stale cached copy of a key another window wrote. Use this for
+   *  shared keys (e.g. the window-sessions index) where cross-window
+   *  visibility matters. */
+  async getFresh<T>(key: string): Promise<T | null> {
     try {
       const filePath = await filePathFor(key);
       if (!(await exists(filePath))) return null;

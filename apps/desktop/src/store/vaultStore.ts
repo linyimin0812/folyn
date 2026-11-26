@@ -19,6 +19,40 @@ import { matchesAnyPattern, parseExcludePatterns } from '@/utils/excludePattern'
 import { insertEntry, removeEntry, renameEntry, copyEntry } from '@/utils/treeUtils';
 import { BUILTIN_EXCLUDE_DIRS } from './appearanceStore';
 
+/** Recursively import an external directory tree (plugin-fs readDir + path
+ *  join) into the vault at `destPath` (vault-relative). Mirrors the external
+ *  panel's browse rules — dotfiles, node_modules/.git/.DS_Store and symlinks
+ *  are skipped — but has no depth cap: unlike browsing, silently dropping
+ *  depth-9+ content during an import would be data loss. */
+const EXTERNAL_IMPORT_SKIP_DIRS = new Set(['node_modules', '.git', '.DS_Store']);
+async function importExternalTree(srcAbsDir: string, destVaultPath: string): Promise<void> {
+  const [{ readDir }, { join }] = await Promise.all([
+    import('@tauri-apps/plugin-fs'),
+    import('@tauri-apps/api/path'),
+  ]);
+  await useVaultStore.getState().createDir(destVaultPath);
+  let entries: { name: string; isDirectory: boolean; isFile: boolean; isSymlink: boolean }[];
+  try {
+    entries = (await readDir(srcAbsDir)) as typeof entries;
+  } catch {
+    return; // unreadable subdir: import what we got, don't fail the batch
+  }
+  for (const e of entries) {
+    if (e.isSymlink) continue;
+    if (e.name.startsWith('.')) continue;
+    if (e.isDirectory && EXTERNAL_IMPORT_SKIP_DIRS.has(e.name)) continue;
+    const srcChild = await join(srcAbsDir, e.name);
+    const destChild = `${destVaultPath}/${e.name}`;
+    if (e.isDirectory) {
+      await importExternalTree(srcChild, destChild);
+    } else if (e.isFile) {
+      const bytes = await externalFileProvider.readFileBytes(srcChild);
+      const manager = useVaultStore.getState().manager;
+      await manager.writeFileBytes(destChild, bytes);
+    }
+  }
+}
+
 async function startWatcherForVault(config: VaultConfig) {
   // ponytail: github vaults clone to a local dir, so the file watcher applies
   // to them too — same on-disk layout as a local tauri vault.
@@ -126,6 +160,14 @@ interface VaultState {
    *  (original name first, ` 副本` suffix on collision). Returns the new
    *  vault-relative path so the caller can open + reveal it. */
   copyExternalFileToVault: (srcExternalPath: string, targetDir: string) => Promise<string>;
+  /** Copy an external (absolute / `~` / `$HOME`) directory tree into a vault
+   *  directory, recursively (binary-safe per file: readFileBytes →
+   *  writeFileBytes). Mirrors the external-folder panel's browse rules: skips
+   *  dotfiles, node_modules/.git/.DS_Store and symlinks. The top-level name
+   *  resolves via the copy rules (original first, ` 副本` on collision);
+   *  nested entries land under the freshly created dir so they cannot
+   *  collide. Returns the new vault-relative dir path. */
+  copyExternalDirToVault: (srcExternalDir: string, targetDir: string) => Promise<string>;
   /** Overwrite an external file into a vault directory at its original name,
    *  clobbering any existing file. Used by the paste-import conflict flow when
    *  the user picks "Overwrite". Binary-safe (readFileBytes / writeFileBytes). */
@@ -598,6 +640,17 @@ export const useVaultStore = create<VaultState>()(
           await manager.writeFileBytes(targetPath, bytes);
           suppressWatcherFor(targetPath);
           set((state) => ({ fileTree: insertEntry(state.fileTree, targetPath, 'file') }));
+          void get().refreshFileTree();
+          return targetPath;
+        },
+
+        copyExternalDirToVault: async (srcExternalDir, targetDir) => {
+          const baseName = srcExternalDir.split(/[\\/]/).pop()!;
+          const manager = get().manager;
+          const targetName = await resolveCopyName(manager, targetDir, baseName, false);
+          const targetPath = targetDir ? `${targetDir}/${targetName}` : targetName;
+          await importExternalTree(srcExternalDir, targetPath);
+          suppressWatcherFor(targetPath);
           void get().refreshFileTree();
           return targetPath;
         },

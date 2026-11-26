@@ -67,8 +67,9 @@ export function PresentationOverlay({ content, filePath, vaultRoot, onExit }: Pr
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // An image lightbox opened from the deck owns the keyboard (Esc closes it).
-      if (document.querySelector('.image-lightbox')) return;
+      // An image lightbox or focus view (code/table/diagram) opened from
+      // the deck owns the keyboard (Esc closes it).
+      if (document.querySelector('.image-lightbox, .md-code-focus-overlay')) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();

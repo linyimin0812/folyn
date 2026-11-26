@@ -2,15 +2,42 @@
   "export": {
     "title": "Export",
     "source": {
-      "markdown": { "label": "Markdown", "description": "Export .md source file" },
-      "dbml": { "label": "DBML", "description": "Export .dbml source file" },
-      "excalidraw": { "label": "Excalidraw", "description": "Export .excalidraw source file" },
-      "drawio": { "label": "Drawio", "description": "Export .drawio source file" },
-      "markmap": { "label": "Mind Map", "description": "Export .markmap source file" },
-      "plantuml": { "label": "PlantUML", "description": "Export .puml source file" },
-      "graphviz": { "label": "Graphviz", "description": "Export .gv source file" },
-      "mermaid": { "label": "Mermaid", "description": "Export .mermaid source file" },
-      "default": { "label": "Source File", "description": "Export raw file" }
+      "markdown": {
+        "label": "Markdown",
+        "description": "Export .md source file"
+      },
+      "dbml": {
+        "label": "DBML",
+        "description": "Export .dbml source file"
+      },
+      "excalidraw": {
+        "label": "Excalidraw",
+        "description": "Export .excalidraw source file"
+      },
+      "drawio": {
+        "label": "Drawio",
+        "description": "Export .drawio source file"
+      },
+      "markmap": {
+        "label": "Mind Map",
+        "description": "Export .markmap source file"
+      },
+      "plantuml": {
+        "label": "PlantUML",
+        "description": "Export .puml source file"
+      },
+      "graphviz": {
+        "label": "Graphviz",
+        "description": "Export .gv source file"
+      },
+      "mermaid": {
+        "label": "Mermaid",
+        "description": "Export .mermaid source file"
+      },
+      "default": {
+        "label": "Source File",
+        "description": "Export raw file"
+      }
     },
     "provider": {
       "fileLabel": "File upload provider",
@@ -58,8 +85,14 @@
       "menuDesc": "Whole vault → HTML",
       "title": "Export entire vault",
       "hint": "Exports all text-type files (markdown, code, data…); unsupported types render an in-page notice. Images are filtered out. The left file tree is preserved as navigation.",
-      "single": { "label": "Single HTML file", "desc": "One self-contained .html — tree + all docs, click to switch" },
-      "folder": { "label": "HTML folder", "desc": "index.html + one HTML per document" },
+      "single": {
+        "label": "Single HTML file",
+        "desc": "One self-contained .html — tree + all docs, click to switch"
+      },
+      "folder": {
+        "label": "HTML folder",
+        "desc": "index.html + one HTML per document"
+      },
       "shape": "Shape",
       "target": "Output target",
       "output": {
@@ -197,7 +230,9 @@
     "openVaultFirst": "Open a vault first to paste files into.",
     "vaultRoot": "vault root",
     "imported": "Imported {{count}} file(s) into {{where}}.",
-    "allSkipped": "Skipped {{count}} file(s) — nothing imported."
+    "allSkipped": "Skipped {{count}} file(s) — nothing imported.",
+    "folderOutsideHome": "Cannot open that folder: only folders inside your home directory are supported",
+    "folderAlreadyAdded": "That folder is already in your file list"
   },
   "diffToolbar": {
     "pendingCount": "{{count}} change(s) pending review",
@@ -225,13 +260,18 @@
     "custom": "Custom"
   },
   "table": {
-    "insertButton": { "title": "Insert table" },
+    "insertButton": {
+      "title": "Insert table"
+    },
     "convertTitle": "Table detected",
     "convertMessage": "Clipboard content looks like a table. Convert it?",
     "rememberChoice": "Don't ask again",
     "pasteAsText": "Paste as text",
     "convert": "Convert to table",
-    "handle": { "rowActions": "Row actions", "colActions": "Column actions" },
+    "handle": {
+      "rowActions": "Row actions",
+      "colActions": "Column actions"
+    },
     "rowMenu": {
       "insertAbove": "Insert row above",
       "insertBelow": "Insert row below",

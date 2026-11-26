@@ -2,15 +2,42 @@
   "export": {
     "title": "エクスポート",
     "source": {
-      "markdown": { "label": "Markdown", "description": ".mdソースファイルをエクスポート" },
-      "dbml": { "label": "DBML", "description": ".dbmlソースファイルをエクスポート" },
-      "excalidraw": { "label": "Excalidraw", "description": ".excalidrawソースファイルをエクスポート" },
-      "drawio": { "label": "Drawio", "description": ".drawioソースファイルをエクスポート" },
-      "markmap": { "label": "マインドマップ", "description": ".markmapソースファイルをエクスポート" },
-      "plantuml": { "label": "PlantUML", "description": ".pumlソースファイルをエクスポート" },
-      "graphviz": { "label": "Graphviz", "description": ".gvソースファイルをエクスポート" },
-      "mermaid": { "label": "Mermaid", "description": ".mermaidソースファイルをエクスポート" },
-      "default": { "label": "ソースファイル", "description": "生ファイルをエクスポート" }
+      "markdown": {
+        "label": "Markdown",
+        "description": ".mdソースファイルをエクスポート"
+      },
+      "dbml": {
+        "label": "DBML",
+        "description": ".dbmlソースファイルをエクスポート"
+      },
+      "excalidraw": {
+        "label": "Excalidraw",
+        "description": ".excalidrawソースファイルをエクスポート"
+      },
+      "drawio": {
+        "label": "Drawio",
+        "description": ".drawioソースファイルをエクスポート"
+      },
+      "markmap": {
+        "label": "マインドマップ",
+        "description": ".markmapソースファイルをエクスポート"
+      },
+      "plantuml": {
+        "label": "PlantUML",
+        "description": ".pumlソースファイルをエクスポート"
+      },
+      "graphviz": {
+        "label": "Graphviz",
+        "description": ".gvソースファイルをエクスポート"
+      },
+      "mermaid": {
+        "label": "Mermaid",
+        "description": ".mermaidソースファイルをエクスポート"
+      },
+      "default": {
+        "label": "ソースファイル",
+        "description": "生ファイルをエクスポート"
+      }
     },
     "provider": {
       "fileLabel": "ファイルアップロード先",
@@ -54,8 +81,14 @@
       "menuDesc": "Vault全体 → HTML",
       "title": "Vault全体をエクスポート",
       "hint": "テキスト形式ファイル（Markdown、コード、データ等）をすべてエクスポート。未サポートのファイル種別はページ内に案内を表示。画像は除外、左のファイルツリーをナビとして保持します。",
-      "single": { "label": "単一HTMLファイル", "desc": "1つのself-contained .html—ツリー+全ドキュメント、クリックで切替" },
-      "folder": { "label": "HTMLフォルダ", "desc": "index.html + ドキュメントごとに1つのHTML" },
+      "single": {
+        "label": "単一HTMLファイル",
+        "desc": "1つのself-contained .html—ツリー+全ドキュメント、クリックで切替"
+      },
+      "folder": {
+        "label": "HTMLフォルダ",
+        "desc": "index.html + ドキュメントごとに1つのHTML"
+      },
       "shape": "形態",
       "target": "出力先",
       "output": {
@@ -190,7 +223,9 @@
     "openVaultFirst": "ファイルを貼り付けるには先に vault を開いてください。",
     "vaultRoot": "vault ルート",
     "imported": "{{count}} 個のファイルを {{where}} にインポートしました。",
-    "allSkipped": "{{count}} 個のファイルをスキップしました — インポートなし。"
+    "allSkipped": "{{count}} 個のファイルをスキップしました — インポートなし。",
+    "folderOutsideHome": "このフォルダを開けません：ホームディレクトリ内のフォルダのみサポートされています",
+    "folderAlreadyAdded": "このフォルダは既にファイルリストにあります"
   },
   "diffToolbar": {
     "pendingCount": "{{count}}件の変更がレビュー待ち",
@@ -218,13 +253,18 @@
     "custom": "カスタム"
   },
   "table": {
-    "insertButton": { "title": "表を挿入" },
+    "insertButton": {
+      "title": "表を挿入"
+    },
     "convertTitle": "表が検出されました",
     "convertMessage": "クリップボードの内容が表のようです。表に変換しますか？",
     "rememberChoice": "今後確認しない",
     "pasteAsText": "テキストとして貼り付け",
     "convert": "表に変換",
-    "handle": { "rowActions": "行アクション", "colActions": "列アクション" },
+    "handle": {
+      "rowActions": "行アクション",
+      "colActions": "列アクション"
+    },
     "rowMenu": {
       "insertAbove": "上に行を挿入",
       "insertBelow": "下に行を挿入",

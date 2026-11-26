@@ -13,7 +13,13 @@
     "noOpenFiles": "No open files",
     "closePanel": "Close list",
     "closeTab": "Close file",
-    "openExternalFolder": "Open containing folder"
+    "openExternalFolder": "Open containing folder",
+    "pin": "Pin tab",
+    "unpin": "Unpin tab",
+    "closeOthers": "Close other tabs",
+    "searchPlaceholder": "Search tabs (name / path / section)…",
+    "noMatches": "No matching tabs",
+    "pinnedNote": "Pinned tabs are kept by “Close others”"
   },
   "terminal": {
     "collapse": "Collapse terminal",

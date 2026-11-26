@@ -7,14 +7,8 @@ function StepComponent({ children, attributes }: ContainerProps) {
   return (
     <div className="docmd-step">
       <span className="docmd-step-number" />
-      {title && (
-        <div style={{ fontWeight: 600, marginBottom: '0.25rem', color: 'var(--t1, #18181b)' }}>
-          {title}
-        </div>
-      )}
-      <div style={{ lineHeight: 1.7, color: 'var(--t2, #3f3f46)' }}>
-        {children}
-      </div>
+      {title && <div className="docmd-step-title">{title}</div>}
+      <div className="docmd-step-body">{children}</div>
     </div>
   );
 }

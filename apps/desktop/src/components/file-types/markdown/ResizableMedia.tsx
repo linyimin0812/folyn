@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { applyFenceWidth, applyImageSize, getResizedMediaWidth, readSourceWidth } from './mediaResize';
+import { DiagramLightbox } from './DiagramLightbox';
 
 export interface ResizableMediaProps {
   kind: 'img' | 'fence';
@@ -13,7 +14,10 @@ export interface ResizableMediaProps {
 
 /** Wrap an <img> or fence-renderer output with a right-bottom drag handle.
  *  Width-only resize; inner media fills 100% of the wrapper via CSS.
- *  On commit, write the new width back to the markdown source line. */
+ *  On commit, write the new width back to the markdown source line.
+ *  Fence kind: click the rendered SVG → DiagramLightbox fullscreen zoom
+ *  （和图片一样纯点击弹窗，无悬停图标——用户拍板）；
+ *  代码块与表格的专注查看在各自组件里。 */
 export function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, children }: ResizableMediaProps) {
   // ponytail: lazy init from source so re-mount after writeback doesn't flash
   // through width=null — handle would visibly jump from natural-size position
@@ -23,6 +27,9 @@ export function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, chil
   widthRef.current = width;
   const dragRef = useRef<{ startX: number; startW: number; maxW: number; wallRight: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // Serialized SVG of the rendered diagram, set on click — non-null renders
+  // the DiagramLightbox.
+  const [lightboxSvg, setLightboxSvg] = useState<string | null>(null);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -90,6 +97,18 @@ export function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, chil
     if (next !== content) onChange(next);
   };
 
+  // Click (fence only): serialize the rendered SVG and open the fullscreen
+  // zoom popup — same interaction as images. Clicks on the resize handle are
+  // excluded (drag end still fires click on the handle); blocks without an
+  // SVG (plain code fences never come through this path) are a no-op.
+  const onWrapperClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (kind !== 'fence') return;
+    if ((e.target as HTMLElement).closest('.resize-handle')) return;
+    const svg = wrapperRef.current?.querySelector('svg');
+    if (!svg) return;
+    setLightboxSvg(svg.outerHTML);
+  };
+
   // ponytail: width-only resize, height auto-derived — inner img/svg keep their
   // natural aspect ratio via CSS height:auto. Shift-unlock is a no-op here since
   // height was never constrained; add height state if independent H ever needed.
@@ -107,9 +126,18 @@ export function ResizableMedia({ kind, sourceLine, contentRef, onChangeRef, chil
       // stamps its own div). For images this duplicates the inner <img>'s
       // stamp — same line, the later-in-DOM img wins the selection, harmless.
       data-source-line={sourceLine}
+      data-kind={kind}
       style={width != null ? { width: `${width}px`, height: 'auto' } : undefined}
+      onClick={onWrapperClick}
     >
       {children}
+      {lightboxSvg && (
+        <DiagramLightbox
+          svg={lightboxSvg}
+          title="图表"
+          onClose={() => setLightboxSvg(null)}
+        />
+      )}
       <div
         className="resize-handle"
         onPointerDown={onPointerDown}

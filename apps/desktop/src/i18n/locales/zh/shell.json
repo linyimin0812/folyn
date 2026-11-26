@@ -61,5 +61,24 @@
       "title": "不支持查看此类文件",
       "desc": "「{{name}}」的文件格式没有可用的查看器。安装对应的扩展后可查看此文件。"
     }
+  },
+  "recent": {
+    "title": "最近窗口",
+    "closePanel": "关闭面板",
+    "searchPlaceholder": "搜索窗口（名称 / 最近文档）…",
+    "noMatches": "没有匹配的窗口",
+    "empty": "没有最近关闭的研究窗口",
+    "tabCount_one": "{{count}} 个标签页",
+    "tabCount_other": "{{count}} 个标签页",
+    "noDocs": "（无打开文档）",
+    "clearOne": "从列表清除",
+    "clearAll": "清除全部",
+    "footerNote": "清除仅移除恢复入口，不删除任何 Vault 文件",
+    "minutesAgo_one": "1 分钟前",
+    "minutesAgo_other": "{{count}} 分钟前",
+    "hoursAgo_one": "1 小时前",
+    "hoursAgo_other": "{{count}} 小时前",
+    "daysAgo_one": "1 天前",
+    "daysAgo_other": "{{count}} 天前"
   }
 }

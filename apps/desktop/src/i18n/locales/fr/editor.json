@@ -2,15 +2,42 @@
   "export": {
     "title": "Exporter",
     "source": {
-      "markdown": { "label": "Markdown", "description": "Exporter le fichier .md" },
-      "dbml": { "label": "DBML", "description": "Exporter le fichier .dbml" },
-      "excalidraw": { "label": "Excalidraw", "description": "Exporter le fichier .excalidraw" },
-      "drawio": { "label": "Drawio", "description": "Exporter le fichier .drawio" },
-      "markmap": { "label": "Carte mentale", "description": "Exporter le fichier .markmap" },
-      "plantuml": { "label": "PlantUML", "description": "Exporter le fichier .puml" },
-      "graphviz": { "label": "Graphviz", "description": "Exporter le fichier .gv" },
-      "mermaid": { "label": "Mermaid", "description": "Exporter le fichier .mermaid" },
-      "default": { "label": "Fichier source", "description": "Exporter le fichier brut" }
+      "markdown": {
+        "label": "Markdown",
+        "description": "Exporter le fichier .md"
+      },
+      "dbml": {
+        "label": "DBML",
+        "description": "Exporter le fichier .dbml"
+      },
+      "excalidraw": {
+        "label": "Excalidraw",
+        "description": "Exporter le fichier .excalidraw"
+      },
+      "drawio": {
+        "label": "Drawio",
+        "description": "Exporter le fichier .drawio"
+      },
+      "markmap": {
+        "label": "Carte mentale",
+        "description": "Exporter le fichier .markmap"
+      },
+      "plantuml": {
+        "label": "PlantUML",
+        "description": "Exporter le fichier .puml"
+      },
+      "graphviz": {
+        "label": "Graphviz",
+        "description": "Exporter le fichier .gv"
+      },
+      "mermaid": {
+        "label": "Mermaid",
+        "description": "Exporter le fichier .mermaid"
+      },
+      "default": {
+        "label": "Fichier source",
+        "description": "Exporter le fichier brut"
+      }
     },
     "provider": {
       "fileLabel": "Fournisseur de téléversement de fichiers",
@@ -54,8 +81,14 @@
       "menuDesc": "Vault entier → HTML",
       "title": "Exporter tout le vault",
       "hint": "Exporte tous les fichiers texte (Markdown, code, données…) ; les types non pris en charge affichent un avis sur la page. Les images sont filtrées, l'arborescence de gauche est conservée comme navigation.",
-      "single": { "label": "Fichier HTML unique", "desc": "Un .html autonome — arborescence + tous les documents, clic pour basculer" },
-      "folder": { "label": "Dossier HTML", "desc": "index.html + un HTML par document" },
+      "single": {
+        "label": "Fichier HTML unique",
+        "desc": "Un .html autonome — arborescence + tous les documents, clic pour basculer"
+      },
+      "folder": {
+        "label": "Dossier HTML",
+        "desc": "index.html + un HTML par document"
+      },
       "shape": "Forme",
       "target": "Destination",
       "output": {
@@ -190,7 +223,9 @@
     "openVaultFirst": "Ouvrez d'abord un vault pour y coller des fichiers.",
     "vaultRoot": "racine du vault",
     "imported": "{{count}} fichier(s) importé(s) dans {{where}}.",
-    "allSkipped": "{{count}} fichier(s) ignoré(s) — rien importé."
+    "allSkipped": "{{count}} fichier(s) ignoré(s) — rien importé.",
+    "folderOutsideHome": "Impossible d'ouvrir ce dossier : seuls les dossiers de votre dossier personnel sont pris en charge",
+    "folderAlreadyAdded": "Ce dossier est déjà dans votre liste de fichiers"
   },
   "diffToolbar": {
     "pendingCount": "{{count}} modification(s) en attente de révision",
@@ -218,13 +253,18 @@
     "custom": "Personnalisé"
   },
   "table": {
-    "insertButton": { "title": "Insérer un tableau" },
+    "insertButton": {
+      "title": "Insérer un tableau"
+    },
     "convertTitle": "Tableau détecté",
     "convertMessage": "Le contenu du presse-papiers ressemble à un tableau. Convertir ?",
     "rememberChoice": "Ne plus demander",
     "pasteAsText": "Coller comme texte",
     "convert": "Convertir en tableau",
-    "handle": { "rowActions": "Actions de ligne", "colActions": "Actions de colonne" },
+    "handle": {
+      "rowActions": "Actions de ligne",
+      "colActions": "Actions de colonne"
+    },
     "rowMenu": {
       "insertAbove": "Insérer une ligne au-dessus",
       "insertBelow": "Insérer une ligne en dessous",

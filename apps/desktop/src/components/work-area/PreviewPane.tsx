@@ -2,12 +2,16 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, forwardRef, 
 import { useTranslation } from 'react-i18next';
 import type { FileTab, ViewMode } from '@/store/editorStore';
 import type { PreviewProps } from '../file-types/types';
-import { useEditorViewStateStore } from '@/store/editorViewState';
+import { useEditorViewStateStore, type PreviewComponents } from '@/store/editorViewState';
 import { useEditorPrefsStore } from '@/store/editorPrefsStore';
 import { debounce } from '@/utils/debounce';
 import { MarkmapCanvas } from '../file-types/markmap/MarkmapCanvas';
 import { resolveAssetBase } from '../file-types/previewPath';
 import { usePreviewZoom } from '../file-types/markdown/usePreviewZoom';
+import { navigateToHeadingId, restoreComponentState, snapshotComponentState } from '../file-types/markdown/headingNav';
+import { computeOutlineSource, computeActiveHeading, mergeOutlineVisibility } from '../file-types/markdown/outlineModel';
+import { useEditorStore } from '@/store/editorStore';
+import { PreviewActiveContext } from '../file-types/markdown/PreviewActiveContext';
 
 // Quiet floating preview tools: bare icons, faint at rest, clearer while the
 // preview pane is hovered (`group/prev` on the pane root), full + hover fill on
@@ -18,6 +22,8 @@ function previewToolClass(active = false): string {
 
 /** How long a tab switch holds the restored preview position against late layout. */
 const RESTORE_HOLD_MS = 1500;
+/** How long a navigation restore waits for an async-parsed #fragment heading. */
+const NAV_ANCHOR_WAIT_MS = 3000;
 /** Input that hands the preview position back to the reader during a restore. */
 const READER_INPUT_EVENTS = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const;
 
@@ -94,7 +100,73 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     const handleBodyScroll = useCallback(() => {
       if (restoringRef.current || !activeRef.current) return;
       persistPreviewScrollRef.current?.(shownTabIdRef.current, bodyRef.current?.scrollTop ?? 0);
+      persistReadingHeadingRef.current?.(shownTabIdRef.current, bodyRef.current);
     }, []);
+
+    // Phase 4.5: keep the shown tab's reading-scene snapshot fresh. The same
+    // signals the outline sidebar listens to (panel display flips, collapse
+    // is-open class toggles, content remounts) drive a debounced
+    // snapshotComponentState → setPreviewComponentsForTab(shownTabId) — the
+    // exact scene Back/Forward replays. Snapshots are cheap (a couple of
+    // querySelectorAll scans) and shallow-equal writes are skipped in the
+    // store, so the debounce fires at most once per interaction.
+    const isMarkdown = activeTab.fileType === 'markdown';
+    const setPreviewComponentsForTab = useEditorViewStateStore((s) => s.setPreviewComponentsForTab);
+
+    // Phase 6.2 — per-tab reading section: the nearest heading above the
+    // viewport, written onto the tab record (debounced with the scroll
+    // writes). The tab switcher shows it to tell two reading scenes of the
+    // SAME document apart (spec: 通过必要的章节上下文区分同一文件的不同阅读现场).
+    // outlineModel is the same model the outline sidebar's scroll-spy uses,
+    // minus the visibility merge (switcher labels work even for headings
+    // hidden inside collapsibles — they're still the reader's position).
+    const persistReadingHeadingRef = useRef<(((tabId: string, body: HTMLElement | null) => void) & { cancel: () => void }) | null>(null);
+    const contentForHeadingRef = useRef(activeTab.content);
+    contentForHeadingRef.current = activeTab.content;
+    useEffect(() => {
+      if (!isMarkdown) return;
+      if (persistReadingHeadingRef.current === null) {
+        persistReadingHeadingRef.current = debounce((tabId: string, body: HTMLElement | null) => {
+          if (!body) return;
+          const items = mergeOutlineVisibility(computeOutlineSource(contentForHeadingRef.current), body);
+          const active = computeActiveHeading(body, items);
+          if (!active) return;
+          useEditorStore.setState((state) => {
+            const prev = state.tabs.find((t) => t.id === tabId)?.readingHeading;
+            if (prev && prev.line === active.line && prev.text === active.text) return state;
+            return {
+              tabs: state.tabs.map((t) =>
+                t.id === tabId ? { ...t, readingHeading: { line: active.line, text: active.text } } : t,
+              ),
+            };
+          });
+        }, 300);
+      }
+      // Snapshot once on attach so a tab that never scrolled still labels
+      // its current scene (fresh open → document lead section).
+      persistReadingHeadingRef.current?.(shownTabIdRef.current, bodyRef.current);
+      return () => { persistReadingHeadingRef.current?.cancel(); };
+    }, [isMarkdown, activeTab.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const persistComponentsRef = useRef<((tabId: string, body: HTMLElement) => void) | null>(null);
+    useEffect(() => {
+      if (!isMarkdown) return;
+      if (persistComponentsRef.current === null) {
+        persistComponentsRef.current = debounce((tabId: string, body: HTMLElement) => {
+          setPreviewComponentsForTab(tabId, snapshotComponentState(body));
+        }, 250);
+      }
+      const body = bodyRef.current;
+      if (!body) return;
+      const obs = new MutationObserver(() => {
+        persistComponentsRef.current?.(shownTabIdRef.current, bodyRef.current ?? body);
+      });
+      obs.observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+      // Snapshot once on attach: content parsed before this pane mounted
+      // (a tab return, a chunk mount) has already changed the scene.
+      persistComponentsRef.current?.(shownTabIdRef.current, body);
+      return () => obs.disconnect();
+    }, [isMarkdown, setPreviewComponentsForTab, activeTab.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ponytail: split-mode preview→editor jump. Click a rendered heading in
     // the preview and the editor scrolls to that heading's source line.
@@ -131,10 +203,103 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     if (active) frozenCursorRef.current = { cursorLine, cursorViewportY, editorViewportTop, hasSelection };
     const outlineVisible = useEditorViewStateStore((s) => s.outlineVisible);
     const toggleOutline = useEditorViewStateStore((s) => s.toggleOutline);
+    const pendingNavRestore = useEditorViewStateStore((s) => s.pendingNavRestore);
+
+    // ponytail: the scroll-hold controller. A restore (tab switch, reader
+    //  navigation) holds the .prev-body's scrollTop against late layout for
+    //  RESTORE_HOLD_MS — images load, the asset base re-renders the tree,
+    //  split-mode cursor-sync republishes — each of which would clamp or
+    //  drag the scroll away from the restored position. Only the first real
+    //  reader input (wheel/click/key/touch) releases the hold early. One
+    //  controller at a time: a new apply supersedes the previous hold.
+    const stopHoldRef = useRef<(() => void) | null>(null);
+    const applyScrollHold = useCallback((target: number) => {
+      stopHoldRef.current?.();
+      const apply = () => {
+        const el = bodyRef.current;
+        if (el && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
+      };
+      let frame = 0;
+      const hold = () => {
+        apply();
+        frame = requestAnimationFrame(hold);
+      };
+      // Marks the scroll container for usePreviewCursorSync, which leaves the
+      // scroll alone while it is set.
+      const body = bodyRef.current;
+      let timer: ReturnType<typeof setTimeout>;
+      const stop = () => {
+        restoringRef.current = false;
+        delete body?.dataset.restoringScroll;
+        cancelAnimationFrame(frame);
+        clearTimeout(timer);
+        for (const type of READER_INPUT_EVENTS) window.removeEventListener(type, stop, true);
+        if (stopHoldRef.current === stop) stopHoldRef.current = null;
+      };
+      restoringRef.current = true;
+      if (body) body.dataset.restoringScroll = '';
+      hold();
+      timer = setTimeout(stop, RESTORE_HOLD_MS);
+      for (const type of READER_INPUT_EVENTS) window.addEventListener(type, stop, true);
+      stopHoldRef.current = stop;
+    }, []);
+    // Release any live hold when the pane unmounts.
+    useEffect(() => () => stopHoldRef.current?.(), []);
+
+    // ponytail: reader-navigation restore (docLinkHistory back/forward / a
+    //  link with a #fragment). The docLinkHistory store writes a single-slot
+    //  pending request keyed by path; this pane applies it when the path it
+    //  shows matches — either on activation (tab switch/open, covered by the
+    //  layout effect below which runs pre-paint) or live, when the target is
+    //  the tab already on screen (Back within one document). Reads fresh
+    //  state (getState) so the two paths never double-apply: whoever runs
+    //  first consumes the slot, the other sees null.
+    const runNavRestore = useCallback((nav: { scrollTop?: number; anchorId?: string; components?: PreviewComponents }) => {
+      const body = bodyRef.current;
+      // Replay the leaving position's container state first (Phase 4.5): Back
+      // must land in the same reading scene — tabs on the panel the reader
+      // was on, collapsibles they had open — not just the scroll offset.
+      // Replay before the scroll so layout settles once. anchorId jumps
+      // still auto-reveal whatever else the fragment needs.
+      if (nav.components && activeTab.fileType === 'markdown' && body) {
+        restoreComponentState(body, nav.components);
+      }
+      if (nav.anchorId && activeTab.fileType === 'markdown' && body) {
+        // #fragment target: settle the scroll near the snapshot first (the
+        //  pipeline's parse is async), then poll for the heading id and
+        //  reveal-and-scroll onto it. navigateToHeadingId returns false until
+        //  the heading exists — retry on a rAF loop, capped.
+        if (nav.scrollTop !== undefined) applyScrollHold(nav.scrollTop);
+        const started = Date.now();
+        const tryAnchor = () => {
+          const el = bodyRef.current;
+          if (!el) return;
+          const ok = navigateToHeadingId(el, nav.anchorId!, { smooth: false });
+          if (!ok && Date.now() - started < NAV_ANCHOR_WAIT_MS) {
+            requestAnimationFrame(tryAnchor);
+          }
+        };
+        requestAnimationFrame(tryAnchor);
+      } else {
+        applyScrollHold(nav.scrollTop ?? 0);
+      }
+    }, [activeTab.fileType, applyScrollHold]);
+
+    useEffect(() => {
+      if (!active) return;
+      const nav = useEditorViewStateStore.getState().pendingNavRestore;
+      if (!nav || nav.path !== activeTab.path) return;
+      useEditorViewStateStore.getState().consumePreviewNav();
+      runNavRestore(nav);
+    }, [pendingNavRestore, active, activeTab.id, activeTab.path, runNavRestore]); // eslint-disable-line react-hooks/exhaustive-deps
     const togglePresentationMode = useEditorViewStateStore((s) => s.togglePresentationMode);
     // Markmap preview toggle (markdown only). Default false = normal preview.
     const [markmapMode, setMarkmapMode] = useState(false);
     const [markmapAssetBase, setMarkmapAssetBase] = useState<string | null>(null);
+    // In-document find (spec 5.3) lives at the WorkArea level now — editor
+    // and preview share the one FindBar, and its Cmd+F listener is bound
+    // there. The pane only exposes the markmap flag for that listener
+    // (data-markmap on the root below).
     // ponytail: preview visual zoom (pinch/ctrl+wheel + Cmd±/0) —
     // preview-only mode: split mode must stay 1:1 with the editor so the
     // cursor-sync / gap-compensation line grid stays exact.
@@ -176,6 +341,17 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
     const lastShownIdRef = useRef<string | null>(null);
     useLayoutEffect(() => {
       if (!active) return;
+      // A pending reader-navigation restore (back/forward, link #fragment)
+      // takes priority over the reshow/saved logic — the passive effect
+      // above would also pick it up, but the layout effect runs pre-paint
+      // so the reader never sees the un-navigated frame.
+      const nav = useEditorViewStateStore.getState().pendingNavRestore;
+      if (nav && nav.path === activeTab.path) {
+        useEditorViewStateStore.getState().consumePreviewNav();
+        lastShownIdRef.current = activeTab.id;
+        runNavRestore(nav);
+        return;
+      }
       // Coming back to the front with the same tab: the DOM kept its scroll,
       // which is fresher than the debounced saved value — hold that.
       const reshow = lastShownIdRef.current === activeTab.id;
@@ -183,35 +359,8 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
       lastShownIdRef.current = activeTab.id;
       const saved = reshow ? bodyRef.current?.scrollTop : activeTab.previewScrollTop;
       if (saved === undefined && isMount) return;
-      const target = saved ?? 0;
-      // bodyRef, not a captured element: switching markdown ↔ other previews
-      // or toggling markmap swaps the body element.
-      const apply = () => {
-        const el = bodyRef.current;
-        if (el && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
-      };
-      let frame = 0;
-      const hold = () => {
-        apply();
-        frame = requestAnimationFrame(hold);
-      };
-      // Marks the scroll container for usePreviewCursorSync, which leaves the
-      // scroll alone while it is set.
-      const body = bodyRef.current;
-      const stop = () => {
-        restoringRef.current = false;
-        delete body?.dataset.restoringScroll;
-        cancelAnimationFrame(frame);
-        clearTimeout(timer);
-        for (const type of READER_INPUT_EVENTS) window.removeEventListener(type, stop, true);
-      };
-      restoringRef.current = true;
-      if (body) body.dataset.restoringScroll = '';
-      hold();
-      const timer = setTimeout(stop, RESTORE_HOLD_MS);
-      for (const type of READER_INPUT_EVENTS) window.addEventListener(type, stop, true);
-      return stop;
-    }, [activeTab.id, active]); // eslint-disable-line react-hooks/exhaustive-deps
+      applyScrollHold(saved ?? 0);
+    }, [activeTab.id, active, runNavRestore, applyScrollHold]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ponytail: full-bleed is the DEFAULT (zero host padding — the preview
     // component manages its own padding). Only markdown needs the host's
@@ -256,6 +405,7 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
         className={`group/prev flex-1 flex flex-col overflow-hidden min-w-[200px] ${active ? '' : 'absolute inset-y-0 pointer-events-none'}`}
         style={active ? { ...(viewMode === 'split' ? { flexGrow: previewFlex, flexBasis: 0 } : {}), position: 'relative' } : { width: shownWidthRef.current ?? '100%', left: '-200vw' }}
         data-preview-hidden={active ? undefined : ''}
+        data-markmap={activeTab.fileType === 'markdown' && markmapMode ? 'on' : undefined}
         aria-hidden={active ? undefined : true}
       >
         {/* Preview-mode toggle (markmap) + outline toggle -- markdown only */}
@@ -320,6 +470,10 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
           </div>
         )}
         <div className="flex-1 flex overflow-hidden">
+          {/* Portaled focus views (code/table/diagram focus, image lightbox)
+              read this to unmount while another tab is shown — parking this
+              pane offscreen does not hide portals (body children). */}
+          <PreviewActiveContext.Provider value={active}>
           {activeTab.fileType === 'markdown' ? (
             <>
               {/* ponytail: MarkdownPreview stays mounted across the markmap
@@ -372,13 +526,13 @@ export const PreviewPane = forwardRef<HTMLDivElement, PreviewPaneProps>(
                 vaultRoot={vaultRoot}
                 cursorLine={cursorLine}
                 cursorViewportY={cursorViewportY}
-                  hasSelection={hasSelection}
+                hasSelection={hasSelection}
                 onChange={onChange}
               />
             </div>
           )}
+          </PreviewActiveContext.Provider>
         </div>
       </div>
-    );
-  },
+    );  },
 );

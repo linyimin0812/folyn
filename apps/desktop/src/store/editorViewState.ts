@@ -5,6 +5,19 @@ import { useExtensionFileViewStore } from './extensionFileViewStore';
 import { debounce } from '@/utils/debounce';
 
 /**
+ * Container-state snapshot of a reading position (refactor spec Phase 4.5 —
+ * 记录 Tabs 当前选择 / Collapsible 展开状态). Structurally compatible with
+ * headingNav's ComponentStateSnapshot; declared locally so the store layer
+ * doesn't import component code.
+ */
+export interface PreviewComponents {
+  /** `data-source-line` of each open `.docmd-collapse` wrapper. */
+  openCollapsibles: number[];
+  /** `data-source-line` of each `.docmd-tabs` wrapper + active panel index. */
+  tabsSelections: Array<{ line: number; active: number }>;
+}
+
+/**
  * Editor view-state split out of the legacy editorStore god-store (PR1).
  *
  * Owns cursor position, word count, and outline/AI-panel visibility — the
@@ -105,6 +118,31 @@ interface EditorViewState {
    *  Previews skip cursor-sync while the user is selecting. */
   hasSelection: boolean;
   outlineVisible: boolean;
+  /** Set the outline visibility directly (the auto-collapse-on-narrow-space
+   *  path — unlike toggleOutline, it must not fight the drag state). */
+  setOutlineVisible: (v: boolean) => void;
+  /** One pending reader-navigation restore, produced by docLinkHistory
+   *  (back/forward/link-with-anchor). The preview pane consumes it the next
+   *  time it shows a tab whose path matches — restoring the exact scrollTop
+   *  and/or scrolling to the `#fragment` heading. Single slot: reader
+   *  navigation is strictly serial. `components` carries the container state
+   *  snapshotted at the leaving position, replayed before the scroll so Back
+   *  lands in the exact reading scene (refactor spec Phase 4.5). */
+  pendingNavRestore: {
+    path: string;
+    scrollTop?: number;
+    anchorId?: string;
+    components?: PreviewComponents;
+  } | null;
+  /** Request a reading-position restore for `path`. Supersedes any pending
+   *  request (the latest navigation wins). */
+  requestPreviewNav: (path: string, restore: {
+    scrollTop?: number;
+    anchorId?: string;
+    components?: PreviewComponents;
+  }) => void;
+  /** Clear the pending request (called by the preview pane on consumption). */
+  consumePreviewNav: () => void;
   aiPanelVisible: boolean;
   /** Right-dock terminal panel visibility (independent of the AI panel). */
   terminalPanelVisible: boolean;
@@ -137,6 +175,11 @@ interface EditorViewState {
   /** Persist the preview scroll top onto a specific tab (survives tab
    *  switches + disk persistence). Throttled at the call site. */
   setPreviewScrollTopForTab: (tabId: string, top: number) => void;
+  /** Persist the preview's container-state snapshot (open collapsibles /
+   *  tabs selections — refactor spec Phase 4.5) onto a specific tab, so
+   *  back/forward can replay the exact reading scene. Debounced at the
+   *  call site. */
+  setPreviewComponentsForTab: (tabId: string, snap: PreviewComponents) => void;
   setWordCount: (count: number) => void;
   setCursorViewportY: (y: number, viewportTop: number, cursorCol: number, lineHeight: number, lineFrac: number, blockOffsetY: number, blockAnchorLine: number, blockHeight?: number, blockEndLine?: number) => void;
   setEditorContentPadTop: (px: number) => void;
@@ -207,6 +250,7 @@ export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
   syncTargetMeasuredLine: 0,
   hasSelection: false,
   outlineVisible: false,
+  pendingNavRestore: null,
   aiPanelVisible: false,
   terminalPanelVisible: false,
   terminalInRightDock: false,
@@ -266,6 +310,30 @@ export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
     }));
   },
 
+  setPreviewComponentsForTab: (tabId, snap) => {
+    // Phase 4.5: persist the preview's container-state snapshot (open
+    // collapsibles, tabs selections) onto the shown tab so back/forward and
+    // tab returns replay the exact reading scene. Named tab, not activeTabId
+    // — same rationale as setPreviewScrollTopForTab. Skips shallow-equal
+    // writes (the debounced observer fires often).
+    useEditorStore.setState((state) => {
+      const t = state.tabs.find((x) => x.id === tabId);
+      if (!t) return state;
+      const prev = t.previewComponents;
+      const same = prev
+        && prev.openCollapsibles.length === snap.openCollapsibles.length
+        && prev.openCollapsibles.every((v, i) => v === snap.openCollapsibles[i])
+        && prev.tabsSelections.length === snap.tabsSelections.length
+        && prev.tabsSelections.every((v, i) => v.line === snap.tabsSelections[i].line && v.active === snap.tabsSelections[i].active);
+      if (same) return state;
+      return {
+        tabs: state.tabs.map((x) =>
+          x.id === tabId ? { ...x, previewComponents: snap } : x,
+        ),
+      };
+    });
+  },
+
   setWordCount: (count) => set({ wordCount: count }),
   setCursorViewportY: (y, viewportTop, cursorCol, lineHeight, lineFrac, blockOffsetY, blockAnchorLine, blockHeight = 0, blockEndLine = 0) => set({ cursorViewportY: y, editorViewportTop: viewportTop, cursorCol, editorLineHeight: lineHeight, cursorLineFrac: lineFrac, cursorBlockOffsetY: blockOffsetY, cursorBlockLine: blockAnchorLine, cursorBlockHeight: blockHeight, cursorBlockEndLine: blockEndLine }),
   setSyncTargetLine: (line) => set({ syncTargetLine: line }),
@@ -285,6 +353,9 @@ export const useEditorViewStateStore = create<EditorViewState>((set, get) => ({
   setHasSelection: (v) => set({ hasSelection: v }),
 
   toggleOutline: () => set((state) => ({ outlineVisible: !state.outlineVisible })),
+  setOutlineVisible: (v) => set((state) => (state.outlineVisible === v ? state : { outlineVisible: v })),
+  requestPreviewNav: (path, restore) => set({ pendingNavRestore: { path, ...restore } }),
+  consumePreviewNav: () => set((state) => (state.pendingNavRestore ? { pendingNavRestore: null } : state)),
   toggleAiPanel: () => set((state) => ({ aiPanelVisible: !state.aiPanelVisible })),
 
   openTerminalDock: () => set({ terminalPanelVisible: true, terminalInRightDock: false }),

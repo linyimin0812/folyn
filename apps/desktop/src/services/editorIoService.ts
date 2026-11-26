@@ -64,9 +64,33 @@ async function writeRawContent(filePath: string, content: string): Promise<void>
 }
 
 /** Open a file from the vault (reads content via VaultStore). */
-export async function openFile(filePath: string, name: string, options?: { expectedVaultId: string; readText: () => Promise<string> }): Promise<void> {
+export async function openFile(
+  filePath: string,
+  name: string,
+  options?: {
+    /** Caller's notion of the current vault — when provided, openFile
+     *  aborts if the active vault changed mid-await (e.g. async open from
+     *  a stale panel). Omit for same-frame opens (background opens from the
+     *  preview: the click handler's vault is the live one). */
+    expectedVaultId?: string;
+    /** Custom content source (e.g. external file provider). Falls back to
+     *  readRawContent on the vault fs. */
+    readText?: () => Promise<string>;
+    /** Spec 6.2 — 同一文档允许多个独立阅读标签页: open a SECOND tab for
+     *  this path even if one is already open (each with its own reading
+     *  context). Duplicate instances get a `~N` suffix on the tab id. */
+    forceNew?: boolean;
+    /** Spec 6.2 — 后台打开不抢夺当前焦点: create the tab without activating
+     *  it, inserted to the RIGHT of the source tab (pass the source tab id
+     *  in insertAfterTabId). */
+    background?: boolean;
+    /** Where a background tab lands (right of the source tab). Ignored when
+     *  background is false. */
+    insertAfterTabId?: string;
+  },
+): Promise<void> {
   const assertVault = () => {
-    if (options && (useVaultStore.getState().isLoading || useVaultStore.getState().activeVaultId !== options.expectedVaultId)) throw new Error('The selected vault has changed');
+    if (options?.expectedVaultId && (useVaultStore.getState().isLoading || useVaultStore.getState().activeVaultId !== options.expectedVaultId)) throw new Error('The selected vault has changed');
   };
   assertVault();
   const get = useEditorStore.getState;
@@ -76,7 +100,21 @@ export async function openFile(filePath: string, name: string, options?: { expec
   // and so `switchVault`'s `tabs: []` clear can be narrowed to keep them.
   const isExternal = isExternalPath(filePath);
   const vaultId = isExternal ? 'ext' : (useVaultStore.getState().activeVaultId || '');
-  const tabId = isExternal ? `ext:${filePath}` : `${vaultId}:${filePath}`;
+  const baseTabId = isExternal ? `ext:${filePath}` : `${vaultId}:${filePath}`;
+
+  // Spec 6.2 — forceNew: open a duplicate instance even when a tab for this
+  // path exists. Instance ids add a ~N discriminator (first occurrence keeps
+  // the canonical id so existing lookups — webview cache, doc history, saved
+  // sessions — keep working); N = next free number among open tabs.
+  let tabId = baseTabId;
+  if (options?.forceNew) {
+    const taken = new Set(get().tabs.map((t) => t.id));
+    let n = 2;
+    while (taken.has(`${baseTabId}~${n}`)) n += 1;
+    tabId = `${baseTabId}~${n}`;
+  } else {
+    tabId = baseTabId;
+  }
 
   const existing = get().tabs.find((t) => t.id === tabId);
   if (existing) {
@@ -94,7 +132,7 @@ export async function openFile(filePath: string, name: string, options?: { expec
     if (!existing.content && !existing.isDirty && getHandlerById(correctFileType)?.needsFileContent) {
       try {
         const handler = getHandlerById(correctFileType);
-        const raw = await (options ? options.readText() : readRawContent(filePath));
+        const raw = await (options?.readText ? options.readText() : readRawContent(filePath));
         assertVault();
         const content = handler?.deserialize ? handler.deserialize(raw) : raw;
         set((state) => ({
@@ -133,13 +171,13 @@ export async function openFile(filePath: string, name: string, options?: { expec
     }
     return;
   }
-  set({ isFileLoading: true });
+    set({ isFileLoading: true });
   try {
     const fileType = detectFileType(filePath);
     const handler = getHandlerById(fileType);
     let content = '';
     if (handler?.needsFileContent) {
-      const raw = await (options ? options.readText() : readRawContent(filePath));
+      const raw = await (options?.readText ? options.readText() : readRawContent(filePath));
       assertVault();
       content = handler.deserialize ? handler.deserialize(raw) : raw;
       console.log(`[EditorStore] openFile: ${filePath} type=${fileType} content=${content.length} chars`);
@@ -155,12 +193,16 @@ export async function openFile(filePath: string, name: string, options?: { expec
       activity: detectActivity(filePath, fileType),
       viewMode: getDefaultMode(handler),
     };
-    set((state) => ({
-      tabs: [...state.tabs, newTab],
-      activeTabId: newTab.id,
-    }));
-    // Auto-switch to preview mode for file types that prefer preview
-    if (getDefaultMode(handler)) {
+    // addTab owns insertion + activation + MRU (background: insert right of
+    // the source tab and DON'T activate — spec 6.2 后台打开不抢夺当前焦点).
+    useEditorStore.getState().addTab(newTab, {
+      activate: !options?.background,
+      ...(options?.background ? { insertAfterTabId: options.insertAfterTabId ?? null } : {}),
+    });
+    // Auto-switch to preview mode for file types that prefer preview (only
+    // when the new tab is actually being activated — a background tab must
+    // not touch the current tab's view mode).
+    if (!options?.background && getDefaultMode(handler)) {
       set({ viewMode: getDefaultMode(handler) });
     }
     persistOpenTabs(vaultId, get().tabs, get().activeTabId);
@@ -193,9 +235,17 @@ export async function saveFile(tabId: string): Promise<void> {
     const output = handler?.serialize ? handler.serialize(tab.content) : tab.content;
     await writeRawContent(tab.path, output);
     set((state) => ({
-      tabs: state.tabs.map((t) =>
-        t.id === tabId ? { ...t, isDirty: false } : t,
-      ),
+      tabs: state.tabs.map((t) => {
+        if (t.id === tabId) return { ...t, isDirty: false };
+        // Spec 6.2 — duplicate tabs of the same document: a save from one
+        // tab lands on disk, so refresh non-dirty siblings' content from
+        // the saved buffer (dirty siblings keep the user's uncommitted
+        // edits — their save will overwrite the file, not this one).
+        if (t.path === tab.path && !t.isDirty && t.fileType === tab.fileType) {
+          return { ...t, content: tab.content };
+        }
+        return t;
+      }),
     }));
     // PR2: best-effort version-history snapshot. Never fails the save —
     // version history is a secondary affordance; the user's primary intent
@@ -318,9 +368,13 @@ export async function restoreOpenTabs(): Promise<void> {
         tabs: [...state.tabs, newTab],
       }));
     } else {
-      // Restore file tab
+      // Restore file tab — spec 6.2: the saved id is the INSTANCE id, so
+      // duplicate tabs of one path come back as duplicates (not collapsed),
+      // each with its own position/reading context. Fallback for legacy
+      // sessions without ids: derive from path (dedupes as before).
       const isExternal = isExternalPath(tabInfo.path);
-      const tabId = isExternal ? `ext:${tabInfo.path}` : `${vaultId}:${tabInfo.path}`;
+      const derivedTabId = isExternal ? `ext:${tabInfo.path}` : `${vaultId}:${tabInfo.path}`;
+      const tabId = tabInfo.id ?? derivedTabId;
       const alreadyOpen = get().tabs.find((t) => t.id === tabId);
       if (alreadyOpen) continue;
       try {
@@ -340,11 +394,13 @@ export async function restoreOpenTabs(): Promise<void> {
           isDirty: false,
           fileType,
           activity: restoredActivity,
+          pinned: tabInfo.pinned,
           cursorLine: tabInfo.cursorLine,
           cursorCol: tabInfo.cursorCol,
           editorScrollTop: tabInfo.editorScrollTop,
           previewScrollTop: tabInfo.previewScrollTop,
           viewMode: tabInfo.viewMode,
+          readingHeading: tabInfo.readingHeading,
         };
         set((state) => ({
           tabs: [...state.tabs, newTab],
@@ -355,16 +411,31 @@ export async function restoreOpenTabs(): Promise<void> {
     }
   }
 
+  // Pinned tabs form the leading group on restore too (stable positions).
+  set((state) => {
+    if (state.tabs.some((t) => t.pinned) && state.tabs.some((t) => !t.pinned)) {
+      return { tabs: [...state.tabs.filter((t) => t.pinned), ...state.tabs.filter((t) => !t.pinned)] };
+    }
+    return state;
+  });
+
   // Restore active tab
   if (saved.activeTabPath) {
-    // Try file-tab, external-tab, and web-tab id formats
-    const fileActiveId = `${vaultId}:${saved.activeTabPath}`;
-    const extActiveId = `ext:${saved.activeTabPath}`;
-    const webActiveId = `web:${saved.activeTabPath}`;
-    const exists = get().tabs.find((t) => t.id === fileActiveId || t.id === extActiveId || t.id === webActiveId);
+    // Prefer the exact saved instance (activeTabId, spec 6.2) — with
+    // duplicate tabs the PATH alone is ambiguous. Fall back to path-derived
+    // ids for legacy sessions.
+    const exists = saved.activeTabId
+      ? get().tabs.find((t) => t.id === saved.activeTabId)
+      : get().tabs.find((t) => {
+        const fileActiveId = `${vaultId}:${saved.activeTabPath}`;
+        const extActiveId = `ext:${saved.activeTabPath}`;
+        const webActiveId = `web:${saved.activeTabPath}`;
+        return t.id === fileActiveId || t.id === extActiveId || t.id === webActiveId;
+      });
     if (exists) {
       set({
         activeTabId: exists.id,
+        mruOrder: [exists.id, ...get().tabs.map((t) => t.id).filter((id) => id !== exists.id)],
         ...(exists.viewMode ? { viewMode: exists.viewMode } : {}),
       });
     }
@@ -428,7 +499,10 @@ async function restoreExternalTabs(): Promise<void> {
   const saved = await loadExternalOpenTabs('ext');
   if (!saved || saved.tabs.length === 0) return;
   for (const tabInfo of saved.tabs) {
-    const tabId = `ext:${tabInfo.path}`;
+    const derivedTabId = `ext:${tabInfo.path}`;
+    // Spec 6.2 — restore the saved INSTANCE id (duplicates come back as
+    // duplicates); legacy sessions without ids fall back to the derived one.
+    const tabId = tabInfo.id ?? derivedTabId;
     const alreadyOpen = get().tabs.find((t) => t.id === tabId);
     if (alreadyOpen) continue;
     try {
@@ -448,11 +522,13 @@ async function restoreExternalTabs(): Promise<void> {
         isDirty: false,
         fileType,
         activity: restoredActivity,
+        pinned: tabInfo.pinned,
         cursorLine: tabInfo.cursorLine,
         cursorCol: tabInfo.cursorCol,
         editorScrollTop: tabInfo.editorScrollTop,
         previewScrollTop: tabInfo.previewScrollTop,
         viewMode: tabInfo.viewMode,
+        readingHeading: tabInfo.readingHeading,
       };
       set((state) => ({ tabs: [...state.tabs, newTab] }));
     } catch {
@@ -472,97 +548,98 @@ async function restoreExternalTabs(): Promise<void> {
   }
 }
 
-/** Open an external file picked via the native OS file dialog. Returns the
- *  number of files opened. Used by the Files-panel button, the command
- *  palette, and the drag-drop / OS "Open With" entry points (which call
- *  openFile directly). */
-export async function openExternalFile(): Promise<number> {
-  const { open } = await import('@tauri-apps/plugin-dialog');
-  const result = await open({
-    multiple: false,
-    // No explicit filters: the user owns the machine and may pick any file
-    // Folyn has a handler for. Non-handled types fall back to the `code`
-    // (plain-text) editor.
-  });
-  if (!result) return 0;
-  const picked: string | null = typeof result === 'string' ? result : null;
-  if (!picked) return 0;
-  const name = picked.includes('/') ? picked.substring(picked.lastIndexOf('/') + 1) : picked;
-  await openFile(picked, name);
-  return 1;
-}
-
-/** Open file(s) dropped onto the window from the OS file manager.
- *
- * On macOS, WebKit (WKWebView) exposes the real absolute path on the dropped
- * `File` object (`.path`); we open it directly as a vault-independent external
- * tab — same route as the OS "Open With" flow.
- *
- * On Windows, WebView2's HTML5 `drop` event delivers a `File` object with
- * name/size/type and readable content but NO absolute path (WebView2 security
- * restriction). To get a real path Folyn must enable the Tauri
- * `dragDropEnabled` window flag, but that replaces WebView2's drag-drop handler
- * and breaks ALL in-app HTML5 drag-and-drop (rich-text
- * table row/col reordering) — a Tauri-documented, hard limitation. So instead
- * we read the dropped `File` content and write it to a per-app import staging
- * dir (`~/.folyn/drops/`), then open that staged file by path. The user gets a
- * real, editable, saveable Folyn tab; the cost is that it is a copy (the
- * original is not modified on save). Non-text/binary file types that Folyn
- * does not edit are skipped (no handler → no tab).
- *
- * `Files` here are Web `File` objects (HTML5 DnD), not Tauri paths. Returns the
- * number of files opened. No-op (returns 0) when not running under Tauri. */
-export async function openDroppedFiles(files: File[]): Promise<number> {
+/** Open absolute paths from OS-level entry points (window drag-drop events,
+ *  the unified ↗ picker, OS "Open With" / file-association launches, and the
+ *  single-instance second-launch handoff). Directories register as external
+ *  folders in the Files panel (duplicate / outside-$HOME failures get a
+ *  toast, never a silent no-op); files open as vault-independent external
+ *  tabs. Always lands on the editor page so the Files panel / opened tab is
+ *  visible. Returns the number of items handled. No-op (returns 0) when
+ *  not running under Tauri. */
+export async function openExternalPaths(paths: string[]): Promise<number> {
   if (!isTauri()) return 0;
+  if (paths.length === 0) return 0;
+  // Any external open lands on the editor page — that is where tabs and the
+  // Files-panel external tree appear.
+  const { useNavStore } = await import('@/store/navStore');
+  useNavStore.getState().setCurrentPage('editor');
+  const { stat } = await import('@tauri-apps/plugin-fs');
+  const { useExternalFolderStore } = await import(
+    '@/store/externalFolderStore',
+  );
   let opened = 0;
-  for (const f of files) {
-    const webkitPath = (f as unknown as { path?: string }).path;
-    if (webkitPath) {
-      // macOS: real absolute path available — open the actual file.
-      const name = webkitPath.includes('/')
-        ? webkitPath.substring(webkitPath.lastIndexOf('/') + 1)
-        : webkitPath;
-      await openFile(webkitPath, name);
-      opened++;
+  for (const p of paths) {
+    // Route file vs folder: stat → dir registers as an external folder,
+    // file opens as an external tab. stat failure falls through to the file
+    // path (openFile surfaces its own error).
+    const st = await stat(p).catch(() => null);
+    if (st?.isDirectory) {
+      const added = await useExternalFolderStore.getState().addFolder(p);
+      if (added) {
+        opened++;
+      } else {
+        // addFolder returns false for duplicate / outside-$HOME /
+        // unreadable — never a silent no-op, surface which one it was.
+        const duplicate = useExternalFolderStore
+          .getState()
+          .folders.some((f) => f.path === p);
+        const { useToastStore } = await import('@/store/toastStore');
+        const { default: i18n } = await import('@/i18n');
+        useToastStore.getState().push(
+          duplicate
+            ? i18n.t('editor:filePaste.folderAlreadyAdded')
+            : i18n.t('editor:filePaste.folderOutsideHome'),
+        );
+      }
       continue;
     }
-    // Windows / Linux (WebView2): no path on the File object. Stage the
-    // content into ~/.folyn/drops/ and open the staged copy by path. Read as
-    // raw bytes (arrayBuffer) and write as bytes — f.text()/writeFile do a
-    // UTF-8 round-trip that corrupts binary files (docx/xlsx/pdf/zip are ZIP
-    // archives; a bad UTF-8 decode breaks the office viewer with "Corrupted
-    // zip"). Byte writes are identity-preserving for text files too, so all
-    // handled types go through this one path. Skip types Folyn has no editor
-    // for (e.g. plain images) — they are not versionable files.
-    const fileType = detectFileType(f.name);
-    const handler = getHandlerById(fileType);
-    if (!handler) continue;
-    try {
-      const bytes = new Uint8Array(await f.arrayBuffer());
-      const staged = await stageDroppedContent(f.name, bytes);
-      await openFile(staged, f.name);
-      opened++;
-    } catch (err) {
-      console.error('[EditorStore] openDroppedFiles: failed to stage', f.name, err);
-    }
+    const name = p.includes('/')
+      ? p.substring(p.lastIndexOf('/') + 1)
+      : p;
+    await openFile(p, name);
+    opened++;
   }
   return opened;
 }
 
-/** Write dropped file bytes to `~/.folyn/drops/<name>` and return that path.
- *  Bytes (not text) so binary archives (docx/xlsx/zip/…) are not corrupted by
- *  a UTF-8 encode/decode round-trip. Overwrites any prior staging of the same
- *  name (re-import = refresh). The path is home-relative (`~/…`) so the tab id
- *  is stable across vault switches and read/write route through
- *  `externalFileProvider` (which resolves `~` → $HOME, enforces the
- *  within-home boundary, and creates the dir). */
-async function stageDroppedContent(name: string, bytes: Uint8Array): Promise<string> {
-  // Sanitize: keep only the base name (File.name should already be path-free,
-  // but guard against a crafted name with separators that would escape drops/).
-  const safe = name.replace(/[/\\]+/g, '_') || 'untitled';
-  const staged = '~/.folyn/drops/' + safe;
-  await externalFileProvider.writeFileBytes(staged, bytes);
-  return staged;
+/** Open external files AND/OR folders picked via the native OS dialog.
+ *  One click, one dialog, both kinds selectable (macOS: custom
+ *  `pick_external_paths` Rust command — NSOpenPanel with canChooseFiles +
+ *  canChooseDirectories, which tauri-plugin-dialog/rfd does not expose;
+ *  other platforms fall back to the plugin's files-only dialog).
+ *  Picked folders are registered in the Files-panel external tree, picked
+ *  files open as external tabs. Returns the number of items handled. Used
+ *  by the Files-panel button and the command palette; routing is shared
+ *  with every other external-path entry point via `openExternalPaths`. */
+export async function openExternalFile(): Promise<number> {
+  if (!isTauri()) return 0;
+  let paths: string[] | null;
+  let useFallback = false;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    // null = user cancelled → return 0 (never open a second dialog)
+    paths = await invoke<string[] | null>('pick_external_paths');
+  } catch {
+    // Command unsupported (non-macOS build) → plugin files-only dialog
+    paths = null;
+    useFallback = true;
+  }
+  if (useFallback) {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const result = await open({
+      multiple: true,
+      // No explicit filters: the user owns the machine and may pick any file
+      // Folyn has a handler for. Non-handled types fall back to the `code`
+      // (plain-text) editor.
+    });
+    if (!result) return 0;
+    paths = typeof result === 'string' ? [result] : (result as string[]);
+  }
+  if (!paths || paths.length === 0) return 0;
+  // Same routing as every other external path entry point (drag-drop,
+  // "Open With", single-instance handoff): dir → external folder tree,
+  // file → external tab, with duplicate-aware toasts on folder failures.
+  return openExternalPaths(paths);
 }
 
 /** Immediately save all tabs with pending auto-save timers. */

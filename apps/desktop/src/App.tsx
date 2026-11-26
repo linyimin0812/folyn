@@ -7,6 +7,7 @@ import { StatusBar } from './components/shell/StatusBar';
 import { ToastHost } from './components/shell/ToastHost';
 import { GlobalSearchPanel } from './components/search/GlobalSearchPanel';
 import { CommandPalette } from './components/shell/CommandPalette';
+import { RecentWindowsPanel } from './components/shell/RecentWindowsPanel';
 import { ConsentModal } from '@/components/settings/ConsentModal';
 
 import { SettingsPage } from './components/pages/SettingsPage';
@@ -16,17 +17,14 @@ import { ActivityPage } from './components/activity/ActivityPage';
 import { ExtensionPageView } from './components/shell/ExtensionPageView';
 import { useTheme } from './hooks/useTheme';
 import { useDisableAutoCapitalize } from './hooks/useDisableAutoCapitalize';
-import { usePetHostBridge } from './hooks/usePetHostBridge';
 import { useScreenWakeRelayout } from './hooks/useScreenWakeRelayout';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useExtensionHostSync } from './hooks/useExtensionHostSync';
-import { useVoiceGlobalHotkey } from './hooks/useVoiceGlobalHotkey';
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
-import { useTrayIconSync } from './hooks/useTrayIconSync';
 import { useOsFileDragDrop } from './hooks/useOsFileDragDrop';
 import { useOsFilePasteImport } from './hooks/useOsFilePasteImport';
-import { useOpenExternalFiles } from './hooks/useOpenExternalFiles';
+import { useImportFlowStore } from '@/store/importFlowStore';
 import { usePersistOnClose } from './hooks/usePersistOnClose';
+import { WindowHostChrome } from './components/shell/MainWindowChrome';
 import { installExternalLinkInterceptor } from './services/externalLinks';
 import { registerBuiltinExtensionHost } from './services/extension-host/registerBuiltinExtensionHost';
 import { useNavStore } from './store/navStore';
@@ -35,9 +33,8 @@ import { useEditorViewStateStore } from './store/editorViewState';
 import { useExtensionFileViewStore } from '@/store/extensionFileViewStore';
 import { PresentationOverlay } from '@/components/work-area/PresentationOverlay';
 import { AssetResolverContext } from '@/components/file-types/markdown/assetResolver';
-import { useVaultStore, startFileTreeBroadcast } from './store/vaultStore';
+import { useVaultStore } from './store/vaultStore';
 import { initExternalFileWatcher } from './utils/fileWatcher';
-import { startProvidersBroadcast } from './store/aiConfigStore';
 import { settingsLoadDone, loadSettings, resolveSettingsLoadDone, hydrateAllStores } from './store/settingsPersistence';
 import { useEditorStore } from './store/editorStore';
 import { getWebviewLabels } from './components/file-types/web/WebViewer';
@@ -46,7 +43,6 @@ import { registerEditorFileChangeApplier } from './services/fileChangeApplier';
 import { PasteConflictDialog } from '@/components/editor/PasteConflictDialog';
 import { MoveDialog } from '@/components/sidebar/SidebarActions';
 import { loadAiSessionsForVault } from './store/aiStore';
-import { startPetChatSessionsHost } from './store/petChatSessions';
 import { registerBuiltinExtensions } from '@folyn/container-extensions';
 import { registerBuiltinCommands } from './services/commandRegistry';
 import { registerBuiltinPanels } from './services/registerBuiltinPanels';
@@ -54,6 +50,12 @@ import { registerBuiltinCodeContributions } from './services/registerBuiltinCode
 import { registerBuiltinExporters } from './services/export/exporterRegistry';
 import { isTauri } from "@/utils/platform";
 import { useLocaleStore } from '@/store/localeStore';
+import {
+  bindSession,
+  startSessionActivityTracking,
+  markVaultKnown,
+  isResearchWindow,
+} from './services/windowSessionService';
 
 registerBuiltinExtensions();
 registerBuiltinCodeContributions();
@@ -73,7 +75,6 @@ registerBuiltinExtensionHost();
 export default function App() {
   useTheme();
   useDisableAutoCapitalize();
-  usePetHostBridge();
   useScreenWakeRelayout();
 
   useEffect(() => installExternalLinkInterceptor(), []);
@@ -157,22 +158,8 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // ponytail: push fileTree + currentVault to secondary Tauri windows
-  // (pet-panel) that mount AiPanel in `embedded` mode. Secondary windows
-  // lack vault-path fs ACL, so they can't refreshFileTree themselves — the
-  // main window owns the authoritative tree and broadcasts it on change.
-  // Mirrors the pet://settings-updated broadcast pattern.
-  useEffect(() => {
-    let stop: (() => void) | undefined;
-    let stopProviders: (() => void) | undefined;
-    let stopPetChat: (() => void) | undefined;
-    settingsLoadDone.then(() => {
-      stop = startFileTreeBroadcast();
-      stopProviders = startProvidersBroadcast();
-      stopPetChat = startPetChatSessionsHost();
-    });
-    return () => { stop?.(); stopProviders?.(); stopPetChat?.(); };
-  }, []);
+  // ponytail: push fileTree + currentVault to secondary Tauri windows —
+  // （已移入 MainWindowChrome —— 研究窗口也是 secondary window，不广播）
 
   // ── Mirror secondary-window state changes into the main window's stores ──
   // Secondary Tauri windows (pet-panel's pin toggle, pet-menu, etc.) hold
@@ -227,7 +214,18 @@ export default function App() {
       // usePetHostBridge (which awaits this before reading petStore).
       await settingsLoadDone;
 
+      // spec 6.3–6.5 多窗口：绑定本窗口会话（主窗口接管最近活跃会话，
+      // 研究窗口从路由 hash 读取）。必须在 restoreOpenTabs 之前 ——
+      // editorPersistence 的标签页键按会话 id 生成。顺带启动会话活动
+      // 追踪（tabCount/lastDoc/lastActiveAt 写入最近窗口索引）。
+      await bindSession();
+      startSessionActivityTracking();
+
       await useVaultStore.getState().initVault();
+      const boundVaultId = useVaultStore.getState().activeVaultId;
+      if (boundVaultId) {
+        void markVaultKnown(boundVaultId);
+      }
 
       // External (non-vault) tabs need per-file watches — the vault-root
       // watcher never sees them. Must run before restoreOpenTabs so restored
@@ -237,16 +235,39 @@ export default function App() {
       await loadAiSessionsForVault();
       await editorIoService.restoreOpenTabs();
 
-      const { fileTree } = useVaultStore.getState();
-      const { tabs } = useEditorStore.getState();
-      if (tabs.length === 0 && fileTree.length > 0) {
-        const firstFile = fileTree.find((entry) => entry.type === 'file');
-        if (firstFile) {
-          await editorIoService.openFile(firstFile.path, firstFile.name);
+      // 新窗口不复制旧窗口的标签页（spec 6.3）——研究窗口保持空状态，
+      // 不自动打开 vault 首文件；主窗口保留首启时的兜底行为。
+      if (!isResearchWindow()) {
+        const { fileTree } = useVaultStore.getState();
+        const { tabs } = useEditorStore.getState();
+        if (tabs.length === 0 && fileTree.length > 0) {
+          const firstFile = fileTree.find((entry) => entry.type === 'file');
+          if (firstFile) {
+            await editorIoService.openFile(firstFile.path, firstFile.name);
+          }
         }
       }
     };
     initializeVault();
+  }, []);
+
+  // ── 研究窗口自显示（spec 6.3）──
+  // Rust 创建研究窗口时 visible:false（避免 webview 加载期间的白屏闪烁），
+  // 前端挂载完成后自己 show + focus。失败静默（jsdom 无 Tauri）。
+  useEffect(() => {
+    if (!isTauri() || !isResearchWindow()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        if (cancelled) return;
+        await getCurrentWindow().show();
+        await getCurrentWindow().setFocus();
+      } catch {
+        /* 非致命 */
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // ── Hide all native webviews when leaving the editor page ──
@@ -302,9 +323,7 @@ export default function App() {
   }, [focusMode, currentPage]);
 
   // ── Extension host hydration + live install/approve/uninstall sync ──
-  useExtensionHostSync();
-  // ── Voice input: global toggle hotkey ──
-  useVoiceGlobalHotkey();
+  // （已移入 MainWindowChrome —— 主窗口专属，研究窗口不重复注册）
   // ── Global shortcuts (Cmd+S, search, focus mode, palette, …) ──
   useGlobalShortcuts();
 
@@ -320,30 +339,29 @@ export default function App() {
   }, []);
 
   // ── Tray icon: sync Rust-side with the persisted `showTrayIcon` flag ──
-  useTrayIconSync();
+  // （已移入 MainWindowChrome）
 
   // ── OS file drag-and-drop onto the window ──
   const { fileDragActive } = useOsFileDragDrop();
 
-  // ── OS file paste (Finder Cmd+C → Folyn Cmd+V) ──
-  const {
-    pickerVisible,
-    pickerFileTree,
-    onPickerConfirm,
-    onPickerCancel,
-    conflictFile,
-    conflictRemaining,
-    onConflictResolve,
-  } = useOsFilePasteImport();
+  // ── OS file paste (Finder Cmd+C → Folyn Cmd+V) + shared import flow ──
+  useOsFilePasteImport();
+  const pickerVisible = useImportFlowStore((s) => s.pickerVisible);
+  const pickerFileTree = useImportFlowStore((s) => s.pickerFileTree);
+  const onPickerConfirm = useImportFlowStore((s) => s.onPickerConfirm);
+  const onPickerCancel = useImportFlowStore((s) => s.onPickerCancel);
+  const conflictFile = useImportFlowStore((s) => s.conflictFile);
+  const conflictRemaining = useImportFlowStore((s) => s.conflictRemaining);
+  const onConflictResolve = useImportFlowStore((s) => s.onConflictResolve);
 
-  // ── OS "Open With" / file-association launch ──
-  useOpenExternalFiles();
+  // ── OS "Open With" / file-association launch ──（已移入 MainWindowChrome）
 
   // ── Flush persisted settings before the window closes ──
   usePersistOnClose();
 
   return (
     <div className="shell flex flex-col h-dvh" style={{ '--ui-font-size': `${fontSize}px` } as any}>
+      <WindowHostChrome />
       {!(focusMode && focusablePage) && (
         <Topbar isMobile={isMobile} onToggleSidebar={toggleMobileSidebar} />
       )}
@@ -353,7 +371,7 @@ export default function App() {
           className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none bg-black/40 backdrop-blur-sm"
         >
           <div className="px-6 py-4 rounded-xl border-2 border-dashed border-[var(--acc,#3b82f6)] bg-[var(--bg,#fff)] text-[var(--fg,#111)] text-base font-medium shadow-lg">
-            松开以打开文件 / Drop to open
+            松开以打开文件或文件夹 / Drop to open
           </div>
         </div>
       )}
@@ -445,6 +463,7 @@ export default function App() {
       />
       <GlobalSearchPanel />
       <CommandPalette />
+      <RecentWindowsPanel />
       <ConsentModal />
     </div>
   );

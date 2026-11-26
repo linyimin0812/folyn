@@ -63,13 +63,18 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
   const setCurrentPage = useNavStore((state) => state.setCurrentPage);
   const currentPage = useNavStore((state) => state.currentPage);
   const terminalOpen = terminalPanelVisible || terminalInRightDock;
-  // A trail left in another vault doesn't count (the store clears it on next use).
+  // A trail left in another vault doesn't count (the store clears it on
+  // next use); and the trail that counts is the ACTIVE TAB's (Phase 4.5:
+  // each tab owns an independent back/forward trail).
   const linkVaultId = useDocLinkHistory((s) => s.vaultId);
-  const linkBack = useDocLinkHistory((s) => s.back.length > 0);
-  const linkForward = useDocLinkHistory((s) => s.forward.length > 0);
+  const activeTabId = useEditorStore((state) => state.activeTabId);
+  const linkBack = useDocLinkHistory((s) => (activeTabId ? (s.trails[activeTabId]?.back.length ?? 0) > 0 : false));
+  const linkForward = useDocLinkHistory((s) => (activeTabId ? (s.trails[activeTabId]?.forward.length ?? 0) > 0 : false));
   const activeVaultId = useVaultStore((state) => state.activeVaultId);
   const canBack = linkBack && linkVaultId === activeVaultId;
   const canForward = linkForward && linkVaultId === activeVaultId;
+  // In-document find (spec 5.3): the ACTIVE tab's bar state, for the
+  // magnifier's tint. Markdown-only — the pane guards the rest.
 
   // ── Context-driven toolbar (doc §16–§17) ────────────────────────────────
   // Resolve the whole toolbar state from a ToolbarContext — no per-file-type
@@ -152,8 +157,8 @@ export function Topbar({ isMobile, onToggleSidebar }: TopbarProps) {
             >
               <ArrowRight size={14} />
             </button>
-            <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
-          </>
+        <div className="top-div w-px h-[18px] bg-brd2 mx-[3px] shrink-0" />
+      </>
         )}
         {/* View mode segment -- shown only for multi-mode file types */}
         {showViewMode && (

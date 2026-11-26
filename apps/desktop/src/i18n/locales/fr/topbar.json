@@ -13,7 +13,13 @@
     "noOpenFiles": "Aucun fichier ouvert",
     "closePanel": "Fermer la liste",
     "closeTab": "Fermer le fichier",
-    "openExternalFolder": "Ouvrir le dossier contenant"
+    "openExternalFolder": "Ouvrir le dossier contenant",
+    "pin": "Épingler l’onglet",
+    "unpin": "Désépingler",
+    "closeOthers": "Fermer les autres onglets",
+    "searchPlaceholder": "Rechercher des onglets (nom / chemin / section)…",
+    "noMatches": "Aucun onglet correspondant",
+    "pinnedNote": "Les onglets épinglés sont conservés"
   },
   "terminal": {
     "collapse": "Réduire le terminal",

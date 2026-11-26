@@ -19,6 +19,7 @@ import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
+import { useImportFlowStore } from '@/store/importFlowStore';
 import type { VaultEntry } from '@folyn/vault-provider';
 import { ThemeIcon } from '@/components/icons/ThemeIcon';
 import { setNewItemStarter } from '@/services/newItemBridge';
@@ -27,6 +28,8 @@ import { flattenTree } from '@/utils/treeUtils';
 import { useDragDrop } from './useDragDrop';
 import { FileTreeItem } from './FileTreeItem';
 import { TreeCollapse } from './TreeCollapse';
+import { ExternalFolderSection } from './ExternalFolderSection';
+import { useExternalFolderStore } from '@/store/externalFolderStore';
 import { useSidebarActions, DeleteConfirmDialog, MoveDialog, NewItemInput } from './SidebarActions';
 import { ContextMenu } from './ContextMenu';
 import type { ContextMenuData } from './ContextMenu';
@@ -107,9 +110,16 @@ export function FilesPanel(): React.JSX.Element {
   );
 
   const handleOpenExternal = useCallback(() => {
+    // Unified picker: one dialog, files AND folders selectable (macOS custom
+    // command; other platforms get a files-only dialog fallback).
     void editorIoService.openExternalFile();
     onFileSelect?.();
   }, [onFileSelect]);
+
+  // Restore persisted external folders once on mount (no-op outside Tauri).
+  useEffect(() => {
+    void useExternalFolderStore.getState().init();
+  }, []);
 
   const handleToggleDir = useCallback((dirPath: string) => {
     setExpandedDirs((prev) => {
@@ -421,6 +431,10 @@ export function FilesPanel(): React.JSX.Element {
                     <ThemeIcon name="newFolder" size={14} />
                     <span>{t('sidebar:contextMenu.newFolder')}</span>
                   </button>
+                  <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { setActionsMenuOpen(false); void useImportFlowStore.getState().startImportFromDialog(); }}>
+                    <ThemeIcon name="copyOfFolder" size={14} />
+                    <span>{t('sidebar:filesPanel.actions.importFiles')}</span>
+                  </button>
                   <button className="flex items-center gap-2 w-full py-1.5 px-2.5 border-none rounded bg-transparent text-t1 text-xs cursor-pointer transition-colors duration-[120ms] whitespace-nowrap font-ui hover:bg-hov [&>svg]:shrink-0 [&>svg]:text-t2" onClick={() => { expandAllDirs(); setActionsMenuOpen(false); }}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><polyline points="4,5 8,9 12,5" /><polyline points="4,9 8,13 12,9" /></svg>
                     <span>{t('sidebar:filesPanel.actions.expandAll')}</span>
@@ -467,9 +481,11 @@ export function FilesPanel(): React.JSX.Element {
           )}
         </div>
 
-        {/* Search + browse external file — a single joined control: same
-            bg, rounded as one, divided by a 1px rule, so the browse button
-            reads as an appendage of the search field. */}
+        {/* Search + open external (files AND folders — one dialog). A single
+            joined control: same bg, rounded as one, divided by a 1px rule, so
+            the browse button reads as an appendage of the search field. The
+            macOS dialog accepts a mixed selection (custom NSOpenPanel
+            command); picked folders land in the external tree below. */}
         <div className="mt-2 flex items-stretch rounded-[5px] border border-brd bg-inp transition-[border-color] duration-[140ms] focus-within:border-acc overflow-hidden">
           <input
             className="flex-1 min-w-0 py-[5px] px-2 bg-transparent text-t1 text-[calc(var(--ui-font-size)-3px)] outline-none font-ui placeholder:text-t3 border-none"
@@ -518,6 +534,9 @@ export function FilesPanel(): React.JSX.Element {
             }
           </div>
         )}
+        {/* External folders (browsing outside the vault): rendered under the
+            vault tree, own expand state. Hidden when none are open. */}
+        <ExternalFolderSection />
       </div>
 
       {/* Delete confirmation dialog */}

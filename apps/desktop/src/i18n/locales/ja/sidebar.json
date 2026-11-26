@@ -2,7 +2,7 @@
   "filesPanel": {
     "actions": {
       "locateActive": "アクティブファイルを表示",
-      "openExternal": "外部ファイルを開く…",
+      "openExternal": "外部ファイルまたはフォルダを開く…",
       "refresh": "ファイルツリーを更新",
       "more": "その他のアクション",
       "newFile": "新規ファイル",
@@ -11,7 +11,12 @@
       "collapseAll": "すべて折りたたむ",
       "expandAllFolders": "すべてのフォルダを展開",
       "collapseAllFolders": "すべてのフォルダを折りたたむ",
-      "hideSidebar": "サイドバーを隠す"
+      "hideSidebar": "サイドバーを隠す",
+      "importFiles": "インポート…"
+    },
+    "externalFolders": {
+      "title": "外部フォルダー",
+      "remove": "外部フォルダーを削除"
     },
     "search": {
       "placeholder": "ファイルを検索..."
@@ -43,7 +48,10 @@
     "delete": "削除",
     "move": "移動先...",
     "copy": "コピー",
-    "hide": "非表示"
+    "hide": "非表示",
+    "open": "開く",
+    "refresh": "更新",
+    "importToVault": "リポジトリへインポート"
   },
   "sidebarActions": {
     "deleteConfirm": {

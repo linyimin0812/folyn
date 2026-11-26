@@ -13,7 +13,13 @@
     "noOpenFiles": "No hay archivos abiertos",
     "closePanel": "Cerrar lista",
     "closeTab": "Cerrar archivo",
-    "openExternalFolder": "Abrir carpeta contenedora"
+    "openExternalFolder": "Abrir carpeta contenedora",
+    "pin": "Fijar pestaña",
+    "unpin": "Quitar fijación",
+    "closeOthers": "Cerrar otras pestañas",
+    "searchPlaceholder": "Buscar pestañas (nombre / ruta / sección)…",
+    "noMatches": "Sin pestañas coincidentes",
+    "pinnedNote": "Las pestañas fijadas se conservan al cerrar las demás"
   },
   "terminal": {
     "collapse": "Contraer terminal",

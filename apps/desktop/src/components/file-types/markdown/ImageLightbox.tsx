@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ZoomPanCanvas } from '../image/ZoomPanCanvas';
+import { usePreviewActive } from './PreviewActiveContext';
 
 interface ImageLightboxProps {
   src: string;
@@ -17,8 +18,11 @@ const stop = (e: React.SyntheticEvent) => e.stopPropagation();
  * ZoomPanCanvas, so it opens at 1:1 (crisp) with pan/zoom/Fit. Closes on the
  * close button, Escape, or a click on the dimmed margin around the canvas —
  * the canvas itself is a pan surface, so clicks on it never close.
+ * The alt text (object name per 5.4) sits bottom-left; hidden panes gate via
+ * PreviewActiveContext so the lightbox doesn't float above another tab.
  */
 export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
+  const active = usePreviewActive();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -32,6 +36,8 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
+
+  if (!active) return null;
 
   return createPortal(
     <div
@@ -48,6 +54,11 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       <div className="flex-1 min-w-0 rounded-lg overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,.35)]">
         <ZoomPanCanvas src={src} alt={alt} className="image-lightbox-canvas" />
       </div>
+      {alt && (
+        <div className="image-lightbox-caption absolute left-4 bottom-3 max-w-[60%] truncate text-xs text-white/70 select-none pointer-events-none">
+          {alt}
+        </div>
+      )}
       <button
         type="button"
         className="absolute top-2 right-2 w-7 h-7 rounded-md border-none bg-transparent text-white/80 text-lg leading-none cursor-pointer flex items-center justify-center hover:bg-white/15 hover:text-white"
