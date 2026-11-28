@@ -38,6 +38,38 @@ const handler: FileTypeProvider = {
 - The mode switch shows every mode that is not `hidden`. A provider with one
   mode shows no switch — there is no host-side list of types to hide it for.
 
+### Convention: open-time view mode (`defaultMode` + caller override)
+
+**What**: the mode a file opens in is resolved in `openFile`
+(`services/editorIoService.ts`) as `options.viewMode ?? getDefaultMode(handler)`.
+Every open entry point (file tree, global search, doc links, drag-drop /
+Open-With / external picker, session restore) goes through `openFile` without
+an override, so the handler's `defaultMode` IS the de-facto default for every
+entry point. Only the create-new-file flow (`SidebarActions.confirmNewItem` →
+`handleFileClick(path, name, { viewMode })`) passes an override — a freshly
+created markdown doc opens `'split'` (the user is about to write), while an
+existing md opens `'preview'` (reading-first). The override uses
+`detectFileType(path) === 'markdown'`, not a bare extension check, so an
+Open-With preference routing .md elsewhere is respected.
+
+**Why**: `defaultMode` is the single knob for "what does opening this type
+look like"; a per-entry-point default would need ~30 `openFile` call sites to
+each decide, and the create-flow is the only caller that knows the file is
+new (the file already exists on disk by the time it is opened).
+
+**Behavior edges** (all intentional, tested in
+`services/editorIoService.openFileViewMode.test.ts`):
+- Re-opening an existing tab always restores that tab's saved `viewMode`
+  (per-tab persistence of manual switches) — an override is ignored there.
+- `background: true` opens carry the tab's mode but never touch the global
+  `viewMode`.
+- `WorkArea.tsx`'s reconcile (switching to a tab with no saved mode) falls
+  back to `getDefaultMode(handler)` — changing a handler's `defaultMode`
+  changes that fallback too.
+
+**Contract**: `openFile(filePath, name, options?: { viewMode?: ViewMode; ... })`
+— `viewMode` is only consulted when the tab is CREATED.
+
 **Contract**: a `component` mode under an editing id receives `EditorProps`:
 ```typescript
 interface EditorProps {
