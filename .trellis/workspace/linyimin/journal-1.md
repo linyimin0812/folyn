@@ -1267,3 +1267,38 @@ Preview-only markdown zoom: CSS zoom via --md-zoom var (no wrapper div — keeps
 ### Next Steps
 
 - None - task complete
+
+
+## Session 36: Markdown open-time view mode: preview default, split only on create
+
+**Date**: 2026-11-28
+**Task**: Markdown open-time view mode: preview default, split only on create
+**Package**: desktop
+**Branch**: `master`
+
+### Summary
+
+Changed markdown open behavior to reading-first: existing md files open in preview via every entry point (handler defaultMode 'split'->'preview'); only the create-new-file flow (SidebarActions.confirmNewItem -> handleFileClick -> openFile) passes viewMode:'split' via the new openFile options.viewMode override. Manual per-tab mode persistence unchanged; non-markdown handlers untouched. Added 10 tests across editorIoService.openFileViewMode.test.ts and SidebarActions.confirmNewItem.test.tsx. Recorded the open-time view-mode convention in .trellis/spec/desktop/frontend/file-type-editors.md. Archived task 11-28-md-open-preview-split-default plus stale completed task 10-21-subscriptions-app-storage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9bbce459` | (see git log) |
+| `87c4d3e8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

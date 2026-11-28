@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 35
-- **Last Active**: 2026-10-28
+- **Total Sessions**: 36
+- **Last Active**: 2026-11-28
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1269 | Active |
+| `journal-1.md` | ~1304 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 36 | 2026-11-28 | Markdown open-time view mode: preview default, split only on create | `9bbce459`, `87c4d3e8` | `master` |
 | 35 | 2026-10-28 | 知识库大批量迭代：存储迁移、并行提速、多轮问答、多语言等 13 项归档 | `b1dae05c`, `fa8abd72`, `f293b997`, `e780f0b5`, `750dca13`, `cc1fd93e`, `a75d0c7f`, `d07c6ad2`, `952ba789` | `master` |
 | 34 | 2026-10-12 | 会话发现 FD 泄漏与 Claude 标题修复 | `9cb2a126` | `master` |
 | 33 | 2026-10-12 | 外部会话知识沉淀：三来源浏览、选择与收录（全量实现 + 多轮 UI 打磨） | `b6d4b83c`, `2c63ef8f` | `master` |
