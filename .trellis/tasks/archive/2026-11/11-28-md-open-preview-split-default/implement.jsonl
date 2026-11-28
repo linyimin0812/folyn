@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/desktop/frontend/index.md", "reason": "Desktop frontend 总入口：技术栈与目录约定（React18+Zustand+file-types registry）"}
+{"file": ".trellis/spec/desktop/frontend/state-management.md", "reason": "editorStore/openFile 涉及 Zustand store 状态流，需遵循 store 设计与持久化约定"}
+{"file": ".trellis/spec/desktop/frontend/file-type-editors.md", "reason": "改 markdown handler 的 defaultMode 与 openFile viewMode 决策，需遵循 file-type handler 契约"}
