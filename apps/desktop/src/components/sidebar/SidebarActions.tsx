@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorStore, detectFileType } from '@/store/editorStore';
+import type { ViewMode } from '@/store/editorStore';
 import { useVaultStore } from '@/store/vaultStore';
 import { usePrefsStore } from '@/store/prefsStore';
 import { getFileTemplateForExtension } from '@/services/extension-host/fileTemplateAdapter';
@@ -13,7 +14,7 @@ import type { VaultEntry } from '@folyn/vault-provider';
 /* -------------------------------------------------------------------------- */
 
 interface UseSidebarActionsOptions {
-  handleFileClick: (filePath: string, fileName: string) => void;
+  handleFileClick: (filePath: string, fileName: string, opts?: { viewMode?: ViewMode }) => void;
   setExpandedDirs: React.Dispatch<React.SetStateAction<Set<string>>>;
   revealItem: (path: string) => void;
 }
@@ -102,7 +103,17 @@ export function useSidebarActions({ handleFileClick, setExpandedDirs, revealItem
     setNewItemExtension(null);
 
     if (newItemType === 'file') {
-      handleFileClick(fullPath, finalName);
+      // PRD 11-28: a freshly created md opens in split (edit+preview) — the
+      // user is about to write. Opening an EXISTING md defaults to preview
+      // (the markdown handler's defaultMode), so only the create flow passes
+      // the override. detectFileType (not a bare extension check) so the
+      // Open-With preference is respected: only a file that will actually
+      // open with the markdown handler forces split; others use their own
+      // handler defaults.
+      const openOpts = detectFileType(fullPath) === 'markdown'
+        ? { viewMode: 'split' as ViewMode }
+        : undefined;
+      handleFileClick(fullPath, finalName, openOpts);
     } else {
       setExpandedDirs((prev) => new Set([...prev, fullPath]));
     }

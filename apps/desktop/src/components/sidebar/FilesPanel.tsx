@@ -17,6 +17,7 @@ import { PanelLeftClose, SquareArrowOutUpRight } from 'lucide-react';
 import { useNavStore } from '@/store/navStore';
 import { useAppearanceStore } from '@/store/appearanceStore';
 import { useEditorStore } from '@/store/editorStore';
+import type { ViewMode } from '@/store/editorStore';
 import * as editorIoService from '@/services/editorIoService';
 import { useVaultStore } from '@/store/vaultStore';
 import { useImportFlowStore } from '@/store/importFlowStore';
@@ -102,8 +103,8 @@ export function FilesPanel(): React.JSX.Element {
   });
 
   const handleFileClick = useCallback(
-    (filePath: string, fileName: string) => {
-      openFile(filePath, fileName);
+    (filePath: string, fileName: string, opts?: { viewMode?: ViewMode }) => {
+      openFile(filePath, fileName, opts);
       onFileSelect?.();
     },
     [openFile, onFileSelect],

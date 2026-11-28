@@ -7,7 +7,7 @@ const handler: FileTypeProvider = {
   extensions: ['md', 'markdown', 'mdx'],
   icon: getFileTypeIcon('markdown'),
   needsFileContent: true,
-  defaultMode: 'split',
+  defaultMode: 'preview',
   modes: [
     { id: 'edit', kind: 'shell-editor' },
     { id: 'split', kind: 'split', split: { left: 'edit', right: 'preview' } },

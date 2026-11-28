@@ -1,4 +1,4 @@
-import type { FileTab } from '@/store/editorStore';
+import type { FileTab, ViewMode } from '@/store/editorStore';
 import {
   detectFileType,
   detectActivity,
@@ -87,6 +87,11 @@ export async function openFile(
     /** Where a background tab lands (right of the source tab). Ignored when
      *  background is false. */
     insertAfterTabId?: string;
+    /** Initial view mode for a NEW tab — overrides the handler's default
+     *  (e.g. a freshly created .md opens split instead of preview). Only
+     *  consulted when the tab is created; re-opening an existing tab always
+     *  restores that tab's saved viewMode. */
+    viewMode?: ViewMode;
   },
 ): Promise<void> {
   const assertVault = () => {
@@ -183,6 +188,10 @@ export async function openFile(
       console.log(`[EditorStore] openFile: ${filePath} type=${fileType} content=${content.length} chars`);
     }
     assertVault();
+    // PRD 11-28: initial mode = caller override ?? handler default. Opening an
+    // existing md file defaults to preview (handler default); a freshly
+    // created md passes `viewMode: 'split'` (SidebarActions.confirmNewItem).
+    const initialMode = options?.viewMode ?? getDefaultMode(handler);
     const newTab: FileTab = {
       id: tabId,
       name,
@@ -191,7 +200,7 @@ export async function openFile(
       isDirty: false,
       fileType,
       activity: detectActivity(filePath, fileType),
-      viewMode: getDefaultMode(handler),
+      viewMode: initialMode,
     };
     // addTab owns insertion + activation + MRU (background: insert right of
     // the source tab and DON'T activate — spec 6.2 后台打开不抢夺当前焦点).
@@ -202,8 +211,8 @@ export async function openFile(
     // Auto-switch to preview mode for file types that prefer preview (only
     // when the new tab is actually being activated — a background tab must
     // not touch the current tab's view mode).
-    if (!options?.background && getDefaultMode(handler)) {
-      set({ viewMode: getDefaultMode(handler) });
+    if (!options?.background && initialMode) {
+      set({ viewMode: initialMode });
     }
     persistOpenTabs(vaultId, get().tabs, get().activeTabId);
     if (isExternal) {
